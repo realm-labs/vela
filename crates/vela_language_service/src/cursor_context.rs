@@ -44,6 +44,7 @@ pub struct CursorContext {
     member_receiver: Option<TextRange>,
     call_open: Option<usize>,
     call_callee: Option<TextRange>,
+    call_member_receiver: Option<TextRange>,
     lambda_method: Option<TextRange>,
 }
 
@@ -86,6 +87,11 @@ impl CursorContext {
     #[must_use]
     pub const fn call_callee(&self) -> Option<TextRange> {
         self.call_callee
+    }
+
+    #[must_use]
+    pub const fn call_member_receiver(&self) -> Option<TextRange> {
+        self.call_member_receiver
     }
 
     #[must_use]
@@ -168,10 +174,11 @@ pub fn cursor_context_at(
         return context(CursorContextKind::Item, prefix_start, prefix);
     }
 
-    if let Some(callee) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
+    if let Some(call) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
         let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
         cursor.call_open = active_call_open(text, offset);
-        cursor.call_callee = Some(callee);
+        cursor.call_callee = Some(call.callee);
+        cursor.call_member_receiver = call.member_receiver;
         return cursor;
     }
 
@@ -179,6 +186,9 @@ pub fn cursor_context_at(
         let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
         cursor.call_open = Some(open);
         cursor.call_callee = call_callee_before_open(text, open);
+        cursor.call_member_receiver = cursor
+            .call_callee
+            .and_then(|callee| member_receiver_for_callee_range(text, callee));
         return cursor;
     }
 
@@ -203,6 +213,7 @@ fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> Curs
         member_receiver: None,
         call_open: None,
         call_callee: None,
+        call_member_receiver: None,
         lambda_method: None,
     }
 }
@@ -993,7 +1004,13 @@ fn span_range(span: Span) -> Option<TextRange> {
     ))
 }
 
-fn call_callee_for_source(source: &SourceFile, offset: usize) -> Option<TextRange> {
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+struct CallCalleeRanges {
+    callee: TextRange,
+    member_receiver: Option<TextRange>,
+}
+
+fn call_callee_for_source(source: &SourceFile, offset: usize) -> Option<CallCalleeRanges> {
     let offset = u32::try_from(offset).ok()?;
     source.items.iter().find_map(|item| match &item.kind {
         ItemKind::Const(item) => call_callee_for_expr(&item.value, offset),
@@ -1007,7 +1024,7 @@ fn call_callee_for_source(source: &SourceFile, offset: usize) -> Option<TextRang
     })
 }
 
-fn call_callee_for_block(block: &Block, offset: u32) -> Option<TextRange> {
+fn call_callee_for_block(block: &Block, offset: u32) -> Option<CallCalleeRanges> {
     block.span.contains(offset).then(|| {
         block
             .statements
@@ -1016,7 +1033,7 @@ fn call_callee_for_block(block: &Block, offset: u32) -> Option<TextRange> {
     })?
 }
 
-fn call_callee_for_statement(statement: &Stmt, offset: u32) -> Option<TextRange> {
+fn call_callee_for_statement(statement: &Stmt, offset: u32) -> Option<CallCalleeRanges> {
     if !statement.span.contains(offset) {
         return None;
     }
@@ -1035,7 +1052,7 @@ fn call_callee_for_statement(statement: &Stmt, offset: u32) -> Option<TextRange>
     }
 }
 
-fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
+fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<CallCalleeRanges> {
     if !expr.span.contains(offset) {
         return None;
     }
@@ -1047,7 +1064,7 @@ fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
             })
             .or_else(|| {
                 (callee.span.end < offset && offset <= expr.span.end)
-                    .then(|| span_range(callee.span))
+                    .then(|| call_callee_ranges(callee))
                     .flatten()
             }),
         ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => call_callee_for_expr(expr, offset),
@@ -1102,7 +1119,7 @@ fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
     }
 }
 
-fn call_callee_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<TextRange> {
+fn call_callee_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<CallCalleeRanges> {
     match branch {
         ElseBranch::Block(block) => call_callee_for_block(block, offset),
         ElseBranch::If(if_expr) => call_callee_for_expr(&if_expr.condition, offset)
@@ -1114,6 +1131,18 @@ fn call_callee_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<TextR
                     .and_then(|branch| call_callee_for_else_branch(branch, offset))
             }),
     }
+}
+
+fn call_callee_ranges(callee: &Expr) -> Option<CallCalleeRanges> {
+    let callee_range = span_range(callee.span)?;
+    let member_receiver = match &callee.kind {
+        ExprKind::Field { base, .. } => span_range(base.span),
+        _ => None,
+    };
+    Some(CallCalleeRanges {
+        callee: callee_range,
+        member_receiver,
+    })
 }
 
 fn map_key_for_block(block: &Block, offset: u32) -> bool {
@@ -1269,6 +1298,22 @@ fn call_callee_before_open(text: &str, open: usize) -> Option<TextRange> {
         .find_map(|(index, ch)| (!is_callee_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
     (start < end).then(|| TextRange::new(start, end))
+}
+
+fn member_receiver_for_callee_range(text: &str, callee: TextRange) -> Option<TextRange> {
+    let callee_text = text.get(callee.start..callee.end)?;
+    let dot = callee_text.rfind('.')?;
+    let before_dot = callee_text.get(..dot)?.trim_end();
+    let receiver_end = callee.start + before_dot.len();
+    let receiver_start = callee.start
+        + before_dot
+            .char_indices()
+            .rev()
+            .find_map(|(index, ch)| {
+                (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8())
+            })
+            .unwrap_or(0);
+    (receiver_start < receiver_end).then(|| TextRange::new(receiver_start, receiver_end))
 }
 
 fn offset_is_inside_item(source: &SourceFile, offset: usize) -> bool {

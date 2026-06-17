@@ -182,6 +182,16 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub const fn call_member_receiver_range(&self) -> Option<TextRange> {
+        self.cursor.call_member_receiver()
+    }
+
+    #[must_use]
+    pub fn call_member_receiver_text(&self) -> Option<&str> {
+        text_range(self.text(), self.call_member_receiver_range()?)
+    }
+
+    #[must_use]
     pub const fn lambda_method_range(&self) -> Option<TextRange> {
         self.cursor.lambda_method()
     }
@@ -305,7 +315,7 @@ mod tests {
     fn query_context_exposes_cursor_receiver_and_callee_text() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let source = "pub fn current_player() -> Player { return Player { level: 1 } }\n\
-                      pub fn main(player: Player, scores: Array<i64>) { player.level; grant(current_player().level); scores.filter(|) }";
+                      pub fn main(player: Player, scores: Array<i64>) { player.level; grant(current_player().level); scores.filter(player); scores.map(|) }";
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let workspace = Workspace::new();
         let files = vec![SourceFileSnapshot::new(document.clone(), source)];
@@ -351,6 +361,27 @@ mod tests {
             source.find("grant(").map(|index| index + "grant".len())
         );
 
+        let method_call_offset =
+            source.find("filter(player").expect("method call") + "filter(".len();
+        let method_call_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(method_call_offset),
+        )
+        .expect("method call query");
+        let method_receiver_start = source.find("scores.filter").expect("method receiver");
+        assert_eq!(
+            method_call_context.call_member_receiver_range(),
+            Some(TextRange::new(
+                method_receiver_start,
+                method_receiver_start + "scores".len()
+            ))
+        );
+        assert_eq!(
+            method_call_context.call_member_receiver_text(),
+            Some("scores")
+        );
+
         let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
         let lambda_context = QueryContext::from_databases(
             &databases,
@@ -358,18 +389,18 @@ mod tests {
             LineIndex::new(source).position(lambda_offset),
         )
         .expect("lambda query");
-        let expected_method_start = source.find(".filter").expect("lambda method") + ".".len();
+        let expected_method_start = source.find(".map").expect("lambda method") + ".".len();
         assert_eq!(
             lambda_context.lambda_method_range(),
             Some(TextRange::new(
                 expected_method_start,
-                expected_method_start + "filter".len()
+                expected_method_start + "map".len()
             ))
         );
         assert_eq!(
             lambda_context.call_open_offset(),
-            source.find("filter(").map(|index| index + "filter".len())
+            source.find("map(").map(|index| index + "map".len())
         );
-        assert_eq!(lambda_context.lambda_method_text(), Some("filter"));
+        assert_eq!(lambda_context.lambda_method_text(), Some("map"));
     }
 }

@@ -126,6 +126,33 @@ fn cursor_context_classifies_call_arguments() {
 
     assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
     assert_eq!(&text[callee.start..callee.end], "grant");
+    assert_eq!(cursor.call_member_receiver(), None);
+}
+
+#[test]
+fn cursor_context_exposes_call_member_receiver() {
+    let text = "pub fn main(items) { items.filter(value) }";
+    let cursor = classify(text, "value");
+    let callee = cursor.call_callee().expect("callee range");
+    let receiver = cursor
+        .call_member_receiver()
+        .expect("call member receiver range");
+
+    assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+    assert_eq!(&text[callee.start..callee.end], "items.filter");
+    assert_eq!(&text[receiver.start..receiver.end], "items");
+}
+
+#[test]
+fn cursor_context_exposes_complex_call_member_receiver_from_syntax() {
+    let text = "pub fn main() { current_player().grant(value) }";
+    let cursor = classify(text, "value");
+    let receiver = cursor
+        .call_member_receiver()
+        .expect("call member receiver range");
+
+    assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+    assert_eq!(&text[receiver.start..receiver.end], "current_player()");
 }
 
 #[test]

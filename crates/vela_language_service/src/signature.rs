@@ -77,7 +77,7 @@ impl SignatureParameter {
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct CallContext {
     callee: String,
-    callee_range: TextRange,
+    member_receiver: Option<TextRange>,
     args_prefix: String,
     active_parameter: usize,
 }
@@ -85,11 +85,10 @@ struct CallContext {
 struct MemberCallLookup<'a> {
     graph: &'a ModuleGraph,
     facts: &'a AnalysisFacts,
-    text: &'a str,
     source_id: SourceId,
     bindings: &'a BindingMap,
     method: &'a str,
-    method_range: TextRange,
+    receiver_range: TextRange,
 }
 
 impl LanguageServiceDatabases {
@@ -102,7 +101,7 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
         let context = call_context_from_query(&query)?;
-        let signatures = self.signature_candidates_for_context(source_id, query.text(), &context);
+        let signatures = self.signature_candidates_for_context(source_id, &context);
         if signatures.is_empty() {
             return None;
         }
@@ -132,20 +131,19 @@ impl LanguageServiceDatabases {
     ) -> Vec<SignatureInformation> {
         let context = CallContext {
             callee,
-            callee_range,
+            member_receiver: member_receiver_range(text, callee_range),
             args_prefix,
             active_parameter: 0,
         };
-        self.signature_candidates_for_context(source_id, text, &context)
+        self.signature_candidates_for_context(source_id, &context)
     }
 
     fn signature_candidates_for_context(
         &self,
         source_id: SourceId,
-        text: &str,
         context: &CallContext,
     ) -> Vec<SignatureInformation> {
-        if let Some(signatures) = self.member_signatures(source_id, text, context)
+        if let Some(signatures) = self.member_signatures(source_id, context)
             && !signatures.is_empty()
         {
             return signatures;
@@ -156,29 +154,24 @@ impl LanguageServiceDatabases {
     fn member_signatures(
         &self,
         source_id: SourceId,
-        text: &str,
         context: &CallContext,
     ) -> Option<Vec<SignatureInformation>> {
         let (_receiver, method) = context.callee.rsplit_once('.')?;
         if method.is_empty() {
             return None;
         }
-        let method_range = TextRange::new(
-            context.callee_range.end.saturating_sub(method.len()),
-            context.callee_range.end,
-        );
+        let receiver_range = context.member_receiver?;
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        self.bindings_at(source_id, method_range.start)
+        self.bindings_at(source_id, receiver_range.start)
             .find_map(|bindings| {
                 let lookup = MemberCallLookup {
                     graph,
                     facts: &facts,
-                    text,
                     source_id,
                     bindings,
                     method,
-                    method_range,
+                    receiver_range,
                 };
                 let mut signatures = self.script_method_signatures(&lookup);
                 signatures.extend(self.schema_method_signatures(&lookup));
@@ -257,11 +250,10 @@ impl LanguageServiceDatabases {
 
     fn script_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
         let Some(receiver) = receiver_type_fact(
-            lookup.text,
             lookup.source_id,
             lookup.bindings,
             lookup.facts,
-            lookup.method_range,
+            lookup.receiver_range,
         ) else {
             return Vec::new();
         };
@@ -304,12 +296,11 @@ impl LanguageServiceDatabases {
 
     fn schema_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
         let Some(receiver) = schema_receiver_type_fact(
-            lookup.text,
             lookup.source_id,
             lookup.bindings,
             lookup.facts,
             self.schema_db().facts(),
-            lookup.method_range,
+            lookup.receiver_range,
         ) else {
             return Vec::new();
         };
@@ -337,12 +328,11 @@ impl LanguageServiceDatabases {
         args_prefix: &str,
     ) -> Vec<SignatureInformation> {
         let Some(receiver) = schema_receiver_type_fact(
-            lookup.text,
             lookup.source_id,
             lookup.bindings,
             lookup.facts,
             self.schema_db().facts(),
-            lookup.method_range,
+            lookup.receiver_range,
         ) else {
             return Vec::new();
         };
@@ -493,12 +483,11 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
     let text = query.text();
     let offset = query.cursor().replace_range().end;
     let open = query.call_open_offset()?;
-    let callee_range = query.call_callee_range()?;
     let callee = query.call_callee_text()?.to_owned();
     let args_prefix = text[open + 1..offset].to_owned();
     Some(CallContext {
         callee,
-        callee_range,
+        member_receiver: query.call_member_receiver_range(),
         active_parameter: active_parameter_index(&args_prefix),
         args_prefix,
     })
@@ -650,26 +639,24 @@ fn first_lambda_param_count(args_text: &str) -> Option<usize> {
 }
 
 fn receiver_type_fact(
-    text: &str,
     source_id: SourceId,
     bindings: &BindingMap,
     facts: &AnalysisFacts,
-    method_range: TextRange,
+    receiver: TextRange,
 ) -> Option<TypeFact> {
-    let span = receiver_span(text, source_id, method_range)?;
+    let span = receiver_span(source_id, receiver)?;
     let resolution = bindings.resolution_at_span(span)?;
     type_fact_for_resolution(resolution, facts)
 }
 
 fn schema_receiver_type_fact(
-    text: &str,
     source_id: SourceId,
     bindings: &BindingMap,
     facts: &AnalysisFacts,
     schema: &vela_analysis::registry::RegistryFacts,
-    method_range: TextRange,
+    receiver: TextRange,
 ) -> Option<TypeFact> {
-    let span = receiver_span(text, source_id, method_range)?;
+    let span = receiver_span(source_id, receiver)?;
     let resolution = bindings.resolution_at_span(span)?;
     match resolution {
         BindingResolution::Local(local) => facts
@@ -686,23 +673,30 @@ fn schema_receiver_type_fact(
     }
 }
 
-fn receiver_span(text: &str, source_id: SourceId, method_range: TextRange) -> Option<Span> {
-    let receiver = member_receiver_range(text, method_range.start)?;
+fn receiver_span(source_id: SourceId, receiver: TextRange) -> Option<Span> {
     let start = u32::try_from(receiver.start).ok()?;
     let end = u32::try_from(receiver.end).ok()?;
     Some(Span::new(source_id, start, end))
 }
 
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?.trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
+fn member_receiver_range(text: &str, callee: TextRange) -> Option<TextRange> {
+    let callee_text = text.get(callee.start..callee.end)?;
+    let dot = callee_text.rfind('.')?;
+    let before_dot = callee_text.get(..dot)?.trim_end();
+    let end = callee.start + before_dot.len();
+    let start = callee.start
+        + before_dot
+            .char_indices()
+            .rev()
+            .find_map(|(index, ch)| {
+                (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8())
+            })
+            .unwrap_or(0);
     (start < end).then(|| TextRange::new(start, end))
+}
+
+fn is_member_receiver_continue(ch: char) -> bool {
+    is_identifier_continue(ch) || ch == ':' || ch == '.'
 }
 
 fn is_identifier_continue(ch: char) -> bool {
