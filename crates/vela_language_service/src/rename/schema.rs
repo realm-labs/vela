@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    span_text_range, token_text, type_hint_name_range,
+    span_text_range, type_hint_name_range,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -34,6 +34,13 @@ struct SchemaMemberSite {
     member_range: TextRange,
     receiver_range: TextRange,
     is_call: bool,
+}
+
+struct SchemaVariantUseEditSite<'a> {
+    source: &'a crate::SourceRecord,
+    text: &'a str,
+    path: &'a [String],
+    range: TextRange,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -383,10 +390,7 @@ pub(super) fn schema_variant_use_target(
             });
         }
     }
-    schema_variant_use_target_for_range(databases, text, token.range).map(|mut target| {
-        target.token = token.clone();
-        target
-    })
+    None
 }
 
 pub(super) fn schema_member_target_for_receiver_fact(
@@ -570,12 +574,14 @@ fn push_schema_variant_use_edits(
                 {
                     continue;
                 }
-                let range = site.segment_range;
-                push_schema_variant_use_edit_for_range(
+                push_schema_variant_use_edit_for_path(
                     databases,
-                    source,
-                    text,
-                    range,
+                    SchemaVariantUseEditSite {
+                        source,
+                        text,
+                        path: &site.path,
+                        range: site.segment_range,
+                    },
                     target,
                     new_name,
                     edits_by_document,
@@ -591,12 +597,14 @@ fn push_schema_variant_use_edits(
                 {
                     continue;
                 }
-                let range = site.segment_range;
-                push_schema_variant_use_edit_for_range(
+                push_schema_variant_use_edit_for_path(
                     databases,
-                    source,
-                    text,
-                    range,
+                    SchemaVariantUseEditSite {
+                        source,
+                        text,
+                        path: &site.path,
+                        range: site.segment_range,
+                    },
                     target,
                     new_name,
                     edits_by_document,
@@ -606,36 +614,25 @@ fn push_schema_variant_use_edits(
     }
 }
 
-fn push_schema_variant_use_edit_for_range(
+fn push_schema_variant_use_edit_for_path(
     databases: &LanguageServiceDatabases,
-    source: &crate::SourceRecord,
-    text: &str,
-    range: TextRange,
+    site: SchemaVariantUseEditSite<'_>,
     target: &SchemaVariantRenameTarget,
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    if schema_variant_use_target_for_range(databases, text, range)
+    if schema_variant_target_for_path(databases, site.path)
+        .and_then(|found| source_backed_schema_variant_target(databases, found))
         .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
     {
         edits_by_document
-            .entry(source.document_id().clone())
+            .entry(site.source.document_id().clone())
             .or_default()
             .push(TextEdit {
-                range: diagnostic_range(text, range),
+                range: diagnostic_range(site.text, site.range),
                 new_text: new_name.to_owned(),
             });
     }
-}
-
-fn schema_variant_use_target_for_range(
-    databases: &LanguageServiceDatabases,
-    text: &str,
-    range: TextRange,
-) -> Option<SchemaVariantRenameTarget> {
-    let path = path_ending_at(text, range)?;
-    let target = schema_variant_target_for_path(databases, &path)?;
-    source_backed_schema_variant_target(databases, target)
 }
 
 fn push_schema_member_use_edits(
@@ -1056,32 +1053,6 @@ fn schema_function_target_for_name(
         })
 }
 
-fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
-    let mut path = vec![token_text(text, range)?.to_owned()];
-    let mut cursor = range.start;
-    loop {
-        let before_segment = text.get(..cursor)?.trim_end();
-        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
-            break;
-        };
-        let end = before_separator.len();
-        let start = before_separator
-            .char_indices()
-            .rev()
-            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-            .unwrap_or(0);
-        if start == end {
-            break;
-        }
-        path.push(text.get(start..end)?.to_owned());
-        cursor = start;
-    }
-    (path.len() > 1).then(|| {
-        path.reverse();
-        path
-    })
-}
-
 fn schema_function_segment(name: &str) -> &str {
     name.rsplit("::").next().unwrap_or(name)
 }
@@ -1092,8 +1063,4 @@ fn schema_function_renamed_name(name: &str, new_segment: &str) -> String {
     } else {
         new_segment.to_owned()
     }
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
