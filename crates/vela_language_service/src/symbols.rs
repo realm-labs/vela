@@ -8,7 +8,7 @@ use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord,
-    TextRange,
+    SymbolRef, TextRange,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -60,6 +60,7 @@ pub struct WorkspaceSymbol {
     kind: DocumentSymbolKind,
     container_name: Option<String>,
     location: WorkspaceSymbolLocation,
+    symbol: SymbolRef,
 }
 
 impl WorkspaceSymbol {
@@ -86,6 +87,11 @@ impl WorkspaceSymbol {
     #[must_use]
     pub const fn location(&self) -> &WorkspaceSymbolLocation {
         &self.location
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> &SymbolRef {
+        &self.symbol
     }
 }
 
@@ -179,6 +185,7 @@ impl LanguageServiceDatabases {
                             TextRange::new(0, source.text().len()),
                         ),
                     },
+                    symbol: SymbolRef::Source(document_id.as_str().to_owned()),
                 })
             })
             .collect()
@@ -195,6 +202,7 @@ impl LanguageServiceDatabases {
                 }
                 let source = self.source_db().records().get(document_id)?;
                 Some(WorkspaceSymbol {
+                    symbol: SymbolRef::Source(name.clone()),
                     name,
                     detail: None,
                     kind: DocumentSymbolKind::Module,
@@ -227,6 +235,7 @@ impl LanguageServiceDatabases {
                     let source = self.symbol_source_record_for(declaration.span.source)?;
                     let range = diagnostic_range(source.text(), span_range(declaration.span)?);
                     Some(WorkspaceSymbol {
+                        symbol: SymbolRef::Source(name.clone()),
                         name,
                         detail: detail_for_declaration(graph, declaration),
                         kind: kind_for_declaration(declaration.kind),
@@ -251,6 +260,7 @@ impl LanguageServiceDatabases {
                 Some(fact.display_name()),
                 schema_type_symbol_kind(fact),
                 None,
+                SymbolRef::Schema(name.to_owned()),
             )
         }));
         symbols.extend(facts.traits().filter_map(|(name, fact)| {
@@ -260,6 +270,7 @@ impl LanguageServiceDatabases {
                 Some(fact.display_name()),
                 DocumentSymbolKind::Interface,
                 None,
+                SymbolRef::Schema(name.to_owned()),
             )
         }));
         symbols.extend(facts.functions().filter_map(|function| {
@@ -537,12 +548,15 @@ fn schema_function_symbol(
     function: RegistryFunctionFact,
     kind: DocumentSymbolKind,
 ) -> Option<WorkspaceSymbol> {
+    let name = function.name;
+    let detail = function.fact.display_name();
     schema_symbol(
         query,
-        &function.name,
-        Some(function.fact.display_name()),
+        &name,
+        Some(detail),
         kind,
         None,
+        SymbolRef::Schema(name.clone()),
     )
 }
 
@@ -552,12 +566,14 @@ fn schema_member_symbol(
     kind: DocumentSymbolKind,
 ) -> Option<WorkspaceSymbol> {
     let name = DisplayParts::qualified(&member.owner, &member.name).render();
+    let symbol = schema_member_symbol_ref(&member, kind);
     schema_symbol(
         query,
         &name,
         Some(member.fact.display_name()),
         kind,
         Some(member.owner),
+        symbol,
     )
 }
 
@@ -567,6 +583,7 @@ fn schema_symbol(
     detail: Option<String>,
     kind: DocumentSymbolKind,
     container_name: Option<String>,
+    symbol: SymbolRef,
 ) -> Option<WorkspaceSymbol> {
     symbol_matches(query, name).then(|| WorkspaceSymbol {
         name: name.to_owned(),
@@ -574,7 +591,17 @@ fn schema_symbol(
         kind,
         container_name,
         location: WorkspaceSymbolLocation::Schema,
+        symbol,
     })
+}
+
+fn schema_member_symbol_ref(member: &RegistryMemberFact, kind: DocumentSymbolKind) -> SymbolRef {
+    let symbol = if kind == DocumentSymbolKind::EnumMember {
+        format!("{}::{}", member.owner, member.name)
+    } else {
+        format!("{}.{}", member.owner, member.name)
+    };
+    SymbolRef::Schema(symbol)
 }
 
 fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
@@ -706,6 +733,8 @@ pub fn main(amount: i64) -> i64 { return amount }";
                 .iter()
                 .any(|symbol| symbol.name() == "game::reward::Reward"
                     && symbol.kind() == DocumentSymbolKind::Struct
+                    && symbol.symbol()
+                        == &SymbolRef::Source("game::reward::Reward".to_owned())
                     && matches!(
                         symbol.location(),
                         WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &helper
@@ -716,7 +745,8 @@ pub fn main(amount: i64) -> i64 { return amount }";
             symbols
                 .iter()
                 .any(|symbol| symbol.name() == "game::reward::grant"
-                    && symbol.container_name() == Some("game::reward")),
+                    && symbol.container_name() == Some("game::reward")
+                    && symbol.symbol() == &SymbolRef::Source("game::reward::grant".to_owned())),
             "{symbols:?}"
         );
     }
@@ -735,6 +765,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "game::reward"
                 && symbol.kind() == DocumentSymbolKind::Module
+                && symbol.symbol() == &SymbolRef::Source("game::reward".to_owned())
                 && matches!(
                     symbol.location(),
                     WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward
@@ -758,6 +789,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
             symbols.iter().any(|symbol| symbol.name() == "reward.vela"
                 && symbol.kind() == DocumentSymbolKind::File
                 && symbol.detail() == Some("game::reward")
+                && symbol.symbol() == &SymbolRef::Source(reward.as_str().to_owned())
                 && matches!(
                     symbol.location(),
                     WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward
@@ -806,13 +838,15 @@ pub fn main(amount: i64) -> i64 { return amount }";
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "Player"
                 && symbol.kind() == DocumentSymbolKind::Class
+                && symbol.symbol() == &SymbolRef::Schema("Player".to_owned())
                 && matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
             "{symbols:?}"
         );
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "Player::level"
                 && symbol.kind() == DocumentSymbolKind::Field
-                && symbol.detail() == Some("i64")),
+                && symbol.detail() == Some("i64")
+                && symbol.symbol() == &SymbolRef::Schema("Player.level".to_owned())),
             "{symbols:?}"
         );
         assert!(
@@ -820,7 +854,8 @@ pub fn main(amount: i64) -> i64 { return amount }";
                 .iter()
                 .any(|symbol| symbol.name() == "Player::grant_exp"
                     && symbol.kind() == DocumentSymbolKind::Method
-                    && symbol.container_name() == Some("Player")),
+                    && symbol.container_name() == Some("Player")
+                    && symbol.symbol() == &SymbolRef::Schema("Player.grant_exp".to_owned())),
             "{symbols:?}"
         );
 

@@ -573,7 +573,9 @@ and semantic tokens use the same identities and display primitives.
   schema and builtin `SymbolRef` classification for schema member, variant,
   type, trait, function, and stdlib targets; references, rename, symbols,
   inlay hints, diagnostics, and broader source/local identities still need to
-  converge on the shared identity directly.
+  converge on the shared identity directly. Workspace symbols now expose
+  `SymbolRef` identity for source files, modules, source declarations, and
+  schema facts while keeping LSP projection protocol-neutral.
 - [~] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
