@@ -121,18 +121,16 @@ impl LanguageServiceDatabases {
         signatures
     }
 
-    pub(crate) fn signature_candidates_for_callee_range(
+    pub(crate) fn signature_candidates_for_member_call(
         &self,
         source_id: SourceId,
-        text: &str,
         callee: String,
-        callee_range: TextRange,
-        member_receiver: Option<TextRange>,
+        member_receiver: TextRange,
         args_prefix: String,
     ) -> Vec<SignatureInformation> {
         let context = CallContext {
             callee,
-            member_receiver: member_receiver.or_else(|| member_receiver_range(text, callee_range)),
+            member_receiver: Some(member_receiver),
             args_prefix,
             active_parameter: 0,
         };
@@ -678,30 +676,6 @@ fn receiver_span(source_id: SourceId, receiver: TextRange) -> Option<Span> {
     let start = u32::try_from(receiver.start).ok()?;
     let end = u32::try_from(receiver.end).ok()?;
     Some(Span::new(source_id, start, end))
-}
-
-fn member_receiver_range(text: &str, callee: TextRange) -> Option<TextRange> {
-    let callee_text = text.get(callee.start..callee.end)?;
-    let dot = callee_text.rfind('.')?;
-    let before_dot = callee_text.get(..dot)?.trim_end();
-    let end = callee.start + before_dot.len();
-    let start = callee.start
-        + before_dot
-            .char_indices()
-            .rev()
-            .find_map(|(index, ch)| {
-                (!is_member_receiver_continue(ch)).then_some(index + ch.len_utf8())
-            })
-            .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
-}
-
-fn is_member_receiver_continue(ch: char) -> bool {
-    is_identifier_continue(ch) || ch == ':' || ch == '.'
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 fn type_fact_for_resolution(

@@ -303,8 +303,8 @@ Purpose: classify the cursor once and reuse it across features.
   `QueryContext` now exposes locals visible before the cursor for completion;
   module path qualifiers now carry type-vs-expression role in `CursorContext`
   instead of completion re-scanning source text. Inlay parameter-hint
-  signature lookup now passes syntax-owned member receiver ranges into shared
-  signature candidate construction instead of forcing feature-local receiver
+  signature lookup now requires syntax-owned member receiver ranges for shared
+  signature candidate construction instead of keeping feature-local receiver
   recovery. Type-hint completion now
   consumes `CursorContextKind::Type` rather than running its own type-context
   scanner. Call-argument contexts now expose the active call opening offset,
