@@ -451,14 +451,15 @@ Purpose: replace coarse global completion with context-specific producers.
   through service items. Item-boundary declaration snippets now use first-class
   service `CompletionKind::Snippet` with snippet insert-format metadata and
   LSP snippet-kind projection.
-- [~] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
+- [x] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in
   that context.
   Top-level declaration keywords now come from an item-boundary producer with
   declaration snippets for `fn`, `struct`, `enum`, `trait`, `impl`, `use`,
-  `const`, `global`, and `pub`. Top-level `let` is not offered because Vela's
-  syntax does not support it as an item; module/source-declaration follow-ups
-  remain open where they are syntactically meaningful.
+  `const`, `global`, and `pub`. Top-level `let`, existing source declarations,
+  and module names are not offered because Vela's syntax does not support them
+  as items; module and source declaration completions stay in module-path,
+  expression, and type contexts where they are syntactically meaningful.
 - [~] Add expression producers for locals, parameters, functions, methods,
   variants, builtin values, stdlib functions, and schema facts that are legal
   in expression position.

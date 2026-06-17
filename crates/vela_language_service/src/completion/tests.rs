@@ -183,6 +183,26 @@ fn item_boundary_completion_ranks_struct_snippet_before_globals() {
 }
 
 #[test]
+fn item_boundary_completion_excludes_source_declarations_and_modules() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let files = vec![
+        SourceFileSnapshot::new(main.clone(), "pub fn reload() { return 1 }\nre"),
+        SourceFileSnapshot::new(reward, "pub fn grant() { return 1 }"),
+    ];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(&main, Position::new(1, "re".len()));
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Item);
+    assert_no_completion(&completions, "reload");
+    assert_no_completion(&completions, "reward");
+}
+
+#[test]
 fn statement_completion_suggests_statement_keywords() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn helper() { return 1 }\npub fn main() { return 1 }";
