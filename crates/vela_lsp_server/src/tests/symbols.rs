@@ -91,6 +91,10 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
                     {
                         "name": "Player",
                         "fact": { "kind": "host", "name": "Player" }
+                    },
+                    {
+                        "name": "QuestState",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
                     }
                 ],
                 "fields": [
@@ -163,7 +167,7 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     assert!(
         symbols.iter().any(|symbol| {
             symbol["name"] == "Player"
-                && symbol["kind"] == 23
+                && symbol["kind"] == 19
                 && symbol["location"]["uri"] == "vela-schema:"
         }),
         "{symbols:?}"
@@ -174,6 +178,22 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
                 && symbol["kind"] == 8
                 && symbol["detail"] == "i64"
                 && symbol["containerName"] == "Player"
+        }),
+        "{symbols:?}"
+    );
+    let response = response_value(server.handle_json(&request(
+        4,
+        "workspace/symbol",
+        serde_json::json!({ "query": "QuestState" }),
+    )));
+    let symbols = response["result"]
+        .as_array()
+        .expect("workspace/symbol should return an array");
+    assert!(
+        symbols.iter().any(|symbol| {
+            symbol["name"] == "QuestState"
+                && symbol["kind"] == 10
+                && symbol["location"]["uri"] == "vela-schema:"
         }),
         "{symbols:?}"
     );

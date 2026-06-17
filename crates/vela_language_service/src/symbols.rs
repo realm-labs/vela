@@ -1,4 +1,7 @@
-use vela_analysis::registry::{RegistryFunctionFact, RegistryMemberFact};
+use vela_analysis::{
+    registry::{RegistryFunctionFact, RegistryMemberFact},
+    type_fact::TypeFact,
+};
 use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
@@ -211,7 +214,7 @@ impl LanguageServiceDatabases {
                 query,
                 name,
                 Some(fact.display_name()),
-                DocumentSymbolKind::Struct,
+                schema_type_symbol_kind(fact),
                 None,
             )
         }));
@@ -536,6 +539,36 @@ fn schema_symbol(
     })
 }
 
+fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
+    match fact {
+        TypeFact::Host { .. } => DocumentSymbolKind::Object,
+        TypeFact::Record { .. } => DocumentSymbolKind::Struct,
+        TypeFact::Enum { variant: None, .. } => DocumentSymbolKind::Enum,
+        TypeFact::Enum {
+            variant: Some(_), ..
+        } => DocumentSymbolKind::EnumMember,
+        TypeFact::Trait { .. } => DocumentSymbolKind::Interface,
+        TypeFact::Module { .. } => DocumentSymbolKind::Module,
+        TypeFact::Function { .. } => DocumentSymbolKind::Function,
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Union(_) => DocumentSymbolKind::Struct,
+    }
+}
+
 fn symbol_matches(query: &str, name: &str) -> bool {
     query.is_empty()
         || name
@@ -677,6 +710,14 @@ pub fn main(amount: i64) -> i64 { return amount }";
         let mut databases = databases_for(Vec::new());
         let mut facts = vela_analysis::registry::RegistryFacts::default();
         facts.insert_type("Player", vela_analysis::type_fact::TypeFact::host("Player"));
+        facts.insert_type(
+            "Inventory",
+            vela_analysis::type_fact::TypeFact::record("Inventory"),
+        );
+        facts.insert_type(
+            "QuestState",
+            vela_analysis::type_fact::TypeFact::enum_type("QuestState", None::<String>),
+        );
         facts.insert_trait(
             "Rewardable",
             vela_analysis::type_fact::TypeFact::trait_type("Rewardable"),
@@ -703,7 +744,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
 
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "Player"
-                && symbol.kind() == DocumentSymbolKind::Struct
+                && symbol.kind() == DocumentSymbolKind::Object
                 && matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
             "{symbols:?}"
         );
@@ -719,6 +760,20 @@ pub fn main(amount: i64) -> i64 { return amount }";
                 .any(|symbol| symbol.name() == "Player::grant_exp"
                     && symbol.kind() == DocumentSymbolKind::Method
                     && symbol.container_name() == Some("Player")),
+            "{symbols:?}"
+        );
+
+        let symbols = databases.workspace_symbols("");
+        assert!(
+            symbols.iter().any(|symbol| symbol.name() == "Inventory"
+                && symbol.kind() == DocumentSymbolKind::Struct),
+            "{symbols:?}"
+        );
+        assert!(
+            symbols
+                .iter()
+                .any(|symbol| symbol.name() == "QuestState"
+                    && symbol.kind() == DocumentSymbolKind::Enum),
             "{symbols:?}"
         );
     }
