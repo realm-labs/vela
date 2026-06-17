@@ -7,8 +7,8 @@ use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
-    references::schema as reference_schema,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
+    TextRange, references::schema as reference_schema,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -99,12 +99,16 @@ impl LanguageServiceDatabases {
         document_id: &DocumentId,
         position: Position,
     ) -> Vec<CallHierarchyItem> {
-        let Some(source) = self.source_db().records().get(document_id) else {
+        let Some(query) = QueryContext::from_databases(self, document_id, position) else {
             return Vec::new();
         };
-        let Some(token) = call_hierarchy_token_at(source.text(), position) else {
+        let Some(source) = query.source_record() else {
             return Vec::new();
         };
+        let Some(range) = query.identifier_range() else {
+            return Vec::new();
+        };
+        let token = CallHierarchyToken { range };
         let source_id = source.source_id();
         let Ok(offset) = u32::try_from(token.range.start) else {
             return Vec::new();
@@ -1086,26 +1090,6 @@ fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
         .rev()
         .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
         .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
-}
-
-fn call_hierarchy_token_at(text: &str, position: Position) -> Option<CallHierarchyToken> {
-    let offset = LineIndex::new(text).offset(position);
-    let range = identifier_range_at(text, offset)?;
-    Some(CallHierarchyToken { range })
-}
-
-fn identifier_range_at(text: &str, offset: usize) -> Option<TextRange> {
-    let offset = offset.min(text.len());
-    let start = text[..offset]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let end = text[offset..]
-        .char_indices()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(offset + index))
-        .unwrap_or(text.len());
     (start < end).then(|| TextRange::new(start, end))
 }
 

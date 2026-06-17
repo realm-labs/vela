@@ -329,14 +329,16 @@ Purpose: classify the cursor once and reuse it across features.
   list range, and lambda completion consumes that shared text instead of
   finding the `|` pipe locally. Definition and hover now consume the shared
   identifier token range from `QueryContext` instead of recomputing the cursor
-  token locally. Broader callable semantic facts remain feature-owned
-  follow-up work.
+  token locally, and references plus call hierarchy preparation use the same
+  shared identifier token for their initial request target. Broader callable
+  semantic facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
   Completion, signature help, hover, definition, prepare-rename, and rename
   now build request-local source, parse, cursor, module, and generation facts
-  through `QueryContext`.
+  through `QueryContext`; references and call hierarchy preparation now use
+  it for source and cursor-token ownership as well.
 
 Tests:
 
