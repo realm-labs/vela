@@ -31,6 +31,15 @@ fn lsp_type_definition_follows_schema_source_span() {
 
 #[test]
 fn lsp_definition_follows_schema_field_source_span() {
+    assert_schema_field_source_navigation("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_follows_schema_field_source_span() {
+    assert_schema_field_source_navigation("textDocument/declaration");
+}
+
+fn assert_schema_field_source_navigation(request_method: &str) {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -125,7 +134,7 @@ fn lsp_definition_follows_schema_field_source_span() {
 
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/definition",
+        request_method,
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {
