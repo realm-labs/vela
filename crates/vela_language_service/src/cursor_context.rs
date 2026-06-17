@@ -2,8 +2,10 @@ use vela_syntax::ast::{
     Block, ElseBranch, EnumVariantFields, Expr, ExprKind, FunctionItem, ItemKind, Pattern,
     SourceFile, Stmt, StmtKind, StructField,
 };
+use vela_syntax::lexer::lex;
+use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 
 use crate::{LineIndex, Position, TextRange};
 
@@ -145,9 +147,9 @@ pub fn cursor_context_at(
         return cursor;
     }
 
-    if before_prefix.ends_with('.') {
+    if let Some(receiver) = recovered_member_receiver_before_dot(text, prefix_start) {
         let mut cursor = context(CursorContextKind::MemberAccess, prefix_start, prefix);
-        cursor.member_receiver = member_receiver_before_dot(before_prefix);
+        cursor.member_receiver = Some(receiver);
         return cursor;
     }
 
@@ -796,7 +798,9 @@ fn member_receiver_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
         ExprKind::Field { base, name } => {
             let name_len = u32::try_from(name.len()).ok()?;
             let name_start = expr.span.end.saturating_sub(name_len);
-            if !name.is_empty() && name_start <= offset && offset <= expr.span.end {
+            if (name.is_empty() && offset == expr.span.end)
+                || (!name.is_empty() && name_start <= offset && offset <= expr.span.end)
+            {
                 return span_range(base.span);
             }
             member_receiver_for_expr(base, offset)
@@ -869,6 +873,111 @@ fn member_receiver_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<T
                     .and_then(|branch| member_receiver_for_else_branch(branch, offset))
             }),
     }
+}
+
+fn recovered_member_receiver_before_dot(text: &str, offset: usize) -> Option<TextRange> {
+    let fragment_start = member_recovery_fragment_start(text, offset);
+    let fragment = text.get(fragment_start..offset)?;
+    let relative_offset = u32::try_from(offset.checked_sub(fragment_start)?).ok()?;
+    let lexed = lex(SourceId::new(0), fragment);
+    let tokens: Vec<_> = lexed
+        .tokens
+        .into_iter()
+        .filter(|token| !matches!(token.kind, TokenKind::Eof))
+        .collect();
+    let dot = tokens.iter().position(|token| {
+        token.span.end == relative_offset && matches!(token.kind, TokenKind::Symbol(Symbol::Dot))
+    })?;
+    let start = receiver_start_before_token(&tokens, dot)?;
+    Some(TextRange::new(
+        fragment_start + usize::try_from(start).ok()?,
+        fragment_start + usize::try_from(tokens[dot].span.start).ok()?,
+    ))
+}
+
+fn member_recovery_fragment_start(text: &str, offset: usize) -> usize {
+    text.get(..offset)
+        .and_then(|before| {
+            before
+                .char_indices()
+                .rev()
+                .find_map(|(index, ch)| matches!(ch, '\n' | ';' | '{').then_some(index + 1))
+        })
+        .unwrap_or(0)
+}
+
+fn receiver_start_before_token(tokens: &[Token], end_index: usize) -> Option<u32> {
+    let mut start = primary_start_before_token(tokens, end_index)?;
+    while let Some(index) = token_start_index(tokens, start) {
+        if index < 2 || !matches!(tokens[index - 1].kind, TokenKind::Symbol(Symbol::Dot)) {
+            break;
+        }
+        start = receiver_start_before_token(tokens, index - 1)?;
+    }
+    Some(start)
+}
+
+fn primary_start_before_token(tokens: &[Token], end_index: usize) -> Option<u32> {
+    let last = end_index.checked_sub(1)?;
+    match tokens.get(last)? {
+        token if is_receiver_leaf_token(token) => Some(token.span.start),
+        Token {
+            kind: TokenKind::Symbol(Symbol::RParen),
+            ..
+        } => {
+            let open = matching_open_token(tokens, last, Symbol::LParen, Symbol::RParen)?;
+            receiver_start_before_token(tokens, open).or_else(|| Some(tokens[open].span.start))
+        }
+        Token {
+            kind: TokenKind::Symbol(Symbol::RBracket),
+            ..
+        } => {
+            let open = matching_open_token(tokens, last, Symbol::LBracket, Symbol::RBracket)?;
+            receiver_start_before_token(tokens, open)
+        }
+        _ => None,
+    }
+}
+
+fn is_receiver_leaf_token(token: &Token) -> bool {
+    matches!(
+        token.kind,
+        TokenKind::Ident(_)
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Char(_)
+            | TokenKind::String(_)
+            | TokenKind::Bytes(_)
+            | TokenKind::Keyword(
+                Keyword::SelfValue | Keyword::True | Keyword::False | Keyword::Null
+            )
+    )
+}
+
+fn matching_open_token(
+    tokens: &[Token],
+    close_index: usize,
+    open: Symbol,
+    close: Symbol,
+) -> Option<usize> {
+    let mut depth = 0usize;
+    for index in (0..=close_index).rev() {
+        match tokens[index].kind {
+            TokenKind::Symbol(symbol) if symbol == close => depth += 1,
+            TokenKind::Symbol(symbol) if symbol == open => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn token_start_index(tokens: &[Token], start: u32) -> Option<usize> {
+    tokens.iter().position(|token| token.span.start == start)
 }
 
 fn span_range(span: Span) -> Option<TextRange> {
@@ -1192,17 +1301,6 @@ fn module_path_before_colons(text: &str, before_prefix: &str) -> Option<ModulePa
             ModulePathRole::Expression
         },
     })
-}
-
-fn member_receiver_before_dot(before_prefix: &str) -> Option<TextRange> {
-    let before_dot = before_prefix.strip_suffix('.')?;
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn current_line_before(text: &str, offset: usize) -> &str {

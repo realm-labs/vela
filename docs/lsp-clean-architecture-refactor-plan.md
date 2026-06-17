@@ -286,8 +286,10 @@ Purpose: classify the cursor once and reuse it across features.
   Record expression fields, record type fields, map keys, for/match pattern
   contexts, complete member-access receivers, call-argument callee contexts,
   lambda-parameter receiver contexts, and type-hint completion contexts now
-  use shared cursor spans/classification;
-  incomplete member access keeps a text fallback for recovery.
+  use shared cursor spans/classification. Incomplete member access now uses
+  parser recovery for empty field nodes when available and a syntax-token
+  recovery helper for trailing-dot receivers, including call/index/dot-chain
+  receivers, instead of the old top-level substring fallback.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.

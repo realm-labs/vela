@@ -54,6 +54,16 @@ fn cursor_context_uses_syntax_receiver_span_for_member_access() {
 }
 
 #[test]
+fn cursor_context_uses_recovered_syntax_receiver_for_incomplete_member_access() {
+    let text = "pub fn main() { current_player().";
+    let cursor = classify_offset(text, text.len());
+    let receiver = cursor.member_receiver().expect("receiver range");
+
+    assert_eq!(cursor.kind(), CursorContextKind::MemberAccess);
+    assert_eq!(&text[receiver.start..receiver.end], "current_player()");
+}
+
+#[test]
 fn cursor_context_classifies_module_path() {
     let cursor = classify("use game::r", "r");
 
