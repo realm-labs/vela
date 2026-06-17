@@ -351,7 +351,10 @@ Purpose: classify the cursor once and reuse it across features.
   with a backwards text scanner for each identifier token. Call hierarchy
   preparation now resolves method-call targets from `QueryContext` member
   receiver ranges and shared receiver type facts instead of recovering the
-  selected call receiver locally.
+  selected call receiver locally. References and document highlights now
+  resolve the selected source/schema member target from `QueryContext` member
+  receiver ranges and shared receiver type facts instead of running
+  feature-local member receiver recovery for the cursor token.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

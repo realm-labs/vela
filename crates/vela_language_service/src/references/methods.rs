@@ -12,7 +12,7 @@ use crate::{LanguageServiceDatabases, TextRange};
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
     is_identifier_boundary, is_identifier_continue, member_receiver_range, record_owner_names,
-    span_text_range, token_text, type_fact_for_resolution,
+    span_text_range, type_fact_for_resolution,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -83,19 +83,16 @@ pub(super) fn script_method_declaration_target(
     None
 }
 
-pub(super) fn script_method_use_target(
+pub(super) fn script_method_target_for_receiver_fact(
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    token: &ReferenceToken,
+    receiver: &TypeFact,
+    method: &str,
 ) -> Option<MethodReferenceTarget> {
-    let method = token_text(text, token.range)?;
-    if !is_call_callee(text, token.range) {
-        return None;
-    }
-    script_method_target_for_member(graph, facts, text, source_id, bindings, method, token.range)
+    let owner = script_method_owner(graph, receiver, method)?;
+    Some(MethodReferenceTarget {
+        owner,
+        method: method.to_owned(),
+    })
 }
 
 fn reference_for_script_method_declaration(

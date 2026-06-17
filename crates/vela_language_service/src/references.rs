@@ -135,7 +135,6 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
 
         if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
             return self.trait_references(&target, include_declaration);
@@ -226,44 +225,48 @@ impl LanguageServiceDatabases {
             if let Some(declaration) = declaration_reference_target(bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
             }
-            if let Some(target) = fields::script_field_use_target(
-                graph,
-                &facts,
-                source.text(),
-                source_id,
-                bindings,
-                &token,
-            ) {
+            let member_receiver = query
+                .member_receiver_range()
+                .or_else(|| query.call_member_receiver_range())
+                .and_then(|receiver| query.type_fact_for_range(self, receiver));
+            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+                token_text(source.text(), token.range).and_then(|field| {
+                    fields::script_field_target_for_receiver_fact(graph, receiver, field)
+                })
+            }) {
                 return fields::script_field_references(self, &target, include_declaration);
             }
-            if let Some(target) = methods::script_method_use_target(
-                graph,
-                &facts,
-                source.text(),
-                source_id,
-                bindings,
-                &token,
-            ) {
+            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+                token_text(source.text(), token.range)
+                    .filter(|_| is_call_callee(source.text(), token.range))
+                    .and_then(|method| {
+                        methods::script_method_target_for_receiver_fact(graph, receiver, method)
+                    })
+            }) {
                 return methods::script_method_references(self, &target, include_declaration);
             }
-            if let Some(target) = schema::schema_method_use_target(
-                self,
-                &facts,
-                source.text(),
-                source_id,
-                bindings,
-                &token,
-            ) {
+            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+                token_text(source.text(), token.range)
+                    .filter(|_| is_call_callee(source.text(), token.range))
+                    .and_then(|method| {
+                        schema::schema_method_target_for_receiver_fact(
+                            self.schema_db().facts(),
+                            receiver,
+                            method,
+                        )
+                    })
+            }) {
                 return schema::schema_method_references(self, &target, include_declaration);
             }
-            if let Some(target) = schema::schema_field_use_target(
-                self,
-                &facts,
-                source.text(),
-                source_id,
-                bindings,
-                &token,
-            ) {
+            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+                token_text(source.text(), token.range).and_then(|field| {
+                    schema::schema_field_target_for_receiver_fact(
+                        self.schema_db().facts(),
+                        receiver,
+                        field,
+                    )
+                })
+            }) {
                 return schema::schema_field_references(self, &target, include_declaration);
             }
         }

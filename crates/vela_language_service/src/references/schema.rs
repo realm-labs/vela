@@ -228,49 +228,6 @@ pub(super) fn schema_field_declaration_target(
     None
 }
 
-pub(super) fn schema_method_use_target(
-    databases: &LanguageServiceDatabases,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    token: &ReferenceToken,
-) -> Option<SchemaMethodReferenceTarget> {
-    let method = token_text(text, token.range)?;
-    if !is_call_callee(text, token.range) {
-        return None;
-    }
-    schema_method_target_for_member(
-        databases.schema_db().facts(),
-        facts,
-        text,
-        source_id,
-        bindings,
-        method,
-        token.range,
-    )
-}
-
-pub(super) fn schema_field_use_target(
-    databases: &LanguageServiceDatabases,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    token: &ReferenceToken,
-) -> Option<SchemaFieldReferenceTarget> {
-    let field = token_text(text, token.range)?;
-    schema_field_target_for_member(
-        databases.schema_db().facts(),
-        facts,
-        text,
-        source_id,
-        bindings,
-        field,
-        token.range,
-    )
-}
-
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
     text: &str,
@@ -627,6 +584,18 @@ pub(crate) fn schema_method_target_for_receiver_fact(
         owner,
         method: method.to_owned(),
         kind,
+    })
+}
+
+pub(super) fn schema_field_target_for_receiver_fact(
+    schema: &RegistryFacts,
+    receiver: &TypeFact,
+    field: &str,
+) -> Option<SchemaFieldReferenceTarget> {
+    let owner = schema_field_owner(schema, receiver, field)?;
+    Some(SchemaFieldReferenceTarget {
+        owner,
+        field: field.to_owned(),
     })
 }
 

@@ -88,16 +88,16 @@ pub(super) fn script_field_declaration_target(
     None
 }
 
-pub(super) fn script_field_use_target(
+pub(super) fn script_field_target_for_receiver_fact(
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    token: &ReferenceToken,
+    receiver: &TypeFact,
+    field: &str,
 ) -> Option<FieldReferenceTarget> {
-    let field = token_text(text, token.range)?;
-    script_field_target_for_member(graph, facts, text, source_id, bindings, field, token.range)
+    let owner = script_field_owner(graph, receiver, field)?;
+    Some(FieldReferenceTarget {
+        owner,
+        field: field.to_owned(),
+    })
 }
 
 pub(super) fn script_record_field_use_target(
