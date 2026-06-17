@@ -1,17 +1,15 @@
-use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
-use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
+use vela_common::SourceId;
 use vela_syntax::ast::SourceFile;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::TokenKind;
 
-use crate::{LanguageServiceDatabases, TextRange};
+use crate::{LanguageServiceDatabases, TextRange, member_access, query_context};
 
 use super::{
-    Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
-    member_receiver_range, name_range_in_text, path_ending_at, record_fields,
-    record_variant_patterns, resolved_use_reference_kind, span_text_range, token_text,
-    type_fact_for_resolution,
+    Reference, ReferenceKind, ReferenceToken, diagnostic_range, name_range_in_text, path_ending_at,
+    record_fields, record_variant_patterns, resolved_use_reference_kind, span_text_range,
+    token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -44,8 +42,6 @@ pub(super) fn schema_method_references(
     target: &SchemaMethodReferenceTarget,
     include_declaration: bool,
 ) -> Vec<Reference> {
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     let mut references = Vec::new();
 
     if include_declaration
@@ -56,11 +52,10 @@ pub(super) fn schema_method_references(
 
     for source in databases.source_db().records().values() {
         references.extend(schema_method_use_references_for_source(
+            databases,
             databases.schema_db().facts(),
-            &facts,
             source,
             target,
-            graph,
         ));
     }
 
@@ -73,8 +68,6 @@ pub(super) fn schema_field_references(
     target: &SchemaFieldReferenceTarget,
     include_declaration: bool,
 ) -> Vec<Reference> {
-    let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     let mut references = Vec::new();
 
     if include_declaration
@@ -85,11 +78,10 @@ pub(super) fn schema_field_references(
 
     for source in databases.source_db().records().values() {
         references.extend(schema_field_use_references_for_source(
+            databases,
             databases.schema_db().facts(),
-            &facts,
             source,
             target,
-            graph,
         ));
         if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             references.extend(schema_record_field_references_for_source(
@@ -350,90 +342,66 @@ fn reference_for_schema_variant_declaration(
 }
 
 fn schema_method_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     schema: &RegistryFacts,
-    facts: &AnalysisFacts,
     source: &crate::SourceRecord,
     target: &SchemaMethodReferenceTarget,
-    graph: &vela_hir::module_graph::ModuleGraph,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in member_method_ranges(source_id, text, &target.method) {
-        let Some(start) = u32::try_from(range.start).ok() else {
+    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        return references;
+    };
+    for site in member_access::member_call_sites(parsed) {
+        if site.member != target.method {
             continue;
-        };
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                continue;
-            }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            if schema_method_target_for_member(
-                schema,
-                facts,
-                text,
-                source_id,
-                bindings,
-                &target.method,
-                range,
-            )
+        }
+        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+            .and_then(|receiver| {
+                schema_method_target_for_receiver_fact(schema, &receiver, &target.method)
+            })
             .as_ref()
-                == Some(target)
-            {
-                references.push(Reference {
-                    document_id: source.document_id().clone(),
-                    range: diagnostic_range(text, range),
-                    kind: ReferenceKind::Call,
-                });
-                break;
-            }
+            == Some(target)
+        {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, site.member_range),
+                kind: ReferenceKind::Call,
+            });
         }
     }
     references
 }
 
 fn schema_field_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     schema: &RegistryFacts,
-    facts: &AnalysisFacts,
     source: &crate::SourceRecord,
     target: &SchemaFieldReferenceTarget,
-    graph: &vela_hir::module_graph::ModuleGraph,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in member_field_ranges(source_id, text, &target.field) {
-        let Some(start) = u32::try_from(range.start).ok() else {
+    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        return references;
+    };
+    for site in member_access::member_access_sites(parsed) {
+        if site.member != target.field {
             continue;
-        };
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                continue;
-            }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            if schema_field_target_for_member(
-                schema,
-                facts,
-                text,
-                source_id,
-                bindings,
-                &target.field,
-                range,
-            )
+        }
+        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+            .and_then(|receiver| {
+                schema_field_target_for_receiver_fact(schema, &receiver, &target.field)
+            })
             .as_ref()
-                == Some(target)
-            {
-                references.push(Reference {
-                    document_id: source.document_id().clone(),
-                    range: diagnostic_range(text, range),
-                    kind: resolved_use_reference_kind(text, range),
-                });
-                break;
-            }
+            == Some(target)
+        {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, site.member_range),
+                kind: resolved_use_reference_kind(text, site.member_range),
+            });
         }
     }
     references
@@ -551,29 +519,6 @@ fn schema_record_variant_pattern_field_use_target(
     target
 }
 
-pub(crate) fn schema_method_target_for_member(
-    schema: &RegistryFacts,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<SchemaMethodReferenceTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = schema_type_fact_for_resolution(resolution, bindings, facts, schema)?;
-    let (owner, kind) = schema_method_owner(schema, &receiver, method)?;
-    Some(SchemaMethodReferenceTarget {
-        owner,
-        method: method.to_owned(),
-        kind,
-    })
-}
-
 pub(crate) fn schema_method_target_for_receiver_fact(
     schema: &RegistryFacts,
     receiver: &TypeFact,
@@ -593,28 +538,6 @@ pub(super) fn schema_field_target_for_receiver_fact(
     field: &str,
 ) -> Option<SchemaFieldReferenceTarget> {
     let owner = schema_field_owner(schema, receiver, field)?;
-    Some(SchemaFieldReferenceTarget {
-        owner,
-        field: field.to_owned(),
-    })
-}
-
-fn schema_field_target_for_member(
-    schema: &RegistryFacts,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    field: &str,
-    member_range: TextRange,
-) -> Option<SchemaFieldReferenceTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = schema_type_fact_for_resolution(resolution, bindings, facts, schema)?;
-    let owner = schema_field_owner(schema, &receiver, field)?;
     Some(SchemaFieldReferenceTarget {
         owner,
         field: field.to_owned(),
@@ -707,40 +630,6 @@ fn schema_variant_target_for_path_range(
     schema_variant_target_for_path(schema, &path)
 }
 
-fn schema_type_fact_for_resolution(
-    resolution: &BindingResolution,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => {
-            let binding = bindings.local(*local)?;
-            type_fact_for_resolution(resolution, facts)
-                .or_else(|| schema_fact_for_hint(binding.type_hint.as_ref(), schema))
-        }
-        BindingResolution::Declaration(_) => type_fact_for_resolution(resolution, facts),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_hint(
-    hint: Option<&vela_hir::type_hint::HirTypeHint>,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    let hint = hint?;
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let qualified = hint.path.join("::");
-    schema
-        .type_fact(&qualified)
-        .or_else(|| schema.trait_fact(&qualified))
-        .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-        .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-        .cloned()
-}
-
 fn schema_method_owner(
     schema: &RegistryFacts,
     receiver: &TypeFact,
@@ -793,30 +682,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
     }
 }
 
-fn member_method_ranges(source_id: SourceId, text: &str, method: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == method => {
-                let range = span_text_range(token.span)?;
-                (is_call_callee(text, range) && member_receiver_range(text, range.start).is_some())
-                    .then_some(range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
-}
-
 fn schema_variant_ranges(source_id: SourceId, text: &str, variant: &str) -> Vec<TextRange> {
     lex(source_id, text)
         .tokens
@@ -853,29 +718,6 @@ fn schema_variant_reference_kind(text: &str, range: TextRange) -> ReferenceKind 
     } else {
         ReferenceKind::Read
     }
-}
-
-fn member_field_ranges(source_id: SourceId, text: &str, field: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == field => {
-                let range = span_text_range(token.span)?;
-                member_receiver_range(text, range.start).map(|_| range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
 }
 
 fn sort_references(references: &mut [Reference]) {

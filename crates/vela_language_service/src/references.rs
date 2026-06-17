@@ -1,4 +1,4 @@
-use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
+use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
@@ -827,20 +827,6 @@ fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
     })
 }
 
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    facts: &AnalysisFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = Vec::new();
     collect_record_owner_names(receiver, &mut owners);
@@ -1047,18 +1033,6 @@ fn is_assignment_target(text: &str, range: TextRange) -> bool {
                     && !suffix.starts_with("==")
                     && !suffix.starts_with("=>"))
         })
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?.trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn is_identifier_continue(ch: char) -> bool {
