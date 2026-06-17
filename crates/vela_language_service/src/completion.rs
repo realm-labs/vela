@@ -15,7 +15,8 @@ use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
 };
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, SourceRecord, TextRange};
+use crate::{CursorContextKind, cursor_context_at};
+use crate::{DocumentId, LanguageServiceDatabases, Position, SourceRecord, TextRange};
 
 mod item;
 mod lambda_parameter;
@@ -511,10 +512,10 @@ fn completion_context(
     parsed: Option<&SourceFile>,
 ) -> CompletionContext {
     let text = source.text();
-    let offset = LineIndex::new(text).offset(position);
-    let prefix_start = identifier_prefix_start(text, offset);
-    let prefix = &text[prefix_start..offset];
-    let before_prefix = &text[..prefix_start];
+    let cursor = cursor_context_at(text, position, parsed);
+    let offset = cursor.replace_range().end;
+    let prefix_start = cursor.replace_range().start;
+    let prefix = cursor.prefix();
 
     if let Some(lambda_parameter) = lambda_parameter_completion_context(text, offset) {
         return CompletionContext {
@@ -530,7 +531,8 @@ fn completion_context(
         };
     }
 
-    if type_hint_completion_context(text, prefix_start) {
+    if cursor.kind() == CursorContextKind::Type || type_hint_completion_context(text, prefix_start)
+    {
         return CompletionContext {
             kind: CompletionContextKind::TypeHint,
             prefix: prefix.to_owned(),
@@ -576,8 +578,10 @@ fn completion_context(
         };
     }
 
-    if before_prefix.ends_with('.') {
-        let member_receiver = member_receiver_before_dot(before_prefix);
+    if cursor.kind() == CursorContextKind::MemberAccess {
+        let member_receiver = cursor
+            .member_receiver()
+            .map(|range| MemberReceiver { range });
         return CompletionContext {
             kind: CompletionContextKind::Member,
             prefix: prefix.to_owned(),
@@ -591,12 +595,12 @@ fn completion_context(
         };
     }
 
-    if let Some(module_base) = module_base_before_colons(before_prefix) {
+    if let Some(module_base) = cursor.module_base() {
         return CompletionContext {
             kind: CompletionContextKind::ModulePath,
             prefix: prefix.to_owned(),
             replace_range: TextRange::new(prefix_start, offset),
-            module_base: Some(module_base),
+            module_base: Some(module_base.to_owned()),
             member_receiver: None,
             record_constructor: None,
             map_key: None,
@@ -605,36 +609,11 @@ fn completion_context(
         };
     }
 
-    if is_item_boundary_context(text, prefix_start, parsed) {
+    if cursor.kind() == CursorContextKind::Item {
         return CompletionContext::item(prefix_start, prefix);
     }
 
     CompletionContext::global(prefix_start, prefix)
-}
-
-fn is_item_boundary_context(text: &str, prefix_start: usize, parsed: Option<&SourceFile>) -> bool {
-    if parsed.is_some_and(|source| offset_is_inside_item(source, prefix_start)) {
-        return false;
-    }
-    let before_prefix = text[..prefix_start].trim_end();
-    before_prefix.is_empty()
-        || before_prefix.ends_with('}')
-        || before_prefix.ends_with(';')
-        || before_prefix
-            .rsplit('\n')
-            .next()
-            .is_some_and(can_continue_item_prefix)
-}
-
-fn offset_is_inside_item(source: &SourceFile, offset: usize) -> bool {
-    let Some(offset) = u32::try_from(offset).ok() else {
-        return false;
-    };
-    source.items.iter().any(|item| item.span.contains(offset))
-}
-
-fn can_continue_item_prefix(line: &str) -> bool {
-    matches!(line.trim_start(), "pub" | "pub ")
 }
 
 fn record_constructor_at(source: &SourceFile, offset: usize) -> Option<RecordConstructor> {
@@ -817,44 +796,8 @@ fn else_branch_contains(branch: &ElseBranch, offset: u32) -> bool {
     }
 }
 
-fn identifier_prefix_start(text: &str, offset: usize) -> usize {
-    text[..offset]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0)
-}
-
-fn module_base_before_colons(before_prefix: &str) -> Option<String> {
-    let before_colons = before_prefix.strip_suffix("::")?;
-    let start = before_colons
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_module_path_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let module_base = before_colons[start..].trim_matches(':');
-    (!module_base.is_empty()).then(|| module_base.to_owned())
-}
-
-fn member_receiver_before_dot(before_prefix: &str) -> Option<MemberReceiver> {
-    let before_dot = before_prefix.strip_suffix('.')?;
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| MemberReceiver {
-        range: TextRange::new(start, end),
-    })
-}
-
 fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
-}
-
-fn is_module_path_continue(ch: char) -> bool {
-    is_identifier_continue(ch) || ch == ':'
 }
 
 fn dedupe_and_filter_items(

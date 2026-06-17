@@ -3,6 +3,7 @@
 mod call_hierarchy;
 mod code_action;
 mod completion;
+mod cursor_context;
 mod definition;
 mod diagnostics;
 mod folding;
@@ -26,6 +27,7 @@ pub use code_action::{CodeAction, CodeActionKind};
 pub use completion::{
     CompletionContext, CompletionContextKind, CompletionItem, CompletionKind, CompletionList,
 };
+pub use cursor_context::{CursorContext, CursorContextKind, cursor_context_at};
 pub use definition::Definition;
 pub use diagnostics::{
     DiagnosticCandidate, DiagnosticLabel, DiagnosticRange, DiagnosticRepairHint, DiagnosticStatus,

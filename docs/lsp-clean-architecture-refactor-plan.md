@@ -267,17 +267,17 @@ Purpose: classify the cursor once and reuse it across features.
 
 - [ ] Add a focused query-context module in `vela_language_service` that
   builds request-local facts from a `WorkspaceSnapshot`.
-- [ ] Add `CursorContextKind` variants for item, statement, expression, type,
+- [x] Add `CursorContextKind` variants for item, statement, expression, type,
   pattern, use/import, module path, member access, record expression field,
   record type field, call argument, lambda parameter, map key, rename target,
   and unknown/error recovery.
-- [ ] Make cursor classification syntax-owned. Prefer parser/token structure
+- [~] Make cursor classification syntax-owned. Prefer parser/token structure
   and source spans over ad hoc substring checks.
-- [ ] Include expected syntactic role, local scope, module scope, receiver
+- [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
 - [ ] Keep classification tolerant of incomplete source and parser recovery.
-- [ ] Route completion, hover, signature help, definition, and rename prepare
+- [~] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
 
 Tests:
