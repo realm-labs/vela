@@ -404,10 +404,10 @@ high-quality metadata.
   types where the client supports it.
 - [x] Set `insertTextFormat` from snippet intent rather than hard-coded
   function heuristics.
-- [~] Project relevance into stable `sortText` and `preselect`.
-  LSP projection now preserves service `sortText` and marks the first
-  service-ranked item as `preselect`; deriving stable protocol sort keys from
-  service relevance remains open.
+- [x] Project relevance into stable `sortText` and `preselect`.
+  LSP projection preserves producer-owned `sortText` when present, derives
+  stable fallback sort keys from service relevance otherwise, and marks the
+  first service-ranked item as `preselect`.
 - [ ] Project deprecation into LSP tags.
 - [~] Add or preserve lazy resolve support for docs and expensive detail when
   it becomes useful.

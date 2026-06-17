@@ -205,6 +205,9 @@ fn lsp_completion_uses_loaded_schema_facts() {
     )));
 
     assert_completion(&response, "Player", 22, "Player");
+    let player = completion_item(&response, "Player");
+    assert_eq!(player["sortText"], "0030_00_Player");
+    assert_eq!(player["preselect"], true);
     assert_completion_documentation(&response, "Player", "Player host object.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }

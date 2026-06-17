@@ -57,9 +57,7 @@ fn lsp_completion_item(
     {
         value["insertTextFormat"] = json!(2);
     }
-    if let Some(sort_text) = item.sort_text() {
-        value["sortText"] = json!(sort_text);
-    }
+    value["sortText"] = json!(lsp_sort_text(item, preselect));
     if let Some(documentation) = item.documentation() {
         value["documentation"] = json!({
             "kind": "markdown",
@@ -70,6 +68,21 @@ fn lsp_completion_item(
         value["tags"] = json!([1]);
     }
     value
+}
+
+fn lsp_sort_text(item: &vela_language_service::CompletionItem, preselect: bool) -> String {
+    if let Some(sort_text) = item.sort_text() {
+        return sort_text.to_owned();
+    }
+    let relevance = item.relevance();
+    let preselect_rank = u8::from(!preselect);
+    format!(
+        "{:04}_{:02}_{:01}_{}",
+        relevance.kind_rank(),
+        relevance.match_rank(),
+        preselect_rank,
+        item.filter_text()
+    )
 }
 
 fn lsp_label_details(details: &CompletionLabelDetails) -> JsonValue {

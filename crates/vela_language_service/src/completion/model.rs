@@ -124,6 +124,18 @@ pub struct CompletionRelevance {
     pub(super) match_rank: u8,
 }
 
+impl CompletionRelevance {
+    #[must_use]
+    pub const fn kind_rank(&self) -> u16 {
+        self.kind_rank
+    }
+
+    #[must_use]
+    pub const fn match_rank(&self) -> u8 {
+        self.match_rank
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum CompletionSymbol {
     Source(String),
