@@ -301,6 +301,10 @@ M20.5 Phase 11 update: native LSP document-highlight fixtures now cover
 source-owned trait declaration and impl-use highlights, matching the
 language-service trait highlight coverage.
 
+M20.5 Phase 11 update: native LSP document-highlight fixtures now cover
+imported script function imports and same-document call sites, matching the
+language-service imported-function highlight coverage.
+
 M20.5 Phase 13 update: the conditional null-check to Option/Result guard
 rewrite is intentionally deferred until a structured diagnostic or syntax
 pattern can prove the rewrite is local, source-owned, and

@@ -820,6 +820,7 @@ Tests:
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
+- [x] `lsp_document_highlight_marks_import_and_calls_in_active_document`
 - [x] `document_highlight_marks_read_write_call`
 - [x] `lsp_document_highlight_marks_read_write_call`
 - [x] `document_highlight_marks_script_method_calls`
