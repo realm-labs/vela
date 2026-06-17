@@ -665,6 +665,7 @@ Tests:
 - [x] `semantic_tokens_degrade_under_parse_errors`
 - [x] `lsp_semantic_tokens_degrade_under_parse_errors`
 - [x] `semantic_token_delta_matches_full_tokens`
+- [x] `lsp_semantic_token_delta_matches_full_tokens`
 
 Validation:
 
