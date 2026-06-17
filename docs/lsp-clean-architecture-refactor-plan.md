@@ -351,7 +351,10 @@ Purpose: classify the cursor once and reuse it across features.
   consume the shared identifier token range from `QueryContext` instead of
   recomputing the cursor token locally, and references plus call hierarchy
   preparation use the same shared identifier token for their initial request
-  target. Broader callable semantic facts remain feature-owned follow-up work.
+  target. Broader callable semantic facts now include direct source, schema,
+  and stdlib function callables shared by signature help and existing
+  named-argument completion; method and variant callable families remain
+  feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

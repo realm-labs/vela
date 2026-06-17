@@ -1,5 +1,5 @@
 use crate::CallArgumentFacts;
-use crate::query_context::SourceCallableFacts;
+use crate::query_context::CallableFacts;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -23,7 +23,7 @@ pub(super) fn named_argument_completion_context(
 }
 
 pub(super) fn script_function_parameter_completions(
-    callables: &[SourceCallableFacts],
+    callables: &[CallableFacts],
     used_names: &[&str],
 ) -> Vec<CompletionItem> {
     callables

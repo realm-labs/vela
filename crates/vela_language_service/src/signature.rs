@@ -1,15 +1,12 @@
 use vela_analysis::hints::type_fact_from_hint;
-use vela_analysis::stdlib::{
-    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
-    stdlib_method_fact_with_lambda_arity,
-};
+use vela_analysis::stdlib::{LambdaFact, StdlibMethodFact, stdlib_method_fact_with_lambda_arity};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
 use crate::query_context::{
-    SourceCallableFacts, qualified_declaration_label, source_callable_facts,
+    CallableFacts, CallableOrigin, callable_facts, qualified_declaration_label,
     type_fact_for_source_range,
 };
 use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
@@ -98,7 +95,7 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
         let context = call_context_from_query(&query)?;
-        let signatures = self.signature_candidates_for_context(source_id, &context);
+        let signatures = self.signature_candidates_for_context(Some(&query), source_id, &context);
         if signatures.is_empty() {
             return None;
         }
@@ -111,11 +108,8 @@ impl LanguageServiceDatabases {
     }
 
     pub(crate) fn signature_candidates(&self, callee: &str) -> Vec<SignatureInformation> {
-        let mut signatures = self.script_signatures(callee);
-        signatures.extend(self.script_variant_signatures(callee));
-        signatures.extend(self.schema_signatures(callee));
-        signatures.extend(stdlib_function_signatures(callee));
-        signatures
+        let callables = callable_facts(self, callee);
+        self.signature_candidates_from_callables(callee, &callables)
     }
 
     pub(crate) fn signature_candidates_for_member_call(
@@ -131,11 +125,12 @@ impl LanguageServiceDatabases {
             args_prefix,
             active_parameter: 0,
         };
-        self.signature_candidates_for_context(source_id, &context)
+        self.signature_candidates_for_context(None, source_id, &context)
     }
 
     fn signature_candidates_for_context(
         &self,
+        query: Option<&QueryContext<'_>>,
         source_id: SourceId,
         context: &CallContext,
     ) -> Vec<SignatureInformation> {
@@ -144,7 +139,30 @@ impl LanguageServiceDatabases {
         {
             return signatures;
         }
-        self.signature_candidates(&context.callee)
+        if let Some(query) = query {
+            let callables = query.callable_facts(self, &context.callee);
+            self.signature_candidates_from_callables(&context.callee, &callables)
+        } else {
+            self.signature_candidates(&context.callee)
+        }
+    }
+
+    fn signature_candidates_from_callables(
+        &self,
+        callee: &str,
+        callables: &[CallableFacts],
+    ) -> Vec<SignatureInformation> {
+        let mut signatures = callable_signatures_by_origin(callables, CallableOrigin::Source);
+        signatures.extend(self.script_variant_signatures(callee));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
+            CallableOrigin::Schema,
+        ));
+        signatures.extend(callable_signatures_by_origin(
+            callables,
+            CallableOrigin::Stdlib,
+        ));
+        signatures
     }
 
     fn member_signatures(
@@ -246,13 +264,6 @@ impl LanguageServiceDatabases {
         vec![stdlib_method_signature_information(&fact)]
     }
 
-    fn script_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
-        source_callable_facts(self, callee)
-            .iter()
-            .map(source_callable_signature_information)
-            .collect()
-    }
-
     fn script_variant_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
         let graph = self.hir_db().graph();
         graph
@@ -296,38 +307,6 @@ impl LanguageServiceDatabases {
                         ),
                         parameters,
                     })
-                })
-            })
-            .collect()
-    }
-
-    fn schema_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
-        self.schema_db()
-            .facts()
-            .functions()
-            .filter(|function| {
-                function.name == callee
-                    || function
-                        .name
-                        .rsplit("::")
-                        .next()
-                        .is_some_and(|name| name == callee)
-            })
-            .filter_map(|function| {
-                let TypeFact::Function { params, returns } = function.fact else {
-                    return None;
-                };
-                let parameters = params
-                    .iter()
-                    .enumerate()
-                    .map(|(index, fact)| SignatureParameter {
-                        label: format!("arg{index}: {}", fact.display_name()),
-                        type_fact: fact.clone(),
-                    })
-                    .collect::<Vec<_>>();
-                Some(SignatureInformation {
-                    label: signature_label(&function.name, &parameters, &returns),
-                    parameters,
                 })
             })
             .collect()
@@ -385,7 +364,7 @@ fn method_signature_information(
     }
 }
 
-fn source_callable_signature_information(callable: &SourceCallableFacts) -> SignatureInformation {
+fn callable_signature_information(callable: &CallableFacts) -> SignatureInformation {
     let parameters = callable
         .params()
         .iter()
@@ -401,6 +380,17 @@ fn source_callable_signature_information(callable: &SourceCallableFacts) -> Sign
         label: signature_label(callable.name(), &parameters, callable.returns()),
         parameters,
     }
+}
+
+fn callable_signatures_by_origin(
+    callables: &[CallableFacts],
+    origin: CallableOrigin,
+) -> Vec<SignatureInformation> {
+    callables
+        .iter()
+        .filter(|callable| callable.origin() == origin)
+        .map(callable_signature_information)
+        .collect()
 }
 
 fn schema_parameters(params: &[TypeFact]) -> Vec<SignatureParameter> {
@@ -422,29 +412,6 @@ fn stdlib_method_signature_information(fact: &StdlibMethodFact) -> SignatureInfo
             &parameters,
             &fact.returns,
         ),
-        parameters,
-    }
-}
-
-fn stdlib_function_signatures(callee: &str) -> Vec<SignatureInformation> {
-    stdlib_function_completion_facts()
-        .into_iter()
-        .filter(|fact| {
-            fact.name == callee
-                || fact
-                    .name
-                    .rsplit("::")
-                    .next()
-                    .is_some_and(|name| name == callee)
-        })
-        .map(|fact| stdlib_function_signature_information(&fact))
-        .collect()
-}
-
-fn stdlib_function_signature_information(fact: &StdlibFunctionFact) -> SignatureInformation {
-    let parameters = schema_parameters(&fact.params);
-    SignatureInformation {
-        label: signature_label(fact.name, &parameters, &fact.returns),
         parameters,
     }
 }

@@ -8,6 +8,7 @@ use crate::{
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
+use vela_analysis::stdlib::{StdlibFunctionFact, stdlib_function_completion_facts};
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
@@ -15,21 +16,29 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::HirTypeHint;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SourceCallableFacts {
-    name: String,
-    params: Vec<SourceCallableParameterFacts>,
-    returns: TypeFact,
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CallableOrigin {
+    Source,
+    Schema,
+    Stdlib,
 }
 
-impl SourceCallableFacts {
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct CallableFacts {
+    name: String,
+    params: Vec<CallableParameterFacts>,
+    returns: TypeFact,
+    origin: CallableOrigin,
+}
+
+impl CallableFacts {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     #[must_use]
-    pub fn params(&self) -> &[SourceCallableParameterFacts] {
+    pub fn params(&self) -> &[CallableParameterFacts] {
         &self.params
     }
 
@@ -37,16 +46,21 @@ impl SourceCallableFacts {
     pub const fn returns(&self) -> &TypeFact {
         &self.returns
     }
+
+    #[must_use]
+    pub const fn origin(&self) -> CallableOrigin {
+        self.origin
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct SourceCallableParameterFacts {
+pub struct CallableParameterFacts {
     name: String,
     type_fact: TypeFact,
     defaulted: bool,
 }
 
-impl SourceCallableParameterFacts {
+impl CallableParameterFacts {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
@@ -263,8 +277,17 @@ impl<'a> QueryContext<'a> {
         &self,
         databases: &LanguageServiceDatabases,
         callee: &str,
-    ) -> Vec<SourceCallableFacts> {
+    ) -> Vec<CallableFacts> {
         source_callable_facts(databases, callee)
+    }
+
+    #[must_use]
+    pub fn callable_facts(
+        &self,
+        databases: &LanguageServiceDatabases,
+        callee: &str,
+    ) -> Vec<CallableFacts> {
+        callable_facts(databases, callee)
     }
 
     #[must_use]
@@ -448,7 +471,7 @@ pub(crate) fn type_fact_for_source_range(
 pub(crate) fn source_callable_facts(
     databases: &LanguageServiceDatabases,
     callee: &str,
-) -> Vec<SourceCallableFacts> {
+) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
     let facts = AnalysisFacts::from_module_graph(graph);
     let schema = databases.schema_db().facts();
@@ -486,7 +509,7 @@ pub(crate) fn source_callable_facts(
                                 .map(|hint| query_type_fact_from_hint(graph, hint, schema))
                         })
                         .unwrap_or(TypeFact::Unknown);
-                    SourceCallableParameterFacts {
+                    CallableParameterFacts {
                         name: param.name.clone(),
                         type_fact,
                         defaulted: param.default_value_span.is_some(),
@@ -501,13 +524,79 @@ pub(crate) fn source_callable_facts(
                     .map(|hint| query_type_fact_from_hint(graph, hint, schema))
                     .unwrap_or(TypeFact::Unknown),
             };
-            Some(SourceCallableFacts {
+            Some(CallableFacts {
                 name: declaration.name.clone(),
                 params,
                 returns,
+                origin: CallableOrigin::Source,
             })
         })
         .collect()
+}
+
+pub(crate) fn callable_facts(
+    databases: &LanguageServiceDatabases,
+    callee: &str,
+) -> Vec<CallableFacts> {
+    let mut facts = source_callable_facts(databases, callee);
+    facts.extend(schema_callable_facts(databases.schema_db().facts(), callee));
+    facts.extend(stdlib_callable_facts(callee));
+    facts
+}
+
+fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFacts> {
+    schema
+        .functions()
+        .filter(|function| callable_name_matches(&function.name, callee))
+        .filter_map(|function| {
+            let TypeFact::Function { params, returns } = function.fact else {
+                return None;
+            };
+            Some(CallableFacts {
+                name: function.name.clone(),
+                params: indexed_callable_parameters(params),
+                returns: *returns,
+                origin: CallableOrigin::Schema,
+            })
+        })
+        .collect()
+}
+
+fn stdlib_callable_facts(callee: &str) -> Vec<CallableFacts> {
+    stdlib_function_completion_facts()
+        .into_iter()
+        .filter(|fact| callable_name_matches(fact.name, callee))
+        .map(stdlib_callable_fact)
+        .collect()
+}
+
+fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
+    CallableFacts {
+        name: fact.name.to_owned(),
+        params: indexed_callable_parameters(fact.params),
+        returns: fact.returns,
+        origin: CallableOrigin::Stdlib,
+    }
+}
+
+fn indexed_callable_parameters(params: Vec<TypeFact>) -> Vec<CallableParameterFacts> {
+    params
+        .into_iter()
+        .enumerate()
+        .map(|(index, type_fact)| CallableParameterFacts {
+            name: format!("arg{index}"),
+            type_fact,
+            defaulted: false,
+        })
+        .collect()
+}
+
+fn callable_name_matches(name: &str, callee: &str) -> bool {
+    name == callee
+        || name
+            .rsplit("::")
+            .next()
+            .is_some_and(|segment| segment == callee)
 }
 
 fn query_type_fact_from_hint(
@@ -906,6 +995,10 @@ mod tests {
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = vela_analysis::registry::RegistryFacts::default();
         schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_function(
+            "host::spawn",
+            TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
+        );
         databases.set_schema_facts(schema);
         databases.update(&project);
         let line = source.lines().nth(1).expect("main line");
@@ -926,5 +1019,31 @@ mod tests {
         assert_eq!(callables[0].params()[1].name(), "amount");
         assert_eq!(callables[0].params()[1].type_fact().display_name(), "i64");
         assert!(!callables[0].params()[1].defaulted());
+        assert_eq!(callables[0].origin(), CallableOrigin::Source);
+
+        let schema_callables = context.callable_facts(&databases, "spawn");
+        let schema_callable = schema_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::Schema)
+            .expect("schema function callable facts");
+        assert_eq!(schema_callable.name(), "host::spawn");
+        assert_eq!(schema_callable.returns().display_name(), "Player");
+        assert_eq!(schema_callable.params()[0].name(), "arg0");
+        assert_eq!(
+            schema_callable.params()[0].type_fact().display_name(),
+            "String"
+        );
+
+        let stdlib_callables = context.callable_facts(&databases, "max");
+        let stdlib_callable = stdlib_callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::Stdlib)
+            .expect("stdlib function callable facts");
+        assert_eq!(stdlib_callable.name(), "math::max");
+        assert_eq!(stdlib_callable.params()[0].name(), "arg0");
+        assert_eq!(
+            stdlib_callable.params()[0].type_fact().display_name(),
+            "i64 | f64"
+        );
     }
 }
