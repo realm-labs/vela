@@ -545,8 +545,11 @@ high-quality metadata.
   service-owned metadata, and service-owned documentation resolve payloads are
   preserved in LSP `data` while `completionItem/resolve` remains unadvertised
   until a concrete resolve handler is needed.
-- [ ] Add protocol fixtures for common editor clients, including Zed's
+- [x] Add protocol fixtures for common editor clients, including Zed's
   completion behavior.
+  Native LSP completion fixtures now include a Zed-shaped client capability
+  request that preserves snippet, replacement-range, label-detail, sort, and
+  preselect projection without moving client-specific behavior into producers.
 
 Tests:
 

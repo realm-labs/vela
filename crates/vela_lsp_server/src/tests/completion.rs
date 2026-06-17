@@ -325,6 +325,79 @@ fn lsp_item_boundary_completion_projects_snippet_items() {
 }
 
 #[test]
+fn lsp_completion_projects_zed_style_client_fixture() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "clientInfo": { "name": "Zed", "version": "test" },
+            "capabilities": {
+                "textDocument": {
+                    "completion": {
+                        "completionItem": {
+                            "snippetSupport": true,
+                            "labelDetailsSupport": true,
+                            "deprecatedSupport": true,
+                            "resolveSupport": {
+                                "properties": ["documentation", "detail"]
+                            }
+                        }
+                    }
+                }
+            }
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "st";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": { "line": 0, "character": text.len() }
+        }),
+    )));
+
+    assert_completion_snippet(
+        &response,
+        "struct",
+        15,
+        "struct declaration",
+        "struct ${1:Name} {\n    $0\n}",
+    );
+    assert_completion_projection(
+        &response,
+        "struct",
+        serde_json::json!({
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 0, "character": 2 }
+            },
+            "newText": "struct ${1:Name} {\n    $0\n}"
+        }),
+        "struct",
+        "0000_00_struct",
+        serde_json::json!({ "detail": "struct declaration" }),
+        true,
+    );
+}
+
+#[test]
 fn lsp_statement_completion_projects_statement_keywords() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
