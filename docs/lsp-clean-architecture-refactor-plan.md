@@ -398,13 +398,16 @@ high-quality metadata.
 
 - [~] Convert service completion items to LSP completion items using source
   ranges and text edits supplied by the service item.
-- [~] Set `filterText` from lookup identity when label text and inserted text
+- [x] Set `filterText` from lookup identity when label text and inserted text
   differ.
-- [ ] Set `labelDetails` for signatures, modules, receiver types, and return
+- [x] Set `labelDetails` for signatures, modules, receiver types, and return
   types where the client supports it.
 - [x] Set `insertTextFormat` from snippet intent rather than hard-coded
   function heuristics.
-- [ ] Project relevance into stable `sortText` and `preselect`.
+- [~] Project relevance into stable `sortText` and `preselect`.
+  LSP projection now preserves service `sortText` and marks the first
+  service-ranked item as `preselect`; deriving stable protocol sort keys from
+  service relevance remains open.
 - [ ] Project deprecation into LSP tags.
 - [~] Add or preserve lazy resolve support for docs and expensive detail when
   it becomes useful.
