@@ -42,11 +42,17 @@ assert(
   "language server section is missing"
 );
 assert(manifest.includes("[languages.Vela]"), "Vela language section is missing");
+assert(manifest.includes("[grammars.vela]"), "Vela grammar section is missing");
+assert(
+  manifest.includes('repository = "file://./grammars/vela"'),
+  "Vela grammar must use the packaged local tree-sitter grammar"
+);
 
 const languageConfigPath = "languages/vela/config.toml";
 assert(fs.existsSync(path.join(root, languageConfigPath)), "language config is missing");
 const languageConfig = read(languageConfigPath);
 assert(hasTomlValue(languageConfig, "name", '"Vela"'), "language name is missing");
+assert(hasTomlValue(languageConfig, "grammar", '"vela"'), "grammar name is missing");
 assert(hasTomlValue(languageConfig, "path_suffixes", '["vela"]'), "path suffix is missing");
 assert(
   languageConfig.includes('language_servers = ["vela-language-server"]') ||
@@ -60,5 +66,16 @@ assert(
   "extension launcher must start vela_lsp_server over stdio"
 );
 assertThinLauncher(extensionRs, "Zed extension");
+
+const grammarRoot = path.join(root, "grammars", "vela");
+assert(fs.existsSync(path.join(grammarRoot, "grammar.js")), "tree-sitter grammar.js is missing");
+assert(fs.existsSync(path.join(grammarRoot, "tree-sitter.json")), "tree-sitter.json is missing");
+assert(fs.existsSync(path.join(grammarRoot, "src", "parser.c")), "generated parser.c is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "highlights.scm")), "highlights query is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "brackets.scm")), "brackets query is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "indents.scm")), "indents query is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "outline.scm")), "outline query is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "overrides.scm")), "overrides query is missing");
+assert(fs.existsSync(path.join(root, "languages", "vela", "textobjects.scm")), "textobjects query is missing");
 
 console.log("Zed extension package metadata and launcher boundary are valid.");

@@ -1,0 +1,17 @@
+[
+  (block "}" @end)
+  (field_declaration_list "}" @end)
+  (variant_declaration_list "}" @end)
+  (record_field_list "}" @end)
+  (trait_body "}" @end)
+  (impl_body "}" @end)
+  (map_literal "}" @end)
+  (record_literal_body "}" @end)
+  (record_pattern "}" @end)
+  (match_expression "}" @end)
+  (array_literal "]" @end)
+  (argument_list ")" @end)
+  (parameter_list ")" @end)
+  (tuple_field_list ")" @end)
+  (tuple_pattern ")" @end)
+] @indent

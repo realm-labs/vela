@@ -85,8 +85,9 @@ language analysis itself.
 ## Zed Extension Package
 
 The repository includes a thin Zed extension package under `editors/zed`. It
-contributes Vela language metadata and starts `vela_lsp_server` over stdio via
-Zed's extension command hook.
+contributes Vela language metadata, the packaged `tree-sitter-vela` grammar,
+Tree-sitter highlight/indent/outline queries, and starts `vela_lsp_server`
+over stdio via Zed's extension command hook.
 
 For local extension validation:
 

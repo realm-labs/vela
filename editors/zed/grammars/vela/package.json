@@ -1,0 +1,24 @@
+{
+  "name": "tree-sitter-vela",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for Vela",
+  "license": "MIT OR Apache-2.0",
+  "type": "commonjs",
+  "main": "grammar.js",
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "parse:fixtures": "tree-sitter parse ../../../site/src/syntax/fixtures/complete.vela ../../../tests/fixtures/**/*.vela ../../../examples/src/**/*.vela"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.25.10"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.vela",
+      "file-types": [
+        "vela"
+      ],
+      "highlights": "../../../languages/vela/highlights.scm"
+    }
+  ]
+}

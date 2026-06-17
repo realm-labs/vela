@@ -12,3 +12,6 @@ language = "Vela"
 
 [languages.Vela]
 language_servers = ["vela-language-server"]
+
+[grammars.vela]
+repository = "file://./grammars/vela"

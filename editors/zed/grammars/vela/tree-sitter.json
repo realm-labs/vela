@@ -1,0 +1,27 @@
+{
+  "grammars": [
+    {
+      "name": "vela",
+      "camelcase": "Vela",
+      "title": "Vela",
+      "scope": "source.vela",
+      "file-types": ["vela"],
+      "injection-regex": "^vela$",
+      "class-name": "TreeSitterVela"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT OR Apache-2.0",
+    "description": "Tree-sitter grammar for Vela"
+  },
+  "bindings": {
+    "c": true,
+    "node": false,
+    "rust": false,
+    "go": false,
+    "python": false,
+    "swift": false,
+    "zig": false
+  }
+}
