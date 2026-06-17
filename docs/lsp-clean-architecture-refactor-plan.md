@@ -286,7 +286,7 @@ Purpose: classify the cursor once and reuse it across features.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
-- [ ] Keep classification tolerant of incomplete source and parser recovery.
+- [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
   Completion, signature help, hover, definition, prepare-rename, and rename

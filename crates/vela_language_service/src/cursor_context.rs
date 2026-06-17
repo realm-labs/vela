@@ -658,4 +658,22 @@ mod tests {
 
         assert_eq!(cursor.kind(), CursorContextKind::Expression);
     }
+
+    #[test]
+    fn cursor_context_recovers_useful_roles_in_incomplete_source() {
+        let member_text = "pub fn main(player) { player.";
+        let member_cursor = classify_offset(member_text, member_text.len());
+        assert_eq!(member_cursor.kind(), CursorContextKind::MemberAccess);
+        assert_eq!(
+            member_cursor.member_receiver(),
+            Some(TextRange::new(22, 28))
+        );
+
+        let type_cursor = classify("pub fn main(player: Pla", "Pla");
+        assert_eq!(type_cursor.kind(), CursorContextKind::Type);
+
+        let call_text = "pub fn main() { grant(";
+        let call_cursor = classify_offset(call_text, call_text.len());
+        assert_eq!(call_cursor.kind(), CursorContextKind::CallArgument);
+    }
 }
