@@ -11,7 +11,9 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::TextRange;
 
-use super::{CompletionInsertFormat, CompletionItem, CompletionKind, label_segment_matches};
+use super::{
+    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol, label_segment_matches,
+};
 
 pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> bool {
     let Some(before_prefix) = text.get(..prefix_start) else {
@@ -64,7 +66,7 @@ pub(super) fn type_hint_completion_items(
     items.extend(
         type_completions(schema)
             .into_iter()
-            .map(service_item_from_analysis),
+            .map(|item| service_item_from_schema_type(item, schema)),
     );
     items.extend(
         declaration_completions(graph, &facts)
@@ -201,6 +203,21 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
         sort_text: None,
         metadata: Default::default(),
     }
+}
+
+fn service_item_from_schema_type(
+    item: AnalysisCompletionItem,
+    schema: &RegistryFacts,
+) -> CompletionItem {
+    let docs = match item.kind {
+        AnalysisCompletionKind::Type => schema.type_docs(&item.label),
+        AnalysisCompletionKind::Trait => schema.trait_docs(&item.label),
+        _ => None,
+    };
+    let symbol = CompletionSymbol::Schema(item.label.clone());
+    service_item_from_analysis(item)
+        .with_documentation(docs)
+        .with_symbol(symbol)
 }
 
 fn type_annotation_left_side_is_plausible(trimmed: &str) -> bool {

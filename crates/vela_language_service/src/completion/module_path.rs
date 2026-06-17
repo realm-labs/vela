@@ -9,7 +9,7 @@ use vela_analysis::{
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use super::{
-    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
+    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
     callable_insert_text, completion_insert_format, completion_sort_text,
     dedupe_and_filter_service_items, label_segment_matches,
 };
@@ -123,16 +123,20 @@ fn schema_enum_variant_path_completions(
         .variants()
         .filter(|variant| owner_matches_path_base(&variant.owner, base))
         .map(|variant| {
-            let sort_text = completion_sort_text(CompletionKind::Variant, &variant.name, prefix);
+            let owner = variant.owner;
+            let name = variant.name;
+            let sort_text = completion_sort_text(CompletionKind::Variant, &name, prefix);
             CompletionItem {
-                label: variant.name,
+                label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: variant.owner,
+                detail: owner.clone(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: Some(sort_text),
                 metadata: Default::default(),
             }
+            .with_documentation(schema.variant_docs(&owner, &name))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{name}")))
         })
         .collect()
 }

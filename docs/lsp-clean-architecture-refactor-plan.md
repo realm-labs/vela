@@ -375,9 +375,10 @@ Purpose: replace coarse global completion with context-specific producers.
   The service item model now carries editor-neutral metadata fields for lookup
   identity, source range, text edit, filter text, label details,
   documentation, relevance, deprecation, symbol identity, and resolve payload.
-  The accumulator currently populates derived lookup/filter/range/text-edit
-  and relevance metadata; producer-owned docs, deprecation, symbols, and
-  resolve payloads remain open.
+  The accumulator populates derived lookup/filter/range/text-edit and
+  relevance metadata; schema-backed type, field, method, and enum-variant
+  producers now populate docs and schema symbol identity. Producer-owned
+  deprecation and resolve payloads remain open.
 
 Tests:
 
@@ -402,8 +403,11 @@ high-quality metadata.
   function heuristics.
 - [ ] Project relevance into stable `sortText` and `preselect`.
 - [ ] Project deprecation into LSP tags.
-- [ ] Add or preserve lazy resolve support for docs and expensive detail when
+- [~] Add or preserve lazy resolve support for docs and expensive detail when
   it becomes useful.
+  Schema-backed completion documentation is now projected eagerly from
+  service-owned metadata; lazy resolve payloads for expensive docs/details
+  remain open.
 - [ ] Add protocol fixtures for common editor clients, including Zed's
   completion behavior.
 

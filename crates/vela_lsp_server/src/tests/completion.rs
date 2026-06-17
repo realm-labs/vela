@@ -157,7 +157,8 @@ fn lsp_completion_uses_loaded_schema_facts() {
                     "types": [
                         {
                             "name": "Player",
-                            "fact": { "kind": "host", "name": "Player" }
+                            "fact": { "kind": "host", "name": "Player" },
+                            "docs": "Player host object."
                         }
                     ]
                 }
@@ -204,6 +205,7 @@ fn lsp_completion_uses_loaded_schema_facts() {
     )));
 
     assert_completion(&response, "Player", 22, "Player");
+    assert_completion_documentation(&response, "Player", "Player host object.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -344,7 +346,8 @@ fn lsp_member_completion_uses_host_schema_facts() {
                         {
                             "owner": "Player",
                             "name": "level",
-                            "fact": { "kind": "primitive", "name": "i64" }
+                            "fact": { "kind": "primitive", "name": "i64" },
+                            "docs": "Current player level."
                         }
                     ],
                     "methods": [
@@ -355,7 +358,8 @@ fn lsp_member_completion_uses_host_schema_facts() {
                                 "kind": "function",
                                 "params": [{ "kind": "primitive", "name": "i64" }],
                                 "returns": { "kind": "primitive", "name": "bool" }
-                            }
+                            },
+                            "docs": "Increase the player level."
                         }
                     ]
                 }
@@ -407,6 +411,8 @@ fn lsp_member_completion_uses_host_schema_facts() {
 
     assert_completion(&response, "level", 5, "i64");
     assert_completion(&response, "level_up", 2, "Function(i64) -> bool");
+    assert_completion_documentation(&response, "level", "Current player level.");
+    assert_completion_documentation(&response, "level_up", "Increase the player level.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -869,6 +875,12 @@ fn assert_completion_projection(
     assert_eq!(item["sortText"], sort_text);
     assert_eq!(item["labelDetails"], label_details);
     assert_eq!(item["preselect"], preselect);
+}
+
+fn assert_completion_documentation(response: &serde_json::Value, label: &str, expected: &str) {
+    let item = completion_item(response, label);
+    assert_eq!(item["documentation"]["kind"], "markdown");
+    assert_eq!(item["documentation"]["value"], expected);
 }
 
 fn assert_no_completion(response: &serde_json::Value, label: &str) {

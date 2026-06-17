@@ -165,11 +165,13 @@ fn member_completion_uses_host_schema_facts() {
     let mut schema = RegistryFacts::default();
     schema.insert_type("Player", TypeFact::host("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
+    schema.insert_field_docs("Player", "level", "Current player level.");
     schema.insert_method(
         "Player",
         "level_up",
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
+    schema.insert_method_docs("Player", "level_up", "Increase the player level.");
     databases.set_schema_facts(schema);
     databases.update(&project);
 
@@ -181,6 +183,18 @@ fn member_completion_uses_host_schema_facts() {
     assert_eq!(completions.context().kind(), CompletionContextKind::Member);
     assert_completion(&completions, "level", CompletionKind::Field);
     assert_completion(&completions, "level_up", CompletionKind::Method);
+    let level = completion(&completions, "level");
+    assert_eq!(level.documentation(), Some("Current player level."));
+    assert_eq!(
+        level.symbol(),
+        Some(&CompletionSymbol::Schema("Player.level".to_owned()))
+    );
+    let level_up = completion(&completions, "level_up");
+    assert_eq!(level_up.documentation(), Some("Increase the player level."));
+    assert_eq!(
+        level_up.symbol(),
+        Some(&CompletionSymbol::Schema("Player.level_up".to_owned()))
+    );
 }
 
 #[test]
@@ -390,6 +404,7 @@ fn module_path_completion_suggests_schema_enum_variants() {
         "Active",
         TypeFact::enum_type("QuestState", Some("Active")),
     );
+    schema.insert_variant_docs("QuestState", "Active", "Active quest state.");
     schema.insert_variant(
         "QuestState",
         "Finished",
@@ -665,6 +680,7 @@ pub fn main(state: QuestState) {
         "Active",
         TypeFact::enum_type("QuestState", Some("Active")),
     );
+    schema.insert_variant_docs("QuestState", "Active", "Active quest state.");
     schema.insert_variant(
         "QuestState",
         "Finished",
@@ -685,6 +701,43 @@ pub fn main(state: QuestState) {
     assert_eq!(completions.context().kind(), CompletionContextKind::Pattern);
     assert_completion(&completions, "Active", CompletionKind::Variant);
     assert_no_completion(&completions, "activate");
+    let active = completion(&completions, "Active");
+    assert_eq!(active.documentation(), Some("Active quest state."));
+    assert_eq!(
+        active.symbol(),
+        Some(&CompletionSymbol::Schema("QuestState::Active".to_owned()))
+    );
+}
+
+#[test]
+fn type_hint_completion_carries_schema_docs_and_symbol_identity() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Pl) { return 1 }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type_docs("Player", "Player host object.");
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find("Pl)").expect("type prefix") + "Pl".len()),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::TypeHint
+    );
+    let player = completion(&completions, "Player");
+    assert_eq!(player.documentation(), Some("Player host object."));
+    assert_eq!(
+        player.symbol(),
+        Some(&CompletionSymbol::Schema("Player".to_owned()))
+    );
 }
 
 #[test]

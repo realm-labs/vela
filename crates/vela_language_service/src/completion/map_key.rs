@@ -8,8 +8,8 @@ use vela_syntax::ast::{
 use crate::{
     TextRange,
     completion::{
-        CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-        label_segment_matches,
+        CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
+        dedupe_and_filter_service_items, label_segment_matches,
     },
 };
 
@@ -275,14 +275,20 @@ fn schema_enum_variant_key_completions(
     schema
         .variants()
         .filter(|variant| variant.owner == owner || Some(variant.owner.as_str()) == short_owner)
-        .map(|variant| CompletionItem {
-            label: variant.name,
-            kind: CompletionKind::Variant,
-            detail: key_hint.display(),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
+        .map(|variant| {
+            let owner = variant.owner;
+            let name = variant.name;
+            CompletionItem {
+                label: name.clone(),
+                kind: CompletionKind::Variant,
+                detail: key_hint.display(),
+                insert_text: None,
+                insert_format: CompletionInsertFormat::PlainText,
+                sort_text: None,
+                metadata: Default::default(),
+            }
+            .with_documentation(schema.variant_docs(&owner, &name))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{name}")))
         })
         .collect()
 }

@@ -4,6 +4,7 @@ use vela_analysis::completion::{
 };
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
@@ -101,6 +102,7 @@ impl LanguageServiceDatabases {
             global_completions(self.schema_db().facts()),
             context.replace_range(),
             context.prefix(),
+            Some(self.schema_db().facts()),
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
         items.extend(dedupe_and_filter_items(
@@ -110,12 +112,14 @@ impl LanguageServiceDatabases {
             ),
             context.replace_range(),
             context.prefix(),
+            None,
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
         items.extend(dedupe_and_filter_items(
             module_completions(graph),
             context.replace_range(),
             context.prefix(),
+            None,
             |item| label_segment_matches(&item.label, context.prefix()),
         ));
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
@@ -212,12 +216,19 @@ impl LanguageServiceDatabases {
         let Some(receiver_fact) = self.member_receiver_fact(document_id, receiver) else {
             return Vec::new();
         };
-        dedupe_and_filter_items(
-            member_completions(self.schema_db().facts(), &receiver_fact),
-            context.replace_range(),
-            context.prefix(),
-            |item| label_segment_matches(&item.label, context.prefix()),
-        )
+        let schema = self.schema_db().facts();
+        let owner = schema_completion_owner(&receiver_fact);
+        let items = member_completions(schema, &receiver_fact)
+            .into_iter()
+            .filter(|item| label_segment_matches(&item.label, context.prefix()))
+            .map(|item| {
+                let completion = service_item_from_analysis_completion(item, context.prefix());
+                owner.as_deref().map_or(completion.clone(), |owner| {
+                    enrich_schema_member_completion_item(completion, schema, owner)
+                })
+            })
+            .collect::<Vec<_>>();
+        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |_| true)
     }
 
     fn member_receiver_fact(
@@ -692,24 +703,95 @@ fn dedupe_and_filter_items(
     items: Vec<AnalysisCompletionItem>,
     replace_range: TextRange,
     prefix: &str,
+    schema: Option<&RegistryFacts>,
     matches_context: impl Fn(&AnalysisCompletionItem) -> bool,
 ) -> Vec<CompletionItem> {
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
     for item in items.into_iter().filter(matches_context) {
-        let kind = item.kind.into();
-        let insert_text = callable_insert_text(kind, &item.label);
-        let insert_format = completion_insert_format(insert_text.as_ref());
-        accumulator.add(CompletionItem {
-            sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
-            metadata: Default::default(),
-            label: item.label,
-            kind,
-            detail: item.fact.display_name(),
-            insert_text,
-            insert_format,
-        });
+        let completion = service_item_from_analysis_completion(item, prefix);
+        accumulator.add(enrich_analysis_completion_item(completion, schema));
     }
     accumulator.into_items()
+}
+
+fn service_item_from_analysis_completion(
+    item: AnalysisCompletionItem,
+    prefix: &str,
+) -> CompletionItem {
+    let kind = item.kind.into();
+    let insert_text = callable_insert_text(kind, &item.label);
+    let insert_format = completion_insert_format(insert_text.as_ref());
+    CompletionItem {
+        sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
+        metadata: Default::default(),
+        label: item.label,
+        kind,
+        detail: item.fact.display_name(),
+        insert_text,
+        insert_format,
+    }
+}
+
+fn enrich_analysis_completion_item(
+    item: CompletionItem,
+    schema: Option<&RegistryFacts>,
+) -> CompletionItem {
+    let Some(schema) = schema else {
+        return item;
+    };
+    let label = item.label().to_owned();
+    match item.kind() {
+        CompletionKind::Type if schema.type_fact(&label).is_some() => item
+            .with_documentation(schema.type_docs(&label))
+            .with_symbol(CompletionSymbol::Schema(label)),
+        CompletionKind::Trait if schema.trait_fact(&label).is_some() => item
+            .with_documentation(schema.trait_docs(&label))
+            .with_symbol(CompletionSymbol::Schema(label)),
+        CompletionKind::Function if schema.function_fact(&label).is_some() => item
+            .with_documentation(schema.function_docs(&label))
+            .with_symbol(CompletionSymbol::Schema(label)),
+        _ => item,
+    }
+}
+
+fn enrich_schema_member_completion_item(
+    item: CompletionItem,
+    schema: &RegistryFacts,
+    owner: &str,
+) -> CompletionItem {
+    let label = item.label().to_owned();
+    match item.kind() {
+        CompletionKind::Field if schema.field_fact(owner, &label).is_some() => item
+            .with_documentation(schema.field_docs(owner, &label))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+        CompletionKind::Method if schema.method_fact(owner, &label).is_some() => item
+            .with_documentation(schema.method_docs(owner, &label))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+        CompletionKind::Method if schema.trait_method_fact(owner, &label).is_some() => item
+            .with_documentation(schema.trait_method_docs(owner, &label))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+        CompletionKind::Variant if schema.variant_fact(owner, &label).is_some() => item
+            .with_documentation(schema.variant_docs(owner, &label))
+            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{label}"))),
+        _ => item,
+    }
+}
+
+fn schema_completion_owner(fact: &TypeFact) -> Option<String> {
+    match fact {
+        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
+            Some(name.clone())
+        }
+        TypeFact::Enum {
+            name,
+            variant: Some(variant),
+        } => Some(format!("{name}::{variant}")),
+        TypeFact::Enum {
+            name,
+            variant: None,
+        } => Some(name.clone()),
+        _ => None,
+    }
 }
 
 fn callable_insert_text(kind: CompletionKind, label: &str) -> Option<String> {

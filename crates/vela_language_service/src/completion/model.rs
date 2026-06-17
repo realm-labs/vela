@@ -220,6 +220,18 @@ impl CompletionItem {
     pub fn sort_text(&self) -> Option<&str> {
         self.sort_text.as_deref()
     }
+
+    #[must_use]
+    pub(super) fn with_documentation(mut self, documentation: Option<&str>) -> Self {
+        self.metadata.documentation = documentation.map(str::to_owned);
+        self
+    }
+
+    #[must_use]
+    pub(super) fn with_symbol(mut self, symbol: CompletionSymbol) -> Self {
+        self.metadata.symbol = Some(symbol);
+        self
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

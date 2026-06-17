@@ -60,6 +60,15 @@ fn lsp_completion_item(
     if let Some(sort_text) = item.sort_text() {
         value["sortText"] = json!(sort_text);
     }
+    if let Some(documentation) = item.documentation() {
+        value["documentation"] = json!({
+            "kind": "markdown",
+            "value": documentation
+        });
+    }
+    if item.deprecated() {
+        value["tags"] = json!([1]);
+    }
     value
 }
 
