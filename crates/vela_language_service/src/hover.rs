@@ -8,7 +8,10 @@ use vela_common::Span;
 use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::module_graph::{Declaration, DeclarationKind};
-use vela_hir::type_hint::{EnumVariantFieldsHint, EnumVariantHint, StructFieldHint};
+use vela_hir::type_hint::{
+    EnumVariantFieldsHint, EnumVariantHint, FunctionSignature, ImplMetadataKind,
+    ImplMethodMetadata, StructFieldHint, TraitMethodMetadata,
+};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
@@ -108,6 +111,12 @@ impl LanguageServiceDatabases {
             return Some(hover);
         }
 
+        if let Some(hover) =
+            script_method_hover_at_token(graph, source.text(), source_id, &token, range)
+        {
+            return Some(hover);
+        }
+
         if let Some(hover) = enum_variant_hover_at_token(graph, source_id, offset, &token, range) {
             return Some(hover);
         }
@@ -139,6 +148,11 @@ impl LanguageServiceDatabases {
         let receiver_fact = member_receiver_fact(self, document_id, receiver)?;
         if let Some(hover) =
             script_member_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
+        {
+            return Some(hover);
+        }
+        if let Some(hover) =
+            script_method_hover(self.hir_db().graph(), &receiver_fact, &token.text, range)
         {
             return Some(hover);
         }
@@ -394,6 +408,83 @@ fn script_member_hover(
     })
 }
 
+fn script_method_hover_at_token(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    text: &str,
+    source_id: vela_common::SourceId,
+    token: &HoverToken,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    graph
+        .declarations()
+        .find_map(|declaration| match declaration.kind {
+            DeclarationKind::Impl if declaration.span.source == source_id => {
+                let metadata = graph.impl_metadata(declaration.id)?;
+                metadata
+                    .methods
+                    .iter()
+                    .find(|method| {
+                        method.name == token.text
+                            && method_name_range_in_text(text, declaration.span, &method.name)
+                                .is_some_and(|name_range| {
+                                    name_range.start <= token.range.start
+                                        && token.range.end <= name_range.end
+                                })
+                    })
+                    .map(|method| impl_method_hover(graph, declaration, metadata, method, range))
+            }
+            DeclarationKind::Trait if declaration.span.source == source_id => {
+                let shape = graph.trait_shape(declaration.id)?;
+                shape
+                    .methods
+                    .iter()
+                    .find(|method| {
+                        method.name == token.text
+                            && method_name_range_in_text(text, declaration.span, &method.name)
+                                .is_some_and(|name_range| {
+                                    name_range.start <= token.range.start
+                                        && token.range.end <= name_range.end
+                                })
+                    })
+                    .map(|method| trait_method_hover(graph, declaration, method, range))
+            }
+            DeclarationKind::Const
+            | DeclarationKind::Global
+            | DeclarationKind::Function
+            | DeclarationKind::Struct
+            | DeclarationKind::Enum
+            | DeclarationKind::Trait
+            | DeclarationKind::Impl => None,
+        })
+}
+
+fn script_method_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        if !matches!(metadata.kind, ImplMetadataKind::Inherent)
+            || !owner_names
+                .iter()
+                .any(|owner| impl_target_matches(&metadata.target_path, owner))
+        {
+            return None;
+        }
+        metadata
+            .methods
+            .iter()
+            .find(|entry| entry.name == method)
+            .map(|entry| impl_method_hover(graph, declaration, metadata, entry, range))
+    })
+}
+
 fn struct_field_hover(
     graph: &vela_hir::module_graph::ModuleGraph,
     declaration: &Declaration,
@@ -408,6 +499,57 @@ fn struct_field_hover(
         detail: struct_field_detail(field),
         docs: attr_docs(&field.attrs),
     }
+}
+
+fn impl_method_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    metadata: &vela_hir::type_hint::ImplMetadata,
+    method: &ImplMethodMetadata,
+    range: DiagnosticRange,
+) -> Hover {
+    let owner = impl_owner_label(graph, declaration, metadata);
+    Hover {
+        range,
+        label: format!("{owner}.{}", method.name),
+        kind: HoverKind::Method,
+        detail: signature_detail(&method.signature),
+        docs: None,
+    }
+}
+
+fn trait_method_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    method: &TraitMethodMetadata,
+    range: DiagnosticRange,
+) -> Hover {
+    let owner = qualified_declaration_label(graph, declaration);
+    Hover {
+        range,
+        label: format!("{owner}.{}", method.name),
+        kind: HoverKind::Method,
+        detail: signature_detail(&method.signature),
+        docs: attr_docs(&method.attrs),
+    }
+}
+
+fn signature_detail(signature: &FunctionSignature) -> String {
+    let params = signature
+        .params
+        .iter()
+        .map(|param| {
+            param.type_hint.as_ref().map_or_else(
+                || param.name.clone(),
+                |hint| format!("{}: {}", param.name, hint.display()),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    signature.return_type.as_ref().map_or_else(
+        || format!("({params})"),
+        |return_type| format!("({params}) -> {}", return_type.display()),
+    )
 }
 
 fn struct_field_detail(field: &StructFieldHint) -> String {
@@ -625,7 +767,15 @@ fn fact_owner_name(fact: &TypeFact) -> Option<String> {
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {
     match fact {
-        TypeFact::Record { name } => vec![name.clone()],
+        TypeFact::Record { name } => {
+            let mut names = vec![name.clone()];
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                names.push(short.to_owned());
+            }
+            names
+        }
         _ => Vec::new(),
     }
 }
@@ -636,6 +786,90 @@ fn declaration_name_matches(
     owner: &str,
 ) -> bool {
     declaration.name == owner || qualified_declaration_label(graph, declaration) == owner
+}
+
+fn impl_owner_label(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    metadata: &vela_hir::type_hint::ImplMetadata,
+) -> String {
+    match &metadata.kind {
+        ImplMetadataKind::Inherent => metadata
+            .target_path
+            .last()
+            .map(|target| qualified_module_member_label(graph, declaration, target))
+            .unwrap_or_else(|| qualified_declaration_label(graph, declaration)),
+        ImplMetadataKind::Trait { trait_path } => {
+            let trait_name = trait_path.join("::");
+            let target = metadata.target_path.join("::");
+            format!("{trait_name} for {target}")
+        }
+    }
+}
+
+fn impl_target_matches(path: &[String], owner: &str) -> bool {
+    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
+}
+
+fn qualified_module_member_label(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    member: &str,
+) -> String {
+    let Some(module_path) = graph.module_path(declaration.module) else {
+        return member.to_owned();
+    };
+    let module = module_path.join();
+    if module.is_empty() {
+        member.to_owned()
+    } else {
+        format!("{module}::{member}")
+    }
+}
+
+fn method_name_range_in_text(text: &str, span: Span, name: &str) -> Option<TextRange> {
+    let range = span_text_range(span)?;
+    let slice = text.get(range.start..range.end)?;
+    slice.match_indices(name).find_map(|(offset, matched)| {
+        let start = range.start + offset;
+        let end = start + matched.len();
+        (is_identifier_boundary(text, start, end) && preceded_by_fn_keyword(text, start))
+            .then(|| TextRange::new(start, end))
+    })
+}
+
+fn span_text_range(span: Span) -> Option<TextRange> {
+    let start = usize::try_from(span.start).ok()?;
+    let end = usize::try_from(span.end).ok()?;
+    Some(TextRange::new(start, end))
+}
+
+fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
+    let before = text
+        .get(..start)
+        .and_then(|prefix| prefix.chars().next_back());
+    let after = text.get(end..).and_then(|suffix| suffix.chars().next());
+    before.is_none_or(|ch| !is_identifier_continue(ch))
+        && after.is_none_or(|ch| !is_identifier_continue(ch))
+}
+
+fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
+    let Some(before_name) = text.get(..start).map(str::trim_end) else {
+        return false;
+    };
+    let end = before_name.len();
+    let word_start = before_name
+        .char_indices()
+        .rev()
+        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
+        .unwrap_or(0);
+    if before_name.get(word_start..end) != Some("fn") {
+        return false;
+    }
+    before_name
+        .get(..word_start)
+        .and_then(|prefix| prefix.chars().next_back())
+        .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
 fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> String {
@@ -764,236 +998,4 @@ fn is_identifier_continue(ch: char) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
-
-    use super::*;
-    use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-    };
-
-    #[test]
-    fn hover_degrades_to_any_without_schema() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(player: Player) { return player }";
-        let databases = databases_for(&document, text, RegistryFacts::default());
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.find("Player").expect("type hint")),
-            )
-            .expect("hover should degrade unknown type hints");
-
-        assert_eq!(hover.kind(), HoverKind::Type);
-        assert_eq!(hover.label(), "Player");
-        assert_eq!(hover.detail(), "Any");
-    }
-
-    #[test]
-    fn hover_reports_effects_and_permissions() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(player: Player) { player.grant(1) }";
-        let mut schema = RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
-        schema.insert_method(
-            "Player",
-            "grant",
-            TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
-        );
-        schema.insert_method_effect("Player", "grant", RegistryEffectFact::host_write());
-        schema.insert_method_access(vela_analysis::registry::RegistryMethodAccessFact {
-            owner: "Player".to_owned(),
-            name: "grant".to_owned(),
-            public: true,
-            reflect_callable: true,
-            required_permissions: vec!["player.reward".to_owned()],
-        });
-        let databases = databases_for(&document, text, schema);
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.find("grant").expect("method name")),
-            )
-            .expect("hover should resolve schema method");
-
-        assert_eq!(hover.kind(), HoverKind::Method);
-        assert_eq!(hover.label(), "Player.grant");
-        assert!(hover.detail().contains("Function(i64) -> bool"));
-        assert!(hover.detail().contains("effects: writes_host"));
-        assert!(hover.detail().contains("permissions: player.reward"));
-    }
-
-    #[test]
-    fn hover_reports_schema_trait_method_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1) }";
-        let mut schema = RegistryFacts::default();
-        schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
-        schema.insert_trait_method(
-            "Rewardable",
-            "preview",
-            TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
-        );
-        let databases = databases_for(&document, text, schema);
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.find("preview").expect("trait method name")),
-            )
-            .expect("hover should resolve schema trait method");
-
-        assert_eq!(hover.kind(), HoverKind::Method);
-        assert_eq!(hover.label(), "Rewardable.preview");
-        assert!(hover.detail().contains("Function(i64) -> bool"));
-    }
-
-    #[test]
-    fn hover_reports_script_parameter_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(amount: i64) -> i64 { return amount }";
-        let databases = databases_for(&document, text, RegistryFacts::default());
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.rfind("amount").expect("amount use")),
-            )
-            .expect("hover should resolve parameter use");
-
-        assert_eq!(hover.kind(), HoverKind::Parameter);
-        assert_eq!(hover.label(), "amount");
-        assert_eq!(hover.detail(), "i64");
-    }
-
-    #[test]
-    fn hover_reports_stdlib_function_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main() { math::max(1, 2) }";
-        let databases = databases_for(&document, text, RegistryFacts::default());
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.find("max").expect("stdlib function")),
-            )
-            .expect("hover should resolve stdlib function");
-
-        assert_eq!(hover.kind(), HoverKind::Function);
-        assert_eq!(hover.label(), "math::max");
-        assert_eq!(
-            hover.detail(),
-            "Function(i64 | f64, i64 | f64) -> i64 | f64"
-        );
-    }
-
-    #[test]
-    fn hover_reports_stdlib_method_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(scores: Array<i64>) { scores.filter(|score| score > 0) }";
-        let databases = databases_for(&document, text, RegistryFacts::default());
-
-        let hover = databases
-            .hover(
-                &document,
-                Position::new(0, text.find("filter").expect("stdlib method")),
-            )
-            .expect("hover should resolve stdlib method");
-
-        assert_eq!(hover.kind(), HoverKind::Method);
-        assert_eq!(hover.label(), "Array(i64).filter");
-        assert_eq!(
-            hover.detail(),
-            "Function(Function(i64) -> bool) -> Array(i64)"
-        );
-    }
-
-    #[test]
-    fn hover_reports_source_struct_field_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"struct Player {
-    #[doc("Current level")]
-    level: i64,
-}
-pub fn main(player: Player) {
-    return player.level
-}"#;
-        let databases = databases_for(&document, text, RegistryFacts::default());
-        let use_line = text.lines().nth(5).expect("field use line should exist");
-
-        let use_hover = databases
-            .hover(
-                &document,
-                Position::new(5, use_line.find("level").expect("field use should exist")),
-            )
-            .expect("hover should resolve field use");
-        assert_eq!(use_hover.kind(), HoverKind::Field);
-        assert_eq!(use_hover.label(), "game::main::Player.level");
-        assert_eq!(use_hover.detail(), "i64");
-        assert_eq!(use_hover.docs(), Some("Current level"));
-
-        let declaration_hover = databases
-            .hover(&document, Position::new(2, 4))
-            .expect("hover should resolve field declaration");
-        assert_eq!(declaration_hover.kind(), HoverKind::Field);
-        assert_eq!(declaration_hover.label(), "game::main::Player.level");
-        assert_eq!(declaration_hover.detail(), "i64");
-        assert_eq!(declaration_hover.docs(), Some("Current level"));
-    }
-
-    #[test]
-    fn hover_reports_source_enum_variant_fact() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = r#"enum QuestState {
-    #[doc("Active quest")]
-    Active(quest_id: String, count: i64),
-    Done,
-}
-pub fn main() {
-    return QuestState::Active("quest-1", 3)
-}"#;
-        let databases = databases_for(&document, text, RegistryFacts::default());
-        let constructor_line = text.lines().nth(6).expect("constructor line should exist");
-
-        let use_hover = databases
-            .hover(
-                &document,
-                Position::new(
-                    6,
-                    constructor_line
-                        .find("Active")
-                        .expect("variant constructor should exist"),
-                ),
-            )
-            .expect("hover should resolve variant constructor use");
-        assert_eq!(use_hover.kind(), HoverKind::Variant);
-        assert_eq!(use_hover.label(), "game::main::QuestState::Active");
-        assert_eq!(
-            use_hover.detail(),
-            "game::main::QuestState::Active(quest_id, count)"
-        );
-
-        let declaration_hover = databases
-            .hover(&document, Position::new(2, 4))
-            .expect("hover should resolve variant declaration");
-        assert_eq!(declaration_hover.kind(), HoverKind::Variant);
-        assert_eq!(declaration_hover.label(), "game::main::QuestState::Active");
-        assert_eq!(declaration_hover.docs(), Some("Active quest"));
-    }
-
-    fn databases_for(
-        document: &DocumentId,
-        text: &str,
-        schema: RegistryFacts,
-    ) -> LanguageServiceDatabases {
-        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        databases.set_schema_facts(schema);
-        databases.update(&project);
-        databases
-    }
-}
+mod tests;

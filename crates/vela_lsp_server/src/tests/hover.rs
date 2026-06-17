@@ -208,6 +208,63 @@ pub fn main(player: Player) {
 }
 
 #[test]
+fn lsp_hover_reports_source_method_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"struct Player {
+    level: i64,
+}
+impl Player {
+    fn grant(amount: i64) -> bool {
+        return amount > 0
+    }
+}
+pub fn main(player: Player) {
+    return player.grant(3)
+}"#;
+    let method_line = text.lines().nth(9).expect("method use line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/game/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 9,
+                "character": method_line.find("grant").unwrap_or_else(|| {
+                    panic!("hover fixture should contain method use")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::Player.grant"), "{value}");
+    assert!(value.contains("_method_: (amount: i64) -> bool"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_enum_variant_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
