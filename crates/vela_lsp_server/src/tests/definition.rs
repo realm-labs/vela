@@ -20,6 +20,11 @@ fn lsp_definition_follows_schema_source_span() {
 }
 
 #[test]
+fn lsp_declaration_follows_schema_source_span() {
+    assert_schema_source_navigation("textDocument/declaration");
+}
+
+#[test]
 fn lsp_type_definition_follows_schema_source_span() {
     assert_schema_source_navigation("textDocument/typeDefinition");
 }
@@ -143,6 +148,44 @@ fn lsp_definition_follows_schema_field_source_span() {
 #[test]
 fn lsp_definition_follows_schema_method_source_span() {
     assert_schema_member_source_navigation(
+        "textDocument/definition",
+        "pub fn grant_marker() { return 1 }",
+        "grant_marker",
+        "pub fn main(player: Player) { return player.grant(1) }",
+        "grant",
+        |target_start, target_end| {
+            serde_json::json!({
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            })
+        },
+    );
+}
+
+#[test]
+fn lsp_declaration_follows_schema_method_source_span() {
+    assert_schema_member_source_navigation(
+        "textDocument/declaration",
         "pub fn grant_marker() { return 1 }",
         "grant_marker",
         "pub fn main(player: Player) { return player.grant(1) }",
@@ -179,6 +222,7 @@ fn lsp_definition_follows_schema_method_source_span() {
 #[test]
 fn lsp_definition_follows_schema_trait_method_source_span() {
     assert_schema_member_source_navigation(
+        "textDocument/definition",
         "pub fn preview_marker() { return 1 }",
         "preview_marker",
         "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
@@ -333,6 +377,7 @@ fn lsp_definition_follows_schema_variant_source_span() {
 }
 
 fn assert_schema_member_source_navigation<F>(
+    request_method: &str,
     schema_text: &str,
     schema_marker: &str,
     main_text: &str,
@@ -414,7 +459,7 @@ fn assert_schema_member_source_navigation<F>(
 
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/definition",
+        request_method,
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": {

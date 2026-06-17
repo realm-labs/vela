@@ -224,6 +224,10 @@ M20.5 Phase 8 update: native LSP definition fixtures now cover schema-backed
 host method and trait-method source spans in addition to schema types, fields,
 and variants.
 
+M20.5 Phase 8 update: native LSP declaration fixtures now cover schema-backed
+type and host-method source spans, proving clients that separate declaration
+from definition get the same schema-origin navigation.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed
