@@ -50,11 +50,17 @@ impl SignatureInformation {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureParameter {
+    name: String,
     label: String,
     type_fact: TypeFact,
 }
 
 impl SignatureParameter {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     #[must_use]
     pub fn label(&self) -> &str {
         &self.label
@@ -216,6 +222,7 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         .map(|param| {
             let type_fact = param.type_fact().clone();
             SignatureParameter {
+                name: param.name().to_owned(),
                 label: format!("{}: {}", param.name(), type_fact.display_name()),
                 type_fact,
             }
@@ -278,6 +285,7 @@ mod tests {
             help.signatures()[0].label(),
             "grant(player: Player, amount: i64) -> bool"
         );
+        assert_eq!(help.signatures()[0].parameters()[1].name(), "amount");
         assert_eq!(help.signatures()[0].parameters()[1].label(), "amount: i64");
     }
 

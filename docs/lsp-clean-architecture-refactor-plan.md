@@ -568,8 +568,11 @@ Purpose: keep editor mutations structured, local, and source-owned.
   successful HIR or analysis.
 - [ ] Add AST-aware range and on-type formatting only after token/trivia rules
   are stable.
-- [ ] Generate inlay hints from stable type and signature facts, not ad hoc
+- [~] Generate inlay hints from stable type and signature facts, not ad hoc
   string parsing.
+  Parameter inlay hints now use semantic `SignatureParameter` names carried by
+  signature facts instead of parsing formatted signature labels; broader inlay
+  and display-part unification remains open.
 
 Tests:
 

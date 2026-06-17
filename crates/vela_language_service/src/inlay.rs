@@ -731,7 +731,7 @@ fn parameter_hint_label(parameter: &crate::SignatureParameter) -> Option<String>
     if !is_stable_type_fact(parameter.type_fact()) {
         return None;
     }
-    let name = parameter.label().split(':').next()?.trim();
+    let name = parameter.name();
     (!name.is_empty()).then(|| format!("{name}:"))
 }
 
