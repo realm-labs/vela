@@ -8,7 +8,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
-use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
+use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{HirTypeHint, StructFieldHint};
 use vela_syntax::ast::{
@@ -79,6 +79,7 @@ pub struct CompletionItem {
     kind: CompletionKind,
     detail: String,
     insert_text: Option<String>,
+    sort_text: Option<String>,
 }
 
 impl CompletionItem {
@@ -100,6 +101,11 @@ impl CompletionItem {
     #[must_use]
     pub fn insert_text(&self) -> Option<&str> {
         self.insert_text.as_deref()
+    }
+
+    #[must_use]
+    pub fn sort_text(&self) -> Option<&str> {
+        self.sort_text.as_deref()
     }
 }
 
@@ -194,7 +200,7 @@ impl LanguageServiceDatabases {
             }
         }
         let items = match context.kind {
-            CompletionContextKind::Global => self.global_completion_items(&context),
+            CompletionContextKind::Global => self.global_completion_items(document_id, &context),
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(document_id, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
@@ -208,13 +214,39 @@ impl LanguageServiceDatabases {
         CompletionList { context, items }
     }
 
-    fn global_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+    fn global_completion_items(
+        &self,
+        document_id: &DocumentId,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let current_module = self
+            .source_db()
+            .records()
+            .get(document_id)
+            .map(|source| source.module_path().join())
+            .unwrap_or_default();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let mut items = global_completions(self.schema_db().facts());
-        items.extend(declaration_completions(graph, &facts));
-        items.extend(module_completions(graph));
-        dedupe_and_filter_items(items, |item| {
+        let mut items = self.local_completion_items(document_id, context);
+        items.extend(dedupe_and_filter_items(
+            global_completions(self.schema_db().facts()),
+            context.prefix(),
+            |item| label_segment_matches(&item.label, context.prefix()),
+        ));
+        items.extend(dedupe_and_filter_items(
+            relative_current_module_items(
+                declaration_completions(graph, &facts),
+                current_module.as_str(),
+            ),
+            context.prefix(),
+            |item| label_segment_matches(&item.label, context.prefix()),
+        ));
+        items.extend(dedupe_and_filter_items(
+            module_completions(graph),
+            context.prefix(),
+            |item| label_segment_matches(&item.label, context.prefix()),
+        ));
+        dedupe_and_filter_service_items(items, |item| {
             label_segment_matches(&item.label, context.prefix())
         })
     }
@@ -225,14 +257,92 @@ impl LanguageServiceDatabases {
         let Some(base) = context.module_base() else {
             return Vec::new();
         };
-        let mut items = declaration_completions(graph, &facts);
+        let mut items = global_completions(self.schema_db().facts());
+        items.extend(declaration_completions(graph, &facts));
         items.extend(module_completions(graph));
-        dedupe_and_filter_items(items, |item| {
-            item.label
+        let mut service_items = Vec::new();
+        for item in items {
+            let Some(suffix) = item
+                .label
                 .strip_prefix(base)
                 .and_then(|suffix| suffix.strip_prefix("::"))
-                .is_some_and(|suffix| suffix.starts_with(context.prefix()))
+            else {
+                continue;
+            };
+            if !suffix.starts_with(context.prefix()) {
+                continue;
+            }
+            let label = suffix
+                .split_once("::")
+                .map_or(suffix, |(segment, _)| segment)
+                .to_owned();
+            let kind = if suffix.contains("::") {
+                CompletionKind::Module
+            } else {
+                item.kind.into()
+            };
+            service_items.push(CompletionItem {
+                sort_text: Some(completion_sort_text(kind, &label, context.prefix())),
+                label,
+                kind,
+                detail: item.fact.display_name(),
+                insert_text: None,
+            });
+        }
+        dedupe_and_filter_service_items(service_items, |item| {
+            label_segment_matches(item.label(), context.prefix())
         })
+    }
+
+    fn local_completion_items(
+        &self,
+        document_id: &DocumentId,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
+        let Some(source) = self.source_db().records().get(document_id) else {
+            return Vec::new();
+        };
+        let source_id = source.source_id();
+        let Some(offset) = u32::try_from(context.replace_range().end).ok() else {
+            return Vec::new();
+        };
+        let graph = self.hir_db().graph();
+        let facts = AnalysisFacts::from_module_graph(graph);
+        let Some(bindings) = graph.declarations().find_map(|declaration| {
+            (declaration.span.source == source_id && declaration.span.contains(offset))
+                .then(|| graph.bindings(declaration.id))
+                .flatten()
+        }) else {
+            return Vec::new();
+        };
+        let mut items = bindings
+            .locals()
+            .filter(|local| local.span.end <= offset && local.name.starts_with(context.prefix()))
+            .map(|local| {
+                let kind = match local.kind {
+                    LocalBindingKind::Parameter => CompletionKind::Parameter,
+                    LocalBindingKind::Let
+                    | LocalBindingKind::For
+                    | LocalBindingKind::LambdaParameter
+                    | LocalBindingKind::Pattern => CompletionKind::Binding,
+                };
+                let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
+                CompletionItem {
+                    sort_text: Some(local_sort_text(kind, &local.name)),
+                    label: local.name.clone(),
+                    kind,
+                    detail: fact.display_name(),
+                    insert_text: None,
+                }
+            })
+            .collect::<Vec<_>>();
+        items.sort_by(|left, right| {
+            left.sort_text
+                .cmp(&right.sort_text)
+                .then_with(|| left.label.cmp(&right.label))
+                .then_with(|| left.kind.cmp(&right.kind))
+        });
+        items
     }
 
     fn member_completion_items(
@@ -248,6 +358,7 @@ impl LanguageServiceDatabases {
         };
         dedupe_and_filter_items(
             member_completions(self.schema_db().facts(), &receiver_fact),
+            context.prefix(),
             |item| label_segment_matches(&item.label, context.prefix()),
         )
     }
@@ -694,20 +805,46 @@ fn is_module_path_continue(ch: char) -> bool {
 
 fn dedupe_and_filter_items(
     items: Vec<AnalysisCompletionItem>,
+    prefix: &str,
     matches_context: impl Fn(&AnalysisCompletionItem) -> bool,
 ) -> Vec<CompletionItem> {
     let mut deduped = BTreeMap::new();
     for item in items.into_iter().filter(matches_context) {
+        let kind = item.kind.into();
         deduped
-            .entry((item.label.clone(), CompletionKind::from(item.kind)))
+            .entry((item.label.clone(), kind))
             .or_insert_with(|| CompletionItem {
+                sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
                 label: item.label,
-                kind: item.kind.into(),
+                kind,
                 detail: item.fact.display_name(),
                 insert_text: None,
             });
     }
-    deduped.into_values().collect()
+    sorted_completion_items(deduped.into_values().collect())
+}
+
+fn relative_current_module_items(
+    items: Vec<AnalysisCompletionItem>,
+    current_module: &str,
+) -> Vec<AnalysisCompletionItem> {
+    if current_module.is_empty() {
+        return items;
+    }
+    let prefix = format!("{current_module}::");
+    items
+        .into_iter()
+        .map(|mut item| {
+            if let Some(relative_label) = item
+                .label
+                .strip_prefix(&prefix)
+                .filter(|relative| !relative.contains("::"))
+            {
+                item.label = relative_label.to_owned();
+            }
+            item
+        })
+        .collect()
 }
 
 fn dedupe_and_filter_service_items(
@@ -720,7 +857,62 @@ fn dedupe_and_filter_service_items(
             .entry((item.label.clone(), item.kind))
             .or_insert(item);
     }
-    deduped.into_values().collect()
+    sorted_completion_items(deduped.into_values().collect())
+}
+
+fn sorted_completion_items(mut items: Vec<CompletionItem>) -> Vec<CompletionItem> {
+    items.sort_by(|left, right| {
+        left.sort_text
+            .cmp(&right.sort_text)
+            .then_with(|| left.label.cmp(&right.label))
+            .then_with(|| left.kind.cmp(&right.kind))
+    });
+    items
+}
+
+fn completion_sort_text(kind: CompletionKind, label: &str, prefix: &str) -> String {
+    format!(
+        "{:04}_{:02}_{}",
+        completion_kind_rank(kind),
+        completion_match_rank(label, prefix),
+        label
+    )
+}
+
+fn local_sort_text(kind: CompletionKind, label: &str) -> String {
+    let rank = match kind {
+        CompletionKind::Parameter => 0,
+        CompletionKind::Binding => 1,
+        _ => 2,
+    };
+    format!("{rank:04}_00_{label}")
+}
+
+fn completion_kind_rank(kind: CompletionKind) -> u16 {
+    match kind {
+        CompletionKind::Parameter => 0,
+        CompletionKind::Binding => 1,
+        CompletionKind::Const => 10,
+        CompletionKind::Module => 20,
+        CompletionKind::Type | CompletionKind::Trait => 30,
+        CompletionKind::Function | CompletionKind::Method => 40,
+        CompletionKind::Field => 50,
+        CompletionKind::Variant => 60,
+    }
+}
+
+fn completion_match_rank(label: &str, prefix: &str) -> u8 {
+    if prefix.is_empty() || label.starts_with(prefix) {
+        return 0;
+    }
+    if label
+        .rsplit("::")
+        .next()
+        .is_some_and(|segment| segment.starts_with(prefix))
+    {
+        return 1;
+    }
+    2
 }
 
 fn script_record_field_completions(
@@ -778,6 +970,7 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         kind: CompletionKind::Field,
         detail: fact.display_name(),
         insert_text: None,
+        sort_text: None,
     }
 }
 
@@ -795,6 +988,7 @@ fn schema_record_field_completions(
             kind: CompletionKind::Field,
             detail: field.fact.display_name(),
             insert_text: None,
+            sort_text: None,
         })
         .collect()
 }

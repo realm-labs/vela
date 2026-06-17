@@ -19,6 +19,15 @@ fn lsp_completion_item(item: &vela_language_service::CompletionItem) -> JsonValu
     });
     if let Some(insert_text) = item.insert_text() {
         value["insertText"] = json!(insert_text);
+    } else if matches!(
+        item.kind(),
+        CompletionKind::Function | CompletionKind::Method
+    ) {
+        value["insertText"] = json!(format!("{}($0)", item.label()));
+        value["insertTextFormat"] = json!(2);
+    }
+    if let Some(sort_text) = item.sort_text() {
+        value["sortText"] = json!(sort_text);
     }
     value
 }

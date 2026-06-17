@@ -88,6 +88,7 @@ fn builtin_type_hint_completions() -> Vec<CompletionItem> {
         kind: CompletionKind::Type,
         detail: fact.display_name(),
         insert_text: None,
+        sort_text: None,
     })
     .collect()
 }
@@ -98,6 +99,7 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
         kind: CompletionKind::from(item.kind),
         detail: item.fact.display_name(),
         insert_text: None,
+        sort_text: None,
     }
 }
 

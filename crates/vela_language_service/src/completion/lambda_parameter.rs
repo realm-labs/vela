@@ -63,6 +63,7 @@ pub(super) fn lambda_parameter_completion_items(
                 kind: CompletionKind::Parameter,
                 detail: param.display_name(),
                 insert_text: None,
+                sort_text: None,
             })
         })
         .collect()

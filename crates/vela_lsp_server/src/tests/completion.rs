@@ -37,12 +37,55 @@ fn lsp_completion_uses_open_overlay_declarations() {
         }),
     )));
 
-    assert_completion(
+    assert_completion(&response, "overlay_only", 3, "Function() -> unknown");
+}
+
+#[test]
+fn lsp_module_path_completion_snippets_stdlib_functions() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { math:: }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find(" }").expect("completion point")
+            }
+        }),
+    )));
+
+    assert_completion_snippet(
         &response,
-        "game::main::overlay_only",
+        "max",
         3,
-        "Function() -> unknown",
+        "Function(i64 | f64, i64 | f64) -> i64 | f64",
+        "max($0)",
     );
+    assert_no_completion(&response, "math::max");
 }
 
 #[test]
@@ -524,6 +567,29 @@ fn assert_completion_insert_text(
                 && item["kind"] == kind
                 && item["detail"] == detail
                 && item["insertText"] == insert_text
+        }),
+        "{items:?}"
+    );
+}
+
+fn assert_completion_snippet(
+    response: &serde_json::Value,
+    label: &str,
+    kind: u8,
+    detail: &str,
+    insert_text: &str,
+) {
+    assert_eq!(response["result"]["isIncomplete"], false);
+    let Some(items) = response["result"]["items"].as_array() else {
+        panic!("completion response should contain items");
+    };
+    assert!(
+        items.iter().any(|item| {
+            item["label"] == label
+                && item["kind"] == kind
+                && item["detail"] == detail
+                && item["insertText"] == insert_text
+                && item["insertTextFormat"] == 2
         }),
         "{items:?}"
     );

@@ -27,11 +27,7 @@ fn completion_uses_open_overlay_facts() {
 
     let completions = databases.completion_items(&document, Position::new(0, 7));
 
-    assert_completion(
-        &completions,
-        "game::main::overlay_only",
-        CompletionKind::Function,
-    );
+    assert_completion(&completions, "overlay_only", CompletionKind::Function);
     assert_no_completion(&completions, "game::main::disk_only");
 }
 
@@ -221,8 +217,80 @@ fn module_completion_follows_import_context() {
         CompletionContextKind::ModulePath
     );
     assert_eq!(completions.context().module_base(), Some("game"));
-    assert_completion(&completions, "game::reward", CompletionKind::Module);
-    assert_no_completion(&completions, "game::main");
+    assert_completion(&completions, "reward", CompletionKind::Module);
+    assert_no_completion(&completions, "main");
+}
+
+#[test]
+fn module_path_completion_uses_stdlib_function_segments() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { math:: }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find(" }").expect("completion point")),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::ModulePath
+    );
+    assert_eq!(completions.context().module_base(), Some("math"));
+    assert_completion(&completions, "max", CompletionKind::Function);
+    assert_completion(&completions, "sqrt", CompletionKind::Function);
+    assert_no_completion(&completions, "math::max");
+}
+
+#[test]
+fn global_completion_prefers_current_module_declarations_and_locals() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub struct Player { level: i64 }\npub fn main(amount: i64) { let ammo = 1; am }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let main_line = text.lines().nth(1).expect("main line");
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            1,
+            main_line.find("am }").expect("local prefix") + "am".len(),
+        ),
+    );
+
+    assert_completion(&completions, "amount", CompletionKind::Parameter);
+    assert_completion(&completions, "ammo", CompletionKind::Binding);
+    assert_eq!(completions.items()[0].label(), "amount");
+}
+
+#[test]
+fn global_completion_uses_unqualified_current_module_structs() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub struct Player { level: i64 }\npub fn main() { Pla }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let main_line = text.lines().nth(1).expect("main line");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            1,
+            main_line.find("Pla").expect("struct prefix") + "Pla".len(),
+        ),
+    );
+
+    assert_completion(&completions, "Player", CompletionKind::Type);
+    assert_no_completion(&completions, "game::main::Player");
 }
 
 #[test]

@@ -241,6 +241,7 @@ fn script_enum_variant_key_completions(
             kind: CompletionKind::Variant,
             detail: key_hint.display(),
             insert_text: None,
+            sort_text: None,
         })
         .collect()
 }
@@ -272,6 +273,7 @@ fn schema_enum_variant_key_completions(
             kind: CompletionKind::Variant,
             detail: key_hint.display(),
             insert_text: None,
+            sort_text: None,
         })
         .collect()
 }
