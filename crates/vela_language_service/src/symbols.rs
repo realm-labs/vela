@@ -99,6 +99,7 @@ pub enum WorkspaceSymbolLocation {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DocumentSymbolKind {
+    Class,
     Constant,
     Enum,
     EnumMember,
@@ -263,6 +264,7 @@ impl WorkspaceSymbol {
     fn kind_name(&self) -> &'static str {
         match self.kind {
             DocumentSymbolKind::Constant => "constant",
+            DocumentSymbolKind::Class => "class",
             DocumentSymbolKind::Enum => "enum",
             DocumentSymbolKind::EnumMember => "enum_member",
             DocumentSymbolKind::Field => "field",
@@ -541,7 +543,7 @@ fn schema_symbol(
 
 fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
     match fact {
-        TypeFact::Host { .. } => DocumentSymbolKind::Object,
+        TypeFact::Host { .. } => DocumentSymbolKind::Class,
         TypeFact::Record { .. } => DocumentSymbolKind::Struct,
         TypeFact::Enum { variant: None, .. } => DocumentSymbolKind::Enum,
         TypeFact::Enum {
@@ -744,7 +746,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
 
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "Player"
-                && symbol.kind() == DocumentSymbolKind::Object
+                && symbol.kind() == DocumentSymbolKind::Class
                 && matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
             "{symbols:?}"
         );

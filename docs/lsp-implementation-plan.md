@@ -541,7 +541,7 @@ Purpose: support navigation and outline features.
 - [~] Add file/module/class/function/method/field/enum/variant symbol kinds.
   - [x] Add script const/global/function/struct/enum/trait/impl/member kinds.
   - [x] Add workspace module symbol kinds and source locations.
-  - [x] Add distinct schema host object, record struct, enum, trait,
+  - [x] Add distinct schema host class, record struct, enum, trait,
     function, field, method, and variant symbol kinds.
 - [x] Add folding ranges for imports, type declarations, impls, functions,
   blocks, match arms, and multiline literals.

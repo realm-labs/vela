@@ -167,7 +167,7 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     assert!(
         symbols.iter().any(|symbol| {
             symbol["name"] == "Player"
-                && symbol["kind"] == 19
+                && symbol["kind"] == 5
                 && symbol["location"]["uri"] == "vela-schema:"
         }),
         "{symbols:?}"

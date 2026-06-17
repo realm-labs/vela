@@ -29,6 +29,7 @@ fn lsp_document_symbol(symbol: &DocumentSymbol) -> JsonValue {
 
 fn lsp_symbol_kind(kind: DocumentSymbolKind) -> u8 {
     match kind {
+        DocumentSymbolKind::Class => 5,
         DocumentSymbolKind::Module => 2,
         DocumentSymbolKind::Method => 6,
         DocumentSymbolKind::Field => 8,
