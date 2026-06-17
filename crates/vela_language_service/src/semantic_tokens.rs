@@ -12,7 +12,7 @@ use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
+use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange, path_calls};
 
 mod import_paths;
 mod member_uses;
@@ -258,6 +258,12 @@ struct SemanticTokenClassification {
     modifiers: SemanticTokenModifiers,
 }
 
+struct SemanticClassificationContext<'a> {
+    facts: &'a AnalysisFacts,
+    member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
+}
+
 impl SemanticTokenClassification {
     const fn new(token_type: SemanticTokenType, modifiers: SemanticTokenModifiers) -> Self {
         Self {
@@ -280,11 +286,17 @@ impl LanguageServiceDatabases {
             .parsed_source(document_id)
             .map(crate::member_access::member_receiver_ranges)
             .unwrap_or_default();
+        let path_calls = self
+            .parse_db()
+            .parsed_source(document_id)
+            .map(|parsed| path_call_map(parsed, source.text()))
+            .unwrap_or_default();
         let classifications = self.semantic_token_classifications(
             source.source_id(),
             source.text(),
             &lexed.tokens,
             &member_receivers,
+            &path_calls,
         );
         let mut semantic_tokens = Vec::new();
 
@@ -359,10 +371,16 @@ impl LanguageServiceDatabases {
         text: &str,
         tokens: &[Token],
         member_receivers: &BTreeMap<(usize, usize), TextRange>,
+        path_calls: &BTreeMap<(usize, usize), Vec<String>>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
+        let context = SemanticClassificationContext {
+            facts: &facts,
+            member_receivers,
+            path_calls,
+        };
         for token in tokens {
             let TokenKind::Ident(name) = &token.kind else {
                 continue;
@@ -370,14 +388,9 @@ impl LanguageServiceDatabases {
             let Some(range) = token_range(token.span) else {
                 continue;
             };
-            if let Some(classification) = self.semantic_classification_for_identifier(
-                source_id,
-                text,
-                name,
-                range,
-                &facts,
-                member_receivers,
-            ) {
+            if let Some(classification) =
+                self.semantic_classification_for_identifier(source_id, text, name, range, &context)
+            {
                 classifications.insert((range.start, range.end), classification);
             }
         }
@@ -390,8 +403,7 @@ impl LanguageServiceDatabases {
         text: &str,
         name: &str,
         range: TextRange,
-        facts: &AnalysisFacts,
-        member_receivers: &BTreeMap<(usize, usize), TextRange>,
+        context: &SemanticClassificationContext<'_>,
     ) -> Option<SemanticTokenClassification> {
         let span = span_for_range(source_id, range)?;
         let graph = self.hir_db().graph();
@@ -419,10 +431,10 @@ impl LanguageServiceDatabases {
                 let member_context = member_uses::MemberUseContext {
                     graph,
                     bindings,
-                    facts,
+                    facts: context.facts,
                     schema,
                     text,
-                    member_receivers,
+                    member_receivers: context.member_receivers,
                 };
                 if let Some(classification) = member_uses::classify(&member_context, name, range) {
                     return Some(classification);
@@ -437,7 +449,9 @@ impl LanguageServiceDatabases {
                 {
                     return Some(classification);
                 }
-                if let Some(classification) = function_call_classification(schema, text, range) {
+                if let Some(classification) =
+                    function_call_classification(schema, context.path_calls, range)
+                {
                     return Some(classification);
                 }
                 if let Some(classification) = unresolved_identifier_classification(bindings, span) {
@@ -484,6 +498,21 @@ fn semantic_token_count_from_result_id(result_id: &str) -> usize {
         (Some("v1"), Some(count), Some(_hash), None) => count.parse().unwrap_or(0),
         _ => 0,
     }
+}
+
+fn path_call_map(
+    parsed: &vela_syntax::ast::SourceFile,
+    text: &str,
+) -> BTreeMap<(usize, usize), Vec<String>> {
+    path_calls::path_call_sites(parsed, text)
+        .into_iter()
+        .map(|site| {
+            (
+                (site.segment_range.start, site.segment_range.end),
+                site.path,
+            )
+        })
+        .collect()
 }
 
 fn next_non_whitespace(text: &str, offset: usize) -> Option<char> {
@@ -536,10 +565,10 @@ fn unresolved_identifier_classification(
 
 fn function_call_classification(
     schema: &RegistryFacts,
-    text: &str,
+    path_calls: &BTreeMap<(usize, usize), Vec<String>>,
     range: TextRange,
 ) -> Option<SemanticTokenClassification> {
-    let path = call_path_ending_at(text, range)?;
+    let path = path_calls.get(&(range.start, range.end))?;
     let qualified = path.join("::");
     if schema.function_fact(&qualified).is_some() {
         return Some(SemanticTokenClassification::new(
@@ -556,35 +585,6 @@ fn function_call_classification(
                 SemanticTokenModifiers::BUILTIN,
             )
         })
-}
-
-fn call_path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
-    (next_non_whitespace(text, range.end) == Some('(')).then_some(())?;
-    let mut path = vec![token_text(text, range)?.to_owned()];
-    let mut prefix = text.get(..range.start)?.trim_end();
-
-    while let Some(before_separator) = prefix.strip_suffix("::") {
-        let end = before_separator.trim_end().len();
-        let start = identifier_start_before(before_separator, end)?;
-        path.push(before_separator.get(start..end)?.to_owned());
-        prefix = before_separator.get(..start)?.trim_end();
-    }
-
-    path.reverse();
-    Some(path)
-}
-
-fn identifier_start_before(text: &str, end: usize) -> Option<usize> {
-    if end == 0 {
-        return None;
-    }
-    let prefix = text.get(..end)?;
-    let start = prefix
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then_some(start)
 }
 
 fn local_declaration_token_classification(binding: &LocalBinding) -> SemanticTokenClassification {

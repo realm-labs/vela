@@ -348,7 +348,9 @@ Purpose: classify the cursor once and reuse it across features.
   source-slice scanner while leaving the broader feature-local cursor scanner
   audit open. Semantic token member-use classification now consumes a parsed
   field-expression receiver range map instead of recovering member receivers
-  with a backwards text scanner for each identifier token. Call hierarchy
+  with a backwards text scanner for each identifier token. Semantic token
+  function-call classification now consumes shared parsed path-call sites
+  instead of reconstructing call paths from token text. Call hierarchy
   preparation now resolves method-call targets from `QueryContext` member
   receiver ranges and shared receiver type facts instead of recovering the
   selected call receiver locally. Call hierarchy incoming/outgoing method-call
