@@ -34,11 +34,11 @@ pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
     .filter(|(label, _, _)| label.starts_with(prefix))
     .map(|(label, detail, insert_text)| CompletionItem {
         label: label.to_owned(),
-        kind: CompletionKind::Keyword,
+        kind: CompletionKind::Snippet,
         detail: detail.to_owned(),
         insert_text: Some(insert_text.to_owned()),
         insert_format: CompletionInsertFormat::Snippet,
-        sort_text: Some(completion_sort_text(CompletionKind::Keyword, label, "")),
+        sort_text: Some(completion_sort_text(CompletionKind::Snippet, label, "")),
         metadata: Default::default(),
     })
     .collect()

@@ -61,7 +61,7 @@ fn expression_completion_uses_schema_facts() {
 }
 
 #[test]
-fn item_boundary_completion_ranks_fn_keyword_before_callables() {
+fn item_boundary_completion_ranks_fn_snippet_before_callables() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "f";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -79,7 +79,7 @@ fn item_boundary_completion_ranks_fn_keyword_before_callables() {
     let completions = databases.completion_items(&document, Position::new(0, text.len()));
 
     assert_eq!(completions.context().kind(), CompletionContextKind::Item);
-    assert_completion(&completions, "fn", CompletionKind::Keyword);
+    assert_completion(&completions, "fn", CompletionKind::Snippet);
     assert_no_completion(&completions, "fetch_player");
     let function = completion(&completions, "fn");
     assert_eq!(function.insert_format(), CompletionInsertFormat::Snippet);
@@ -91,7 +91,7 @@ fn item_boundary_completion_ranks_fn_keyword_before_callables() {
 }
 
 #[test]
-fn item_boundary_completion_ranks_struct_keyword_before_globals() {
+fn item_boundary_completion_ranks_struct_snippet_before_globals() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "st";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -106,7 +106,7 @@ fn item_boundary_completion_ranks_struct_keyword_before_globals() {
     let completions = databases.completion_items(&document, Position::new(0, text.len()));
 
     assert_eq!(completions.context().kind(), CompletionContextKind::Item);
-    assert_completion(&completions, "struct", CompletionKind::Keyword);
+    assert_completion(&completions, "struct", CompletionKind::Snippet);
     assert_no_completion(&completions, "stabilize");
     let structure = completion(&completions, "struct");
     assert_eq!(structure.insert_format(), CompletionInsertFormat::Snippet);

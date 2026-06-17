@@ -373,11 +373,12 @@ Purpose: replace coarse global completion with context-specific producers.
   candidate set. The obsolete `CompletionContextKind::Global` variant is
   removed, and fallback completion uses expression recovery instead. Pattern
   and statement completions have native LSP projection fixtures.
-- [~] Add keyword and snippet completions as first-class completion kinds.
+- [x] Add keyword and snippet completions as first-class completion kinds.
   Keyword items are first-class service `CompletionKind::Keyword`, and
   callable snippets now carry explicit editor-neutral insert-format metadata
-  through service items. Item-boundary declaration snippets now carry explicit
-  snippet intent. Broader standalone snippet item kinds remain open.
+  through service items. Item-boundary declaration snippets now use first-class
+  service `CompletionKind::Snippet` with snippet insert-format metadata and
+  LSP snippet-kind projection.
 - [~] Add item-boundary producers for `fn`, `struct`, `enum`, `trait`, `impl`,
   `let`, `const`, imports, modules, and source declarations that are legal in
   that context.
@@ -439,6 +440,9 @@ high-quality metadata.
 
 - [~] Convert service completion items to LSP completion items using source
   ranges and text edits supplied by the service item.
+  Service snippet completion kinds now project to LSP `CompletionItemKind`
+  `Snippet`, while insert text format still comes from service-owned snippet
+  intent.
 - [x] Set `filterText` from lookup identity when label text and inserted text
   differ.
 - [x] Set `labelDetails` for signatures, modules, receiver types, and return

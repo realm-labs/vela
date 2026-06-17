@@ -53,6 +53,7 @@ fn completion_kind_rank(kind: CompletionKind) -> u16 {
     match kind {
         CompletionKind::Parameter => 0,
         CompletionKind::Keyword => 0,
+        CompletionKind::Snippet => 0,
         CompletionKind::Binding => 1,
         CompletionKind::Const => 10,
         CompletionKind::Module => 20,
@@ -84,7 +85,7 @@ mod tests {
     #[test]
     fn relevance_prefers_keywords_and_parameters_before_callables() {
         assert!(
-            completion_relevance(CompletionKind::Keyword, "fn", "f")
+            completion_relevance(CompletionKind::Snippet, "fn", "f")
                 < completion_relevance(CompletionKind::Function, "format", "f")
         );
         assert!(

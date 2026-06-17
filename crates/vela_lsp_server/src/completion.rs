@@ -114,6 +114,7 @@ fn lsp_range(range: TextRange, line_index: &LineIndex) -> JsonValue {
 fn lsp_completion_kind(kind: CompletionKind) -> u8 {
     match kind {
         CompletionKind::Keyword => 14,
+        CompletionKind::Snippet => 15,
         CompletionKind::Binding => 6,
         CompletionKind::Const => 21,
         CompletionKind::Field => 5,

@@ -213,7 +213,7 @@ fn lsp_completion_uses_loaded_schema_facts() {
 }
 
 #[test]
-fn lsp_item_boundary_completion_projects_keyword_items() {
+fn lsp_item_boundary_completion_projects_snippet_items() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
         1,
@@ -250,7 +250,7 @@ fn lsp_item_boundary_completion_projects_keyword_items() {
     assert_completion_snippet(
         &response,
         "fn",
-        14,
+        15,
         "function declaration",
         "fn ${1:name}(${2:params}) {\n    $0\n}",
     );

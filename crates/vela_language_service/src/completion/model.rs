@@ -8,6 +8,7 @@ use super::{lambda_parameter::LambdaParameterContext, map_key::MapKeyContext};
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CompletionKind {
     Keyword,
+    Snippet,
     Binding,
     Const,
     Field,
