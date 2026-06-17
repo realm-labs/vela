@@ -318,8 +318,8 @@ Purpose: classify the cursor once and reuse it across features.
   consumes the shared call-argument callee range and active call opening
   offset instead of reconstructing active calls locally, and lambda body
   expressions remain call-argument contexts instead of being reclassified as
-  lambda parameters. Definition now consumes the shared member receiver range
-  from `QueryContext` for schema member definition lookup instead of
+  lambda parameters. Definition and hover now consume the shared member
+  receiver range from `QueryContext` for schema/member lookup instead of
   re-scanning member receivers locally. Broader callable semantic facts remain
   feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
