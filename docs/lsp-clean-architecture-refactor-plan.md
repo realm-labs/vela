@@ -281,7 +281,7 @@ Purpose: classify the cursor once and reuse it across features.
   pattern, use/import, module path, member access, record expression field,
   record type field, call argument, lambda parameter, map key, rename target,
   and unknown/error recovery.
-- [~] Make cursor classification syntax-owned. Prefer parser/token structure
+- [x] Make cursor classification syntax-owned. Prefer parser/token structure
   and source spans over ad hoc substring checks.
   Record expression fields, record type fields, map keys, for/match pattern
   contexts, complete member-access receivers, call-argument callee contexts,
@@ -290,7 +290,7 @@ Purpose: classify the cursor once and reuse it across features.
   parser recovery for empty field nodes when available and a syntax-token
   recovery helper for trailing-dot receivers, including call/index/dot-chain
   receivers, instead of the old top-level substring fallback.
-- [~] Include expected syntactic role, local scope, module scope, receiver
+- [x] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
   `QueryContext` now exposes request source id and module path facts directly;
