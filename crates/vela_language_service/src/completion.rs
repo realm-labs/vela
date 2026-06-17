@@ -379,9 +379,10 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         };
     }
 
-    if let Some(mut record_constructor) = query
-        .parsed_source()
-        .and_then(|source| record_constructor_at(source, offset))
+    if cursor.kind() == CursorContextKind::RecordExpressionField
+        && let Some(mut record_constructor) = query
+            .parsed_source()
+            .and_then(|source| record_constructor_at(source, offset))
     {
         record_constructor.current_module = query
             .module_path()
@@ -400,9 +401,10 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         };
     }
 
-    if let Some(mut map_key) = query
-        .parsed_source()
-        .and_then(|source| map_key_at(source, offset))
+    if cursor.kind() == CursorContextKind::MapKey
+        && let Some(mut map_key) = query
+            .parsed_source()
+            .and_then(|source| map_key_at(source, offset))
     {
         map_key.current_module = query
             .module_path()

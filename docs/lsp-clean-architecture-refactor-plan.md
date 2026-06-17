@@ -308,8 +308,10 @@ Purpose: classify the cursor once and reuse it across features.
   shared receiver and method facts, so lambda-parameter completion no longer
   reconstructs member callees locally. Completion no longer has a global
   fallback that reclassifies named arguments outside
-  `CursorContextKind::CallArgument`. Broader callable semantic facts remain
-  feature-owned follow-up work.
+  `CursorContextKind::CallArgument`. Record-field and map-key completion now
+  only run their producer-specific fact extraction after shared cursor
+  classification selects the matching kind. Broader callable semantic facts
+  remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
