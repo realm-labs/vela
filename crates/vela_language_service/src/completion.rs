@@ -25,6 +25,9 @@ mod named_argument;
 mod pattern;
 mod record_field;
 mod relevance;
+mod schema_global;
+mod source_declaration;
+mod source_module;
 mod statement;
 mod type_hint;
 
@@ -38,7 +41,7 @@ pub use relevance::CompletionRelevance;
 use context::completion_context;
 use expression::{
     expression_completion_items as expression_context_completion_items,
-    global_completion_items as global_context_completion_items,
+    statement_expression_completion_items as statement_expression_context_completion_items,
 };
 use item::item_keyword_completions;
 use lambda_parameter::lambda_parameter_completion_items;
@@ -107,7 +110,7 @@ impl LanguageServiceDatabases {
         context: &CompletionContext,
     ) -> Vec<CompletionItem> {
         let mut items = statement_keyword_completions(context.prefix());
-        items.extend(global_context_completion_items(
+        items.extend(statement_expression_context_completion_items(
             self.hir_db().graph(),
             self.schema_db().facts(),
             query,
