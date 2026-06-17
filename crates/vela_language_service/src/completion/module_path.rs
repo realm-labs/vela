@@ -98,18 +98,24 @@ fn script_enum_variant_path_completions(
         .filter_map(|declaration| {
             let owner = declaration_owner_label(graph, declaration)?;
             let shape = graph.enum_shape(declaration.id)?;
-            Some(shape.variants.iter().map(move |variant| CompletionItem {
-                label: variant.name.clone(),
-                kind: CompletionKind::Variant,
-                detail: display_type_detail(&owner),
-                insert_text: None,
-                insert_format: CompletionInsertFormat::PlainText,
-                metadata: Default::default(),
-                sort_text: Some(completion_sort_text(
-                    CompletionKind::Variant,
-                    &variant.name,
-                    prefix,
-                )),
+            Some(shape.variants.iter().map(move |variant| {
+                CompletionItem {
+                    label: variant.name.clone(),
+                    kind: CompletionKind::Variant,
+                    detail: display_type_detail(&owner),
+                    insert_text: None,
+                    insert_format: CompletionInsertFormat::PlainText,
+                    metadata: Default::default(),
+                    sort_text: Some(completion_sort_text(
+                        CompletionKind::Variant,
+                        &variant.name,
+                        prefix,
+                    )),
+                }
+                .with_symbol(CompletionSymbol::Source(format!(
+                    "{owner}::{}",
+                    variant.name
+                )))
             }))
         })
         .flatten()

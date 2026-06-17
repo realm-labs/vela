@@ -175,6 +175,14 @@ fn lsp_module_path_completion_projects_source_enum_variants() {
 
     assert_completion(&response, "Completed", 20, "game::main::QuestState");
     assert_no_completion(&response, "Started");
+    let completed = completion_item(&response, "Completed");
+    assert_eq!(
+        completed["data"]["resolve"],
+        serde_json::json!({
+            "kind": "documentation",
+            "symbol": { "kind": "source", "name": "game::main::QuestState::Completed" }
+        })
+    );
 }
 
 #[test]
@@ -1029,6 +1037,14 @@ pub fn main(state: QuestState) {
 
     assert_completion(&response, "Completed", 20, "QuestState");
     assert_no_completion(&response, "helper");
+    let completed = completion_item(&response, "Completed");
+    assert_eq!(
+        completed["data"]["resolve"],
+        serde_json::json!({
+            "kind": "documentation",
+            "symbol": { "kind": "source", "name": "game::main::QuestState::Completed" }
+        })
+    );
 }
 
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {

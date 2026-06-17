@@ -597,7 +597,12 @@ and semantic tokens use the same identities and display primitives.
   carry schema documentation plus `SymbolRef::Schema` identity through LSP
   projection. Remaining schema-owned surfaces should be audited before this is
   considered complete.
-- [ ] Preserve source-span accuracy for script-owned symbols.
+- [~] Preserve source-span accuracy for script-owned symbols.
+  Source enum variant completions in module-path, map-key, and pattern
+  contexts now carry `SymbolRef::Source` identities through service and LSP
+  projection without changing their display labels. The remaining work is to
+  connect those source identities to explicit declaration/member spans across
+  references, rename, symbols, and other source-owned feature surfaces.
 
 Tests:
 

@@ -486,6 +486,13 @@ fn module_path_completion_suggests_source_enum_variants() {
     assert_eq!(completions.context().module_base(), Some("QuestState"));
     assert_completion(&completions, "Completed", CompletionKind::Variant);
     assert_no_completion(&completions, "Started");
+    let completed = completion(&completions, "Completed");
+    assert_eq!(
+        completed.symbol(),
+        Some(&CompletionSymbol::Source(
+            "game::main::QuestState::Completed".to_owned()
+        ))
+    );
 }
 
 #[test]
@@ -697,6 +704,13 @@ pub fn main() {
     assert_completion(&completions, "Completed", CompletionKind::Variant);
     assert_no_completion(&completions, "Started");
     assert_no_completion(&completions, "Failed");
+    let completed = completion(&completions, "Completed");
+    assert_eq!(
+        completed.symbol(),
+        Some(&CompletionSymbol::Source(
+            "game::main::QuestState::Completed".to_owned()
+        ))
+    );
 }
 
 #[test]
@@ -762,6 +776,13 @@ pub fn main(state: QuestState) {
     assert_eq!(completions.context().kind(), CompletionContextKind::Pattern);
     assert_completion(&completions, "Completed", CompletionKind::Variant);
     assert_no_completion(&completions, "helper");
+    let completed = completion(&completions, "Completed");
+    assert_eq!(
+        completed.symbol(),
+        Some(&CompletionSymbol::Source(
+            "game::main::QuestState::Completed".to_owned()
+        ))
+    );
 }
 
 #[test]

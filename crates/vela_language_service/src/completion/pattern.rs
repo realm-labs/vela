@@ -33,14 +33,21 @@ fn script_pattern_variant_completions(
         .filter_map(|declaration| {
             let shape = graph.enum_shape(declaration.id)?;
             let detail = enum_pattern_detail(graph, declaration, current_module);
-            Some(shape.variants.iter().map(move |variant| CompletionItem {
-                label: variant.name.clone(),
-                kind: CompletionKind::Variant,
-                detail: detail.clone(),
-                insert_text: None,
-                insert_format: CompletionInsertFormat::PlainText,
-                sort_text: None,
-                metadata: Default::default(),
+            let symbol_owner = enum_symbol_owner(graph, declaration)?;
+            Some(shape.variants.iter().map(move |variant| {
+                CompletionItem {
+                    label: variant.name.clone(),
+                    kind: CompletionKind::Variant,
+                    detail: detail.clone(),
+                    insert_text: None,
+                    insert_format: CompletionInsertFormat::PlainText,
+                    sort_text: None,
+                    metadata: Default::default(),
+                }
+                .with_symbol(CompletionSymbol::Source(format!(
+                    "{symbol_owner}::{}",
+                    variant.name
+                )))
             }))
         })
         .flatten()
@@ -59,6 +66,18 @@ fn enum_pattern_detail(
         declaration.name.clone()
     } else {
         display_qualified_detail(&module_path.join(), &declaration.name)
+    }
+}
+
+fn enum_symbol_owner(graph: &ModuleGraph, declaration: &Declaration) -> Option<String> {
+    let module_path = graph.module_path(declaration.module)?;
+    if module_path.segments().is_empty() {
+        Some(declaration.name.clone())
+    } else {
+        Some(display_qualified_detail(
+            &module_path.join(),
+            &declaration.name,
+        ))
     }
 }
 

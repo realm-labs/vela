@@ -238,17 +238,26 @@ fn script_enum_variant_key_completions(
     let Some(shape) = graph.enum_shape(declaration.id) else {
         return Vec::new();
     };
+    let Some(owner) = enum_symbol_owner(graph, declaration) else {
+        return Vec::new();
+    };
     shape
         .variants
         .iter()
-        .map(|variant| CompletionItem {
-            label: variant.name.clone(),
-            kind: CompletionKind::Variant,
-            detail: display_type_detail(key_hint.display()),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
+        .map(|variant| {
+            CompletionItem {
+                label: variant.name.clone(),
+                kind: CompletionKind::Variant,
+                detail: display_type_detail(key_hint.display()),
+                insert_text: None,
+                insert_format: CompletionInsertFormat::PlainText,
+                sort_text: None,
+                metadata: Default::default(),
+            }
+            .with_symbol(CompletionSymbol::Source(format!(
+                "{owner}::{}",
+                variant.name
+            )))
         })
         .collect()
 }
@@ -264,6 +273,18 @@ fn script_enum_key_declaration<'a>(
             && declaration.name == *name
             && type_hint_path_matches(graph, declaration, key_hint, &map_key.current_module)
     })
+}
+
+fn enum_symbol_owner(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+) -> Option<String> {
+    let module_path = graph.module_path(declaration.module)?;
+    if module_path.segments().is_empty() {
+        Some(declaration.name.clone())
+    } else {
+        Some(format!("{}::{}", module_path.join(), declaration.name))
+    }
 }
 
 fn schema_enum_variant_key_completions(
