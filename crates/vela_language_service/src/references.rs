@@ -13,6 +13,7 @@ use crate::{
 
 mod fields;
 mod methods;
+mod modules;
 mod record_fields;
 mod record_variant_patterns;
 pub(crate) mod schema;
@@ -169,6 +170,10 @@ impl LanguageServiceDatabases {
         }
         if let Some(target) = schema::schema_field_declaration_target(self, source_id, &token) {
             return schema::schema_field_references(self, &target, include_declaration);
+        }
+        if let Some(target) = modules::import_module_target(graph, source_id, source.text(), &token)
+        {
+            return modules::import_module_references(self, &target);
         }
 
         for declaration in graph.declarations() {
@@ -1076,6 +1081,8 @@ fn is_identifier_continue(ch: char) -> bool {
 mod field_tests;
 #[cfg(test)]
 mod highlight_tests;
+#[cfg(test)]
+mod module_tests;
 #[cfg(test)]
 mod schema_field_tests;
 #[cfg(test)]

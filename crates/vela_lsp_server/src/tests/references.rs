@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
 
+mod modules;
 mod schema;
 mod schema_fields;
 mod schema_variant_fields;

@@ -705,6 +705,7 @@ Purpose: support workspace navigation and prepare rename.
   references.
   - [x] Index local binding declaration and read references within the owning
     function.
+  - [x] Index imported module path segments across workspace imports.
   - [x] Index imported script function declarations, imports, and resolved
     call/read sites across workspace sources.
   - [x] Index source-owned script struct field declarations plus typed
@@ -752,6 +753,8 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
 - [~] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
+  - [x] Serve imported module path segment references through the native LSP
+    request.
   - [x] Serve imported script function references through the native LSP
     request.
   - [x] Serve source-owned script struct field references through the native
@@ -779,6 +782,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve schema-backed variant references through the native LSP request.
 - [~] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
+  - [x] Serve imported module path segment highlights in the active document.
   - [x] Serve imported script function import/read highlights in the active
     document.
   - [x] Serve source-owned script method declaration/call highlights in the
@@ -809,6 +813,8 @@ Tests:
 - [x] `references_find_local_binding_uses`
 - [x] `references_can_exclude_local_declaration`
 - [x] `lsp_references_find_local_binding_uses`
+- [x] `references_find_imported_module_segments`
+- [x] `lsp_references_find_imported_module_segments`
 - [x] `references_find_imported_function_uses`
 - [x] `lsp_references_find_imported_function_uses`
 - [x] `references_find_field_reads_and_writes`
@@ -843,6 +849,8 @@ Tests:
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
 - [x] `lsp_document_highlight_marks_import_and_calls_in_active_document`
+- [x] `document_highlight_marks_imported_module_segments`
+- [x] `lsp_document_highlight_marks_imported_module_segments`
 - [x] `document_highlight_marks_read_write_call`
 - [x] `lsp_document_highlight_marks_read_write_call`
 - [x] `document_highlight_marks_script_method_calls`

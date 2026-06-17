@@ -334,6 +334,10 @@ M20.5 Phase 11 update: native LSP document-highlight fixtures now cover
 imported script function imports and same-document call sites, matching the
 language-service imported-function highlight coverage.
 
+M20.5 Phase 11 update: imported module path segments now participate in
+language-service and native LSP references across workspace imports, and
+document highlights mark matching module segments in the active document.
+
 M20.5 Phase 13 update: the conditional null-check to Option/Result guard
 rewrite is intentionally deferred until a structured diagnostic or syntax
 pattern can prove the rewrite is local, source-owned, and
