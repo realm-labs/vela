@@ -18,7 +18,8 @@ use crate::callable_context::{
     CallableFacts, CallableParameterFacts, callable_facts, member_callable_facts,
 };
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
+    TextRange,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -719,7 +720,7 @@ fn parameter_hint_label(parameter: &CallableParameterFacts) -> Option<String> {
         return None;
     }
     let name = parameter.name();
-    (!name.is_empty()).then(|| format!("{name}:"))
+    (!name.is_empty()).then(|| DisplayParts::parameter_hint(name).render())
 }
 
 fn declaration_scope(context: TypeHintContext<'_>) -> ExprFactScope {
@@ -796,7 +797,10 @@ fn lambda_parameter_facts(
 }
 
 fn type_hint_label(fact: &TypeFact) -> Option<String> {
-    is_stable_type_fact(fact).then(|| format!(": {}", fact.display_name()))
+    is_stable_type_fact(fact).then(|| {
+        let type_name = fact.display_name();
+        DisplayParts::type_annotation(&type_name).render()
+    })
 }
 
 fn is_stable_type_fact(fact: &TypeFact) -> bool {

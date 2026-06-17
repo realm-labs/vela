@@ -571,9 +571,13 @@ and semantic tokens use the same identities and display primitives.
   completion model reuses it through the existing `CompletionSymbol` export;
   hover, definition, references, rename, symbols, inlay hints, and diagnostics
   still need to converge on the shared identity directly.
-- [ ] Route hover labels, completion details, signature labels, symbol labels,
+- [~] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
+  A shared `DisplayParts` segment model now exists in `vela_language_service`.
+  Signature labels plus parameter/type inlay labels render through it while
+  preserving the existing user-visible strings; hover labels, completion
+  details, symbol labels, and diagnostics still need to converge on it.
 - [ ] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
 - [ ] Ensure schema-owned symbols can be displayed and completed without

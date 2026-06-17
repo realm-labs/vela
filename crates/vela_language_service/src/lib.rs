@@ -7,6 +7,7 @@ mod completion;
 mod cursor_context;
 mod definition;
 mod diagnostics;
+mod display;
 mod folding;
 mod formatting;
 mod hover;
@@ -41,6 +42,7 @@ pub use diagnostics::{
     DocumentDiagnostics, OpenDiagnosticsBatch, ServiceDiagnostic, ServiceDiagnosticSeverity,
     WorkspaceDiagnosticsBatch,
 };
+pub use display::{DisplayPart, DisplayPartKind, DisplayParts};
 pub use folding::{FoldingRange, FoldingRangeKind};
 pub use formatting::{FormattingIr, FormattingSegment, FormattingSegmentKind};
 pub use hover::{Hover, HoverKind};

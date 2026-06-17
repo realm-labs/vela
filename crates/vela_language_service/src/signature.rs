@@ -4,7 +4,9 @@ use vela_common::SourceId;
 use crate::callable_context::{
     CallableFacts, CallableOrigin, callable_facts, member_callable_facts,
 };
-use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
+use crate::{
+    DisplayParts, DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -195,12 +197,15 @@ fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
 }
 
 fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &TypeFact) -> String {
-    let params = parameters
-        .iter()
-        .map(|param| param.label.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{name}({params}) -> {}", returns.display_name())
+    let returns = returns.display_name();
+    DisplayParts::callable_signature(
+        name,
+        parameters
+            .iter()
+            .map(|param| DisplayParts::plain(param.label.as_str())),
+        Some(returns.as_str()),
+    )
+    .render()
 }
 
 fn callable_signature_information(callable: &CallableFacts) -> SignatureInformation {
@@ -209,9 +214,10 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         .iter()
         .map(|param| {
             let type_fact = param.type_fact().clone();
+            let type_name = type_fact.display_name();
             SignatureParameter {
                 name: param.name().to_owned(),
-                label: format!("{}: {}", param.name(), type_fact.display_name()),
+                label: DisplayParts::parameter(param.name(), &type_name).render(),
                 type_fact,
             }
         })
