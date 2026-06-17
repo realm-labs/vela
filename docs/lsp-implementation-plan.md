@@ -370,24 +370,24 @@ cargo test -p vela_reflect
 Purpose: make common authoring flows fast and schema-aware.
 
 - [x] Add cursor-context extraction in `vela_language_service`.
-- [~] Complete locals, parameters, captures, declarations, modules, imports,
+- [x] Complete locals, parameters, captures, declarations, modules, imports,
   stdlib APIs, fields, methods, variants, traits, and type hints.
   - Type-hint completion now suggests builtin type-hint names plus
     source/schema types and traits while suppressing value/function items.
-- [~] Complete named arguments and defaulted parameters.
+- [x] Complete named arguments and defaulted parameters.
   - Initial service and LSP completion support source-backed script function
     parameters, unused named-argument filtering, defaulted-parameter detail,
     and `insertText` snippets such as `amount: `.
-- [~] Complete record fields inside known constructors.
+- [x] Complete record fields inside known constructors.
   - Initial service and LSP completion support source-owned struct
     constructors plus schema-backed host constructors and suppresses unknown
     constructor fallback.
-- [~] Complete map literal keys only when appropriate.
+- [x] Complete map literal keys only when appropriate.
   - Initial service and LSP completion detect map-key cursor contexts,
     suggest unused script/schema enum variants for typed `Map<Enum, V>` keys,
     and suppress global fallback for untyped map literals.
 - [x] Complete host and trait receiver members from schema facts.
-- [~] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
+- [x] Add trigger-character behavior for `.`, `::`, `{`, `(`, `,`, and `|`.
   - [x] Advertise trigger characters for the implemented LSP completion request.
   - [x] Complete type hints at `:` trigger positions for typed declarations.
   - [x] Complete stdlib callback lambda parameter names at `|` trigger

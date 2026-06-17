@@ -203,7 +203,8 @@ method calls, and stdlib callback method calls in addition to script and
 schema function calls. The language service tests cover schema host/trait
 member completion plus script, schema, stdlib function, source method, schema
 host/trait method, and stdlib callback method signatures, and the LSP fixtures
-cover the same paths.
+cover the same paths. The Phase 7 completion/signature checklist is now closed
+against the focused service, analysis, LSP fixture, and capability tests.
 
 M20.5 Phase 8 update: hover now reports stdlib global function facts,
 typed stdlib receiver-method facts, and schema-backed trait receiver method
