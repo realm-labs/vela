@@ -154,6 +154,65 @@ fn lsp_hover_reports_stdlib_method_fact() {
 }
 
 #[test]
+fn lsp_hover_reports_imported_module_path_fact() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let reward_uri = "file:///workspace/scripts/game/reward.vela";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let main_text = "use game::reward::grant\npub fn main() { return grant() }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": reward_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn grant() -> i64 { return 1 }"
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": main_text.find("reward").unwrap_or_else(|| {
+                    panic!("hover fixture should contain module segment")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::reward"), "{value}");
+    assert!(value.contains("_module_: module game::reward"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_struct_field_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

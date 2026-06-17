@@ -7,7 +7,9 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
-use vela_hir::module_graph::{Declaration, DeclarationKind};
+use vela_hir::module_graph::{
+    Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph, ModulePath,
+};
 use vela_hir::type_hint::{
     EnumVariantFieldsHint, EnumVariantHint, FunctionSignature, ImplMetadataKind,
     ImplMethodMetadata, StructFieldHint, TraitMethodMetadata,
@@ -105,6 +107,12 @@ impl LanguageServiceDatabases {
                     return Some(hover);
                 }
             }
+        }
+
+        if let Some(hover) =
+            self.import_hover(document_id, source.text(), source_id, &facts, &token, range)
+        {
+            return Some(hover);
         }
 
         if let Some(hover) = struct_field_hover_at_token(graph, source_id, offset, &token, range) {
@@ -243,6 +251,65 @@ impl LanguageServiceDatabases {
                 docs: None,
             })
     }
+
+    fn import_hover(
+        &self,
+        document_id: &DocumentId,
+        text: &str,
+        source_id: vela_common::SourceId,
+        facts: &AnalysisFacts,
+        token: &HoverToken,
+        range: DiagnosticRange,
+    ) -> Option<Hover> {
+        let graph = self.hir_db().graph();
+        let module_path = self.project_db().module_by_document().get(document_id)?;
+        let module = graph.module_id(module_path)?;
+        graph.imports(module)?.iter().find_map(|import| {
+            if import.span.source != source_id {
+                return None;
+            }
+            let segment = import_path_segment_at(text, import, token)?;
+            if segment + 1 == import.path.len() {
+                let ImportResolution::Declaration(declaration) = import.resolution?;
+                let declaration = graph.declaration(declaration)?;
+                return Some(hover_from_declaration(graph, facts, declaration, range));
+            }
+            module_hover(graph, &import.path[..=segment], range)
+        })
+    }
+}
+
+fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) -> Option<Hover> {
+    let module_path = ModulePath::new(path.iter().cloned());
+    graph.module_id(&module_path)?;
+    let label = module_path.join();
+    Some(Hover {
+        range,
+        label: label.clone(),
+        kind: HoverKind::Module,
+        detail: format!("module {label}"),
+        docs: None,
+    })
+}
+
+fn import_path_segment_at(text: &str, import: &Import, token: &HoverToken) -> Option<usize> {
+    let range = span_text_range(import.span)?;
+    if token.range.start < range.start || range.end < token.range.end {
+        return None;
+    }
+    let slice = text.get(range.start..range.end)?;
+    let path_text = import.path.join("::");
+    slice.match_indices(&path_text).find_map(|(relative, _)| {
+        let mut segment_start = range.start + relative;
+        for (index, segment) in import.path.iter().enumerate() {
+            let segment_end = segment_start + segment.len();
+            if segment_start <= token.range.start && token.range.end <= segment_end {
+                return Some(index);
+            }
+            segment_start = segment_end + "::".len();
+        }
+        None
+    })
 }
 
 fn schema_method_fact<'a>(

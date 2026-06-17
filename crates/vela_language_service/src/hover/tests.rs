@@ -144,6 +144,29 @@ fn hover_reports_stdlib_method_fact() {
 }
 
 #[test]
+fn hover_reports_imported_module_path_fact() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "use game::reward::grant\npub fn main() { return grant() }";
+    let reward_text = "pub fn grant() -> i64 { return 1 }";
+    let databases = databases_for_files(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(reward, reward_text),
+    ]);
+
+    let hover = databases
+        .hover(
+            &main,
+            Position::new(0, main_text.find("reward").expect("module segment")),
+        )
+        .expect("hover should resolve imported module path");
+
+    assert_eq!(hover.kind(), HoverKind::Module);
+    assert_eq!(hover.label(), "game::reward");
+    assert_eq!(hover.detail(), "module game::reward");
+}
+
+#[test]
 fn hover_reports_source_struct_field_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Player {
@@ -309,11 +332,15 @@ fn databases_for(
     text: &str,
     schema: RegistryFacts,
 ) -> LanguageServiceDatabases {
-    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let mut databases = databases_for_files(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    databases.set_schema_facts(schema);
+    databases
+}
+
+fn databases_for_files(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
-    databases.set_schema_facts(schema);
     databases.update(&project);
     databases
 }
