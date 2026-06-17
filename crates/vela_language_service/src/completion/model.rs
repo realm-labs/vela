@@ -225,7 +225,22 @@ impl CompletionItem {
 
     #[must_use]
     pub(super) fn with_symbol(mut self, symbol: CompletionSymbol) -> Self {
+        self.metadata.resolve = Some(CompletionResolvePayload::Documentation {
+            symbol: symbol.clone(),
+        });
         self.metadata.symbol = Some(symbol);
+        self
+    }
+
+    #[must_use]
+    pub const fn with_deprecated(mut self, deprecated: bool) -> Self {
+        self.metadata.deprecated = deprecated;
+        self
+    }
+
+    #[must_use]
+    pub fn with_resolve_payload(mut self, payload: CompletionResolvePayload) -> Self {
+        self.metadata.resolve = Some(payload);
         self
     }
 }
@@ -351,5 +366,35 @@ impl CompletionList {
     #[must_use]
     pub fn items(&self) -> &[CompletionItem] {
         &self.items
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completion_item_carries_deprecation_and_resolve_payload_metadata() {
+        let item = CompletionItem {
+            label: "old_value".to_owned(),
+            kind: CompletionKind::Value,
+            detail: "deprecated value".to_owned(),
+            insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
+            sort_text: None,
+            metadata: CompletionItemMetadata::default(),
+        }
+        .with_deprecated(true)
+        .with_resolve_payload(CompletionResolvePayload::Documentation {
+            symbol: CompletionSymbol::Builtin("old_value".to_owned()),
+        });
+
+        assert!(item.deprecated());
+        assert_eq!(
+            item.resolve_payload(),
+            Some(&CompletionResolvePayload::Documentation {
+                symbol: CompletionSymbol::Builtin("old_value".to_owned())
+            })
+        );
     }
 }

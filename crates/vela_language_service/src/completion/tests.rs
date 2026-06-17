@@ -123,6 +123,12 @@ fn expression_completion_carries_schema_function_metadata() {
         function.symbol(),
         Some(&CompletionSymbol::Schema("spawn_player".to_owned()))
     );
+    assert_eq!(
+        function.resolve_payload(),
+        Some(&CompletionResolvePayload::Documentation {
+            symbol: CompletionSymbol::Schema("spawn_player".to_owned())
+        })
+    );
 }
 
 #[test]

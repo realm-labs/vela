@@ -489,7 +489,7 @@ Purpose: replace coarse global completion with context-specific producers.
   candidates, de-duplicates by lookup identity plus replacement range, and
   applies deterministic service-owned relevance ordering while leaving fuzzy
   filtering to the editor/projection layer.
-- [~] Add a rich editor-neutral `CompletionItem` model with label, lookup,
+- [x] Add a rich editor-neutral `CompletionItem` model with label, lookup,
   detail, documentation, kind, source range, text edit, snippet intent,
   filter text, label details, relevance, deprecation, symbol identity, and
   optional resolve payload.
@@ -500,8 +500,10 @@ Purpose: replace coarse global completion with context-specific producers.
   relevance metadata; schema-backed type, field, method, and enum-variant
   producers now populate docs and schema symbol identity. Source declaration
   producers now preserve fully qualified source symbol identity while keeping
-  current-module display labels relative. Producer-owned deprecation and
-  resolve payloads remain open.
+  current-module display labels relative. Symbol-bearing producers now attach a
+  documentation resolve payload in the service model, and the item model has
+  explicit producer-owned deprecation and resolve-payload metadata; current
+  source/schema facts do not yet carry deprecated-candidate input.
 
 Tests:
 
