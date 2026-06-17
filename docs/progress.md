@@ -220,6 +220,10 @@ M20.5 Phase 16 update: deleting a configured host schema artifact now has
 explicit watcher coverage that publishes the missing-schema diagnostic without
 running host code.
 
+M20.5 Phase 8 update: native LSP definition fixtures now cover schema-backed
+host method and trait-method source spans in addition to schema types, fields,
+and variants.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

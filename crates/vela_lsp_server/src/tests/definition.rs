@@ -141,6 +141,78 @@ fn lsp_definition_follows_schema_field_source_span() {
 }
 
 #[test]
+fn lsp_definition_follows_schema_method_source_span() {
+    assert_schema_member_source_navigation(
+        "pub fn grant_marker() { return 1 }",
+        "grant_marker",
+        "pub fn main(player: Player) { return player.grant(1) }",
+        "grant",
+        |target_start, target_end| {
+            serde_json::json!({
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            })
+        },
+    );
+}
+
+#[test]
+fn lsp_definition_follows_schema_trait_method_source_span() {
+    assert_schema_member_source_navigation(
+        "pub fn preview_marker() { return 1 }",
+        "preview_marker",
+        "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
+        "preview",
+        |target_start, target_end| {
+            serde_json::json!({
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "bool" }
+                        },
+                        "sourceSpan": {
+                            "source": 1,
+                            "start": target_start,
+                            "end": target_end
+                        }
+                    }
+                ]
+            })
+        },
+    );
+}
+
+#[test]
 fn lsp_definition_follows_schema_variant_source_span() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
@@ -246,6 +318,108 @@ fn lsp_definition_follows_schema_variant_source_span() {
             "position": {
                 "line": 0,
                 "character": main_text.find("Active").expect("variant use should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], schema_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        target_start
+    );
+    assert_eq!(response["result"]["range"]["end"]["character"], target_end);
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
+}
+
+fn assert_schema_member_source_navigation<F>(
+    schema_text: &str,
+    schema_marker: &str,
+    main_text: &str,
+    usage_needle: &str,
+    facts: F,
+) where
+    F: FnOnce(usize, usize) -> serde_json::Value,
+{
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    let target_start = schema_text
+        .find(schema_marker)
+        .expect("schema target marker should exist");
+    let target_end = target_start + schema_marker.len();
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": facts(target_start, target_end)
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": schema_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": schema_text
+            }
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": main_text.find(usage_needle).expect("member use should exist")
             }
         }),
     )));
