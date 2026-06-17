@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
@@ -539,19 +539,65 @@ fn push_schema_variant_use_edits(
     for source in databases.source_db().records().values() {
         let source_id = source.source_id();
         let text = source.text();
-        for range in schema_variant_use_ranges(source_id, text, target) {
-            if schema_variant_use_target(databases, text, &RenameToken { range })
-                .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
-            {
-                edits_by_document
-                    .entry(source.document_id().clone())
-                    .or_default()
-                    .push(TextEdit {
-                        range: diagnostic_range(text, range),
-                        new_text: new_name.to_owned(),
-                    });
+        let mut shared_ranges = HashSet::new();
+        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+            for site in path_calls::path_expression_sites(parsed, text) {
+                if site
+                    .path
+                    .last()
+                    .is_none_or(|segment| segment != &target.variant)
+                {
+                    continue;
+                }
+                let range = site.segment_range;
+                shared_ranges.insert((range.start, range.end));
+                push_schema_variant_use_edit_for_range(
+                    databases,
+                    source,
+                    text,
+                    range,
+                    target,
+                    new_name,
+                    edits_by_document,
+                );
             }
         }
+        for range in schema_variant_use_ranges(source_id, text, target) {
+            if shared_ranges.contains(&(range.start, range.end)) {
+                continue;
+            }
+            push_schema_variant_use_edit_for_range(
+                databases,
+                source,
+                text,
+                range,
+                target,
+                new_name,
+                edits_by_document,
+            );
+        }
+    }
+}
+
+fn push_schema_variant_use_edit_for_range(
+    databases: &LanguageServiceDatabases,
+    source: &crate::SourceRecord,
+    text: &str,
+    range: TextRange,
+    target: &SchemaVariantRenameTarget,
+    new_name: &str,
+    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
+) {
+    if schema_variant_use_target(databases, text, &RenameToken { range })
+        .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
+    {
+        edits_by_document
+            .entry(source.document_id().clone())
+            .or_default()
+            .push(TextEdit {
+                range: diagnostic_range(text, range),
+                new_text: new_name.to_owned(),
+            });
     }
 }
 
