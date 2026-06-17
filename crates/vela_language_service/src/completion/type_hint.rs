@@ -15,23 +15,6 @@ use super::{
     CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol, label_segment_matches,
 };
 
-pub(super) fn type_hint_completion_context(text: &str, prefix_start: usize) -> bool {
-    let Some(before_prefix) = text.get(..prefix_start) else {
-        return false;
-    };
-    let trimmed = before_prefix.trim_end();
-    if trimmed.ends_with("::") {
-        return false;
-    }
-    if trimmed.ends_with("->") {
-        return true;
-    }
-    if trimmed.ends_with(':') && !trimmed.ends_with("::") {
-        return type_annotation_left_side_is_plausible(trimmed);
-    }
-    inside_builtin_type_args(trimmed)
-}
-
 pub(super) fn type_hint_completion_items(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
@@ -206,64 +189,6 @@ fn service_item_from_schema_type(
     service_item_from_analysis(item)
         .with_documentation(docs)
         .with_symbol(symbol)
-}
-
-fn type_annotation_left_side_is_plausible(trimmed: &str) -> bool {
-    let Some(colon) = trimmed.rfind(':') else {
-        return false;
-    };
-    let start = trimmed[..colon]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| {
-            matches!(ch, '\n' | '(' | '{' | ',' | ';').then_some(index + ch.len_utf8())
-        })
-        .unwrap_or(0);
-    trimmed[start..colon]
-        .split_whitespace()
-        .last()
-        .is_some_and(is_identifier)
-}
-
-fn inside_builtin_type_args(trimmed: &str) -> bool {
-    let Some(open) = unmatched_type_arg_open(trimmed) else {
-        return false;
-    };
-    let owner_end = open;
-    let owner_start = trimmed[..owner_end]
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let owner = &trimmed[owner_start..owner_end];
-    matches!(
-        owner,
-        "Array" | "Map" | "Set" | "Iterator" | "Option" | "Result"
-    ) && trimmed[open + 1..]
-        .chars()
-        .all(|ch| is_identifier_continue(ch) || matches!(ch, ':' | ',' | '<' | '>' | ' '))
-}
-
-fn unmatched_type_arg_open(trimmed: &str) -> Option<usize> {
-    let mut depth = 0usize;
-    for (index, ch) in trimmed.char_indices().rev() {
-        match ch {
-            '>' => depth = depth.saturating_add(1),
-            '<' if depth == 0 => return Some(index),
-            '<' => depth = depth.saturating_sub(1),
-            '\n' | ';' | '{' | '}' | '(' | ')' => return None,
-            _ => {}
-        }
-    }
-    None
-}
-
-fn is_identifier(value: &str) -> bool {
-    !value.is_empty() && value.chars().all(is_identifier_continue)
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]

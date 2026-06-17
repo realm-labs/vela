@@ -285,7 +285,8 @@ Purpose: classify the cursor once and reuse it across features.
   and source spans over ad hoc substring checks.
   Record expression fields, record type fields, map keys, for/match pattern
   contexts, complete member-access receivers, call-argument callee contexts,
-  and lambda-parameter receiver contexts now use shared cursor spans;
+  lambda-parameter receiver contexts, and type-hint completion contexts now
+  use shared cursor spans/classification;
   incomplete member access keeps a text fallback for recovery.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
@@ -299,8 +300,10 @@ Purpose: classify the cursor once and reuse it across features.
   ranges. Top-level function local binding facts are request-local, and
   `QueryContext` now exposes locals visible before the cursor for completion;
   module path qualifiers now carry type-vs-expression role in `CursorContext`
-  instead of completion re-scanning source text. Broader callable semantic
-  facts remain feature-owned follow-up work.
+  instead of completion re-scanning source text. Type-hint completion now
+  consumes `CursorContextKind::Type` rather than running its own type-context
+  scanner. Broader callable semantic facts remain feature-owned follow-up
+  work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.

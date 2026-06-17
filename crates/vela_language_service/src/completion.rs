@@ -42,7 +42,7 @@ use module_path::module_path_completion_items as module_path_context_completion_
 use named_argument::{named_argument_completion_context, script_function_parameter_completions};
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use statement::statement_keyword_completions;
-use type_hint::{type_hint_completion_context, type_hint_completion_items};
+use type_hint::type_hint_completion_items;
 
 use accumulator::CompletionAccumulator;
 
@@ -379,8 +379,7 @@ fn completion_context(query: &QueryContext<'_>) -> CompletionContext {
         };
     }
 
-    if cursor.kind() == CursorContextKind::Type || type_hint_completion_context(text, prefix_start)
-    {
+    if cursor.kind() == CursorContextKind::Type {
         return CompletionContext {
             kind: CompletionContextKind::TypeHint,
             prefix: prefix.to_owned(),
