@@ -12,7 +12,7 @@ use crate::{DocumentId, LanguageServiceDatabases, TextRange};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    name_range_in_text, qualified_declaration_path, span_text_range, token_text,
+    name_range_in_text, qualified_declaration_path, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -84,27 +84,16 @@ pub(super) fn script_field_declaration_target(
     None
 }
 
-pub(super) fn script_field_use_target(
+pub(super) fn script_field_target_for_receiver_fact(
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
+    receiver: &TypeFact,
+    field: &str,
     token: &RenameToken,
 ) -> Option<ScriptFieldRenameTarget> {
-    let field = token_text(text, token.range)?;
-    let target = script_field_target_for_member(
-        graph,
-        facts,
-        text,
-        source_id,
-        bindings,
-        field,
-        token.range,
-    )?;
+    let owner = script_field_owner(graph, receiver, field)?;
     Some(ScriptFieldRenameTarget {
-        owner: target.owner,
-        field: target.field,
+        owner,
+        field: field.to_owned(),
         token: token.clone(),
     })
 }

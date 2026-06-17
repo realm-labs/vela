@@ -85,30 +85,31 @@ pub(super) fn script_method_declaration_target(
     None
 }
 
-pub(super) fn script_method_use_target(
+pub(super) fn script_method_target_for_self_receiver(
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
     scope_owner: HirDeclId,
-    bindings: &BindingMap,
+    method: &str,
     token: &RenameToken,
 ) -> Option<ScriptMethodRenameTarget> {
-    let method = token_text(text, token.range)?;
-    if !is_call_callee(text, token.range) {
-        return None;
-    }
-    let lookup = MethodLookup {
-        graph,
-        facts,
-        text,
-        source_id,
-    };
-    let target =
-        script_method_target_for_member(lookup, scope_owner, Some(bindings), method, token.range)?;
+    script_method_exists_in_inherent_impl(graph, scope_owner, method).then(|| {
+        ScriptMethodRenameTarget {
+            owner: scope_owner,
+            method: method.to_owned(),
+            token: token.clone(),
+        }
+    })
+}
+
+pub(super) fn script_method_target_for_receiver_fact(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+    token: &RenameToken,
+) -> Option<ScriptMethodRenameTarget> {
+    let owner = script_method_owner(graph, receiver, method)?;
     Some(ScriptMethodRenameTarget {
-        owner: target.owner,
-        method: target.method,
+        owner,
+        method: method.to_owned(),
         token: token.clone(),
     })
 }

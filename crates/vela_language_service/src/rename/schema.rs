@@ -396,6 +396,33 @@ pub(super) fn schema_member_use_target(
     })
 }
 
+pub(super) fn schema_member_target_for_receiver_fact(
+    databases: &LanguageServiceDatabases,
+    receiver: &TypeFact,
+    member: &str,
+    is_call: bool,
+    token: &RenameToken,
+) -> Option<SchemaMemberRenameTarget> {
+    let schema = databases.schema_db().facts();
+    let target = if is_call {
+        let (owner, kind) = schema_method_owner(schema, receiver, member)?;
+        SchemaMemberRenameTarget {
+            owner,
+            member: member.to_owned(),
+            kind,
+            token: token.clone(),
+        }
+    } else {
+        SchemaMemberRenameTarget {
+            owner: schema_field_owner(schema, receiver, member)?,
+            member: member.to_owned(),
+            kind: SchemaMemberRenameKind::Field,
+            token: token.clone(),
+        }
+    };
+    source_backed_schema_target(databases, target)
+}
+
 fn push_schema_type_declaration_edit(
     databases: &LanguageServiceDatabases,
     target: &SchemaTypeRenameTarget,

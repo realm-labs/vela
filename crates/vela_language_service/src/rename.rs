@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
@@ -178,6 +178,11 @@ impl LanguageServiceDatabases {
     ) -> Option<PrepareRename> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
+        let member_receiver = query
+            .member_receiver_range()
+            .or_else(|| query.call_member_receiver_range());
+        let member_receiver_fact =
+            member_receiver.and_then(|receiver| query.type_fact_for_range(self, receiver));
         let target = rename_target(
             self,
             source_id,
@@ -185,6 +190,10 @@ impl LanguageServiceDatabases {
             RenameToken {
                 range: query.identifier_range()?,
             },
+            query
+                .member_receiver_text()
+                .or_else(|| query.call_member_receiver_text()),
+            member_receiver_fact.as_ref(),
         )?;
         let token_range = diagnostic_range(query.text(), target.token_range());
         Some(PrepareRename {
@@ -206,6 +215,11 @@ impl LanguageServiceDatabases {
         }
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
+        let member_receiver = query
+            .member_receiver_range()
+            .or_else(|| query.call_member_receiver_range());
+        let member_receiver_fact =
+            member_receiver.and_then(|receiver| query.type_fact_for_range(self, receiver));
         let target = rename_target(
             self,
             source_id,
@@ -213,6 +227,10 @@ impl LanguageServiceDatabases {
             RenameToken {
                 range: query.identifier_range()?,
             },
+            query
+                .member_receiver_text()
+                .or_else(|| query.call_member_receiver_text()),
+            member_receiver_fact.as_ref(),
         )?;
         match target {
             RenameTarget::Local(target) => {
@@ -526,10 +544,11 @@ fn rename_target<'a>(
     source_id: SourceId,
     text: &str,
     token: RenameToken,
+    member_receiver_text: Option<&str>,
+    member_receiver_fact: Option<&TypeFact>,
 ) -> Option<RenameTarget<'a>> {
     let graph = databases.hir_db().graph();
     let offset = u32::try_from(token.range.start).ok()?;
-    let facts = AnalysisFacts::from_module_graph(graph);
 
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, text, &token) {
         return Some(RenameTarget::ScriptField(target));
@@ -617,25 +636,45 @@ fn rename_target<'a>(
         if let Some(target) = schema::schema_variant_use_target(databases, text, &token) {
             return Some(RenameTarget::SchemaVariant(target));
         }
-        if let Some(target) =
-            fields::script_field_use_target(graph, &facts, text, source_id, bindings, &token)
-        {
+        if let Some(target) = member_receiver_fact.and_then(|receiver| {
+            token_text(text, token.range).and_then(|field| {
+                fields::script_field_target_for_receiver_fact(graph, receiver, field, &token)
+            })
+        }) {
             return Some(RenameTarget::ScriptField(target));
         }
-        if let Some(target) = methods::script_method_use_target(
-            graph,
-            &facts,
-            text,
-            source_id,
-            declaration.id,
-            bindings,
-            &token,
-        ) {
+        if let Some(target) = token_text(text, token.range)
+            .filter(|_| is_call_callee(text, token.range))
+            .and_then(|method| {
+                if member_receiver_text == Some("self") {
+                    methods::script_method_target_for_self_receiver(
+                        graph,
+                        declaration.id,
+                        method,
+                        &token,
+                    )
+                } else {
+                    member_receiver_fact.and_then(|receiver| {
+                        methods::script_method_target_for_receiver_fact(
+                            graph, receiver, method, &token,
+                        )
+                    })
+                }
+            })
+        {
             return Some(RenameTarget::ScriptMethod(target));
         }
-        if let Some(target) =
-            schema::schema_member_use_target(databases, &facts, text, source_id, bindings, &token)
-        {
+        if let Some(target) = member_receiver_fact.and_then(|receiver| {
+            token_text(text, token.range).and_then(|member| {
+                schema::schema_member_target_for_receiver_fact(
+                    databases,
+                    receiver,
+                    member,
+                    is_call_callee(text, token.range),
+                    &token,
+                )
+            })
+        }) {
             return Some(RenameTarget::SchemaMember(target));
         }
     }
@@ -1084,6 +1123,11 @@ fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
     let after = text[end..].chars().next();
     before.is_none_or(|ch| !is_identifier_continue(ch))
         && after.is_none_or(|ch| !is_identifier_continue(ch))
+}
+
+fn is_call_callee(text: &str, range: TextRange) -> bool {
+    text.get(range.end..)
+        .is_some_and(|suffix| suffix.trim_start().starts_with('('))
 }
 
 fn token_text(text: &str, range: TextRange) -> Option<&str> {
