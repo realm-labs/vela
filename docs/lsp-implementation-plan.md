@@ -538,7 +538,8 @@ Purpose: support navigation and outline features.
 
 - [x] Build document symbols from parsed declarations.
 - [x] Build workspace symbols from module graph declarations and schema facts.
-- [~] Add file/module/class/function/method/field/enum/variant symbol kinds.
+- [x] Add file/module/class/function/method/field/enum/variant symbol kinds.
+  - [x] Add workspace file symbol kinds and source locations.
   - [x] Add script const/global/function/struct/enum/trait/impl/member kinds.
   - [x] Add workspace module symbol kinds and source locations.
   - [x] Add distinct schema host class, record struct, enum, trait,
@@ -553,9 +554,11 @@ Tests:
 - [x] `lsp_document_symbols_include_nested_script_members`
 - [x] `workspace_symbols_include_module_qualified_names`
 - [x] `workspace_symbols_include_module_symbols`
+- [x] `workspace_symbols_include_file_symbols`
 - [x] `workspace_symbols_include_schema_items`
 - [x] `lsp_workspace_symbols_include_script_and_schema_symbols`
 - [x] `lsp_workspace_symbols_include_module_symbols`
+- [x] `lsp_workspace_symbols_include_file_symbols`
 - [x] `folding_ranges_cover_items_and_blocks`
 - [x] `lsp_folding_ranges_cover_items_and_blocks`
 - [x] `selection_ranges_walk_syntax_ancestors`

@@ -199,6 +199,10 @@ passes with `cargo fmt --all -- --check`,
 `cargo test --workspace`. M20.5 is now complete enough; remaining broader LSP
 refinements are non-blocking follow-up work.
 
+M20.5 Phase 9 update: workspace symbols now include source-file symbols with
+LSP `SymbolKind.File` mappings and module detail/source locations, closing the
+file/module/class/function/method/field/enum/variant symbol-kind checklist.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed

@@ -104,6 +104,7 @@ pub enum DocumentSymbolKind {
     Enum,
     EnumMember,
     Field,
+    File,
     Function,
     Interface,
     Method,
@@ -137,8 +138,9 @@ impl LanguageServiceDatabases {
     pub fn workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
         let query = query.trim();
         let mut symbols = self
-            .module_workspace_symbols(query)
+            .file_workspace_symbols(query)
             .into_iter()
+            .chain(self.module_workspace_symbols(query))
             .chain(self.script_workspace_symbols(query))
             .chain(self.schema_workspace_symbols(query))
             .collect::<Vec<_>>();
@@ -148,6 +150,37 @@ impl LanguageServiceDatabases {
                 .then(left.kind_name().cmp(right.kind_name()))
         });
         symbols
+    }
+
+    fn file_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
+        self.source_db()
+            .records()
+            .iter()
+            .filter_map(|(document_id, source)| {
+                let name = file_symbol_name(document_id)?;
+                if !symbol_matches(query, &name) {
+                    return None;
+                }
+                Some(WorkspaceSymbol {
+                    name,
+                    detail: self
+                        .project_db()
+                        .module_by_document()
+                        .get(document_id)
+                        .map(|module_path| module_path.join())
+                        .filter(|module| !module.is_empty()),
+                    kind: DocumentSymbolKind::File,
+                    container_name: None,
+                    location: WorkspaceSymbolLocation::Source {
+                        document_id: document_id.clone(),
+                        range: diagnostic_range(
+                            source.text(),
+                            TextRange::new(0, source.text().len()),
+                        ),
+                    },
+                })
+            })
+            .collect()
     }
 
     fn module_workspace_symbols(&self, query: &str) -> Vec<WorkspaceSymbol> {
@@ -268,6 +301,7 @@ impl WorkspaceSymbol {
             DocumentSymbolKind::Enum => "enum",
             DocumentSymbolKind::EnumMember => "enum_member",
             DocumentSymbolKind::Field => "field",
+            DocumentSymbolKind::File => "file",
             DocumentSymbolKind::Function => "function",
             DocumentSymbolKind::Interface => "interface",
             DocumentSymbolKind::Method => "method",
@@ -282,6 +316,14 @@ impl WorkspaceSymbol {
 
 fn parent_module_name(segments: &[String]) -> Option<String> {
     (segments.len() > 1).then(|| segments[..segments.len() - 1].join("::"))
+}
+
+fn file_symbol_name(document_id: &DocumentId) -> Option<String> {
+    document_id
+        .as_str()
+        .rsplit(['/', '\\'])
+        .find(|segment| !segment.is_empty())
+        .map(str::to_owned)
 }
 
 fn symbol_from_declaration(
@@ -699,6 +741,29 @@ pub fn main(amount: i64) -> i64 { return amount }";
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "game::reward"
                 && symbol.kind() == DocumentSymbolKind::Module
+                && matches!(
+                    symbol.location(),
+                    WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward
+                )),
+            "{symbols:?}"
+        );
+    }
+
+    #[test]
+    fn workspace_symbols_include_file_symbols() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main, "pub fn main() -> i64 { return 1 }"),
+            SourceFileSnapshot::new(reward.clone(), "pub fn grant() -> i64 { return 1 }"),
+        ]);
+
+        let symbols = databases.workspace_symbols("reward.vela");
+
+        assert!(
+            symbols.iter().any(|symbol| symbol.name() == "reward.vela"
+                && symbol.kind() == DocumentSymbolKind::File
+                && symbol.detail() == Some("game::reward")
                 && matches!(
                     symbol.location(),
                     WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &reward
