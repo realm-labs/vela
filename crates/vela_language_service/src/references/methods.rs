@@ -1,18 +1,14 @@
-use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
-use vela_common::{SourceId, Span};
-use vela_hir::binding::BindingMap;
+use vela_analysis::type_fact::TypeFact;
+use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
-use crate::{LanguageServiceDatabases, TextRange};
+use crate::{LanguageServiceDatabases, TextRange, member_access, query_context};
 
 use super::{
-    Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_call_callee,
-    is_identifier_boundary, is_identifier_continue, member_receiver_range, record_owner_names,
-    span_text_range, type_fact_for_resolution,
+    Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_identifier_boundary,
+    is_identifier_continue, record_owner_names, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -27,7 +23,6 @@ pub(super) fn script_method_references(
     include_declaration: bool,
 ) -> Vec<Reference> {
     let graph = databases.hir_db().graph();
-    let facts = AnalysisFacts::from_module_graph(graph);
     let mut references = Vec::new();
 
     if include_declaration
@@ -38,7 +33,7 @@ pub(super) fn script_method_references(
 
     for source in databases.source_db().records().values() {
         references.extend(script_method_use_references_for_source(
-            graph, &facts, source, target,
+            databases, graph, source, target,
         ));
     }
 
@@ -122,93 +117,36 @@ fn reference_for_script_method_declaration(
 }
 
 fn script_method_use_references_for_source(
+    databases: &LanguageServiceDatabases,
     graph: &ModuleGraph,
-    facts: &AnalysisFacts,
     source: &crate::SourceRecord,
     target: &MethodReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    for range in member_method_ranges(source_id, text, &target.method) {
-        let Some(start) = u32::try_from(range.start).ok() else {
+    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        return references;
+    };
+    for site in member_access::member_call_sites(parsed) {
+        if site.member != target.method {
             continue;
-        };
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                continue;
-            }
-            let Some(bindings) = graph.bindings(declaration.id) else {
-                continue;
-            };
-            if script_method_target_for_member(
-                graph,
-                facts,
-                text,
-                source_id,
-                bindings,
-                &target.method,
-                range,
-            )
+        }
+        if query_context::type_fact_for_source_range(databases, source_id, site.receiver_range)
+            .and_then(|receiver| {
+                script_method_target_for_receiver_fact(graph, &receiver, &target.method)
+            })
             .as_ref()
-                == Some(target)
-            {
-                references.push(Reference {
-                    document_id: source.document_id().clone(),
-                    range: diagnostic_range(text, range),
-                    kind: ReferenceKind::Call,
-                });
-                break;
-            }
+            == Some(target)
+        {
+            references.push(Reference {
+                document_id: source.document_id().clone(),
+                range: diagnostic_range(text, site.member_range),
+                kind: ReferenceKind::Call,
+            });
         }
     }
     references
-}
-
-fn member_method_ranges(source_id: SourceId, text: &str, method: &str) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(name) if name == method => {
-                let range = span_text_range(token.span)?;
-                (is_call_callee(text, range) && member_receiver_range(text, range.start).is_some())
-                    .then_some(range)
-            }
-            TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
-}
-
-fn script_method_target_for_member(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<MethodReferenceTarget> {
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = type_fact_for_resolution(resolution, facts)?;
-    let owner = script_method_owner(graph, &receiver, method)?;
-    Some(MethodReferenceTarget {
-        owner,
-        method: method.to_owned(),
-    })
 }
 
 fn script_method_owner(
