@@ -36,7 +36,7 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
-        let token = definition_token_at(query.text(), query.position())?;
+        let token = definition_token_at(&query)?;
         let source_id = query.source_id()?;
         let offset = u32::try_from(token.range.start).ok()?;
         let graph = self.hir_db().graph();
@@ -217,14 +217,14 @@ fn local_declaration_at_token<'a>(
     })
 }
 
-fn definition_token_at(text: &str, position: Position) -> Option<DefinitionToken> {
-    let offset = LineIndex::new(text).offset(position);
+fn definition_token_at(query: &QueryContext<'_>) -> Option<DefinitionToken> {
+    let text = query.text();
+    let offset = LineIndex::new(text).offset(query.position());
     let range = identifier_range_at(text, offset)?;
-    let member_receiver = member_receiver_range(text, range.start);
     Some(DefinitionToken {
         text: text[range.start..range.end].to_owned(),
         range,
-        member_receiver,
+        member_receiver: query.member_receiver_range(),
     })
 }
 
@@ -323,18 +323,6 @@ fn fact_owner_name(fact: &TypeFact) -> Option<String> {
         | TypeFact::Trait { name } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text[..member_start].trim_end();
-    let before_dot = before_member.strip_suffix('.')?.trim_end();
-    let end = before_dot.len();
-    let start = before_dot
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
