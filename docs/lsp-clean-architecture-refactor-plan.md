@@ -385,9 +385,9 @@ Purpose: classify the cursor once and reuse it across features.
   schema enum variant references now consume the same shared parsed
   expression and pattern path sites without a feature-local token range
   fallback.
-  Schema variant go-to-definition now
-  resolves constructor-like expression paths from the shared parsed path sites
-  before falling back to the legacy token path reconstruction.
+  Schema variant go-to-definition now resolves constructor-like expression paths
+  only from the shared parsed path sites, without legacy token path
+  reconstruction.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

@@ -179,14 +179,7 @@ impl LanguageServiceDatabases {
                 return self.definition_from_span(span);
             }
         }
-        let path = path_ending_at(text, token.range)?;
-        let (variant, owner_segments) = path.split_last()?;
-        let owner = schema_variant_owner(self.schema_db().facts(), owner_segments, variant)?;
-        let span = self
-            .schema_db()
-            .source_locations()
-            .variant_span(&owner, variant)?;
-        self.definition_from_span(span)
+        None
     }
 }
 
@@ -280,32 +273,6 @@ fn fact_owner_name(fact: &TypeFact) -> Option<String> {
     }
 }
 
-fn path_ending_at(text: &str, range: TextRange) -> Option<Vec<String>> {
-    let mut path = vec![text.get(range.start..range.end)?.to_owned()];
-    let mut cursor = range.start;
-    loop {
-        let before_segment = text.get(..cursor)?.trim_end();
-        let Some(before_separator) = before_segment.strip_suffix("::").map(str::trim_end) else {
-            break;
-        };
-        let end = before_separator.len();
-        let start = before_separator
-            .char_indices()
-            .rev()
-            .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-            .unwrap_or(0);
-        if start == end {
-            break;
-        }
-        path.push(text.get(start..end)?.to_owned());
-        cursor = start;
-    }
-    (path.len() > 1).then(|| {
-        path.reverse();
-        path
-    })
-}
-
 fn schema_variant_owner(
     schema: &RegistryFacts,
     owner_segments: &[String],
@@ -332,10 +299,6 @@ fn schema_variant_owner(
     });
     let matched = matches.next()?;
     matches.next().is_none().then_some(matched)
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]
