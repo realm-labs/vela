@@ -825,6 +825,7 @@ Tests:
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `document_highlight_marks_trait_impl_uses`
+- [x] `lsp_document_highlight_marks_trait_impl_uses`
 - [x] `document_highlight_marks_schema_field_reads_and_writes`
 - [x] `lsp_document_highlight_marks_schema_field_reads_and_writes`
 - [x] `document_highlight_marks_schema_method_calls`

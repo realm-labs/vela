@@ -956,6 +956,71 @@ pub fn main(reward: Reward) -> i64 {
     );
 }
 
+#[test]
+fn lsp_document_highlight_marks_trait_impl_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64;
+}
+
+pub struct Player { level: i64 }
+
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 6,
+                "character": line(text, 6).find("Rewardable").expect("impl use")
+            }
+        }),
+    )));
+    let highlights = response["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+
+    assert_eq!(highlights.len(), 2, "{highlights:?}");
+    assert_highlight(
+        highlights,
+        0,
+        line(text, 0).find("Rewardable").expect("trait declaration"),
+        1,
+    );
+    assert_highlight(
+        highlights,
+        6,
+        line(text, 6).find("Rewardable").expect("impl use"),
+        2,
+    );
+}
+
 fn assert_reference(references: &[serde_json::Value], uri: &str, line: usize, character: usize) {
     assert!(
         references.iter().any(|reference| {
