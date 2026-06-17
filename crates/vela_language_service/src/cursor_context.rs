@@ -32,6 +32,7 @@ pub struct CursorContext {
     replace_range: TextRange,
     module_base: Option<String>,
     member_receiver: Option<TextRange>,
+    call_callee: Option<TextRange>,
 }
 
 impl CursorContext {
@@ -58,6 +59,11 @@ impl CursorContext {
     #[must_use]
     pub const fn member_receiver(&self) -> Option<TextRange> {
         self.member_receiver
+    }
+
+    #[must_use]
+    pub const fn call_callee(&self) -> Option<TextRange> {
+        self.call_callee
     }
 }
 
@@ -120,6 +126,12 @@ pub fn cursor_context_at(
         return context(CursorContextKind::Item, prefix_start, prefix);
     }
 
+    if let Some(callee) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
+        let mut cursor = context(CursorContextKind::CallArgument, prefix_start, prefix);
+        cursor.call_callee = Some(callee);
+        return cursor;
+    }
+
     if is_call_argument_context(text, offset) {
         return context(CursorContextKind::CallArgument, prefix_start, prefix);
     }
@@ -142,6 +154,7 @@ fn context(kind: CursorContextKind, prefix_start: usize, prefix: String) -> Curs
         prefix,
         module_base: None,
         member_receiver: None,
+        call_callee: None,
     }
 }
 
@@ -499,6 +512,129 @@ fn span_range(span: Span) -> Option<TextRange> {
     ))
 }
 
+fn call_callee_for_source(source: &SourceFile, offset: usize) -> Option<TextRange> {
+    let offset = u32::try_from(offset).ok()?;
+    source.items.iter().find_map(|item| match &item.kind {
+        ItemKind::Const(item) => call_callee_for_expr(&item.value, offset),
+        ItemKind::Function(item) => item
+            .params
+            .iter()
+            .filter_map(|param| param.default_value.as_ref())
+            .find_map(|value| call_callee_for_expr(value, offset))
+            .or_else(|| call_callee_for_block(&item.body, offset)),
+        _ => None,
+    })
+}
+
+fn call_callee_for_block(block: &Block, offset: u32) -> Option<TextRange> {
+    block.span.contains(offset).then(|| {
+        block
+            .statements
+            .iter()
+            .find_map(|statement| call_callee_for_statement(statement, offset))
+    })?
+}
+
+fn call_callee_for_statement(statement: &Stmt, offset: u32) -> Option<TextRange> {
+    if !statement.span.contains(offset) {
+        return None;
+    }
+    match &statement.kind {
+        StmtKind::Let { value, .. } => value
+            .as_ref()
+            .and_then(|value| call_callee_for_expr(value, offset)),
+        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => {
+            call_callee_for_expr(value, offset)
+        }
+        StmtKind::For { iterable, body, .. } => {
+            call_callee_for_expr(iterable, offset).or_else(|| call_callee_for_block(body, offset))
+        }
+        StmtKind::Block(block) => call_callee_for_block(block, offset),
+        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => None,
+    }
+}
+
+fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
+    if !expr.span.contains(offset) {
+        return None;
+    }
+    match &expr.kind {
+        ExprKind::Call { callee, args } => call_callee_for_expr(callee, offset)
+            .or_else(|| {
+                args.iter()
+                    .find_map(|arg| call_callee_for_expr(&arg.value, offset))
+            })
+            .or_else(|| {
+                (callee.span.end < offset && offset <= expr.span.end)
+                    .then(|| span_range(callee.span))
+                    .flatten()
+            }),
+        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => call_callee_for_expr(expr, offset),
+        ExprKind::Binary { left, right, .. }
+        | ExprKind::Assign {
+            target: left,
+            value: right,
+            ..
+        } => call_callee_for_expr(left, offset).or_else(|| call_callee_for_expr(right, offset)),
+        ExprKind::Field { base, .. } => call_callee_for_expr(base, offset),
+        ExprKind::Index { base, index } => {
+            call_callee_for_expr(base, offset).or_else(|| call_callee_for_expr(index, offset))
+        }
+        ExprKind::Array(values) => values
+            .iter()
+            .find_map(|value| call_callee_for_expr(value, offset)),
+        ExprKind::Map(entries) => entries.iter().find_map(|entry| {
+            call_callee_for_expr(&entry.key, offset)
+                .or_else(|| call_callee_for_expr(&entry.value, offset))
+        }),
+        ExprKind::Record { fields, .. } => fields
+            .iter()
+            .filter_map(|field| field.value.as_ref())
+            .find_map(|value| call_callee_for_expr(value, offset)),
+        ExprKind::Lambda { params, body } => params
+            .iter()
+            .filter_map(|param| param.default_value.as_ref())
+            .find_map(|value| call_callee_for_expr(value, offset))
+            .or_else(|| call_callee_for_expr(body, offset)),
+        ExprKind::If(if_expr) => call_callee_for_expr(&if_expr.condition, offset)
+            .or_else(|| call_callee_for_block(&if_expr.then_branch, offset))
+            .or_else(|| {
+                if_expr
+                    .else_branch
+                    .as_ref()
+                    .and_then(|branch| call_callee_for_else_branch(branch, offset))
+            }),
+        ExprKind::Match(match_expr) => {
+            call_callee_for_expr(&match_expr.scrutinee, offset).or_else(|| {
+                match_expr
+                    .arms
+                    .iter()
+                    .find_map(|arm| call_callee_for_expr(&arm.body, offset))
+            })
+        }
+        ExprKind::Block(block) => call_callee_for_block(block, offset),
+        ExprKind::Literal(_)
+        | ExprKind::InterpolatedString(_)
+        | ExprKind::Path(_)
+        | ExprKind::SelfValue
+        | ExprKind::Error => None,
+    }
+}
+
+fn call_callee_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<TextRange> {
+    match branch {
+        ElseBranch::Block(block) => call_callee_for_block(block, offset),
+        ElseBranch::If(if_expr) => call_callee_for_expr(&if_expr.condition, offset)
+            .or_else(|| call_callee_for_block(&if_expr.then_branch, offset))
+            .or_else(|| {
+                if_expr
+                    .else_branch
+                    .as_ref()
+                    .and_then(|branch| call_callee_for_else_branch(branch, offset))
+            }),
+    }
+}
+
 fn map_key_for_block(block: &Block, offset: u32) -> bool {
     block.span.contains(offset)
         && block
@@ -781,9 +917,22 @@ mod tests {
 
     #[test]
     fn cursor_context_classifies_call_arguments() {
-        let cursor = classify("pub fn main() { grant(am) }", "am");
+        let text = "pub fn main() { grant(am) }";
+        let cursor = classify(text, "am");
+        let callee = cursor.call_callee().expect("callee range");
 
         assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+        assert_eq!(&text[callee.start..callee.end], "grant");
+    }
+
+    #[test]
+    fn cursor_context_uses_inner_syntax_callee_for_nested_call_arguments() {
+        let text = "pub fn main() { outer(inner(am)) }";
+        let cursor = classify(text, "am");
+        let callee = cursor.call_callee().expect("callee range");
+
+        assert_eq!(cursor.kind(), CursorContextKind::CallArgument);
+        assert_eq!(&text[callee.start..callee.end], "inner");
     }
 
     #[test]

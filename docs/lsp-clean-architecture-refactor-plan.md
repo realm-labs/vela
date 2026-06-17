@@ -283,14 +283,15 @@ Purpose: classify the cursor once and reuse it across features.
   and unknown/error recovery.
 - [~] Make cursor classification syntax-owned. Prefer parser/token structure
   and source spans over ad hoc substring checks.
-  Record-field, map-key, and complete member-access receiver contexts now use
-  parsed expression spans; incomplete member access keeps a text fallback for
-  recovery.
+  Record-field, map-key, complete member-access receiver, and call-argument
+  callee contexts now use parsed expression spans; incomplete member access
+  keeps a text fallback for recovery.
 - [~] Include expected syntactic role, local scope, module scope, receiver
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
   `QueryContext` now exposes request source id and module path facts directly;
-  local/callable facts remain feature-owned follow-up work.
+  call-argument contexts now expose callee ranges; local/callable semantic
+  facts remain feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
 - [x] Route completion, hover, signature help, definition, and rename prepare
   through the shared context where practical.
