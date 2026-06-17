@@ -1137,6 +1137,7 @@ Tests:
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
+- [x] `lsp_inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
 - [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_enum_variant_payloads`

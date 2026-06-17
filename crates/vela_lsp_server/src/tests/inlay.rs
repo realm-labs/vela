@@ -106,6 +106,47 @@ fn lsp_inlay_hints_respect_requested_range() {
 }
 
 #[test]
+fn lsp_inlay_hints_degrade_to_any_without_schema() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { return host_grant(10) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 0, "character": 80 }
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"], serde_json::json!([]));
+}
+
+#[test]
 fn lsp_inlay_hints_show_source_method_parameter_names() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

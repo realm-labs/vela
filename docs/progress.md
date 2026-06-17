@@ -161,6 +161,10 @@ suppression path treats dynamic or unknown source and schema function/method
 parameters the same way as variant payload parameters, while keeping lambda
 callback arguments and explicit annotations quiet.
 
+M20.5 Phase 15 update: native LSP inlay fixtures now cover missing-schema
+degradation, preserving the language-service behavior that unstable host facts
+do not surface as `Any` hints.
+
 M20.5 Phase 14 update: selected struct fields, enum record fields, adjacent
 nested declaration member groups, completed multi-line top-level items,
 completed nested impl/trait methods, and completed enum record variants now
