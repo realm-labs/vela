@@ -12,6 +12,7 @@ mod formatting;
 mod hover;
 mod incremental;
 mod inlay;
+mod member_access;
 mod project;
 mod query_context;
 mod references;

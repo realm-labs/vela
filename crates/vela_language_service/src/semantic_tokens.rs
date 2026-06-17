@@ -15,7 +15,6 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
 mod import_paths;
-mod member_receivers;
 mod member_uses;
 mod type_hints;
 
@@ -279,7 +278,7 @@ impl LanguageServiceDatabases {
         let member_receivers = self
             .parse_db()
             .parsed_source(document_id)
-            .map(member_receivers::member_receiver_ranges)
+            .map(crate::member_access::member_receiver_ranges)
             .unwrap_or_default();
         let classifications = self.semantic_token_classifications(
             source.source_id(),

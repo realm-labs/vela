@@ -1,14 +1,12 @@
-use vela_analysis::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::{HirDeclId, HirNodeId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
-use vela_syntax::lexer::lex;
-use vela_syntax::token::TokenKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, references::schema as reference_schema,
+    TextRange, member_access, references::schema as reference_schema,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -280,7 +278,7 @@ impl LanguageServiceDatabases {
             })
             .collect::<Vec<_>>();
 
-        calls.extend(self.resolved_method_call_ranges(bindings, scope_span));
+        calls.extend(self.resolved_method_call_ranges(scope_span));
         calls
     }
 
@@ -298,27 +296,31 @@ impl LanguageServiceDatabases {
 
     fn resolved_method_call_ranges(
         &self,
-        bindings: &BindingMap,
         scope_span: Span,
     ) -> Vec<(CallHierarchyTarget, DiagnosticRange)> {
         let Some(source) = self.source_record_for_call_hierarchy(scope_span.source) else {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        member_method_call_ranges(source.source_id(), source.text(), scope_span)
+        let Some(parsed) = self.parse_db().parsed_source(source.document_id()) else {
+            return Vec::new();
+        };
+        member_access::member_call_sites(parsed)
             .into_iter()
-            .filter_map(|range| {
-                method_target_for_member(
+            .filter(|site| span_contains_range(scope_span, site.member_range))
+            .filter_map(|site| {
+                let receiver = crate::query_context::type_fact_for_source_range(
+                    self,
+                    source.source_id(),
+                    site.receiver_range,
+                )?;
+                method_target_for_receiver_fact(
                     graph,
-                    &facts,
                     self.schema_db().facts(),
-                    source,
-                    bindings,
-                    token_text(source.text(), range)?,
-                    range,
+                    &receiver,
+                    &site.member,
                 )
-                .map(|target| (target, diagnostic_range(source.text(), range)))
+                .map(|target| (target, diagnostic_range(source.text(), site.member_range)))
             })
             .collect()
     }
@@ -791,51 +793,6 @@ fn trait_method_declaration_target(
     None
 }
 
-fn method_target_for_member(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    schema: &RegistryFacts,
-    source: &crate::SourceRecord,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<CallHierarchyTarget> {
-    script_method_target_for_member(
-        graph,
-        facts,
-        source.text(),
-        source.source_id(),
-        bindings,
-        method,
-        member_range,
-    )
-    .map(CallHierarchyTarget::Method)
-    .or_else(|| {
-        trait_method_target_for_member(
-            graph,
-            facts,
-            source.text(),
-            source.source_id(),
-            bindings,
-            method,
-            member_range,
-        )
-        .map(CallHierarchyTarget::TraitMethod)
-    })
-    .or_else(|| {
-        reference_schema::schema_method_target_for_member(
-            schema,
-            facts,
-            source.text(),
-            source.source_id(),
-            bindings,
-            method,
-            member_range,
-        )
-        .map(CallHierarchyTarget::SchemaMethod)
-    })
-}
-
 fn method_target_for_receiver_fact(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
@@ -851,48 +808,6 @@ fn method_target_for_receiver_fact(
             reference_schema::schema_method_target_for_receiver_fact(schema, receiver, method)
                 .map(CallHierarchyTarget::SchemaMethod)
         })
-}
-
-fn script_method_target_for_member(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<ScriptMethodCallTarget> {
-    if !is_call_callee(text, member_range) {
-        return None;
-    }
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = type_fact_for_resolution(resolution, facts)?;
-    script_method_owner(graph, &receiver, method)
-}
-
-fn trait_method_target_for_member(
-    graph: &ModuleGraph,
-    facts: &AnalysisFacts,
-    text: &str,
-    source_id: SourceId,
-    bindings: &BindingMap,
-    method: &str,
-    member_range: TextRange,
-) -> Option<TraitMethodCallTarget> {
-    if !is_call_callee(text, member_range) {
-        return None;
-    }
-    let receiver = member_receiver_range(text, member_range.start)?;
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    let span = Span::new(source_id, start, end);
-    let resolution = bindings.resolution_at_span(span)?;
-    let receiver = type_fact_for_resolution(resolution, facts)?;
-    trait_method_owner(graph, &receiver, method)
 }
 
 fn script_method_owner(
@@ -954,20 +869,6 @@ fn trait_method_owner(
                 method: entry.name.clone(),
             })
     })
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    facts: &AnalysisFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
 }
 
 fn declaration_name_matches(declaration: &Declaration, owner: &str) -> bool {
@@ -1071,48 +972,6 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     if !owners.iter().any(|owner| owner == name) {
         owners.push(name.to_owned());
     }
-}
-
-fn member_method_call_ranges(source_id: SourceId, text: &str, scope: Span) -> Vec<TextRange> {
-    lex(source_id, text)
-        .tokens
-        .into_iter()
-        .filter_map(|token| match token.kind {
-            TokenKind::Ident(_) => {
-                let range = span_text_range(token.span)?;
-                let start = u32::try_from(range.start).ok()?;
-                (scope.contains(start)
-                    && is_call_callee(text, range)
-                    && member_receiver_range(text, range.start).is_some())
-                .then_some(range)
-            }
-            TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(_)
-            | TokenKind::Symbol(_)
-            | TokenKind::Eof => None,
-        })
-        .collect()
-}
-
-fn member_receiver_range(text: &str, member_start: usize) -> Option<TextRange> {
-    let before_member = text.get(..member_start)?;
-    let before_dot = before_member.trim_end();
-    if !before_dot.ends_with('.') {
-        return None;
-    }
-    let before_receiver = before_dot[..before_dot.len().saturating_sub(1)].trim_end();
-    let end = before_receiver.len();
-    let start = before_receiver
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    (start < end).then(|| TextRange::new(start, end))
 }
 
 fn is_call_callee(text: &str, range: TextRange) -> bool {
