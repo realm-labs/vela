@@ -198,10 +198,12 @@ Purpose: make Vela's multi-file module model the default editor model.
 Tests:
 
 - [x] `configured_roots_build_module_paths`
+- [x] `vela_toml_parses_roots_and_schema`
 - [x] `scratch_file_uses_single_file_mode`
 - [x] `open_overlay_wins_over_disk_source`
 - [x] `missing_import_reports_diagnostic`
 - [x] `multi_root_config_keeps_module_paths_stable`
+- [x] `project_config_invalidation_rebuilds_module_paths`
 
 Validation:
 
@@ -229,6 +231,7 @@ Tests:
 - [x] `function_body_edit_does_not_invalidate_unrelated_modules`
 - [x] `import_edit_invalidates_reverse_dependencies`
 - [x] `declaration_edit_invalidates_dependent_modules`
+- [x] `module_path_change_invalidates_hir_without_text_reparse`
 - [x] `stale_background_diagnostics_are_not_published`
 - [x] `cancelled_background_diagnostics_are_not_published`
 - [x] `open_file_recomputation_is_scheduled_before_workspace_work`
@@ -352,6 +355,7 @@ Tests:
 - [x] `schema_hash_compatibility_accepts_matching_facts`
 - [x] `schema_hash_compatibility_rejects_stale_facts`
 - [x] `schema_artifact_accepts_docs_metadata`
+- [x] `invalid_schema_artifact_records_schema_diagnostic`
 - [x] `invalid_schema_reports_diagnostic`
 - [x] `invalid_schema_metadata_reports_diagnostic`
 - [x] `schema_watch_publishes_invalid_schema_diagnostic`
@@ -410,9 +414,13 @@ Tests:
 - [x] `lsp_completion_uses_open_overlay_declarations`
 - [x] `lsp_completion_uses_loaded_schema_facts`
 - [x] `lambda_parameter_completion_suggests_stdlib_callback_item`
+- [x] `lambda_parameter_completion_filters_prefix_and_used_names`
+- [x] `lambda_parameter_completion_suggests_map_key_and_value`
 - [x] `lsp_lambda_parameter_completion_uses_pipe_trigger_context`
 - [x] `type_hint_completion_suggests_only_type_items`
+- [x] `type_hint_completion_suggests_builtin_container_arguments`
 - [x] `lsp_type_hint_completion_uses_colon_trigger_context`
+- [x] `member_context_is_detected_without_global_fallback`
 - [x] `member_completion_uses_host_schema_facts`
 - [x] `lsp_member_completion_uses_host_schema_facts`
 - [x] `member_completion_uses_schema_trait_method_facts`
@@ -422,6 +430,7 @@ Tests:
 - [x] `record_field_completion_uses_schema_facts`
 - [x] `lsp_record_field_completion_uses_known_constructor`
 - [x] `named_argument_completion_suggests_unused_script_parameters`
+- [x] `named_argument_completion_uses_parameter_prefix`
 - [x] `lsp_named_argument_completion_suggests_unused_script_parameters`
 - [x] `map_key_completion_suggests_typed_enum_variants`
 - [x] `map_key_completion_suppresses_untyped_global_fallback`
@@ -487,6 +496,7 @@ Purpose: expose semantic facts and navigation.
 Tests:
 
 - [x] `hover_degrades_to_any_without_schema`
+- [x] `hover_reports_script_parameter_fact`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
 - [x] `hover_reports_schema_trait_fact`
@@ -793,6 +803,7 @@ Purpose: support workspace navigation and prepare rename.
 Tests:
 
 - [x] `references_find_local_binding_uses`
+- [x] `references_can_exclude_local_declaration`
 - [x] `lsp_references_find_local_binding_uses`
 - [x] `references_find_imported_function_uses`
 - [x] `lsp_references_find_imported_function_uses`
@@ -1075,6 +1086,7 @@ Tests:
 - [x] `lsp_on_type_formatting_reflows_completed_nested_method`
 - [x] `on_type_formatting_reflows_completed_enum_record_variant`
 - [x] `lsp_on_type_formatting_reflows_completed_enum_record_variant`
+- [x] `on_type_formatting_ignores_unsupported_trigger`
 - [x] `lsp_document_formatting_returns_full_document_edit`
 - [x] `lsp_document_formatting_returns_empty_edits_when_idempotent`
 - [x] `lsp_range_formatting_limits_edits_to_range`
@@ -1135,6 +1147,8 @@ Purpose: expose gradual type facts without implying static typing.
 Tests:
 
 - [x] `inlay_hints_show_parameter_names`
+- [x] `inlay_hints_skip_named_arguments_and_unknown_calls`
+- [x] `inlay_hints_use_schema_function_names`
 - [x] `inlay_hints_show_source_method_parameter_names`
 - [x] `inlay_hints_show_stable_local_typefacts`
 - [x] `inlay_hints_show_lambda_parameter_facts`
