@@ -2,7 +2,7 @@ use vela_syntax::ast::SourceFile;
 
 use crate::{
     CursorContext, DocumentId, DocumentSnapshot, LanguageServiceDatabases, Position, SourceRecord,
-    SourceVersion, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
+    SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
 };
 use vela_common::SourceId;
 use vela_hir::binding::BindingMap;
@@ -146,6 +146,20 @@ impl<'a> QueryContext<'a> {
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
     }
+
+    #[must_use]
+    pub fn member_receiver_text(&self) -> Option<&str> {
+        text_range(self.text(), self.cursor.member_receiver()?)
+    }
+
+    #[must_use]
+    pub fn call_callee_text(&self) -> Option<&str> {
+        text_range(self.text(), self.cursor.call_callee()?)
+    }
+}
+
+fn text_range(text: &str, range: TextRange) -> Option<&str> {
+    text.get(range.start..range.end)
 }
 
 fn query_bindings<'a>(
@@ -167,7 +181,8 @@ fn query_bindings<'a>(
 mod tests {
     use super::*;
     use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+        LineIndex, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
     };
 
     #[test]
@@ -235,5 +250,36 @@ mod tests {
             context.module_path().expect("module path").segments(),
             &["game".to_owned(), "main".to_owned()]
         );
+    }
+
+    #[test]
+    fn query_context_exposes_cursor_receiver_and_callee_text() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "pub fn current_player() -> Player { return Player { level: 1 } }\n\
+                      pub fn main(player: Player) { player.level; grant(current_player().level) }";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let workspace = Workspace::new();
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let member_offset = source.find("level;").expect("member access") + "level".len();
+        let member_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(member_offset),
+        )
+        .expect("member query");
+        assert_eq!(member_context.member_receiver_text(), Some("player"));
+
+        let call_offset = source.find("current_player().level").expect("call arg") + 1;
+        let call_context = QueryContext::from_databases(
+            &databases,
+            &document,
+            LineIndex::new(source).position(call_offset),
+        )
+        .expect("call query");
+        assert_eq!(call_context.call_callee_text(), Some("grant"));
     }
 }

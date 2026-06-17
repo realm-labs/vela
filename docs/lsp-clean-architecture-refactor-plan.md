@@ -290,7 +290,8 @@ Purpose: classify the cursor once and reuse it across features.
   expression facts, path qualifier facts, callable facts, and replacement
   range where available.
   `QueryContext` now exposes request source id and module path facts directly;
-  call-argument contexts now expose callee ranges; top-level function local
+  call-argument contexts now expose callee ranges; `QueryContext` exposes
+  receiver and callee text from shared cursor ranges; top-level function local
   binding facts are request-local; broader callable semantic facts remain
   feature-owned follow-up work.
 - [x] Keep classification tolerant of incomplete source and parser recovery.
