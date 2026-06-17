@@ -5,11 +5,11 @@ use vela_analysis::stdlib::{
     stdlib_method_fact_with_lambda_arity,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{SourceId, Span};
-use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
+use crate::query_context::type_fact_for_source_range;
 use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -82,11 +82,8 @@ struct CallContext {
 
 struct MemberCallLookup<'a> {
     graph: &'a ModuleGraph,
-    facts: &'a AnalysisFacts,
-    source_id: SourceId,
-    bindings: &'a BindingMap,
+    receiver: &'a TypeFact,
     method: &'a str,
-    receiver_range: TextRange,
 }
 
 impl LanguageServiceDatabases {
@@ -158,103 +155,21 @@ impl LanguageServiceDatabases {
             return None;
         }
         let receiver_range = context.member_receiver?;
+        let receiver = type_fact_for_source_range(self, source_id, receiver_range)?;
         let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        self.bindings_at(source_id, receiver_range.start)
-            .find_map(|bindings| {
-                let lookup = MemberCallLookup {
-                    graph,
-                    facts: &facts,
-                    source_id,
-                    bindings,
-                    method,
-                    receiver_range,
-                };
-                let mut signatures = self.script_method_signatures(&lookup);
-                signatures.extend(self.schema_method_signatures(&lookup));
-                signatures.extend(self.stdlib_method_signatures(&lookup, &context.args_prefix));
-                (!signatures.is_empty()).then_some(signatures)
-            })
-    }
-
-    fn bindings_at<'a>(
-        &'a self,
-        source_id: SourceId,
-        offset: usize,
-    ) -> impl Iterator<Item = &'a BindingMap> + 'a {
-        let start = u32::try_from(offset).ok();
-        self.hir_db()
-            .graph()
-            .declarations()
-            .filter_map(move |declaration| {
-                let start = start?;
-                if declaration.span.source != source_id || !declaration.span.contains(start) {
-                    return None;
-                }
-                match declaration.kind {
-                    DeclarationKind::Function => self.hir_db().graph().bindings(declaration.id),
-                    DeclarationKind::Trait => self.bindings_for_trait_method(declaration.id, start),
-                    DeclarationKind::Impl => self.bindings_for_impl_method(declaration.id, start),
-                    DeclarationKind::Const
-                    | DeclarationKind::Struct
-                    | DeclarationKind::Enum
-                    | DeclarationKind::Global => None,
-                }
-            })
-    }
-
-    fn bindings_for_trait_method(
-        &self,
-        declaration: vela_hir::ids::HirDeclId,
-        offset: u32,
-    ) -> Option<&BindingMap> {
-        self.hir_db()
-            .graph()
-            .trait_shape(declaration)?
-            .methods
-            .iter()
-            .find_map(|method| {
-                let body_span = method.default_body_span?;
-                body_span
-                    .contains(offset)
-                    .then(|| {
-                        method.default_body_node.and_then(|node| {
-                            self.hir_db().graph().trait_default_method_bindings(node)
-                        })
-                    })
-                    .flatten()
-            })
-    }
-
-    fn bindings_for_impl_method(
-        &self,
-        declaration: vela_hir::ids::HirDeclId,
-        offset: u32,
-    ) -> Option<&BindingMap> {
-        self.hir_db()
-            .graph()
-            .impl_metadata(declaration)?
-            .methods
-            .iter()
-            .find_map(|method| {
-                method
-                    .span
-                    .contains(offset)
-                    .then(|| self.hir_db().graph().impl_method_bindings(method.node))
-                    .flatten()
-            })
+        let lookup = MemberCallLookup {
+            graph,
+            receiver: &receiver,
+            method,
+        };
+        let mut signatures = self.script_method_signatures(&lookup);
+        signatures.extend(self.schema_method_signatures(&lookup));
+        signatures.extend(self.stdlib_method_signatures(&lookup, &context.args_prefix));
+        (!signatures.is_empty()).then_some(signatures)
     }
 
     fn script_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
-        let Some(receiver) = receiver_type_fact(
-            lookup.source_id,
-            lookup.bindings,
-            lookup.facts,
-            lookup.receiver_range,
-        ) else {
-            return Vec::new();
-        };
-        let owner_names = record_owner_names(&receiver);
+        let owner_names = record_owner_names(lookup.receiver);
         lookup
             .graph
             .declarations()
@@ -292,18 +207,11 @@ impl LanguageServiceDatabases {
     }
 
     fn schema_method_signatures(&self, lookup: &MemberCallLookup<'_>) -> Vec<SignatureInformation> {
-        let Some(receiver) = schema_receiver_type_fact(
-            lookup.source_id,
-            lookup.bindings,
-            lookup.facts,
+        let Some((owner, fact)) = schema_method_fact_for_receiver(
             self.schema_db().facts(),
-            lookup.receiver_range,
+            lookup.receiver,
+            lookup.method,
         ) else {
-            return Vec::new();
-        };
-        let Some((owner, fact)) =
-            schema_method_fact_for_receiver(self.schema_db().facts(), &receiver, lookup.method)
-        else {
             return Vec::new();
         };
         let TypeFact::Function { params, returns } = fact else {
@@ -324,18 +232,9 @@ impl LanguageServiceDatabases {
         lookup: &MemberCallLookup<'_>,
         args_prefix: &str,
     ) -> Vec<SignatureInformation> {
-        let Some(receiver) = schema_receiver_type_fact(
-            lookup.source_id,
-            lookup.bindings,
-            lookup.facts,
-            self.schema_db().facts(),
-            lookup.receiver_range,
-        ) else {
-            return Vec::new();
-        };
         let lambda_param_count = first_lambda_param_count(args_prefix);
         let Some(fact) = stdlib_method_fact_with_lambda_arity(
-            &receiver,
+            lookup.receiver,
             lookup.method,
             None,
             lambda_param_count,
@@ -609,61 +508,6 @@ fn first_lambda_param_count(args_text: &str) -> Option<usize> {
                 .filter(|param| !param.trim().is_empty())
                 .count(),
         )
-    }
-}
-
-fn receiver_type_fact(
-    source_id: SourceId,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    receiver: TextRange,
-) -> Option<TypeFact> {
-    let span = receiver_span(source_id, receiver)?;
-    let resolution = bindings.resolution_at_span(span)?;
-    type_fact_for_resolution(resolution, facts)
-}
-
-fn schema_receiver_type_fact(
-    source_id: SourceId,
-    bindings: &BindingMap,
-    facts: &AnalysisFacts,
-    schema: &vela_analysis::registry::RegistryFacts,
-    receiver: TextRange,
-) -> Option<TypeFact> {
-    let span = receiver_span(source_id, receiver)?;
-    let resolution = bindings.resolution_at_span(span)?;
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown))
-            .or_else(|| {
-                bindings
-                    .local(*local)
-                    .and_then(|binding| schema_fact_for_hint(binding.type_hint.as_ref()?, schema))
-            }),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn receiver_span(source_id: SourceId, receiver: TextRange) -> Option<Span> {
-    let start = u32::try_from(receiver.start).ok()?;
-    let end = u32::try_from(receiver.end).ok()?;
-    Some(Span::new(source_id, start, end))
-}
-
-fn type_fact_for_resolution(
-    resolution: &BindingResolution,
-    facts: &AnalysisFacts,
-) -> Option<TypeFact> {
-    match resolution {
-        BindingResolution::Local(local) => facts
-            .local(*local)
-            .cloned()
-            .filter(|fact| !matches!(fact, TypeFact::Unknown)),
-        BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
 }
 

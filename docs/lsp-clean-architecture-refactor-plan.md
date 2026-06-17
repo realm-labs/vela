@@ -335,8 +335,11 @@ Purpose: classify the cursor once and reuse it across features.
   shared member receiver range from `QueryContext` for schema/member lookup
   instead of re-scanning member receivers locally. `QueryContext` now exposes
   shared range-to-`TypeFact` lookup with schema type-hint fallback; member
-  completion, lambda-parameter completion, hover, and definition consume it for
-  receiver semantic facts instead of keeping separate receiver fact walkers.
+  completion, lambda-parameter completion, hover, definition, and signature
+  member-call lookup consume it for receiver semantic facts instead of keeping
+  separate receiver fact walkers. The shared range-to-fact path now handles
+  function bodies, trait default bodies, and impl method bodies from the same
+  binding-map lookup.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

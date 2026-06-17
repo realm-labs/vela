@@ -10,7 +10,8 @@ use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::module_graph::ModulePath;
+use vela_hir::ids::HirDeclId;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::HirTypeHint;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -205,19 +206,7 @@ impl<'a> QueryContext<'a> {
         range: TextRange,
     ) -> Option<TypeFact> {
         let source_id = self.source_id()?;
-        let start = u32::try_from(range.start).ok()?;
-        let end = u32::try_from(range.end).ok()?;
-        let span = Span::new(source_id, start, end);
-        let graph = databases.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        graph.declarations().find_map(|declaration| {
-            if declaration.span.source != source_id || !declaration.span.contains(start) {
-                return None;
-            }
-            let bindings = graph.bindings(declaration.id)?;
-            let resolution = bindings.resolution_at_span(span)?;
-            type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
-        })
+        type_fact_for_source_range(databases, source_id, range)
     }
 
     #[must_use]
@@ -382,19 +371,91 @@ fn schema_fact_for_hint(hint: &HirTypeHint, schema: &RegistryFacts) -> Option<Ty
         .cloned()
 }
 
+pub(crate) fn type_fact_for_source_range(
+    databases: &LanguageServiceDatabases,
+    source_id: SourceId,
+    range: TextRange,
+) -> Option<TypeFact> {
+    let start = u32::try_from(range.start).ok()?;
+    let end = u32::try_from(range.end).ok()?;
+    let span = Span::new(source_id, start, end);
+    let graph = databases.hir_db().graph();
+    let facts = AnalysisFacts::from_module_graph(graph);
+    binding_maps_at(databases, source_id, start).find_map(|bindings| {
+        let resolution = bindings.resolution_at_span(span)?;
+        type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
+    })
+}
+
 fn query_bindings<'a>(
     databases: &'a LanguageServiceDatabases,
     source: &SourceRecord,
     offset: usize,
 ) -> Option<&'a BindingMap> {
     let offset = u32::try_from(offset).ok()?;
-    let source_id = source.source_id();
+    binding_maps_at(databases, source.source_id(), offset).next()
+}
+
+fn binding_maps_at<'a>(
+    databases: &'a LanguageServiceDatabases,
+    source_id: SourceId,
+    offset: u32,
+) -> impl Iterator<Item = &'a BindingMap> + 'a {
     let graph = databases.hir_db().graph();
-    graph.declarations().find_map(|declaration| {
-        (declaration.span.source == source_id && declaration.span.contains(offset))
-            .then(|| graph.bindings(declaration.id))
-            .flatten()
+    graph.declarations().filter_map(move |declaration| {
+        if declaration.span.source != source_id || !declaration.span.contains(offset) {
+            return None;
+        }
+        match declaration.kind {
+            DeclarationKind::Function => graph.bindings(declaration.id),
+            DeclarationKind::Trait => bindings_for_trait_method(graph, declaration.id, offset),
+            DeclarationKind::Impl => bindings_for_impl_method(graph, declaration.id, offset),
+            DeclarationKind::Const
+            | DeclarationKind::Struct
+            | DeclarationKind::Enum
+            | DeclarationKind::Global => None,
+        }
     })
+}
+
+fn bindings_for_trait_method(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    offset: u32,
+) -> Option<&BindingMap> {
+    graph
+        .trait_shape(declaration)?
+        .methods
+        .iter()
+        .find_map(|method| {
+            let body_span = method.default_body_span?;
+            body_span
+                .contains(offset)
+                .then(|| {
+                    method
+                        .default_body_node
+                        .and_then(|node| graph.trait_default_method_bindings(node))
+                })
+                .flatten()
+        })
+}
+
+fn bindings_for_impl_method(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    offset: u32,
+) -> Option<&BindingMap> {
+    graph
+        .impl_metadata(declaration)?
+        .methods
+        .iter()
+        .find_map(|method| {
+            method
+                .span
+                .contains(offset)
+                .then(|| graph.impl_method_bindings(method.node))
+                .flatten()
+        })
 }
 
 #[cfg(test)]
