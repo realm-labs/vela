@@ -51,7 +51,7 @@ pub use project::{
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
 };
-pub use query_context::QueryContext;
+pub use query_context::{CallArgumentFacts, QueryContext};
 pub use references::{DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind};
 pub use rename::{
     DocumentTextEdit, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,

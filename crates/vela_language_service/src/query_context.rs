@@ -1,12 +1,55 @@
 use vela_syntax::ast::SourceFile;
 
 use crate::{
-    CursorContext, DocumentId, DocumentSnapshot, LanguageServiceDatabases, Position, SourceRecord,
-    SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot, cursor_context_at,
+    CursorContext, CursorContextKind, DocumentId, DocumentSnapshot, LanguageServiceDatabases,
+    Position, SourceRecord, SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot,
+    cursor_context_at,
 };
 use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, LocalBinding};
 use vela_hir::module_graph::ModulePath;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct CallArgumentFacts<'a> {
+    callee_range: TextRange,
+    callee: &'a str,
+    call_open_offset: usize,
+    args_prefix: &'a str,
+    active_parameter: usize,
+    member_receiver: Option<TextRange>,
+}
+
+impl<'a> CallArgumentFacts<'a> {
+    #[must_use]
+    pub const fn callee_range(&self) -> TextRange {
+        self.callee_range
+    }
+
+    #[must_use]
+    pub const fn callee(&self) -> &'a str {
+        self.callee
+    }
+
+    #[must_use]
+    pub const fn call_open_offset(&self) -> usize {
+        self.call_open_offset
+    }
+
+    #[must_use]
+    pub const fn args_prefix(&self) -> &'a str {
+        self.args_prefix
+    }
+
+    #[must_use]
+    pub const fn active_parameter(&self) -> usize {
+        self.active_parameter
+    }
+
+    #[must_use]
+    pub const fn member_receiver(&self) -> Option<TextRange> {
+        self.member_receiver
+    }
+}
 
 #[derive(Debug, Clone)]
 enum QuerySource<'a> {
@@ -187,6 +230,27 @@ impl<'a> QueryContext<'a> {
     pub fn call_active_parameter_index(&self) -> Option<usize> {
         self.call_args_prefix_text()
             .map(active_call_parameter_index)
+    }
+
+    #[must_use]
+    pub fn call_argument_facts(&self) -> Option<CallArgumentFacts<'_>> {
+        if self.cursor.kind() != CursorContextKind::CallArgument {
+            return None;
+        }
+        let callee_range = self.call_callee_range()?;
+        let callee = text_range(self.text(), callee_range)?;
+        let call_open_offset = self.call_open_offset()?;
+        let args_prefix = self
+            .text()
+            .get(call_open_offset + 1..self.cursor.replace_range().end)?;
+        Some(CallArgumentFacts {
+            callee_range,
+            callee,
+            call_open_offset,
+            args_prefix,
+            active_parameter: active_call_parameter_index(args_prefix),
+            member_receiver: self.call_member_receiver_range(),
+        })
     }
 
     #[must_use]
@@ -419,6 +483,19 @@ mod tests {
         );
         assert_eq!(call_context.call_args_prefix_text(), Some("c"));
         assert_eq!(call_context.call_active_parameter_index(), Some(0));
+        let call_facts = call_context.call_argument_facts().expect("call facts");
+        assert_eq!(
+            call_facts.callee_range(),
+            call_context.call_callee_range().expect("callee")
+        );
+        assert_eq!(call_facts.callee(), "grant");
+        assert_eq!(
+            call_facts.call_open_offset(),
+            call_context.call_open_offset().expect("call open")
+        );
+        assert_eq!(call_facts.args_prefix(), "c");
+        assert_eq!(call_facts.active_parameter(), 0);
+        assert_eq!(call_facts.member_receiver(), None);
 
         let method_call_offset =
             source.find("filter(player").expect("method call") + "filter(".len();
@@ -442,6 +519,16 @@ mod tests {
         );
         assert_eq!(method_call_context.call_args_prefix_text(), Some(""));
         assert_eq!(method_call_context.call_active_parameter_index(), Some(0));
+        let method_call_facts = method_call_context
+            .call_argument_facts()
+            .expect("method call facts");
+        assert_eq!(method_call_facts.callee(), "scores.filter");
+        assert_eq!(method_call_facts.args_prefix(), "");
+        assert_eq!(method_call_facts.active_parameter(), 0);
+        assert_eq!(
+            method_call_facts.member_receiver(),
+            method_call_context.call_member_receiver_range()
+        );
 
         let lambda_offset = source.find("|)").expect("lambda pipe") + "|".len();
         let lambda_context = QueryContext::from_databases(
@@ -468,6 +555,7 @@ mod tests {
             Some(TextRange::new(lambda_offset, lambda_offset))
         );
         assert_eq!(lambda_context.lambda_parameters_text(), Some(""));
+        assert_eq!(lambda_context.call_argument_facts(), None);
     }
 
     #[test]
@@ -493,6 +581,11 @@ mod tests {
             Some("player, c")
         );
         assert_eq!(second_arg_context.call_active_parameter_index(), Some(1));
+        let second_arg_facts = second_arg_context
+            .call_argument_facts()
+            .expect("second arg facts");
+        assert_eq!(second_arg_facts.args_prefix(), "player, c");
+        assert_eq!(second_arg_facts.active_parameter(), 1);
 
         let after_lambda_offset = source.find("final").expect("outer final arg") + "f".len();
         let after_lambda_context = QueryContext::from_databases(
@@ -506,5 +599,13 @@ mod tests {
             Some("player, current_player().level, map(|left, right| left), f")
         );
         assert_eq!(after_lambda_context.call_active_parameter_index(), Some(3));
+        let after_lambda_facts = after_lambda_context
+            .call_argument_facts()
+            .expect("after lambda facts");
+        assert_eq!(
+            after_lambda_facts.args_prefix(),
+            "player, current_player().level, map(|left, right| left), f"
+        );
+        assert_eq!(after_lambda_facts.active_parameter(), 3);
     }
 }

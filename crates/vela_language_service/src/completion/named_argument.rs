@@ -2,7 +2,7 @@ use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::TextRange;
+use crate::CallArgumentFacts;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -10,19 +10,17 @@ use super::{
 };
 
 pub(super) fn named_argument_completion_context(
-    args_before_cursor: Option<&str>,
-    shared_callee: Option<(TextRange, &str)>,
+    call: Option<CallArgumentFacts<'_>>,
 ) -> Option<CallArgumentContext> {
-    let args_before_cursor = args_before_cursor?;
-    let (callee, callee_range) =
-        shared_callee.map(|(range, callee)| (callee.to_owned(), Some(range)))?;
+    let call = call?;
+    let args_before_cursor = call.args_prefix();
     let current_arg = current_argument_text(args_before_cursor);
     if current_arg.contains(':') || !is_argument_name_prefix(current_arg.trim_start()) {
         return None;
     }
     Some(CallArgumentContext {
-        callee,
-        callee_range,
+        callee: call.callee().to_owned(),
+        callee_range: Some(call.callee_range()),
         used_names: used_named_arguments(args_before_cursor),
     })
 }

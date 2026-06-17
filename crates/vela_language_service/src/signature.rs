@@ -10,9 +10,7 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
-use crate::{
-    CursorContextKind, DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange,
-};
+use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SignatureHelp {
@@ -476,17 +474,12 @@ impl LanguageServiceDatabases {
 }
 
 fn call_context_from_query(query: &QueryContext<'_>) -> Option<CallContext> {
-    if query.cursor().kind() != CursorContextKind::CallArgument {
-        return None;
-    }
-    let callee = query.call_callee_text()?.to_owned();
-    let args_prefix = query.call_args_prefix_text()?.to_owned();
-    let active_parameter = query.call_active_parameter_index()?;
+    let call = query.call_argument_facts()?;
     Some(CallContext {
-        callee,
-        member_receiver: query.call_member_receiver_range(),
-        active_parameter,
-        args_prefix,
+        callee: call.callee().to_owned(),
+        member_receiver: call.member_receiver(),
+        active_parameter: call.active_parameter(),
+        args_prefix: call.args_prefix().to_owned(),
     })
 }
 

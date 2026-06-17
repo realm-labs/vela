@@ -153,10 +153,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
     }
 
     if cursor.kind() == CursorContextKind::CallArgument
-        && let Some(call_arguments) = named_argument_completion_context(
-            query.call_args_prefix_text(),
-            query_call_callee(query),
-        )
+        && let Some(call_arguments) = named_argument_completion_context(query.call_argument_facts())
     {
         return CompletionContext {
             kind: CompletionContextKind::NamedArgument,
@@ -194,8 +191,4 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
     }
 
     CompletionContext::expression(prefix_start, prefix)
-}
-
-fn query_call_callee<'a>(query: &'a QueryContext<'_>) -> Option<(TextRange, &'a str)> {
-    Some((query.call_callee_range()?, query.call_callee_text()?))
 }
