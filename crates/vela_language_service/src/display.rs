@@ -62,6 +62,43 @@ impl DisplayParts {
     }
 
     #[must_use]
+    pub fn keyword_symbol(keyword: &str, symbol: &str) -> Self {
+        let mut parts = Self::new();
+        parts.push(DisplayPartKind::Text, keyword);
+        parts.push(DisplayPartKind::Text, " ");
+        parts.push(DisplayPartKind::Symbol, symbol);
+        parts
+    }
+
+    #[must_use]
+    pub fn member(owner: &str, member: &str) -> Self {
+        let mut parts = Self::new();
+        parts.push(DisplayPartKind::Symbol, owner);
+        parts.push(DisplayPartKind::Punctuation, ".");
+        parts.push(DisplayPartKind::Symbol, member);
+        parts
+    }
+
+    #[must_use]
+    pub fn qualified(owner: &str, member: &str) -> Self {
+        let mut parts = Self::new();
+        parts.push(DisplayPartKind::Symbol, owner);
+        parts.push(DisplayPartKind::Punctuation, "::");
+        parts.push(DisplayPartKind::Symbol, member);
+        parts
+    }
+
+    #[must_use]
+    pub fn signature(
+        parameters: impl IntoIterator<Item = DisplayParts>,
+        returns: Option<&str>,
+    ) -> Self {
+        let mut parts = Self::new();
+        parts.push_signature_tail(parameters, returns);
+        parts
+    }
+
+    #[must_use]
     pub fn callable_signature(
         name: &str,
         parameters: impl IntoIterator<Item = DisplayParts>,
@@ -69,25 +106,33 @@ impl DisplayParts {
     ) -> Self {
         let mut parts = Self::new();
         parts.push(DisplayPartKind::Symbol, name);
-        parts.push(DisplayPartKind::Punctuation, "(");
+        parts.push_signature_tail(parameters, returns);
+        parts
+    }
+
+    fn push_signature_tail(
+        &mut self,
+        parameters: impl IntoIterator<Item = DisplayParts>,
+        returns: Option<&str>,
+    ) {
+        self.push(DisplayPartKind::Punctuation, "(");
         let mut first = true;
         for parameter in parameters {
             if first {
                 first = false;
             } else {
-                parts.push(DisplayPartKind::Punctuation, ",");
-                parts.push(DisplayPartKind::Text, " ");
+                self.push(DisplayPartKind::Punctuation, ",");
+                self.push(DisplayPartKind::Text, " ");
             }
-            parts.extend(parameter);
+            self.extend(parameter);
         }
-        parts.push(DisplayPartKind::Punctuation, ")");
+        self.push(DisplayPartKind::Punctuation, ")");
         if let Some(returns) = returns {
-            parts.push(DisplayPartKind::Text, " ");
-            parts.push(DisplayPartKind::Operator, "->");
-            parts.push(DisplayPartKind::Text, " ");
-            parts.push(DisplayPartKind::Type, returns);
+            self.push(DisplayPartKind::Text, " ");
+            self.push(DisplayPartKind::Operator, "->");
+            self.push(DisplayPartKind::Text, " ");
+            self.push(DisplayPartKind::Type, returns);
         }
-        parts
     }
 
     pub fn push(&mut self, kind: DisplayPartKind, text: impl Into<String>) {
@@ -157,5 +202,21 @@ mod tests {
     fn inlay_labels_render_existing_text_shape() {
         assert_eq!(DisplayParts::parameter_hint("amount").render(), "amount:");
         assert_eq!(DisplayParts::type_annotation("i64").render(), ": i64");
+    }
+
+    #[test]
+    fn member_and_qualified_labels_render_existing_text_shape() {
+        assert_eq!(
+            DisplayParts::member("Player", "level").render(),
+            "Player.level"
+        );
+        assert_eq!(
+            DisplayParts::qualified("game::reward", "grant").render(),
+            "game::reward::grant"
+        );
+        assert_eq!(
+            DisplayParts::keyword_symbol("module", "game::reward").render(),
+            "module game::reward"
+        );
     }
 }

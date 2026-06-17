@@ -575,9 +575,11 @@ and semantic tokens use the same identities and display primitives.
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
   A shared `DisplayParts` segment model now exists in `vela_language_service`.
-  Signature labels plus parameter/type inlay labels render through it while
-  preserving the existing user-visible strings; hover labels, completion
-  details, symbol labels, and diagnostics still need to converge on it.
+  Signature labels, parameter/type inlay labels, selected hover member/module
+  labels, and script/schema symbol names and signature details now render
+  through it while preserving the existing user-visible strings; completion
+  details, remaining hover details, broader symbol labels, and diagnostics
+  still need to converge on it.
 - [ ] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
 - [ ] Ensure schema-owned symbols can be displayed and completed without

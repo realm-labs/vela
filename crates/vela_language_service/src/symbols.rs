@@ -7,7 +7,8 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord, TextRange,
+    DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord,
+    TextRange,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -220,7 +221,7 @@ impl LanguageServiceDatabases {
                 let name = if module.is_empty() {
                     declaration.name.clone()
                 } else {
-                    format!("{module}::{}", declaration.name)
+                    DisplayParts::qualified(&module, &declaration.name).render()
                 };
                 symbol_matches(query, &name).then(|| {
                     let source = self.symbol_source_record_for(declaration.span.source)?;
@@ -473,21 +474,14 @@ fn detail_for_declaration(graph: &ModuleGraph, declaration: &Declaration) -> Opt
 }
 
 fn signature_detail(signature: &FunctionSignature) -> String {
-    let params = signature
-        .params
-        .iter()
-        .map(|param| {
-            param.type_hint.as_ref().map_or_else(
-                || param.name.clone(),
-                |hint| format!("{}: {}", param.name, hint.display()),
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    signature.return_type.as_ref().map_or_else(
-        || format!("({params})"),
-        |return_type| format!("({params}) -> {}", return_type.display()),
-    )
+    let params = signature.params.iter().map(|param| {
+        param.type_hint.as_ref().map_or_else(
+            || DisplayParts::plain(param.name.as_str()),
+            |hint| DisplayParts::parameter(&param.name, &hint.display()),
+        )
+    });
+    let return_type = signature.return_type.as_ref().map(|hint| hint.display());
+    DisplayParts::signature(params, return_type.as_deref()).render()
 }
 
 fn symbol_from_span(
@@ -557,7 +551,7 @@ fn schema_member_symbol(
     member: RegistryMemberFact,
     kind: DocumentSymbolKind,
 ) -> Option<WorkspaceSymbol> {
-    let name = format!("{}::{}", member.owner, member.name);
+    let name = DisplayParts::qualified(&member.owner, &member.name).render();
     schema_symbol(
         query,
         &name,

@@ -18,8 +18,8 @@ use vela_hir::type_hint::{
 };
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange,
+    DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
+    QueryContext, TextRange,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -217,7 +217,7 @@ fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) ->
         range,
         label: label.clone(),
         kind: HoverKind::Module,
-        detail: format!("module {label}"),
+        detail: DisplayParts::keyword_symbol("module", &label).render(),
         docs: None,
     })
 }
@@ -265,7 +265,7 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
 fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange) -> Option<Hover> {
     stdlib_method_fact(receiver, method, None).map(|fact| Hover {
         range,
-        label: format!("{}.{}", receiver.display_name(), fact.method),
+        label: DisplayParts::member(&receiver.display_name(), fact.method).render(),
         kind: HoverKind::Method,
         detail: stdlib_method_detail(&fact),
         docs: None,
@@ -509,7 +509,7 @@ fn struct_field_hover(
     let owner = qualified_declaration_label(graph, declaration);
     Hover {
         range,
-        label: format!("{owner}.{}", field.name),
+        label: DisplayParts::member(&owner, &field.name).render(),
         kind: HoverKind::Field,
         detail: struct_field_detail(field),
         docs: attr_docs(&field.attrs),
@@ -526,7 +526,7 @@ fn impl_method_hover(
     let owner = impl_owner_label(graph, declaration, metadata);
     Hover {
         range,
-        label: format!("{owner}.{}", method.name),
+        label: DisplayParts::member(&owner, &method.name).render(),
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: None,
@@ -542,7 +542,7 @@ fn trait_method_hover(
     let owner = qualified_declaration_label(graph, declaration);
     Hover {
         range,
-        label: format!("{owner}.{}", method.name),
+        label: DisplayParts::member(&owner, &method.name).render(),
         kind: HoverKind::Method,
         detail: signature_detail(&method.signature),
         docs: attr_docs(&method.attrs),
@@ -550,21 +550,14 @@ fn trait_method_hover(
 }
 
 fn signature_detail(signature: &FunctionSignature) -> String {
-    let params = signature
-        .params
-        .iter()
-        .map(|param| {
-            param.type_hint.as_ref().map_or_else(
-                || param.name.clone(),
-                |hint| format!("{}: {}", param.name, hint.display()),
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    signature.return_type.as_ref().map_or_else(
-        || format!("({params})"),
-        |return_type| format!("({params}) -> {}", return_type.display()),
-    )
+    let params = signature.params.iter().map(|param| {
+        param.type_hint.as_ref().map_or_else(
+            || DisplayParts::plain(param.name.as_str()),
+            |hint| DisplayParts::parameter(&param.name, &hint.display()),
+        )
+    });
+    let return_type = signature.return_type.as_ref().map(|hint| hint.display());
+    DisplayParts::signature(params, return_type.as_deref()).render()
 }
 
 fn struct_field_detail(field: &StructFieldHint) -> String {
@@ -598,7 +591,7 @@ fn enum_variant_hover(
     range: DiagnosticRange,
 ) -> Hover {
     let owner = qualified_declaration_label(graph, declaration);
-    let label = format!("{owner}::{}", variant.name);
+    let label = DisplayParts::qualified(&owner, &variant.name).render();
     Hover {
         range,
         label,
