@@ -1,4 +1,3 @@
-use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::stdlib::{
     LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
@@ -9,7 +8,10 @@ use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
-use crate::query_context::type_fact_for_source_range;
+use crate::query_context::{
+    SourceCallableFacts, qualified_declaration_label, source_callable_facts,
+    type_fact_for_source_range,
+};
 use crate::{DocumentId, LanguageServiceDatabases, Position, QueryContext, TextRange};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -245,49 +247,9 @@ impl LanguageServiceDatabases {
     }
 
     fn script_signatures(&self, callee: &str) -> Vec<SignatureInformation> {
-        let graph = self.hir_db().graph();
-        let facts = AnalysisFacts::from_module_graph(graph);
-        graph
-            .declarations()
-            .filter(|declaration| {
-                declaration.kind == DeclarationKind::Function
-                    && (declaration.name == callee
-                        || qualified_declaration_label(graph, declaration.id) == callee)
-            })
-            .filter_map(|declaration| {
-                let fact = facts.declaration(declaration.id)?;
-                let TypeFact::Function { params, returns } = fact else {
-                    return None;
-                };
-                let signature = graph.function_signature(declaration.id)?;
-                let parameters = signature
-                    .params
-                    .iter()
-                    .enumerate()
-                    .map(|(index, param)| {
-                        let type_fact = params.get(index).cloned().unwrap_or(TypeFact::Unknown);
-                        let type_fact = if matches!(type_fact, TypeFact::Unknown) {
-                            param
-                                .type_hint
-                                .as_ref()
-                                .and_then(|hint| {
-                                    schema_fact_for_hint(hint, self.schema_db().facts())
-                                })
-                                .unwrap_or(TypeFact::Unknown)
-                        } else {
-                            type_fact
-                        };
-                        SignatureParameter {
-                            label: format!("{}: {}", param.name, type_fact.display_name()),
-                            type_fact,
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                Some(SignatureInformation {
-                    label: signature_label(&declaration.name, &parameters, returns),
-                    parameters,
-                })
-            })
+        source_callable_facts(self, callee)
+            .iter()
+            .map(source_callable_signature_information)
             .collect()
     }
 
@@ -419,6 +381,24 @@ fn method_signature_information(
         });
     SignatureInformation {
         label: signature_label(name, &parameters, &returns),
+        parameters,
+    }
+}
+
+fn source_callable_signature_information(callable: &SourceCallableFacts) -> SignatureInformation {
+    let parameters = callable
+        .params()
+        .iter()
+        .map(|param| {
+            let type_fact = param.type_fact().clone();
+            SignatureParameter {
+                label: format!("{}: {}", param.name(), type_fact.display_name()),
+                type_fact,
+            }
+        })
+        .collect::<Vec<_>>();
+    SignatureInformation {
+        label: signature_label(callable.name(), &parameters, callable.returns()),
         parameters,
     }
 }
@@ -620,24 +600,6 @@ fn schema_fact_for_hint(
         .or_else(|| schema.trait_fact(&qualified))
         .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
         .cloned()
-}
-
-fn qualified_declaration_label(
-    graph: &ModuleGraph,
-    declaration: vela_hir::ids::HirDeclId,
-) -> String {
-    let Some(declaration) = graph.declaration(declaration) else {
-        return String::new();
-    };
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
 }
 
 #[cfg(test)]

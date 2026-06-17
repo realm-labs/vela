@@ -1,12 +1,9 @@
-use vela_analysis::facts::AnalysisFacts;
-use vela_analysis::type_fact::TypeFact;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-
 use crate::CallArgumentFacts;
+use crate::query_context::SourceCallableFacts;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    completion_type_fact, is_identifier_continue,
+    is_identifier_continue,
 };
 
 pub(super) fn named_argument_completion_context(
@@ -26,64 +23,33 @@ pub(super) fn named_argument_completion_context(
 }
 
 pub(super) fn script_function_parameter_completions(
-    graph: &ModuleGraph,
-    schema: &vela_analysis::registry::RegistryFacts,
-    callee: &str,
+    callables: &[SourceCallableFacts],
     used_names: &[&str],
 ) -> Vec<CompletionItem> {
-    let facts = AnalysisFacts::from_module_graph(graph);
-    graph
-        .declarations()
-        .filter(|declaration| {
-            declaration.kind == DeclarationKind::Function
-                && (declaration.name == callee
-                    || qualified_declaration_label(graph, declaration.id) == callee)
-        })
-        .filter_map(|declaration| {
-            let signature = graph.function_signature(declaration.id)?;
-            let params = facts
-                .declaration(declaration.id)
-                .and_then(|fact| match fact {
-                    TypeFact::Function { params, .. } => Some(params.as_slice()),
-                    _ => None,
+    callables
+        .iter()
+        .flat_map(|callable| {
+            callable
+                .params()
+                .iter()
+                .filter(|param| !used_names.contains(&param.name()))
+                .map(|param| {
+                    let mut detail = param.type_fact().display_name();
+                    if param.defaulted() {
+                        detail.push_str(" (defaulted)");
+                    }
+                    CompletionItem {
+                        label: param.name().to_owned(),
+                        kind: CompletionKind::Parameter,
+                        detail,
+                        insert_text: Some(format!("{}: ", param.name())),
+                        insert_format: CompletionInsertFormat::PlainText,
+                        sort_text: None,
+                        metadata: Default::default(),
+                    }
                 })
-                .unwrap_or(&[]);
-            Some(
-                signature
-                    .params
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, param)| !used_names.contains(&param.name.as_str()))
-                    .map(|(index, param)| {
-                        let fact = params
-                            .get(index)
-                            .cloned()
-                            .filter(|fact| !matches!(fact, TypeFact::Unknown))
-                            .or_else(|| {
-                                param
-                                    .type_hint
-                                    .as_ref()
-                                    .map(|hint| completion_type_fact(graph, hint, schema))
-                            })
-                            .unwrap_or(TypeFact::Unknown);
-                        let mut detail = fact.display_name();
-                        if param.default_value_span.is_some() {
-                            detail.push_str(" (defaulted)");
-                        }
-                        CompletionItem {
-                            label: param.name.clone(),
-                            kind: CompletionKind::Parameter,
-                            detail,
-                            insert_text: Some(format!("{}: ", param.name)),
-                            insert_format: CompletionInsertFormat::PlainText,
-                            sort_text: None,
-                            metadata: Default::default(),
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            )
+                .collect::<Vec<_>>()
         })
-        .flatten()
         .collect()
 }
 
@@ -151,22 +117,4 @@ fn top_level_colon(argument: &str) -> Option<usize> {
 fn is_argument_name_prefix(text: &str) -> bool {
     text.chars()
         .all(|ch| is_identifier_continue(ch) || ch.is_whitespace())
-}
-
-fn qualified_declaration_label(
-    graph: &ModuleGraph,
-    declaration: vela_hir::ids::HirDeclId,
-) -> String {
-    let Some(declaration) = graph.declaration(declaration) else {
-        return String::new();
-    };
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
 }

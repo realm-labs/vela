@@ -339,7 +339,10 @@ Purpose: classify the cursor once and reuse it across features.
   member-call lookup consume it for receiver semantic facts instead of keeping
   separate receiver fact walkers. The shared range-to-fact path now handles
   function bodies, trait default bodies, and impl method bodies from the same
-  binding-map lookup.
+  binding-map lookup. `QueryContext` now exposes source function callable facts
+  with parameter names, default markers, type facts, and return facts; named
+  argument completion and source function signature help consume that shared
+  callable model instead of rebuilding source function facts separately.
   `CursorContext` now exposes the identifier token range under the request
   cursor, and rename target selection consumes that shared range instead of
   running its own first-step token scanner. Lambda-parameter contexts now

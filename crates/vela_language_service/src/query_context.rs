@@ -6,6 +6,7 @@ use crate::{
     cursor_context_at,
 };
 use vela_analysis::facts::AnalysisFacts;
+use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
@@ -13,6 +14,54 @@ use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::HirTypeHint;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SourceCallableFacts {
+    name: String,
+    params: Vec<SourceCallableParameterFacts>,
+    returns: TypeFact,
+}
+
+impl SourceCallableFacts {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub fn params(&self) -> &[SourceCallableParameterFacts] {
+        &self.params
+    }
+
+    #[must_use]
+    pub const fn returns(&self) -> &TypeFact {
+        &self.returns
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct SourceCallableParameterFacts {
+    name: String,
+    type_fact: TypeFact,
+    defaulted: bool,
+}
+
+impl SourceCallableParameterFacts {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    #[must_use]
+    pub const fn type_fact(&self) -> &TypeFact {
+        &self.type_fact
+    }
+
+    #[must_use]
+    pub const fn defaulted(&self) -> bool {
+        self.defaulted
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CallArgumentFacts<'a> {
@@ -210,6 +259,15 @@ impl<'a> QueryContext<'a> {
     }
 
     #[must_use]
+    pub fn source_callable_facts(
+        &self,
+        databases: &LanguageServiceDatabases,
+        callee: &str,
+    ) -> Vec<SourceCallableFacts> {
+        source_callable_facts(databases, callee)
+    }
+
+    #[must_use]
     pub const fn cursor(&self) -> &CursorContext {
         &self.cursor
     }
@@ -385,6 +443,99 @@ pub(crate) fn type_fact_for_source_range(
         let resolution = bindings.resolution_at_span(span)?;
         type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
     })
+}
+
+pub(crate) fn source_callable_facts(
+    databases: &LanguageServiceDatabases,
+    callee: &str,
+) -> Vec<SourceCallableFacts> {
+    let graph = databases.hir_db().graph();
+    let facts = AnalysisFacts::from_module_graph(graph);
+    let schema = databases.schema_db().facts();
+    graph
+        .declarations()
+        .filter(|declaration| {
+            declaration.kind == DeclarationKind::Function
+                && (declaration.name == callee
+                    || qualified_declaration_label(graph, declaration.id) == callee)
+        })
+        .filter_map(|declaration| {
+            let signature = graph.function_signature(declaration.id)?;
+            let inferred = facts.declaration(declaration.id);
+            let inferred_params = match inferred {
+                Some(TypeFact::Function { params, .. }) => params.as_slice(),
+                _ => &[],
+            };
+            let inferred_returns = match inferred {
+                Some(TypeFact::Function { returns, .. }) => Some(returns),
+                _ => None,
+            };
+            let params = signature
+                .params
+                .iter()
+                .enumerate()
+                .map(|(index, param)| {
+                    let type_fact = inferred_params
+                        .get(index)
+                        .cloned()
+                        .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                        .or_else(|| {
+                            param
+                                .type_hint
+                                .as_ref()
+                                .map(|hint| query_type_fact_from_hint(graph, hint, schema))
+                        })
+                        .unwrap_or(TypeFact::Unknown);
+                    SourceCallableParameterFacts {
+                        name: param.name.clone(),
+                        type_fact,
+                        defaulted: param.default_value_span.is_some(),
+                    }
+                })
+                .collect::<Vec<_>>();
+            let returns = match inferred_returns {
+                Some(fact) if !matches!(fact.as_ref(), TypeFact::Unknown) => fact.as_ref().clone(),
+                _ => signature
+                    .return_type
+                    .as_ref()
+                    .map(|hint| query_type_fact_from_hint(graph, hint, schema))
+                    .unwrap_or(TypeFact::Unknown),
+            };
+            Some(SourceCallableFacts {
+                name: declaration.name.clone(),
+                params,
+                returns,
+            })
+        })
+        .collect()
+}
+
+fn query_type_fact_from_hint(
+    graph: &ModuleGraph,
+    hint: &HirTypeHint,
+    schema: &RegistryFacts,
+) -> TypeFact {
+    let fact = type_fact_from_hint(graph, hint);
+    if matches!(fact, TypeFact::Unknown) {
+        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
+    } else {
+        fact
+    }
+}
+
+pub(crate) fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> String {
+    let Some(declaration) = graph.declaration(declaration) else {
+        return String::new();
+    };
+    let Some(module_path) = graph.module_path(declaration.module) else {
+        return declaration.name.clone();
+    };
+    let module = module_path.join();
+    if module.is_empty() {
+        declaration.name.clone()
+    } else {
+        format!("{module}::{}", declaration.name)
+    }
 }
 
 fn query_bindings<'a>(
@@ -742,5 +893,38 @@ mod tests {
             "player, current_player().level, map(|left, right| left), f"
         );
         assert_eq!(after_lambda_facts.active_parameter(), 3);
+    }
+
+    #[test]
+    fn query_context_exposes_source_callable_facts() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "fn grant(player: Player, amount: i64) -> bool { return true }\nfn main(player: Player) { grant(player, ) }";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let workspace = Workspace::new();
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = vela_analysis::registry::RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+        let line = source.lines().nth(1).expect("main line");
+        let position = Position::new(1, line.find(", )").expect("argument hole") + 2);
+        let context = QueryContext::from_databases(&databases, &document, position)
+            .expect("database document exists");
+
+        let callables = context.source_callable_facts(&databases, "grant");
+
+        assert_eq!(callables.len(), 1);
+        assert_eq!(callables[0].name(), "grant");
+        assert_eq!(callables[0].returns().display_name(), "bool");
+        assert_eq!(callables[0].params()[0].name(), "player");
+        assert_eq!(
+            callables[0].params()[0].type_fact().display_name(),
+            "Player"
+        );
+        assert_eq!(callables[0].params()[1].name(), "amount");
+        assert_eq!(callables[0].params()[1].type_fact().display_name(), "i64");
+        assert!(!callables[0].params()[1].defaulted());
     }
 }

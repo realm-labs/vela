@@ -1,9 +1,6 @@
 use vela_analysis::completion::member_completions;
-use vela_analysis::hints::type_fact_from_hint;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_hir::module_graph::ModuleGraph;
-use vela_hir::type_hint::HirTypeHint;
 
 use crate::QueryContext;
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
@@ -72,7 +69,9 @@ impl LanguageServiceDatabases {
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
             CompletionContextKind::MapKey => self.map_key_completion_items(&context),
             CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
-            CompletionContextKind::NamedArgument => self.named_argument_completion_items(&context),
+            CompletionContextKind::NamedArgument => {
+                self.named_argument_completion_items(&query, &context)
+            }
             CompletionContextKind::LambdaParameter => {
                 self.lambda_parameter_completion_items(&query, &context)
             }
@@ -162,7 +161,11 @@ impl LanguageServiceDatabases {
         )
     }
 
-    fn named_argument_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+    fn named_argument_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
         let Some(call) = context.call_arguments.as_ref() else {
             return Vec::new();
         };
@@ -171,12 +174,8 @@ impl LanguageServiceDatabases {
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>();
-        let items = script_function_parameter_completions(
-            self.hir_db().graph(),
-            self.schema_db().facts(),
-            &call.callee,
-            &used_names,
-        );
+        let callables = query.source_callable_facts(self, &call.callee);
+        let items = script_function_parameter_completions(&callables, &used_names);
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |item| {
             label_segment_matches(item.label(), context.prefix())
         })
@@ -295,19 +294,6 @@ fn dedupe_and_filter_service_items(
     accumulator.into_items()
 }
 
-fn completion_type_fact(
-    graph: &ModuleGraph,
-    hint: &HirTypeHint,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> TypeFact {
-    let fact = type_fact_from_hint(graph, hint);
-    if matches!(fact, TypeFact::Unknown) {
-        schema_fact_for_hint(hint, schema).unwrap_or(TypeFact::Unknown)
-    } else {
-        fact
-    }
-}
-
 fn label_segment_matches(label: &str, prefix: &str) -> bool {
     prefix.is_empty()
         || label.starts_with(prefix)
@@ -315,23 +301,6 @@ fn label_segment_matches(label: &str, prefix: &str) -> bool {
             .rsplit("::")
             .next()
             .is_some_and(|segment| segment.starts_with(prefix))
-}
-
-fn schema_fact_for_hint(
-    hint: &HirTypeHint,
-    schema: &vela_analysis::registry::RegistryFacts,
-) -> Option<TypeFact> {
-    if hint.args.is_empty() {
-        let qualified = hint.path.join("::");
-        schema
-            .type_fact(&qualified)
-            .or_else(|| schema.trait_fact(&qualified))
-            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-            .cloned()
-    } else {
-        None
-    }
 }
 
 fn empty_completion_list(context: CompletionContext) -> CompletionList {
