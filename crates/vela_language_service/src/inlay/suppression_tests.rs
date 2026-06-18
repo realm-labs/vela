@@ -197,6 +197,45 @@ pub fn main() {
 }
 
 #[test]
+fn inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main(player: Player) {
+    player.inventory().grant("raw", 1)
+    return player.inventory().grant("again", 2)
+}"#;
+    let first_call = line(text, 9);
+    let second_call = line(text, 10);
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(12, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(9, first_call.find(", 1").expect("first count arg") + 2),
+                "count:".to_owned()
+            ),
+            (
+                Position::new(10, second_call.find(", 2").expect("second count arg") + 2),
+                "count:".to_owned()
+            )
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver()
  {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");

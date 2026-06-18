@@ -1746,6 +1746,7 @@ Tests:
 - [x] `inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver`
 - [x] `inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
+- [x] `inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
 - [x] `inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver`
 - [x] `inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `inlay_hints_suppress_any_schema_enum_variant_payloads`
@@ -1762,6 +1763,7 @@ Tests:
 - [x] `lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
+- [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_enum_variant_payloads`
 - [x] `lsp_inlay_hints_suppress_any_schema_enum_variant_payloads`

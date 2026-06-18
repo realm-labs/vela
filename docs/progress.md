@@ -234,6 +234,11 @@ source-owned method calls where the receiver is produced by a source function
 return, preserving `Any` parameter suppression through the same callable
 receiver path as direct typed source method calls.
 
+M20.5 Phase 15 update: service and native LSP inlay fixtures now cover
+source-owned method calls where the receiver is produced by another source
+method return, preserving `Any` parameter suppression through shared
+expression receiver facts.
+
 M20.5 Phase 15 update: service and native LSP inlay fixtures now also cover
 source-owned trait default method calls where the receiver is produced by a
 source function return, preserving `Any` parameter suppression through the
