@@ -133,10 +133,10 @@ impl RenameRisk {
         &self.message
     }
 }
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum RenameRiskKind {
     HotReloadAbi,
+    SchemaAbi,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

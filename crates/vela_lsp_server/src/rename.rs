@@ -79,6 +79,7 @@ fn lsp_change_annotations(edit: &WorkspaceEdit) -> JsonValue {
             .map(|(index, risk)| {
                 let kind = match risk.kind() {
                     RenameRiskKind::HotReloadAbi => "hotReloadAbi",
+                    RenameRiskKind::SchemaAbi => "schemaAbi",
                 };
                 (
                     format!("renameRisk{index}"),

@@ -539,7 +539,7 @@ pub fn spawn(player: Player) -> Player {
     assert_eq!(main_edit.edits().len(), 2);
     assert_edit_at(main_edit.edits(), 0, 21, "Actor");
     assert_edit_at(main_edit.edits(), 0, 32, "Actor");
-    assert!(edit.risks().is_empty());
+    assert_schema_risk(&edit, "Player");
 }
 
 #[test]
@@ -615,7 +615,7 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(main_edit.edits().len(), 2);
     assert_edit_at(main_edit.edits(), 1, 16, "award");
     assert_edit_at(main_edit.edits(), 2, 25, "award");
-    assert!(edit.risks().is_empty());
+    assert_schema_risk(&edit, "game::reward::grant");
 }
 
 #[test]
@@ -726,7 +726,7 @@ pub fn main(state: QuestState) -> i64 {
     assert_eq!(main_edit.edits().len(), 2);
     assert_edit_at(main_edit.edits(), 1, 27, "Running");
     assert_edit_at(main_edit.edits(), 3, 20, "Running");
-    assert!(edit.risks().is_empty());
+    assert_schema_risk(&edit, "QuestState::Active");
 }
 
 #[test]
@@ -808,7 +808,7 @@ pub fn main(player: Player) -> i64 {
     assert_edit_at(main_edit.edits(), 1, 23, "rank");
     assert_edit_at(main_edit.edits(), 2, 11, "rank");
     assert_edit_at(main_edit.edits(), 3, 18, "rank");
-    assert!(edit.risks().is_empty());
+    assert_schema_risk(&edit, "Player.level");
 }
 
 #[test]
@@ -888,7 +888,7 @@ pub fn main(player: Player) -> i64 {
     assert_eq!(main_edit.edits().len(), 2);
     assert_edit_at(main_edit.edits(), 1, 23, "award");
     assert_edit_at(main_edit.edits(), 2, 18, "award");
-    assert!(edit.risks().is_empty());
+    assert_schema_risk(&edit, "Player.grant");
 }
 
 #[test]
@@ -1107,6 +1107,16 @@ fn document_edit<'a>(edit: &'a WorkspaceEdit, document_id: &DocumentId) -> &'a D
         .iter()
         .find(|document_edit| document_edit.document_id() == document_id)
         .unwrap_or_else(|| panic!("workspace edit should contain {document_id:?}"))
+}
+
+fn assert_schema_risk(edit: &WorkspaceEdit, symbol: &str) {
+    assert_eq!(edit.risks().len(), 1);
+    assert_eq!(edit.risks()[0].kind(), RenameRiskKind::SchemaAbi);
+    assert!(
+        edit.risks()[0].message().contains(symbol),
+        "{:?}",
+        edit.risks()
+    );
 }
 
 fn line(text: &str, line: usize) -> &str {

@@ -139,6 +139,7 @@ pub fn main(amount: i64) -> i64 {
     assert_text_edit(main_edits, 2, 25, "award");
     assert_eq!(schema_edits.len(), 1);
     assert_text_edit(schema_edits, 0, 7, "award");
+    assert_schema_risk_annotation(&rename, "game::reward::grant");
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
@@ -315,6 +316,21 @@ fn assert_text_edit(edits: &[serde_json::Value], line: usize, character: usize, 
                 && edit["newText"] == new_text
         }),
         "{edits:?}"
+    );
+}
+
+fn assert_schema_risk_annotation(rename: &serde_json::Value, symbol: &str) {
+    let annotations = rename["result"]["changeAnnotations"]
+        .as_object()
+        .expect("schema rename should include a change annotation");
+    let risk = &annotations["renameRisk0"];
+    assert_eq!(risk["needsConfirmation"], true);
+    assert_eq!(risk["description"], "schemaAbi");
+    assert!(
+        risk["label"]
+            .as_str()
+            .expect("risk label should be a string")
+            .contains(symbol)
     );
 }
 

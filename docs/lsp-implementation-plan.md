@@ -1292,9 +1292,11 @@ Purpose: provide safe refactoring without changing runtime contracts.
     existing import alias or import binding.
   - [x] Reject source-backed schema member renames that would collide with an
     existing member of the same kind on the same owner.
-- [~] Report hot-reload ABI/schema risk for exported API rename.
+- [x] Report hot-reload ABI/schema risk for exported API rename.
   - [x] Public script function renames carry hot-reload ABI risk metadata in
     service workspace edits and LSP change annotations.
+  - [x] Source-backed schema renames carry schema ABI risk metadata in service
+    workspace edits and LSP change annotations.
 - [x] Return workspace edits with stable text ranges and document versions.
   - Rename workspace edits now carry source versions through the editor-neutral
     service model, and native LSP rename responses include versioned
