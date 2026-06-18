@@ -11,7 +11,7 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
     analysis_item::{callable_insert_text, completion_insert_format},
-    dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
+    dedupe_and_filter_service_items, display_qualified_detail, display_type_detail_parts,
     label_segment_matches,
     relevance::completion_sort_text,
 };
@@ -76,15 +76,19 @@ fn service_item_for_module_path(
     };
     let insert_text = callable_insert_text(kind, &label);
     let insert_format = completion_insert_format(insert_text.as_ref());
-    Some(CompletionItem {
-        sort_text: Some(completion_sort_text(kind, &label, prefix)),
-        metadata: Default::default(),
-        label,
-        kind,
-        detail: display_type_detail(item.fact.display_name()),
-        insert_text,
-        insert_format,
-    })
+    let detail_parts = display_type_detail_parts(item.fact.display_name());
+    Some(
+        CompletionItem {
+            sort_text: Some(completion_sort_text(kind, &label, prefix)),
+            metadata: Default::default(),
+            label,
+            kind,
+            detail: detail_parts.render(),
+            insert_text,
+            insert_format,
+        }
+        .with_detail_parts(detail_parts),
+    )
 }
 
 fn script_enum_variant_path_completions(
@@ -101,11 +105,12 @@ fn script_enum_variant_path_completions(
             let shape = graph.enum_shape(declaration.id)?;
             Some(shape.variants.iter().filter_map(move |variant| {
                 let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
+                let detail_parts = display_type_detail_parts(&owner);
                 Some(
                     CompletionItem {
                         label: variant.name.clone(),
                         kind: CompletionKind::Variant,
-                        detail: display_type_detail(&owner),
+                        detail: detail_parts.render(),
                         insert_text: None,
                         insert_format: CompletionInsertFormat::PlainText,
                         metadata: Default::default(),
@@ -115,6 +120,7 @@ fn script_enum_variant_path_completions(
                             prefix,
                         )),
                     }
+                    .with_detail_parts(detail_parts)
                     .with_symbol(symbol),
                 )
             }))
@@ -135,15 +141,17 @@ fn schema_enum_variant_path_completions(
             let owner = variant.owner;
             let name = variant.name;
             let sort_text = completion_sort_text(CompletionKind::Variant, &name, prefix);
+            let detail_parts = display_type_detail_parts(&owner);
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: display_type_detail(&owner),
+                detail: detail_parts.render(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: Some(sort_text),
                 metadata: Default::default(),
             }
+            .with_detail_parts(detail_parts)
             .with_documentation(schema.variant_docs(&owner, &name))
             .with_symbol(schema_variant_symbol(&owner, &name))
         })

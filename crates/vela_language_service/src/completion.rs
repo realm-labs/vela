@@ -322,7 +322,11 @@ pub(super) fn display_type_detail_parts(text: impl AsRef<str>) -> DisplayParts {
 }
 
 pub(super) fn display_qualified_detail(owner: &str, member: &str) -> String {
-    DisplayParts::qualified(owner, member).render()
+    display_qualified_detail_parts(owner, member).render()
+}
+
+pub(super) fn display_qualified_detail_parts(owner: &str, member: &str) -> DisplayParts {
+    DisplayParts::qualified(owner, member)
 }
 
 #[cfg(test)]

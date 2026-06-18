@@ -653,8 +653,10 @@ and semantic tokens use the same identities and display primitives.
   `DisplayParts` alongside their rendered strings while keeping LSP projection
   stable; builtin value and lambda-parameter completion details now preserve
   type-shaped `DisplayParts`; record-field and map-key completion details now
-  preserve type-shaped `DisplayParts`; richer prose completion and hover
-  classification still need to converge on it.
+  preserve type-shaped `DisplayParts`; module-path, pattern, and type-hint
+  completion details now preserve type-shaped or qualified-symbol
+  `DisplayParts`; richer prose completion and hover classification still need
+  to converge on it.
 - [x] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from

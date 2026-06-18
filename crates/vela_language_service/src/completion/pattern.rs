@@ -4,7 +4,7 @@ use crate::{
     TextRange,
     completion::{
         CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-        display_qualified_detail, display_type_detail, label_segment_matches,
+        display_qualified_detail_parts, display_type_detail_parts, label_segment_matches,
     },
     symbol_ref::{schema_variant_symbol, source_enum_variant_symbol},
 };
@@ -39,12 +39,13 @@ fn script_pattern_variant_completions(
                     CompletionItem {
                         label: variant.name.clone(),
                         kind: CompletionKind::Variant,
-                        detail: detail.clone(),
+                        detail: detail.render(),
                         insert_text: None,
                         insert_format: CompletionInsertFormat::PlainText,
                         sort_text: None,
                         metadata: Default::default(),
                     }
+                    .with_detail_parts(detail.clone())
                     .with_symbol(symbol),
                 )
             }))
@@ -57,14 +58,14 @@ fn enum_pattern_detail(
     graph: &ModuleGraph,
     declaration: &Declaration,
     current_module: &[String],
-) -> String {
+) -> crate::DisplayParts {
     let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
+        return crate::DisplayParts::symbol(&declaration.name);
     };
     if module_path.segments() == current_module {
-        declaration.name.clone()
+        crate::DisplayParts::symbol(&declaration.name)
     } else {
-        display_qualified_detail(&module_path.join(), &declaration.name)
+        display_qualified_detail_parts(&module_path.join(), &declaration.name)
     }
 }
 
@@ -76,15 +77,17 @@ fn schema_pattern_variant_completions(
         .map(|variant| {
             let owner = variant.owner;
             let name = variant.name;
+            let detail_parts = display_type_detail_parts(&owner);
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: display_type_detail(&owner),
+                detail: detail_parts.render(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
                 metadata: Default::default(),
             }
+            .with_detail_parts(detail_parts)
             .with_documentation(schema.variant_docs(&owner, &name))
             .with_symbol(schema_variant_symbol(&owner, &name))
         })

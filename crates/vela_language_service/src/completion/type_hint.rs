@@ -12,7 +12,7 @@ use vela_hir::module_graph::ModuleGraph;
 use crate::{TextRange, symbol_ref::schema_symbol};
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, display_type_detail,
+    CompletionInsertFormat, CompletionItem, CompletionKind, display_type_detail_parts,
     label_segment_matches,
 };
 
@@ -106,15 +106,19 @@ fn service_item_for_qualified_type_path(
         .split_once("::")
         .map_or(suffix, |(segment, _)| segment)
         .to_owned();
-    Some(CompletionItem {
-        label,
-        kind: CompletionKind::from(item.kind),
-        detail: display_type_detail(item.fact.display_name()),
-        insert_text: None,
-        insert_format: CompletionInsertFormat::PlainText,
-        sort_text: None,
-        metadata: Default::default(),
-    })
+    let detail_parts = display_type_detail_parts(item.fact.display_name());
+    Some(
+        CompletionItem {
+            label,
+            kind: CompletionKind::from(item.kind),
+            detail: detail_parts.render(),
+            insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
+            sort_text: None,
+            metadata: Default::default(),
+        }
+        .with_detail_parts(detail_parts),
+    )
 }
 
 fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
@@ -153,28 +157,34 @@ fn builtin_type_hint_completions() -> Vec<CompletionItem> {
         ),
     ]
     .into_iter()
-    .map(|(label, fact)| CompletionItem {
-        label: label.to_owned(),
-        kind: CompletionKind::Type,
-        detail: display_type_detail(fact.display_name()),
-        insert_text: None,
-        insert_format: CompletionInsertFormat::PlainText,
-        sort_text: None,
-        metadata: Default::default(),
+    .map(|(label, fact)| {
+        let detail_parts = display_type_detail_parts(fact.display_name());
+        CompletionItem {
+            label: label.to_owned(),
+            kind: CompletionKind::Type,
+            detail: detail_parts.render(),
+            insert_text: None,
+            insert_format: CompletionInsertFormat::PlainText,
+            sort_text: None,
+            metadata: Default::default(),
+        }
+        .with_detail_parts(detail_parts)
     })
     .collect()
 }
 
 fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
+    let detail_parts = display_type_detail_parts(item.fact.display_name());
     CompletionItem {
         label: item.label,
         kind: CompletionKind::from(item.kind),
-        detail: display_type_detail(item.fact.display_name()),
+        detail: detail_parts.render(),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
         metadata: Default::default(),
     }
+    .with_detail_parts(detail_parts)
 }
 
 fn service_item_from_schema_type(
