@@ -345,6 +345,45 @@ Skipped,
 }
 
 #[test]
+fn type_definition_follows_imported_struct_constructor_type() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+fn main() {
+return Bag { slots: 2 };
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let constructor_line = main_text.lines().nth(3).expect("constructor line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(
+                3,
+                constructor_line
+                    .find("Bag")
+                    .expect("struct constructor alias"),
+            ),
+        )
+        .expect("type definition should resolve imported struct constructor");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_source_method_return_type() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");

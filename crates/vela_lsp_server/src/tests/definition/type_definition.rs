@@ -61,6 +61,11 @@ fn lsp_type_definition_follows_imported_enum_variant_constructor_type() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_struct_constructor_type() {
+    assert_imported_struct_constructor_type_definition();
+}
+
+#[test]
 fn lsp_type_definition_follows_imported_const_and_global_source_types() {
     assert_imported_const_and_global_source_type_definitions();
 }
@@ -907,6 +912,74 @@ fn main() {
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
     assert_eq!(response["result"]["range"]["start"]["character"], 9);
     assert_eq!(response["result"]["range"]["end"]["character"], 22);
+}
+
+fn assert_imported_struct_constructor_type_definition() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+fn main() {
+    return Bag { slots: 2 };
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+    slots: i64,
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": inventory_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": inventory_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let constructor_line = main_text
+        .lines()
+        .nth(3)
+        .expect("constructor line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": constructor_line
+                    .find("Bag")
+                    .expect("struct constructor should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], inventory_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(response["result"]["range"]["end"]["character"], 20);
 }
 
 fn assert_imported_const_and_global_source_type_definitions() {

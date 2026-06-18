@@ -249,8 +249,8 @@ coverage complete based only on the older capability phases.
   - W1 `typeDefinition` now has service and protocol coverage for imported
     local, parameter, field, and return type hints plus local and parameter
     source type aliases in addition to existing imported field, function
-    return, member, method return, enum variant, const, and global source type
-    paths.
+    return, member, method return, struct constructor, enum variant, const,
+    and global source type paths.
 - [ ] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
@@ -709,8 +709,8 @@ Purpose: expose semantic facts and navigation.
     enclosing declaration.
   - Cross-file type-definition coverage now includes imported source local
     type-hint aliases, parameter, field, and return type-hint aliases, local
-    annotations, parameters, function calls, and source method calls whose
-    type or return type is source-owned.
+    annotations, parameters, struct constructors, function calls, and source
+    method calls whose type or return type is source-owned.
 
 Tests:
 
@@ -786,6 +786,7 @@ Tests:
 - [x] `type_definition_follows_imported_source_member_type`
 - [x] `type_definition_follows_imported_source_method_return_type`
 - [x] `type_definition_follows_imported_enum_variant_constructor_type`
+- [x] `type_definition_follows_imported_struct_constructor_type`
 - [x] `type_definition_follows_imported_const_and_global_source_types`
 - [x] `type_definition_returns_none_for_source_primitive_field`
 - [x] `type_definition_returns_none_for_dynamic_local_value`
@@ -817,6 +818,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_source_member_type`
 - [x] `lsp_type_definition_follows_imported_source_method_return_type`
 - [x] `lsp_type_definition_follows_imported_enum_variant_constructor_type`
+- [x] `lsp_type_definition_follows_imported_struct_constructor_type`
 - [x] `lsp_type_definition_follows_imported_const_and_global_source_types`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
 - [x] `lsp_type_definition_returns_null_for_dynamic_local_value`
