@@ -7,13 +7,14 @@ use vela_hir::type_hint::ImplMetadataKind;
 use vela_syntax::ast::SourceFile;
 
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    SymbolRef, TextRange, path_calls,
+    CursorContextKind, DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position,
+    QueryContext, SymbolRef, TextRange, path_calls,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
         source_member_symbol, source_symbol_for_declaration, source_symbol_for_declaration_id,
         source_variant_field_symbol,
     },
+    symbol_target::SymbolTarget,
 };
 
 mod fields;
@@ -40,6 +41,38 @@ pub enum DocumentHighlightKind {
     Call,
     Read,
     Write,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum ReferenceResolution {
+    SourceOwned,
+    SchemaOwned,
+    Builtin,
+    DynamicAny,
+    Unresolved,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ReferenceQueryResult {
+    resolution: ReferenceResolution,
+    references: Vec<Reference>,
+}
+
+impl ReferenceQueryResult {
+    #[must_use]
+    pub const fn resolution(&self) -> ReferenceResolution {
+        self.resolution
+    }
+
+    #[must_use]
+    pub fn references(&self) -> &[Reference] {
+        &self.references
+    }
+
+    #[must_use]
+    pub fn into_references(self) -> Vec<Reference> {
+        self.references
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -124,7 +157,32 @@ impl LanguageServiceDatabases {
     }
 
     #[must_use]
+    pub fn reference_query(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        include_declaration: bool,
+    ) -> ReferenceQueryResult {
+        let references = self.references_for_position(document_id, position, include_declaration);
+        let resolution = reference_resolution_for_query(self, document_id, position, &references);
+        ReferenceQueryResult {
+            resolution,
+            references,
+        }
+    }
+
+    #[must_use]
     pub fn references(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        include_declaration: bool,
+    ) -> Vec<Reference> {
+        self.reference_query(document_id, position, include_declaration)
+            .into_references()
+    }
+
+    fn references_for_position(
         &self,
         document_id: &DocumentId,
         position: Position,
@@ -1104,6 +1162,86 @@ fn resolved_use_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
     } else {
         ReferenceKind::Read
     }
+}
+
+fn reference_resolution_for_query(
+    databases: &LanguageServiceDatabases,
+    document_id: &DocumentId,
+    position: Position,
+    references: &[Reference],
+) -> ReferenceResolution {
+    if let Some(reference) = references.first() {
+        return reference_resolution_for_symbol(reference.symbol());
+    }
+
+    let Some(query) = QueryContext::from_databases(databases, document_id, position) else {
+        return ReferenceResolution::Unresolved;
+    };
+    let Some(target) = SymbolTarget::from_query(databases, &query) else {
+        return ReferenceResolution::Unresolved;
+    };
+    if let Some(symbol) = target.symbol() {
+        return reference_resolution_for_symbol(symbol);
+    }
+    if is_builtin_type_reference_target(&query) {
+        return ReferenceResolution::Builtin;
+    }
+    if is_dynamic_any_reference_target(databases, &query) {
+        return ReferenceResolution::DynamicAny;
+    }
+    ReferenceResolution::Unresolved
+}
+
+const fn reference_resolution_for_symbol(symbol: &SymbolRef) -> ReferenceResolution {
+    match symbol {
+        SymbolRef::Source(_) | SymbolRef::Local(_) => ReferenceResolution::SourceOwned,
+        SymbolRef::Schema(_) => ReferenceResolution::SchemaOwned,
+        SymbolRef::Builtin(_) => ReferenceResolution::Builtin,
+    }
+}
+
+fn is_dynamic_any_reference_target(
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+) -> bool {
+    query
+        .member_receiver_range()
+        .or_else(|| query.call_member_receiver_range())
+        .and_then(|range| query.type_fact_for_range(databases, range))
+        .is_some_and(|fact| matches!(fact, TypeFact::Any))
+}
+
+fn is_builtin_type_reference_target(query: &QueryContext<'_>) -> bool {
+    query.cursor().kind() == CursorContextKind::Type
+        && query.identifier_text().is_some_and(is_builtin_type_name)
+}
+
+fn is_builtin_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "Any"
+            | "Array"
+            | "Bytes"
+            | "Function"
+            | "Iterator"
+            | "Map"
+            | "Option"
+            | "Result"
+            | "Set"
+            | "String"
+            | "bool"
+            | "char"
+            | "f32"
+            | "f64"
+            | "i8"
+            | "i16"
+            | "i32"
+            | "i64"
+            | "u8"
+            | "u16"
+            | "u32"
+            | "u64"
+    )
 }
 
 fn is_call_callee(text: &str, range: TextRange) -> bool {

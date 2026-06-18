@@ -713,8 +713,12 @@ source-owned edit plans.
   reference result paths carry shared `SymbolRef` identities; the
   `references_keep_shadowed_local_bindings_separate` fixture pins that
   same-named local bindings do not collapse through text matching.
-- [ ] Distinguish source-owned references, schema-owned facts, builtin facts,
+- [x] Distinguish source-owned references, schema-owned facts, builtin facts,
   dynamic `Any` facts, and unresolved names.
+  `reference_query()` now returns a `ReferenceQueryResult` with
+  `ReferenceResolution` categories for source-owned, schema-owned, builtin,
+  dynamic `Any`, and unresolved targets while preserving the LSP-facing
+  location projection.
 - [ ] Make prepare-rename reject schema-owned, builtin, dynamic, unresolved,
   and ambiguous targets.
 - [ ] Make rename produce an `EditPlan` with conflict checks and source-owned
@@ -723,9 +727,10 @@ source-owned edit plans.
   stay stable under parser recovery.
 - [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
-  Reference fixtures now cover local shadowing plus existing module, method,
-  and field cases. Failed rename and semantic-token stability fixtures remain
-  to close this bucket.
+  Reference fixtures now cover local shadowing, source/schema/builtin/dynamic/
+  unresolved resolution categories, plus existing module, method, and field
+  cases. Failed rename and semantic-token stability fixtures remain to close
+  this bucket.
 
 Tests:
 

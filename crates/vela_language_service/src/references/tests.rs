@@ -3,6 +3,7 @@ use crate::{
     SourceFileSnapshot, SymbolRef, Workspace, WorkspaceConfig, WorkspaceRoot,
     assemble_project_sources,
 };
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
 #[test]
 fn references_find_local_binding_uses() {
@@ -101,6 +102,95 @@ pub fn main(amount: i64) -> i64 {
         &shadow_references,
         &SymbolRef::local_at("amount", document, TextRange::new(69, 75)),
     );
+}
+
+#[test]
+fn reference_query_reports_source_owned_resolution() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(0, text.rfind("amount").expect("parameter read")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::SourceOwned);
+    assert_eq!(result.references().len(), 2, "{result:?}");
+}
+
+#[test]
+fn reference_query_reports_schema_owned_resolution() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) -> i64 { return player.level }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "level", TypeFact::I64);
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(0, text.find("level").expect("schema field")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::SchemaOwned);
+    assert_all_symbols(
+        result.references(),
+        &SymbolRef::Schema("Player.level".to_owned()),
+    );
+}
+
+#[test]
+fn reference_query_reports_builtin_resolution() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() -> i64 { return max(1, 2) }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(0, text.find("max").expect("stdlib function")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::Builtin);
+    assert!(result.references().is_empty(), "{result:?}");
+}
+
+#[test]
+fn reference_query_reports_dynamic_any_resolution() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(value: Any) -> i64 { return value.level }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(0, text.find("level").expect("dynamic member")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::DynamicAny);
+    assert!(result.references().is_empty(), "{result:?}");
+}
+
+#[test]
+fn reference_query_reports_unresolved_resolution() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() -> i64 { return missing }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(0, text.find("missing").expect("unresolved name")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::Unresolved);
+    assert!(result.references().is_empty(), "{result:?}");
 }
 
 #[test]
@@ -1241,9 +1331,17 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
+    databases_for_with_schema(files, RegistryFacts::default())
+}
+
+fn databases_for_with_schema(
+    files: Vec<SourceFileSnapshot>,
+    schema: RegistryFacts,
+) -> LanguageServiceDatabases {
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     databases.update(&project);
+    databases.set_schema_facts(schema);
     databases
 }

@@ -59,7 +59,10 @@ pub use project::{
     missing_import_diagnostics,
 };
 pub use query_context::{CallArgumentFacts, QueryContext};
-pub use references::{DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind};
+pub use references::{
+    DocumentHighlight, DocumentHighlightKind, Reference, ReferenceKind, ReferenceQueryResult,
+    ReferenceResolution,
+};
 pub use rename::{
     DocumentTextEdit, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,
 };
