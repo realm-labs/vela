@@ -10,6 +10,10 @@ tests should start from this matrix, choose one protocol row, then cover the
 applicable Vela syntax dimensions through both `vela_language_service` tests
 and `vela_lsp_server` JSON-RPC fixtures.
 
+Execution progress for auditing and filling this matrix is tracked in
+[lsp-implementation-plan.md](lsp-implementation-plan.md), section
+"Protocol Test Matrix Coverage Tracker".
+
 The matrix preserves the standing LSP constraints:
 
 - `vela_language_service` owns editor-neutral analysis, query construction,

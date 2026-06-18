@@ -151,6 +151,12 @@ work should use that document as the protocol-first checklist for pairing each
 advertised method with service tests, JSON-RPC fixtures, syntax coverage, and
 negative/degraded behavior.
 
+Detailed test requirements belong in the matrix document so this execution
+plan stays readable. Progress for implementing and auditing those tests is
+tracked below. Existing LSP tests are useful inputs, but a tracker item must
+remain unchecked until the relevant matrix row is explicitly audited or filled
+with focused service tests and JSON-RPC fixtures.
+
 ---
 
 ## Phase Status
@@ -162,6 +168,92 @@ its focused tests and validation command pass.
 [ ] not started
 [~] in progress
 [x] complete
+```
+
+---
+
+## 4.1 Protocol Test Matrix Coverage Tracker
+
+Purpose: turn the protocol matrix into executable test work without marking
+coverage complete based only on the older capability phases.
+
+- [x] Add a protocol-first LSP test matrix document and link it from this
+  implementation plan.
+- [ ] Audit lifecycle capabilities against handlers and matrix rows.
+  - Include `initialize`, `initialized`, `shutdown`, `exit`,
+    `$/cancelRequest`, advertised provider options, unsupported provider
+    behavior, and the `textDocument/didClose` versus `openClose` contract.
+- [ ] Add or audit the canonical cross-file workspace fixture family.
+  - Cover imported functions, const/global symbols, source types, enum
+    variants, fields, methods, open overlays in defining and importing files,
+    and file delete/rename invalidation.
+- [ ] Audit document sync, diagnostics, progress, and cancellation fixtures.
+  - Cover `didOpen`, `didChange`, `didClose` or capability correction,
+    publish diagnostics, stale generations, parser recovery, missing imports,
+    config diagnostics, and schema degradation.
+- [ ] Audit completion, completion resolve, signature help, and hover.
+  - Cover all matrix syntax dimensions that apply, including cross-file
+    imports, globals, functions, methods, type hints, defaulted parameters,
+    schema facts, stdlib facts, dynamic `Any`, and malformed cursor contexts.
+- [ ] Audit navigation protocols.
+  - Cover `definition`, `declaration`, `typeDefinition`, and negative
+    `implementation` behavior for locals, globals, imported functions, source
+    types, fields, methods, enum variants, schema spans, builtin types,
+    dynamic facts, and unresolved names.
+- [ ] Audit references, document highlights, and call hierarchy.
+  - Cover same-document and cross-file references for functions,
+    const/global symbols, fields, methods, variants, imports, schema-backed
+    source spans, shadowed locals, and dynamic or unresolved calls.
+- [ ] Audit rename and code actions.
+  - Cover cross-file workspace edits, source-owned edit plans, stale versions,
+    public ABI risk metadata, collisions, schema-only rejection, typo fixes,
+    missing imports, unused imports, match arms, and record fields.
+- [ ] Audit symbols, folding ranges, and selection ranges.
+  - Cover document and workspace symbols, module-qualified source/schema
+    facts, nested type/impl/trait members, imports, blocks, match arms,
+    multiline literals, parser recovery, and workspace root changes.
+- [ ] Audit semantic tokens.
+  - Cover full, delta, and range tokens across lexical and resolved
+    classifications, cross-file imported symbols, source/schema/builtin
+    provenance, unresolved references, parser recovery, and client fallback
+    projection.
+- [ ] Audit formatting and inlay hints.
+  - Cover full/range/on-type formatting, comments, blank lines, nested member
+    selections, malformed source, parameter hints, local type hints, lambda
+    facts, host-path hints, tuple-variant payload hints, range filtering, and
+    `Any` suppression.
+- [ ] Audit workspace, configuration, file watching, schema reload, and launch
+  behavior.
+  - Cover `workspace/didChangeWatchedFiles`,
+    `workspace/didChangeConfiguration`, `workspace/didChangeWorkspaceFolders`,
+    `workspace/configuration` if used, `.vela` create/change/delete/rename,
+    `vela.toml`, schema artifacts, CLI flags, stdio, and editor package thin
+    launcher validation.
+- [ ] Complete matrix acceptance.
+  - Every advertised row in
+    [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md) has service
+    proof, protocol proof, applicable syntax coverage, cross-file coverage
+    where required, negative/degraded coverage, and focused validation.
+
+Validation for tracker-only documentation changes:
+
+```bash
+git diff --check
+```
+
+Validation when marking any tracker item complete:
+
+```bash
+cargo test -p vela_language_service <focused-filter>
+cargo test -p vela_lsp_server <focused-filter>
+```
+
+Run the full workspace validation before marking matrix acceptance complete:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
 ```
 
 ---
