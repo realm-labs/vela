@@ -539,6 +539,117 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_references_use_open_overlay_for_importing_file() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let main_path = root.join("scripts").join("game").join("main.vela");
+    let reward_path = root.join("scripts").join("game").join("reward.vela");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &main_path,
+        "\
+use game::reward::stale
+
+pub fn main(amount: i64) -> i64 {
+    return stale(amount)
+}",
+    )
+    .expect("disk importing source should be writable");
+    fs::write(
+        &reward_path,
+        "pub fn grant(amount: i64) -> i64 { return amount }",
+    )
+    .expect("defining source should be writable");
+
+    let root_uri = file_uri(&root);
+    let main_uri = file_uri(&main_path);
+    let reward_uri = file_uri(&reward_path);
+    let overlay_text = "\
+use game::reward::grant
+
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": root_uri,
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": file_uri(&config_path), "type": 1 },
+                { "uri": main_uri.clone(), "type": 1 },
+                { "uri": reward_uri.clone(), "type": 1 }
+            ]
+        }),
+    ));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(overlay_text, 3)
+                    .find("grant")
+                    .expect("grant call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(references, &reward_uri, 0, "pub fn ".len());
+    assert_reference(
+        references,
+        &main_uri,
+        0,
+        line(overlay_text, 0)
+            .find("grant")
+            .expect("overlay import should exist"),
+    );
+    assert_reference(
+        references,
+        &main_uri,
+        3,
+        line(overlay_text, 3)
+            .find("grant")
+            .expect("overlay call should exist"),
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

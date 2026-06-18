@@ -268,6 +268,8 @@ coverage complete based only on the older capability phases.
     targets to the new module path.
   - W3/W0 references now have protocol coverage proving an open overlay in
     the imported defining file wins over a stale disk snapshot.
+  - W3/W0 references now have protocol coverage proving an open overlay in
+    the importing file wins over a stale disk snapshot.
 - [ ] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1135,6 +1137,7 @@ Tests:
 - [x] `lsp_references_drop_deleted_imported_source_file`
 - [x] `lsp_references_refresh_renamed_imported_source_file`
 - [x] `lsp_references_use_open_overlay_for_imported_defining_file`
+- [x] `lsp_references_use_open_overlay_for_importing_file`
 - [x] `references_find_imported_const_and_global_uses`
 - [x] `lsp_references_find_imported_const_and_global_uses`
 - [x] `references_find_field_reads_and_writes`
