@@ -1,0 +1,65 @@
+#!/usr/bin/env vela
+
+// Canonical highlighting showcase for LSP semantic tokens and editor fallbacks.
+// Vela has no source-level label syntax yet, so labels are intentionally absent.
+#[host(name = "SchemaPlayer", tags = ["highlight", "host"])]
+pub struct Reward {
+    amount: i64
+    name: String
+}
+
+pub enum Progress {
+    Started
+    Active { quest_id: String }
+    Finished(result: String)
+}
+
+pub trait Scored {
+    fn score(self, value: Reward) -> i64;
+}
+
+impl Reward {
+    fn bonus(self, extra: i64) -> i64 {
+        return self.amount + extra
+    }
+}
+
+use game::support::source_helper
+
+const START_LEVEL: i64 = 1
+global active_player: SchemaPlayer
+
+pub fn main(
+    player: SchemaPlayer,
+    rewardable: Rewardable,
+    rewards: Array<Reward>,
+) -> i64 {
+    let source = Reward { amount: 10, name: "gold" }
+    let ready = true
+    let empty = null
+    let marker = b"xp"
+    let glyph = 'x'
+    let score = source_helper(source.amount)
+    let level = player.level
+    player.grant(level)
+    let preview = rewardable.preview(level)
+    let total = math::max(score, rewards.len())
+    let next = source.bonus(total)
+
+    for item in rewards {
+        if ready && item.amount > 0 {
+            player.level += item.amount
+        } else {
+            continue
+        }
+    }
+
+    match Progress::Active { quest_id: "q1" } {
+        Progress::Started => return START_LEVEL,
+        Progress::Active { quest_id } => player.grant(total),
+        Progress::Finished(result) => return total,
+        _ => missing_symbol
+    }
+
+    return unknown_call(next + preview)
+}

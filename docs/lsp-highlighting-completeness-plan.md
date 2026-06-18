@@ -240,7 +240,7 @@ validation commands have passed locally.
 
 | Phase | Status | Notes |
 |---|---|---|
-| 1. Baseline inventory and fixtures | Not started | Establish visible gaps before changing taxonomy. |
+| 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
 | 2. Token taxonomy and fallback policy | Not started | Expand editor-neutral types/modifiers deliberately. |
 | 3. Service semantic classification | Not started | Use syntax, HIR, TypeFacts, stdlib, and schema facts. |
 | 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
@@ -256,21 +256,34 @@ validation commands have passed locally.
 Goal: capture the current behavior and make the visible color gaps testable
 before changing implementation.
 
-- [ ] Add or identify a single comprehensive Vela highlighting fixture that
+- [x] Add or identify a single comprehensive Vela highlighting fixture that
   includes functions, methods, structs, enums, enum variants, traits, impl
   methods, fields, properties, modules/imports, const/global declarations,
   locals, parameters, attributes, comments, strings, bytes, numbers, booleans,
   null, control-flow keywords, operators, punctuation, unresolved names, stdlib
   calls, schema-backed host calls, and builtin type hints.
-- [ ] Add service-level semantic token snapshot coverage for the fixture in
+- [x] Add service-level semantic token snapshot coverage for the fixture in
   `crates/vela_language_service` or `crates/vela_lsp_server`, whichever keeps
   the assertion closest to the behavior under test.
-- [ ] Add Zed Tree-sitter query validation coverage for the same fixture or for
+- [x] Add Zed Tree-sitter query validation coverage for the same fixture or for
   a smaller query-specific fixture set.
-- [ ] Add VS Code TextMate grammar validation coverage for the same fixture or
+- [x] Add VS Code TextMate grammar validation coverage for the same fixture or
   document the temporary validation gap before Phase 6 fills it.
-- [ ] Record the current LSP semantic-token legend and visible collapse points
+- [x] Record the current LSP semantic-token legend and visible collapse points
   in test names or fixture comments, not in long progress docs.
+
+Phase 1 notes:
+
+- Shared fixture: `tests/fixtures/lsp_highlighting/showcase.vela`.
+- Baseline service/LSP tests pin current behavior without changing taxonomy.
+- Current visible collapse points include source structs/enums/traits all using
+  `type`, const/global declarations using `variable`, booleans/null using
+  `keyword`, broad punctuation/operators using `operator`, unresolved showcase
+  identifiers remaining plain `variable`, and one source method call in the
+  broad fixture remaining a plain `variable` when receiver facts are not
+  stable.
+- Zed and VS Code validators now check the shared fixture and fallback
+  capture/scope metadata while keeping editor packages thin.
 
 Focused validation:
 

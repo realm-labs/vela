@@ -4,6 +4,15 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
+const sharedHighlightingFixture = path.join(
+  root,
+  "..",
+  "..",
+  "tests",
+  "fixtures",
+  "lsp_highlighting",
+  "showcase.vela"
+);
 
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), "utf8"));
@@ -50,6 +59,27 @@ assert(languageConfiguration.comments.lineComment === "//", "line comment config
 
 const grammarJson = readJson(grammar.path);
 assert(grammarJson.scopeName === "source.vela", "grammar scopeName must match manifest");
+assert(fs.existsSync(sharedHighlightingFixture), "shared highlighting showcase fixture is missing");
+const showcase = fs.readFileSync(sharedHighlightingFixture, "utf8");
+for (const marker of [
+  "pub struct Reward",
+  "pub enum Progress",
+  "pub trait Scored",
+  "player.grant(level)",
+  "math::max(score, rewards.len())",
+  "missing_symbol"
+]) {
+  assert(showcase.includes(marker), `shared highlighting fixture must contain ${marker}`);
+}
+for (const scope of [
+  "entity.name.function.vela",
+  "constant.language.vela",
+  "constant.numeric.vela",
+  "keyword.operator.vela",
+  "comment.line.double-slash.vela"
+]) {
+  assert(JSON.stringify(grammarJson).includes(scope), `TextMate grammar must include ${scope}`);
+}
 
 const extensionSource = fs.readFileSync(path.join(root, "extension.js"), "utf8");
 assert(extensionSource.includes("LanguageClient"), "extension must use vscode-languageclient");

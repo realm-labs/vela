@@ -14,6 +14,9 @@ struct DecodedToken {
     modifiers: u64,
 }
 
+const HIGHLIGHTING_SHOWCASE: &str =
+    include_str!("../../../../tests/fixtures/lsp_highlighting/showcase.vela");
+
 #[test]
 fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     let root = temp_workspace();
@@ -446,6 +449,222 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         type_token,
         host,
     );
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "SchemaPlayer",
+                        "fact": { "kind": "host", "name": "SchemaPlayer" }
+                    }
+                ],
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "SchemaPlayer",
+                        "name": "level",
+                        "fact": { "kind": "primitive", "name": "i64" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "SchemaPlayer",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let type_token = token_type_index(token_types, "type");
+    let variable = token_type_index(token_types, "variable");
+    let keyword = token_type_index(token_types, "keyword");
+    let property = token_type_index(token_types, "property");
+    let function = token_type_index(token_types, "function");
+    let method = token_type_index(token_types, "method");
+    let host = token_modifier_bit(token_modifiers, "host");
+    let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
+    let declaration = token_modifier_bit(token_modifiers, "declaration");
+    let definition = token_modifier_bit(token_modifiers, "definition");
+
+    let helper_uri = file_uri(&root.join("scripts").join("game").join("support.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": helper_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn source_helper(amount: i64) -> i64 { return amount }"
+            }
+        }),
+    )));
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": HIGHLIGHTING_SHOWCASE
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        5,
+        line(HIGHLIGHTING_SHOWCASE, 5)
+            .find("Reward")
+            .expect("struct name"),
+        "Reward".len(),
+        type_token,
+        declaration | definition,
+    );
+    assert_token_at(
+        &tokens,
+        28,
+        line(HIGHLIGHTING_SHOWCASE, 28)
+            .find("START_LEVEL")
+            .expect("const declaration"),
+        "START_LEVEL".len(),
+        variable,
+        declaration | definition,
+    );
+    assert_token_at(
+        &tokens,
+        37,
+        line(HIGHLIGHTING_SHOWCASE, 37)
+            .find("true")
+            .expect("boolean"),
+        "true".len(),
+        keyword,
+        0,
+    );
+    assert_token_at(
+        &tokens,
+        42,
+        line(HIGHLIGHTING_SHOWCASE, 42)
+            .rfind("level")
+            .expect("host field"),
+        "level".len(),
+        property,
+        host,
+    );
+    assert_token_at(
+        &tokens,
+        43,
+        line(HIGHLIGHTING_SHOWCASE, 43)
+            .find("grant")
+            .expect("host method"),
+        "grant".len(),
+        method,
+        host,
+    );
+    assert_token_at(
+        &tokens,
+        45,
+        line(HIGHLIGHTING_SHOWCASE, 45)
+            .find("max")
+            .expect("stdlib function"),
+        "max".len(),
+        function,
+        builtin,
+    );
+    assert_token_at(
+        &tokens,
+        46,
+        line(HIGHLIGHTING_SHOWCASE, 46)
+            .find("bonus")
+            .expect("source method collapse point"),
+        "bonus".len(),
+        variable,
+        0,
+    );
+
     fs::remove_dir_all(root).expect("temporary workspace should be removable");
 }
 

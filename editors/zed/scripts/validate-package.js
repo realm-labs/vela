@@ -5,6 +5,15 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(root, "..", "..").replace(/\\/g, "/");
+const sharedHighlightingFixture = path.join(
+  root,
+  "..",
+  "..",
+  "tests",
+  "fixtures",
+  "lsp_highlighting",
+  "showcase.vela"
+);
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -96,5 +105,33 @@ assert(fs.existsSync(path.join(root, "languages", "vela", "indents.scm")), "inde
 assert(fs.existsSync(path.join(root, "languages", "vela", "outline.scm")), "outline query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "overrides.scm")), "overrides query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "textobjects.scm")), "textobjects query is missing");
+
+assert(fs.existsSync(sharedHighlightingFixture), "shared highlighting showcase fixture is missing");
+const showcase = fs.readFileSync(sharedHighlightingFixture, "utf8");
+for (const marker of [
+  "pub struct Reward",
+  "pub enum Progress",
+  "pub trait Scored",
+  "player.grant(level)",
+  "math::max(score, rewards.len())",
+  "missing_symbol"
+]) {
+  assert(showcase.includes(marker), `shared highlighting fixture must contain ${marker}`);
+}
+
+const highlights = read("languages/vela/highlights.scm");
+for (const capture of [
+  "@function",
+  "@function.method",
+  "@type",
+  "@property",
+  "@constant",
+  "@boolean",
+  "@operator",
+  "@punctuation.delimiter",
+  "@punctuation.bracket"
+]) {
+  assert(highlights.includes(capture), `Zed highlights query must include ${capture}`);
+}
 
 console.log("Zed extension package metadata and launcher boundary are valid.");
