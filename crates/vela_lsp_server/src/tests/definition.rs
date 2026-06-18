@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
@@ -488,14 +489,18 @@ fn assert_schema_source_navigation(method: &str) {
 }
 
 fn temp_workspace() -> PathBuf {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_server_definition_{}_{}",
+        "vela_lsp_server_definition_{}_{}_{}",
         std::process::id(),
-        suffix
+        suffix,
+        sequence
     ));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
