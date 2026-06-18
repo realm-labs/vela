@@ -13,34 +13,25 @@ pub(super) fn member_hover(
 ) -> Option<Hover> {
     let owner = owner_name(receiver_fact)?;
     if let Some(fact) = schema.field_fact(&owner, member) {
-        let detail = schema.field_access_fact(&owner, member).map_or_else(
-            || fact.display_name(),
-            |access| {
-                let permissions = permissions_detail(&access.required_permissions);
-                format!(
-                    "{}; writable: {}; reflect_readable: {}; reflect_writable: {}; permissions: {permissions}",
-                    fact.display_name(),
-                    access.writable,
-                    access.reflect_readable,
-                    access.reflect_writable
-                )
-            },
+        let detail_parts = schema.field_access_fact(&owner, member).map_or_else(
+            || DisplayParts::type_name(fact.display_name()),
+            |access| field_detail_parts(fact, access),
         );
-        return Some(Hover::plain_detail(
+        return Some(Hover::new(
             range,
             format!("{owner}.{member}"),
             HoverKind::Field,
-            detail,
+            detail_parts,
             schema.field_docs(&owner, member).map(str::to_owned),
             Some(SymbolRef::Schema(format!("{owner}.{member}"))),
         ));
     }
     method_fact(schema, &owner, member).map(|fact| {
-        Hover::plain_detail(
+        Hover::new(
             range,
             format!("{owner}.{member}"),
             HoverKind::Method,
-            method_detail(schema, &owner, member, fact),
+            method_detail_parts(schema, &owner, member, fact),
             method_docs(schema, &owner, member).map(str::to_owned),
             Some(SymbolRef::Schema(format!("{owner}.{member}"))),
         )
@@ -83,11 +74,11 @@ pub(super) fn symbol_hover(
                     .is_some_and(|segment| segment == name)
         })
         .map(|function| {
-            Hover::plain_detail(
+            Hover::new(
                 range,
                 function.name.clone(),
                 HoverKind::Function,
-                function_detail(schema, &function.name, &function.fact),
+                function_detail_parts(schema, &function.name, &function.fact),
                 schema.function_docs(&function.name).map(str::to_owned),
                 Some(SymbolRef::Schema(function.name.clone())),
             )
@@ -151,14 +142,19 @@ fn method_docs<'a>(schema: &'a RegistryFacts, owner: &str, method: &str) -> Opti
         .or_else(|| schema.trait_method_docs(owner, method))
 }
 
-fn function_detail(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> String {
+fn function_detail_parts(schema: &RegistryFacts, name: &str, fact: &TypeFact) -> DisplayParts {
     let effects = schema
         .function_effect_fact(name)
         .map_or_else(|| "effects: unknown".to_owned(), effect_detail);
-    format!("{}; {effects}", fact.display_name())
+    typed_metadata_detail_parts(fact.display_name(), [effects])
 }
 
-fn method_detail(schema: &RegistryFacts, owner: &str, method: &str, fact: &TypeFact) -> String {
+fn method_detail_parts(
+    schema: &RegistryFacts,
+    owner: &str,
+    method: &str,
+    fact: &TypeFact,
+) -> DisplayParts {
     let effects = schema
         .method_effect_fact(owner, method)
         .or_else(|| schema.trait_method_effect_fact(owner, method))
@@ -167,10 +163,39 @@ fn method_detail(schema: &RegistryFacts, owner: &str, method: &str, fact: &TypeF
         || "none".to_owned(),
         |access| permissions_detail(&access.required_permissions),
     );
-    format!(
-        "{}; {effects}; permissions: {permissions}",
-        fact.display_name()
+    typed_metadata_detail_parts(
+        fact.display_name(),
+        [effects, format!("permissions: {permissions}")],
     )
+}
+
+fn field_detail_parts(
+    fact: &TypeFact,
+    access: &vela_analysis::registry::RegistryFieldAccessFact,
+) -> DisplayParts {
+    let permissions = permissions_detail(&access.required_permissions);
+    typed_metadata_detail_parts(
+        fact.display_name(),
+        [
+            format!("writable: {}", access.writable),
+            format!("reflect_readable: {}", access.reflect_readable),
+            format!("reflect_writable: {}", access.reflect_writable),
+            format!("permissions: {permissions}"),
+        ],
+    )
+}
+
+fn typed_metadata_detail_parts(
+    type_name: impl Into<String>,
+    metadata: impl IntoIterator<Item = String>,
+) -> DisplayParts {
+    let mut parts = DisplayParts::type_name(type_name);
+    for entry in metadata {
+        parts.push(crate::DisplayPartKind::Punctuation, ";");
+        parts.push(crate::DisplayPartKind::Text, " ");
+        parts.push(crate::DisplayPartKind::Text, entry);
+    }
+    parts
 }
 
 fn effect_detail(effect: &RegistryEffectFact) -> String {

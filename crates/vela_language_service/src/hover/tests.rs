@@ -2,7 +2,7 @@ use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 
 use super::*;
 use crate::{
-    DisplayParts, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+    DisplayPartKind, DisplayParts, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
     assemble_project_sources,
 };
 
@@ -58,6 +58,10 @@ fn hover_reports_effects_and_permissions() {
     assert!(hover.detail().contains("Function(i64) -> bool"));
     assert!(hover.detail().contains("effects: writes_host"));
     assert!(hover.detail().contains("permissions: player.reward"));
+    assert_eq!(
+        hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
     assert_eq!(hover.docs(), Some("Grant player rewards."));
     assert_eq!(
         hover.symbol(),
@@ -165,6 +169,11 @@ fn hover_reports_schema_type_field_and_function_docs() {
         )
         .expect("hover should resolve schema field docs");
     assert_eq!(field_hover.kind(), HoverKind::Field);
+    assert_eq!(field_hover.detail(), "i64");
+    assert_eq!(
+        field_hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
     assert_eq!(field_hover.docs(), Some("Current player level."));
     assert_eq!(
         field_hover.symbol(),
@@ -185,6 +194,14 @@ fn hover_reports_schema_type_field_and_function_docs() {
         )
         .expect("hover should resolve schema function docs");
     assert_eq!(function_hover.kind(), HoverKind::Function);
+    assert_eq!(
+        function_hover.detail(),
+        "Function(Player) -> bool; effects: unknown"
+    );
+    assert_eq!(
+        function_hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
     assert_eq!(function_hover.docs(), Some("Grant a player reward."));
     assert_eq!(
         function_hover.symbol(),
