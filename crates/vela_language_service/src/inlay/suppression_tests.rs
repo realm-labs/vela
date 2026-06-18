@@ -274,6 +274,47 @@ pub fn main() {
 }
 
 #[test]
+fn inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_method_return_receiver()
+ {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"trait Rewardable {
+    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
+}
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Rewardable for Inventory {}
+pub fn main(player: Player) {
+    player.inventory().preview("raw", 1)
+    return player.inventory().preview("again", 2)
+}"#;
+    let first_call = line(text, 10);
+    let second_call = line(text, 11);
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(13, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(10, first_call.find(", 1").expect("first count arg") + 2),
+                "count:".to_owned()
+            ),
+            (
+                Position::new(11, second_call.find(", 2").expect("second count arg") + 2),
+                "count:".to_owned()
+            )
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_enum_variant_payloads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum Payload {
