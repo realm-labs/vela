@@ -162,6 +162,44 @@ return cell.missing;
 }
 
 #[test]
+fn declaration_does_not_fallback_to_enclosing_function_for_unknown_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Cell {
+value: i64,
+}
+
+fn assign_cell(cell: Cell) {
+return cell.missing;
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let use_line = text.lines().nth(5).expect("member use line");
+
+    let declaration = databases.declaration(
+        &document,
+        Position::new(5, use_line.find("missing").expect("unknown field use")),
+    );
+
+    assert!(declaration.is_none());
+}
+
+#[test]
+fn declaration_returns_none_for_dynamic_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(value: Any) { return value.level }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let declaration = databases.declaration(
+        &document,
+        Position::new(0, text.find("level").expect("dynamic member")),
+    );
+
+    assert!(
+        declaration.is_none(),
+        "dynamic member declarations must not invent source locations"
+    );
+}
+
+#[test]
 fn type_definition_follows_local_source_type() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Player {
