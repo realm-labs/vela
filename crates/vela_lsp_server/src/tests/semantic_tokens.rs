@@ -799,6 +799,55 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_semantic_tokens_range_returns_empty_for_empty_prefix_range() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub fn main() {
+    let value = 1
+    return value
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/range",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 1, "character": 0 },
+                "end": { "line": 1, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"]["data"],
+        serde_json::json!([]),
+        "{response:?}"
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
