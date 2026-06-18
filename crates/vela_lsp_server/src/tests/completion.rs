@@ -141,6 +141,60 @@ fn lsp_expression_completion_projects_builtin_values() {
 }
 
 #[test]
+fn lsp_statement_completion_offers_for_in_and_match_snippets() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { return 1 }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text.find("return").expect("statement start")
+            }
+        }),
+    )));
+
+    assert_completion_snippet(
+        &response,
+        "for in",
+        15,
+        "for-in loop",
+        "for ${1:item} in ${2:items} {\n    $0\n}",
+    );
+    assert_completion_snippet(
+        &response,
+        "match",
+        15,
+        "match expression",
+        "match ${1:value} {\n    $0\n}",
+    );
+}
+
+#[test]
 fn lsp_module_path_completion_snippets_stdlib_functions() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

@@ -5,25 +5,74 @@ use crate::DisplayParts;
 
 pub(super) fn statement_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
     [
-        ("let", "local binding", "let "),
-        ("return", "return statement", "return "),
-        ("for", "for loop", "for "),
-        ("if", "if expression", "if "),
-        ("match", "match expression", "match "),
-        ("break", "break statement", "break"),
-        ("continue", "continue statement", "continue"),
+        (
+            "for in",
+            CompletionKind::Snippet,
+            "for-in loop",
+            "for ${1:item} in ${2:items} {\n    $0\n}",
+            CompletionInsertFormat::Snippet,
+        ),
+        (
+            "match",
+            CompletionKind::Snippet,
+            "match expression",
+            "match ${1:value} {\n    $0\n}",
+            CompletionInsertFormat::Snippet,
+        ),
+        (
+            "let",
+            CompletionKind::Keyword,
+            "local binding",
+            "let ",
+            CompletionInsertFormat::PlainText,
+        ),
+        (
+            "return",
+            CompletionKind::Keyword,
+            "return statement",
+            "return ",
+            CompletionInsertFormat::PlainText,
+        ),
+        (
+            "for",
+            CompletionKind::Keyword,
+            "for loop",
+            "for ",
+            CompletionInsertFormat::PlainText,
+        ),
+        (
+            "if",
+            CompletionKind::Keyword,
+            "if expression",
+            "if ",
+            CompletionInsertFormat::PlainText,
+        ),
+        (
+            "break",
+            CompletionKind::Keyword,
+            "break statement",
+            "break",
+            CompletionInsertFormat::PlainText,
+        ),
+        (
+            "continue",
+            CompletionKind::Keyword,
+            "continue statement",
+            "continue",
+            CompletionInsertFormat::PlainText,
+        ),
     ]
     .into_iter()
-    .filter(|(label, _, _)| label.starts_with(prefix))
-    .map(|(label, detail, insert_text)| {
+    .filter(|(label, _, _, _, _)| label.starts_with(prefix))
+    .map(|(label, kind, detail, insert_text, insert_format)| {
         let detail_parts = DisplayParts::plain(detail);
         CompletionItem {
             label: label.to_owned(),
-            kind: CompletionKind::Keyword,
+            kind,
             detail: detail_parts.render(),
             insert_text: Some(insert_text.to_owned()),
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: Some(completion_sort_text(CompletionKind::Keyword, label, "")),
+            insert_format,
+            sort_text: Some(completion_sort_text(kind, label, "")),
             metadata: Default::default(),
         }
         .with_detail_parts(detail_parts)

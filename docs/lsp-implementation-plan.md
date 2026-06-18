@@ -650,8 +650,8 @@ Tests:
 - [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`
 - [ ] `lsp_struct_body_completion_enters_field_declaration_context`
-- [ ] `statement_completion_offers_for_in_and_match_snippets`
-- [ ] `lsp_statement_completion_offers_for_in_and_match_snippets`
+- [x] `statement_completion_offers_for_in_and_match_snippets`
+- [x] `lsp_statement_completion_offers_for_in_and_match_snippets`
 
 Validation:
 
@@ -1818,8 +1818,8 @@ Tests:
 - [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`
 - [ ] `lsp_struct_body_completion_enters_field_declaration_context`
-- [ ] `statement_completion_offers_for_in_and_match_snippets`
-- [ ] `lsp_statement_completion_offers_for_in_and_match_snippets`
+- [x] `statement_completion_offers_for_in_and_match_snippets`
+- [x] `lsp_statement_completion_offers_for_in_and_match_snippets`
 
 Validation:
 

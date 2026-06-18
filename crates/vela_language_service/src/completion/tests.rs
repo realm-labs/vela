@@ -251,6 +251,45 @@ fn statement_completion_suggests_statement_keywords() {
 }
 
 #[test]
+fn statement_completion_offers_for_in_and_match_snippets() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { return 1 }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            0,
+            text.find("return").expect("statement start should exist"),
+        ),
+    );
+
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Statement
+    );
+    let for_in = completion(&completions, "for in");
+    assert_eq!(for_in.kind(), CompletionKind::Snippet);
+    assert_eq!(for_in.insert_format(), CompletionInsertFormat::Snippet);
+    assert_eq!(
+        for_in.insert_text(),
+        Some("for ${1:item} in ${2:items} {\n    $0\n}")
+    );
+
+    let match_item = completion(&completions, "match");
+    assert_eq!(match_item.kind(), CompletionKind::Snippet);
+    assert_eq!(match_item.insert_format(), CompletionInsertFormat::Snippet);
+    assert_eq!(
+        match_item.insert_text(),
+        Some("match ${1:value} {\n    $0\n}")
+    );
+}
+
+#[test]
 fn member_completion_uses_host_schema_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.le }";
