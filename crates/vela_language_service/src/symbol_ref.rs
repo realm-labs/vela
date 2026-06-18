@@ -124,15 +124,19 @@ pub(crate) fn qualified_source_declaration_name(
     qualified_source_declaration_path(graph, declaration).join("::")
 }
 
+pub(crate) fn source_symbol(name: impl Into<String>) -> SymbolRef {
+    SymbolRef::Source(name.into())
+}
+
 pub(crate) fn source_symbol_for_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
 ) -> SymbolRef {
-    SymbolRef::Source(qualified_source_declaration_name(graph, declaration))
+    source_symbol(qualified_source_declaration_name(graph, declaration))
 }
 
 pub(crate) fn source_module_symbol(path: &ModulePath) -> SymbolRef {
-    SymbolRef::Source(path.join())
+    source_symbol(path.join())
 }
 
 pub(crate) fn source_module_symbol_from_segments<'a>(
@@ -158,7 +162,7 @@ pub(crate) fn source_member_symbol(
     let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
         return None;
     };
-    Some(SymbolRef::Source(format!("{owner}.{member}")))
+    Some(source_child_symbol(&owner, member))
 }
 
 pub(crate) fn source_impl_method_symbol(
@@ -192,7 +196,7 @@ pub(crate) fn source_impl_method_symbol(
             format!("{trait_name} for {target}")
         }
     };
-    Some(SymbolRef::Source(format!("{owner}.{method}")))
+    Some(source_child_symbol(&owner, method))
 }
 
 pub(crate) fn source_enum_variant_symbol(
@@ -203,7 +207,7 @@ pub(crate) fn source_enum_variant_symbol(
     let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
         return None;
     };
-    Some(SymbolRef::Source(format!("{owner}::{variant}")))
+    Some(source_variant_symbol(&owner, variant))
 }
 
 pub(crate) fn source_variant_field_symbol(
@@ -216,7 +220,15 @@ pub(crate) fn source_variant_field_symbol(
     else {
         return None;
     };
-    Some(SymbolRef::Source(format!("{variant}.{field}")))
+    Some(source_child_symbol(&variant, field))
+}
+
+pub(crate) fn source_child_symbol(owner: &str, member: &str) -> SymbolRef {
+    SymbolRef::Source(format!("{owner}.{member}"))
+}
+
+pub(crate) fn source_variant_symbol(owner: &str, variant: &str) -> SymbolRef {
+    SymbolRef::Source(format!("{owner}::{variant}"))
 }
 
 pub(crate) fn schema_symbol(name: impl Into<String>) -> SymbolRef {

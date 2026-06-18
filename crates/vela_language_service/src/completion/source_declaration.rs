@@ -7,10 +7,11 @@ use vela_analysis::{
 };
 use vela_hir::module_graph::ModuleGraph;
 
+use crate::symbol_ref::source_symbol;
 use crate::{QueryContext, TextRange};
 
 use super::{
-    CompletionItem, CompletionSymbol, accumulator::CompletionAccumulator,
+    CompletionItem, accumulator::CompletionAccumulator,
     analysis_item::service_item_from_analysis_completion, label_segment_matches,
 };
 
@@ -69,7 +70,7 @@ fn source_declaration_completion_items(
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
             accumulator.add(
                 service_item_from_analysis_completion(item, prefix)
-                    .with_symbol(CompletionSymbol::Source(symbol)),
+                    .with_symbol(source_symbol(symbol)),
             );
         }
     }

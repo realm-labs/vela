@@ -12,7 +12,7 @@ use crate::{
     symbol_ref::{
         schema_member_symbol as shared_schema_member_symbol, schema_symbol as shared_schema_symbol,
         schema_variant_symbol as shared_schema_variant_symbol, source_enum_variant_symbol,
-        source_impl_method_symbol, source_member_symbol, source_module_symbol,
+        source_impl_method_symbol, source_member_symbol, source_module_symbol, source_symbol,
         source_symbol_for_declaration, source_variant_field_symbol,
     },
 };
@@ -225,7 +225,7 @@ impl LanguageServiceDatabases {
                             TextRange::new(0, source.text().len()),
                         ),
                     },
-                    symbol: SymbolRef::Source(document_id.as_str().to_owned()),
+                    symbol: source_symbol(document_id.as_str()),
                 })
             })
             .collect()

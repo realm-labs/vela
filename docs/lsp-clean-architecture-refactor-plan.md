@@ -564,7 +564,7 @@ cargo test -p vela_lsp_server completion
 Purpose: make hover, signature help, definition, symbols, references, rename,
 and semantic tokens use the same identities and display primitives.
 
-- [~] Introduce `SymbolRef` or equivalent identity for local bindings, source
+- [x] Introduce `SymbolRef` or equivalent identity for local bindings, source
   declarations, modules, fields, methods, variants, builtin facts, stdlib
   facts, and schema-owned facts.
   A shared `SymbolRef` identity now exists in `vela_language_service`, and the
@@ -612,10 +612,12 @@ and semantic tokens use the same identities and display primitives.
   builtin/stdlib hover, callable, cursor-target, and inlay parameter symbols
   now use shared builtin symbol constructors, leaving only tests and helper
   pattern matches with direct `SymbolRef::Builtin` construction;
+  source file symbols, source completion adapters, and source inlay parameter
+  symbols now use shared source constructors, leaving production source,
+  schema, and builtin symbol construction centralized in `symbol_ref`;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
-  broader diagnostic identities and remaining source/member producer sites
-  still need to converge on it directly. Document symbols now expose
+  document symbols now expose
   `SymbolRef` identity for source declarations and nested source-owned
   members, and workspace symbols expose `SymbolRef` identity for source files,
   modules, source declarations, and schema facts while keeping LSP projection
