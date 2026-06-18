@@ -23,6 +23,7 @@ mod modules;
 mod record_fields;
 mod record_variant_patterns;
 pub(crate) mod schema;
+mod type_hints;
 mod variant_fields;
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -248,6 +249,11 @@ impl LanguageServiceDatabases {
         {
             return modules::import_module_references(self, &target);
         }
+        if let Some(declaration) =
+            type_hints::source_type_hint_reference_target(graph, source_id, source.text(), &token)
+        {
+            return self.declaration_references(declaration, include_declaration);
+        }
 
         for declaration in graph.declarations() {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
@@ -449,23 +455,36 @@ impl LanguageServiceDatabases {
         }
 
         for owner in graph.declarations() {
-            let Some(bindings) = graph.bindings(owner.id) else {
-                continue;
-            };
-            references.extend(
-                bindings
-                    .resolutions()
-                    .filter_map(|(expression, resolution)| match resolution {
-                        BindingResolution::Declaration(resolved) if *resolved == declaration => {
-                            let expression = bindings.expression(expression)?;
-                            self.reference_for_resolved_use_span(expression.span, symbol.clone())
-                        }
-                        BindingResolution::Declaration(_)
-                        | BindingResolution::Local(_)
-                        | BindingResolution::Import(_)
-                        | BindingResolution::QualifiedPath(_) => None,
-                    }),
-            );
+            if type_hints::is_type_declaration_id(graph, declaration) {
+                references.extend(type_hints::source_type_hint_references_for_declaration(
+                    self,
+                    graph,
+                    owner,
+                    declaration,
+                    symbol.clone(),
+                ));
+            }
+            if let Some(bindings) = graph.bindings(owner.id) {
+                references.extend(
+                    bindings.resolutions().filter_map(
+                        |(expression, resolution)| match resolution {
+                            BindingResolution::Declaration(resolved)
+                                if *resolved == declaration =>
+                            {
+                                let expression = bindings.expression(expression)?;
+                                self.reference_for_resolved_use_span(
+                                    expression.span,
+                                    symbol.clone(),
+                                )
+                            }
+                            BindingResolution::Declaration(_)
+                            | BindingResolution::Local(_)
+                            | BindingResolution::Import(_)
+                            | BindingResolution::QualifiedPath(_) => None,
+                        },
+                    ),
+                );
+            }
         }
 
         references.sort_by_key(|reference| {
@@ -476,6 +495,12 @@ impl LanguageServiceDatabases {
                 start.character,
                 reference.kind,
             )
+        });
+        references.dedup_by(|left, right| {
+            left.document_id == right.document_id
+                && left.range == right.range
+                && left.kind == right.kind
+                && left.symbol == right.symbol
         });
         references
     }
@@ -1126,6 +1151,15 @@ fn span_text_range(span: Span) -> Option<TextRange> {
 fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
     let slice = text.get(range.start..range.end)?;
     slice.match_indices(name).find_map(|(offset, matched)| {
+        let start = range.start + offset;
+        let end = start + matched.len();
+        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
+    })
+}
+
+fn last_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
+    let slice = text.get(range.start..range.end)?;
+    slice.rmatch_indices(name).find_map(|(offset, matched)| {
         let start = range.start + offset;
         let end = start + matched.len();
         is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))

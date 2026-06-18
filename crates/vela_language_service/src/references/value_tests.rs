@@ -169,6 +169,100 @@ pub fn main(amount: i64) -> i64 {
     );
 }
 
+#[test]
+fn references_find_imported_source_type_uses() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = "\
+use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+
+pub fn main(bag: Bag) -> Bag {
+    let next: Bag = bag
+    return next
+}";
+    let inventory_text = "\
+pub struct Inventory {
+    slots: i64
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("Bag")
+                .expect("parameter type hint should exist"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 6, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &inventory,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        0,
+        line(main_text, 0)
+            .find("Bag")
+            .expect("import alias should exist"),
+        ReferenceKind::Import,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2)
+            .find("Bag")
+            .expect("const type hint should exist"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        4,
+        line(main_text, 4)
+            .find("Bag")
+            .expect("parameter type hint should exist"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        4,
+        line(main_text, 4)
+            .rfind("Bag")
+            .expect("return type hint should exist"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        5,
+        line(main_text, 5)
+            .find("Bag")
+            .expect("local type hint should exist"),
+        ReferenceKind::Read,
+    );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::inventory::Inventory".into()),
+    );
+}
+
 fn assert_all_symbols(references: &[Reference], symbol: &SymbolRef) {
     assert!(
         references

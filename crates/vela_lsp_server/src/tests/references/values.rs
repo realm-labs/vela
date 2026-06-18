@@ -214,3 +214,113 @@ pub fn main(amount: i64) -> i64 {
             .expect("second alias call should exist"),
     );
 }
+
+#[test]
+fn lsp_references_find_imported_source_type_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = "\
+use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+
+pub fn main(bag: Bag) -> Bag {
+    let next: Bag = bag
+    return next
+}";
+    let inventory_text = "\
+pub struct Inventory {
+    slots: i64
+}";
+    for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": line(main_text, 4)
+                    .find("Bag")
+                    .expect("parameter type hint should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 6, "{references:?}");
+    assert_reference(
+        references,
+        inventory_uri,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        0,
+        line(main_text, 0)
+            .find("Bag")
+            .expect("import alias should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        2,
+        line(main_text, 2)
+            .find("Bag")
+            .expect("const type hint should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        4,
+        line(main_text, 4)
+            .find("Bag")
+            .expect("parameter type hint should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        4,
+        line(main_text, 4)
+            .rfind("Bag")
+            .expect("return type hint should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        5,
+        line(main_text, 5)
+            .find("Bag")
+            .expect("local type hint should exist"),
+    );
+}

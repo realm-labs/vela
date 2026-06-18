@@ -261,6 +261,8 @@ coverage complete based only on the older capability phases.
     constructors/patterns plus enum record-variant fields in addition to
     imported functions, function aliases, const/global symbols, and module
     path segments.
+  - W3 references now have service and protocol coverage for imported source
+    type aliases and type-hint uses.
   - W3/W0 references now have protocol coverage proving watched-file deletion
     of an imported defining source removes stale cross-file reference targets.
   - W3/W0 references now have protocol coverage proving watched-file rename
@@ -1058,6 +1060,8 @@ Purpose: support workspace navigation and prepare rename.
     request.
   - [x] Serve imported script function references through the native LSP
     request.
+  - [x] Serve imported source type alias and type-hint references through the
+    native LSP request.
   - [x] Serve source-owned script struct field references through the native
     LSP request.
   - [x] Serve explicit source-owned record-constructor field label references
@@ -1140,6 +1144,8 @@ Tests:
 - [x] `lsp_references_use_open_overlay_for_importing_file`
 - [x] `references_find_imported_const_and_global_uses`
 - [x] `lsp_references_find_imported_const_and_global_uses`
+- [x] `references_find_imported_source_type_uses`
+- [x] `lsp_references_find_imported_source_type_uses`
 - [x] `references_find_field_reads_and_writes`
 - [x] `lsp_references_find_field_reads_and_writes`
 - [x] `references_find_cross_file_imported_source_field_and_method_uses`
