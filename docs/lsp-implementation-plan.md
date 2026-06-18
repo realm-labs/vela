@@ -243,6 +243,9 @@ coverage complete based only on the older capability phases.
     clearing and disk snapshot restoration after closing an open overlay.
   - Disk snapshot restoration after `textDocument/didClose` now has
     cross-feature definition-query coverage in addition to diagnostics.
+  - Disk snapshot restoration after `textDocument/didClose` now has
+    cross-feature completion-query coverage in addition to diagnostics and
+    definition queries.
   - Current fixtures cover full and incremental `didChange`, `didOpen`,
     `didClose`, structured publish diagnostics, syntax/HIR/analysis/schema
     diagnostics, parser-recovery isolation, missing import diagnostics,
@@ -606,6 +609,7 @@ Tests:
 - [x] `lsp_did_close_clears_scratch_diagnostics`
 - [x] `lsp_did_close_restores_disk_snapshot_diagnostics`
 - [x] `lsp_did_close_restores_disk_snapshot_definition_queries`
+- [x] `lsp_did_close_restores_disk_snapshot_completion_queries`
 - [x] `lsp_initialize_uses_workspace_root_for_document_sync`
 - [x] `file_create_adds_module`
 - [x] `lsp_cancellation_discards_stale_request`

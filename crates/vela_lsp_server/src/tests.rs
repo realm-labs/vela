@@ -541,6 +541,7 @@ fn main(cell: OverlayCell) {
 }
 
 mod call_hierarchy;
+mod close_overlay;
 mod completion;
 mod definition;
 mod file_watching_coalescing;
