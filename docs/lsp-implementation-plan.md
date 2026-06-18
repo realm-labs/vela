@@ -249,10 +249,28 @@ coverage complete based only on the older capability phases.
     config diagnostics, schema missing/invalid/degraded states, open-file
     priority, stale and partial generations, workspace progress wrapping, and
     stale queued request cancellation.
-- [ ] Audit completion, completion resolve, signature help, and hover.
+- [x] Audit completion, completion resolve, signature help, and hover.
   - Cover all matrix syntax dimensions that apply, including cross-file
     imports, globals, functions, methods, type hints, defaulted parameters,
     schema facts, stdlib facts, dynamic `Any`, and malformed cursor contexts.
+  - Current fixtures cover service and native LSP completion for open-overlay
+    declarations, expression/item/statement/module/type/member/record/map-key/
+    pattern/named-argument/lambda-parameter contexts, source and schema
+    facts, stdlib and builtin facts, defaulted parameters, short labels with
+    separate projection fields, repeated-query cache reuse, stale/cancelled
+    completion rejection, and malformed/incomplete contexts without global
+    fallback.
+  - Current fixtures cover `completionItem/resolve` payload projection,
+    lazy schema docs for schema types/functions/fields/methods/variants, item
+    pass-through without payloads, and invalid payload rejection.
+  - Current signature-help fixtures cover script, imported defaulted
+    functions, script/source trait/schema/schema-trait/stdlib calls, callback
+    methods, enum variant calls, active parameters, incomplete calls, and
+    dynamic or unresolved null results.
+  - Current hover fixtures cover source, cross-file, schema, stdlib, trait,
+    method, field, enum variant, global, parameter, imported module path,
+    docs/effects/permissions, parser-recovery, missing-schema `Any`
+    degradation, and dynamic or unresolved null results.
 - [ ] Audit navigation protocols.
   - Cover `definition`, `declaration`, `typeDefinition`, and negative
     `implementation` behavior for locals, globals, imported functions, source
