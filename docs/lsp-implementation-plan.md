@@ -575,11 +575,14 @@ Tests:
 - [x] `signature_help_resolves_schema_trait_method_call`
 - [x] `signature_help_resolves_stdlib_callback_method_call`
 - [x] `signature_help_resolves_stdlib_function_call`
+- [x] `signature_help_returns_none_for_unknown_call`
+- [x] `signature_help_returns_none_for_dynamic_receiver_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_call`
 - [x] `lsp_signature_help_resolves_schema_trait_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
+- [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
 
 Validation:
 

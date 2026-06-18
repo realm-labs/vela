@@ -323,6 +323,40 @@ mod tests {
     }
 
     #[test]
+    fn signature_help_returns_none_for_unknown_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main() { missing(1, 2) }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let position = LineIndex::new(text).position(text.find("2)").expect("second argument"));
+        assert!(
+            databases.signature_help(&document, position).is_none(),
+            "unknown calls must not produce speculative signature help"
+        );
+    }
+
+    #[test]
+    fn signature_help_returns_none_for_dynamic_receiver_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(player) { player.grant(1, 2) }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let position = LineIndex::new(text).position(text.find("2)").expect("second argument"));
+        assert!(
+            databases.signature_help(&document, position).is_none(),
+            "dynamic receiver calls must not invent method signature facts"
+        );
+    }
+
+    #[test]
     fn signature_help_resolves_script_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"

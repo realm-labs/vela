@@ -56,6 +56,73 @@ fn lsp_signature_help_tracks_active_parameter() {
 }
 
 #[test]
+fn lsp_signature_help_returns_null_for_unknown_and_dynamic_calls() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+pub fn unresolved() { missing(1, 2) }
+pub fn dynamic(player) { player.grant(1, 2) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let unresolved_line = text
+        .lines()
+        .next()
+        .expect("fixture should contain unresolved call");
+    let unresolved = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": unresolved_line.find("2)").unwrap_or_else(|| {
+                    panic!("signature fixture should contain unresolved second argument")
+                })
+            }
+        }),
+    )));
+    assert!(unresolved["result"].is_null(), "{unresolved:?}");
+
+    let dynamic_line = text
+        .lines()
+        .nth(1)
+        .expect("fixture should contain dynamic receiver call");
+    let dynamic = response_value(server.handle_json(&request(
+        3,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": dynamic_line.find("2)").unwrap_or_else(|| {
+                    panic!("signature fixture should contain dynamic second argument")
+                })
+            }
+        }),
+    )));
+    assert!(dynamic["result"].is_null(), "{dynamic:?}");
+}
+
+#[test]
 fn lsp_signature_help_resolves_script_method_call() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
