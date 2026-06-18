@@ -1018,6 +1018,8 @@ Tests:
 - [x] `lsp_document_highlight_marks_imported_module_segments`
 - [x] `document_highlight_marks_read_write_call`
 - [x] `lsp_document_highlight_marks_read_write_call`
+- [x] `document_highlight_returns_empty_for_dynamic_and_unresolved_targets`
+- [x] `lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets`
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `document_highlight_marks_trait_impl_uses`

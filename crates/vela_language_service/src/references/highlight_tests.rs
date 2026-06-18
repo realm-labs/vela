@@ -103,6 +103,43 @@ pub fn main(state: QuestState) -> i64 {
     );
 }
 
+#[test]
+fn document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn unresolved() { return missing }
+pub fn dynamic(value: Any) { return value.level }";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let unresolved = databases.document_highlights(
+        &document,
+        Position::new(
+            0,
+            line(text, 0)
+                .find("missing")
+                .expect("unresolved name should exist"),
+        ),
+    );
+    assert!(
+        unresolved.is_empty(),
+        "unresolved names must not produce speculative highlights"
+    );
+
+    let dynamic = databases.document_highlights(
+        &document,
+        Position::new(
+            1,
+            line(text, 1)
+                .find("level")
+                .expect("dynamic member should exist"),
+        ),
+    );
+    assert!(
+        dynamic.is_empty(),
+        "dynamic receiver members must not invent highlight targets"
+    );
+}
+
 fn assert_highlight(
     highlights: &[DocumentHighlight],
     line: usize,
