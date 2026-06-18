@@ -445,6 +445,106 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn references_find_schema_trait_method_calls_on_schema_function_return_receivers() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main() -> i64 {
+    let first = current_reward().preview(1)
+    return current_reward().preview(first)
+}";
+    let schema_text = "pub fn preview() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("preview")
+        .expect("schema marker should exist");
+    let target_end = target_start + "preview".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" }
+                }
+            ],
+            "functions": [
+                {
+                    "name": "current_reward",
+                    "fact": {
+                        "kind": "function",
+                        "params": [],
+                        "returns": { "kind": "trait", "name": "Rewardable" }
+                    }
+                }
+            ],
+            "traitMethods": [
+                {
+                    "owner": "Rewardable",
+                    "name": "preview",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let references = databases.references(
+        &main,
+        Position::new(1, line(main_text, 1).find("preview").expect("method call")),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &schema,
+        0,
+        schema_text
+            .find("preview")
+            .expect("schema trait method declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        1,
+        line(main_text, 1)
+            .find("preview")
+            .expect("first method call"),
+        ReferenceKind::Call,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2)
+            .find("preview")
+            .expect("second method call"),
+        ReferenceKind::Call,
+    );
+    assert_all_symbols(&references, &SymbolRef::Schema("Rewardable.preview".into()));
+}
+
+#[test]
 fn document_highlight_marks_schema_method_calls_on_schema_function_return_receivers() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
@@ -524,6 +624,93 @@ pub fn main() -> i64 {
         2,
         line(main_text, 2)
             .find("grant")
+            .expect("second method call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
+fn document_highlight_marks_schema_trait_method_calls_on_schema_function_return_receivers() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main() -> i64 {
+    let first = current_reward().preview(1)
+    return current_reward().preview(first)
+}";
+    let schema_text = "pub fn preview() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("preview")
+        .expect("schema marker should exist");
+    let target_end = target_start + "preview".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "traits": [
+                {
+                    "name": "Rewardable",
+                    "fact": { "kind": "trait", "name": "Rewardable" }
+                }
+            ],
+            "functions": [
+                {
+                    "name": "current_reward",
+                    "fact": {
+                        "kind": "function",
+                        "params": [],
+                        "returns": { "kind": "trait", "name": "Rewardable" }
+                    }
+                }
+            ],
+            "traitMethods": [
+                {
+                    "owner": "Rewardable",
+                    "name": "preview",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(1, line(main_text, 1).find("preview").expect("method call")),
+    );
+
+    assert_eq!(highlights.len(), 2, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        1,
+        line(main_text, 1)
+            .find("preview")
+            .expect("first method call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2)
+            .find("preview")
             .expect("second method call"),
         DocumentHighlightKind::Call,
     );
