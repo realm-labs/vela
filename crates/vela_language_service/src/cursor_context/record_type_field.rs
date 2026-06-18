@@ -1,11 +1,11 @@
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 use vela_syntax::ast::{EnumVariantFields, ItemKind, SourceFile, StructField};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::TextRange;
 
-use super::{is_type_context, span_contains_usize};
+use super::is_type_context;
 
 pub(super) fn is_record_type_field_context(text: &str, source: &SourceFile, offset: usize) -> bool {
     let Some(offset_u32) = u32::try_from(offset).ok() else {
@@ -111,4 +111,11 @@ fn active_open_brace_before_offset(tokens: &[Token], offset: u32) -> Option<usiz
         }
     }
     stack.pop()
+}
+
+fn span_contains_usize(span: Span, offset: usize) -> bool {
+    let Some(offset) = u32::try_from(offset).ok() else {
+        return false;
+    };
+    span.start <= offset && offset <= span.end
 }
