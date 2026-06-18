@@ -1121,10 +1121,14 @@ Tests:
 - [x] `infers_schema_function_and_method_return_facts`
 - [x] `semantic_tokens_classify_schema_method_on_schema_function_return`
 - [x] `lsp_semantic_tokens_classify_schema_method_on_schema_function_return`
+- [x] `semantic_tokens_classify_schema_method_on_schema_method_return`
+- [x] `lsp_semantic_tokens_classify_schema_method_on_schema_method_return`
 - [x] `semantic_tokens_classify_schema_trait_method_uses_as_host`
 - [x] `lsp_semantic_tokens_classify_schema_trait_method_uses_as_host`
 - [x] `semantic_tokens_classify_schema_trait_method_on_schema_function_return`
 - [x] `lsp_semantic_tokens_classify_schema_trait_method_on_schema_function_return`
+- [x] `semantic_tokens_classify_schema_trait_method_on_schema_method_return`
+- [x] `lsp_semantic_tokens_classify_schema_trait_method_on_schema_method_return`
 - [x] `lsp_semantic_tokens_classify_schema_enum_variant_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_function_calls`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_function_calls`

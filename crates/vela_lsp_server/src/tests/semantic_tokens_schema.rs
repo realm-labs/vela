@@ -6,6 +6,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod schema_method_return_receivers;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {
     line: u64,

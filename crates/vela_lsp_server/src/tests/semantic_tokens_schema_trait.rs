@@ -271,6 +271,151 @@ pub fn main() -> i64 {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_method_return() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "traits": [
+                    {
+                        "name": "Rewardable",
+                        "fact": { "kind": "trait", "name": "Rewardable" }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "rewardable",
+                        "fact": {
+                            "kind": "function",
+                            "params": [],
+                            "returns": { "kind": "trait", "name": "Rewardable" }
+                        }
+                    }
+                ],
+                "traitMethods": [
+                    {
+                        "owner": "Rewardable",
+                        "name": "preview",
+                        "fact": {
+                            "kind": "function",
+                            "params": [{ "kind": "primitive", "name": "i64" }],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let method = token_type_index(token_types, "method");
+    let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
+
+    let text = "\
+pub fn main(player: Player) -> i64 {
+    return player.rewardable().preview(1)
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("rewardable")
+            .expect("schema method call should exist"),
+        "rewardable".len(),
+        method,
+        schema_host,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("preview")
+            .expect("schema trait method call should exist"),
+        "preview".len(),
+        method,
+        schema_host,
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn token_type_index(token_types: &[serde_json::Value], name: &str) -> u64 {
     token_types
         .iter()
