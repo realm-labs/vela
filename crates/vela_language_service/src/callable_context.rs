@@ -14,7 +14,8 @@ use crate::query_context::type_fact_for_source_range;
 use crate::{
     LanguageServiceDatabases, SymbolRef, TextRange,
     symbol_ref::{
-        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
+        qualified_source_declaration_name, schema_member_symbol, schema_symbol,
+        schema_variant_symbol, source_enum_variant_symbol, source_impl_method_symbol,
         source_member_symbol, source_symbol_for_declaration,
     },
 };
@@ -360,7 +361,7 @@ fn schema_method_callable_facts(
         params: indexed_callable_parameters(params.clone()),
         returns: returns.as_ref().clone(),
         origin: CallableOrigin::SchemaMethod,
-        symbol: SymbolRef::Schema(format!("{owner}.{method}")),
+        symbol: schema_member_symbol(&owner, method),
     }]
 }
 
@@ -440,7 +441,7 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                 params: indexed_callable_parameters(params),
                 returns: *returns,
                 origin: CallableOrigin::Schema,
-                symbol: SymbolRef::Schema(function.name.clone()),
+                symbol: schema_symbol(function.name),
             })
         })
         .collect()
@@ -463,7 +464,7 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 params,
                 returns: variant.fact,
                 origin: CallableOrigin::SchemaVariant,
-                symbol: SymbolRef::Schema(owner),
+                symbol: schema_variant_symbol(&variant.owner, &variant.name),
             })
         })
         .collect()

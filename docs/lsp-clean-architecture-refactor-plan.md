@@ -599,6 +599,8 @@ and semantic tokens use the same identities and display primitives.
   now use the shared schema member/variant symbol constructors;
   shared cursor targets now use the shared schema constructors for schema
   symbols, members, and variants;
+  callable facts and inlay hint parameter/host-path symbols now use the shared
+  schema constructors;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites
