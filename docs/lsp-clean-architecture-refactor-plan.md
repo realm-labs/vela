@@ -829,8 +829,12 @@ Purpose: make the new model viable for large workspaces and real editors.
     `function_body_edit_does_not_invalidate_unrelated_modules` and
     `declaration_and_import_fingerprints_invalidate_project_indexes` prove
     body-only edits reparse one file while preserving project indexes and HIR.
-- [ ] Bound eager completion rendering. Defer expensive docs/detail formatting
+- [x] Bound eager completion rendering. Defer expensive docs/detail formatting
   until after context filtering, prefix narrowing, or resolve.
+  - Schema-backed completion items now carry symbol-backed resolve payloads
+    without embedding docs in the initial completion list. Native LSP advertises
+    `completionItem/resolve` and resolves schema type, function, field, method,
+    trait-method, and variant docs on demand.
 - [ ] Keep open-document queries prioritized over disk-only modules.
 - [ ] Use workspace generation IDs to discard stale results.
 - [ ] Keep cancellation checks at query construction and expensive producer

@@ -38,7 +38,7 @@ pub(super) fn type_hint_completion_items(
     items.extend(
         type_completions(schema)
             .into_iter()
-            .map(|item| service_item_from_schema_type(item, schema)),
+            .map(service_item_from_schema_type),
     );
     items.extend(
         graph
@@ -211,19 +211,9 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
     .with_detail_parts(detail_parts)
 }
 
-fn service_item_from_schema_type(
-    item: AnalysisCompletionItem,
-    schema: &RegistryFacts,
-) -> CompletionItem {
-    let docs = match item.kind {
-        AnalysisCompletionKind::Type => schema.type_docs(&item.label),
-        AnalysisCompletionKind::Trait => schema.trait_docs(&item.label),
-        _ => None,
-    };
+fn service_item_from_schema_type(item: AnalysisCompletionItem) -> CompletionItem {
     let symbol = schema_symbol(&item.label);
-    service_item_from_analysis(item)
-        .with_documentation(docs)
-        .with_symbol(symbol)
+    service_item_from_analysis(item).with_symbol(symbol)
 }
 
 #[cfg(test)]

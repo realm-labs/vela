@@ -15,8 +15,8 @@ use vela_syntax::ast::{
 use vela_syntax::parser::parse_source;
 
 use crate::{
-    DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations, SourceVersion,
-    WorkspaceGeneration,
+    CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
+    SourceVersion, SymbolRef, WorkspaceGeneration,
 };
 
 #[derive(Debug, Clone)]
@@ -738,6 +738,16 @@ impl LanguageServiceDatabases {
     }
 
     #[must_use]
+    pub fn completion_documentation(&self, payload: &CompletionResolvePayload) -> Option<String> {
+        match payload {
+            CompletionResolvePayload::Documentation {
+                symbol: SymbolRef::Schema(name),
+            } => schema_completion_documentation(self.schema_db.facts(), name).map(str::to_owned),
+            CompletionResolvePayload::Documentation { .. } => None,
+        }
+    }
+
+    #[must_use]
     pub const fn begin_background_request(&self) -> GenerationToken {
         GenerationToken {
             generation: self.generation,
@@ -891,6 +901,24 @@ fn indexing_metrics(
         hir_rebuild_count,
         elapsed_micros,
     }
+}
+
+fn schema_completion_documentation<'a>(schema: &'a RegistryFacts, name: &str) -> Option<&'a str> {
+    if let Some((owner, variant)) = name.rsplit_once("::")
+        && let Some(docs) = schema.variant_docs(owner, variant)
+    {
+        return Some(docs);
+    }
+    if let Some((owner, member)) = name.rsplit_once('.') {
+        return schema
+            .field_docs(owner, member)
+            .or_else(|| schema.method_docs(owner, member))
+            .or_else(|| schema.trait_method_docs(owner, member));
+    }
+    schema
+        .type_docs(name)
+        .or_else(|| schema.trait_docs(name))
+        .or_else(|| schema.function_docs(name))
 }
 
 fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord> {

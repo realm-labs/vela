@@ -115,10 +115,7 @@ fn expression_completion_carries_schema_function_metadata() {
     );
     let function = completion(&completions, "spawn_player");
     assert_eq!(function.kind(), CompletionKind::Function);
-    assert_eq!(
-        function.documentation(),
-        Some("Spawn a player host object.")
-    );
+    assert_eq!(function.documentation(), None);
     assert_eq!(
         function.symbol(),
         Some(&CompletionSymbol::Schema("spawn_player".to_owned()))
@@ -128,6 +125,10 @@ fn expression_completion_carries_schema_function_metadata() {
         Some(&CompletionResolvePayload::Documentation {
             symbol: CompletionSymbol::Schema("spawn_player".to_owned())
         })
+    );
+    assert_eq!(
+        databases.completion_documentation(function.resolve_payload().expect("resolve payload")),
+        Some("Spawn a player host object.".to_owned())
     );
 }
 
@@ -279,16 +280,24 @@ fn member_completion_uses_host_schema_facts() {
     assert_completion(&completions, "level", CompletionKind::Field);
     assert_completion(&completions, "level_up", CompletionKind::Method);
     let level = completion(&completions, "level");
-    assert_eq!(level.documentation(), Some("Current player level."));
+    assert_eq!(level.documentation(), None);
     assert_eq!(
         level.symbol(),
         Some(&CompletionSymbol::Schema("Player.level".to_owned()))
     );
+    assert_eq!(
+        databases.completion_documentation(level.resolve_payload().expect("resolve payload")),
+        Some("Current player level.".to_owned())
+    );
     let level_up = completion(&completions, "level_up");
-    assert_eq!(level_up.documentation(), Some("Increase the player level."));
+    assert_eq!(level_up.documentation(), None);
     assert_eq!(
         level_up.symbol(),
         Some(&CompletionSymbol::Schema("Player.level_up".to_owned()))
+    );
+    assert_eq!(
+        databases.completion_documentation(level_up.resolve_payload().expect("resolve payload")),
+        Some("Increase the player level.".to_owned())
     );
 }
 
@@ -404,7 +413,7 @@ fn record_field_completion_uses_schema_facts() {
     assert_completion(&completions, "level", CompletionKind::Field);
     assert_no_completion(&completions, "name");
     let level = completion(&completions, "level");
-    assert_eq!(level.documentation(), Some("Current player level."));
+    assert_eq!(level.documentation(), None);
     assert_eq!(
         level.symbol(),
         Some(&CompletionSymbol::Schema("Player.level".to_owned()))
@@ -832,15 +841,19 @@ pub fn main(state: QuestState) {
     assert_completion(&completions, "Active", CompletionKind::Variant);
     assert_no_completion(&completions, "activate");
     let active = completion(&completions, "Active");
-    assert_eq!(active.documentation(), Some("Active quest state."));
+    assert_eq!(active.documentation(), None);
     assert_eq!(
         active.symbol(),
         Some(&CompletionSymbol::Schema("QuestState::Active".to_owned()))
     );
+    assert_eq!(
+        databases.completion_documentation(active.resolve_payload().expect("resolve payload")),
+        Some("Active quest state.".to_owned())
+    );
 }
 
 #[test]
-fn type_hint_completion_carries_schema_docs_and_symbol_identity() {
+fn type_hint_completion_carries_lazy_schema_docs_and_symbol_identity() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Pl) { return 1 }";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -863,10 +876,14 @@ fn type_hint_completion_carries_schema_docs_and_symbol_identity() {
         CompletionContextKind::TypeHint
     );
     let player = completion(&completions, "Player");
-    assert_eq!(player.documentation(), Some("Player host object."));
+    assert_eq!(player.documentation(), None);
     assert_eq!(
         player.symbol(),
         Some(&CompletionSymbol::Schema("Player".to_owned()))
+    );
+    assert_eq!(
+        databases.completion_documentation(player.resolve_payload().expect("resolve payload")),
+        Some("Player host object.".to_owned())
     );
 }
 

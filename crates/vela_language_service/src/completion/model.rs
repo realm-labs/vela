@@ -221,12 +221,6 @@ impl CompletionItem {
     }
 
     #[must_use]
-    pub(super) fn with_documentation(mut self, documentation: Option<&str>) -> Self {
-        self.metadata.documentation = documentation.map(str::to_owned);
-        self
-    }
-
-    #[must_use]
     pub(super) fn with_detail_parts(mut self, detail_parts: DisplayParts) -> Self {
         self.detail = detail_parts.render();
         self.metadata.detail_parts = Some(detail_parts);

@@ -33,7 +33,7 @@ fn lsp_initialize_reports_capabilities() {
     );
     assert_eq!(
         response["result"]["capabilities"]["completionProvider"]["resolveProvider"],
-        false
+        true
     );
     assert_eq!(
         response["result"]["capabilities"]["completionProvider"]["triggerCharacters"],

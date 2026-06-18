@@ -305,7 +305,6 @@ fn schema_record_field_completions(
                 metadata: Default::default(),
             }
             .with_detail_parts(detail_parts)
-            .with_documentation(schema.field_docs(&owner, &name))
             .with_symbol(schema_member_symbol(&owner, &name))
         })
         .collect()

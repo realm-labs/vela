@@ -52,15 +52,15 @@ fn enrich_analysis_completion_item(
     };
     let label = item.label().to_owned();
     match item.kind() {
-        CompletionKind::Type if schema.type_fact(&label).is_some() => item
-            .with_documentation(schema.type_docs(&label))
-            .with_symbol(schema_symbol(label)),
-        CompletionKind::Trait if schema.trait_fact(&label).is_some() => item
-            .with_documentation(schema.trait_docs(&label))
-            .with_symbol(schema_symbol(label)),
-        CompletionKind::Function if schema.function_fact(&label).is_some() => item
-            .with_documentation(schema.function_docs(&label))
-            .with_symbol(schema_symbol(label)),
+        CompletionKind::Type if schema.type_fact(&label).is_some() => {
+            item.with_symbol(schema_symbol(label))
+        }
+        CompletionKind::Trait if schema.trait_fact(&label).is_some() => {
+            item.with_symbol(schema_symbol(label))
+        }
+        CompletionKind::Function if schema.function_fact(&label).is_some() => {
+            item.with_symbol(schema_symbol(label))
+        }
         _ => item,
     }
 }

@@ -88,7 +88,6 @@ fn schema_pattern_variant_completions(
                 metadata: Default::default(),
             }
             .with_detail_parts(detail_parts)
-            .with_documentation(schema.variant_docs(&owner, &name))
             .with_symbol(schema_variant_symbol(&owner, &name))
         })
         .collect()

@@ -391,6 +391,9 @@ Purpose: make common authoring flows fast and schema-aware.
   - Source declaration, module-path, expression module, and type-hint
     completion now query HIR declaration-name, per-module declaration, virtual
     module-child, and module-label indexes for source/module candidates.
+  - Schema-backed completion docs are resolved lazily through
+    `completionItem/resolve`; the initial list keeps symbol identity and
+    lightweight details but does not eagerly attach schema documentation.
 - [x] Complete named arguments and defaulted parameters.
   - Initial service and LSP completion support source-backed script function
     parameters, unused named-argument filtering, defaulted-parameter detail,

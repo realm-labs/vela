@@ -12,7 +12,7 @@ pub(crate) fn initialize_result() -> JsonValue {
                 "save": false
             },
             "completionProvider": {
-                "resolveProvider": false,
+                "resolveProvider": true,
                 "triggerCharacters": [".", ":", "{", "(", ",", "|"]
             },
             "signatureHelpProvider": {

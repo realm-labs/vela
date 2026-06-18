@@ -8,7 +8,9 @@ use crate::{
         service_call_hierarchy_item,
     },
     code_action::lsp_code_actions,
-    completion::lsp_completion_list,
+    completion::{
+        lsp_completion_list, lsp_completion_resolved_item, service_completion_resolve_payload,
+    },
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
@@ -112,6 +114,22 @@ impl LspServer {
         JsonRpcResult::Response(success_response(
             id,
             lsp_completion_list(&completions, &line_index),
+        ))
+    }
+
+    pub(crate) fn completion_resolve(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let documentation = service_completion_resolve_payload(&params)
+            .and_then(|payload| self.databases.completion_documentation(&payload));
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_completion_resolved_item(params, documentation),
         ))
     }
 

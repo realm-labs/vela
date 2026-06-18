@@ -323,7 +323,9 @@ fn lsp_completion_uses_loaded_schema_facts() {
             "symbol": { "kind": "schema", "name": "Player" }
         })
     );
-    assert_completion_documentation(&response, "Player", "Player host object.");
+    assert_no_completion_documentation(&response, "Player");
+    let resolved = resolve_completion(&mut server, 3, player);
+    assert_completion_documentation(&resolved, "Player host object.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -602,8 +604,14 @@ fn lsp_member_completion_uses_host_schema_facts() {
 
     assert_completion(&response, "level", 5, "i64");
     assert_completion(&response, "level_up", 2, "Function(i64) -> bool");
-    assert_completion_documentation(&response, "level", "Current player level.");
-    assert_completion_documentation(&response, "level_up", "Increase the player level.");
+    assert_no_completion_documentation(&response, "level");
+    assert_no_completion_documentation(&response, "level_up");
+    let level = completion_item(&response, "level");
+    let level_up = completion_item(&response, "level_up");
+    let resolved_level = resolve_completion(&mut server, 3, level);
+    let resolved_level_up = resolve_completion(&mut server, 4, level_up);
+    assert_completion_documentation(&resolved_level, "Current player level.");
+    assert_completion_documentation(&resolved_level_up, "Increase the player level.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -831,7 +839,7 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
 
     assert_completion(&response, "level", 5, "i64");
     assert_no_completion(&response, "name");
-    assert_completion_documentation(&response, "level", "Current player level.");
+    assert_no_completion_documentation(&response, "level");
     let level = completion_item(&response, "level");
     assert_eq!(
         level["data"]["resolve"],
@@ -840,6 +848,8 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
             "symbol": { "kind": "schema", "name": "Player.level" }
         })
     );
+    let resolved = resolve_completion(&mut server, 3, level);
+    assert_completion_documentation(&resolved, "Current player level.");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
@@ -1179,10 +1189,22 @@ fn assert_completion_projection(
     assert_eq!(item["preselect"], preselect);
 }
 
-fn assert_completion_documentation(response: &serde_json::Value, label: &str, expected: &str) {
+fn resolve_completion(
+    server: &mut LspServer,
+    id: i64,
+    item: &serde_json::Value,
+) -> serde_json::Value {
+    response_value(server.handle_json(&request(id, "completionItem/resolve", item.clone())))
+}
+
+fn assert_completion_documentation(response: &serde_json::Value, expected: &str) {
+    assert_eq!(response["result"]["documentation"]["kind"], "markdown");
+    assert_eq!(response["result"]["documentation"]["value"], expected);
+}
+
+fn assert_no_completion_documentation(response: &serde_json::Value, label: &str) {
     let item = completion_item(response, label);
-    assert_eq!(item["documentation"]["kind"], "markdown");
-    assert_eq!(item["documentation"]["value"], expected);
+    assert!(item.get("documentation").is_none(), "{item:?}");
 }
 
 fn assert_no_completion(response: &serde_json::Value, label: &str) {

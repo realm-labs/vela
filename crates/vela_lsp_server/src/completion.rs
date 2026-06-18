@@ -20,6 +20,31 @@ pub(crate) fn lsp_completion_list(
     })
 }
 
+pub(crate) fn service_completion_resolve_payload(
+    item: &JsonValue,
+) -> Option<CompletionResolvePayload> {
+    let resolve = item.get("data")?.get("resolve")?;
+    if resolve.get("kind")?.as_str()? != "documentation" {
+        return None;
+    }
+    Some(CompletionResolvePayload::Documentation {
+        symbol: service_completion_symbol(resolve.get("symbol")?)?,
+    })
+}
+
+pub(crate) fn lsp_completion_resolved_item(
+    mut item: JsonValue,
+    documentation: Option<String>,
+) -> JsonValue {
+    if let Some(documentation) = documentation {
+        item["documentation"] = json!({
+            "kind": "markdown",
+            "value": documentation
+        });
+    }
+    item
+}
+
 fn lsp_completion_item(
     item: &vela_language_service::CompletionItem,
     line_index: &LineIndex,
@@ -96,6 +121,18 @@ fn lsp_completion_symbol(symbol: &CompletionSymbol) -> JsonValue {
             }
             value
         }
+    }
+}
+
+fn service_completion_symbol(value: &JsonValue) -> Option<CompletionSymbol> {
+    let kind = value.get("kind")?.as_str()?;
+    let name = value.get("name")?.as_str()?.to_owned();
+    match kind {
+        "source" => Some(CompletionSymbol::Source(name)),
+        "schema" => Some(CompletionSymbol::Schema(name)),
+        "builtin" => Some(CompletionSymbol::Builtin(name)),
+        "local" => Some(CompletionSymbol::local(name)),
+        _ => None,
     }
 }
 
