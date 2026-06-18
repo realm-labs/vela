@@ -228,6 +228,12 @@ method call sites through both the language service and native LSP server,
 matching the existing reference and call-hierarchy treatment for typed trait
 receivers.
 
+M20.5 Phase 10 update: schema function and method return facts now flow
+through shared expression fact analysis, and semantic-token member
+classification uses expression receiver facts so schema method calls on schema
+function-return receivers classify as host/schema methods in both the service
+and native LSP protocol.
+
 M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.

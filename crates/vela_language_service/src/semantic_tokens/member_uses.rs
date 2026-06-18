@@ -24,6 +24,7 @@ pub(super) struct MemberUseContext<'a> {
     pub(super) schema: &'a RegistryFacts,
     pub(super) text: &'a str,
     pub(super) member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    pub(super) receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     pub(super) inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
 }
 
@@ -42,16 +43,22 @@ pub(super) fn classify(
         receiver_range,
     )?;
     let receiver = context
-        .bindings
-        .resolution_at_span(receiver_span)
-        .and_then(|resolution| {
-            type_fact_for_resolution(
-                resolution,
-                context.bindings,
-                context.facts,
-                context.schema,
-                context.inferred_local_facts,
-            )
+        .receiver_facts
+        .get(&(receiver_range.start, receiver_range.end))
+        .cloned()
+        .or_else(|| {
+            context
+                .bindings
+                .resolution_at_span(receiver_span)
+                .and_then(|resolution| {
+                    type_fact_for_resolution(
+                        resolution,
+                        context.bindings,
+                        context.facts,
+                        context.schema,
+                        context.inferred_local_facts,
+                    )
+                })
         })?;
     let is_call = next_non_whitespace(context.text, range.end) == Some('(');
 

@@ -587,6 +587,50 @@ fn infers_stdlib_function_facts() {
 }
 
 #[test]
+fn infers_schema_function_and_method_return_facts() {
+    let expressions = function_exprs(
+        r#"
+            fn main() {
+                current_player();
+                current_player().grant(10);
+                rewardable.preview(5);
+            }
+            "#,
+    );
+    let scope = ExprFactScope::new().with_path(["rewardable"], TypeFact::trait_type("Rewardable"));
+    let mut facts = RegistryFacts::default();
+    facts.insert_type("Player", TypeFact::host("Player"));
+    facts.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    facts.insert_function(
+        "current_player",
+        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+    );
+    facts.insert_method(
+        "Player",
+        "grant",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    facts.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::STRING),
+    );
+
+    assert_eq!(
+        type_fact_from_expr_with_registry(&expressions[0], &ExprFactScope::new(), &facts),
+        TypeFact::host("Player")
+    );
+    assert_eq!(
+        type_fact_from_expr_with_registry(&expressions[1], &ExprFactScope::new(), &facts),
+        TypeFact::BOOL
+    );
+    assert_eq!(
+        type_fact_from_expr_with_registry(&expressions[2], &scope, &facts),
+        TypeFact::STRING
+    );
+}
+
+#[test]
 fn infers_range_expression_facts() {
     let expressions = function_exprs(
         r#"

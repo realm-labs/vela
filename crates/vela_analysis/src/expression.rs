@@ -221,6 +221,12 @@ fn call_fact(
             if let Some(fact) = stdlib_function_fact(&path.join("::"), &arg_facts) {
                 return fact.returns;
             }
+            if let Some(fact) = facts
+                .and_then(|facts| facts.function_fact(&path.join("::")))
+                .and_then(function_return_fact)
+            {
+                return fact;
+            }
 
             let Some((method, receiver_path)) = path.split_last() else {
                 return TypeFact::Unknown;
@@ -229,6 +235,11 @@ fn call_fact(
                 .path_fact(receiver_path)
                 .cloned()
                 .unwrap_or(TypeFact::Unknown);
+            if let Some(fact) =
+                facts.and_then(|facts| registry_method_return_fact(&receiver, method, facts))
+            {
+                return fact;
+            }
             let lambda_return = args
                 .first()
                 .and_then(|arg| lambda_return_fact(&receiver, method, &arg.value, scope, facts));
@@ -242,6 +253,11 @@ fn call_fact(
         }
         ExprKind::Field { base, name } => {
             let receiver = type_fact_from_expr_impl(base, scope, facts);
+            if let Some(fact) =
+                facts.and_then(|facts| registry_method_return_fact(&receiver, name, facts))
+            {
+                return fact;
+            }
             let lambda_return = args
                 .first()
                 .and_then(|arg| lambda_return_fact(&receiver, name, &arg.value, scope, facts));
@@ -254,6 +270,40 @@ fn call_fact(
             .map_or(TypeFact::Unknown, |fact| fact.returns)
         }
         _ => TypeFact::Unknown,
+    }
+}
+
+fn registry_method_return_fact(
+    receiver: &TypeFact,
+    method: &str,
+    facts: &RegistryFacts,
+) -> Option<TypeFact> {
+    registry_owner_names(receiver).iter().find_map(|owner| {
+        facts
+            .method_fact(owner, method)
+            .or_else(|| facts.trait_method_fact(owner, method))
+            .and_then(function_return_fact)
+    })
+}
+
+fn function_return_fact(fact: &TypeFact) -> Option<TypeFact> {
+    match fact {
+        TypeFact::Function { returns, .. } => Some((**returns).clone()),
+        _ => None,
+    }
+}
+
+fn registry_owner_names(receiver: &TypeFact) -> Vec<String> {
+    match receiver {
+        TypeFact::Host { name }
+        | TypeFact::Record { name }
+        | TypeFact::Trait { name }
+        | TypeFact::Enum { name, .. } => vec![name.clone()],
+        TypeFact::Union(facts) => facts
+            .iter()
+            .flat_map(registry_owner_names)
+            .collect::<Vec<_>>(),
+        _ => Vec::new(),
     }
 }
 

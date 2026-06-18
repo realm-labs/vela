@@ -16,11 +16,15 @@ use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
 };
 
+use self::result_id::{semantic_token_count_from_result_id, semantic_tokens_result_id};
+
 mod import_paths;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
 mod range;
+mod receiver_facts;
+mod result_id;
 mod type_hints;
 mod unresolved;
 mod variant_uses;
@@ -427,6 +431,7 @@ struct SemanticTokenClassification {
 struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
     member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
@@ -439,6 +444,7 @@ struct SemanticClassificationInput<'a> {
     text: &'a str,
     tokens: &'a [Token],
     member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    receiver_facts: &'a BTreeMap<(usize, usize), TypeFact>,
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
@@ -467,6 +473,13 @@ impl LanguageServiceDatabases {
             .parsed_source(document_id)
             .map(crate::member_access::member_receiver_ranges)
             .unwrap_or_default();
+        let receiver_facts = self
+            .parse_db()
+            .parsed_source(document_id)
+            .map(|parsed| {
+                receiver_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
+            })
+            .unwrap_or_default();
         let path_sites = self
             .parse_db()
             .parsed_source(document_id)
@@ -482,6 +495,7 @@ impl LanguageServiceDatabases {
             text: source.text(),
             tokens: &lexed.tokens,
             member_receivers: &member_receivers,
+            receiver_facts: &receiver_facts,
             path_calls: &path_sites.calls,
             path_expressions: &path_sites.expressions,
             pattern_paths: &path_sites.patterns,
@@ -570,6 +584,7 @@ impl LanguageServiceDatabases {
         let context = SemanticClassificationContext {
             facts: &facts,
             member_receivers: input.member_receivers,
+            receiver_facts: input.receiver_facts,
             path_calls: input.path_calls,
             path_expressions: input.path_expressions,
             pattern_paths: input.pattern_paths,
@@ -634,6 +649,7 @@ impl LanguageServiceDatabases {
                     schema,
                     text,
                     member_receivers: context.member_receivers,
+                    receiver_facts: context.receiver_facts,
                     inferred_local_facts: context.inferred_local_facts,
                 };
                 if let Some(classification) = member_uses::classify(&member_context, name, range) {
@@ -685,34 +701,6 @@ impl LanguageServiceDatabases {
                     && token_text(text, range) == Some(name)
             })
             .map(declaration_classification)
-    }
-}
-
-fn semantic_tokens_result_id(tokens: &[SemanticToken]) -> String {
-    let mut hash = 0xcbf2_9ce4_8422_2325_u64;
-    hash_result_id_part(&mut hash, tokens.len() as u64);
-    for token in tokens {
-        hash_result_id_part(&mut hash, token.start().line as u64);
-        hash_result_id_part(&mut hash, token.start().character as u64);
-        hash_result_id_part(&mut hash, token.length() as u64);
-        hash_result_id_part(&mut hash, u64::from(token.token_type().legend_index()));
-        hash_result_id_part(&mut hash, u64::from(token.modifiers().bits()));
-    }
-    format!("v1:{}:{hash:016x}", tokens.len())
-}
-
-fn hash_result_id_part(hash: &mut u64, value: u64) {
-    for byte in value.to_le_bytes() {
-        *hash ^= u64::from(byte);
-        *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-}
-
-fn semantic_token_count_from_result_id(result_id: &str) -> usize {
-    let mut parts = result_id.split(':');
-    match (parts.next(), parts.next(), parts.next(), parts.next()) {
-        (Some("v1"), Some(count), Some(_hash), None) => count.parse().unwrap_or(0),
-        _ => 0,
     }
 }
 
@@ -1184,6 +1172,8 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
 mod degradation_tests;
 #[cfg(test)]
 mod range_tests;
+#[cfg(test)]
+mod schema_call_tests;
 #[cfg(test)]
 mod showcase_tests;
 #[cfg(test)]
