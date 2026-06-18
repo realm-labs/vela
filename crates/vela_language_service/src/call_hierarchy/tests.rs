@@ -86,6 +86,28 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepared[0].name(), "grant");
     assert_eq!(prepared[0].document_id(), &helper);
 
+    let prepared_from_import_alias = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            0,
+            line(main_text, 0)
+                .find("award")
+                .expect("import alias should exist"),
+        ),
+    );
+    assert_eq!(prepared_from_import_alias, prepared);
+
+    let prepared_from_import_path = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            0,
+            line(main_text, 0)
+                .find("grant")
+                .expect("import path function should exist"),
+        ),
+    );
+    assert_eq!(prepared_from_import_path, prepared);
+
     let prepared_from_alias_call = databases.prepare_call_hierarchy(
         &main,
         Position::new(

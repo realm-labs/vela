@@ -60,8 +60,44 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(grant_items[0]["kind"], 12);
     assert_eq!(grant_items[0]["uri"], helper_uri);
 
-    let prepare_from_alias_call = response_value(server.handle_json(&request(
+    let prepare_from_import_alias = response_value(server.handle_json(&request(
         3,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": line(main_text, 0)
+                    .find("award")
+                    .expect("import alias should exist")
+            }
+        }),
+    )));
+    let import_alias_items = prepare_from_import_alias["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(import_alias_items, grant_items);
+
+    let prepare_from_import_path = response_value(server.handle_json(&request(
+        4,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": line(main_text, 0)
+                    .find("grant")
+                    .expect("import path function should exist")
+            }
+        }),
+    )));
+    let import_path_items = prepare_from_import_path["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(import_path_items, grant_items);
+
+    let prepare_from_alias_call = response_value(server.handle_json(&request(
+        5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
@@ -79,7 +115,7 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(alias_items, grant_items);
 
     let incoming = response_value(server.handle_json(&request(
-        4,
+        6,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
     )));
@@ -105,7 +141,7 @@ pub fn main(amount: i64) -> i64 {
     );
 
     let prepare_main = response_value(server.handle_json(&request(
-        5,
+        7,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
@@ -121,7 +157,7 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(main_items.len(), 1);
 
     let outgoing = response_value(server.handle_json(&request(
-        6,
+        8,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
     )));

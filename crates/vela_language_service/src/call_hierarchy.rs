@@ -2,7 +2,7 @@ use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::{HirDeclId, HirNodeId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -115,6 +115,12 @@ impl LanguageServiceDatabases {
 
         if let Some(target) = self.schema_method_declaration_target(source_id, &token)
             && let Some(item) = self.call_hierarchy_item_for_target(&target)
+        {
+            return vec![item];
+        }
+        if let Some(target) = imported_function_target(graph, source_id, source.text(), &token)
+            && let Some(item) =
+                self.call_hierarchy_item_for_target(&CallHierarchyTarget::Function(target))
         {
             return vec![item];
         }
@@ -728,6 +734,54 @@ fn declaration_call_target(bindings: &BindingMap, token: &CallHierarchyToken) ->
         | BindingResolution::Import(_)
         | BindingResolution::QualifiedPath(_) => None,
     }
+}
+
+fn imported_function_target(
+    graph: &ModuleGraph,
+    source_id: SourceId,
+    text: &str,
+    token: &CallHierarchyToken,
+) -> Option<HirDeclId> {
+    for module in graph.module_ids() {
+        let Some(imports) = graph.imports(module) else {
+            continue;
+        };
+        for import in imports {
+            if import.span.source != source_id || !import_token_matches(text, import, token) {
+                continue;
+            }
+            let ImportResolution::Declaration(declaration) = import.resolution?;
+            if graph
+                .declaration(declaration)
+                .is_some_and(|declaration| declaration.kind == DeclarationKind::Function)
+            {
+                return Some(declaration);
+            }
+        }
+    }
+    None
+}
+
+fn import_token_matches(text: &str, import: &Import, token: &CallHierarchyToken) -> bool {
+    import
+        .alias
+        .as_deref()
+        .is_some_and(|alias| import_name_matches(text, import, alias, token))
+        || import
+            .path
+            .last()
+            .is_some_and(|name| import_name_matches(text, import, name, token))
+}
+
+fn import_name_matches(
+    text: &str,
+    import: &Import,
+    name: &str,
+    token: &CallHierarchyToken,
+) -> bool {
+    span_text_range(import.span)
+        .and_then(|range| name_range_in_text(text, range, name))
+        .is_some_and(|range| range.start <= token.range.start && token.range.end <= range.end)
 }
 
 fn script_method_declaration_target(

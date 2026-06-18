@@ -1112,8 +1112,8 @@ Purpose: support workspace navigation and prepare rename.
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
     outgoing call hierarchy for statically resolved calls.
-  - [x] Serve imported script function alias prepare, incoming, and outgoing
-    call hierarchy for statically resolved calls.
+  - [x] Serve imported script function alias prepare from import statements,
+    incoming, and outgoing call hierarchy for statically resolved calls.
   - [x] Serve source-owned inherent script method prepare, incoming, and
     outgoing call hierarchy for typed receiver calls.
   - [x] Serve cross-file source-owned inherent script method prepare,
