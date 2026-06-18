@@ -913,7 +913,7 @@ cargo test -p vela_lsp_server selection
 Purpose: provide syntax and semantic highlighting without changing semantics.
 
 - [x] Implement lexical semantic tokens from tokenizer output.
-- [~] Add resolved token modifiers for declarations, definitions, readonly,
+- [x] Add resolved token modifiers for declarations, definitions, readonly,
   deprecated, builtin, host, and unresolved symbols.
   - [x] Add declaration, definition, readonly, and unresolved modifiers for
     script declarations and binding-map resolutions.
@@ -923,7 +923,7 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
     modifiers for stdlib qualified function calls.
   - [x] Add host modifiers for schema-backed type hints and builtin modifiers
     for builtin type hints.
-- [~] Add token classes for modules, functions, methods, fields, variables,
+- [x] Add token classes for modules, functions, methods, fields, variables,
   parameters, types, traits, enum variants, properties, keywords, numbers,
   strings, bytes, comments, operators, attributes, and macros.
   - [x] Add tokenizer-backed identifiers, keywords, numbers, strings, bytes,
@@ -941,11 +941,11 @@ Purpose: provide syntax and semantic highlighting without changing semantics.
   - [x] Add source-owned trait receiver method call classification through
     the same method token class.
   - [x] Add host-modified schema trait receiver method call classification.
-- [~] Implement full semantic tokens.
+- [x] Implement full semantic tokens.
   - [x] Full tokens include lexical classes, comments, resolved script symbols,
     script member declarations, script/schema/stdlib member uses, and
     schema/stdlib function calls, plus schema/builtin type hints.
-- [~] Implement semantic token delta only after generation-stable token caches
+- [x] Implement semantic token delta only after generation-stable token caches
   exist.
   - [x] Full-token responses carry deterministic result IDs, and
     `semanticTokens/full/delta` returns no edits for unchanged streams or a

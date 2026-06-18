@@ -157,6 +157,12 @@ the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,
 `textDocument/documentHighlight`, and statically resolved call hierarchy.
 
+M20.5 Phase 10 update: semantic tokens are complete enough for the current LSP
+track. The plan checklist is closed with service and native LSP fixtures for
+resolved modifiers, script/schema/builtin token classes, full tokens, range
+tokens, parser-recovery degradation, client fallback projection, and delta
+responses.
+
 M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.
