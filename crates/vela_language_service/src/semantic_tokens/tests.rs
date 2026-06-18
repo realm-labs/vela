@@ -983,6 +983,7 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
     assert_eq!(SemanticTokenType::BuiltinType.standard_fallback(), "type");
     assert_eq!(SemanticTokenType::Const.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Global.standard_fallback(), "variable");
+    assert_eq!(SemanticTokenType::Label.standard_fallback(), "variable");
     assert_eq!(SemanticTokenType::Boolean.standard_fallback(), "keyword");
     assert_eq!(SemanticTokenType::Null.standard_fallback(), "keyword");
     assert_eq!(
@@ -994,6 +995,14 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
         "operator"
     );
     assert_eq!(
+        SemanticTokenType::AssignmentOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(
+        SemanticTokenType::BitwiseOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(
         SemanticTokenType::ComparisonOperator.standard_fallback(),
         "operator"
     );
@@ -1001,27 +1010,94 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
         SemanticTokenType::LogicalOperator.standard_fallback(),
         "operator"
     );
+    assert_eq!(
+        SemanticTokenType::NegationOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(
+        SemanticTokenType::Punctuation.standard_fallback(),
+        "operator"
+    );
     assert_eq!(SemanticTokenType::Brace.standard_fallback(), "operator");
+    assert_eq!(SemanticTokenType::Bracket.standard_fallback(), "operator");
+    assert_eq!(
+        SemanticTokenType::Parenthesis.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(SemanticTokenType::Comma.standard_fallback(), "operator");
     assert_eq!(SemanticTokenType::Dot.standard_fallback(), "operator");
+    assert_eq!(SemanticTokenType::Colon.standard_fallback(), "operator");
+    assert_eq!(SemanticTokenType::Semicolon.standard_fallback(), "operator");
+    assert_eq!(
+        SemanticTokenType::PathSeparator.standard_fallback(),
+        "operator"
+    );
     assert_eq!(SemanticTokenType::Bytes.standard_fallback(), "string");
+    let custom_token_names = [
+        "struct",
+        "enum",
+        "interface",
+        "typeAlias",
+        "const",
+        "global",
+        "boolean",
+        "null",
+        "builtinType",
+        "label",
+        "unresolvedReference",
+        "arithmeticOperator",
+        "assignmentOperator",
+        "bitwiseOperator",
+        "comparisonOperator",
+        "logicalOperator",
+        "negationOperator",
+        "punctuation",
+        "brace",
+        "bracket",
+        "parenthesis",
+        "comma",
+        "dot",
+        "colon",
+        "semicolon",
+        "pathSeparator",
+    ];
+    for name in custom_token_names {
+        assert!(
+            SemanticTokenType::LEGEND
+                .iter()
+                .any(|token| token.as_str() == name),
+            "semantic token legend should include {name}"
+        );
+    }
     assert_eq!(
         SemanticTokenModifiers::LEGEND.len(),
         SemanticTokenModifiers::FALLBACKS.len()
     );
-    assert_eq!(
-        SemanticTokenModifiers::FALLBACKS[SemanticTokenModifiers::LEGEND
+    let expected_modifier_fallbacks = [
+        ("declaration", Some("declaration")),
+        ("definition", Some("definition")),
+        ("readonly", Some("readonly")),
+        ("deprecated", Some("deprecated")),
+        ("defaultLibrary", Some("defaultLibrary")),
+        ("host", None),
+        ("unresolved", None),
+        ("source", None),
+        ("public", None),
+        ("mutable", Some("modification")),
+        ("callable", None),
+        ("controlFlow", None),
+        ("associated", Some("static")),
+        ("trait", None),
+        ("schema", None),
+        ("documentation", Some("documentation")),
+    ];
+    for (name, expected_fallback) in expected_modifier_fallbacks {
+        let index = SemanticTokenModifiers::LEGEND
             .iter()
-            .position(|name| *name == "mutable")
-            .expect("mutable modifier should be in legend")],
-        Some("modification")
-    );
-    assert_eq!(
-        SemanticTokenModifiers::FALLBACKS[SemanticTokenModifiers::LEGEND
-            .iter()
-            .position(|name| *name == "host")
-            .expect("host modifier should be in legend")],
-        None
-    );
+            .position(|modifier| *modifier == name)
+            .unwrap_or_else(|| panic!("semantic token modifier legend should include {name}"));
+        assert_eq!(SemanticTokenModifiers::FALLBACKS[index], expected_fallback);
+    }
 }
 
 #[test]

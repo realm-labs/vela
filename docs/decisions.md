@@ -212,6 +212,15 @@ avoiding Rust-specific macro, trait-solver, and full Salsa complexity unless a
 Vela-specific need appears. The execution plan lives in
 [lsp-clean-architecture-refactor-plan.md](lsp-clean-architecture-refactor-plan.md).
 
+Semantic highlighting uses an editor-neutral Vela taxonomy in
+`vela_language_service` with standard LSP names where they exist and explicit
+fallback names for custom token types. Custom tokens such as `builtinType`,
+`const`, `global`, `boolean`, `null`, operator families, punctuation families,
+and unresolved references keep their Vela-specific names in the primary
+legend, while `vela_lsp_server` remains responsible for any future
+client-specific fallback projection. Editor packages may contribute fallback
+scope metadata, but must not compute semantic classifications.
+
 ### Function Identity
 
 Vela does not support function overloading. A module has one function per

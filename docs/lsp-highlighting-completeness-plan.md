@@ -241,7 +241,7 @@ validation commands have passed locally.
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
-| 2. Token taxonomy and fallback policy | In progress | Expanded service token/modifier names and fallback policy landed; remaining work is direct fixture assertions for the full taxonomy. |
+| 2. Token taxonomy and fallback policy | Complete | Expanded service token/modifier names, deterministic legend ordering, fallback policy, and direct taxonomy tests are in place. |
 | 3. Service semantic classification | Not started | Use syntax, HIR, TypeFacts, stdlib, and schema facts. |
 | 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
 | 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
@@ -316,7 +316,7 @@ highlighting and stable enough for editor packages.
 - [x] Keep legend ordering deterministic. Existing standard token names should
   stay stable where possible; new custom names must have tests pinning legend
   indexes indirectly through encoded token assertions.
-- [ ] Update service-level tests so each new token type and modifier has at
+- [x] Update service-level tests so each new token type and modifier has at
   least one direct fixture assertion.
 
 Phase 2 notes:
@@ -326,8 +326,9 @@ Phase 2 notes:
   punctuation-family tokens, with existing legend entries kept first.
 - `SemanticTokenModifiers` now has explicit source/schema/host/provenance and
   behavior modifier names plus a modifier fallback table.
-- Direct semantic-token fixtures currently cover the high-signal new token
-  names; exhaustive direct assertions for every new type/modifier remain open.
+- Direct semantic-token fixtures cover high-signal classified token names, and
+  taxonomy policy tests enumerate every custom token and modifier fallback,
+  including future/no-syntax entries such as labels and type aliases.
 
 Focused validation:
 
