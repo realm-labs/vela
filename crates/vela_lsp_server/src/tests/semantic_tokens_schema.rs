@@ -2,6 +2,7 @@ use super::{LspServer, notification, notification_value, request, response_value
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -793,12 +794,18 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn temp_workspace() -> PathBuf {
+    static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
+
     let mut path = std::env::temp_dir();
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system clock should be after epoch")
         .as_nanos();
-    path.push(format!("vela-lsp-semantic-schema-test-{unique}"));
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
+    path.push(format!(
+        "vela-lsp-semantic-schema-test-{}-{unique}-{sequence}",
+        std::process::id()
+    ));
     fs::create_dir_all(&path).expect("temporary workspace should be creatable");
     path
 }
