@@ -1251,17 +1251,17 @@ cargo test -p vela_lsp_server call_hierarchy
 
 Purpose: provide safe refactoring without changing runtime contracts.
 
-- [~] Implement `prepareRename` for local bindings.
+- [x] Implement `prepareRename` for local bindings.
   - [x] Prepare local binding rename ranges and placeholders.
   - [x] Reject keywords, literals, and non-local targets.
-- [~] Implement local rename inside one function body.
+- [x] Implement local rename inside one function body.
   - [x] Return workspace edits for local declaration and resolved uses.
-- [~] Implement private module declaration rename.
+- [x] Implement private module declaration rename.
   - [x] Rename private value declarations (`const`/`global`) and resolved
     same-workspace uses.
   - [x] Rename private type declarations and type-hint uses once ownership
     spans are indexed.
-- [~] Implement public module declaration rename with import rewrites.
+- [x] Implement public module declaration rename with import rewrites.
   - [x] Rename script function declarations, resolved import path segments,
     and resolved unaliased call sites.
   - [x] Preserve import aliases while rewriting renamed source function path
@@ -1275,7 +1275,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
   - [x] Rename source-owned private enum variants, constructor uses, and
     match-pattern uses.
 - [x] Reject host schema rename unless the source is explicitly script-owned.
-- [~] Rename source-backed schema items only when the schema declaration span
+- [x] Rename source-backed schema items only when the schema declaration span
   maps to a workspace source.
   - [x] Rename source-backed schema types plus type-hint uses.
   - [x] Rename source-backed schema functions plus call sites.
@@ -1283,7 +1283,7 @@ Purpose: provide safe refactoring without changing runtime contracts.
     member uses.
   - [x] Rename source-backed schema variants plus constructor and
     match-pattern uses.
-- [~] Reject renames that would collide in scope, module exports, trait impls,
+- [x] Reject renames that would collide in scope, module exports, trait impls,
   or import aliases.
   - [x] Reject local binding renames that collide with an existing function
     binding.

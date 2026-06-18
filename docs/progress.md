@@ -147,6 +147,11 @@ JIT remain separate roadmap tracks.
 | M22 | Not started | Cranelift JIT follows interpreter/cache/debugger/conformance stability. |
 | M23 | Not started | Release hardening, public docs, validation gates, and performance targets. |
 
+M20.5 Phase 12 update: rename is complete enough for the current LSP track.
+The plan checklist is closed with service and native LSP fixtures for local,
+private declaration, public import-aware, source-backed schema, collision,
+hot-reload ABI, schema ABI, and versioned-edit behavior.
+
 M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.
