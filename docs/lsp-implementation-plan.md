@@ -1030,6 +1030,8 @@ Tests:
 - [x] `lsp_document_highlight_marks_schema_variant_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
+- [x] `call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
+- [x] `lsp_prepare_call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_script_method_calls`
 - [x] `call_hierarchy_uses_resolved_trait_impl_method_calls`

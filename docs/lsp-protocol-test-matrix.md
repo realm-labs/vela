@@ -231,9 +231,11 @@ These are the first places to compare current tests against the matrix:
    pin `typeDefinition` null results for dynamic local values,
    `signatureHelp` null results for unresolved calls and dynamic receiver
    calls, and `hover` null results for unresolved names plus dynamic receiver
-   members; broader `Any`, missing schema, stale schema, unresolved name, and
-   parser recovery cases should degrade by returning null, empty results,
-   diagnostics, or suppressed hints, not guessed semantic facts.
+   members, plus `prepareCallHierarchy` empty results for unresolved calls,
+   dynamic receiver calls, and non-callable symbols; broader `Any`, missing
+   schema, stale schema, unresolved name, and parser recovery cases should
+   degrade by returning null, empty results, diagnostics, or suppressed hints,
+   not guessed semantic facts.
 6. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,
    semantic tokens, diagnostics, and call hierarchy.

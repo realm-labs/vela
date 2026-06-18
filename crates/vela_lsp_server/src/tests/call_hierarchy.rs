@@ -136,6 +136,71 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_prepare_call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["callHierarchyProvider"],
+        true
+    );
+    let text = "\
+pub fn main(player) {
+    missing(1)
+    player.grant(1)
+    let amount = 1
+    return amount
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    assert_empty_prepare_call_hierarchy(
+        &mut server,
+        2,
+        uri,
+        1,
+        line(text, 1)
+            .find("missing")
+            .expect("unresolved call should exist"),
+    );
+    assert_empty_prepare_call_hierarchy(
+        &mut server,
+        3,
+        uri,
+        2,
+        line(text, 2)
+            .find("grant")
+            .expect("dynamic receiver call should exist"),
+    );
+    assert_empty_prepare_call_hierarchy(
+        &mut server,
+        4,
+        uri,
+        4,
+        line(text, 4)
+            .find("amount")
+            .expect("non-callable local use should exist"),
+    );
+}
+
+#[test]
 fn lsp_call_hierarchy_uses_resolved_script_method_calls() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
@@ -818,6 +883,30 @@ pub fn main(player: Player, rewardable: Rewardable) -> i64 {
     assert!(schema_outgoing.is_empty(), "{schema_outgoing:?}");
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn assert_empty_prepare_call_hierarchy(
+    server: &mut LspServer,
+    id: i64,
+    uri: &str,
+    line: usize,
+    character: usize,
+) {
+    let response = response_value(server.handle_json(&request(
+        id,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": line,
+                "character": character
+            }
+        }),
+    )));
+    let items = response["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert!(items.is_empty(), "{items:?}");
 }
 
 fn assert_call_range(ranges: &[serde_json::Value], line: usize, character: usize) {

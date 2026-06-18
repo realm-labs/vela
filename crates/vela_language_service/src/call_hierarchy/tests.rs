@@ -62,6 +62,61 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(player) {
+    missing(1)
+    player.grant(1)
+    let amount = 1
+    return amount
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let unresolved = databases.prepare_call_hierarchy(
+        &document,
+        Position::new(
+            1,
+            line(text, 1)
+                .find("missing")
+                .expect("unresolved call should exist"),
+        ),
+    );
+    assert!(
+        unresolved.is_empty(),
+        "unresolved calls must not produce speculative call hierarchy items"
+    );
+
+    let dynamic_receiver = databases.prepare_call_hierarchy(
+        &document,
+        Position::new(
+            2,
+            line(text, 2)
+                .find("grant")
+                .expect("dynamic receiver call should exist"),
+        ),
+    );
+    assert!(
+        dynamic_receiver.is_empty(),
+        "dynamic receiver calls must not invent method call hierarchy items"
+    );
+
+    let non_callable = databases.prepare_call_hierarchy(
+        &document,
+        Position::new(
+            4,
+            line(text, 4)
+                .find("amount")
+                .expect("non-callable local use should exist"),
+        ),
+    );
+    assert!(
+        non_callable.is_empty(),
+        "non-callable symbols must not produce call hierarchy items"
+    );
+}
+
+#[test]
 fn call_hierarchy_uses_resolved_script_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
