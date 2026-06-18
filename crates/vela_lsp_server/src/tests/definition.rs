@@ -71,6 +71,91 @@ fn main() {
 }
 
 #[test]
+fn lsp_definition_follows_imported_const_and_global_declarations() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
+    let main_text = r#"use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+
+pub fn main() {
+    return BASE_REWARD + reward_scale
+}"#;
+    let rewards_text = r#"pub const BASE_REWARD = 4
+pub global reward_scale: i64"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": rewards_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": rewards_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let return_line = main_text.lines().nth(4).expect("return line should exist");
+
+    let const_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": return_line
+                    .find("BASE_REWARD")
+                    .expect("const use should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(const_response["result"]["uri"], rewards_uri);
+    assert_eq!(const_response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(const_response["result"]["range"]["start"]["character"], 10);
+    assert_eq!(const_response["result"]["range"]["end"]["character"], 21);
+
+    let global_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": return_line
+                    .find("reward_scale")
+                    .expect("global use should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(global_response["result"]["uri"], rewards_uri);
+    assert_eq!(global_response["result"]["range"]["start"]["line"], 1);
+    assert_eq!(global_response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(global_response["result"]["range"]["end"]["character"], 23);
+}
+
+#[test]
 fn lsp_definition_follows_source_struct_field_member_access() {
     assert_source_struct_field_navigation("textDocument/definition");
 }

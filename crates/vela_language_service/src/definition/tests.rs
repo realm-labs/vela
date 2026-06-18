@@ -523,6 +523,81 @@ fn definition_follows_imported_module_declaration() {
 }
 
 #[test]
+fn definition_follows_imported_const_and_global_declarations() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
+    let main_text = r#"use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+
+pub fn main() {
+return BASE_REWARD + reward_scale
+}"#;
+    let rewards_text = r#"pub const BASE_REWARD = 4
+pub global reward_scale: i64"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(rewards.clone(), rewards_text),
+    ]);
+    let return_line = main_text.lines().nth(4).expect("return line should exist");
+
+    let const_definition = databases
+        .definition(
+            &main,
+            Position::new(
+                4,
+                return_line
+                    .find("BASE_REWARD")
+                    .expect("const use should exist"),
+            ),
+        )
+        .expect("definition should resolve imported const");
+
+    assert_eq!(const_definition.document_id(), &rewards);
+    assert_eq!(const_definition.range().start().line, 0);
+    assert_eq!(
+        const_definition.range().start().character,
+        rewards_text
+            .lines()
+            .next()
+            .expect("const line should exist")
+            .find("BASE_REWARD")
+            .expect("const declaration should exist")
+    );
+    assert_eq!(
+        const_definition.symbol(),
+        Some(&SymbolRef::Source("game::rewards::BASE_REWARD".into()))
+    );
+
+    let global_definition = databases
+        .definition(
+            &main,
+            Position::new(
+                4,
+                return_line
+                    .find("reward_scale")
+                    .expect("global use should exist"),
+            ),
+        )
+        .expect("definition should resolve imported global");
+
+    assert_eq!(global_definition.document_id(), &rewards);
+    assert_eq!(global_definition.range().start().line, 1);
+    assert_eq!(
+        global_definition.range().start().character,
+        rewards_text
+            .lines()
+            .nth(1)
+            .expect("global line should exist")
+            .find("reward_scale")
+            .expect("global declaration should exist")
+    );
+    assert_eq!(
+        global_definition.symbol(),
+        Some(&SymbolRef::Source("game::rewards::reward_scale".into()))
+    );
+}
+
+#[test]
 fn definition_follows_schema_source_span() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");

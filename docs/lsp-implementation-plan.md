@@ -677,7 +677,9 @@ Tests:
 - [x] `lsp_hover_reports_stdlib_method_fact`
 - [x] `definition_follows_local_binding`
 - [x] `definition_follows_imported_module_declaration`
+- [x] `definition_follows_imported_const_and_global_declarations`
 - [x] `lsp_definition_follows_open_overlay_local_binding`
+- [x] `lsp_definition_follows_imported_const_and_global_declarations`
 - [x] `definition_follows_schema_source_span`
 - [x] `definition_follows_schema_field_source_span`
 - [x] `definition_follows_schema_method_source_span`

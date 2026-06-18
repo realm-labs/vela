@@ -213,8 +213,9 @@ These are the first places to compare current tests against the matrix:
    fixtures cover `typeDefinition` type-fact targets and null fallback for
    local source values, dynamic local values, source/schema member values,
    schema types without source spans, imported source type aliases used by
-   locals and source fields, and imported source function calls whose return
-   type is source-owned; the remaining audit is broader cross-file
+   locals and source fields, imported source function calls whose return type
+   is source-owned, and `definition` for imported const/global value uses; the
+   remaining audit is broader cross-file
    type-definition coverage across W1.
 2. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now
