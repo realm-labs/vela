@@ -7,8 +7,7 @@ use crate::QueryContext;
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    accumulator::CompletionAccumulator, display_type_detail, display_type_detail_parts,
-    relevance::completion_sort_text,
+    accumulator::CompletionAccumulator, display_type_detail_parts, relevance::completion_sort_text,
 };
 
 pub(super) fn local_completion_items(
@@ -29,16 +28,17 @@ pub(super) fn local_completion_items(
                 | LocalBindingKind::Pattern => CompletionKind::Binding,
             };
             let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
+            let detail_parts = display_type_detail_parts(fact.display_name());
             CompletionItem {
                 sort_text: Some(completion_sort_text(kind, &local.name, "")),
                 metadata: Default::default(),
                 label: local.name.clone(),
                 kind,
-                detail: display_type_detail(fact.display_name()),
+                detail: detail_parts.render(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
             }
-            .with_detail_parts(display_type_detail_parts(fact.display_name()))
+            .with_detail_parts(detail_parts)
         })
         .collect::<Vec<_>>();
     let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());

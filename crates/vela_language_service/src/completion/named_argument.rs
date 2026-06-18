@@ -3,7 +3,7 @@ use crate::callable_context::CallableFacts;
 
 use super::{
     CallArgumentContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    display_type_detail, is_identifier_continue,
+    display_type_detail_parts, is_identifier_continue,
 };
 
 pub(super) fn named_argument_completion_context(
@@ -34,19 +34,21 @@ pub(super) fn script_function_parameter_completions(
                 .iter()
                 .filter(|param| !used_names.contains(&param.name()))
                 .map(|param| {
-                    let mut detail = display_type_detail(param.type_fact().display_name());
+                    let mut detail_parts =
+                        display_type_detail_parts(param.type_fact().display_name());
                     if param.defaulted() {
-                        detail.push_str(" (defaulted)");
+                        detail_parts.extend(crate::DisplayParts::plain(" (defaulted)"));
                     }
                     CompletionItem {
                         label: param.name().to_owned(),
                         kind: CompletionKind::Parameter,
-                        detail,
+                        detail: detail_parts.render(),
                         insert_text: Some(format!("{}: ", param.name())),
                         insert_format: CompletionInsertFormat::PlainText,
                         sort_text: None,
                         metadata: Default::default(),
                     }
+                    .with_detail_parts(detail_parts)
                 })
                 .collect::<Vec<_>>()
         })

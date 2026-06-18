@@ -655,8 +655,10 @@ and semantic tokens use the same identities and display primitives.
   type-shaped `DisplayParts`; record-field and map-key completion details now
   preserve type-shaped `DisplayParts`; module-path, pattern, and type-hint
   completion details now preserve type-shaped or qualified-symbol
-  `DisplayParts`; richer prose completion and hover classification still need
-  to converge on it.
+  `DisplayParts`; named-argument and local completion details now preserve
+  `DisplayParts`, and the obsolete string-only type detail helper has been
+  removed; richer prose completion and hover classification still need to
+  converge on it.
 - [x] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from
