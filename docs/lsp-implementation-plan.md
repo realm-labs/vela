@@ -850,6 +850,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_type_hints`
 - [x] `semantic_tokens_degrade_under_parse_errors`
 - [x] `lsp_semantic_tokens_degrade_under_parse_errors`
+- [x] `semantic_tokens_degrade_schema_type_hints_when_schema_is_missing`
+- [x] `lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing`
 - [x] `lsp_semantic_tokens_range_filters_tokens`
 - [x] `lsp_semantic_tokens_range_returns_empty_for_empty_prefix_range`
 - [x] `semantic_token_delta_matches_full_tokens`
