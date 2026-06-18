@@ -318,6 +318,108 @@ pub global reward_scale: i64";
 }
 
 #[test]
+fn document_highlight_imported_source_type_stays_in_active_document() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = "\
+use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+
+pub fn main(bag: Bag) -> Bag {
+    let next: Bag = bag
+    return next
+}";
+    let inventory_text = "\
+pub struct Inventory {
+    slots: i64
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("Bag")
+                .expect("parameter type hint should exist"),
+        ),
+        true,
+    );
+    assert_eq!(references.len(), 6, "{references:?}");
+    assert_reference(
+        &references,
+        &inventory,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("Bag")
+                .expect("parameter type hint should exist"),
+        ),
+    );
+    assert_eq!(highlights.len(), 5, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        0,
+        line(main_text, 0)
+            .find("Bag")
+            .expect("import alias should exist"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2)
+            .find("Bag")
+            .expect("const type hint should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        4,
+        line(main_text, 4)
+            .find("Bag")
+            .expect("parameter type hint should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        4,
+        line(main_text, 4)
+            .rfind("Bag")
+            .expect("return type hint should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        5,
+        line(main_text, 5)
+            .find("Bag")
+            .expect("local type hint should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_no_highlight(
+        &highlights,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+    );
+}
+
+#[test]
 fn document_highlight_imported_source_field_and_method_stays_in_active_document() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let types = DocumentId::from("/workspace/scripts/game/types.vela");

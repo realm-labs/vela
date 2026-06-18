@@ -366,6 +366,144 @@ pub global reward_scale: i64";
 }
 
 #[test]
+fn lsp_document_highlight_imported_source_type_stays_in_active_document() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["documentHighlightProvider"],
+        true
+    );
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = "\
+use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+
+pub fn main(bag: Bag) -> Bag {
+    let next: Bag = bag
+    return next
+}";
+    let inventory_text = "\
+pub struct Inventory {
+    slots: i64
+}";
+    for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let references = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": line(main_text, 4)
+                    .find("Bag")
+                    .expect("parameter type hint should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let reference_items = references["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert_eq!(reference_items.len(), 6, "{reference_items:?}");
+    assert_reference(
+        reference_items,
+        inventory_uri,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+    );
+
+    let highlights = response_value(server.handle_json(&request(
+        3,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": line(main_text, 4)
+                    .find("Bag")
+                    .expect("parameter type hint should exist")
+            }
+        }),
+    )));
+    let highlight_items = highlights["result"]
+        .as_array()
+        .expect("documentHighlight response should be an array");
+    assert_eq!(highlight_items.len(), 5, "{highlight_items:?}");
+    assert_highlight(
+        highlight_items,
+        0,
+        line(main_text, 0)
+            .find("Bag")
+            .expect("import alias should exist"),
+        1,
+    );
+    assert_highlight(
+        highlight_items,
+        2,
+        line(main_text, 2)
+            .find("Bag")
+            .expect("const type hint should exist"),
+        2,
+    );
+    assert_highlight(
+        highlight_items,
+        4,
+        line(main_text, 4)
+            .find("Bag")
+            .expect("parameter type hint should exist"),
+        2,
+    );
+    assert_highlight(
+        highlight_items,
+        4,
+        line(main_text, 4)
+            .rfind("Bag")
+            .expect("return type hint should exist"),
+        2,
+    );
+    assert_highlight(
+        highlight_items,
+        5,
+        line(main_text, 5)
+            .find("Bag")
+            .expect("local type hint should exist"),
+        2,
+    );
+    assert_no_highlight(
+        highlight_items,
+        0,
+        line(inventory_text, 0)
+            .find("Inventory")
+            .expect("type declaration should exist"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_imported_source_field_and_method_stays_in_active_document() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
