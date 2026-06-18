@@ -35,6 +35,13 @@ impl DisplayParts {
     }
 
     #[must_use]
+    pub fn symbol(text: impl Into<String>) -> Self {
+        let mut parts = Self::new();
+        parts.push(DisplayPartKind::Symbol, text);
+        parts
+    }
+
+    #[must_use]
     pub fn parameter(name: &str, type_name: &str) -> Self {
         let mut parts = Self::new();
         parts.push(DisplayPartKind::Parameter, name);
@@ -62,7 +69,7 @@ impl DisplayParts {
     }
 
     #[must_use]
-    pub fn type_name(type_name: &str) -> Self {
+    pub fn type_name(type_name: impl Into<String>) -> Self {
         let mut parts = Self::new();
         parts.push(DisplayPartKind::Type, type_name);
         parts
@@ -214,6 +221,11 @@ mod tests {
 
     #[test]
     fn member_and_qualified_labels_render_existing_text_shape() {
+        assert_eq!(DisplayParts::symbol("Player").render(), "Player");
+        assert_eq!(
+            DisplayParts::symbol("Player").parts()[0].kind(),
+            DisplayPartKind::Symbol
+        );
         assert_eq!(
             DisplayParts::member("Player", "level").render(),
             "Player.level"

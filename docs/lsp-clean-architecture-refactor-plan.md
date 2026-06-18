@@ -600,11 +600,12 @@ and semantic tokens use the same identities and display primitives.
   Signature labels, parameter/type inlay labels, selected hover member/module
   labels, script/schema symbol names and signature details, and type-shaped
   completion details now render through it while preserving the existing
-  user-visible strings. Diagnostic messages, labels, candidates, and repair
-  hint titles/replacements now carry `DisplayParts` alongside their rendered
-  strings while keeping LSP projection stable; prose completion details,
-  remaining hover details, and broader symbol labels still need to converge on
-  it.
+  user-visible strings. Document and workspace symbol names/details now carry
+  `DisplayParts` alongside their rendered strings while keeping LSP projection
+  stable. Diagnostic messages, labels, candidates, and repair hint
+  titles/replacements now carry `DisplayParts` alongside their rendered strings
+  while keeping LSP projection stable; prose completion details and remaining
+  hover details still need to converge on it.
 - [~] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from

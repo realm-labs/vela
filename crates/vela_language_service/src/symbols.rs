@@ -14,7 +14,9 @@ use crate::{
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DocumentSymbol {
     name: String,
+    name_parts: DisplayParts,
     detail: Option<String>,
+    detail_parts: Option<DisplayParts>,
     kind: DocumentSymbolKind,
     range: DiagnosticRange,
     selection_range: DiagnosticRange,
@@ -29,8 +31,18 @@ impl DocumentSymbol {
     }
 
     #[must_use]
+    pub const fn name_parts(&self) -> &DisplayParts {
+        &self.name_parts
+    }
+
+    #[must_use]
     pub fn detail(&self) -> Option<&str> {
         self.detail.as_deref()
+    }
+
+    #[must_use]
+    pub fn detail_parts(&self) -> Option<&DisplayParts> {
+        self.detail_parts.as_ref()
     }
 
     #[must_use]
@@ -62,7 +74,9 @@ impl DocumentSymbol {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WorkspaceSymbol {
     name: String,
+    name_parts: DisplayParts,
     detail: Option<String>,
+    detail_parts: Option<DisplayParts>,
     kind: DocumentSymbolKind,
     container_name: Option<String>,
     location: WorkspaceSymbolLocation,
@@ -76,8 +90,18 @@ impl WorkspaceSymbol {
     }
 
     #[must_use]
+    pub const fn name_parts(&self) -> &DisplayParts {
+        &self.name_parts
+    }
+
+    #[must_use]
     pub fn detail(&self) -> Option<&str> {
         self.detail.as_deref()
+    }
+
+    #[must_use]
+    pub fn detail_parts(&self) -> Option<&DisplayParts> {
+        self.detail_parts.as_ref()
     }
 
     #[must_use]
@@ -174,14 +198,18 @@ impl LanguageServiceDatabases {
                 if !symbol_matches(query, &name) {
                     return None;
                 }
+                let name_parts = DisplayParts::symbol(name);
+                let detail_parts = self
+                    .project_db()
+                    .module_by_document()
+                    .get(document_id)
+                    .map(|module_path| DisplayParts::symbol(module_path.join()))
+                    .filter(|module| !module.render().is_empty());
                 Some(WorkspaceSymbol {
-                    name,
-                    detail: self
-                        .project_db()
-                        .module_by_document()
-                        .get(document_id)
-                        .map(|module_path| module_path.join())
-                        .filter(|module| !module.is_empty()),
+                    name: name_parts.render(),
+                    name_parts,
+                    detail: detail_parts.as_ref().map(DisplayParts::render),
+                    detail_parts,
                     kind: DocumentSymbolKind::File,
                     container_name: None,
                     location: WorkspaceSymbolLocation::Source {
@@ -207,10 +235,13 @@ impl LanguageServiceDatabases {
                     return None;
                 }
                 let source = self.source_db().records().get(document_id)?;
+                let name_parts = DisplayParts::symbol(name);
                 Some(WorkspaceSymbol {
-                    symbol: SymbolRef::Source(name.clone()),
-                    name,
+                    symbol: SymbolRef::Source(name_parts.render()),
+                    name: name_parts.render(),
+                    name_parts,
                     detail: None,
+                    detail_parts: None,
                     kind: DocumentSymbolKind::Module,
                     container_name: parent_module_name(module_path.segments()),
                     location: WorkspaceSymbolLocation::Source {
@@ -233,17 +264,21 @@ impl LanguageServiceDatabases {
                 let module_path = graph.module_path(declaration.module)?;
                 let module = module_path.join();
                 let name = if module.is_empty() {
-                    declaration.name.clone()
+                    DisplayParts::symbol(&declaration.name)
                 } else {
-                    DisplayParts::qualified(&module, &declaration.name).render()
+                    DisplayParts::qualified(&module, &declaration.name)
                 };
-                symbol_matches(query, &name).then(|| {
+                let rendered_name = name.render();
+                symbol_matches(query, &rendered_name).then(|| {
                     let source = self.symbol_source_record_for(declaration.span.source)?;
                     let range = diagnostic_range(source.text(), span_range(declaration.span)?);
+                    let detail_parts = detail_parts_for_declaration(graph, declaration);
                     Some(WorkspaceSymbol {
-                        symbol: SymbolRef::Source(name.clone()),
-                        name,
-                        detail: detail_for_declaration(graph, declaration),
+                        symbol: SymbolRef::Source(rendered_name.clone()),
+                        name: rendered_name,
+                        name_parts: name,
+                        detail: detail_parts.as_ref().map(DisplayParts::render),
+                        detail_parts,
                         kind: kind_for_declaration(declaration.kind),
                         container_name: (!module.is_empty()).then_some(module),
                         location: WorkspaceSymbolLocation::Source {
@@ -260,20 +295,22 @@ impl LanguageServiceDatabases {
         let facts = self.schema_db().facts();
         let mut symbols = Vec::new();
         symbols.extend(facts.types().filter_map(|(name, fact)| {
+            let detail = fact.display_name();
             schema_symbol(
                 query,
-                name,
-                Some(fact.display_name()),
+                DisplayParts::symbol(name),
+                Some(DisplayParts::type_name(detail)),
                 schema_type_symbol_kind(fact),
                 None,
                 SymbolRef::Schema(name.to_owned()),
             )
         }));
         symbols.extend(facts.traits().filter_map(|(name, fact)| {
+            let detail = fact.display_name();
             schema_symbol(
                 query,
-                name,
-                Some(fact.display_name()),
+                DisplayParts::symbol(name),
+                Some(DisplayParts::type_name(detail)),
                 DocumentSymbolKind::Interface,
                 None,
                 SymbolRef::Schema(name.to_owned()),
@@ -355,8 +392,8 @@ fn symbol_from_declaration(
     symbol_from_span(
         source,
         declaration.span,
-        declaration.name.clone(),
-        detail_for_declaration(graph, declaration),
+        DisplayParts::symbol(&declaration.name),
+        detail_parts_for_declaration(graph, declaration),
         kind,
         children,
         SymbolRef::Source(symbol_name),
@@ -402,8 +439,11 @@ fn children_for_declaration(
                 symbol_from_span(
                     source,
                     field.span,
-                    field.name.clone(),
-                    field.type_hint.as_ref().map(|hint| hint.display()),
+                    DisplayParts::symbol(&field.name),
+                    field
+                        .type_hint
+                        .as_ref()
+                        .map(|hint| DisplayParts::type_name(hint.display())),
                     DocumentSymbolKind::Field,
                     Vec::new(),
                     SymbolRef::Source(format!("{parent_symbol}.{}", field.name)),
@@ -424,8 +464,11 @@ fn children_for_declaration(
                             symbol_from_span(
                                 source,
                                 param.span,
-                                param.name.clone(),
-                                param.type_hint.as_ref().map(|hint| hint.display()),
+                                DisplayParts::symbol(&param.name),
+                                param
+                                    .type_hint
+                                    .as_ref()
+                                    .map(|hint| DisplayParts::type_name(hint.display())),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
                                 SymbolRef::Source(format!("{variant_symbol}.{}", param.name)),
@@ -439,8 +482,11 @@ fn children_for_declaration(
                             symbol_from_span(
                                 source,
                                 field.span,
-                                field.name.clone(),
-                                field.type_hint.as_ref().map(|hint| hint.display()),
+                                DisplayParts::symbol(&field.name),
+                                field
+                                    .type_hint
+                                    .as_ref()
+                                    .map(|hint| DisplayParts::type_name(hint.display())),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
                                 SymbolRef::Source(format!("{variant_symbol}.{}", field.name)),
@@ -452,7 +498,7 @@ fn children_for_declaration(
                 symbol_from_span(
                     source,
                     variant.span,
-                    variant.name.clone(),
+                    DisplayParts::symbol(&variant.name),
                     None,
                     DocumentSymbolKind::EnumMember,
                     children,
@@ -468,8 +514,8 @@ fn children_for_declaration(
                 symbol_from_span(
                     source,
                     method.span,
-                    method.name.clone(),
-                    Some(signature_detail(&method.signature)),
+                    DisplayParts::symbol(&method.name),
+                    Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
                     SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
@@ -484,8 +530,8 @@ fn children_for_declaration(
                 symbol_from_span(
                     source,
                     method.span,
-                    method.name.clone(),
-                    Some(signature_detail(&method.signature)),
+                    DisplayParts::symbol(&method.name),
+                    Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
                     SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
@@ -496,17 +542,23 @@ fn children_for_declaration(
     }
 }
 
-fn detail_for_declaration(graph: &ModuleGraph, declaration: &Declaration) -> Option<String> {
+fn detail_parts_for_declaration(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> Option<DisplayParts> {
     match declaration.kind {
-        DeclarationKind::Const => graph
-            .const_metadata(declaration.id)
-            .and_then(|metadata| metadata.type_hint.as_ref().map(|hint| hint.display())),
+        DeclarationKind::Const => graph.const_metadata(declaration.id).and_then(|metadata| {
+            metadata
+                .type_hint
+                .as_ref()
+                .map(|hint| DisplayParts::type_name(hint.display()))
+        }),
         DeclarationKind::Global => graph
             .global_metadata(declaration.id)
-            .map(|metadata| metadata.type_hint.display()),
+            .map(|metadata| DisplayParts::type_name(metadata.type_hint.display())),
         DeclarationKind::Function => graph
             .function_signature(declaration.id)
-            .map(signature_detail),
+            .map(signature_detail_parts),
         DeclarationKind::Struct
         | DeclarationKind::Enum
         | DeclarationKind::Trait
@@ -514,22 +566,22 @@ fn detail_for_declaration(graph: &ModuleGraph, declaration: &Declaration) -> Opt
     }
 }
 
-fn signature_detail(signature: &FunctionSignature) -> String {
+fn signature_detail_parts(signature: &FunctionSignature) -> DisplayParts {
     let params = signature.params.iter().map(|param| {
         param.type_hint.as_ref().map_or_else(
-            || DisplayParts::plain(param.name.as_str()),
+            || DisplayParts::symbol(param.name.as_str()),
             |hint| DisplayParts::parameter(&param.name, &hint.display()),
         )
     });
     let return_type = signature.return_type.as_ref().map(|hint| hint.display());
-    DisplayParts::signature(params, return_type.as_deref()).render()
+    DisplayParts::signature(params, return_type.as_deref())
 }
 
 fn symbol_from_span(
     source: &SourceRecord,
     span: Span,
-    name: String,
-    detail: Option<String>,
+    name_parts: DisplayParts,
+    detail_parts: Option<DisplayParts>,
     kind: DocumentSymbolKind,
     children: Vec<DocumentSymbol>,
     symbol: SymbolRef,
@@ -537,12 +589,16 @@ fn symbol_from_span(
     if span.source != source.source_id() {
         return None;
     }
+    let name = name_parts.render();
+    let detail = detail_parts.as_ref().map(DisplayParts::render);
     let range = diagnostic_range(source.text(), span_range(span)?);
     let selection_range = name_range_in_span(source.text(), span, &name)
         .map_or(range, |range| diagnostic_range(source.text(), range));
     Some(DocumentSymbol {
         name,
+        name_parts,
         detail,
+        detail_parts,
         kind,
         range,
         selection_range,
@@ -584,8 +640,8 @@ fn schema_function_symbol(
     let detail = function.fact.display_name();
     schema_symbol(
         query,
-        &name,
-        Some(detail),
+        DisplayParts::symbol(&name),
+        Some(DisplayParts::type_name(detail)),
         kind,
         None,
         SymbolRef::Schema(name.clone()),
@@ -597,12 +653,12 @@ fn schema_member_symbol(
     member: RegistryMemberFact,
     kind: DocumentSymbolKind,
 ) -> Option<WorkspaceSymbol> {
-    let name = DisplayParts::qualified(&member.owner, &member.name).render();
+    let name = DisplayParts::qualified(&member.owner, &member.name);
     let symbol = schema_member_symbol_ref(&member, kind);
     schema_symbol(
         query,
-        &name,
-        Some(member.fact.display_name()),
+        name,
+        Some(DisplayParts::type_name(member.fact.display_name())),
         kind,
         Some(member.owner),
         symbol,
@@ -611,15 +667,19 @@ fn schema_member_symbol(
 
 fn schema_symbol(
     query: &str,
-    name: &str,
-    detail: Option<String>,
+    name_parts: DisplayParts,
+    detail_parts: Option<DisplayParts>,
     kind: DocumentSymbolKind,
     container_name: Option<String>,
     symbol: SymbolRef,
 ) -> Option<WorkspaceSymbol> {
-    symbol_matches(query, name).then(|| WorkspaceSymbol {
-        name: name.to_owned(),
+    let name = name_parts.render();
+    let detail = detail_parts.as_ref().map(DisplayParts::render);
+    symbol_matches(query, &name).then_some(WorkspaceSymbol {
+        name,
+        name_parts,
         detail,
+        detail_parts,
         kind,
         container_name,
         location: WorkspaceSymbolLocation::Schema,
@@ -677,7 +737,8 @@ fn symbol_matches(query: &str, name: &str) -> bool {
 mod tests {
     use super::*;
     use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+        DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
     };
 
     #[test]
@@ -720,6 +781,11 @@ pub fn main(amount: i64) -> i64 { return amount }";
         );
         let player = symbol(&symbols, "Player");
         assert_eq!(player.kind(), DocumentSymbolKind::Struct);
+        assert_eq!(player.name_parts().render(), "Player");
+        assert_eq!(
+            player.name_parts().parts()[0].kind(),
+            DisplayPartKind::Symbol
+        );
         assert_eq!(
             player.symbol(),
             &SymbolRef::Source("game::main::Player".to_owned())
@@ -771,6 +837,16 @@ pub fn main(amount: i64) -> i64 { return amount }";
 
         let main = symbol(&symbols, "main");
         assert_eq!(main.detail(), Some("(amount: i64) -> i64"));
+        assert_eq!(
+            main.detail_parts().map(DisplayParts::render).as_deref(),
+            Some("(amount: i64) -> i64")
+        );
+        assert!(main.detail_parts().is_some_and(|parts| {
+            parts
+                .parts()
+                .iter()
+                .any(|part| part.kind() == DisplayPartKind::Parameter)
+        }));
         assert_eq!(main.kind(), DocumentSymbolKind::Function);
         assert_eq!(
             main.symbol(),
@@ -809,6 +885,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
             symbols
                 .iter()
                 .any(|symbol| symbol.name() == "game::reward::grant"
+                    && symbol.name_parts().render() == "game::reward::grant"
                     && symbol.container_name() == Some("game::reward")
                     && symbol.symbol() == &SymbolRef::Source("game::reward::grant".to_owned())),
             "{symbols:?}"
@@ -910,6 +987,9 @@ pub fn main(amount: i64) -> i64 { return amount }";
             symbols.iter().any(|symbol| symbol.name() == "Player::level"
                 && symbol.kind() == DocumentSymbolKind::Field
                 && symbol.detail() == Some("i64")
+                && symbol
+                    .detail_parts()
+                    .is_some_and(|parts| parts.parts()[0].kind() == DisplayPartKind::Type)
                 && symbol.symbol() == &SymbolRef::Schema("Player.level".to_owned())),
             "{symbols:?}"
         );
