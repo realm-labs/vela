@@ -35,7 +35,7 @@ pub(super) fn classification(
             }
             let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
                 return Some(SemanticTokenClassification::new(
-                    SemanticTokenType::Variable,
+                    SemanticTokenType::UnresolvedReference,
                     SemanticTokenModifiers::UNRESOLVED,
                 ));
             };

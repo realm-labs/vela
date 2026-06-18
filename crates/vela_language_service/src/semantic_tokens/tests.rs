@@ -166,6 +166,42 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_unresolved_import_leaf() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let main_text = "use missing::module::grant";
+    let databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), main_text)]);
+
+    let tokens = databases.semantic_tokens(&main);
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0).find("missing").expect("module root"),
+        "missing".len(),
+        SemanticTokenType::Module,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0).find("module").expect("module leaf"),
+        "module".len(),
+        SemanticTokenType::Module,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(main_text, 0)
+            .find("grant")
+            .expect("imported declaration"),
+        "grant".len(),
+        SemanticTokenType::UnresolvedReference,
+        SemanticTokenModifiers::UNRESOLVED,
+    );
+}
+
+#[test]
 fn semantic_tokens_include_comments() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

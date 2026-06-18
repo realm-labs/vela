@@ -373,6 +373,9 @@ Phase 3 notes:
 - Escape sequences and format specifier sub-token classification remain a later
   syntax-token enhancement because the current syntax token stream does not
   expose them separately.
+- Unresolved import leaves now classify as `unresolvedReference` with the
+  `unresolved` modifier while preserving module classification for earlier
+  import path segments.
 - Resolved-use provenance is still incomplete: source/schema/host/default-
   library distinctions need stronger modifier coverage, and the broad showcase
   still records some unstable receiver/unresolved cases as plain variables.
