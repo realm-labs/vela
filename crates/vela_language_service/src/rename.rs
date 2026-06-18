@@ -13,7 +13,8 @@ use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SourceVersion, SymbolRef, TextRange,
     symbol_ref::{
-        qualified_source_declaration_path, source_enum_variant_symbol, source_member_symbol,
+        qualified_source_declaration_path, schema_member_symbol, schema_symbol,
+        schema_variant_symbol, source_enum_variant_symbol, source_member_symbol,
         source_symbol_for_declaration,
     },
 };
@@ -569,16 +570,12 @@ impl RenameTarget<'_> {
             Self::EnumVariant(target) => {
                 source_enum_variant_symbol(graph, target.owner, &target.variant)
             }
-            Self::SchemaMember(target) => Some(SymbolRef::Schema(format!(
-                "{}.{}",
-                target.owner, target.member
-            ))),
-            Self::SchemaType(target) => Some(SymbolRef::Schema(target.name.clone())),
-            Self::SchemaFunction(target) => Some(SymbolRef::Schema(target.name.clone())),
-            Self::SchemaVariant(target) => Some(SymbolRef::Schema(format!(
-                "{}::{}",
-                target.owner, target.variant
-            ))),
+            Self::SchemaMember(target) => Some(schema_member_symbol(&target.owner, &target.member)),
+            Self::SchemaType(target) => Some(schema_symbol(&target.name)),
+            Self::SchemaFunction(target) => Some(schema_symbol(&target.name)),
+            Self::SchemaVariant(target) => {
+                Some(schema_variant_symbol(&target.owner, &target.variant))
+            }
         }
     }
 }
