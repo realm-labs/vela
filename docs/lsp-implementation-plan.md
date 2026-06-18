@@ -1431,6 +1431,8 @@ Purpose: provide safe refactoring without changing runtime contracts.
     uses.
   - [x] Rename source-owned private inherent methods and typed receiver member
     calls.
+  - [x] Rename source-owned trait default methods and typed source-return
+    receiver member calls.
   - [x] Rename source-owned private enum variants, constructor uses, and
     match-pattern uses.
 - [x] Reject host schema rename unless the source is explicitly script-owned.
@@ -1493,6 +1495,8 @@ Tests:
 - [x] `lsp_private_struct_field_rename_updates_member_uses`
 - [x] `private_method_rename_updates_typed_receiver_calls`
 - [x] `lsp_private_method_rename_updates_typed_receiver_calls`
+- [x] `source_trait_default_method_rename_updates_source_function_return_receiver_calls`
+- [x] `lsp_source_trait_default_method_rename_updates_source_function_return_receiver_calls`
 - [x] `private_enum_variant_rename_updates_constructors_and_patterns`
 - [x] `private_enum_variant_rename_rejects_variant_collision`
 - [x] `lsp_private_enum_variant_rename_updates_constructors_and_patterns`

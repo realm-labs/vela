@@ -152,6 +152,10 @@ The plan checklist is closed with service and native LSP fixtures for local,
 private declaration, public import-aware, source-backed schema, collision,
 hot-reload ABI, schema ABI, and versioned-edit behavior.
 
+M20.5 Phase 12 update: service and native LSP rename now cover source-owned
+trait default method calls where the receiver is produced by a source function
+return, updating the trait declaration and returned-receiver call sites.
+
 M20.5 Phase 17 update: native LSP workspace-folder coverage now includes
 removed-root degradation, proving stale disk module facts are cleared while
 open overlays remain authoritative for republished diagnostics.

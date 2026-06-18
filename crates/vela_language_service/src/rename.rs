@@ -1057,4 +1057,6 @@ fn is_identifier_continue(ch: char) -> bool {
 }
 
 #[cfg(test)]
+mod source_return_tests;
+#[cfg(test)]
 mod tests;

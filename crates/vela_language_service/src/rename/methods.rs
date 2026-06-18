@@ -18,6 +18,13 @@ pub(super) struct ScriptMethodRenameTarget {
     pub(super) owner: HirDeclId,
     pub(super) method: String,
     pub(super) token: RenameToken,
+    target_kind: ScriptMethodRenameTargetKind,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum ScriptMethodRenameTargetKind {
+    Impl,
+    Trait,
 }
 
 pub(super) fn rename_script_method(
@@ -60,6 +67,7 @@ pub(super) fn script_method_declaration_target(
                     owner: declaration.id,
                     method: method.name.clone(),
                     token: token.clone(),
+                    target_kind: ScriptMethodRenameTargetKind::Impl,
                 });
             }
         }
@@ -78,6 +86,7 @@ pub(super) fn script_method_target_for_self_receiver(
             owner: scope_owner,
             method: method.to_owned(),
             token: token.clone(),
+            target_kind: ScriptMethodRenameTargetKind::Impl,
         }
     })
 }
@@ -93,6 +102,7 @@ pub(super) fn script_method_target_for_receiver_fact(
         owner,
         method: method.to_owned(),
         token: token.clone(),
+        target_kind: script_method_target_kind(graph, owner)?,
     })
 }
 
@@ -103,15 +113,26 @@ fn push_script_method_declaration_edit(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) -> Option<()> {
     let graph = databases.hir_db().graph();
-    let metadata = graph.impl_metadata(target.owner)?;
-    let method = metadata
-        .methods
-        .iter()
-        .find(|method| method.name == target.method)?;
+    let method_name = match target.target_kind {
+        ScriptMethodRenameTargetKind::Impl => graph
+            .impl_metadata(target.owner)?
+            .methods
+            .iter()
+            .find(|method| method.name == target.method)?
+            .name
+            .as_str(),
+        ScriptMethodRenameTargetKind::Trait => graph
+            .trait_shape(target.owner)?
+            .methods
+            .iter()
+            .find(|method| method.name == target.method)?
+            .name
+            .as_str(),
+    };
     let declaration = graph.declaration(target.owner)?;
     let source = databases.source_record_for_rename(declaration.span.source)?;
     let span_range = span_text_range(declaration.span)?;
-    let range = method_name_range_in_text(source.text(), span_range, &method.name)?;
+    let range = method_name_range_in_text(source.text(), span_range, method_name)?;
     edits_by_document
         .entry(source.document_id().clone())
         .or_default()
@@ -139,7 +160,11 @@ fn push_script_method_use_edits(
                 continue;
             }
             if script_method_target_for_call_site(databases, graph, source, &site, &target.method)
-                .is_some_and(|found| found.owner == target.owner && found.method == target.method)
+                .is_some_and(|found| {
+                    found.owner == target.owner
+                        && found.method == target.method
+                        && found.target_kind == target.target_kind
+                })
             {
                 edits_by_document
                     .entry(source.document_id().clone())
@@ -157,6 +182,7 @@ fn push_script_method_use_edits(
 struct ScriptMethodTarget {
     owner: HirDeclId,
     method: String,
+    target_kind: ScriptMethodRenameTargetKind,
 }
 
 fn script_method_target_for_call_site(
@@ -176,6 +202,7 @@ fn script_method_target_for_call_site(
                 return Some(ScriptMethodTarget {
                     owner: declaration.id,
                     method: method.to_owned(),
+                    target_kind: ScriptMethodRenameTargetKind::Impl,
                 });
             }
         }
@@ -189,6 +216,7 @@ fn script_method_target_for_call_site(
     Some(ScriptMethodTarget {
         owner,
         method: method.to_owned(),
+        target_kind: script_method_target_kind(graph, owner)?,
     })
 }
 
@@ -210,24 +238,91 @@ fn script_method_owner(
     method: &str,
 ) -> Option<HirDeclId> {
     let owner_names = record_owner_names(receiver);
+    graph
+        .declarations()
+        .find_map(|declaration| inherent_method_owner(graph, declaration.id, &owner_names, method))
+        .or_else(|| source_trait_default_method_owner(graph, &owner_names, method))
+}
+
+fn inherent_method_owner(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    owner_names: &[String],
+    method: &str,
+) -> Option<HirDeclId> {
+    let declaration = graph.declaration(declaration)?;
+    if declaration.kind != DeclarationKind::Impl {
+        return None;
+    }
+    let metadata = graph.impl_metadata(declaration.id)?;
+    if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+        return None;
+    }
+    let matches_owner = owner_names
+        .iter()
+        .any(|owner| impl_target_matches(&metadata.target_path, owner));
+    let has_method = metadata.methods.iter().any(|entry| entry.name == method);
+    (matches_owner && has_method).then_some(declaration.id)
+}
+
+fn source_trait_default_method_owner(
+    graph: &ModuleGraph,
+    owner_names: &[String],
+    method: &str,
+) -> Option<HirDeclId> {
     graph.declarations().find_map(|declaration| {
         if declaration.kind != DeclarationKind::Impl {
             return None;
         }
         let metadata = graph.impl_metadata(declaration.id)?;
-        if !matches!(metadata.kind, ImplMetadataKind::Inherent) {
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return None;
+        };
+        let matches_owner = owner_names
+            .iter()
+            .any(|owner| impl_target_matches(&metadata.target_path, owner));
+        if !matches_owner || metadata.methods.iter().any(|entry| entry.name == method) {
             return None;
         }
-        let matches_owner = owner_names.iter().any(|owner| {
-            metadata
-                .target_path
-                .last()
-                .is_some_and(|name| name == owner)
-                || metadata.target_path.join("::") == *owner
-        });
-        let has_method = metadata.methods.iter().any(|entry| entry.name == method);
-        (matches_owner && has_method).then_some(declaration.id)
+        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        graph
+            .trait_shape(trait_declaration)
+            .is_some_and(|shape| {
+                shape
+                    .methods
+                    .iter()
+                    .any(|entry| entry.name == method && entry.has_default)
+            })
+            .then_some(trait_declaration)
     })
+}
+
+fn trait_declaration_for_path(graph: &ModuleGraph, trait_path: &[String]) -> Option<HirDeclId> {
+    let owner = trait_path.join("::");
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && (declaration.name == owner
+                    || qualified_declaration_name(graph, declaration) == owner)
+        })
+        .map(|declaration| declaration.id)
+}
+
+fn script_method_target_kind(
+    graph: &ModuleGraph,
+    owner: HirDeclId,
+) -> Option<ScriptMethodRenameTargetKind> {
+    let declaration = graph.declaration(owner)?;
+    match declaration.kind {
+        DeclarationKind::Impl => Some(ScriptMethodRenameTargetKind::Impl),
+        DeclarationKind::Trait => Some(ScriptMethodRenameTargetKind::Trait),
+        DeclarationKind::Const
+        | DeclarationKind::Enum
+        | DeclarationKind::Function
+        | DeclarationKind::Global
+        | DeclarationKind::Struct => None,
+    }
 }
 
 fn script_method_name_conflicts(
@@ -235,12 +330,45 @@ fn script_method_name_conflicts(
     target: &ScriptMethodRenameTarget,
     new_name: &str,
 ) -> bool {
-    graph.impl_metadata(target.owner).is_some_and(|metadata| {
-        metadata
-            .methods
-            .iter()
-            .any(|method| method.name == new_name && method.name != target.method)
-    })
+    match target.target_kind {
+        ScriptMethodRenameTargetKind::Impl => {
+            graph.impl_metadata(target.owner).is_some_and(|metadata| {
+                metadata
+                    .methods
+                    .iter()
+                    .any(|method| method.name == new_name && method.name != target.method)
+            })
+        }
+        ScriptMethodRenameTargetKind::Trait => {
+            graph.trait_shape(target.owner).is_some_and(|shape| {
+                shape
+                    .methods
+                    .iter()
+                    .any(|method| method.name == new_name && method.name != target.method)
+            })
+        }
+    }
+}
+
+fn impl_target_matches(target_path: &[String], owner: &str) -> bool {
+    target_path.last().is_some_and(|name| name == owner) || target_path.join("::") == owner
+}
+
+fn qualified_declaration_name(
+    graph: &ModuleGraph,
+    declaration: &vela_hir::module_graph::Declaration,
+) -> String {
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("::")
+        })
+        .unwrap_or_else(|| declaration.name.clone())
 }
 
 fn method_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
