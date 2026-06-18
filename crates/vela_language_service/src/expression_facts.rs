@@ -7,7 +7,11 @@ use vela_analysis::{
     type_fact::TypeFact,
 };
 use vela_common::SourceId;
-use vela_hir::{module_graph::ModuleGraph, type_hint::HirTypeHint};
+use vela_hir::{
+    ids::HirDeclId,
+    module_graph::{DeclarationKind, ModuleGraph},
+    type_hint::{HirTypeHint, ImplMetadataKind},
+};
 use vela_syntax::ast::{
     Argument, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, MapEntry,
     MatchArm, Param, RecordField, SourceFile, Stmt, StmtKind, TypeHint,
@@ -232,10 +236,124 @@ impl ExpressionFactCollector<'_> {
             ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
         }
 
-        let fact = type_fact_from_expr_with_registry(expr, scope, self.schema);
+        let fact = self.type_fact_for_expr(expr, scope);
         if !matches!(fact, TypeFact::Unknown) {
             self.facts.insert(span_key(expr.span), fact);
         }
+    }
+
+    fn type_fact_for_expr(&self, expr: &Expr, scope: &ExprFactScope) -> TypeFact {
+        let fact = type_fact_from_expr_with_registry(expr, scope, self.schema);
+        if !matches!(fact, TypeFact::Unknown) {
+            return fact;
+        }
+        let ExprKind::Call { callee, .. } = &expr.kind else {
+            return fact;
+        };
+        self.source_call_return_fact(callee, scope).unwrap_or(fact)
+    }
+
+    fn source_call_return_fact(&self, callee: &Expr, scope: &ExprFactScope) -> Option<TypeFact> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let receiver = self.type_fact_for_expr(base, scope);
+        self.source_method_return_fact(&receiver, name)
+    }
+
+    fn source_method_return_fact(&self, receiver: &TypeFact, method: &str) -> Option<TypeFact> {
+        self.source_impl_method_return_fact(receiver, method)
+            .or_else(|| self.source_trait_method_return_fact(receiver, method))
+            .or_else(|| self.source_trait_default_method_return_fact(receiver, method))
+    }
+
+    fn source_impl_method_return_fact(
+        &self,
+        receiver: &TypeFact,
+        method: &str,
+    ) -> Option<TypeFact> {
+        let owner_names = record_owner_names(receiver);
+        self.graph.declarations().find_map(|declaration| {
+            if declaration.kind != DeclarationKind::Impl {
+                return None;
+            }
+            let metadata = self.graph.impl_metadata(declaration.id)?;
+            let matches_owner = owner_names
+                .iter()
+                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+            if !matches_owner {
+                return None;
+            }
+            let method = metadata.methods.iter().find(|entry| entry.name == method)?;
+            method
+                .signature
+                .return_type
+                .as_ref()
+                .map(|hint| query_type_fact_from_hint(self.graph, hint, self.schema))
+        })
+    }
+
+    fn source_trait_method_return_fact(
+        &self,
+        receiver: &TypeFact,
+        method: &str,
+    ) -> Option<TypeFact> {
+        let owner_names = trait_owner_names(receiver);
+        self.graph.declarations().find_map(|declaration| {
+            if declaration.kind != DeclarationKind::Trait
+                || !owner_names
+                    .iter()
+                    .any(|owner| declaration_name_matches(self.graph, declaration.id, owner))
+            {
+                return None;
+            }
+            let method = self
+                .graph
+                .trait_shape(declaration.id)?
+                .methods
+                .iter()
+                .find(|entry| entry.name == method)?;
+            method
+                .signature
+                .return_type
+                .as_ref()
+                .map(|hint| query_type_fact_from_hint(self.graph, hint, self.schema))
+        })
+    }
+
+    fn source_trait_default_method_return_fact(
+        &self,
+        receiver: &TypeFact,
+        method: &str,
+    ) -> Option<TypeFact> {
+        let owner_names = record_owner_names(receiver);
+        self.graph.declarations().find_map(|declaration| {
+            if declaration.kind != DeclarationKind::Impl {
+                return None;
+            }
+            let metadata = self.graph.impl_metadata(declaration.id)?;
+            let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+                return None;
+            };
+            let matches_owner = owner_names
+                .iter()
+                .any(|owner| impl_target_matches(&metadata.target_path, owner));
+            if !matches_owner || metadata.methods.iter().any(|entry| entry.name == method) {
+                return None;
+            }
+            let trait_declaration = trait_declaration_for_path(self.graph, trait_path)?;
+            let method = self
+                .graph
+                .trait_shape(trait_declaration)?
+                .methods
+                .iter()
+                .find(|entry| entry.name == method && entry.has_default)?;
+            method
+                .signature
+                .return_type
+                .as_ref()
+                .map(|hint| query_type_fact_from_hint(self.graph, hint, self.schema))
+        })
     }
 
     fn collect_argument(&mut self, argument: &Argument, scope: &mut ExprFactScope) {
@@ -286,6 +404,139 @@ impl ExpressionFactCollector<'_> {
 
 fn text_range_key(range: TextRange) -> (usize, usize) {
     (range.start, range.end)
+}
+
+fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_record_owner_names(receiver, &mut owners);
+    owners
+}
+
+fn trait_owner_names(receiver: &TypeFact) -> Vec<String> {
+    let mut owners = Vec::new();
+    collect_trait_owner_names(receiver, &mut owners);
+    owners
+}
+
+fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Record { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_record_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
+    match receiver {
+        TypeFact::Trait { name } => {
+            push_owner_name(owners, name);
+            if let Some(short) = name.rsplit("::").next()
+                && short != name
+            {
+                push_owner_name(owners, short);
+            }
+        }
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_trait_owner_names(fact, owners);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Record { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn push_owner_name(owners: &mut Vec<String>, name: &str) {
+    if !owners.iter().any(|owner| owner == name) {
+        owners.push(name.to_owned());
+    }
+}
+
+fn impl_target_matches(path: &[String], owner: &str) -> bool {
+    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
+}
+
+fn trait_declaration_for_path(graph: &ModuleGraph, trait_path: &[String]) -> Option<HirDeclId> {
+    let owner = trait_path.join("::");
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && declaration_name_matches(graph, declaration.id, &owner)
+        })
+        .map(|declaration| declaration.id)
+}
+
+fn declaration_name_matches(graph: &ModuleGraph, declaration: HirDeclId, owner: &str) -> bool {
+    let Some(declaration) = graph.declaration(declaration) else {
+        return false;
+    };
+    declaration.name == owner || qualified_declaration_label(graph, declaration.id) == owner
+}
+
+fn qualified_declaration_label(graph: &ModuleGraph, declaration: HirDeclId) -> String {
+    let Some(declaration) = graph.declaration(declaration) else {
+        return String::new();
+    };
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("::")
+        })
+        .unwrap_or_else(|| declaration.name.clone())
 }
 
 fn declaration_scope(graph: &ModuleGraph) -> ExprFactScope {

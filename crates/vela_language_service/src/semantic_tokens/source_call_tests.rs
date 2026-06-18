@@ -42,6 +42,47 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_source_method_on_source_method_return() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+pub fn main(player: Player) -> i64 {
+    return player.inventory().grant(1)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("inventory")
+            .expect("source method call should exist"),
+        "inventory".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("grant")
+            .expect("chained source method call should exist"),
+        "grant".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_source_trait_method_on_source_function_return() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

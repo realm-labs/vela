@@ -256,6 +256,11 @@ method call sites through both the language service and native LSP server,
 matching the existing reference and call-hierarchy treatment for typed trait
 receivers.
 
+M20.5 Phase 10 update: shared expression receiver facts now include
+source-owned method return facts, so chained source method calls such as
+`player.inventory().grant(...)` classify the second call site as a source
+method through both the language service and native LSP server.
+
 M20.5 Phase 10 update: schema function and method return facts now flow
 through shared expression fact analysis, and semantic-token member
 classification uses expression receiver facts so schema method calls on schema
