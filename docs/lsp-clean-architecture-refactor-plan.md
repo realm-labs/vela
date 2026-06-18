@@ -762,8 +762,12 @@ Purpose: keep editor mutations structured, local, and source-owned.
   Quick fixes now continue to originate from structured diagnostics,
   candidates, and repair hints, and all code-action edits are built through the
   checked `WorkspaceEdit::try_new`/`EditPlan` path before LSP projection.
-- [ ] Reject ambiguous imports, dynamic receiver typo fixes, and semantic
+- [x] Reject ambiguous imports, dynamic receiver typo fixes, and semantic
   rewrites without a proven local pattern.
+  Ambiguous import and dynamic receiver typo fixes are covered at service and
+  LSP layers; semantic rewrite helpers now have a regression test proving they
+  stay silent unless the diagnostic range contains the local syntax pattern
+  they know how to edit.
 - [ ] Keep formatting syntax-owned and trivia-preserving. Do not rely on
   successful HIR or analysis.
 - [ ] Add AST-aware range and on-type formatting only after token/trivia rules

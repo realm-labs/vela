@@ -765,6 +765,30 @@ pub fn main() {
     }
 
     #[test]
+    fn semantic_rewrite_helpers_require_local_syntax_patterns() {
+        let record_text = "pub fn reward() { return Reward }";
+        let record_index = LineIndex::new(record_text);
+        let record_start = record_text.find("Reward").expect("record constructor name");
+        let record_range = DiagnosticRange::new(
+            record_index.position(record_start),
+            record_index.position(record_start + "Reward".len()),
+        );
+        assert!(
+            record_field_insertion(record_text, record_range, "amount").is_none(),
+            "record field fixes require a constructor range with braces"
+        );
+
+        let match_text = "pub fn state() { return match state { State::Idle => null } }";
+        let match_index = LineIndex::new(match_text);
+        let match_range =
+            DiagnosticRange::new(Position::new(0, 0), match_index.position(match_text.len()));
+        assert!(
+            match_arm_insertion(match_text, match_range).is_none(),
+            "match arm fixes require a multiline match block with an isolated closing brace"
+        );
+    }
+
+    #[test]
     fn code_action_ranges_follow_open_overlay_text() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let disk_text = "pub fn main(player: Player) { return player.level }";
