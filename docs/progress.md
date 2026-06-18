@@ -200,6 +200,11 @@ now follow source spans for schema-backed methods and trait methods where the
 receiver is produced by another schema method return, matching the chained
 schema hover path.
 
+M20.5 Phase 8 update: service and native LSP hover fixtures now cover
+source-owned inherent methods on source function-return and source
+method-return receivers, plus source trait default methods on source
+method-return receivers.
+
 M20.5 clean LSP architecture Phase 6 update: references now have a
 `reference_query()` result model that distinguishes source-owned, schema-owned,
 builtin, dynamic `Any`, and unresolved targets; source/local reference identity

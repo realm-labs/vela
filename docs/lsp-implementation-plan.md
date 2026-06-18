@@ -876,10 +876,13 @@ Tests:
 - [x] `hover_reports_source_global_fact`
 - [x] `hover_reports_source_struct_field_fact`
 - [x] `hover_reports_source_method_fact`
+- [x] `hover_reports_source_method_on_source_function_return_receiver`
+- [x] `hover_reports_source_method_on_source_method_return_receiver`
 - [x] `hover_reports_source_trait_fact`
 - [x] `hover_reports_source_trait_method_docs`
 - [x] `hover_reports_source_trait_receiver_method_fact`
 - [x] `hover_reports_source_trait_default_method_on_source_function_return_receiver`
+- [x] `hover_reports_source_trait_default_method_on_source_method_return_receiver`
 - [x] `hover_reports_source_enum_variant_fact`
 - [x] `hover_reports_stdlib_function_fact`
 - [x] `hover_reports_stdlib_method_fact`
@@ -898,9 +901,12 @@ Tests:
 - [x] `lsp_hover_reports_schema_enum_variant_fact`
 - [x] `lsp_hover_reports_source_struct_field_fact`
 - [x] `lsp_hover_reports_source_method_fact`
+- [x] `lsp_hover_reports_source_method_on_source_function_return_receiver`
+- [x] `lsp_hover_reports_source_method_on_source_method_return_receiver`
 - [x] `lsp_hover_reports_source_trait_fact`
 - [x] `lsp_hover_reports_source_trait_receiver_method_fact`
 - [x] `lsp_hover_reports_source_trait_default_method_on_source_function_return_receiver`
+- [x] `lsp_hover_reports_source_trait_default_method_on_source_method_return_receiver`
 - [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
 - [x] `lsp_hover_reports_stdlib_method_fact`

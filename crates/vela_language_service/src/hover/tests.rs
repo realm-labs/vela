@@ -607,6 +607,89 @@ pub fn main(player: Player) {
 }
 
 #[test]
+fn hover_reports_source_method_on_source_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player {
+    level: i64,
+}
+impl Player {
+    fn grant(self, amount: i64) -> bool {
+        return amount > 0
+    }
+}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() {
+    return current_player().grant(3)
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let call_line = text.lines().nth(10).expect("method use line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                10,
+                call_line
+                    .find("grant")
+                    .expect("returned receiver method use should exist"),
+            ),
+        )
+        .expect("hover should resolve source method on function-return receiver");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "game::main::Player.grant");
+    assert_eq!(hover.detail(), "(self, amount: i64) -> bool");
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.grant".to_owned()))
+    );
+}
+
+#[test]
+fn hover_reports_source_method_on_source_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player {
+    level: i64,
+}
+struct Inventory {
+    slots: i64,
+}
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { slots: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64) -> bool {
+        return amount > 0
+    }
+}
+pub fn main(player: Player) {
+    return player.inventory().grant(3)
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let call_line = text.lines().nth(15).expect("method use line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                15,
+                call_line
+                    .find("grant")
+                    .expect("method-return receiver method use should exist"),
+            ),
+        )
+        .expect("hover should resolve source method on method-return receiver");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "game::main::Inventory.grant");
+    assert_eq!(hover.detail(), "(self, amount: i64) -> bool");
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source("game::main::Inventory.grant".to_owned()))
+    );
+}
+
+#[test]
 fn hover_reports_source_trait_method_docs() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"trait Rewardable {
@@ -742,6 +825,56 @@ pub fn main() {
             &document,
             Position::new(
                 10,
+                call_line
+                    .find("preview")
+                    .expect("trait default method call should exist"),
+            ),
+        )
+        .expect("hover should resolve trait default method use");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "game::main::Rewardable.preview");
+    assert_eq!(hover.detail(), "(self, amount: i64) -> bool");
+    assert_eq!(hover.docs(), Some("Preview reward"));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::Rewardable.preview".to_owned()
+        ))
+    );
+}
+
+#[test]
+fn hover_reports_source_trait_default_method_on_source_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+}
+struct Player {
+    level: i64,
+}
+struct Inventory {
+    slots: i64,
+}
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { slots: 1 } }
+}
+impl Rewardable for Inventory {}
+pub fn main(player: Player) {
+    return player.inventory().preview(1)
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let call_line = text
+        .lines()
+        .nth(15)
+        .expect("trait default method call line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                15,
                 call_line
                     .find("preview")
                     .expect("trait default method call should exist"),
