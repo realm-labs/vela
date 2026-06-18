@@ -7,6 +7,7 @@ use std::{
 use super::{LspServer, notification, notification_value, request, response_value};
 
 mod cross_file;
+mod values;
 
 #[test]
 fn lsp_call_hierarchy_uses_resolved_call_graph() {

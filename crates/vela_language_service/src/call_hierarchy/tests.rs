@@ -62,6 +62,83 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn call_hierarchy_uses_imported_function_alias_calls() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant as award
+pub fn main(amount: i64) -> i64 {
+    let first = award(amount)
+    return award(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper.clone(), helper_text),
+    ]);
+
+    let prepared = databases.prepare_call_hierarchy(
+        &helper,
+        Position::new(0, helper_text.find("grant").expect("grant declaration")),
+    );
+
+    assert_eq!(prepared.len(), 1);
+    assert_eq!(prepared[0].name(), "grant");
+    assert_eq!(prepared[0].document_id(), &helper);
+
+    let prepared_from_alias_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            2,
+            line(main_text, 2).find("award").expect("first alias call"),
+        ),
+    );
+    assert_eq!(prepared_from_alias_call, prepared);
+
+    let incoming = databases.incoming_calls(&prepared[0]);
+    assert_eq!(incoming.len(), 1);
+    assert_eq!(incoming[0].from().name(), "main");
+    assert_eq!(incoming[0].from().document_id(), &main);
+    assert_eq!(incoming[0].from_ranges().len(), 2);
+    assert_range(
+        incoming[0].from_ranges(),
+        2,
+        line(main_text, 2).find("award").expect("first alias call"),
+    );
+    assert_range(
+        incoming[0].from_ranges(),
+        3,
+        line(main_text, 3).find("award").expect("second alias call"),
+    );
+
+    let main_item = databases
+        .prepare_call_hierarchy(
+            &main,
+            Position::new(
+                1,
+                line(main_text, 1).find("main").expect("main declaration"),
+            ),
+        )
+        .pop()
+        .expect("main should prepare a call hierarchy item");
+    let outgoing = databases.outgoing_calls(&main_item);
+    assert_eq!(outgoing.len(), 1);
+    assert_eq!(outgoing[0].to().name(), "grant");
+    assert_eq!(outgoing[0].to().document_id(), &helper);
+    assert_eq!(outgoing[0].from_ranges().len(), 2);
+    assert_range(
+        outgoing[0].from_ranges(),
+        2,
+        line(main_text, 2).find("award").expect("first alias call"),
+    );
+    assert_range(
+        outgoing[0].from_ranges(),
+        3,
+        line(main_text, 3).find("award").expect("second alias call"),
+    );
+}
+
+#[test]
 fn call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

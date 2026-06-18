@@ -1112,6 +1112,8 @@ Purpose: support workspace navigation and prepare rename.
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
     outgoing call hierarchy for statically resolved calls.
+  - [x] Serve imported script function alias prepare, incoming, and outgoing
+    call hierarchy for statically resolved calls.
   - [x] Serve source-owned inherent script method prepare, incoming, and
     outgoing call hierarchy for typed receiver calls.
   - [x] Serve cross-file source-owned inherent script method prepare,
@@ -1215,6 +1217,8 @@ Tests:
 - [x] `lsp_document_highlight_marks_schema_variant_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`
 - [x] `lsp_call_hierarchy_uses_resolved_call_graph`
+- [x] `call_hierarchy_uses_imported_function_alias_calls`
+- [x] `lsp_call_hierarchy_uses_imported_function_alias_calls`
 - [x] `call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
 - [x] `lsp_prepare_call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
