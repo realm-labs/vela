@@ -7,7 +7,7 @@ use vela_hir::type_hint::ImplMetadataKind;
 use vela_syntax::ast::SourceFile;
 
 use crate::{
-    CursorContextKind, DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position,
+    CursorContextKind, DiagnosticRange, DocumentId, LanguageServiceDatabases, Position,
     QueryContext, SymbolRef, TextRange, path_calls,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
@@ -23,8 +23,15 @@ mod modules;
 mod record_fields;
 mod record_variant_patterns;
 pub(crate) mod schema;
+mod support;
 mod type_hints;
 mod variant_fields;
+
+use support::{
+    declaration_name_matches, diagnostic_range, is_call_callee, is_identifier_boundary,
+    is_identifier_continue, last_name_range_in_text, name_range_in_text, record_owner_names,
+    resolved_use_reference_kind, span_text_range, token_text,
+};
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ReferenceKind {
@@ -1015,60 +1022,6 @@ fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> 
         .is_some_and(|shape| shape.variants.iter().any(|entry| entry.name == variant))
 }
 
-fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
-    let mut owners = Vec::new();
-    collect_record_owner_names(receiver, &mut owners);
-    owners
-}
-
-fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
-    match receiver {
-        TypeFact::Record { name } => {
-            push_owner_name(owners, name);
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                push_owner_name(owners, short);
-            }
-        }
-        TypeFact::Union(facts) => {
-            for fact in facts {
-                collect_record_owner_names(fact, owners);
-            }
-        }
-        TypeFact::Unknown
-        | TypeFact::Never
-        | TypeFact::Any
-        | TypeFact::Primitive(_)
-        | TypeFact::Range
-        | TypeFact::Array { .. }
-        | TypeFact::Map { .. }
-        | TypeFact::Set { .. }
-        | TypeFact::Iterator { .. }
-        | TypeFact::Option { .. }
-        | TypeFact::OptionSome { .. }
-        | TypeFact::OptionNone
-        | TypeFact::Result { .. }
-        | TypeFact::ResultOk { .. }
-        | TypeFact::ResultErr { .. }
-        | TypeFact::Function { .. }
-        | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
-        | TypeFact::Trait { .. }
-        | TypeFact::Module { .. } => {}
-    }
-}
-
-fn push_owner_name(owners: &mut Vec<String>, name: &str) {
-    if !owners.iter().any(|owner| owner == name) {
-        owners.push(name.to_owned());
-    }
-}
-
-fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
-    declaration.name == owner || qualified_source_declaration_name(graph, declaration) == owner
-}
-
 fn declaration_reference_target(
     bindings: &BindingMap,
     token: &ReferenceToken,
@@ -1134,49 +1087,6 @@ fn local_declaration_at_token<'a>(
     })
 }
 
-fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
-    let line_index = LineIndex::new(text);
-    DiagnosticRange::new(
-        line_index.position(range.start),
-        line_index.position(range.end),
-    )
-}
-
-fn span_text_range(span: Span) -> Option<TextRange> {
-    let start = usize::try_from(span.start).ok()?;
-    let end = usize::try_from(span.end).ok()?;
-    Some(TextRange::new(start, end))
-}
-
-fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.match_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
-    })
-}
-
-fn last_name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
-    let slice = text.get(range.start..range.end)?;
-    slice.rmatch_indices(name).find_map(|(offset, matched)| {
-        let start = range.start + offset;
-        let end = start + matched.len();
-        is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
-    })
-}
-
-fn is_identifier_boundary(text: &str, start: usize, end: usize) -> bool {
-    let before = text[..start].chars().next_back();
-    let after = text[end..].chars().next();
-    before.is_none_or(|ch| !is_identifier_continue(ch))
-        && after.is_none_or(|ch| !is_identifier_continue(ch))
-}
-
-fn token_text(text: &str, range: TextRange) -> Option<&str> {
-    text.get(range.start..range.end)
-}
-
 const fn document_highlight_kind(kind: ReferenceKind) -> DocumentHighlightKind {
     match kind {
         ReferenceKind::Call => DocumentHighlightKind::Call,
@@ -1185,16 +1095,6 @@ const fn document_highlight_kind(kind: ReferenceKind) -> DocumentHighlightKind {
         ReferenceKind::Declaration | ReferenceKind::Import | ReferenceKind::Pattern => {
             DocumentHighlightKind::Text
         }
-    }
-}
-
-fn resolved_use_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
-    if is_call_callee(text, range) {
-        ReferenceKind::Call
-    } else if is_assignment_target(text, range) {
-        ReferenceKind::Write
-    } else {
-        ReferenceKind::Read
     }
 }
 
@@ -1276,30 +1176,6 @@ fn is_builtin_type_name(name: &str) -> bool {
             | "u32"
             | "u64"
     )
-}
-
-fn is_call_callee(text: &str, range: TextRange) -> bool {
-    text.get(range.end..)
-        .is_some_and(|suffix| suffix.trim_start().starts_with('('))
-}
-
-fn is_assignment_target(text: &str, range: TextRange) -> bool {
-    text.get(range.end..)
-        .map(str::trim_start)
-        .is_some_and(|suffix| {
-            suffix.starts_with("+=")
-                || suffix.starts_with("-=")
-                || suffix.starts_with("*=")
-                || suffix.starts_with("/=")
-                || suffix.starts_with("%=")
-                || (suffix.starts_with('=')
-                    && !suffix.starts_with("==")
-                    && !suffix.starts_with("=>"))
-        })
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }
 
 #[cfg(test)]
