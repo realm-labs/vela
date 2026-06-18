@@ -561,6 +561,7 @@ mod symbols;
 mod file_watching {
     use std::fs;
     use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
@@ -569,13 +570,20 @@ mod file_watching {
         response_value,
     };
 
+    static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
+
     fn temp_workspace() -> PathBuf {
         let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
             Ok(duration) => duration.as_nanos(),
             Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
         };
-        let root =
-            std::env::temp_dir().join(format!("vela_lsp_server_{}_{}", std::process::id(), suffix));
+        let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "vela_lsp_server_{}_{}_{}",
+            std::process::id(),
+            suffix,
+            sequence
+        ));
         if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
             panic!("temporary workspace should be creatable: {error}");
         }

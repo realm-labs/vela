@@ -235,7 +235,7 @@ coverage complete based only on the older capability phases.
     references, enum variant and record-variant field references, call
     hierarchy across source and trait methods, open overlays in defining and
     importing files, and watched-file delete/rename invalidation.
-- [ ] Audit document sync, diagnostics, progress, and cancellation fixtures.
+- [x] Audit document sync, diagnostics, progress, and cancellation fixtures.
   - Cover `didOpen`, `didChange`, `didClose` or capability correction,
     publish diagnostics, stale generations, parser recovery, missing imports,
     config diagnostics, and schema degradation.
@@ -243,6 +243,12 @@ coverage complete based only on the older capability phases.
     clearing and disk snapshot restoration after closing an open overlay.
   - Disk snapshot restoration after `textDocument/didClose` now has
     cross-feature definition-query coverage in addition to diagnostics.
+  - Current fixtures cover full and incremental `didChange`, `didOpen`,
+    `didClose`, structured publish diagnostics, syntax/HIR/analysis/schema
+    diagnostics, parser-recovery isolation, missing import diagnostics,
+    config diagnostics, schema missing/invalid/degraded states, open-file
+    priority, stale and partial generations, workspace progress wrapping, and
+    stale queued request cancellation.
 - [ ] Audit completion, completion resolve, signature help, and hover.
   - Cover all matrix syntax dimensions that apply, including cross-file
     imports, globals, functions, methods, type hints, defaulted parameters,
