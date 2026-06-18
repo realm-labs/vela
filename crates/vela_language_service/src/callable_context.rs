@@ -11,7 +11,13 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
 use crate::query_context::type_fact_for_source_range;
-use crate::{LanguageServiceDatabases, SymbolRef, TextRange};
+use crate::{
+    LanguageServiceDatabases, SymbolRef, TextRange,
+    symbol_ref::{
+        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
+        source_member_symbol, source_symbol_for_declaration,
+    },
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CallableOrigin {
@@ -146,7 +152,7 @@ pub(crate) fn source_callable_facts(
                 params,
                 returns,
                 origin: CallableOrigin::Source,
-                symbol: SymbolRef::Source(qualified_declaration_label(graph, declaration.id)),
+                symbol: source_symbol_for_declaration(graph, declaration),
             })
         })
         .collect()
@@ -233,6 +239,7 @@ fn source_impl_method_callable_facts(
                 graph,
                 schema,
                 format!("{owner}.{}", method.name),
+                source_impl_method_symbol(graph, declaration.id, &method.name)?,
                 &method.signature,
                 CallableOrigin::SourceMethod,
                 true,
@@ -282,6 +289,7 @@ fn source_trait_receiver_method_callable_facts(
                 graph,
                 schema,
                 format!("{owner}.{}", method.name),
+                source_member_symbol(graph, declaration.id, &method.name)?,
                 &method.signature,
                 CallableOrigin::SourceMethod,
                 true,
@@ -327,6 +335,7 @@ fn source_trait_impl_default_callable_facts(
                 graph,
                 schema,
                 format!("{owner}.{}", method.name),
+                source_member_symbol(graph, trait_declaration, &method.name)?,
                 &method.signature,
                 CallableOrigin::SourceMethod,
                 true,
@@ -411,7 +420,7 @@ fn source_variant_callable_facts(
                     params,
                     returns: TypeFact::enum_type(&owner, Some(&variant.name)),
                     origin: CallableOrigin::SourceVariant,
-                    symbol: SymbolRef::Source(format!("{owner}::{}", variant.name)),
+                    symbol: source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
                 })
             })
         })
@@ -549,6 +558,7 @@ fn callable_facts_from_signature(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     name: String,
+    symbol: SymbolRef,
     signature: &vela_hir::type_hint::FunctionSignature,
     origin: CallableOrigin,
     skip_self: bool,
@@ -572,7 +582,7 @@ fn callable_facts_from_signature(
             query_type_fact_from_hint(graph, hint, schema)
         });
     CallableFacts {
-        symbol: SymbolRef::Source(name.clone()),
+        symbol,
         name,
         params,
         returns,
@@ -830,13 +840,5 @@ fn qualified_declaration_label(
     let Some(declaration) = graph.declaration(declaration) else {
         return String::new();
     };
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
+    qualified_source_declaration_name(graph, declaration)
 }

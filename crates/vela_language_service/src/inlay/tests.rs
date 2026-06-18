@@ -93,6 +93,17 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
             .iter()
             .all(|hint| hint.kind() == InlayHintKind::Parameter)
     );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Source(
+                "game::main::Player.grant.amount".to_owned()
+            )),
+            Some(SymbolRef::Source(
+                "game::main::Player.grant.bonus".to_owned()
+            ))
+        ]
+    );
 }
 
 #[test]
