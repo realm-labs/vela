@@ -161,6 +161,42 @@ pub fn main(player: Player) {
 }
 
 #[test]
+fn inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    current_player().grant("raw", 1)
+    return current_player().grant("again", 2)
+}"#;
+    let first_call = line(text, 6);
+    let second_call = line(text, 7);
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(9, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(6, first_call.find(", 1").expect("first count arg") + 2),
+                "count:".to_owned()
+            ),
+            (
+                Position::new(7, second_call.find(", 2").expect("second count arg") + 2),
+                "count:".to_owned()
+            )
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_enum_variant_payloads() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum Payload {

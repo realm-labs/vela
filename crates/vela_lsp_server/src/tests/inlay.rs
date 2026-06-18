@@ -706,6 +706,79 @@ pub fn main(player: Player) {
 }
 
 #[test]
+fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    current_player().grant("raw", 1)
+    return current_player().grant("again", 2)
+}"#;
+    let first_call = text.lines().nth(6).expect("first call line");
+    let second_call = text.lines().nth(7).expect("second call line");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 9, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": {
+                    "line": 6,
+                    "character": first_call.find(", 1").expect("first count arg") + 2
+                },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 7,
+                    "character": second_call.find(", 2").expect("second count arg") + 2
+                },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
+#[test]
 fn lsp_inlay_hints_show_enum_variant_payload_names() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
