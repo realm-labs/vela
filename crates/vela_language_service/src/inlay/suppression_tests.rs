@@ -47,6 +47,47 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
 }
 
 #[test]
+fn inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main() {
+    current_player().grant("raw", 1)
+    return current_player().grant("again", 2)
+}"#;
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = vela_analysis::registry::RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_function(
+        "current_player",
+        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+    );
+    schema.insert_method(
+        "Player",
+        "grant",
+        TypeFact::function(vec![TypeFact::Any, TypeFact::I64], TypeFact::I64),
+    );
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(1, line(text, 1).find(", 1").expect("first count arg") + 2),
+                "arg1:".to_owned()
+            ),
+            (
+                Position::new(2, line(text, 2).find(", 2").expect("second count arg") + 2),
+                "arg1:".to_owned()
+            )
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_source_function_and_method_parameters() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Player { level: i64 }

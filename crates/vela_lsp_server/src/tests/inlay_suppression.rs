@@ -137,6 +137,139 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_receiver() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "functions": [
+                    {
+                        "name": "current_player",
+                        "fact": {
+                            "kind": "function",
+                            "params": [],
+                            "returns": { "kind": "host", "name": "Player" }
+                        }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [
+                                { "kind": "any" },
+                                { "kind": "primitive", "name": "i64" }
+                            ],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = r#"pub fn main() {
+    current_player().grant("raw", 1)
+    return current_player().grant("again", 2)
+}"#;
+    let first_call = text.lines().nth(1).expect("first call line");
+    let second_call = text.lines().nth(2).expect("second call line");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 4, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": {
+                    "line": 1,
+                    "character": first_call.find(", 1").expect("first count arg") + 2
+                },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 2,
+                    "character": second_call.find(", 2").expect("second count arg") + 2
+                },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
