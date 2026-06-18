@@ -350,7 +350,7 @@ syntax and semantic facts instead of editor-specific heuristics.
   schema facts: source functions, source methods, trait methods, source fields,
   enum variants, module path segments, schema fields, schema methods, schema
   variants, schema functions, stdlib functions, and stdlib methods.
-- [ ] Distinguish source-owned, schema/host-owned, and stdlib/default-library
+- [x] Distinguish source-owned, schema/host-owned, and stdlib/default-library
   symbols through modifiers without changing runtime semantics.
 - [x] Classify builtin type hints separately from source and schema type hints.
 - [x] Classify literals: strings, bytes, numbers, booleans, null, and comments.
@@ -376,9 +376,11 @@ Phase 3 notes:
 - Unresolved import leaves now classify as `unresolvedReference` with the
   `unresolved` modifier while preserving module classification for earlier
   import path segments.
-- Resolved-use provenance is still incomplete: source/schema/host/default-
-  library distinctions need stronger modifier coverage, and the broad showcase
-  still records some unstable receiver/unresolved cases as plain variables.
+- Source-owned declarations, local bindings, source declaration uses, and
+  script member uses now carry `source`, while schema/host facts continue to
+  carry `host` and stdlib facts continue to carry `defaultLibrary`.
+- Resolved-use classification is still incomplete: the broad showcase still
+  records some unstable receiver/unresolved cases as plain variables.
 
 Focused validation:
 

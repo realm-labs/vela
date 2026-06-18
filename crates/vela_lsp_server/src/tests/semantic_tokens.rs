@@ -88,6 +88,7 @@ fn lsp_semantic_tokens_mark_resolved_symbols() {
     let variable = token_type_index(token_types, "variable");
     let declaration = token_modifier_bit(token_modifiers, "declaration");
     let definition = token_modifier_bit(token_modifiers, "definition");
+    let source = token_modifier_bit(token_modifiers, "source");
 
     let text = "\
 use game::reward::grant
@@ -139,7 +140,7 @@ pub fn main(amount: i64) -> i64 {
         line(text, 1).find("main").expect("main should exist"),
         "main".len(),
         function,
-        declaration | definition,
+        declaration | definition | source,
     );
     assert_token_at(
         &tokens,
@@ -149,7 +150,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("parameter should exist"),
         "amount".len(),
         parameter,
-        declaration,
+        declaration | source,
     );
     assert_token_at(
         &tokens,
@@ -157,7 +158,7 @@ pub fn main(amount: i64) -> i64 {
         line(text, 2).find("next").expect("local should exist"),
         "next".len(),
         variable,
-        declaration,
+        declaration | source,
     );
     assert_token_at(
         &tokens,
@@ -165,7 +166,7 @@ pub fn main(amount: i64) -> i64 {
         line(text, 2).find("grant").expect("call should exist"),
         "grant".len(),
         function,
-        0,
+        source,
     );
     assert_token_at(
         &tokens,
@@ -175,7 +176,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("return value should exist"),
         "next".len(),
         variable,
-        0,
+        source,
     );
 }
 
@@ -197,6 +198,11 @@ fn lsp_semantic_tokens_classify_import_module_path_segments() {
             .expect("semantic token legend should list token types");
     let namespace = token_type_index(token_types, "namespace");
     let function = token_type_index(token_types, "function");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let source = token_modifier_bit(token_modifiers, "source");
 
     let text = "\
 use game::reward::grant
@@ -263,7 +269,7 @@ pub fn main() -> i64 {
         line(text, 0).find("grant").expect("imported declaration"),
         "grant".len(),
         function,
-        0,
+        source,
     );
 }
 
@@ -453,8 +459,10 @@ fn lsp_semantic_tokens_classify_script_members() {
     let field = token_type_index(token_types, "field");
     let enum_member = token_type_index(token_types, "enumMember");
     let method = token_type_index(token_types, "method");
+    let source = token_modifier_bit(token_modifiers, "source");
     let member_modifiers = token_modifier_bit(token_modifiers, "declaration")
-        | token_modifier_bit(token_modifiers, "definition");
+        | token_modifier_bit(token_modifiers, "definition")
+        | source;
 
     let text = "\
 pub struct Reward {
@@ -576,6 +584,11 @@ fn lsp_semantic_tokens_classify_script_member_uses() {
             .expect("semantic token legend should list token types");
     let property = token_type_index(token_types, "property");
     let method = token_type_index(token_types, "method");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let source = token_modifier_bit(token_modifiers, "source");
 
     let text = "\
 pub struct Reward {
@@ -623,7 +636,7 @@ pub fn main(reward: Reward) -> i64 {
             .expect("field use should exist"),
         "amount".len(),
         property,
-        0,
+        source,
     );
     assert_token_at(
         &tokens,
@@ -633,7 +646,7 @@ pub fn main(reward: Reward) -> i64 {
             .expect("method use should exist"),
         "bonus".len(),
         method,
-        0,
+        source,
     );
 }
 
@@ -654,6 +667,11 @@ fn lsp_semantic_tokens_classify_script_trait_method_uses() {
             .as_array()
             .expect("semantic token legend should list token types");
     let method = token_type_index(token_types, "method");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let source = token_modifier_bit(token_modifiers, "source");
 
     let text = "\
 pub trait Rewardable {
@@ -697,7 +715,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
             .expect("trait method call should exist"),
         "preview".len(),
         method,
-        0,
+        source,
     );
 }
 

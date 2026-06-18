@@ -65,13 +65,19 @@ pub fn main(amount: i64) -> i64 {
 
     let tokens = databases.semantic_tokens(&main);
 
+    let source_declaration_definition = SemanticTokenModifiers::DECLARATION
+        .union(SemanticTokenModifiers::DEFINITION)
+        .union(SemanticTokenModifiers::SOURCE);
+    let source_declaration =
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE);
+
     assert_token_at(
         &tokens,
         1,
         line(main_text, 1).find("main").expect("main should exist"),
         "main".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+        source_declaration_definition,
     );
     assert_token_at(
         &tokens,
@@ -81,7 +87,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("parameter should exist"),
         "amount".len(),
         SemanticTokenType::Parameter,
-        SemanticTokenModifiers::DECLARATION,
+        source_declaration,
     );
     assert_token_at(
         &tokens,
@@ -89,7 +95,7 @@ pub fn main(amount: i64) -> i64 {
         line(main_text, 2).find("next").expect("local should exist"),
         "next".len(),
         SemanticTokenType::Variable,
-        SemanticTokenModifiers::DECLARATION,
+        source_declaration,
     );
     assert_token_at(
         &tokens,
@@ -97,7 +103,7 @@ pub fn main(amount: i64) -> i64 {
         line(main_text, 2).find("grant").expect("call should exist"),
         "grant".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,
@@ -107,7 +113,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("argument should exist"),
         "amount".len(),
         SemanticTokenType::Parameter,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,
@@ -117,7 +123,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("return value should exist"),
         "next".len(),
         SemanticTokenType::Variable,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
 }
 
@@ -161,7 +167,7 @@ pub fn main() -> i64 {
             .expect("imported declaration"),
         "grant".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
 }
 
@@ -331,6 +337,11 @@ pub fn main(amount: i64) -> i64 {
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
+    let source_declaration_definition = SemanticTokenModifiers::DECLARATION
+        .union(SemanticTokenModifiers::DEFINITION)
+        .union(SemanticTokenModifiers::SOURCE);
+    let source_declaration =
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE);
 
     assert_token_at(
         &tokens,
@@ -338,7 +349,7 @@ pub fn main(amount: i64) -> i64 {
         line(text, 0).find("main").expect("function should exist"),
         "main".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+        source_declaration_definition,
     );
     assert_token_at(
         &tokens,
@@ -348,7 +359,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("parameter declaration should exist"),
         "amount".len(),
         SemanticTokenType::Parameter,
-        SemanticTokenModifiers::DECLARATION,
+        source_declaration,
     );
     assert_token_at(
         &tokens,
@@ -358,7 +369,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("parameter read should exist"),
         "amount".len(),
         SemanticTokenType::Parameter,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,
@@ -368,7 +379,7 @@ pub fn main(amount: i64) -> i64 {
             .expect("recovered parameter read should exist"),
         "amount".len(),
         SemanticTokenType::Parameter,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
 }
 
@@ -396,8 +407,9 @@ impl Reward {
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
 
     let tokens = databases.semantic_tokens(&document);
-    let member_modifiers =
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION);
+    let member_modifiers = SemanticTokenModifiers::DECLARATION
+        .union(SemanticTokenModifiers::DEFINITION)
+        .union(SemanticTokenModifiers::SOURCE);
 
     assert_token_at(
         &tokens,
@@ -484,7 +496,7 @@ pub fn main(reward: Reward) -> i64 {
             .expect("field use should exist"),
         "amount".len(),
         SemanticTokenType::Property,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,
@@ -494,7 +506,7 @@ pub fn main(reward: Reward) -> i64 {
             .expect("method use should exist"),
         "bonus".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
 }
 
@@ -521,7 +533,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
             .expect("trait method call should exist"),
         "preview".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
 }
 
@@ -748,8 +760,11 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
     );
 
     let tokens = databases.semantic_tokens(&main);
-    let declaration_definition =
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION);
+    let declaration_definition = SemanticTokenModifiers::DECLARATION
+        .union(SemanticTokenModifiers::DEFINITION)
+        .union(SemanticTokenModifiers::SOURCE);
+    let source_declaration =
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE);
 
     assert_token_at(
         &tokens,
@@ -827,7 +842,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("imported function"),
         "source_helper".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,
@@ -877,7 +892,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("local"),
         "source".len(),
         SemanticTokenType::Variable,
-        SemanticTokenModifiers::DECLARATION,
+        source_declaration,
     );
     assert_token_at(
         &tokens,
@@ -923,7 +938,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("source function call"),
         "source_helper".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,

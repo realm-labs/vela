@@ -556,6 +556,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     let method = token_type_index(token_types, "method");
     let host = token_modifier_bit(token_modifiers, "host");
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
+    let source = token_modifier_bit(token_modifiers, "source");
     let control_flow = token_modifier_bit(token_modifiers, "controlFlow");
     let declaration = token_modifier_bit(token_modifiers, "declaration");
     let definition = token_modifier_bit(token_modifiers, "definition");
@@ -606,7 +607,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .expect("struct name"),
         "Reward".len(),
         struct_token,
-        declaration | definition,
+        declaration | definition | source,
     );
     assert_token_at(
         &tokens,
@@ -616,7 +617,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .expect("const declaration"),
         "START_LEVEL".len(),
         const_token,
-        declaration | definition,
+        declaration | definition | source,
     );
     assert_token_at(
         &tokens,

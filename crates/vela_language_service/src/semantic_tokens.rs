@@ -745,12 +745,15 @@ fn function_call_classification(
 fn local_declaration_token_classification(binding: &LocalBinding) -> SemanticTokenClassification {
     SemanticTokenClassification::new(
         local_token_type(binding.kind),
-        SemanticTokenModifiers::DECLARATION,
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE),
     )
 }
 
 fn local_use_classification(binding: &LocalBinding) -> SemanticTokenClassification {
-    SemanticTokenClassification::new(local_token_type(binding.kind), SemanticTokenModifiers::NONE)
+    SemanticTokenClassification::new(
+        local_token_type(binding.kind),
+        SemanticTokenModifiers::SOURCE,
+    )
 }
 
 fn local_token_type(kind: LocalBindingKind) -> SemanticTokenType {
@@ -767,16 +770,20 @@ fn local_token_type(kind: LocalBindingKind) -> SemanticTokenType {
 fn declaration_classification(declaration: &Declaration) -> SemanticTokenClassification {
     SemanticTokenClassification::new(
         declaration_token_type(declaration.kind),
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+        SemanticTokenModifiers::DECLARATION
+            .union(SemanticTokenModifiers::DEFINITION)
+            .union(SemanticTokenModifiers::SOURCE),
     )
 }
 
 fn declaration_use_classification(declaration: &Declaration) -> SemanticTokenClassification {
-    let modifiers = if matches!(declaration.kind, DeclarationKind::Const) {
-        SemanticTokenModifiers::READONLY
-    } else {
-        SemanticTokenModifiers::NONE
-    };
+    let modifiers = SemanticTokenModifiers::SOURCE.union(
+        if matches!(declaration.kind, DeclarationKind::Const) {
+            SemanticTokenModifiers::READONLY
+        } else {
+            SemanticTokenModifiers::NONE
+        },
+    );
     SemanticTokenClassification::new(declaration_token_type(declaration.kind), modifiers)
 }
 
@@ -865,7 +872,9 @@ fn member_declaration_token_classification(
 ) -> SemanticTokenClassification {
     SemanticTokenClassification::new(
         token_type,
-        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+        SemanticTokenModifiers::DECLARATION
+            .union(SemanticTokenModifiers::DEFINITION)
+            .union(SemanticTokenModifiers::SOURCE),
     )
 }
 

@@ -86,7 +86,7 @@ fn method_use_classification(
         ));
     }
     script_method_exists(graph, receiver, name).then(|| {
-        SemanticTokenClassification::new(SemanticTokenType::Method, SemanticTokenModifiers::NONE)
+        SemanticTokenClassification::new(SemanticTokenType::Method, SemanticTokenModifiers::SOURCE)
     })
 }
 
@@ -103,7 +103,10 @@ fn field_use_classification(
         ));
     }
     script_field_exists(graph, receiver, name).then(|| {
-        SemanticTokenClassification::new(SemanticTokenType::Property, SemanticTokenModifiers::NONE)
+        SemanticTokenClassification::new(
+            SemanticTokenType::Property,
+            SemanticTokenModifiers::SOURCE,
+        )
     })
 }
 
