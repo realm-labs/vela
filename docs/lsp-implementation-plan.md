@@ -374,13 +374,22 @@ coverage complete based only on the older capability phases.
     host-path type facts, source/schema tuple-variant payload names, requested
     range filtering, missing-schema degradation, unknown-call suppression, and
     `Any` suppression for source/schema call parameters and variant payloads.
-- [ ] Audit workspace, configuration, file watching, schema reload, and launch
+- [x] Audit workspace, configuration, file watching, schema reload, and launch
   behavior.
   - Cover `workspace/didChangeWatchedFiles`,
     `workspace/didChangeConfiguration`, `workspace/didChangeWorkspaceFolders`,
     `workspace/configuration` if used, `.vela` create/change/delete/rename,
     `vela.toml`, schema artifacts, CLI flags, stdio, and editor package thin
     launcher validation.
+  - Current fixtures cover native watcher registration, `.vela`
+    create/delete/rename module graph updates, `vela.toml` invalid/valid/delete
+    diagnostics, schema invalid/valid/delete/reload diagnostics, schema-backed
+    completion updates after reload, workspace-folder reindexing,
+    `didChangeConfiguration` projection into workspace roots and host schema,
+    initialization-option configuration, stdio transport, native `--stdio`,
+    `--root`, `--schema`, and `--version` parsing, launch-configuration
+    fallback behavior, and VS Code/Zed package validators that keep editor
+    packages thin launchers around `vela_lsp_server` over stdio.
 - [ ] Complete matrix acceptance.
   - Every advertised row in
     [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md) has service
