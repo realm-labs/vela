@@ -3,8 +3,8 @@ use vela_analysis::{stdlib::stdlib_method_fact_with_lambda_arity, type_fact::Typ
 use crate::TextRange;
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, MemberReceiver, display_type_detail,
-    label_segment_matches,
+    CompletionInsertFormat, CompletionItem, CompletionKind, MemberReceiver,
+    display_type_detail_parts, label_segment_matches,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -69,15 +69,19 @@ pub(super) fn lambda_parameter_completion_items(
             if used_names.contains(&label.as_str()) || !label_segment_matches(&label, prefix) {
                 return None;
             }
-            Some(CompletionItem {
-                label,
-                kind: CompletionKind::Parameter,
-                detail: display_type_detail(param.display_name()),
-                insert_text: None,
-                insert_format: CompletionInsertFormat::PlainText,
-                sort_text: None,
-                metadata: Default::default(),
-            })
+            let detail_parts = display_type_detail_parts(param.display_name());
+            Some(
+                CompletionItem {
+                    label,
+                    kind: CompletionKind::Parameter,
+                    detail: detail_parts.render(),
+                    insert_text: None,
+                    insert_format: CompletionInsertFormat::PlainText,
+                    sort_text: None,
+                    metadata: Default::default(),
+                }
+                .with_detail_parts(detail_parts),
+            )
         })
         .collect()
 }
