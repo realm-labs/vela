@@ -152,6 +152,11 @@ The plan checklist is closed with service and native LSP fixtures for local,
 private declaration, public import-aware, source-backed schema, collision,
 hot-reload ABI, schema ABI, and versioned-edit behavior.
 
+M20.5 Phase 11 update: references and call hierarchy are complete enough for
+the current LSP track. The plan checklist is closed with service and native
+LSP fixtures for reference indexing, reference kinds, `textDocument/references`,
+`textDocument/documentHighlight`, and statically resolved call hierarchy.
+
 M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.

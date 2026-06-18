@@ -999,12 +999,12 @@ cargo test -p vela_lsp_server semantic_tokens
 
 Purpose: support workspace navigation and prepare rename.
 
-- [~] Build a reference index from `BindingMap` and module graph use sites.
+- [x] Build a reference index from `BindingMap` and module graph use sites.
   - [x] Build initial local binding references from `BindingMap` declarations
     and resolved local expression spans.
   - [x] Build initial script declaration references from resolved
     `BindingMap` declaration uses and module import resolutions.
-- [~] Index local, module, function, method, field, variant, trait, and schema
+- [x] Index local, module, function, method, field, variant, trait, and schema
   references.
   - [x] Index local binding declaration and read references within the owning
     function.
@@ -1034,7 +1034,7 @@ Purpose: support workspace navigation and prepare rename.
     typed trait receiver call sites.
   - [x] Index schema-backed variant declarations with source spans plus
     constructor and match-pattern uses.
-- [~] Track reference kind: read, write, call, type use, import, pattern,
+- [x] Track reference kind: read, write, call, type use, import, pattern,
   declaration.
   - [x] Track local declaration and read reference kinds.
   - [x] Track script declaration, import, and read reference kinds.
@@ -1054,7 +1054,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Track schema-backed enum record-variant field declaration/read/pattern
     reference kinds.
   - [x] Track schema-backed variant declaration/read/pattern reference kinds.
-- [~] Implement `textDocument/references`.
+- [x] Implement `textDocument/references`.
   - [x] Serve local binding references through the native LSP request.
   - [x] Serve imported module path segment references through the native LSP
     request.
@@ -1085,7 +1085,7 @@ Purpose: support workspace navigation and prepare rename.
   - [x] Serve schema-backed trait-method references through the native LSP
     request.
   - [x] Serve schema-backed variant references through the native LSP request.
-- [~] Implement `textDocument/documentHighlight`.
+- [x] Implement `textDocument/documentHighlight`.
   - [x] Serve local declaration/read highlights through the native LSP request.
   - [x] Serve imported module path segment highlights in the active document.
   - [x] Serve imported script function import/read highlights in the active
@@ -1108,7 +1108,7 @@ Purpose: support workspace navigation and prepare rename.
     active document.
   - [x] Serve schema-backed variant constructor and pattern highlights in the
     active document.
-- [~] Implement incoming and outgoing call hierarchy for script functions and
+- [x] Implement incoming and outgoing call hierarchy for script functions and
   methods where calls are statically resolved.
   - [x] Serve initial source-backed script function prepare, incoming, and
     outgoing call hierarchy for statically resolved calls.
