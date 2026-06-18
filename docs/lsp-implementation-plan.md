@@ -1639,6 +1639,78 @@ cargo test --workspace
 
 ---
 
+## User-Facing LSP Exit Criteria
+
+The native LSP must not be described as user-facing complete, and M20.5 must
+not move from `Active follow-up` to `Complete enough`, until all of these
+conditions are true:
+
+- The protocol matrix is complete for every advertised capability in
+  [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md): lifecycle
+  advertisement is pinned, each method has a JSON-RPC fixture, each service
+  query has focused editor-neutral tests, applicable syntax dimensions have
+  positive and negative coverage, dynamic/missing-schema/parser-recovery/stale
+  generation behavior is explicit, unsupported methods are negatively pinned,
+  and the relevant focused validation commands pass.
+- Phase 19 authoring-core work is complete. The implementation has inspected
+  the local rust-analyzer source layout when available, mapped the relevant
+  completion and formatting model to Vela, added `CompletionAnalysis` or its
+  equivalent service-owned structured context model, and routes completion
+  producers through explicit path, type, dot-access, declaration-body,
+  call-argument, pattern, statement, expected-type, and expected-name
+  contexts.
+- Member completion uses one unified source/schema/stdlib/builtin member
+  surface for source struct fields, source inherent impl methods, source trait
+  methods, schema-backed members, and builtin value/container methods.
+  Typed receiver `.` requests must not fall back to global completions.
+- Completion item rendering keeps symbol identity, filter text, insertion
+  text, visible label, label details, owner/module details, docs, ranking,
+  snippets, and resolve payloads separate until LSP projection.
+- The editor issues that reopened M20.5 have service and LSP regression
+  fixtures: compact builtin container type formatting for `Array<i64>`,
+  `Set<String>`, `Map<String, i64>`, and
+  `Result<Map<String, i64>, String>`; empty-prefix typed `.` completion for
+  source/schema/builtin receivers; source impl and trait method completion;
+  `struct Player { | }` declaration-body completion; readable short type
+  labels with owner details separated from insert text; and `for in` plus
+  `match` snippets.
+- Negative authoring cases are covered: dynamic `Any` receivers suppress
+  guessed members, unknown constructors suppress record fields, struct
+  declaration bodies suppress global/value/constructor fallback, malformed
+  cursor contexts recover without panics, stale generations are discarded, and
+  missing or stale schema facts degrade without inventing host facts.
+- Formatting is syntax-owned and idempotent for the Phase 19 type-hint
+  examples through full-document, range, and on-type paths where those paths
+  claim support. It must not introduce spaces around builtin type arguments or
+  type-argument line breaks before an explicit line-width policy exists.
+- Thin editor packages remain launch/configuration layers only; no VS Code,
+  Zed, or other editor package implements LSP request behavior that belongs in
+  `vela_language_service` or `vela_lsp_server`.
+- The focused Phase 19 commands pass:
+
+```bash
+cargo test -p vela_syntax formatting
+cargo test -p vela_language_service formatting
+cargo test -p vela_language_service completion_analysis
+cargo test -p vela_language_service completion
+cargo test -p vela_lsp_server formatting
+cargo test -p vela_lsp_server completion
+```
+
+- The full workspace gate passes after the focused checks:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+Only after every item above is satisfied may `docs/progress.md` restore a
+native LSP "user-facing complete" claim or mark the M20.5 follow-up complete
+enough.
+
+---
+
 ## 23. Phase 19: Rust-Analyzer-Style Authoring Core Refactor
 
 Purpose: close the real-editor gaps found after the Phase 18 validation pass
