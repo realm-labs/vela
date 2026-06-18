@@ -821,8 +821,14 @@ Purpose: make the new model viable for large workspaces and real editors.
     indexes instead of scanning every declaration for source/module candidates.
     Member, schema, stdlib, local-scope, import, and reference candidate paths
     still need explicit audit or index reuse proof.
-- [ ] Track module fingerprints so body-only edits preserve declaration and
+- [x] Track module fingerprints so body-only edits preserve declaration and
   import indexes.
+  - Parse summaries expose declaration/import fingerprints per module, and
+    the project import/dependency index now rebuilds only when declaration,
+    import, file-add/delete, or module-path fingerprints invalidate it.
+    `function_body_edit_does_not_invalidate_unrelated_modules` and
+    `declaration_and_import_fingerprints_invalidate_project_indexes` prove
+    body-only edits reparse one file while preserving project indexes and HIR.
 - [ ] Bound eager completion rendering. Defer expensive docs/detail formatting
   until after context filtering, prefix narrowing, or resolve.
 - [ ] Keep open-document queries prioritized over disk-only modules.

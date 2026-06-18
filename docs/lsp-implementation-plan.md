@@ -220,6 +220,10 @@ Purpose: make the service scale before adding expensive features.
 
 - [x] Split `SourceDb`, `ProjectDb`, `ParseDb`, `HirDb`, and `AnalysisDb`.
 - [x] Store file content hashes and declaration/import fingerprints.
+  - Module parse summaries now expose declaration/import fingerprints, and
+    the project import/dependency index is preserved across body-only edits
+    unless declaration, import, file-add/delete, or module-path fingerprints
+    change.
 - [x] Maintain module import and reverse-dependency indexes.
 - [x] Reparse changed files without reparsing unrelated files.
 - [x] Invalidate HIR and analysis by changed declaration/import fingerprints.

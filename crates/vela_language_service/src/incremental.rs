@@ -84,6 +84,24 @@ struct ParseSummary {
     import_fingerprint: u64,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct ModuleFingerprint {
+    declaration: u64,
+    import: u64,
+}
+
+impl ModuleFingerprint {
+    #[must_use]
+    pub const fn declaration(self) -> u64 {
+        self.declaration
+    }
+
+    #[must_use]
+    pub const fn import(self) -> u64 {
+        self.import
+    }
+}
+
 #[derive(Debug, Clone)]
 struct ParseRecord {
     source: SourceId,
@@ -125,6 +143,17 @@ impl ParseDb {
     #[must_use]
     pub fn parsed_document_count(&self) -> usize {
         self.records.len()
+    }
+
+    #[must_use]
+    pub fn module_fingerprint(&self, module_path: &ModulePath) -> Option<ModuleFingerprint> {
+        self.records
+            .values()
+            .find(|record| &record.module_path == module_path)
+            .map(|record| ModuleFingerprint {
+                declaration: record.summary.declaration_fingerprint,
+                import: record.summary.import_fingerprint,
+            })
     }
 
     fn update_from_sources(&mut self, sources: &BTreeMap<DocumentId, SourceRecord>) -> ParseUpdate {
@@ -224,6 +253,7 @@ pub struct ProjectDb {
     document_by_module: BTreeMap<ModulePath, DocumentId>,
     imports_by_module: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
     reverse_dependencies: BTreeMap<ModulePath, BTreeSet<ModulePath>>,
+    rebuild_count: usize,
 }
 
 impl ProjectDb {
@@ -237,11 +267,17 @@ impl ProjectDb {
         &self.reverse_dependencies
     }
 
+    #[must_use]
+    pub const fn rebuild_count(&self) -> usize {
+        self.rebuild_count
+    }
+
     fn rebuild(&mut self, parse_db: &ParseDb) {
         self.module_by_document.clear();
         self.document_by_module.clear();
         self.imports_by_module.clear();
         self.reverse_dependencies.clear();
+        self.rebuild_count = self.rebuild_count.saturating_add(1);
 
         for (document_id, record) in &parse_db.records {
             self.module_by_document
@@ -523,6 +559,7 @@ pub struct IndexingMetrics {
     total_lines: usize,
     parsed_document_count: usize,
     reparsed_document_count: usize,
+    project_rebuild_count: usize,
     hir_rebuild_count: usize,
     elapsed_micros: u128,
 }
@@ -551,6 +588,11 @@ impl IndexingMetrics {
     #[must_use]
     pub const fn reparsed_document_count(self) -> usize {
         self.reparsed_document_count
+    }
+
+    #[must_use]
+    pub const fn project_rebuild_count(self) -> usize {
+        self.project_rebuild_count
     }
 
     #[must_use]
@@ -748,9 +790,14 @@ impl LanguageServiceDatabases {
         let sources = source_records(project);
         self.source_db.replace(sources);
         let previous_parse_count = self.parse_db.parse_count();
+        let previous_project_rebuild_count = self.project_db.rebuild_count();
         let previous_hir_rebuild_count = self.hir_db.rebuild_count();
         let parse_update = self.parse_db.update_from_sources(self.source_db.records());
-        self.project_db.rebuild(&self.parse_db);
+        let project_index_invalidated = !parse_update.declaration_changed_modules.is_empty()
+            || !parse_update.import_changed_modules.is_empty();
+        if project_index_invalidated {
+            self.project_db.rebuild(&self.parse_db);
+        }
 
         let dependency_roots = parse_update
             .declaration_changed_modules
@@ -773,6 +820,9 @@ impl LanguageServiceDatabases {
             self.parse_db
                 .parse_count()
                 .saturating_sub(previous_parse_count),
+            self.project_db
+                .rebuild_count()
+                .saturating_sub(previous_project_rebuild_count),
             self.hir_db
                 .rebuild_count()
                 .saturating_sub(previous_hir_rebuild_count),
@@ -822,6 +872,7 @@ fn indexing_metrics(
     sources: &BTreeMap<DocumentId, SourceRecord>,
     parsed_document_count: usize,
     reparsed_document_count: usize,
+    project_rebuild_count: usize,
     hir_rebuild_count: usize,
     elapsed_micros: u128,
 ) -> IndexingMetrics {
@@ -836,6 +887,7 @@ fn indexing_metrics(
         total_lines,
         parsed_document_count,
         reparsed_document_count,
+        project_rebuild_count,
         hir_rebuild_count,
         elapsed_micros,
     }

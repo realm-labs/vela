@@ -48,6 +48,11 @@ fn function_body_edit_does_not_invalidate_unrelated_modules() {
         file("/workspace/scripts/game/config.vela", "pub const value = 1"),
     ]));
     let before_parse_count = db.parse_db().parse_count();
+    let before_project_rebuild_count = db.project_db().rebuild_count();
+    let before_fingerprint = db
+        .parse_db()
+        .module_fingerprint(&module("game::main"))
+        .expect("main fingerprint");
 
     let report = db.update(&project(&[
         file(
@@ -80,7 +85,99 @@ fn function_body_edit_does_not_invalidate_unrelated_modules() {
     );
     assert!(report.declaration_changed_modules().is_empty());
     assert!(report.import_changed_modules().is_empty());
+    assert_eq!(
+        db.parse_db()
+            .module_fingerprint(&module("game::main"))
+            .expect("main fingerprint after body edit"),
+        before_fingerprint
+    );
+    assert_eq!(
+        db.project_db().rebuild_count(),
+        before_project_rebuild_count
+    );
+    assert_eq!(report.metrics().project_rebuild_count(), 0);
     assert_eq!(report.metrics().hir_rebuild_count(), 0);
+}
+
+#[test]
+fn declaration_and_import_fingerprints_invalidate_project_indexes() {
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[
+        file(
+            "/workspace/scripts/game/main.vela",
+            "use game::reward::grant\npub fn main() { return grant() }",
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+        file(
+            "/workspace/scripts/game/bonus.vela",
+            "pub fn grant() { return 2 }",
+        ),
+    ]));
+    let initial = db
+        .parse_db()
+        .module_fingerprint(&module("game::main"))
+        .expect("main fingerprint");
+
+    let declaration_report = db.update(&project(&[
+        file(
+            "/workspace/scripts/game/main.vela",
+            "use game::reward::grant\npub fn main(amount: i64) { return grant() + amount }",
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+        file(
+            "/workspace/scripts/game/bonus.vela",
+            "pub fn grant() { return 2 }",
+        ),
+    ]));
+    let after_declaration = db
+        .parse_db()
+        .module_fingerprint(&module("game::main"))
+        .expect("main fingerprint after declaration edit");
+
+    assert_ne!(after_declaration.declaration(), initial.declaration());
+    assert_eq!(after_declaration.import(), initial.import());
+    assert!(
+        declaration_report
+            .declaration_changed_modules()
+            .contains(&module("game::main"))
+    );
+    assert!(declaration_report.import_changed_modules().is_empty());
+    assert_eq!(declaration_report.metrics().project_rebuild_count(), 1);
+
+    let import_report = db.update(&project(&[
+        file(
+            "/workspace/scripts/game/main.vela",
+            "use game::bonus::grant\npub fn main(amount: i64) { return grant() + amount }",
+        ),
+        file(
+            "/workspace/scripts/game/reward.vela",
+            "pub fn grant() { return 1 }",
+        ),
+        file(
+            "/workspace/scripts/game/bonus.vela",
+            "pub fn grant() { return 2 }",
+        ),
+    ]));
+    let after_import = db
+        .parse_db()
+        .module_fingerprint(&module("game::main"))
+        .expect("main fingerprint after import edit");
+
+    assert_eq!(after_import.declaration(), after_declaration.declaration());
+    assert_ne!(after_import.import(), after_declaration.import());
+    assert!(import_report.declaration_changed_modules().is_empty());
+    assert!(
+        import_report
+            .import_changed_modules()
+            .contains(&module("game::main"))
+    );
+    assert_eq!(import_report.metrics().project_rebuild_count(), 1);
 }
 
 #[test]

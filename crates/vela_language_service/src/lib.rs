@@ -49,8 +49,8 @@ pub use formatting::{FormattingIr, FormattingSegment, FormattingSegmentKind};
 pub use hover::{Hover, HoverKind};
 pub use incremental::{
     AnalysisDb, BackgroundResult, CancellationHandle, CancellationToken, GenerationToken, HirDb,
-    IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ParseDb, ProjectDb,
-    ScheduledModule, SchemaDb, SchemaDiagnostic, SourceDb, SourceRecord, WorkPriority,
+    IndexingMetrics, InvalidationReport, LanguageServiceDatabases, ModuleFingerprint, ParseDb,
+    ProjectDb, ScheduledModule, SchemaDb, SchemaDiagnostic, SourceDb, SourceRecord, WorkPriority,
 };
 pub use inlay::{InlayHint, InlayHintKind};
 pub use project::{
