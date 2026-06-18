@@ -857,8 +857,22 @@ Purpose: make the new model viable for large workspaces and real editors.
     gates, with completion coverage in
     `cancellable_completion_discards_stale_generation_results` and
     `cancellable_completion_discards_cancelled_queries`.
-- [ ] Ensure configuration is loaded through `vela.toml`, launch flags, and
+- [x] Ensure configuration is loaded through `vela.toml`, launch flags, and
   LSP settings without putting protocol types in the service.
+  - `vela_language_service` owns `WorkspaceConfig`, `WorkspaceRoot`,
+    `ProjectMode`, `SchemaConfig`, and `WorkspaceConfig::from_vela_toml`.
+    `vela_lsp_server` owns CLI `--root`/`--schema`, JSON editor settings, and
+    `workspace/didChangeConfiguration` projection into those service-owned
+    types. Boundary scan found no LSP protocol types in
+    `vela_language_service`; the only `serde_json::Value` occurrence there is
+    schema-source test data construction. Covered by
+    `vela_toml_parses_roots_and_schema`,
+    `cli_config_flags_parse_roots_and_schema`,
+    `cli_config_flags_seed_workspace_config`,
+    `editor_configuration_reads_nested_vela_settings`,
+    `editor_config_maps_to_workspace_config`,
+    `lsp_workspace_configuration_request_updates_workspace_config`, and
+    `invalid_vela_toml_publishes_config_diagnostic`.
 - [ ] Add stress fixtures or benchmarks for many files when a cheap
   representative test can be maintained.
 
