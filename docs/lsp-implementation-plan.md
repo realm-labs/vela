@@ -706,6 +706,7 @@ Tests:
 - [x] `type_definition_follows_imported_source_field_type_alias`
 - [x] `type_definition_follows_imported_function_return_source_type`
 - [x] `type_definition_follows_imported_source_member_type`
+- [x] `type_definition_follows_imported_enum_variant_constructor_type`
 - [x] `type_definition_returns_none_for_source_primitive_field`
 - [x] `type_definition_returns_none_for_dynamic_local_value`
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
@@ -728,6 +729,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_source_struct_field_type_alias`
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`
+- [x] `lsp_type_definition_follows_imported_enum_variant_constructor_type`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
 - [x] `lsp_type_definition_returns_null_for_dynamic_local_value`
 - [x] `lsp_type_definition_follows_schema_field_type_source_span`

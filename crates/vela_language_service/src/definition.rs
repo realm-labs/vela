@@ -8,7 +8,10 @@ use crate::{
     SymbolRef, TextRange,
     callable_context::callable_facts,
     path_calls,
-    symbol_ref::{qualified_source_declaration_name, source_symbol_for_declaration},
+    symbol_ref::{
+        qualified_source_declaration_name, source_enum_variant_symbol,
+        source_symbol_for_declaration,
+    },
     symbol_target::SymbolTarget,
 };
 
@@ -135,6 +138,10 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
+        if let Some(definition) = self.source_enum_variant_owner_type_definition(&target) {
+            return Some(definition);
+        }
+
         if target.is_schema_symbol() {
             return self.schema_type_definition_for_name(target.text());
         }
@@ -255,6 +262,28 @@ impl LanguageServiceDatabases {
             | TypeFact::Function { .. }
             | TypeFact::Module { .. } => None,
         }
+    }
+
+    fn source_enum_variant_owner_type_definition(
+        &self,
+        target: &SymbolTarget,
+    ) -> Option<Definition> {
+        let symbol = target.symbol()?;
+        let graph = self.hir_db().graph();
+        graph
+            .declarations()
+            .filter(|declaration| declaration.kind == DeclarationKind::Enum)
+            .find_map(|declaration| {
+                let shape = graph.enum_shape(declaration.id)?;
+                shape
+                    .variants
+                    .iter()
+                    .any(|variant| {
+                        source_enum_variant_symbol(graph, declaration.id, &variant.name).as_ref()
+                            == Some(symbol)
+                    })
+                    .then(|| self.definition_from_declaration(declaration))?
+            })
     }
 
     fn source_type_definition_for_name(
