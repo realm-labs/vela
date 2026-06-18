@@ -118,6 +118,78 @@ return Inventory { slots: 2 };
 }
 
 #[test]
+fn type_definition_follows_imported_parameter_source_type_hint() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+fn main(bag: Bag) {
+return bag;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let parameter_line = main_text.lines().nth(2).expect("parameter line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(2, parameter_line.find("Bag").expect("type hint")),
+        )
+        .expect("type definition should resolve imported parameter type hint");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
+fn type_definition_follows_imported_field_source_type_hint() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+struct Player {
+inventory: Bag,
+}
+
+fn main(player: Player) {
+return player.inventory;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let field_line = main_text.lines().nth(3).expect("field line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(3, field_line.find("Bag").expect("type hint")),
+        )
+        .expect("type definition should resolve imported field type hint");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_source_field_type_alias() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
