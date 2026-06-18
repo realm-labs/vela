@@ -87,6 +87,7 @@ mod completion_struct;
 mod completion_type;
 mod formatting;
 mod inlay;
+mod inlay_suppression;
 mod lifecycle;
 mod stdio;
 mod document_sync {

@@ -153,6 +153,54 @@ fn inlay_hints_suppress_any_schema_enum_variant_payloads() {
     );
 }
 
+#[test]
+fn inlay_hints_suppress_any_lambda_parameter_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main(player: Player) {
+    let ignored: Array<Any> = player.values.map(|value| value);
+    let filtered: Map<String, Any> = player.rewards.filter(|key, value| true);
+    let stable: Array<i64> = [1, 2, 3];
+    let mapped: Array<i64> = stable.map(|score| score + 1);
+}"#;
+    let filter_line = line(text, 2);
+    let mapped_line = line(text, 4);
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = vela_analysis::registry::RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "values", TypeFact::array(TypeFact::Any));
+    schema.insert_field(
+        "Player",
+        "rewards",
+        TypeFact::map(TypeFact::STRING, TypeFact::Any),
+    );
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(6, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(
+                    2,
+                    filter_line.find("key").expect("stable map key param") + "key".len()
+                ),
+                ": String".to_owned()
+            ),
+            (
+                Position::new(
+                    4,
+                    mapped_line.find("score").expect("stable lambda param") + "score".len()
+                ),
+                ": i64".to_owned()
+            )
+        ]
+    );
+}
+
 fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
     hints
         .iter()

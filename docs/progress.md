@@ -333,6 +333,11 @@ source/schema type declarations when source-backed, while primitive fields,
 schema methods, schema trait methods, and schema variants without owner type
 spans return null for `textDocument/typeDefinition`.
 
+M20.5 Phase 15 update: language-service and native LSP inlay fixtures now
+cover stdlib callback/lambda parameter hint suppression when inferred
+collection facts cross dynamic `Any` boundaries, while preserving stable
+callback parameter hints for concrete collection element types.
+
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
 `textDocument/signatureHelp` now resolves stdlib function calls, typed
