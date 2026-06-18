@@ -624,7 +624,7 @@ and semantic tokens use the same identities and display primitives.
   `DisplayParts` alongside their rendered strings while keeping LSP projection
   stable; richer prose completion and hover classification still need to
   converge on it.
-- [~] Make go-to-definition and hover resolve symbols through the shared
+- [x] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from
   `QueryContext` identifier ranges, member receiver facts, schema source-span
@@ -632,9 +632,8 @@ and semantic tokens use the same identities and display primitives.
   resolves local binding, local declaration, source declaration, and source enum
   variant identities from the query binding context, resolves import path
   segments to source declaration/module identities, and local hover/definition
-  plus import module hover consume that shared identity before falling back to
-  feature-local logic. Script-owned member fallbacks still need deeper shared
-  symbol resolution before this item is complete.
+  plus import module and script-owned member hover consume that shared identity
+  before falling back to feature-local logic.
 - [~] Ensure schema-owned symbols can be displayed and completed without
   pretending they have source definitions.
   Completion edit metadata now uses editor-neutral `edit_range` naming instead

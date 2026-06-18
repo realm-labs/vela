@@ -6,12 +6,16 @@ use vela_analysis::{
 use vela_common::Span;
 use vela_hir::{
     binding::{BindingMap, BindingResolution, LocalBinding},
-    module_graph::{Declaration, Import, ImportResolution, ModulePath},
+    module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModulePath},
+    type_hint::ImplMetadataKind,
 };
 
 use crate::{
     LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
-    symbol_ref::{source_enum_variant_symbol, source_symbol_for_declaration},
+    symbol_ref::{
+        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
+        source_symbol_for_declaration,
+    },
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -120,6 +124,10 @@ fn symbol_ref_for(
     symbol_ref_from_bindings(databases, query, text)
         .or_else(|| symbol_ref_for_source_declaration(databases, query, text))
         .or_else(|| symbol_ref_for_import(databases, query, text))
+        .or_else(|| {
+            member_receiver_fact
+                .and_then(|receiver| script_member_symbol_ref(databases, text, receiver))
+        })
         .or_else(|| fact_symbol_ref_for(databases, text, member_receiver_fact))
 }
 
@@ -222,6 +230,91 @@ fn symbol_ref_for_import(
         graph
             .module_id(&ModulePath::new(path.iter().cloned()))
             .map(|_| SymbolRef::Source(path.join("::")))
+    })
+}
+
+fn script_member_symbol_ref(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    receiver: &TypeFact,
+) -> Option<SymbolRef> {
+    script_field_symbol_ref(databases, text, receiver)
+        .or_else(|| script_method_symbol_ref(databases, text, receiver))
+        .or_else(|| script_trait_method_symbol_ref(databases, text, receiver))
+}
+
+fn script_field_symbol_ref(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    receiver: &TypeFact,
+) -> Option<SymbolRef> {
+    let graph = databases.hir_db().graph();
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Struct
+            || !owner_names
+                .iter()
+                .any(|owner| declaration_name_matches(graph, declaration, owner))
+        {
+            return None;
+        }
+        graph
+            .struct_shape(declaration.id)?
+            .fields
+            .iter()
+            .any(|field| field.name == text)
+            .then(|| source_member_symbol(graph, declaration.id, text))?
+    })
+}
+
+fn script_method_symbol_ref(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    receiver: &TypeFact,
+) -> Option<SymbolRef> {
+    let graph = databases.hir_db().graph();
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        if !matches!(metadata.kind, ImplMetadataKind::Inherent)
+            || !owner_names
+                .iter()
+                .any(|owner| impl_target_matches(&metadata.target_path, owner))
+        {
+            return None;
+        }
+        metadata
+            .methods
+            .iter()
+            .any(|method| method.name == text)
+            .then(|| source_impl_method_symbol(graph, declaration.id, text))?
+    })
+}
+
+fn script_trait_method_symbol_ref(
+    databases: &LanguageServiceDatabases,
+    text: &str,
+    receiver: &TypeFact,
+) -> Option<SymbolRef> {
+    let graph = databases.hir_db().graph();
+    let owner_names = trait_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Trait
+            || !owner_names
+                .iter()
+                .any(|owner| declaration_name_matches(graph, declaration, owner))
+        {
+            return None;
+        }
+        graph
+            .trait_shape(declaration.id)?
+            .methods
+            .iter()
+            .any(|method| method.name == text)
+            .then(|| source_member_symbol(graph, declaration.id, text))?
     })
 }
 
@@ -359,6 +452,115 @@ fn import_segment_index(
         search_start = relative + segment.len();
     }
     None
+}
+
+fn record_owner_names(fact: &TypeFact) -> Vec<String> {
+    let mut names = Vec::new();
+    collect_record_owner_names(fact, &mut names);
+    names
+}
+
+fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
+    match fact {
+        TypeFact::Record { name } => push_owner_names(names, name),
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_record_owner_names(fact, names);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Trait { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn trait_owner_names(fact: &TypeFact) -> Vec<String> {
+    let mut names = Vec::new();
+    collect_trait_owner_names(fact, &mut names);
+    names
+}
+
+fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
+    match fact {
+        TypeFact::Trait { name } => push_owner_names(names, name),
+        TypeFact::Union(facts) => {
+            for fact in facts {
+                collect_trait_owner_names(fact, names);
+            }
+        }
+        TypeFact::Unknown
+        | TypeFact::Never
+        | TypeFact::Any
+        | TypeFact::Primitive(_)
+        | TypeFact::Range
+        | TypeFact::Array { .. }
+        | TypeFact::Map { .. }
+        | TypeFact::Set { .. }
+        | TypeFact::Iterator { .. }
+        | TypeFact::Option { .. }
+        | TypeFact::OptionSome { .. }
+        | TypeFact::OptionNone
+        | TypeFact::Result { .. }
+        | TypeFact::ResultOk { .. }
+        | TypeFact::ResultErr { .. }
+        | TypeFact::Function { .. }
+        | TypeFact::Enum { .. }
+        | TypeFact::Host { .. }
+        | TypeFact::Record { .. }
+        | TypeFact::Module { .. } => {}
+    }
+}
+
+fn push_owner_names(names: &mut Vec<String>, name: &str) {
+    if !names.iter().any(|owner| owner == name) {
+        names.push(name.to_owned());
+    }
+    if let Some(short) = name.rsplit("::").next()
+        && short != name
+        && !names.iter().any(|owner| owner == short)
+    {
+        names.push(short.to_owned());
+    }
+}
+
+fn declaration_name_matches(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    owner: &str,
+) -> bool {
+    declaration.name == owner
+        || graph
+            .module_path(declaration.module)
+            .map(|path| {
+                let module = path.join();
+                if module.is_empty() {
+                    declaration.name.clone()
+                } else {
+                    format!("{module}::{}", declaration.name)
+                }
+            })
+            .is_some_and(|qualified| qualified == owner)
+}
+
+fn impl_target_matches(path: &[String], owner: &str) -> bool {
+    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
 }
 
 fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
@@ -564,6 +766,63 @@ mod tests {
         assert_eq!(
             target.symbol(),
             Some(&SymbolRef::Source("game::reward".to_owned()))
+        );
+    }
+
+    #[test]
+    fn target_resolves_script_field_symbol_from_receiver_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Player {
+    level: i64,
+}
+fn main(player: Player) {
+    return player.level
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(4).expect("field use line should exist");
+        let query = QueryContext::from_databases(
+            &databases,
+            &document,
+            Position::new(4, use_line.find("level").expect("field use should exist")),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::main::Player.level".to_owned()))
+        );
+    }
+
+    #[test]
+    fn target_resolves_script_method_symbol_from_receiver_fact() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Player {
+    level: i64,
+}
+impl Player {
+    fn grant(amount: i64) -> bool {
+        return amount > 0
+    }
+}
+fn main(player: Player) {
+    return player.grant(3)
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(9).expect("method use line should exist");
+        let query = QueryContext::from_databases(
+            &databases,
+            &document,
+            Position::new(9, use_line.find("grant").expect("method use should exist")),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::main::Player.grant".to_owned()))
         );
     }
 

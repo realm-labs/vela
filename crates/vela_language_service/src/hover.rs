@@ -128,6 +128,13 @@ impl Hover {
     pub fn symbol(&self) -> Option<&SymbolRef> {
         self.symbol.as_ref()
     }
+
+    fn with_preferred_symbol(mut self, symbol: Option<SymbolRef>) -> Self {
+        if let Some(symbol) = symbol {
+            self.symbol = Some(symbol);
+        }
+        self
+    }
 }
 
 impl LanguageServiceDatabases {
@@ -214,17 +221,17 @@ impl LanguageServiceDatabases {
         if let Some(hover) =
             script_member_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover);
+            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
         }
         if let Some(hover) =
             script_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover);
+            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
         }
         if let Some(hover) =
             script_trait_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover);
+            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
         }
         if let Some(hover) = schema::member_hover(
             self.schema_db().facts(),

@@ -197,7 +197,12 @@ fn definition_from_resolution_at_target(
         }
         BindingResolution::Declaration(declaration) => {
             let declaration = graph.declaration(*declaration)?;
-            databases.definition_from_declaration(declaration)
+            let mut definition = databases.definition_from_declaration(declaration)?;
+            let declaration_symbol = source_symbol_for_declaration(graph, declaration);
+            if target.symbol() == Some(&declaration_symbol) {
+                definition.symbol = Some(declaration_symbol);
+            }
+            Some(definition)
         }
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
