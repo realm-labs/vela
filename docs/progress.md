@@ -163,6 +163,12 @@ resolved modifiers, script/schema/builtin token classes, full tokens, range
 tokens, parser-recovery degradation, client fallback projection, and delta
 responses.
 
+M20.5 Phase 8 update: hover, definition, declaration, and type-definition are
+complete enough for the current LSP track. The plan checklist is closed with
+analysis, service, and native LSP fixtures for source, schema, stdlib, missing
+schema, dynamic/unresolved, cross-file, and source-span-backed navigation
+behavior.
+
 M20.5 schema hover update: schema artifacts now carry optional docs metadata
 for exported facts, and schema-backed hovers surface docs for types, fields,
 variants, methods, trait methods, and functions.

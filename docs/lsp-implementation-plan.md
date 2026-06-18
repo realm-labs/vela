@@ -688,7 +688,7 @@ cargo test -p vela_analysis completion
 
 Purpose: expose semantic facts and navigation.
 
-- [~] Hover locals, parameters, captures, declarations, modules, functions,
+- [x] Hover locals, parameters, captures, declarations, modules, functions,
   methods, fields, variants, traits, and type hints.
   - Initial hover support now covers script parameters/declarations,
     source-owned globals, source-owned struct fields, source-owned method
@@ -698,14 +698,14 @@ Purpose: expose semantic facts and navigation.
     stdlib functions, stdlib receiver methods, imported module path segments,
     missing-schema type-hint degradation, and null results for unresolved names
     plus dynamic receiver members.
-- [~] Include docs, type facts, effects, permissions, origins, and source spans
+- [x] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
   - Schema-backed hover now surfaces docs copied through the static schema
     artifact for types, fields, variants, methods, trait methods, and
     functions.
 - [x] Implement go to definition for local bindings.
 - [x] Implement go to definition for imported module declarations.
-- [~] Implement go to definition for schema items with source spans.
+- [x] Implement go to definition for schema items with source spans.
   - Initial service and LSP definition support schema type, trait, and
     function source spans when the referenced schema `SourceId` exists in the
     current workspace snapshot.
@@ -715,7 +715,7 @@ Purpose: expose semantic facts and navigation.
   - Schema-backed enum variant qualified paths now follow schema source spans
     when the referenced schema `SourceId` exists in the current workspace
     snapshot.
-- [~] Implement go to declaration/type definition where LSP clients separate
+- [x] Implement go to declaration/type definition where LSP clients separate
   those requests.
   - Initial language-service and LSP support routes `textDocument/declaration`
     through the same source/schema-backed navigation spans as definition.
