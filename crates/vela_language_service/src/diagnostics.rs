@@ -8,7 +8,9 @@ use vela_hir::{
     type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
 };
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration};
+use crate::{
+    DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration,
+};
 
 pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";
 
@@ -59,6 +61,7 @@ pub struct DiagnosticLabel {
     document_id: DocumentId,
     range: DiagnosticRange,
     message: String,
+    message_parts: DisplayParts,
 }
 
 impl DiagnosticLabel {
@@ -76,17 +79,28 @@ impl DiagnosticLabel {
     pub fn message(&self) -> &str {
         &self.message
     }
+
+    #[must_use]
+    pub fn message_parts(&self) -> &DisplayParts {
+        &self.message_parts
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DiagnosticCandidate {
     replacement: String,
+    replacement_parts: DisplayParts,
 }
 
 impl DiagnosticCandidate {
     #[must_use]
     pub fn replacement(&self) -> &str {
         &self.replacement
+    }
+
+    #[must_use]
+    pub fn replacement_parts(&self) -> &DisplayParts {
+        &self.replacement_parts
     }
 }
 
@@ -95,7 +109,9 @@ pub struct DiagnosticRepairHint {
     document_id: DocumentId,
     range: DiagnosticRange,
     title: String,
+    title_parts: DisplayParts,
     replacement: String,
+    replacement_parts: DisplayParts,
 }
 
 impl DiagnosticRepairHint {
@@ -115,8 +131,18 @@ impl DiagnosticRepairHint {
     }
 
     #[must_use]
+    pub fn title_parts(&self) -> &DisplayParts {
+        &self.title_parts
+    }
+
+    #[must_use]
     pub fn replacement(&self) -> &str {
         &self.replacement
+    }
+
+    #[must_use]
+    pub fn replacement_parts(&self) -> &DisplayParts {
+        &self.replacement_parts
     }
 }
 
@@ -125,6 +151,7 @@ pub struct ServiceDiagnostic {
     severity: ServiceDiagnosticSeverity,
     code: Option<String>,
     message: String,
+    message_parts: DisplayParts,
     range: Option<DiagnosticRange>,
     labels: Vec<DiagnosticLabel>,
     candidates: Vec<DiagnosticCandidate>,
@@ -145,6 +172,11 @@ impl ServiceDiagnostic {
     #[must_use]
     pub fn message(&self) -> &str {
         &self.message
+    }
+
+    #[must_use]
+    pub fn message_parts(&self) -> &DisplayParts {
+        &self.message_parts
     }
 
     #[must_use]
@@ -450,6 +482,7 @@ impl LanguageServiceDatabases {
             severity: diagnostic.severity.into(),
             code: diagnostic.code.clone(),
             message: diagnostic.message.clone(),
+            message_parts: DisplayParts::plain(diagnostic.message.clone()),
             range: diagnostic.span.and_then(|span| self.range_for_span(span)),
             labels: diagnostic
                 .labels
@@ -460,6 +493,7 @@ impl LanguageServiceDatabases {
                         document_id,
                         range,
                         message: label.message.clone(),
+                        message_parts: DisplayParts::plain(label.message.clone()),
                     })
                 })
                 .collect(),
@@ -468,6 +502,7 @@ impl LanguageServiceDatabases {
                 .iter()
                 .map(|candidate| DiagnosticCandidate {
                     replacement: candidate.replacement.clone(),
+                    replacement_parts: DisplayParts::plain(candidate.replacement.clone()),
                 })
                 .collect(),
             repair_hints: diagnostic
@@ -479,7 +514,9 @@ impl LanguageServiceDatabases {
                         document_id,
                         range,
                         title: repair.title.clone(),
+                        title_parts: DisplayParts::plain(repair.title.clone()),
                         replacement: repair.replacement.clone(),
+                        replacement_parts: DisplayParts::plain(repair.replacement.clone()),
                     })
                 })
                 .collect(),
@@ -508,10 +545,12 @@ impl LanguageServiceDatabases {
 }
 
 fn schema_diagnostic(diagnostic: &crate::SchemaDiagnostic) -> ServiceDiagnostic {
+    let message = diagnostic.message().to_owned();
     ServiceDiagnostic {
         severity: ServiceDiagnosticSeverity::Warning,
         code: Some("schema::unavailable".to_owned()),
-        message: diagnostic.message().to_owned(),
+        message: message.clone(),
+        message_parts: DisplayParts::plain(message),
         range: None,
         labels: Vec::new(),
         candidates: Vec::new(),
@@ -740,7 +779,8 @@ fn diagnostic_mentions_source(diagnostic: &Diagnostic, source: SourceId) -> bool
 mod tests {
     use super::*;
     use crate::{
-        SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+        DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
     };
 
     fn file(path: &str, text: &str) -> SourceFileSnapshot {
@@ -879,6 +919,7 @@ mod tests {
                     && diagnostic.severity() == ServiceDiagnosticSeverity::Warning
                     && diagnostic.range().is_some()
                     && diagnostic.message() == "unused import `grant`"
+                    && diagnostic.message_parts().render() == "unused import `grant`"
             }),
             "{:?}",
             diagnostics.diagnostics()
@@ -1055,17 +1096,42 @@ mod tests {
         let diagnostic = Diagnostic::error("unknown name `levle`")
             .with_code("hir::unresolved_name")
             .with_span(Span::new(source, 23, 28))
+            .with_label(Span::new(source, 23, 28), "unresolved binding")
             .with_candidate("level")
             .with_repair("replace with `level`", Span::new(source, 23, 28), "level");
 
         let converted = db.convert_diagnostic(&diagnostic);
 
+        assert_eq!(converted.message(), "unknown name `levle`");
+        assert_eq!(converted.message_parts().render(), "unknown name `levle`");
+        assert_eq!(
+            converted.message_parts().parts()[0].kind(),
+            DisplayPartKind::Text
+        );
+        assert_eq!(converted.labels().len(), 1);
+        assert_eq!(converted.labels()[0].message(), "unresolved binding");
+        assert_eq!(
+            converted.labels()[0].message_parts().render(),
+            "unresolved binding"
+        );
         assert_eq!(converted.candidates().len(), 1);
         assert_eq!(converted.candidates()[0].replacement(), "level");
+        assert_eq!(
+            converted.candidates()[0].replacement_parts().render(),
+            "level"
+        );
         assert_eq!(converted.repair_hints().len(), 1);
         assert_eq!(converted.repair_hints()[0].document_id(), &document);
         assert_eq!(converted.repair_hints()[0].title(), "replace with `level`");
+        assert_eq!(
+            converted.repair_hints()[0].title_parts().render(),
+            "replace with `level`"
+        );
         assert_eq!(converted.repair_hints()[0].replacement(), "level");
+        assert_eq!(
+            converted.repair_hints()[0].replacement_parts().render(),
+            "level"
+        );
         assert_eq!(
             converted.repair_hints()[0].range().start(),
             Position::new(0, 23)
