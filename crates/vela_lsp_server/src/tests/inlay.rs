@@ -5,6 +5,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod schema_method_return_receivers;
+
 #[test]
 fn lsp_inlay_hints_show_parameter_names() {
     let mut server = LspServer::new();

@@ -1792,6 +1792,7 @@ Tests:
 - [x] `inlay_hints_show_stable_local_typefacts`
 - [x] `inlay_hints_show_lambda_parameter_facts`
 - [x] `inlay_hints_show_host_path_typefacts`
+- [x] `inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver`
 - [x] `inlay_hints_show_enum_variant_payload_names`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
@@ -1812,6 +1813,7 @@ Tests:
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
+- [x] `lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
 - [x] `lsp_inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`

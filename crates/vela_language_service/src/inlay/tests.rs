@@ -243,6 +243,68 @@ fn inlay_hints_show_host_path_typefacts() {
 }
 
 #[test]
+fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main(player: Player) {
+    let slots = player.inventory().slots + 1;
+    player.inventory().slots += slots;
+    let dynamic = player.inventory().mystery;
+}"#;
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_method(
+        "Player",
+        "inventory",
+        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+    );
+    schema.insert_field("Inventory", "slots", TypeFact::I64);
+    schema.insert_field("Inventory", "mystery", TypeFact::Any);
+    databases.set_schema_facts(schema);
+    let first_line = text.lines().nth(1).expect("first slots line");
+    let second_line = text.lines().nth(2).expect("second slots line");
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(5, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (Position::new(1, "    let slots".len()), ": i64".to_owned()),
+            (
+                Position::new(
+                    1,
+                    first_line.find("slots +").expect("first slots field") + "slots".len()
+                ),
+                ": i64".to_owned()
+            ),
+            (
+                Position::new(
+                    2,
+                    second_line.find("slots +=").expect("second slots field") + "slots".len()
+                ),
+                ": i64".to_owned()
+            )
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::local_at(
+                "slots",
+                document.clone(),
+                TextRange::new(38, 43)
+            )),
+            Some(SymbolRef::Schema("Inventory.slots".to_owned())),
+            Some(SymbolRef::Schema("Inventory.slots".to_owned()))
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_show_enum_variant_payload_names() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum QuestProgress {
