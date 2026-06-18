@@ -11,8 +11,8 @@ use crate::{
 };
 
 use super::{
-    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    name_range_in_text, span_text_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, name_range_in_text, span_text_range,
+    workspace_edit_for_rename,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -36,23 +36,7 @@ pub(super) fn rename_script_field(
     push_script_field_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_script_field_use_edits(databases, &target, new_name, &mut edits_by_document);
 
-    let document_edits = edits_by_document
-        .into_iter()
-        .map(|(document_id, mut edits)| {
-            edits.sort_by_key(|edit| {
-                let start = edit.range.start();
-                (start.line, start.character)
-            });
-            edits.dedup();
-            document_text_edit_for_rename(databases, document_id, edits)
-        })
-        .collect::<Vec<_>>();
-
-    Some(WorkspaceEdit {
-        document_edits,
-        risks: Vec::new(),
-        symbol: None,
-    })
+    workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
 pub(super) fn script_field_declaration_target(

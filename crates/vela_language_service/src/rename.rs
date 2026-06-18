@@ -56,7 +56,7 @@ impl PrepareRename {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WorkspaceEdit {
-    document_edits: Vec<DocumentTextEdit>,
+    edit_plan: EditPlan,
     risks: Vec<RenameRisk>,
     symbol: Option<SymbolRef>,
 }
@@ -65,10 +65,18 @@ impl WorkspaceEdit {
     #[must_use]
     pub fn new(document_edits: Vec<DocumentTextEdit>) -> Self {
         Self {
-            document_edits,
+            edit_plan: EditPlan::unchecked(document_edits),
             risks: Vec::new(),
             symbol: None,
         }
+    }
+
+    fn checked(document_edits: Vec<DocumentTextEdit>, risks: Vec<RenameRisk>) -> Option<Self> {
+        Some(Self {
+            edit_plan: EditPlan::new(document_edits)?,
+            risks,
+            symbol: None,
+        })
     }
 
     #[must_use]
@@ -78,8 +86,13 @@ impl WorkspaceEdit {
     }
 
     #[must_use]
+    pub const fn edit_plan(&self) -> &EditPlan {
+        &self.edit_plan
+    }
+
+    #[must_use]
     pub fn document_edits(&self) -> &[DocumentTextEdit] {
-        &self.document_edits
+        self.edit_plan.document_edits()
     }
 
     #[must_use]
@@ -91,6 +104,11 @@ impl WorkspaceEdit {
     pub fn symbol(&self) -> Option<&SymbolRef> {
         self.symbol.as_ref()
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct EditPlan {
+    document_edits: Vec<DocumentTextEdit>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -159,6 +177,21 @@ impl DocumentTextEdit {
     #[must_use]
     pub fn edits(&self) -> &[TextEdit] {
         &self.edits
+    }
+}
+
+impl EditPlan {
+    fn unchecked(document_edits: Vec<DocumentTextEdit>) -> Self {
+        Self { document_edits }
+    }
+
+    fn new(document_edits: Vec<DocumentTextEdit>) -> Option<Self> {
+        edits_are_non_overlapping(&document_edits).then_some(Self { document_edits })
+    }
+
+    #[must_use]
+    pub fn document_edits(&self) -> &[DocumentTextEdit] {
+        &self.document_edits
     }
 }
 
@@ -332,15 +365,14 @@ impl LanguageServiceDatabases {
             (start.line, start.character)
         });
 
-        Some(WorkspaceEdit {
-            risks: Vec::new(),
-            symbol: None,
-            document_edits: vec![document_text_edit_for_rename(
+        WorkspaceEdit::checked(
+            vec![document_text_edit_for_rename(
                 self,
                 document_id.clone(),
                 edits,
             )],
-        })
+            Vec::new(),
+        )
     }
 
     fn rename_declaration(
@@ -359,23 +391,11 @@ impl LanguageServiceDatabases {
         self.push_declaration_use_edits(target.declaration, new_name, &mut edits_by_document);
         self.push_type_hint_use_edits(target.declaration, new_name, &mut edits_by_document);
 
-        let document_edits = edits_by_document
-            .into_iter()
-            .map(|(document_id, mut edits)| {
-                edits.sort_by_key(|edit| {
-                    let start = edit.range.start();
-                    (start.line, start.character)
-                });
-                edits.dedup();
-                document_text_edit_for_rename(self, document_id, edits)
-            })
-            .collect::<Vec<_>>();
-
-        Some(WorkspaceEdit {
-            document_edits,
-            risks: rename_risks_for_declaration(target.declaration),
-            symbol: None,
-        })
+        workspace_edit_for_rename(
+            self,
+            edits_by_document,
+            rename_risks_for_declaration(target.declaration),
+        )
     }
 
     fn push_declaration_edit(
@@ -1018,6 +1038,49 @@ pub(super) fn document_text_edit_for_rename(
         return DocumentTextEdit::new(document_id, edits);
     };
     DocumentTextEdit::new_versioned(document_id, source.version(), edits)
+}
+
+pub(super) fn workspace_edit_for_rename(
+    databases: &LanguageServiceDatabases,
+    edits_by_document: BTreeMap<DocumentId, Vec<TextEdit>>,
+    risks: Vec<RenameRisk>,
+) -> Option<WorkspaceEdit> {
+    let document_edits = edits_by_document
+        .into_iter()
+        .map(|(document_id, mut edits)| {
+            edits.sort_by_key(|edit| {
+                let start = edit.range.start();
+                (start.line, start.character)
+            });
+            edits.dedup();
+            document_text_edit_for_rename(databases, document_id, edits)
+        })
+        .collect::<Vec<_>>();
+    WorkspaceEdit::checked(document_edits, risks)
+}
+
+fn edits_are_non_overlapping(document_edits: &[DocumentTextEdit]) -> bool {
+    let mut ranges_by_document = BTreeMap::<DocumentId, Vec<DiagnosticRange>>::new();
+    for document_edit in document_edits {
+        let ranges = ranges_by_document
+            .entry(document_edit.document_id.clone())
+            .or_default();
+        ranges.extend(document_edit.edits.iter().map(TextEdit::range));
+    }
+    ranges_by_document
+        .values_mut()
+        .all(|ranges| ranges_are_non_overlapping(ranges))
+}
+
+fn ranges_are_non_overlapping(ranges: &mut [DiagnosticRange]) -> bool {
+    ranges.sort_by_key(|range| position_key(range.start()));
+    ranges
+        .windows(2)
+        .all(|pair| position_key(pair[0].end()) <= position_key(pair[1].start()))
+}
+
+const fn position_key(position: Position) -> (usize, usize) {
+    (position.line, position.character)
 }
 
 fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirLocalId> {

@@ -11,8 +11,8 @@ use crate::{
 };
 
 use super::{
-    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    span_text_range, type_hint_name_range,
+    RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range, type_hint_name_range,
+    workspace_edit_for_rename,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -82,23 +82,7 @@ pub(super) fn rename_schema_function(
     push_schema_function_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_function_use_edits(databases, &target, new_name, &mut edits_by_document);
 
-    let document_edits = edits_by_document
-        .into_iter()
-        .map(|(document_id, mut edits)| {
-            edits.sort_by_key(|edit| {
-                let start = edit.range.start();
-                (start.line, start.character)
-            });
-            edits.dedup();
-            document_text_edit_for_rename(databases, document_id, edits)
-        })
-        .collect::<Vec<_>>();
-
-    Some(WorkspaceEdit {
-        document_edits,
-        risks: Vec::new(),
-        symbol: None,
-    })
+    workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
 pub(super) fn rename_schema_variant(
@@ -114,23 +98,7 @@ pub(super) fn rename_schema_variant(
     push_schema_variant_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_variant_use_edits(databases, &target, new_name, &mut edits_by_document);
 
-    let document_edits = edits_by_document
-        .into_iter()
-        .map(|(document_id, mut edits)| {
-            edits.sort_by_key(|edit| {
-                let start = edit.range.start();
-                (start.line, start.character)
-            });
-            edits.dedup();
-            document_text_edit_for_rename(databases, document_id, edits)
-        })
-        .collect::<Vec<_>>();
-
-    Some(WorkspaceEdit {
-        document_edits,
-        risks: Vec::new(),
-        symbol: None,
-    })
+    workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
 pub(super) fn rename_schema_type(
@@ -146,23 +114,7 @@ pub(super) fn rename_schema_type(
     push_schema_type_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_type_hint_edits(databases, &target, new_name, &mut edits_by_document);
 
-    let document_edits = edits_by_document
-        .into_iter()
-        .map(|(document_id, mut edits)| {
-            edits.sort_by_key(|edit| {
-                let start = edit.range.start();
-                (start.line, start.character)
-            });
-            edits.dedup();
-            document_text_edit_for_rename(databases, document_id, edits)
-        })
-        .collect::<Vec<_>>();
-
-    Some(WorkspaceEdit {
-        document_edits,
-        risks: Vec::new(),
-        symbol: None,
-    })
+    workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
 pub(super) fn rename_schema_member(
@@ -178,23 +130,7 @@ pub(super) fn rename_schema_member(
     push_schema_member_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_member_use_edits(databases, &target, new_name, &mut edits_by_document);
 
-    let document_edits = edits_by_document
-        .into_iter()
-        .map(|(document_id, mut edits)| {
-            edits.sort_by_key(|edit| {
-                let start = edit.range.start();
-                (start.line, start.character)
-            });
-            edits.dedup();
-            document_text_edit_for_rename(databases, document_id, edits)
-        })
-        .collect::<Vec<_>>();
-
-    Some(WorkspaceEdit {
-        document_edits,
-        risks: Vec::new(),
-        symbol: None,
-    })
+    workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
 pub(super) fn schema_type_declaration_target(

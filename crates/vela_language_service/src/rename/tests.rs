@@ -124,6 +124,7 @@ pub fn main(amount: i64) -> i64 {
         .document_edits()
         .first()
         .expect("rename should edit one document");
+    assert_eq!(edit.edit_plan().document_edits(), edit.document_edits());
     assert_eq!(document_edit.document_id(), &document);
     assert_eq!(document_edit.edits().len(), 3);
     assert_edit_at(document_edit.edits(), 1, 8, "score");
@@ -168,6 +169,26 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(document_edit.edits().len(), 2);
     assert_edit_at(document_edit.edits(), 1, 8, "score");
     assert_edit_at(document_edit.edits(), 2, 11, "score");
+}
+
+#[test]
+fn edit_plan_rejects_overlapping_ranges() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let document_edit = DocumentTextEdit::new(
+        document,
+        vec![
+            TextEdit::new(
+                DiagnosticRange::new(Position::new(0, 4), Position::new(0, 10)),
+                "first",
+            ),
+            TextEdit::new(
+                DiagnosticRange::new(Position::new(0, 8), Position::new(0, 12)),
+                "second",
+            ),
+        ],
+    );
+
+    assert_eq!(EditPlan::new(vec![document_edit]), None);
 }
 
 #[test]

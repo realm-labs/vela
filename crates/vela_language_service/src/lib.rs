@@ -64,7 +64,7 @@ pub use references::{
     ReferenceResolution,
 };
 pub use rename::{
-    DocumentTextEdit, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,
+    DocumentTextEdit, EditPlan, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,
 };
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,

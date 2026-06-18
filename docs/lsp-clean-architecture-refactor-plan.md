@@ -724,16 +724,19 @@ source-owned edit plans.
   Prepare-rename now has fixtures for host-schema targets, builtin stdlib
   functions, dynamic `Any` member access, unresolved names, and ambiguous
   schema short-name calls; all reject instead of producing editable ranges.
-- [ ] Make rename produce an `EditPlan` with conflict checks and source-owned
+- [x] Make rename produce an `EditPlan` with conflict checks and source-owned
   ranges only.
+  `WorkspaceEdit` now owns an `EditPlan`; rename producers route through the
+  shared checked builder that sorts, deduplicates, versions source documents,
+  and rejects overlapping edit ranges before LSP projection.
 - [ ] Ensure semantic tokens are generated from syntax/HIR classification and
   stay stable under parser recovery.
 - [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
   Reference fixtures now cover local shadowing, source/schema/builtin/dynamic/
-  unresolved resolution categories, failed prepare-rename targets, plus
-  existing module, method, and field cases. Failed rename edit-plan and
-  semantic-token stability fixtures remain to close this bucket.
+  unresolved resolution categories, failed prepare-rename targets, checked
+  edit-plan conflict rejection, plus existing module, method, and field cases.
+  Semantic-token stability fixtures remain to close this bucket.
 
 Tests:
 
