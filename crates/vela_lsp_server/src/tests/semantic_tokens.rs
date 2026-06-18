@@ -27,7 +27,7 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
             .expect("semantic token legend should list token types");
     let keyword = token_type_index(token_types, "keyword");
     let bytes = token_type_index(token_types, "bytes");
-    let operator = token_type_index(token_types, "operator");
+    let operator = token_type_index(token_types, "arithmeticOperator");
     let number = token_type_index(token_types, "number");
 
     let text = "pub fn main() { let bytes = b\"ok\" return bytes + 1 }";

@@ -146,26 +146,52 @@ impl SemanticToken {
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SemanticTokenType {
     Attribute,
+    ArithmeticOperator,
+    AssignmentOperator,
+    BitwiseOperator,
+    Boolean,
+    Brace,
+    Bracket,
+    BuiltinType,
     Bytes,
+    Colon,
+    Comma,
+    ComparisonOperator,
     Comment,
+    Const,
+    Dot,
+    Enum,
     EnumMember,
     Field,
     Function,
+    Global,
+    Interface,
     Keyword,
+    Label,
+    LogicalOperator,
     Macro,
     Method,
     Module,
+    NegationOperator,
+    Null,
     Number,
     Operator,
     Parameter,
+    Parenthesis,
+    PathSeparator,
+    Punctuation,
     Property,
+    Semicolon,
     String,
+    Struct,
     Type,
+    TypeAlias,
+    UnresolvedReference,
     Variable,
 }
 
 impl SemanticTokenType {
-    pub const LEGEND: [Self; 17] = [
+    pub const LEGEND: [Self; 43] = [
         Self::Module,
         Self::Function,
         Self::Method,
@@ -183,6 +209,32 @@ impl SemanticTokenType {
         Self::Operator,
         Self::Attribute,
         Self::Macro,
+        Self::Struct,
+        Self::Enum,
+        Self::Interface,
+        Self::TypeAlias,
+        Self::Const,
+        Self::Global,
+        Self::Boolean,
+        Self::Null,
+        Self::BuiltinType,
+        Self::Label,
+        Self::UnresolvedReference,
+        Self::ArithmeticOperator,
+        Self::AssignmentOperator,
+        Self::BitwiseOperator,
+        Self::ComparisonOperator,
+        Self::LogicalOperator,
+        Self::NegationOperator,
+        Self::Punctuation,
+        Self::Brace,
+        Self::Bracket,
+        Self::Parenthesis,
+        Self::Comma,
+        Self::Dot,
+        Self::Colon,
+        Self::Semicolon,
+        Self::PathSeparator,
     ];
 
     #[must_use]
@@ -205,6 +257,76 @@ impl SemanticTokenType {
             Self::Operator => "operator",
             Self::Attribute => "decorator",
             Self::Macro => "macro",
+            Self::Struct => "struct",
+            Self::Enum => "enum",
+            Self::Interface => "interface",
+            Self::TypeAlias => "typeAlias",
+            Self::Const => "const",
+            Self::Global => "global",
+            Self::Boolean => "boolean",
+            Self::Null => "null",
+            Self::BuiltinType => "builtinType",
+            Self::Label => "label",
+            Self::UnresolvedReference => "unresolvedReference",
+            Self::ArithmeticOperator => "arithmeticOperator",
+            Self::AssignmentOperator => "assignmentOperator",
+            Self::BitwiseOperator => "bitwiseOperator",
+            Self::ComparisonOperator => "comparisonOperator",
+            Self::NegationOperator => "negationOperator",
+            Self::LogicalOperator => "logicalOperator",
+            Self::Punctuation => "punctuation",
+            Self::Brace => "brace",
+            Self::Bracket => "bracket",
+            Self::Parenthesis => "parenthesis",
+            Self::Comma => "comma",
+            Self::Dot => "dot",
+            Self::Colon => "colon",
+            Self::Semicolon => "semicolon",
+            Self::PathSeparator => "pathSeparator",
+        }
+    }
+
+    #[must_use]
+    pub fn standard_fallback(self) -> &'static str {
+        match self {
+            Self::Module
+            | Self::Function
+            | Self::Method
+            | Self::Field
+            | Self::Variable
+            | Self::Parameter
+            | Self::Type
+            | Self::EnumMember
+            | Self::Property
+            | Self::Keyword
+            | Self::Number
+            | Self::String
+            | Self::Comment
+            | Self::Operator
+            | Self::Attribute
+            | Self::Macro
+            | Self::Struct
+            | Self::Enum
+            | Self::Interface => self.as_str(),
+            Self::Bytes => "string",
+            Self::TypeAlias | Self::BuiltinType => "type",
+            Self::Const | Self::Global | Self::Label | Self::UnresolvedReference => "variable",
+            Self::Boolean | Self::Null => "keyword",
+            Self::ArithmeticOperator
+            | Self::AssignmentOperator
+            | Self::BitwiseOperator
+            | Self::ComparisonOperator
+            | Self::LogicalOperator
+            | Self::NegationOperator
+            | Self::Punctuation
+            | Self::Brace
+            | Self::Bracket
+            | Self::Parenthesis
+            | Self::Comma
+            | Self::Dot
+            | Self::Colon
+            | Self::Semicolon
+            | Self::PathSeparator => "operator",
         }
     }
 
@@ -230,8 +352,17 @@ impl SemanticTokenModifiers {
     pub const BUILTIN: Self = Self(1 << 4);
     pub const HOST: Self = Self(1 << 5);
     pub const UNRESOLVED: Self = Self(1 << 6);
+    pub const SOURCE: Self = Self(1 << 7);
+    pub const PUBLIC: Self = Self(1 << 8);
+    pub const MUTABLE: Self = Self(1 << 9);
+    pub const CALLABLE: Self = Self(1 << 10);
+    pub const CONTROL_FLOW: Self = Self(1 << 11);
+    pub const ASSOCIATED: Self = Self(1 << 12);
+    pub const TRAIT: Self = Self(1 << 13);
+    pub const SCHEMA: Self = Self(1 << 14);
+    pub const DOCUMENTATION: Self = Self(1 << 15);
 
-    pub const LEGEND: [&'static str; 7] = [
+    pub const LEGEND: [&'static str; 16] = [
         "declaration",
         "definition",
         "readonly",
@@ -239,6 +370,34 @@ impl SemanticTokenModifiers {
         "defaultLibrary",
         "host",
         "unresolved",
+        "source",
+        "public",
+        "mutable",
+        "callable",
+        "controlFlow",
+        "associated",
+        "trait",
+        "schema",
+        "documentation",
+    ];
+
+    pub const FALLBACKS: [Option<&'static str>; 16] = [
+        Some("declaration"),
+        Some("definition"),
+        Some("readonly"),
+        Some("deprecated"),
+        Some("defaultLibrary"),
+        None,
+        None,
+        None,
+        None,
+        Some("modification"),
+        None,
+        None,
+        Some("static"),
+        None,
+        None,
+        Some("documentation"),
     ];
 
     #[must_use]
@@ -557,7 +716,7 @@ fn unresolved_identifier_classification(
     )
     .then(|| {
         SemanticTokenClassification::new(
-            SemanticTokenType::Variable,
+            SemanticTokenType::UnresolvedReference,
             SemanticTokenModifiers::UNRESOLVED,
         )
     })
@@ -627,11 +786,12 @@ fn declaration_use_classification(declaration: &Declaration) -> SemanticTokenCla
 
 fn declaration_token_type(kind: DeclarationKind) -> SemanticTokenType {
     match kind {
-        DeclarationKind::Const | DeclarationKind::Global => SemanticTokenType::Variable,
+        DeclarationKind::Const => SemanticTokenType::Const,
+        DeclarationKind::Global => SemanticTokenType::Global,
         DeclarationKind::Function => SemanticTokenType::Function,
-        DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => {
-            SemanticTokenType::Type
-        }
+        DeclarationKind::Struct => SemanticTokenType::Struct,
+        DeclarationKind::Enum => SemanticTokenType::Enum,
+        DeclarationKind::Trait => SemanticTokenType::Interface,
         DeclarationKind::Impl => SemanticTokenType::Type,
     }
 }
@@ -781,7 +941,8 @@ fn token_type(kind: &TokenKind) -> Option<SemanticTokenType> {
 
 fn keyword_token_type(keyword: Keyword) -> SemanticTokenType {
     match keyword {
-        Keyword::True | Keyword::False | Keyword::Null => SemanticTokenType::Keyword,
+        Keyword::True | Keyword::False => SemanticTokenType::Boolean,
+        Keyword::Null => SemanticTokenType::Null,
         _ => SemanticTokenType::Keyword,
     }
 }
@@ -789,7 +950,38 @@ fn keyword_token_type(keyword: Keyword) -> SemanticTokenType {
 fn symbol_token_type(symbol: Symbol) -> Option<SemanticTokenType> {
     match symbol {
         Symbol::Hash => Some(SemanticTokenType::Attribute),
-        _ => Some(SemanticTokenType::Operator),
+        Symbol::LBracket | Symbol::RBracket | Symbol::Pipe => Some(SemanticTokenType::Bracket),
+        Symbol::LParen | Symbol::RParen => Some(SemanticTokenType::Parenthesis),
+        Symbol::LBrace | Symbol::RBrace => Some(SemanticTokenType::Brace),
+        Symbol::Comma => Some(SemanticTokenType::Comma),
+        Symbol::Dot => Some(SemanticTokenType::Dot),
+        Symbol::Colon => Some(SemanticTokenType::Colon),
+        Symbol::ColonColon => Some(SemanticTokenType::PathSeparator),
+        Symbol::Semicolon => Some(SemanticTokenType::Semicolon),
+        Symbol::Equal
+        | Symbol::PlusEqual
+        | Symbol::MinusEqual
+        | Symbol::StarEqual
+        | Symbol::SlashEqual
+        | Symbol::PercentEqual => Some(SemanticTokenType::AssignmentOperator),
+        Symbol::Plus | Symbol::Minus | Symbol::Star | Symbol::Slash | Symbol::Percent => {
+            Some(SemanticTokenType::ArithmeticOperator)
+        }
+        Symbol::Bang => Some(SemanticTokenType::NegationOperator),
+        Symbol::AndAnd | Symbol::OrOr => Some(SemanticTokenType::LogicalOperator),
+        Symbol::BangEqual
+        | Symbol::BangEqualEqual
+        | Symbol::EqualEqual
+        | Symbol::EqualEqualEqual
+        | Symbol::Less
+        | Symbol::LessEqual
+        | Symbol::Greater
+        | Symbol::GreaterEqual => Some(SemanticTokenType::ComparisonOperator),
+        Symbol::DotDot
+        | Symbol::DotDotEqual
+        | Symbol::Arrow
+        | Symbol::FatArrow
+        | Symbol::Question => Some(SemanticTokenType::Operator),
     }
 }
 

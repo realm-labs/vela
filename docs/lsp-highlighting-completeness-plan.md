@@ -241,7 +241,7 @@ validation commands have passed locally.
 | Phase | Status | Notes |
 |---|---|---|
 | 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
-| 2. Token taxonomy and fallback policy | Not started | Expand editor-neutral types/modifiers deliberately. |
+| 2. Token taxonomy and fallback policy | In progress | Expanded service token/modifier names and fallback policy landed; remaining work is direct fixture assertions for the full taxonomy. |
 | 3. Service semantic classification | Not started | Use syntax, HIR, TypeFacts, stdlib, and schema facts. |
 | 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
 | 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
@@ -301,23 +301,33 @@ node editors/vscode/scripts/validate-package.js
 Goal: define a Vela-owned taxonomy that is rich enough for complete
 highlighting and stable enough for editor packages.
 
-- [ ] Expand `SemanticTokenType` with distinct source-level type-family tokens
+- [x] Expand `SemanticTokenType` with distinct source-level type-family tokens
   for structs, enums, traits/interfaces, type aliases, enum variants, builtin
   types, constants/statics/globals, booleans/null policy, labels, unresolved
   references, bytes/string escape policy if supported, operator families, and
   punctuation families.
-- [ ] Expand `SemanticTokenModifiers` with a deliberate provenance and behavior
+- [x] Expand `SemanticTokenModifiers` with a deliberate provenance and behavior
   policy for source, schema/host, stdlib/default-library, public/private,
   mutable, callable, associated, trait-related, control-flow, unresolved, and
   documentation where supported by source trivia.
-- [ ] Implement a rust-analyzer-style fallback table for every custom token
+- [x] Implement a rust-analyzer-style fallback table for every custom token
   type and custom modifier that might be removed for clients or editor themes
   that only understand standard LSP names.
-- [ ] Keep legend ordering deterministic. Existing standard token names should
+- [x] Keep legend ordering deterministic. Existing standard token names should
   stay stable where possible; new custom names must have tests pinning legend
   indexes indirectly through encoded token assertions.
 - [ ] Update service-level tests so each new token type and modifier has at
   least one direct fixture assertion.
+
+Phase 2 notes:
+
+- `SemanticTokenType` now includes distinct source type-family, builtin type,
+  const/global, boolean/null, unresolved-reference, operator-family, and
+  punctuation-family tokens, with existing legend entries kept first.
+- `SemanticTokenModifiers` now has explicit source/schema/host/provenance and
+  behavior modifier names plus a modifier fallback table.
+- Direct semantic-token fixtures currently cover the high-signal new token
+  names; exhaustive direct assertions for every new type/modifier remain open.
 
 Focused validation:
 

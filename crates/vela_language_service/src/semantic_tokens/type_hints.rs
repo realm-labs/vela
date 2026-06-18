@@ -44,11 +44,13 @@ fn type_hint_classification(
         return None;
     }
 
+    let token_type = if is_builtin_type_hint(hint) {
+        SemanticTokenType::BuiltinType
+    } else {
+        SemanticTokenType::Type
+    };
     let modifiers = type_hint_modifiers(schema, hint);
-    Some(SemanticTokenClassification::new(
-        SemanticTokenType::Type,
-        modifiers,
-    ))
+    Some(SemanticTokenClassification::new(token_type, modifiers))
 }
 
 fn type_hint_modifiers(schema: &RegistryFacts, hint: &HirTypeHint) -> SemanticTokenModifiers {

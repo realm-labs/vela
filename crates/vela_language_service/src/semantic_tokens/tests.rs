@@ -35,7 +35,7 @@ fn semantic_tokens_cover_lexical_classes() {
         0,
         text.find('+').expect("operator should exist"),
         1,
-        SemanticTokenType::Operator,
+        SemanticTokenType::ArithmeticOperator,
         SemanticTokenModifiers::NONE,
     );
     assert_token_at(
@@ -651,7 +651,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).find("Array").expect("builtin array hint"),
         "Array".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::BuiltinType,
         SemanticTokenModifiers::BUILTIN,
     );
     assert_token_at(
@@ -659,7 +659,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).find("String").expect("builtin string hint"),
         "String".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::BuiltinType,
         SemanticTokenModifiers::BUILTIN,
     );
     assert_token_at(
@@ -667,7 +667,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).rfind("i64").expect("builtin return hint"),
         "i64".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::BuiltinType,
         SemanticTokenModifiers::BUILTIN,
     );
     assert_token_at(
@@ -740,7 +740,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("Reward")
             .expect("struct name"),
         "Reward".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::Struct,
         declaration_definition,
     );
     assert_token_at(
@@ -750,7 +750,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("Progress")
             .expect("enum name"),
         "Progress".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::Enum,
         declaration_definition,
     );
     assert_token_at(
@@ -760,7 +760,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("Scored")
             .expect("trait name"),
         "Scored".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::Interface,
         declaration_definition,
     );
     assert_token_at(
@@ -800,7 +800,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("START_LEVEL")
             .expect("const declaration"),
         "START_LEVEL".len(),
-        SemanticTokenType::Variable,
+        SemanticTokenType::Const,
         declaration_definition,
     );
     assert_token_at(
@@ -810,7 +810,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("active_player")
             .expect("global declaration"),
         "active_player".len(),
-        SemanticTokenType::Variable,
+        SemanticTokenType::Global,
         declaration_definition,
     );
     assert_token_at(
@@ -830,7 +830,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("Array")
             .expect("builtin type hint"),
         "Array".len(),
-        SemanticTokenType::Type,
+        SemanticTokenType::BuiltinType,
         SemanticTokenModifiers::BUILTIN,
     );
     assert_token_at(
@@ -850,7 +850,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("true")
             .expect("boolean"),
         "true".len(),
-        SemanticTokenType::Keyword,
+        SemanticTokenType::Boolean,
         SemanticTokenModifiers::NONE,
     );
     assert_token_at(
@@ -858,7 +858,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         38,
         line(HIGHLIGHTING_SHOWCASE, 38).find("null").expect("null"),
         "null".len(),
-        SemanticTokenType::Keyword,
+        SemanticTokenType::Null,
         SemanticTokenModifiers::NONE,
     );
     assert_token_at(
@@ -956,7 +956,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("&&")
             .expect("logical operator"),
         "&&".len(),
-        SemanticTokenType::Operator,
+        SemanticTokenType::LogicalOperator,
         SemanticTokenModifiers::NONE,
     );
     assert_token_at(
@@ -968,6 +968,59 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         "missing_symbol".len(),
         SemanticTokenType::Variable,
         SemanticTokenModifiers::NONE,
+    );
+}
+
+#[test]
+fn semantic_token_taxonomy_declares_custom_fallbacks() {
+    assert_eq!(SemanticTokenType::Struct.standard_fallback(), "struct");
+    assert_eq!(SemanticTokenType::Enum.standard_fallback(), "enum");
+    assert_eq!(
+        SemanticTokenType::Interface.standard_fallback(),
+        "interface"
+    );
+    assert_eq!(SemanticTokenType::TypeAlias.standard_fallback(), "type");
+    assert_eq!(SemanticTokenType::BuiltinType.standard_fallback(), "type");
+    assert_eq!(SemanticTokenType::Const.standard_fallback(), "variable");
+    assert_eq!(SemanticTokenType::Global.standard_fallback(), "variable");
+    assert_eq!(SemanticTokenType::Boolean.standard_fallback(), "keyword");
+    assert_eq!(SemanticTokenType::Null.standard_fallback(), "keyword");
+    assert_eq!(
+        SemanticTokenType::UnresolvedReference.standard_fallback(),
+        "variable"
+    );
+    assert_eq!(
+        SemanticTokenType::ArithmeticOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(
+        SemanticTokenType::ComparisonOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(
+        SemanticTokenType::LogicalOperator.standard_fallback(),
+        "operator"
+    );
+    assert_eq!(SemanticTokenType::Brace.standard_fallback(), "operator");
+    assert_eq!(SemanticTokenType::Dot.standard_fallback(), "operator");
+    assert_eq!(SemanticTokenType::Bytes.standard_fallback(), "string");
+    assert_eq!(
+        SemanticTokenModifiers::LEGEND.len(),
+        SemanticTokenModifiers::FALLBACKS.len()
+    );
+    assert_eq!(
+        SemanticTokenModifiers::FALLBACKS[SemanticTokenModifiers::LEGEND
+            .iter()
+            .position(|name| *name == "mutable")
+            .expect("mutable modifier should be in legend")],
+        Some("modification")
+    );
+    assert_eq!(
+        SemanticTokenModifiers::FALLBACKS[SemanticTokenModifiers::LEGEND
+            .iter()
+            .position(|name| *name == "host")
+            .expect("host modifier should be in legend")],
+        None
     );
 }
 

@@ -373,6 +373,7 @@ fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let type_token = token_type_index(token_types, "type");
+    let builtin_type = token_type_index(token_types, "builtinType");
     let host = token_modifier_bit(token_modifiers, "host");
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
@@ -420,7 +421,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).find("Array").expect("builtin array hint"),
         "Array".len(),
-        type_token,
+        builtin_type,
         builtin,
     );
     assert_token_at(
@@ -428,7 +429,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).find("String").expect("builtin string hint"),
         "String".len(),
-        type_token,
+        builtin_type,
         builtin,
     );
     assert_token_at(
@@ -436,7 +437,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         0,
         line(text, 0).rfind("i64").expect("builtin return hint"),
         "i64".len(),
-        type_token,
+        builtin_type,
         builtin,
     );
     assert_token_at(
@@ -545,9 +546,10 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
         ["tokenModifiers"]
         .as_array()
         .expect("semantic token legend should list token modifiers");
-    let type_token = token_type_index(token_types, "type");
+    let struct_token = token_type_index(token_types, "struct");
+    let const_token = token_type_index(token_types, "const");
     let variable = token_type_index(token_types, "variable");
-    let keyword = token_type_index(token_types, "keyword");
+    let boolean = token_type_index(token_types, "boolean");
     let property = token_type_index(token_types, "property");
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
@@ -601,7 +603,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .find("Reward")
             .expect("struct name"),
         "Reward".len(),
-        type_token,
+        struct_token,
         declaration | definition,
     );
     assert_token_at(
@@ -611,7 +613,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .find("START_LEVEL")
             .expect("const declaration"),
         "START_LEVEL".len(),
-        variable,
+        const_token,
         declaration | definition,
     );
     assert_token_at(
@@ -621,7 +623,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .find("true")
             .expect("boolean"),
         "true".len(),
-        keyword,
+        boolean,
         0,
     );
     assert_token_at(
