@@ -126,8 +126,18 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let documentation = service_completion_resolve_payload(&params)
-            .and_then(|payload| self.databases.completion_documentation(&payload));
+        let payload = match service_completion_resolve_payload(&params) {
+            Ok(payload) => payload,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completionItem/resolve payload: {error}"),
+                ));
+            }
+        };
+        let documentation =
+            payload.and_then(|payload| self.databases.completion_documentation(&payload));
         JsonRpcResult::Response(success_response(
             id,
             lsp_completion_resolved_item(params, documentation),

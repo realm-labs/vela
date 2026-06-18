@@ -22,14 +22,22 @@ pub(crate) fn lsp_completion_list(
 
 pub(crate) fn service_completion_resolve_payload(
     item: &JsonValue,
-) -> Option<CompletionResolvePayload> {
-    let resolve = item.get("data")?.get("resolve")?;
-    if resolve.get("kind")?.as_str()? != "documentation" {
-        return None;
+) -> Result<Option<CompletionResolvePayload>, &'static str> {
+    let Some(resolve) = item.get("data").and_then(|data| data.get("resolve")) else {
+        return Ok(None);
+    };
+    let kind = resolve
+        .get("kind")
+        .and_then(JsonValue::as_str)
+        .ok_or("missing resolve kind")?;
+    if kind != "documentation" {
+        return Err("unsupported resolve kind");
     }
-    Some(CompletionResolvePayload::Documentation {
-        symbol: service_completion_symbol(resolve.get("symbol")?)?,
-    })
+    let symbol = resolve
+        .get("symbol")
+        .and_then(service_completion_symbol)
+        .ok_or("invalid resolve symbol")?;
+    Ok(Some(CompletionResolvePayload::Documentation { symbol }))
 }
 
 pub(crate) fn lsp_completion_resolved_item(

@@ -510,6 +510,9 @@ Purpose: make common authoring flows fast and schema-aware.
   - Schema-backed completion docs are resolved lazily through
     `completionItem/resolve`; the initial list keeps symbol identity and
     lightweight details but does not eagerly attach schema documentation.
+  - `completionItem/resolve` passes through ordinary items without lazy
+    payloads and rejects unknown lazy payload kinds with an explicit invalid
+    request instead of guessing or panicking.
 - [x] Complete named arguments and defaulted parameters.
   - Initial service and LSP completion support source-backed script function
     parameters, unused named-argument filtering, defaulted-parameter detail,
@@ -541,6 +544,8 @@ Tests:
 - [x] `global_completion_uses_schema_facts`
 - [x] `lsp_completion_uses_open_overlay_declarations`
 - [x] `lsp_completion_uses_loaded_schema_facts`
+- [x] `lsp_completion_resolve_passes_through_items_without_payload`
+- [x] `lsp_completion_resolve_rejects_unknown_payload_kind`
 - [x] `lambda_parameter_completion_suggests_stdlib_callback_item`
 - [x] `lambda_parameter_completion_filters_prefix_and_used_names`
 - [x] `lambda_parameter_completion_suggests_map_key_and_value`
