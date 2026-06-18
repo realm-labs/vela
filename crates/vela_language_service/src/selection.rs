@@ -531,6 +531,51 @@ pub fn main(player: Player) -> i64 {
         );
     }
 
+    #[test]
+    fn selection_ranges_preserve_token_and_ancestors_under_parser_recovery() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn main(player: Player) -> i64 {
+    let next = player.level + 1
+    if next > 1 {
+        return next
+";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let position = Position::new(
+            1,
+            text.lines()
+                .nth(1)
+                .expect("line should exist")
+                .find("level")
+                .expect("token should exist"),
+        );
+
+        let ranges = databases.selection_ranges(&document, &[position]);
+
+        assert_eq!(ranges.len(), 1);
+        let chain = flatten(&ranges[0]);
+        assert!(
+            chain.iter().any(|range| range.start().line == 1
+                && range.start().character == 22
+                && range.end().line == 1
+                && range.end().character == 27),
+            "{chain:?}"
+        );
+        assert!(
+            chain.iter().any(|range| range.start().line == 1
+                && range.start().character == 15
+                && range.end().line == 1
+                && range.end().character == 27),
+            "{chain:?}"
+        );
+        assert!(
+            chain
+                .iter()
+                .any(|range| range.start().line == 0 && range.end().line == 3),
+            "{chain:?}"
+        );
+    }
+
     fn flatten(range: &SelectionRange) -> Vec<DiagnosticRange> {
         let mut ranges = Vec::new();
         let mut current = Some(range);

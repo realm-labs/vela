@@ -338,10 +338,16 @@ coverage complete based only on the older capability phases.
     imports, non-exhaustive match arms, and missing record constructor fields,
     plus ambiguous import rejection, dynamic receiver rejection, local syntax
     pattern requirements, and open-overlay range stability.
-- [ ] Audit symbols, folding ranges, and selection ranges.
+- [x] Audit symbols, folding ranges, and selection ranges.
   - Cover document and workspace symbols, module-qualified source/schema
     facts, nested type/impl/trait members, imports, blocks, match arms,
     multiline literals, parser recovery, and workspace root changes.
+  - Current fixtures cover service and native LSP document/workspace symbols
+    for module-qualified source and schema facts, nested type/impl/trait
+    members, missing-schema degradation, deleted files, and workspace-root
+    reindexing; folding ranges for import groups, declarations, blocks, match
+    arms, multiline literals, and parser-recovery degradation; and
+    syntax-ancestry selection ranges under valid and recovered source.
 - [ ] Audit semantic tokens.
   - Cover full, delta, and range tokens across lexical and resolved
     classifications, cross-file imported symbols, source/schema/builtin

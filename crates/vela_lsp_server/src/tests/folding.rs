@@ -82,3 +82,75 @@ pub fn main(player: Player) -> i64 {
         "{ranges:?}"
     );
 }
+
+#[test]
+fn lsp_folding_ranges_cover_multiline_literals_and_recovery() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+pub fn main() -> i64 {
+    let scores = [
+        1,
+        2
+    ]
+    let rewards = {
+        \"gold\": 1,
+        \"xp\": 2
+    }
+    let label = \"\"\"
+daily
+quest
+\"\"\"
+    return scores[0]
+";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/foldingRange",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+
+    let ranges = response["result"]
+        .as_array()
+        .expect("foldingRange should return an array");
+    assert!(
+        ranges.iter().any(|range| {
+            range["kind"] == "region" && range["startLine"] == 1 && range["endLine"] == 4
+        }),
+        "{ranges:?}"
+    );
+    assert!(
+        ranges.iter().any(|range| {
+            range["kind"] == "region" && range["startLine"] == 5 && range["endLine"] == 8
+        }),
+        "{ranges:?}"
+    );
+    assert!(
+        ranges.iter().any(|range| {
+            range["kind"] == "region" && range["startLine"] == 9 && range["endLine"] == 12
+        }),
+        "{ranges:?}"
+    );
+}

@@ -564,6 +564,49 @@ pub fn main(player: Player) -> i64 {
         );
     }
 
+    #[test]
+    fn folding_ranges_cover_multiline_literals_under_parser_recovery() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+pub fn main() -> i64 {
+    let scores = [
+        1,
+        2
+    ]
+    let rewards = {
+        \"gold\": 1,
+        \"xp\": 2
+    }
+    let label = \"\"\"
+daily
+quest
+\"\"\"
+    return scores[0]
+";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+        let ranges = databases.folding_ranges(&document);
+
+        assert!(
+            ranges
+                .iter()
+                .any(|range| range.start().line == 1 && range.end().line == 4),
+            "{ranges:?}"
+        );
+        assert!(
+            ranges
+                .iter()
+                .any(|range| range.start().line == 5 && range.end().line == 8),
+            "{ranges:?}"
+        );
+        assert!(
+            ranges
+                .iter()
+                .any(|range| range.start().line == 9 && range.end().line == 12),
+            "{ranges:?}"
+        );
+    }
+
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

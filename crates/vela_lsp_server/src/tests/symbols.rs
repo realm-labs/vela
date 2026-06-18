@@ -436,6 +436,64 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
+    let root = temp_workspace();
+    let scripts_root = root.join("scripts");
+    let game_root = scripts_root.join("game");
+    let helper_path = game_root.join("helper.vela");
+    fs::write(&helper_path, "pub fn grant() -> i64 { return 1 }")
+        .expect("source should be writable");
+    let helper_uri = file_uri(&helper_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&game_root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": helper_uri.clone(), "type": 1 }]
+        }),
+    ));
+
+    let before = workspace_symbols(&mut server, 2, "game::helper::grant");
+    assert!(
+        before
+            .iter()
+            .all(|symbol| symbol["name"] != "game::helper::grant"),
+        "{before:?}"
+    );
+
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWorkspaceFolders",
+        serde_json::json!({
+            "event": {
+                "added": [{ "uri": file_uri(&scripts_root), "name": "scripts" }],
+                "removed": [{ "uri": file_uri(&game_root), "name": "game" }]
+            }
+        }),
+    ));
+
+    let after = workspace_symbols(&mut server, 3, "game::helper::grant");
+    assert!(
+        after.iter().any(|symbol| {
+            symbol["name"] == "game::helper::grant"
+                && symbol["containerName"] == "game::helper"
+                && symbol["location"]["uri"] == helper_uri
+        }),
+        "{after:?}"
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn workspace_symbols(server: &mut LspServer, id: i64, query: &str) -> Vec<serde_json::Value> {
     response_value(server.handle_json(&request(
         id,
