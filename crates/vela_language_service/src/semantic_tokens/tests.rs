@@ -538,6 +538,71 @@ pub fn main(rewardable: Rewardable) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_source_type_hints() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+pub enum Progress {
+    Started
+}
+
+pub trait Rewardable {
+    fn preview(self, reward: Reward) -> Progress
+}
+
+pub fn main(reward: Reward, rewardable: Rewardable) -> Progress {
+    return rewardable.preview(reward)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("Reward")
+            .expect("method source type hint"),
+        "Reward".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        9,
+        line(text, 9)
+            .find("Progress")
+            .expect("method return type hint"),
+        "Progress".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        12,
+        line(text, 12)
+            .find("Reward")
+            .expect("function source type hint"),
+        "Reward".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        12,
+        line(text, 12)
+            .find("Rewardable")
+            .expect("trait source type hint"),
+        "Rewardable".len(),
+        SemanticTokenType::Type,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_schema_and_stdlib_member_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

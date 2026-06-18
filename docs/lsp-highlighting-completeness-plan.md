@@ -379,6 +379,8 @@ Phase 3 notes:
 - Source-owned declarations, local bindings, source declaration uses, and
   script member uses now carry `source`, while schema/host facts continue to
   carry `host` and stdlib facts continue to carry `defaultLibrary`.
+- Source-owned struct, enum, and trait type hints now carry `source`, keeping
+  them distinct from builtin type hints and schema/host type hints.
 - Resolved-use classification is still incomplete: the broad showcase still
   records some unstable receiver/unresolved cases as plain variables.
 

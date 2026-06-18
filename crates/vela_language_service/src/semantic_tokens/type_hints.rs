@@ -1,7 +1,7 @@
 use vela_analysis::registry::RegistryFacts;
 use vela_hir::{
     binding::BindingMap,
-    module_graph::{Declaration, ModuleGraph},
+    module_graph::{Declaration, DeclarationKind, ModuleGraph},
     type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
 };
 
@@ -23,13 +23,14 @@ pub(super) fn classification(
     let mut classification = None;
     for_each_type_hint_in_declaration(graph, declaration, |hint| {
         if classification.is_none() {
-            classification = type_hint_classification(schema, text, hint, name, range);
+            classification = type_hint_classification(graph, schema, text, hint, name, range);
         }
     });
     classification
 }
 
 fn type_hint_classification(
+    graph: &ModuleGraph,
     schema: &RegistryFacts,
     text: &str,
     hint: &HirTypeHint,
@@ -49,11 +50,15 @@ fn type_hint_classification(
     } else {
         SemanticTokenType::Type
     };
-    let modifiers = type_hint_modifiers(schema, hint);
+    let modifiers = type_hint_modifiers(graph, schema, hint);
     Some(SemanticTokenClassification::new(token_type, modifiers))
 }
 
-fn type_hint_modifiers(schema: &RegistryFacts, hint: &HirTypeHint) -> SemanticTokenModifiers {
+fn type_hint_modifiers(
+    graph: &ModuleGraph,
+    schema: &RegistryFacts,
+    hint: &HirTypeHint,
+) -> SemanticTokenModifiers {
     if is_builtin_type_hint(hint) {
         return SemanticTokenModifiers::BUILTIN;
     }
@@ -66,7 +71,39 @@ fn type_hint_modifiers(schema: &RegistryFacts, hint: &HirTypeHint) -> SemanticTo
     {
         return SemanticTokenModifiers::HOST;
     }
+    if is_source_type_hint(graph, hint) {
+        return SemanticTokenModifiers::SOURCE;
+    }
     SemanticTokenModifiers::NONE
+}
+
+fn is_source_type_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> bool {
+    graph.declarations().any(|declaration| {
+        matches!(
+            declaration.kind,
+            DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+        ) && type_hint_matches_declaration(graph, hint, declaration)
+    })
+}
+
+fn type_hint_matches_declaration(
+    graph: &ModuleGraph,
+    hint: &HirTypeHint,
+    declaration: &Declaration,
+) -> bool {
+    if hint.path.len() == 1 {
+        return hint
+            .path
+            .first()
+            .is_some_and(|name| name == &declaration.name);
+    }
+    graph.module_path(declaration.module).is_some_and(|module| {
+        module
+            .segments()
+            .iter()
+            .chain(std::iter::once(&declaration.name))
+            .eq(hint.path.iter())
+    })
 }
 
 fn is_builtin_type_hint(hint: &HirTypeHint) -> bool {
