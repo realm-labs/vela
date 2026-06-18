@@ -1337,10 +1337,14 @@ Tests:
 - [x] `lsp_references_find_schema_method_calls`
 - [x] `references_find_schema_method_calls_on_schema_function_return_receivers`
 - [x] `lsp_references_find_schema_method_calls_on_schema_function_return_receivers`
+- [x] `references_find_schema_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_references_find_schema_method_calls_on_schema_method_return_receivers`
 - [x] `references_find_schema_trait_method_calls`
 - [x] `lsp_references_find_schema_trait_method_calls`
 - [x] `references_find_schema_trait_method_calls_on_schema_function_return_receivers`
 - [x] `lsp_references_find_schema_trait_method_calls_on_schema_function_return_receivers`
+- [x] `references_find_schema_trait_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_references_find_schema_trait_method_calls_on_schema_method_return_receivers`
 - [x] `references_find_schema_variant_constructors_and_patterns`
 - [x] `lsp_references_find_schema_variant_constructors_and_patterns`
 - [x] `reference_query_reports_dynamic_any_resolution`
@@ -1384,6 +1388,10 @@ Tests:
 - [x] `lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_receivers`
 - [x] `document_highlight_marks_schema_trait_method_calls_on_schema_function_return_receivers`
 - [x] `lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_return_receivers`
+- [x] `document_highlight_marks_schema_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_document_highlight_marks_schema_method_calls_on_schema_method_return_receivers`
+- [x] `document_highlight_marks_schema_trait_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_document_highlight_marks_schema_trait_method_calls_on_schema_method_return_receivers`
 - [x] `document_highlight_marks_schema_variant_uses`
 - [x] `lsp_document_highlight_marks_schema_variant_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`

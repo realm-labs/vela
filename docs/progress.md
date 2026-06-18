@@ -362,6 +362,11 @@ M20.5 Phase 11 update: references and document highlights now also cover
 schema-backed trait method calls where the receiver is produced by a schema
 function return, matching the schema method returned-receiver path.
 
+M20.5 Phase 11 update: references and document highlights now cover
+schema-backed method and trait-method calls where the receiver is produced by
+another schema method return, matching chained schema receiver facts already
+used by semantic tokens and inlay hints.
+
 M20.5 Phase 11 update: call hierarchy now has service and native LSP coverage
 for prepare, incoming, and outgoing schema method calls where the receiver is
 produced by a schema function return.

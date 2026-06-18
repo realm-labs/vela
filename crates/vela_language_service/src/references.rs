@@ -1177,7 +1177,6 @@ fn is_builtin_type_name(name: &str) -> bool {
             | "u64"
     )
 }
-
 #[cfg(test)]
 mod field_tests;
 #[cfg(test)]
@@ -1186,6 +1185,8 @@ mod highlight_tests;
 mod module_tests;
 #[cfg(test)]
 mod schema_field_tests;
+#[cfg(test)]
+mod schema_return_tests;
 #[cfg(test)]
 mod schema_tests;
 #[cfg(test)]
