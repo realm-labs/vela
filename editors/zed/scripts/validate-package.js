@@ -163,12 +163,10 @@ assert(
   !highlights.includes("\n(identifier) @variable"),
   "Zed highlights query must not use a bare identifier fallback that overrides declarations"
 );
-assert(
-  !highlights.includes("(path_expression (path (identifier) @variable))"),
-  "Zed highlights query must not use a broad path-expression variable fallback that overrides calls"
-);
 const variableFallbackCapture = highlights.indexOf("(let_statement name: (identifier) @variable)");
 assert(variableFallbackCapture >= 0, "Zed highlights query must include a local variable declaration capture");
+const pathExpressionFallbackCapture = highlights.indexOf("(path_expression (path (identifier) @variable))");
+assert(pathExpressionFallbackCapture >= 0, "Zed highlights query must include an expression path variable fallback");
 for (const specificCapture of [
   "(function_declaration name: (identifier) @function)",
   "(struct_declaration name: (identifier) @type)",
@@ -184,5 +182,7 @@ for (const specificCapture of [
     `variable fallback must come before ${specificCapture} so specific captures win`
   );
 }
+const directCallCapture = highlights.indexOf("(call_expression function: (path_expression (path (identifier) @function)))");
+assert(pathExpressionFallbackCapture < directCallCapture, "path-expression variable fallback must come before direct-call function capture");
 
 console.log("Zed extension package metadata and launcher boundary are valid.");

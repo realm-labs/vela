@@ -28,6 +28,7 @@
 ; Variables
 (let_statement name: (identifier) @variable)
 (binding_pattern (identifier) @variable)
+(path_expression (path (identifier) @variable))
 
 ((identifier) @variable.special
   (#eq? @variable.special "self"))
