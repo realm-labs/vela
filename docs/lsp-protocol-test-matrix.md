@@ -211,15 +211,17 @@ These are the first places to compare current tests against the matrix:
 
 1. Navigation semantics must stay separate per protocol. Current focused
    fixtures cover `typeDefinition` type-fact targets and null fallback for
-   local source values, source/schema member values, and imported source type
-   aliases used by locals and source fields; the remaining audit is broader
-   cross-file type-definition coverage across W1.
-2. `textDocument/implementation` is currently not part of Vela's advertised
-   capability set. Keep the negative provider/method behavior pinned until
-   trait/impl implementation semantics are specified.
-3. `textDocumentSync.openClose` requires `textDocument/didClose` behavior or a
-   capability change. Add protocol coverage before relying on close/open
-   overlay behavior in editors.
+   local source values, source/schema member values, schema types without
+   source spans, and imported source type aliases used by locals and source
+   fields; the remaining audit is broader cross-file type-definition coverage
+   across W1.
+2. `textDocument/implementation` remains intentionally unadvertised until
+   trait/impl implementation semantics are specified; lifecycle coverage now
+   pins both the absent capability and direct request rejection.
+3. `textDocumentSync.openClose` is advertised and `textDocument/didClose`
+   behavior is covered for scratch and disk-backed overlays; remaining audits
+   should focus on cross-feature close/open interactions rather than basic
+   capability support.
 4. Capability-to-handler consistency should be audited for every advertised
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.

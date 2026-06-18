@@ -16,6 +16,21 @@ fn lsp_type_definition_follows_schema_source_span() {
 }
 
 #[test]
+fn lsp_definition_returns_null_for_schema_type_without_source_span() {
+    assert_schema_type_without_source_span_null("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_returns_null_for_schema_type_without_source_span() {
+    assert_schema_type_without_source_span_null("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_returns_null_for_schema_type_without_source_span() {
+    assert_schema_type_without_source_span_null("textDocument/typeDefinition");
+}
+
+#[test]
 fn lsp_definition_follows_schema_field_source_span() {
     assert_schema_field_source_navigation("textDocument/definition");
 }
@@ -33,6 +48,86 @@ fn lsp_type_definition_follows_schema_field_type_source_span() {
 #[test]
 fn lsp_type_definition_returns_null_for_schema_primitive_field() {
     assert_schema_field_type_definition_null();
+}
+
+fn assert_schema_type_without_source_span_null(request_method: &str) {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        serde_json::json!({
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ]
+            }
+        })
+        .to_string(),
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let main_text = "pub fn main(player: Player) { return 1 }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        request_method,
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": main_text.find("Player").expect("type hint should exist")
+            }
+        }),
+    )));
+
+    assert!(response["result"].is_null());
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
 }
 
 fn assert_schema_field_source_navigation(request_method: &str) {

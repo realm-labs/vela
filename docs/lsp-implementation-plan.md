@@ -669,6 +669,7 @@ Tests:
 - [x] `lsp_definition_follows_schema_method_source_span`
 - [x] `lsp_definition_follows_schema_trait_method_source_span`
 - [x] `lsp_definition_follows_schema_variant_source_span`
+- [x] `lsp_definition_returns_null_for_schema_type_without_source_span`
 - [x] `declaration_follows_local_binding`
 - [x] `type_definition_follows_schema_source_span`
 - [x] `type_definition_follows_local_source_type`
@@ -682,12 +683,14 @@ Tests:
 - [x] `lsp_declaration_follows_schema_method_source_span`
 - [x] `lsp_declaration_follows_schema_trait_method_source_span`
 - [x] `lsp_declaration_follows_schema_variant_source_span`
+- [x] `lsp_declaration_returns_null_for_schema_type_without_source_span`
 - [x] `type_definition_follows_schema_field_type_source_span`
 - [x] `type_definition_returns_none_for_schema_primitive_field`
 - [x] `type_definition_returns_none_for_schema_method`
 - [x] `type_definition_returns_none_for_schema_trait_method`
 - [x] `type_definition_returns_none_for_schema_variant_without_owner_type_span`
 - [x] `lsp_type_definition_follows_schema_source_span`
+- [x] `lsp_type_definition_returns_null_for_schema_type_without_source_span`
 - [x] `lsp_type_definition_follows_source_struct_field_type`
 - [x] `lsp_type_definition_follows_imported_source_struct_field_type_alias`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
