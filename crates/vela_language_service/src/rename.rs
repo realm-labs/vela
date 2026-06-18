@@ -11,7 +11,7 @@ use vela_syntax::token::Keyword;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    SourceVersion, TextRange,
+    SourceVersion, SymbolRef, TextRange,
 };
 
 mod fields;
@@ -24,6 +24,7 @@ pub struct PrepareRename {
     document_id: DocumentId,
     range: DiagnosticRange,
     placeholder: String,
+    symbol: SymbolRef,
 }
 
 impl PrepareRename {
@@ -40,6 +41,11 @@ impl PrepareRename {
     #[must_use]
     pub fn placeholder(&self) -> &str {
         &self.placeholder
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> &SymbolRef {
+        &self.symbol
     }
 }
 
@@ -201,6 +207,7 @@ impl LanguageServiceDatabases {
             document_id: document_id.clone(),
             range: token_range,
             placeholder: target.placeholder().to_owned(),
+            symbol: target.symbol(self.hir_db().graph())?,
         })
     }
 
@@ -523,6 +530,41 @@ impl RenameTarget<'_> {
             Self::SchemaFunction(target) => &target.name,
             Self::SchemaVariant(target) => &target.variant,
             Self::EnumVariant(target) => &target.variant,
+        }
+    }
+
+    fn symbol(&self, graph: &ModuleGraph) -> Option<SymbolRef> {
+        match self {
+            Self::Local(target) => Some(SymbolRef::Local(target.placeholder.clone())),
+            Self::Declaration(target) => Some(SymbolRef::Source(source_symbol_for_declaration(
+                graph,
+                target.declaration,
+            ))),
+            Self::ScriptField(target) => Some(SymbolRef::Source(format!(
+                "{}.{}",
+                source_symbol_for_declaration_id(graph, target.owner)?,
+                target.field
+            ))),
+            Self::ScriptMethod(target) => Some(SymbolRef::Source(format!(
+                "{}.{}",
+                source_symbol_for_declaration_id(graph, target.owner)?,
+                target.method
+            ))),
+            Self::EnumVariant(target) => Some(SymbolRef::Source(format!(
+                "{}::{}",
+                source_symbol_for_declaration_id(graph, target.owner)?,
+                target.variant
+            ))),
+            Self::SchemaMember(target) => Some(SymbolRef::Schema(format!(
+                "{}.{}",
+                target.owner, target.member
+            ))),
+            Self::SchemaType(target) => Some(SymbolRef::Schema(target.name.clone())),
+            Self::SchemaFunction(target) => Some(SymbolRef::Schema(target.name.clone())),
+            Self::SchemaVariant(target) => Some(SymbolRef::Schema(format!(
+                "{}::{}",
+                target.owner, target.variant
+            ))),
         }
     }
 }
@@ -944,6 +986,16 @@ fn qualified_declaration_path(graph: &ModuleGraph, declaration: &Declaration) ->
                 .collect()
         })
         .unwrap_or_else(|| vec![declaration.name.clone()])
+}
+
+fn source_symbol_for_declaration(graph: &ModuleGraph, declaration: &Declaration) -> String {
+    qualified_declaration_path(graph, declaration).join("::")
+}
+
+fn source_symbol_for_declaration_id(graph: &ModuleGraph, declaration: HirDeclId) -> Option<String> {
+    graph
+        .declaration(declaration)
+        .map(|declaration| source_symbol_for_declaration(graph, declaration))
 }
 
 pub(super) fn document_text_edit_for_rename(

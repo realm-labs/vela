@@ -51,6 +51,7 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepare.document_id(), &document);
     assert_eq!(prepare.placeholder(), "next");
     assert_eq!(prepare.range().start(), Position::new(2, 4));
+    assert_eq!(prepare.symbol(), &SymbolRef::Local("next".into()));
 
     let edit = databases
         .rename(
@@ -149,6 +150,10 @@ pub fn main() -> i64 {
 
     assert_eq!(prepare.placeholder(), "BONUS");
     assert_eq!(prepare.range().start(), Position::new(2, 11));
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Source("game::main::BONUS".into())
+    );
 
     let edit = databases
         .rename(
@@ -189,6 +194,10 @@ fn grant(reward: Reward) -> Reward {
 
     assert_eq!(prepare.placeholder(), "Reward");
     assert_eq!(prepare.range().start(), Position::new(4, 28));
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Source("game::main::Reward".into())
+    );
 
     let edit = databases
         .rename(
@@ -231,6 +240,10 @@ fn bump(player: Player) -> i64 {
 
     assert_eq!(prepare.placeholder(), "level");
     assert_eq!(prepare.range().start(), Position::new(6, 11));
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Source("game::main::Player.level".into())
+    );
 
     let edit = databases
         .rename(
@@ -415,6 +428,7 @@ pub fn spawn(player: Player) -> Player {
 
     assert_eq!(prepare.placeholder(), "Player");
     assert_eq!(prepare.range().start(), Position::new(0, 21));
+    assert_eq!(prepare.symbol(), &SymbolRef::Schema("Player".into()));
 
     let edit = databases
         .rename(
@@ -490,6 +504,10 @@ pub fn main(amount: i64) -> i64 {
 
     assert_eq!(prepare.placeholder(), "game::reward::grant");
     assert_eq!(prepare.range().start(), Position::new(1, 16));
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Schema("game::reward::grant".into())
+    );
 
     let edit = databases
         .rename(
@@ -588,6 +606,10 @@ pub fn main(state: QuestState) -> i64 {
 
     assert_eq!(prepare.placeholder(), "Active");
     assert_eq!(prepare.range().start(), Position::new(1, 27));
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Schema("QuestState::Active".into())
+    );
 
     assert_eq!(
         databases.rename(
@@ -673,6 +695,7 @@ pub fn main(player: Player) -> i64 {
 
     assert_eq!(prepare.placeholder(), "level");
     assert_eq!(prepare.range().start(), Position::new(1, 23));
+    assert_eq!(prepare.symbol(), &SymbolRef::Schema("Player.level".into()));
 
     let edit = databases
         .rename(
@@ -753,6 +776,7 @@ pub fn main(player: Player) -> i64 {
 
     assert_eq!(prepare.placeholder(), "grant");
     assert_eq!(prepare.range().start(), Position::new(1, 23));
+    assert_eq!(prepare.symbol(), &SymbolRef::Schema("Player.grant".into()));
 
     let edit = databases
         .rename(
