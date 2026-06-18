@@ -239,6 +239,10 @@ use expression receiver facts, so schema method signatures resolve when the
 receiver is produced by a schema function return in both the language service
 and native LSP protocol.
 
+M20.5 Phase 7 update: member completion now has service and native LSP
+coverage for schema-backed fields and methods on receivers produced by schema
+function returns, preserving member-context suppression of unrelated globals.
+
 M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.

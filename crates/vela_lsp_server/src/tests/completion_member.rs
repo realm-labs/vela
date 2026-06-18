@@ -205,6 +205,125 @@ fn lsp_member_completion_uses_schema_trait_method_facts() {
 }
 
 #[test]
+fn lsp_member_completion_uses_schema_function_return_receiver_facts() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+                "formatVersion": 1,
+                "facts": {
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        }
+                    ],
+                    "functions": [
+                        {
+                            "name": "current_player",
+                            "fact": {
+                                "kind": "function",
+                                "params": [],
+                                "returns": { "kind": "host", "name": "Player" }
+                            }
+                        },
+                        {
+                            "name": "global_grant",
+                            "fact": {
+                                "kind": "function",
+                                "params": [],
+                                "returns": { "kind": "primitive", "name": "bool" }
+                            }
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "owner": "Player",
+                            "name": "level",
+                            "fact": { "kind": "primitive", "name": "i64" }
+                        }
+                    ],
+                    "methods": [
+                        {
+                            "owner": "Player",
+                            "name": "grant",
+                            "fact": {
+                                "kind": "function",
+                                "params": [{ "kind": "primitive", "name": "i64" }],
+                                "returns": { "kind": "primitive", "name": "bool" }
+                            }
+                        }
+                    ]
+                }
+            }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main() { current_player(). }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find(". }").expect("member dot") + 1
+            }
+        }),
+    )));
+
+    assert_completion(&response, "level", 5, "i64");
+    assert_completion(&response, "grant", 2, "Function(i64) -> bool");
+    assert_no_completion(&response, "current_player");
+    assert_no_completion(&response, "global_grant");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_member_completion_triggers_after_empty_dot_for_builtin_methods() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
