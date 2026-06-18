@@ -12,11 +12,13 @@ use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange, path_calls};
+use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
 mod import_paths;
 mod member_uses;
+mod path_sites;
 mod type_hints;
+mod variant_uses;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SemanticTokens {
@@ -421,6 +423,8 @@ struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
     member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
+    path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
+    pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
 }
 
 impl SemanticTokenClassification {
@@ -445,17 +449,19 @@ impl LanguageServiceDatabases {
             .parsed_source(document_id)
             .map(crate::member_access::member_receiver_ranges)
             .unwrap_or_default();
-        let path_calls = self
+        let path_sites = self
             .parse_db()
             .parsed_source(document_id)
-            .map(|parsed| path_call_map(parsed, source.text()))
+            .map(|parsed| path_sites::collect(parsed, source.text()))
             .unwrap_or_default();
         let classifications = self.semantic_token_classifications(
             source.source_id(),
             source.text(),
             &lexed.tokens,
             &member_receivers,
-            &path_calls,
+            &path_sites.calls,
+            &path_sites.expressions,
+            &path_sites.patterns,
         );
         let mut semantic_tokens = Vec::new();
 
@@ -527,6 +533,8 @@ impl LanguageServiceDatabases {
         tokens: &[Token],
         member_receivers: &BTreeMap<(usize, usize), TextRange>,
         path_calls: &BTreeMap<(usize, usize), Vec<String>>,
+        path_expressions: &BTreeMap<(usize, usize), Vec<String>>,
+        pattern_paths: &BTreeMap<(usize, usize), Vec<String>>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
@@ -535,6 +543,8 @@ impl LanguageServiceDatabases {
             facts: &facts,
             member_receivers,
             path_calls,
+            path_expressions,
+            pattern_paths,
         };
         for token in tokens {
             let TokenKind::Ident(name) = &token.kind else {
@@ -599,6 +609,16 @@ impl LanguageServiceDatabases {
                 {
                     return Some(classification);
                 }
+                if let Some(classification) = variant_uses::classification(
+                    graph,
+                    bindings,
+                    schema,
+                    context.path_expressions,
+                    context.pattern_paths,
+                    range,
+                ) {
+                    return Some(classification);
+                }
                 if let Some(classification) =
                     resolved_identifier_classification(bindings, span, self)
                 {
@@ -653,21 +673,6 @@ fn semantic_token_count_from_result_id(result_id: &str) -> usize {
         (Some("v1"), Some(count), Some(_hash), None) => count.parse().unwrap_or(0),
         _ => 0,
     }
-}
-
-fn path_call_map(
-    parsed: &vela_syntax::ast::SourceFile,
-    text: &str,
-) -> BTreeMap<(usize, usize), Vec<String>> {
-    path_calls::path_call_sites(parsed, text)
-        .into_iter()
-        .map(|site| {
-            (
-                (site.segment_range.start, site.segment_range.end),
-                site.path,
-            )
-        })
-        .collect()
 }
 
 fn next_non_whitespace(text: &str, offset: usize) -> Option<char> {

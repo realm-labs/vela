@@ -538,6 +538,101 @@ pub fn main(rewardable: Rewardable) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_source_enum_variant_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub enum Progress {
+    Started
+    Finished(result: String)
+    Active { quest_id: String }
+}
+
+pub fn main(progress: Progress) -> Progress {
+    let started = Progress::Started
+    let finished = Progress::Finished(\"done\")
+    let active = Progress::Active { quest_id: \"q\" }
+    match progress {
+        Progress::Started => started
+        Progress::Finished(result) => finished
+        Progress::Active { quest_id } => active
+    }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    for (line_index, variant) in [
+        (7, "Started"),
+        (8, "Finished"),
+        (9, "Active"),
+        (11, "Started"),
+        (12, "Finished"),
+        (13, "Active"),
+    ] {
+        assert_token_at(
+            &tokens,
+            line_index,
+            line(text, line_index)
+                .find(variant)
+                .unwrap_or_else(|| panic!("{variant} should exist")),
+            variant.len(),
+            SemanticTokenType::EnumMember,
+            SemanticTokenModifiers::SOURCE,
+        );
+    }
+}
+
+#[test]
+fn semantic_tokens_classify_schema_enum_variant_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(state: QuestState) -> QuestState {
+    let active = QuestState::Active
+    let done = QuestState::Done(1)
+    match state {
+        QuestState::Active => active
+        QuestState::Done(value) => done
+    }
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Done",
+        TypeFact::enum_type("QuestState", Some("Done")),
+    );
+    schema.insert_field("QuestState::Done", "0", TypeFact::I64);
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+
+    for (line_index, variant) in [(1, "Active"), (2, "Done"), (4, "Active"), (5, "Done")] {
+        assert_token_at(
+            &tokens,
+            line_index,
+            line(text, line_index)
+                .find(variant)
+                .unwrap_or_else(|| panic!("{variant} should exist")),
+            variant.len(),
+            SemanticTokenType::EnumMember,
+            schema_host,
+        );
+    }
+}
+
+#[test]
 fn semantic_tokens_classify_source_type_hints() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

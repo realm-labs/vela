@@ -384,6 +384,9 @@ Phase 3 notes:
 - Schema-backed type hints, fields, methods, trait methods, and functions now
   carry both `host` and `schema`, while stdlib facts remain
   `defaultLibrary`.
+- Source and schema enum variant constructor/path-expression/pattern uses now
+  classify as `enumMember` with `source` or `host` plus `schema` provenance
+  when existing HIR or schema facts prove the target.
 - Resolved-use classification is still incomplete: the broad showcase still
   records some unstable receiver/unresolved cases as plain variables.
 
