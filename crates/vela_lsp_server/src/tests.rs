@@ -559,6 +559,7 @@ mod semantic_tokens_schema_trait;
 mod semantic_tokens_source;
 mod signature;
 mod symbols;
+mod workspace_folders;
 
 mod file_watching {
     use std::fs;

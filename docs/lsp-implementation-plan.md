@@ -1776,6 +1776,7 @@ Tests:
 - [x] `schema_watch_clears_diagnostic_after_valid_reload`
 - [x] `schema_delete_publishes_missing_schema_diagnostic`
 - [x] `workspace_folder_change_reindexes_project`
+- [x] `workspace_folder_removal_clears_disk_facts_but_keeps_open_overlay`
 - [x] `watched_file_batch_coalesces_to_last_event_per_uri`
 - [x] `lsp_initialized_registers_watched_files_when_supported`
 
