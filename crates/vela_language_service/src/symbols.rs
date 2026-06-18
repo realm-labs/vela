@@ -10,8 +10,10 @@ use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord,
     SymbolRef, TextRange,
     symbol_ref::{
-        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
-        source_module_symbol, source_symbol_for_declaration, source_variant_field_symbol,
+        schema_member_symbol as shared_schema_member_symbol, schema_symbol as shared_schema_symbol,
+        schema_variant_symbol as shared_schema_variant_symbol, source_enum_variant_symbol,
+        source_impl_method_symbol, source_member_symbol, source_module_symbol,
+        source_symbol_for_declaration, source_variant_field_symbol,
     },
 };
 
@@ -306,7 +308,7 @@ impl LanguageServiceDatabases {
                 Some(DisplayParts::type_name(detail)),
                 schema_type_symbol_kind(fact),
                 None,
-                SymbolRef::Schema(name.to_owned()),
+                shared_schema_symbol(name),
             )
         }));
         symbols.extend(facts.traits().filter_map(|(name, fact)| {
@@ -317,7 +319,7 @@ impl LanguageServiceDatabases {
                 Some(DisplayParts::type_name(detail)),
                 DocumentSymbolKind::Interface,
                 None,
-                SymbolRef::Schema(name.to_owned()),
+                shared_schema_symbol(name),
             )
         }));
         symbols.extend(facts.functions().filter_map(|function| {
@@ -641,7 +643,7 @@ fn schema_function_symbol(
         Some(DisplayParts::type_name(detail)),
         kind,
         None,
-        SymbolRef::Schema(name.clone()),
+        shared_schema_symbol(&name),
     )
 }
 
@@ -685,12 +687,11 @@ fn schema_symbol(
 }
 
 fn schema_member_symbol_ref(member: &RegistryMemberFact, kind: DocumentSymbolKind) -> SymbolRef {
-    let symbol = if kind == DocumentSymbolKind::EnumMember {
-        format!("{}::{}", member.owner, member.name)
+    if kind == DocumentSymbolKind::EnumMember {
+        shared_schema_variant_symbol(&member.owner, &member.name)
     } else {
-        format!("{}.{}", member.owner, member.name)
-    };
-    SymbolRef::Schema(symbol)
+        shared_schema_member_symbol(&member.owner, &member.name)
+    }
 }
 
 fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {

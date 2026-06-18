@@ -603,6 +603,9 @@ and semantic tokens use the same identities and display primitives.
   schema constructors;
   prepare-rename target symbols for schema facts now use the shared schema
   constructors;
+  document/workspace schema symbols now use the shared schema constructors,
+  leaving only tests and the constructor helpers with direct
+  `SymbolRef::Schema` construction;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites
