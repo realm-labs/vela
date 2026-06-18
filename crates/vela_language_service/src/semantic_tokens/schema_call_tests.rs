@@ -51,6 +51,54 @@ pub fn main() -> i64 {
     );
 }
 
+#[test]
+fn semantic_tokens_classify_schema_trait_method_on_schema_function_return() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main() -> i64 {
+    return current_reward().preview(1)
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_function(
+        "current_reward",
+        TypeFact::function(Vec::new(), TypeFact::trait_type("Rewardable")),
+    );
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::I64),
+    );
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("current_reward")
+            .expect("schema function call should exist"),
+        "current_reward".len(),
+        SemanticTokenType::Function,
+        schema_host,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("preview")
+            .expect("schema trait method call should exist"),
+        "preview".len(),
+        SemanticTokenType::Method,
+        schema_host,
+    );
+}
+
 fn assert_token_at(
     tokens: &SemanticTokens,
     line: usize,
