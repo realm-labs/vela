@@ -31,6 +31,9 @@ mod source_member;
 mod source_module;
 mod statement;
 mod stdlib_function;
+mod struct_field;
+#[cfg(test)]
+mod struct_field_tests;
 mod type_display;
 mod type_hint;
 #[cfg(test)]
@@ -58,6 +61,7 @@ use pattern::pattern_completion_items as pattern_context_completion_items;
 use record_field::record_field_completion_items as record_field_context_completion_items;
 use source_member::source_member_completion_items as source_member_context_completion_items;
 use statement::statement_keyword_completions;
+use struct_field::struct_field_completion_items as struct_field_context_completion_items;
 use type_hint::type_hint_completion_items;
 
 use accumulator::CompletionAccumulator;
@@ -99,6 +103,9 @@ impl LanguageServiceDatabases {
             CompletionContextKind::ModulePath => self.module_path_completion_items(&context),
             CompletionContextKind::Member => self.member_completion_items(&query, &context),
             CompletionContextKind::RecordField => self.record_field_completion_items(&context),
+            CompletionContextKind::StructFieldDeclaration => {
+                self.struct_field_completion_items(&context)
+            }
             CompletionContextKind::MapKey => self.map_key_completion_items(&context),
             CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
             CompletionContextKind::NamedArgument => {
@@ -204,6 +211,15 @@ impl LanguageServiceDatabases {
             self.hir_db().graph(),
             self.schema_db().facts(),
             context,
+        )
+    }
+
+    fn struct_field_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+        dedupe_and_filter_service_items(
+            struct_field_context_completion_items(context.prefix()),
+            context.replace_range(),
+            context.prefix(),
+            |item| label_segment_matches(item.label(), context.prefix()),
         )
     }
 

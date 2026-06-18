@@ -52,6 +52,7 @@ pub enum CompletionContextKind {
     ModulePath,
     Member,
     RecordField,
+    StructFieldDeclaration,
     MapKey,
     Pattern,
     NamedArgument,

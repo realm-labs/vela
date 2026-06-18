@@ -107,6 +107,21 @@ fn cursor_context_classifies_record_type_fields() {
 }
 
 #[test]
+fn cursor_context_recovers_empty_struct_body_as_record_type_field() {
+    let text = "pub struct Player {  }";
+    let cursor = classify_offset(text, text.find("{  }").expect("struct body") + "{ ".len());
+
+    assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
+}
+
+#[test]
+fn cursor_context_keeps_struct_field_defaults_as_expression_context() {
+    let cursor = classify("pub struct Player { level: i64 = rew }", "rew");
+
+    assert_eq!(cursor.kind(), CursorContextKind::Expression);
+}
+
+#[test]
 fn cursor_context_classifies_enum_record_variant_fields() {
     let cursor = classify("pub enum Quest { Reward { am } }", "am");
 

@@ -648,8 +648,8 @@ Tests:
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`
-- [ ] `struct_body_completion_enters_field_declaration_context`
-- [ ] `lsp_struct_body_completion_enters_field_declaration_context`
+- [x] `struct_body_completion_enters_field_declaration_context`
+- [x] `lsp_struct_body_completion_enters_field_declaration_context`
 - [x] `statement_completion_offers_for_in_and_match_snippets`
 - [x] `lsp_statement_completion_offers_for_in_and_match_snippets`
 
@@ -1790,7 +1790,7 @@ fn main() {
 - [x] Split completion display from insertion for source and schema types:
   `label` and inserted text stay as the short visible name, while module or
   owner path is projected through `labelDetails`, `detail`, or documentation.
-- [ ] Add a struct-field declaration completion context for
+- [x] Add a struct-field declaration completion context for
   `struct Player { | }`, with field snippets and type-hint completion after
   `:`, and suppress expression/global/constructor fallback in that context.
 - [ ] Add statement-position snippets for `for in` and `match`. Known-enum
@@ -1816,8 +1816,8 @@ Tests:
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`
-- [ ] `struct_body_completion_enters_field_declaration_context`
-- [ ] `lsp_struct_body_completion_enters_field_declaration_context`
+- [x] `struct_body_completion_enters_field_declaration_context`
+- [x] `lsp_struct_body_completion_enters_field_declaration_context`
 - [x] `statement_completion_offers_for_in_and_match_snippets`
 - [x] `lsp_statement_completion_offers_for_in_and_match_snippets`
 

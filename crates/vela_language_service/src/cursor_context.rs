@@ -1,6 +1,5 @@
 use vela_syntax::ast::{
-    Block, ElseBranch, EnumVariantFields, Expr, ExprKind, FunctionItem, ItemKind, Pattern,
-    SourceFile, Stmt, StmtKind, StructField,
+    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, Pattern, SourceFile, Stmt, StmtKind,
 };
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
@@ -8,6 +7,9 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use vela_common::{SourceId, Span};
 
 use crate::{LineIndex, Position, TextRange};
+
+mod record_type_field;
+use record_type_field::is_record_type_field_context;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CursorContextKind {
@@ -443,25 +445,6 @@ fn is_record_expression_field_context(source: &SourceFile, offset: usize) -> boo
     })
 }
 
-fn is_record_type_field_context(text: &str, source: &SourceFile, offset: usize) -> bool {
-    let Some(offset) = u32::try_from(offset).ok() else {
-        return false;
-    };
-    source.items.iter().any(|item| match &item.kind {
-        ItemKind::Struct(item) => item
-            .fields
-            .iter()
-            .any(|field| field_name_contains(text, field, offset)),
-        ItemKind::Enum(item) => item.variants.iter().any(|variant| match &variant.fields {
-            EnumVariantFields::Record(fields) => fields
-                .iter()
-                .any(|field| field_name_contains(text, field, offset)),
-            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => false,
-        }),
-        _ => false,
-    })
-}
-
 fn is_pattern_context(text: &str, source: &SourceFile, offset: usize) -> bool {
     source.items.iter().any(|item| match &item.kind {
         ItemKind::Function(item) => {
@@ -709,25 +692,6 @@ fn span_contains_usize(span: Span, offset: usize) -> bool {
         return false;
     };
     span.start <= offset && offset <= span.end
-}
-
-fn field_name_contains(text: &str, field: &StructField, offset: u32) -> bool {
-    let Some(range) = field_name_range(text, field) else {
-        return false;
-    };
-    let Some(offset) = usize::try_from(offset).ok() else {
-        return false;
-    };
-    range.start <= offset && offset <= range.end
-}
-
-fn field_name_range(text: &str, field: &StructField) -> Option<TextRange> {
-    let start = usize::try_from(field.span.start).ok()?;
-    let end = usize::try_from(field.span.end).ok()?;
-    let field_text = text.get(start..end)?;
-    let name_start = field_text.find(&field.name)?;
-    let start = start + name_start;
-    Some(TextRange::new(start, start + field.name.len()))
 }
 
 fn record_field_for_function(function: &FunctionItem, offset: u32) -> bool {

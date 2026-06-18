@@ -50,6 +50,20 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         };
     }
 
+    if cursor.kind() == CursorContextKind::RecordTypeField {
+        return CompletionContext {
+            kind: CompletionContextKind::StructFieldDeclaration,
+            prefix: prefix.to_owned(),
+            replace_range: TextRange::new(prefix_start, offset),
+            module_base: None,
+            member_receiver: None,
+            record_constructor: None,
+            map_key: None,
+            call_arguments: None,
+            lambda_parameter: None,
+        };
+    }
+
     if cursor.kind() == CursorContextKind::RecordExpressionField
         && let Some(mut record_constructor) = query
             .parsed_source()
