@@ -1,0 +1,157 @@
+[
+  {
+    "concept": "function declaration and source call",
+    "semanticTokenType": "function",
+    "semanticTokenModifiers": ["source"],
+    "zedCapture": "@function",
+    "vscodeScope": "entity.name.function.vela"
+  },
+  {
+    "concept": "method call",
+    "semanticTokenType": "method",
+    "semanticTokenModifiers": ["source"],
+    "zedCapture": "@function.method",
+    "vscodeScope": "entity.name.function.member.vela"
+  },
+  {
+    "concept": "module path segment",
+    "semanticTokenType": "namespace",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@namespace",
+    "vscodeScope": "entity.name.namespace.vela"
+  },
+  {
+    "concept": "struct declaration",
+    "semanticTokenType": "struct",
+    "semanticTokenModifiers": ["declaration", "definition", "source"],
+    "zedCapture": "@type",
+    "vscodeScope": "entity.name.type.struct.vela"
+  },
+  {
+    "concept": "enum declaration",
+    "semanticTokenType": "enum",
+    "semanticTokenModifiers": ["declaration", "definition", "source"],
+    "zedCapture": "@type",
+    "vscodeScope": "entity.name.type.enum.vela"
+  },
+  {
+    "concept": "trait declaration",
+    "semanticTokenType": "interface",
+    "semanticTokenModifiers": ["declaration", "definition", "source"],
+    "zedCapture": "@type",
+    "vscodeScope": "entity.name.type.interface.vela"
+  },
+  {
+    "concept": "schema type hint",
+    "semanticTokenType": "type",
+    "semanticTokenModifiers": ["host", "schema"],
+    "zedCapture": "@type",
+    "vscodeScope": "entity.name.type.vela"
+  },
+  {
+    "concept": "builtin type hint",
+    "semanticTokenType": "builtinType",
+    "semanticTokenModifiers": ["defaultLibrary"],
+    "zedCapture": "@type.builtin",
+    "vscodeScope": "support.type.builtin.vela"
+  },
+  {
+    "concept": "enum variant",
+    "semanticTokenType": "enumMember",
+    "semanticTokenModifiers": ["source"],
+    "zedCapture": "@constant",
+    "vscodeScope": "constant.other.enum-member.vela"
+  },
+  {
+    "concept": "field or property",
+    "semanticTokenType": "property",
+    "semanticTokenModifiers": ["source"],
+    "zedCapture": "@property",
+    "vscodeScope": "variable.other.property.vela"
+  },
+  {
+    "concept": "constant or global",
+    "semanticTokenType": "const",
+    "semanticTokenModifiers": ["declaration", "definition", "source"],
+    "zedCapture": "@constant",
+    "vscodeScope": "variable.other.constant.vela"
+  },
+  {
+    "concept": "parameter",
+    "semanticTokenType": "parameter",
+    "semanticTokenModifiers": ["declaration", "source"],
+    "zedCapture": "@variable.parameter",
+    "vscodeScope": "variable.parameter"
+  },
+  {
+    "concept": "boolean literal",
+    "semanticTokenType": "boolean",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@boolean",
+    "vscodeScope": "constant.language.boolean.vela"
+  },
+  {
+    "concept": "null literal",
+    "semanticTokenType": "null",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@constant.builtin",
+    "vscodeScope": "constant.language.null.vela"
+  },
+  {
+    "concept": "bytes literal",
+    "semanticTokenType": "bytes",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@string",
+    "vscodeScope": "string.quoted.bytes.vela"
+  },
+  {
+    "concept": "number literal",
+    "semanticTokenType": "number",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@number",
+    "vscodeScope": "constant.numeric.vela"
+  },
+  {
+    "concept": "comment",
+    "semanticTokenType": "comment",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@comment",
+    "vscodeScope": "comment.line.double-slash.vela"
+  },
+  {
+    "concept": "attribute",
+    "semanticTokenType": "decorator",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@attribute",
+    "vscodeScope": "entity.name.function.decorator.vela"
+  },
+  {
+    "concept": "control-flow keyword",
+    "semanticTokenType": "keyword",
+    "semanticTokenModifiers": ["controlFlow"],
+    "zedCapture": "@keyword",
+    "vscodeScope": "keyword.control.vela"
+  },
+  {
+    "concept": "logical operator",
+    "semanticTokenType": "logicalOperator",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@operator",
+    "vscodeScope": "keyword.operator.vela"
+  },
+  {
+    "concept": "punctuation",
+    "semanticTokenType": "brace",
+    "semanticTokenModifiers": [],
+    "zedCapture": "@punctuation.bracket",
+    "vscodeScope": "punctuation.bracket.vela"
+  },
+  {
+    "concept": "unresolved reference",
+    "semanticTokenType": "unresolvedReference",
+    "semanticTokenModifiers": ["unresolved"],
+    "zedCapture": "@variable",
+    "vscodeScope": "invalid.illegal.unresolved.vela",
+    "note": "Editor fallbacks cannot resolve names; VS Code maps the semantic token to an unresolved scope when the LSP provides it."
+  }
+]

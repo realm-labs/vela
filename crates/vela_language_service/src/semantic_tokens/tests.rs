@@ -2,9 +2,20 @@ use super::*;
 use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
+use serde::Deserialize;
 
 const HIGHLIGHTING_SHOWCASE: &str =
     include_str!("../../../../tests/fixtures/lsp_highlighting/showcase.vela");
+const HIGHLIGHTING_CONSISTENCY: &str =
+    include_str!("../../../../tests/fixtures/lsp_highlighting/consistency.json");
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HighlightingConsistencyEntry {
+    concept: String,
+    semantic_token_type: String,
+    semantic_token_modifiers: Vec<String>,
+}
 
 #[test]
 fn semantic_tokens_cover_lexical_classes() {
@@ -1257,6 +1268,30 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         SemanticTokenType::UnresolvedReference,
         SemanticTokenModifiers::UNRESOLVED,
     );
+}
+
+#[test]
+fn semantic_tokens_highlighting_consistency_table_uses_known_taxonomy() {
+    let entries: Vec<HighlightingConsistencyEntry> = serde_json::from_str(HIGHLIGHTING_CONSISTENCY)
+        .expect("highlighting consistency table should be valid JSON");
+
+    for entry in entries {
+        assert!(
+            SemanticTokenType::LEGEND
+                .iter()
+                .any(|token_type| token_type.as_str() == entry.semantic_token_type),
+            "highlighting consistency concept `{}` uses unknown semantic token type `{}`",
+            entry.concept,
+            entry.semantic_token_type
+        );
+        for modifier in entry.semantic_token_modifiers {
+            assert!(
+                SemanticTokenModifiers::LEGEND.contains(&modifier.as_str()),
+                "highlighting consistency concept `{}` uses unknown semantic token modifier `{modifier}`",
+                entry.concept
+            );
+        }
+    }
 }
 
 #[test]

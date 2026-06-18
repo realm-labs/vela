@@ -13,6 +13,15 @@ const sharedHighlightingFixture = path.join(
   "lsp_highlighting",
   "showcase.vela"
 );
+const sharedHighlightingConsistency = path.join(
+  root,
+  "..",
+  "..",
+  "tests",
+  "fixtures",
+  "lsp_highlighting",
+  "consistency.json"
+);
 
 function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(path.join(root, relativePath), "utf8"));
@@ -122,6 +131,7 @@ assert(languageConfiguration.comments.lineComment === "//", "line comment config
 const grammarJson = readJson(grammar.path);
 assert(grammarJson.scopeName === "source.vela", "grammar scopeName must match manifest");
 assert(fs.existsSync(sharedHighlightingFixture), "shared highlighting showcase fixture is missing");
+assert(fs.existsSync(sharedHighlightingConsistency), "shared highlighting consistency table is missing");
 const showcase = fs.readFileSync(sharedHighlightingFixture, "utf8");
 for (const marker of [
   "pub struct Reward",
@@ -162,5 +172,15 @@ assert(extensionSource.includes("LanguageClient"), "extension must use vscode-la
 assert(extensionSource.includes("serverCommand"), "extension must provide server command discovery");
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
 assertThinLauncher(extensionSource, "VS Code extension");
+
+const consistency = JSON.parse(fs.readFileSync(sharedHighlightingConsistency, "utf8"));
+const grammarText = JSON.stringify(grammarJson);
+for (const entry of consistency) {
+  const mappedScopes = Object.values(velaScopes.scopes).flat();
+  assert(
+    grammarText.includes(entry.vscodeScope) || mappedScopes.includes(entry.vscodeScope),
+    `VS Code fallback must include ${entry.vscodeScope} for ${entry.concept}`
+  );
+}
 
 console.log("VS Code extension package metadata and launcher boundary are valid.");

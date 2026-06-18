@@ -14,6 +14,15 @@ const sharedHighlightingFixture = path.join(
   "lsp_highlighting",
   "showcase.vela"
 );
+const sharedHighlightingConsistency = path.join(
+  root,
+  "..",
+  "..",
+  "tests",
+  "fixtures",
+  "lsp_highlighting",
+  "consistency.json"
+);
 
 function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -107,6 +116,7 @@ assert(fs.existsSync(path.join(root, "languages", "vela", "overrides.scm")), "ov
 assert(fs.existsSync(path.join(root, "languages", "vela", "textobjects.scm")), "textobjects query is missing");
 
 assert(fs.existsSync(sharedHighlightingFixture), "shared highlighting showcase fixture is missing");
+assert(fs.existsSync(sharedHighlightingConsistency), "shared highlighting consistency table is missing");
 const showcase = fs.readFileSync(sharedHighlightingFixture, "utf8");
 for (const marker of [
   "pub struct Reward",
@@ -120,6 +130,7 @@ for (const marker of [
 }
 
 const highlights = read("languages/vela/highlights.scm");
+const consistency = JSON.parse(fs.readFileSync(sharedHighlightingConsistency, "utf8"));
 for (const capture of [
   "@namespace",
   "@attribute",
@@ -142,5 +153,11 @@ for (const capture of [
 }
 assert(!highlights.includes("@variant"), "Zed highlights query should use conventional captures for variants");
 assert(!highlights.includes("@enum"), "Zed highlights query should use @type for enum declarations");
+for (const entry of consistency) {
+  assert(
+    highlights.includes(entry.zedCapture),
+    `Zed highlights query must include ${entry.zedCapture} for ${entry.concept}`
+  );
+}
 
 console.log("Zed extension package metadata and launcher boundary are valid.");

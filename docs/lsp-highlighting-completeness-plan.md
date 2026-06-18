@@ -246,7 +246,7 @@ validation commands have passed locally.
 | 4. LSP projection and capabilities | Complete | Legend projection remains service-owned; range tokens plus client capability fallback projection are covered in the server. |
 | 5. Zed Tree-sitter fallback | Complete | Zed fallback captures now align with common syntax scopes and validator coverage pins the shared showcase surface. |
 | 6. VS Code fallback and scopes | Complete | TextMate fallback scopes and VS Code semantic token contribution metadata now cover custom Vela taxonomy names. |
-| 7. Cross-editor consistency fixtures | Not started | Align service, Zed, and VS Code behavior. |
+| 7. Cross-editor consistency fixtures | Complete | Shared consistency table now maps showcase concepts to service tokens, Zed captures, and VS Code scopes. |
 | 8. Docs and final validation | Not started | Update setup docs and run final validation. |
 
 ---
@@ -534,16 +534,16 @@ Goal: prove that LSP semantic tokens, Zed fallback captures, and VS Code
 fallback scopes describe the same Vela concepts even though their precision
 differs.
 
-- [ ] Keep one canonical highlighting showcase fixture in a path shared by
+- [x] Keep one canonical highlighting showcase fixture in a path shared by
   service and editor validations, or mirror it through a small script that
   prevents drift.
-- [ ] Add an assertion table or snapshot that maps showcase concepts to
+- [x] Add an assertion table or snapshot that maps showcase concepts to
   service semantic token type/modifier, Zed capture, and VS Code TextMate or
   semantic scope.
-- [ ] Document intentional differences, such as regex grammar limitations,
+- [x] Document intentional differences, such as regex grammar limitations,
   Tree-sitter syntax-only limitations, or theme-dependent semantic-token
   styling.
-- [ ] Add tests that prevent editor fallback changes from silently diverging
+- [x] Add tests that prevent editor fallback changes from silently diverging
   from the service taxonomy for common concepts.
 
 Focused validation:
@@ -554,6 +554,18 @@ cargo test -p vela_lsp_server semantic_tokens
 node editors/zed/scripts/validate-package.js
 node editors/vscode/scripts/validate-package.js
 ```
+
+Phase 7 notes:
+
+- `tests/fixtures/lsp_highlighting/consistency.json` maps common showcase
+  concepts to service semantic token type/modifier names, Zed Tree-sitter
+  captures, and VS Code TextMate or semantic-token fallback scopes.
+- `vela_language_service` validates that the table names known service token
+  types and modifiers. Zed and VS Code package validators consume the same
+  table to prevent fallback capture/scope drift.
+- Intentional differences remain documented in the table: editor fallbacks are
+  syntax-only, so unresolved-name color depends on LSP semantic tokens while
+  Zed falls back to variable syntax capture.
 
 ---
 
