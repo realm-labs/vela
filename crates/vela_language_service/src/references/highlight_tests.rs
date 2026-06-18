@@ -188,6 +188,136 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn document_highlight_imported_const_and_global_stays_in_active_document() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
+    let main_text = "\
+use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+pub fn main() -> i64 {
+    let first = BASE_REWARD
+    return first + reward_scale
+}";
+    let rewards_text = "\
+pub const BASE_REWARD = 4
+pub global reward_scale: i64";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(rewards.clone(), rewards_text),
+    ]);
+
+    let const_references = databases.references(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("BASE_REWARD")
+                .expect("const use should exist"),
+        ),
+        true,
+    );
+    assert_eq!(const_references.len(), 3, "{const_references:?}");
+    assert_reference(
+        &const_references,
+        &rewards,
+        0,
+        line(rewards_text, 0)
+            .find("BASE_REWARD")
+            .expect("const declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+
+    let const_highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("BASE_REWARD")
+                .expect("const use should exist"),
+        ),
+    );
+    assert_eq!(const_highlights.len(), 2, "{const_highlights:?}");
+    assert_highlight(
+        &const_highlights,
+        0,
+        line(main_text, 0)
+            .find("BASE_REWARD")
+            .expect("const import should exist"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &const_highlights,
+        3,
+        line(main_text, 3)
+            .find("BASE_REWARD")
+            .expect("const use should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_no_highlight(
+        &const_highlights,
+        0,
+        line(rewards_text, 0)
+            .find("BASE_REWARD")
+            .expect("const declaration should exist"),
+    );
+
+    let global_references = databases.references(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("reward_scale")
+                .expect("global use should exist"),
+        ),
+        true,
+    );
+    assert_eq!(global_references.len(), 3, "{global_references:?}");
+    assert_reference(
+        &global_references,
+        &rewards,
+        1,
+        line(rewards_text, 1)
+            .find("reward_scale")
+            .expect("global declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+
+    let global_highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("reward_scale")
+                .expect("global use should exist"),
+        ),
+    );
+    assert_eq!(global_highlights.len(), 2, "{global_highlights:?}");
+    assert_highlight(
+        &global_highlights,
+        1,
+        line(main_text, 1)
+            .find("reward_scale")
+            .expect("global import should exist"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &global_highlights,
+        4,
+        line(main_text, 4)
+            .find("reward_scale")
+            .expect("global use should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_no_highlight(
+        &global_highlights,
+        1,
+        line(rewards_text, 1)
+            .find("reward_scale")
+            .expect("global declaration should exist"),
+    );
+}
+
+#[test]
 fn document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -239,6 +369,16 @@ fn assert_reference(
                 && reference.kind() == kind
         }),
         "{references:?}"
+    );
+}
+
+fn assert_no_highlight(highlights: &[DocumentHighlight], line: usize, character: usize) {
+    assert!(
+        highlights.iter().all(|highlight| {
+            highlight.range().start().line != line
+                || highlight.range().start().character != character
+        }),
+        "{highlights:?}"
     );
 }
 

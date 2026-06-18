@@ -1079,6 +1079,8 @@ Purpose: support workspace navigation and prepare rename.
     document.
   - [x] Keep imported script function document highlights local to the active
     document while workspace references include the defining file.
+  - [x] Keep imported const/global document highlights local to the active
+    document while workspace references include the defining file.
   - [x] Serve source-owned script method declaration/call highlights in the
     active document.
   - [x] Serve source-owned trait declaration/impl highlights in the active
@@ -1163,9 +1165,11 @@ Tests:
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `document_highlight_imported_symbol_stays_in_active_document`
+- [x] `document_highlight_imported_const_and_global_stays_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
 - [x] `lsp_document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_imported_symbol_stays_in_active_document`
+- [x] `lsp_document_highlight_imported_const_and_global_stays_in_active_document`
 - [x] `document_highlight_marks_imported_module_segments`
 - [x] `lsp_document_highlight_marks_imported_module_segments`
 - [x] `document_highlight_marks_read_write_call`
