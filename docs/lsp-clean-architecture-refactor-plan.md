@@ -612,10 +612,10 @@ and semantic tokens use the same identities and display primitives.
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
   A shared `DisplayParts` segment model now exists in `vela_language_service`.
-  Signature labels, parameter/type inlay labels, selected hover member/module
-  labels, script/schema symbol names and signature details, and type-shaped
-  completion details now render through it while preserving the existing
-  user-visible strings. Completion items now carry structured detail parts
+  Signature labels and parameter labels, parameter/type inlay labels, selected
+  hover member/module labels, script/schema symbol names and signature details,
+  and type-shaped completion details now render through it while preserving the
+  existing user-visible strings. Completion items now carry structured detail parts
   alongside their rendered `detail`, with the accumulator defaulting older
   prose details to plain display parts and typed local/analysis-backed details
   preserving type display parts. Hover results now carry structured detail

@@ -54,6 +54,7 @@ impl SignatureInformation {
 pub struct SignatureParameter {
     name: String,
     label: String,
+    label_parts: DisplayParts,
     type_fact: TypeFact,
 }
 
@@ -66,6 +67,11 @@ impl SignatureParameter {
     #[must_use]
     pub fn label(&self) -> &str {
         &self.label
+    }
+
+    #[must_use]
+    pub const fn label_parts(&self) -> &DisplayParts {
+        &self.label_parts
     }
 
     #[must_use]
@@ -200,9 +206,7 @@ fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &Type
     let returns = returns.display_name();
     DisplayParts::callable_signature(
         name,
-        parameters
-            .iter()
-            .map(|param| DisplayParts::plain(param.label.as_str())),
+        parameters.iter().map(|param| param.label_parts.clone()),
         Some(returns.as_str()),
     )
     .render()
@@ -215,9 +219,11 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         .map(|param| {
             let type_fact = param.type_fact().clone();
             let type_name = type_fact.display_name();
+            let label_parts = DisplayParts::parameter(param.name(), &type_name);
             SignatureParameter {
                 name: param.name().to_owned(),
-                label: DisplayParts::parameter(param.name(), &type_name).render(),
+                label: label_parts.render(),
+                label_parts,
                 type_fact,
             }
         })
@@ -245,7 +251,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        LineIndex, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        DisplayPartKind, LineIndex, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
         assemble_project_sources,
     };
 
@@ -278,6 +284,10 @@ mod tests {
         assert_eq!(
             help.signatures()[0].label(),
             "grant(player: Player, amount: i64) -> bool"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[0].label_parts().parts()[0].kind(),
+            DisplayPartKind::Parameter
         );
         assert_eq!(help.signatures()[0].parameters()[1].name(), "amount");
         assert_eq!(help.signatures()[0].parameters()[1].label(), "amount: i64");
