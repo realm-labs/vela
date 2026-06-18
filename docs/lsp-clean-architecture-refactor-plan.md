@@ -591,6 +591,8 @@ and semantic tokens use the same identities and display primitives.
   shared enum variant symbol constructor;
   import-module references, cursor targets, and workspace module symbols now
   use the shared module symbol constructor;
+  schema hover type, trait, function, member, and variant facts now use shared
+  schema symbol constructors;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites

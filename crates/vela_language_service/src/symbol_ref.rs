@@ -218,3 +218,15 @@ pub(crate) fn source_variant_field_symbol(
     };
     Some(SymbolRef::Source(format!("{variant}.{field}")))
 }
+
+pub(crate) fn schema_symbol(name: impl Into<String>) -> SymbolRef {
+    SymbolRef::Schema(name.into())
+}
+
+pub(crate) fn schema_member_symbol(owner: &str, member: &str) -> SymbolRef {
+    SymbolRef::Schema(format!("{owner}.{member}"))
+}
+
+pub(crate) fn schema_variant_symbol(owner: &str, variant: &str) -> SymbolRef {
+    SymbolRef::Schema(format!("{owner}::{variant}"))
+}

@@ -1,7 +1,10 @@
 use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 use vela_analysis::type_fact::TypeFact;
 
-use crate::{DiagnosticRange, DisplayParts, SymbolRef};
+use crate::{
+    DiagnosticRange, DisplayParts,
+    symbol_ref::{schema_member_symbol, schema_symbol, schema_variant_symbol},
+};
 
 use super::{Hover, HoverKind};
 
@@ -23,7 +26,7 @@ pub(super) fn member_hover(
             HoverKind::Field,
             detail_parts,
             schema.field_docs(&owner, member).map(str::to_owned),
-            Some(SymbolRef::Schema(format!("{owner}.{member}"))),
+            Some(schema_member_symbol(&owner, member)),
         ));
     }
     method_fact(schema, &owner, member).map(|fact| {
@@ -33,7 +36,7 @@ pub(super) fn member_hover(
             HoverKind::Method,
             method_detail_parts(schema, &owner, member, fact),
             method_docs(schema, &owner, member).map(str::to_owned),
-            Some(SymbolRef::Schema(format!("{owner}.{member}"))),
+            Some(schema_member_symbol(&owner, member)),
         )
     })
 }
@@ -50,7 +53,7 @@ pub(super) fn symbol_hover(
             HoverKind::Type,
             DisplayParts::type_name(fact.display_name()),
             schema.type_docs(name).map(str::to_owned),
-            Some(SymbolRef::Schema(name.to_owned())),
+            Some(schema_symbol(name)),
         ));
     }
     if let Some(fact) = schema.trait_fact(name) {
@@ -60,7 +63,7 @@ pub(super) fn symbol_hover(
             HoverKind::Trait,
             DisplayParts::type_name(fact.display_name()),
             schema.trait_docs(name).map(str::to_owned),
-            Some(SymbolRef::Schema(name.to_owned())),
+            Some(schema_symbol(name)),
         ));
     }
     schema
@@ -80,7 +83,7 @@ pub(super) fn symbol_hover(
                 HoverKind::Function,
                 function_detail_parts(schema, &function.name, &function.fact),
                 schema.function_docs(&function.name).map(str::to_owned),
-                Some(SymbolRef::Schema(function.name.clone())),
+                Some(schema_symbol(function.name.clone())),
             )
         })
         .or_else(|| qualified_variant_hover(schema, name, range))
@@ -100,7 +103,7 @@ fn qualified_variant_hover(
             HoverKind::Variant,
             DisplayParts::type_name(fact.display_name()),
             schema.variant_docs(owner, variant).map(str::to_owned),
-            Some(SymbolRef::Schema(name.to_owned())),
+            Some(schema_symbol(name)),
         )
     })
 }
@@ -122,10 +125,7 @@ fn unique_variant_hover(
             schema
                 .variant_docs(&variant.owner, &variant.name)
                 .map(str::to_owned),
-            Some(SymbolRef::Schema(format!(
-                "{}::{}",
-                variant.owner, variant.name
-            ))),
+            Some(schema_variant_symbol(&variant.owner, &variant.name)),
         )
     })
 }
