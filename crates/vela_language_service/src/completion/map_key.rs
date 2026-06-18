@@ -9,7 +9,7 @@ use crate::{
     TextRange,
     completion::{
         CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-        display_type_detail, label_segment_matches,
+        display_type_detail_parts, label_segment_matches,
     },
     symbol_ref::{schema_variant_symbol, source_enum_variant_symbol},
 };
@@ -244,16 +244,18 @@ fn script_enum_variant_key_completions(
         .iter()
         .filter_map(|variant| {
             let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
+            let detail_parts = display_type_detail_parts(key_hint.display());
             Some(
                 CompletionItem {
                     label: variant.name.clone(),
                     kind: CompletionKind::Variant,
-                    detail: display_type_detail(key_hint.display()),
+                    detail: detail_parts.render(),
                     insert_text: None,
                     insert_format: CompletionInsertFormat::PlainText,
                     sort_text: None,
                     metadata: Default::default(),
                 }
+                .with_detail_parts(detail_parts)
                 .with_symbol(symbol),
             )
         })
@@ -285,15 +287,17 @@ fn schema_enum_variant_key_completions(
         .map(|variant| {
             let owner = variant.owner;
             let name = variant.name;
+            let detail_parts = display_type_detail_parts(key_hint.display());
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Variant,
-                detail: display_type_detail(key_hint.display()),
+                detail: detail_parts.render(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
                 metadata: Default::default(),
             }
+            .with_detail_parts(detail_parts)
             .with_documentation(schema.variant_docs(&owner, &name))
             .with_symbol(schema_variant_symbol(&owner, &name))
         })

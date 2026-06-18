@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
-    accumulator::CompletionAccumulator, display_type_detail, model::RecordConstructor,
+    accumulator::CompletionAccumulator, display_type_detail_parts, model::RecordConstructor,
 };
 use crate::symbol_ref::schema_member_symbol;
 
@@ -269,15 +269,17 @@ fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> C
         .type_hint
         .as_ref()
         .map_or(TypeFact::Unknown, |hint| type_fact_from_hint(graph, hint));
+    let detail_parts = display_type_detail_parts(fact.display_name());
     CompletionItem {
         label: field.name.clone(),
         kind: CompletionKind::Field,
-        detail: display_type_detail(fact.display_name()),
+        detail: detail_parts.render(),
         insert_text: None,
         insert_format: CompletionInsertFormat::PlainText,
         sort_text: None,
         metadata: Default::default(),
     }
+    .with_detail_parts(detail_parts)
 }
 
 fn schema_record_field_completions(
@@ -292,15 +294,17 @@ fn schema_record_field_completions(
         .map(|field| {
             let owner = field.owner;
             let name = field.name;
+            let detail_parts = display_type_detail_parts(field.fact.display_name());
             CompletionItem {
                 label: name.clone(),
                 kind: CompletionKind::Field,
-                detail: display_type_detail(field.fact.display_name()),
+                detail: detail_parts.render(),
                 insert_text: None,
                 insert_format: CompletionInsertFormat::PlainText,
                 sort_text: None,
                 metadata: Default::default(),
             }
+            .with_detail_parts(detail_parts)
             .with_documentation(schema.field_docs(&owner, &name))
             .with_symbol(schema_member_symbol(&owner, &name))
         })
