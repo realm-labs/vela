@@ -236,6 +236,14 @@ passes with `cargo fmt --all -- --check`,
 `cargo test --workspace`. M20.5 is now complete enough; remaining broader LSP
 refinements are non-blocking follow-up work.
 
+M20.5 cleanup update: the clean LSP architecture refactor has completed its
+shared query/display/symbol Phase 5 checkpoint. Language-service feature
+results now route source, schema, builtin, local, completion, hover,
+definition, references, rename, symbol, diagnostic, and inlay identities
+through shared `SymbolRef` constructors and `DisplayParts` metadata where
+relevant, and schema-owned definitions no longer fall back to enclosing script
+declarations when no schema source span exists.
+
 M20.5 Phase 9 update: workspace symbols now include source-file symbols with
 LSP `SymbolKind.File` mappings and module detail/source locations, closing the
 file/module/class/function/method/field/enum/variant symbol-kind checklist.
@@ -700,8 +708,9 @@ diagnostics.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
-- Continue the M20.5 native LSP capability track with schema-aware editor
-  queries while keeping
+- Continue the clean LSP architecture refactor from the remaining
+  references/rename/semantic-token, code-action/formatting/inlay,
+  scale/configuration/cancellation, and cleanup/docs phases while keeping
   incomplete capabilities unadvertised.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance

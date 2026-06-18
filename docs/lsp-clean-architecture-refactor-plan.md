@@ -681,12 +681,14 @@ and semantic tokens use the same identities and display primitives.
   locations unless schema source spans are present; definition/type-definition
   now avoid falling back to the enclosing script declaration for schema-owned
   targets without source spans.
-- [~] Preserve source-span accuracy for script-owned symbols.
+- [x] Preserve source-span accuracy for script-owned symbols.
   Source enum variant completions in module-path, map-key, and pattern
   contexts now carry `SymbolRef::Source` identities through service and LSP
-  projection without changing their display labels. The remaining work is to
-  connect those source identities to explicit declaration/member spans across
-  references, rename, symbols, and other source-owned feature surfaces.
+  projection without changing their display labels. Definition, hover,
+  references, rename, document/workspace symbols, and inlay hints now use
+  source declaration/member spans or name ranges for source-owned symbols while
+  carrying shared `SymbolRef::Source` identities through service results and
+  LSP projection.
 
 Tests:
 
