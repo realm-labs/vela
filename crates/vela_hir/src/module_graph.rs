@@ -42,7 +42,9 @@ struct HirModule {
 pub struct ModuleGraph {
     modules: Vec<HirModule>,
     module_by_path: BTreeMap<ModulePath, ModuleId>,
+    module_children: BTreeMap<ModulePath, BTreeSet<String>>,
     declarations: BTreeMap<HirDeclId, Declaration>,
+    declarations_by_name: BTreeMap<String, BTreeSet<HirDeclId>>,
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
@@ -106,6 +108,7 @@ impl ModuleGraph {
             return existing;
         }
         self.module_by_path.insert(path.clone(), module);
+        self.index_module_path(&path);
         self.diagnostics.extend(parsed.diagnostics);
 
         let mut hir_module = HirModule {
@@ -411,6 +414,51 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn declarations_by_name_prefix(&self, prefix: &str) -> Vec<&Declaration> {
+        if prefix.is_empty() {
+            return self.declarations.values().collect();
+        }
+
+        self.declarations_by_name
+            .range(prefix.to_owned()..)
+            .take_while(|(name, _)| name.starts_with(prefix))
+            .flat_map(|(_, declarations)| declarations.iter())
+            .filter_map(|declaration| self.declarations.get(declaration))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn declarations_in_module(&self, module: ModuleId) -> Vec<&Declaration> {
+        let Ok(index) = usize::try_from(module.get()) else {
+            return Vec::new();
+        };
+        let Some(module) = self.modules.get(index) else {
+            return Vec::new();
+        };
+        module
+            .declarations
+            .names()
+            .filter_map(|name| module.declarations.get(name))
+            .filter_map(|declaration| self.declarations.get(&declaration))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn module_child_segments(&self, base: &ModulePath) -> Vec<&str> {
+        self.module_children
+            .get(base)
+            .map(|children| children.iter().map(String::as_str).collect())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn module_completion_labels(&self) -> Vec<String> {
+        let mut labels = BTreeSet::new();
+        self.collect_module_completion_labels(&ModulePath::root(), String::new(), &mut labels);
+        labels.into_iter().collect()
+    }
+
+    #[must_use]
     pub fn impl_metadata(&self, declaration: HirDeclId) -> Option<&ImplMetadata> {
         self.impl_metadata.get(&declaration)
     }
@@ -491,8 +539,45 @@ impl ModuleGraph {
             );
         }
 
+        self.declarations_by_name
+            .entry(name)
+            .or_default()
+            .insert(id);
         self.declarations.insert(id, declaration);
         id
+    }
+
+    fn index_module_path(&mut self, path: &ModulePath) {
+        let segments = path.segments();
+        for index in 0..segments.len() {
+            let parent = ModulePath::new(segments[..index].iter().cloned());
+            self.module_children
+                .entry(parent)
+                .or_default()
+                .insert(segments[index].clone());
+        }
+    }
+
+    fn collect_module_completion_labels(
+        &self,
+        base: &ModulePath,
+        label_prefix: String,
+        labels: &mut BTreeSet<String>,
+    ) {
+        let Some(children) = self.module_children.get(base) else {
+            return;
+        };
+        for child in children {
+            let label = if label_prefix.is_empty() {
+                child.clone()
+            } else {
+                format!("{label_prefix}::{child}")
+            };
+            labels.insert(label.clone());
+            let mut child_path = base.segments().to_vec();
+            child_path.push(child.clone());
+            self.collect_module_completion_labels(&ModulePath::new(child_path), label, labels);
+        }
     }
 
     fn bind_function_body(

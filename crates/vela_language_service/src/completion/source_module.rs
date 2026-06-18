@@ -1,4 +1,4 @@
-use vela_analysis::completion::module_completions;
+use vela_analysis::{completion::CompletionItem as AnalysisCompletionItem, type_fact::TypeFact};
 use vela_hir::module_graph::ModuleGraph;
 
 use crate::TextRange;
@@ -13,7 +13,15 @@ pub(super) fn source_module_completion_items(
     prefix: &str,
 ) -> Vec<CompletionItem> {
     dedupe_and_filter_analysis_items(
-        module_completions(graph),
+        graph
+            .module_completion_labels()
+            .into_iter()
+            .map(|label| AnalysisCompletionItem {
+                label: label.clone(),
+                kind: vela_analysis::completion::CompletionKind::Module,
+                fact: TypeFact::module(label),
+            })
+            .collect(),
         replace_range,
         prefix,
         None,

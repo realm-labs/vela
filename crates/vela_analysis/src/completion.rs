@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use crate::facts::AnalysisFacts;
 use crate::registry::RegistryFacts;
@@ -80,19 +80,25 @@ pub fn type_completions(facts: &RegistryFacts) -> Vec<CompletionItem> {
 pub fn declaration_completions(graph: &ModuleGraph, facts: &AnalysisFacts) -> Vec<CompletionItem> {
     graph
         .declarations()
-        .filter_map(|declaration| {
-            let kind = completion_kind_for_declaration(declaration.kind)?;
-            let fact = facts
-                .declaration(declaration.id)
-                .cloned()
-                .unwrap_or(TypeFact::Unknown);
-            Some(CompletionItem::new(
-                qualified_declaration_label(graph, declaration.id),
-                kind,
-                fact,
-            ))
-        })
+        .filter_map(|declaration| declaration_completion(graph, facts, declaration))
         .collect()
+}
+
+pub fn declaration_completion(
+    graph: &ModuleGraph,
+    facts: &AnalysisFacts,
+    declaration: &Declaration,
+) -> Option<CompletionItem> {
+    let kind = completion_kind_for_declaration(declaration.kind)?;
+    let fact = facts
+        .declaration(declaration.id)
+        .cloned()
+        .unwrap_or(TypeFact::Unknown);
+    Some(CompletionItem::new(
+        qualified_declaration_label(graph, declaration.id),
+        kind,
+        fact,
+    ))
 }
 
 pub fn module_completions(graph: &ModuleGraph) -> Vec<CompletionItem> {
@@ -126,17 +132,7 @@ pub fn local_completions(
 }
 
 fn module_completion_labels(graph: &ModuleGraph) -> BTreeSet<String> {
-    let mut modules = BTreeSet::new();
-    for declaration in graph.declarations() {
-        let Some(module_path) = graph.module_path(declaration.module) else {
-            continue;
-        };
-        let segments = module_path.segments();
-        for len in 1..=segments.len() {
-            modules.insert(segments[..len].join("::"));
-        }
-    }
-    modules
+    graph.module_completion_labels().into_iter().collect()
 }
 
 fn completion_kind_for_declaration(kind: DeclarationKind) -> Option<CompletionKind> {

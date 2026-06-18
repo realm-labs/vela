@@ -1,7 +1,7 @@
 use vela_analysis::{
     completion::{
         CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-        declaration_completions,
+        declaration_completion,
     },
     facts::AnalysisFacts,
 };
@@ -64,9 +64,13 @@ fn source_declaration_completion_items(
         .unwrap_or_default();
     let facts = AnalysisFacts::from_module_graph(graph);
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
-    for (item, symbol) in
-        relative_current_module_items(declaration_completions(graph, &facts), &current_module)
-    {
+    let declarations = graph.declarations_by_name_prefix(prefix);
+    for (item, symbol) in relative_current_module_items(
+        declarations
+            .into_iter()
+            .filter_map(|declaration| declaration_completion(graph, &facts, declaration)),
+        &current_module,
+    ) {
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
             accumulator.add(
                 service_item_from_analysis_completion(item, prefix)
@@ -78,7 +82,7 @@ fn source_declaration_completion_items(
 }
 
 fn relative_current_module_items(
-    items: Vec<AnalysisCompletionItem>,
+    items: impl IntoIterator<Item = AnalysisCompletionItem>,
     current_module: &str,
 ) -> Vec<(AnalysisCompletionItem, String)> {
     if current_module.is_empty() {

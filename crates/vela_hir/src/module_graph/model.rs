@@ -10,6 +10,11 @@ pub struct ModulePath(Vec<String>);
 
 impl ModulePath {
     #[must_use]
+    pub fn root() -> Self {
+        Self(Vec::new())
+    }
+
+    #[must_use]
     pub fn new(segments: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self(segments.into_iter().map(Into::into).collect())
     }

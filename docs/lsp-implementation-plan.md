@@ -384,6 +384,9 @@ Purpose: make common authoring flows fast and schema-aware.
   stdlib APIs, fields, methods, variants, traits, and type hints.
   - Type-hint completion now suggests builtin type-hint names plus
     source/schema types and traits while suppressing value/function items.
+  - Source declaration, module-path, expression module, and type-hint
+    completion now query HIR declaration-name, per-module declaration, virtual
+    module-child, and module-label indexes for source/module candidates.
 - [x] Complete named arguments and defaulted parameters.
   - Initial service and LSP completion support source-backed script function
     parameters, unused named-argument filtering, defaulted-parameter detail,

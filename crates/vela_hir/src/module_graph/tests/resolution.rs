@@ -44,6 +44,63 @@ trait Damageable { fn damage(self, amount); }
         Some(DeclarationKind::Struct)
     );
 }
+
+#[test]
+fn indexes_declarations_and_virtual_module_children_for_completion() {
+    let mut graph = ModuleGraph::new();
+    let player = graph.add_source(source(
+        1,
+        "game::player",
+        "pub struct Player { level: i64 }\npub fn level() { return 1; }",
+    ));
+    let reward = graph.add_source(source(
+        2,
+        "game::reward",
+        "pub struct Reward { amount: i64 }\npub fn grant() { return 1; }",
+    ));
+
+    assert_eq!(
+        graph.module_child_segments(&ModulePath::root()),
+        vec!["game"]
+    );
+    assert_eq!(
+        graph.module_child_segments(&ModulePath::from_qualified("game")),
+        vec!["player", "reward"]
+    );
+    assert_eq!(
+        graph.module_completion_labels(),
+        vec![
+            "game".to_owned(),
+            "game::player".to_owned(),
+            "game::reward".to_owned(),
+        ]
+    );
+    assert_eq!(
+        graph
+            .declarations_in_module(reward)
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Reward", "grant"]
+    );
+    assert_eq!(
+        graph
+            .declarations_by_name_prefix("Pla")
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Player"]
+    );
+    assert_eq!(
+        graph
+            .declarations_in_module(player)
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Player", "level"]
+    );
+}
+
 #[test]
 fn resolves_imports_across_modules() {
     let mut graph = ModuleGraph::new();

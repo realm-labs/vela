@@ -1,13 +1,13 @@
 use vela_analysis::{
     completion::{
         CompletionItem as AnalysisCompletionItem, CompletionKind as AnalysisCompletionKind,
-        declaration_completions, module_completions, type_completions,
+        declaration_completion, type_completions,
     },
     facts::AnalysisFacts,
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::module_graph::{ModuleGraph, ModulePath};
 
 use crate::{TextRange, symbol_ref::schema_symbol};
 
@@ -41,8 +41,10 @@ pub(super) fn type_hint_completion_items(
             .map(|item| service_item_from_schema_type(item, schema)),
     );
     items.extend(
-        declaration_completions(graph, &facts)
+        graph
+            .declarations_by_name_prefix(prefix)
             .into_iter()
+            .filter_map(|declaration| declaration_completion(graph, &facts, declaration))
             .filter(|item| {
                 matches!(
                     item.kind,
@@ -52,9 +54,17 @@ pub(super) fn type_hint_completion_items(
             .map(service_item_from_analysis),
     );
     items.extend(
-        module_completions(graph)
+        graph
+            .module_child_segments(&ModulePath::root())
             .into_iter()
-            .map(service_item_from_analysis),
+            .filter(|segment| segment.starts_with(prefix))
+            .map(|segment| {
+                service_item_from_analysis(AnalysisCompletionItem {
+                    label: segment.to_owned(),
+                    kind: AnalysisCompletionKind::Module,
+                    fact: TypeFact::module(segment),
+                })
+            }),
     );
     super::dedupe_and_filter_service_items(items, replace_range, prefix, |item| {
         label_segment_matches(item.label(), prefix)
@@ -70,12 +80,26 @@ fn qualified_type_hint_completion_items(
     module_base: &str,
 ) -> Vec<CompletionItem> {
     let mut items = type_completions(schema);
+    let module_path = ModulePath::from_qualified(module_base);
+    if let Some(module) = graph.module_id(&module_path) {
+        items.extend(
+            graph
+                .declarations_in_module(module)
+                .into_iter()
+                .filter_map(|declaration| declaration_completion(graph, facts, declaration))
+                .filter(is_type_position_analysis_item),
+        );
+    }
     items.extend(
-        declaration_completions(graph, facts)
+        graph
+            .module_child_segments(&module_path)
             .into_iter()
-            .filter(is_type_position_analysis_item),
+            .map(|segment| AnalysisCompletionItem {
+                label: format!("{module_base}::{segment}"),
+                kind: AnalysisCompletionKind::Module,
+                fact: TypeFact::module(format!("{module_base}::{segment}")),
+            }),
     );
-    items.extend(module_completions(graph));
     super::dedupe_and_filter_service_items(
         items
             .into_iter()

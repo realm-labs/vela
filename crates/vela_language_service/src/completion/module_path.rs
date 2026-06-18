@@ -1,12 +1,12 @@
 use vela_analysis::{
     completion::{
-        CompletionItem as AnalysisCompletionItem, declaration_completions, global_completions,
-        module_completions,
+        CompletionItem as AnalysisCompletionItem, declaration_completion, global_completions,
     },
     facts::AnalysisFacts,
     registry::RegistryFacts,
+    type_fact::TypeFact,
 };
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph, ModulePath};
 
 use super::{
     CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
@@ -27,9 +27,26 @@ pub(super) fn module_path_completion_items(
         return Vec::new();
     };
     let mut analysis_items = global_completions(schema);
-    analysis_items.extend(declaration_completions(graph, &facts));
-    analysis_items.extend(module_completions(graph));
     let mut service_items = Vec::new();
+    let base_path = ModulePath::from_qualified(base);
+    if let Some(module) = graph.module_id(&base_path) {
+        analysis_items.extend(
+            graph
+                .declarations_in_module(module)
+                .into_iter()
+                .filter_map(|declaration| declaration_completion(graph, &facts, declaration)),
+        );
+    }
+    analysis_items.extend(
+        graph
+            .module_child_segments(&base_path)
+            .into_iter()
+            .map(|segment| AnalysisCompletionItem {
+                label: format!("{base}::{segment}"),
+                kind: vela_analysis::completion::CompletionKind::Module,
+                fact: TypeFact::module(format!("{base}::{segment}")),
+            }),
+    );
     service_items.extend(script_enum_variant_path_completions(
         graph,
         base,
