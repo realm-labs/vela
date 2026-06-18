@@ -186,6 +186,11 @@ fn lsp_type_definition_follows_imported_source_member_type() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_source_method_return_type() {
+    assert_imported_source_method_return_type_definition();
+}
+
+#[test]
 fn lsp_type_definition_follows_imported_enum_variant_constructor_type() {
     assert_imported_enum_variant_constructor_type_definition();
 }
@@ -698,6 +703,82 @@ inventory: Inventory,
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
     assert_eq!(response["result"]["range"]["start"]["character"], 11);
     assert_eq!(response["result"]["range"]["end"]["character"], 20);
+}
+
+fn assert_imported_source_method_return_type_definition() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
+    let main_text = r#"use game::rewards::RewardConfig
+
+fn main(config: RewardConfig) {
+return config.outcome();
+}"#;
+    let rewards_text = r#"pub enum RewardOutcome {
+Granted,
+Skipped,
+}
+
+pub struct RewardConfig {
+count: i64,
+}
+
+impl RewardConfig {
+pub fn outcome(self) -> RewardOutcome {
+return RewardOutcome::Granted;
+}
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": rewards_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": rewards_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let call_line = main_text.lines().nth(3).expect("method call line");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": call_line
+                    .find("outcome")
+                    .expect("method call should contain name")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], rewards_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 9);
+    assert_eq!(response["result"]["range"]["end"]["character"], 22);
 }
 
 fn assert_imported_enum_variant_constructor_type_definition() {

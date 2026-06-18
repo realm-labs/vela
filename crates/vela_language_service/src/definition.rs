@@ -7,7 +7,7 @@ use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
     callable_context::callable_facts,
-    path_calls,
+    member_access, path_calls,
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol,
         source_symbol_for_declaration,
@@ -138,6 +138,10 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
+        if let Some(definition) = self.member_call_return_type_definition(&query, &target) {
+            return Some(definition);
+        }
+
         if let Some(definition) = self.source_enum_variant_owner_type_definition(&target) {
             return Some(definition);
         }
@@ -225,6 +229,27 @@ impl LanguageServiceDatabases {
             .find(|site| site.segment_range == target.range())?;
         let callee = call_site.path.join("::");
         callable_facts(self, &callee)
+            .iter()
+            .find_map(|callable| self.type_definition_for_fact(callable.returns()))
+    }
+
+    fn member_call_return_type_definition(
+        &self,
+        query: &QueryContext<'_>,
+        target: &SymbolTarget,
+    ) -> Option<Definition> {
+        let parsed = query.parsed_source()?;
+        let call_site = member_access::member_call_sites(parsed)
+            .into_iter()
+            .find(|site| site.member_range == target.range())?;
+        let args_prefix = query.call_args_prefix_text().unwrap_or("");
+        query
+            .member_callable_facts(
+                self,
+                call_site.receiver_range,
+                &call_site.member,
+                args_prefix,
+            )
             .iter()
             .find_map(|callable| self.type_definition_for_fact(callable.returns()))
     }

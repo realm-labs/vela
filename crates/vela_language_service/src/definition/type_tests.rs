@@ -82,6 +82,51 @@ Skipped,
 }
 
 #[test]
+fn type_definition_follows_imported_source_method_return_type() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
+    let main_text = r#"use game::rewards::RewardConfig
+
+fn main(config: RewardConfig) {
+return config.outcome();
+}"#;
+    let rewards_text = r#"pub enum RewardOutcome {
+Granted,
+Skipped,
+}
+
+pub struct RewardConfig {
+count: i64,
+}
+
+impl RewardConfig {
+pub fn outcome(self) -> RewardOutcome {
+return RewardOutcome::Granted;
+}
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(rewards.clone(), rewards_text),
+    ]);
+    let call_line = main_text.lines().nth(3).expect("method call line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(3, call_line.find("outcome").expect("method call")),
+        )
+        .expect("type definition should resolve imported source method return type");
+
+    assert_eq!(definition.document_id(), &rewards);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 9);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::rewards::RewardOutcome".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_const_and_global_source_types() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");

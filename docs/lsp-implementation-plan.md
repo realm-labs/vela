@@ -637,7 +637,8 @@ Purpose: expose semantic facts and navigation.
     method, variant, dynamic, or unknown targets instead of falling back to an
     enclosing declaration.
   - Cross-file type-definition coverage now includes imported source function
-    calls whose return type is a source-owned type.
+    calls and imported source method calls whose return type is a source-owned
+    type.
 
 Tests:
 
@@ -706,6 +707,7 @@ Tests:
 - [x] `type_definition_follows_imported_source_field_type_alias`
 - [x] `type_definition_follows_imported_function_return_source_type`
 - [x] `type_definition_follows_imported_source_member_type`
+- [x] `type_definition_follows_imported_source_method_return_type`
 - [x] `type_definition_follows_imported_enum_variant_constructor_type`
 - [x] `type_definition_follows_imported_const_and_global_source_types`
 - [x] `type_definition_returns_none_for_source_primitive_field`
@@ -730,6 +732,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_source_struct_field_type_alias`
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`
+- [x] `lsp_type_definition_follows_imported_source_method_return_type`
 - [x] `lsp_type_definition_follows_imported_enum_variant_constructor_type`
 - [x] `lsp_type_definition_follows_imported_const_and_global_source_types`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
