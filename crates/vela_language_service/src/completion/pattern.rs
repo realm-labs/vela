@@ -7,6 +7,7 @@ use crate::{
         dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
         label_segment_matches,
     },
+    symbol_ref::source_enum_variant_symbol,
 };
 
 pub(super) fn pattern_completion_items(
@@ -33,21 +34,20 @@ fn script_pattern_variant_completions(
         .filter_map(|declaration| {
             let shape = graph.enum_shape(declaration.id)?;
             let detail = enum_pattern_detail(graph, declaration, current_module);
-            let symbol_owner = enum_symbol_owner(graph, declaration)?;
-            Some(shape.variants.iter().map(move |variant| {
-                CompletionItem {
-                    label: variant.name.clone(),
-                    kind: CompletionKind::Variant,
-                    detail: detail.clone(),
-                    insert_text: None,
-                    insert_format: CompletionInsertFormat::PlainText,
-                    sort_text: None,
-                    metadata: Default::default(),
-                }
-                .with_symbol(CompletionSymbol::Source(format!(
-                    "{symbol_owner}::{}",
-                    variant.name
-                )))
+            Some(shape.variants.iter().filter_map(move |variant| {
+                let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
+                Some(
+                    CompletionItem {
+                        label: variant.name.clone(),
+                        kind: CompletionKind::Variant,
+                        detail: detail.clone(),
+                        insert_text: None,
+                        insert_format: CompletionInsertFormat::PlainText,
+                        sort_text: None,
+                        metadata: Default::default(),
+                    }
+                    .with_symbol(symbol),
+                )
             }))
         })
         .flatten()
@@ -66,18 +66,6 @@ fn enum_pattern_detail(
         declaration.name.clone()
     } else {
         display_qualified_detail(&module_path.join(), &declaration.name)
-    }
-}
-
-fn enum_symbol_owner(graph: &ModuleGraph, declaration: &Declaration) -> Option<String> {
-    let module_path = graph.module_path(declaration.module)?;
-    if module_path.segments().is_empty() {
-        Some(declaration.name.clone())
-    } else {
-        Some(display_qualified_detail(
-            &module_path.join(),
-            &declaration.name,
-        ))
     }
 }
 

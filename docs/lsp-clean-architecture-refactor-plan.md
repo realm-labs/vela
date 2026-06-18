@@ -587,6 +587,8 @@ and semantic tokens use the same identities and display primitives.
   impl/trait methods, and enum variants through those shared constructors;
   signature and inlay callable facts now use the same source constructors for
   script functions, methods, and enum tuple-variant constructors;
+  module-path, map-key, and pattern source enum variant completions now use the
+  shared enum variant symbol constructor;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites

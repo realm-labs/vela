@@ -15,6 +15,7 @@ use super::{
     label_segment_matches,
     relevance::completion_sort_text,
 };
+use crate::symbol_ref::source_enum_variant_symbol;
 
 pub(super) fn module_path_completion_items(
     graph: &ModuleGraph,
@@ -98,24 +99,24 @@ fn script_enum_variant_path_completions(
         .filter_map(|declaration| {
             let owner = declaration_owner_label(graph, declaration)?;
             let shape = graph.enum_shape(declaration.id)?;
-            Some(shape.variants.iter().map(move |variant| {
-                CompletionItem {
-                    label: variant.name.clone(),
-                    kind: CompletionKind::Variant,
-                    detail: display_type_detail(&owner),
-                    insert_text: None,
-                    insert_format: CompletionInsertFormat::PlainText,
-                    metadata: Default::default(),
-                    sort_text: Some(completion_sort_text(
-                        CompletionKind::Variant,
-                        &variant.name,
-                        prefix,
-                    )),
-                }
-                .with_symbol(CompletionSymbol::Source(format!(
-                    "{owner}::{}",
-                    variant.name
-                )))
+            Some(shape.variants.iter().filter_map(move |variant| {
+                let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
+                Some(
+                    CompletionItem {
+                        label: variant.name.clone(),
+                        kind: CompletionKind::Variant,
+                        detail: display_type_detail(&owner),
+                        insert_text: None,
+                        insert_format: CompletionInsertFormat::PlainText,
+                        metadata: Default::default(),
+                        sort_text: Some(completion_sort_text(
+                            CompletionKind::Variant,
+                            &variant.name,
+                            prefix,
+                        )),
+                    }
+                    .with_symbol(symbol),
+                )
             }))
         })
         .flatten()
