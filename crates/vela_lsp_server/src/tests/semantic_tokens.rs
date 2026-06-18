@@ -720,6 +720,85 @@ pub fn main(rewardable: Rewardable) -> i64 {
 }
 
 #[test]
+fn lsp_semantic_tokens_range_filters_tokens() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["range"],
+        true
+    );
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let variable = token_type_index(token_types, "variable");
+    let declaration = token_modifier_bit(token_modifiers, "declaration");
+    let source = token_modifier_bit(token_modifiers, "source");
+
+    let text = "\
+pub fn main() {
+    let first = 1
+    let second = first + 2
+    return second
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/range",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 2, "character": 0 },
+                "end": { "line": 3, "character": 0 }
+            }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token range response should include data"),
+    );
+
+    assert!(!tokens.is_empty(), "range should include line 2 tokens");
+    assert!(
+        tokens.iter().all(|token| token.line == 2),
+        "range tokens should stay inside requested line: {tokens:?}"
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2).find("second").expect("local declaration"),
+        "second".len(),
+        variable,
+        declaration | source,
+    );
+}
+
+#[test]
 fn lsp_semantic_token_delta_matches_full_tokens() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

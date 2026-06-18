@@ -33,6 +33,7 @@ use crate::{
     protocol::SelectionRangeParams,
     protocol::SemanticTokensDeltaParams,
     protocol::SemanticTokensParams,
+    protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     protocol::service_position,
@@ -40,7 +41,7 @@ use crate::{
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
-    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens},
+    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens, lsp_semantic_tokens_range},
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -681,6 +682,35 @@ impl LspServer {
             .semantic_token_delta(&document_id, &params.previous_result_id);
 
         JsonRpcResult::Response(success_response(id, lsp_semantic_token_delta(&delta)))
+    }
+
+    pub(crate) fn semantic_tokens_range(
+        &mut self,
+        id: Option<RequestId>,
+        params: JsonValue,
+    ) -> JsonRpcResult {
+        let Some(id) = id else {
+            return JsonRpcResult::None;
+        };
+        let params = match serde_json::from_value::<SemanticTokensRangeParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/range params: {error}"),
+                ));
+            }
+        };
+
+        let document_id = DocumentId::from(params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let tokens = self.databases.semantic_tokens(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_semantic_tokens_range(&tokens, params.range),
+        ))
     }
 
     pub(crate) fn inlay_hint(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {

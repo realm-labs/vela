@@ -43,7 +43,7 @@ pub(crate) fn initialize_result() -> JsonValue {
             "selectionRangeProvider": true,
             "semanticTokensProvider": {
                 "legend": semantic_tokens::semantic_tokens_legend(),
-                "range": false,
+                "range": true,
                 "full": {
                     "delta": true
                 }

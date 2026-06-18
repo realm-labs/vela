@@ -99,6 +99,10 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(true)
     );
     assert_eq!(
+        response["result"]["capabilities"]["semanticTokensProvider"]["range"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
         response["result"]["capabilities"]["inlayHintProvider"]["resolveProvider"],
         serde_json::json!(false)
     );

@@ -243,7 +243,7 @@ validation commands have passed locally.
 | 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
 | 2. Token taxonomy and fallback policy | Complete | Expanded service token/modifier names, deterministic legend ordering, fallback policy, and direct taxonomy tests are in place. |
 | 3. Service semantic classification | Complete | Declaration-kind, resolved-use provenance, builtin-type, literal, operator/punctuation, control-flow keyword, and unresolved-reference classification are covered. |
-| 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
+| 4. LSP projection and capabilities | In progress | Legend projection remains service-owned; range semantic tokens are now advertised and served by filtering service tokens in the server. |
 | 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
 | 6. VS Code fallback and scopes | Not started | Add grammar and semantic-token contribution coverage. |
 | 7. Cross-editor consistency fixtures | Not started | Align service, Zed, and VS Code behavior. |
@@ -406,15 +406,15 @@ cargo test -p vela_lsp_server semantic_tokens
 Goal: project the service taxonomy through LSP completely while keeping protocol
 details out of `vela_language_service`.
 
-- [ ] Update `vela_lsp_server` legend construction for the expanded token type
+- [x] Update `vela_lsp_server` legend construction for the expanded token type
   and modifier lists.
 - [ ] Add or update tests for initialize capability advertisement, encoded full
   semantic tokens, full/delta result IDs, and fallback behavior for custom
   tokens.
-- [ ] Add `textDocument/semanticTokens/range` support when the service can
+- [x] Add `textDocument/semanticTokens/range` support when the service can
   produce or cheaply filter tokens for the requested range. Until then, keep
   `range: false` and leave this item unchecked.
-- [ ] Preserve full semantic-token behavior and deterministic result IDs.
+- [x] Preserve full semantic-token behavior and deterministic result IDs.
 - [ ] Keep client capability handling in the LSP server. If the server needs to
   suppress or remap non-standard tokens for a client, that belongs in
   projection, not in service classification.
@@ -425,6 +425,13 @@ Focused validation:
 cargo test -p vela_lsp_server semantic_tokens
 cargo test -p vela_lsp_server lifecycle
 ```
+
+Phase 4 notes:
+
+- `vela_lsp_server` builds its legend from the service taxonomy, so expanded
+  token type and modifier names project without editor-side classification.
+- `textDocument/semanticTokens/range` is advertised and served by filtering
+  full service tokens to the requested LSP range before encoding.
 
 ---
 
