@@ -7,7 +7,7 @@ use vela_hir::{
     binding::{BindingMap, BindingResolution},
     ids::HirLocalId,
     module_graph::{Declaration, DeclarationKind, ModuleGraph},
-    type_hint::HirTypeHint,
+    type_hint::{HirTypeHint, ImplMetadata, ImplMetadataKind},
 };
 
 use crate::TextRange;
@@ -214,6 +214,68 @@ fn script_method_exists(graph: &ModuleGraph, receiver: &TypeFact, method: &str) 
             | DeclarationKind::Global
             | DeclarationKind::Struct => false,
         })
+        || script_trait_default_method_exists(graph, receiver, method)
+}
+
+fn script_trait_default_method_exists(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+) -> bool {
+    let owner_names = owner_names(receiver);
+    graph.declarations().any(|declaration| {
+        if !matches!(declaration.kind, DeclarationKind::Impl) {
+            return false;
+        }
+        let Some(metadata) = graph.impl_metadata(declaration.id) else {
+            return false;
+        };
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return false;
+        };
+        let targets = impl_target_names(graph, declaration, &metadata.target_path);
+        if !targets.iter().any(|target| owner_names.contains(target)) {
+            return false;
+        }
+        if metadata.methods.iter().any(|entry| entry.name == method) {
+            return true;
+        }
+        trait_default_method_exists(graph, metadata, trait_path, method)
+    })
+}
+
+fn trait_default_method_exists(
+    graph: &ModuleGraph,
+    metadata: &ImplMetadata,
+    trait_path: &[String],
+    method: &str,
+) -> bool {
+    if metadata.methods.iter().any(|entry| entry.name == method) {
+        return false;
+    }
+    let Some(trait_declaration) = trait_declaration_for_path(graph, trait_path) else {
+        return false;
+    };
+    graph.trait_shape(trait_declaration).is_some_and(|shape| {
+        shape
+            .methods
+            .iter()
+            .any(|entry| entry.name == method && entry.has_default)
+    })
+}
+
+fn trait_declaration_for_path(
+    graph: &ModuleGraph,
+    trait_path: &[String],
+) -> Option<vela_hir::ids::HirDeclId> {
+    let owner = trait_path.join("::");
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && declaration_name_matches(graph, declaration, &owner)
+        })
+        .map(|declaration| declaration.id)
 }
 
 fn script_field_exists(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> bool {

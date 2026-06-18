@@ -41,6 +41,45 @@ pub fn main() -> i64 {
     );
 }
 
+#[test]
+fn semantic_tokens_classify_source_trait_method_on_source_function_return() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+trait Rewardable {
+    fn preview(self, amount: i64) -> i64 { return amount }
+}
+struct Player { level: i64 }
+impl Rewardable for Player {}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() -> i64 {
+    return current_player().preview(1)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        7,
+        line(text, 7)
+            .find("current_player")
+            .expect("source function call should exist"),
+        "current_player".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        7,
+        line(text, 7)
+            .find("preview")
+            .expect("source trait method call should exist"),
+        "preview".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
 fn assert_token_at(
     tokens: &SemanticTokens,
     line: usize,

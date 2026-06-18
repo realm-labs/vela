@@ -263,6 +263,11 @@ and native LSP coverage for source-owned method calls where the receiver is
 produced by a source function return, matching the schema-return receiver path
 through shared expression receiver facts.
 
+M20.5 Phase 10 update: semantic-token member classification now has service
+and native LSP coverage for source-owned trait method calls where the receiver
+is produced by a source function return, extending the direct typed trait
+receiver coverage through shared expression receiver facts.
+
 M20.5 Phase 7 update: signature help and shared member callable queries now
 use expression receiver facts, so schema method signatures resolve when the
 receiver is produced by a schema function return in both the language service
