@@ -622,7 +622,8 @@ and semantic tokens use the same identities and display primitives.
   parts alongside their rendered detail; local, declaration, schema type,
   schema variant, source field, source method, and schema field/function/method
   details preserve type or signature parts while permission/effect metadata is
-  structured as trailing detail text. Document and
+  structured as trailing detail text; stdlib function and method hover details
+  now preserve type-shaped detail parts. Document and
   workspace symbol names/details now carry `DisplayParts` alongside their
   rendered strings while keeping LSP projection stable. Diagnostic messages,
   labels, candidates, and repair hint titles/replacements now carry

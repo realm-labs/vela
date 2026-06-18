@@ -327,11 +327,11 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
                     .is_some_and(|segment| segment == name)
         })
         .map(|function| {
-            Hover::plain_detail(
+            Hover::new(
                 range,
                 function.name.to_owned(),
                 HoverKind::Function,
-                stdlib_function_detail(&function),
+                stdlib_function_detail_parts(&function),
                 None,
                 Some(SymbolRef::Builtin(function.name.to_owned())),
             )
@@ -340,11 +340,11 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
 
 fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange) -> Option<Hover> {
     stdlib_method_fact(receiver, method, None).map(|fact| {
-        Hover::plain_detail(
+        Hover::new(
             range,
             DisplayParts::member(&receiver.display_name(), fact.method).render(),
             HoverKind::Method,
-            stdlib_method_detail(&fact),
+            stdlib_method_detail_parts(&fact),
             None,
             Some(SymbolRef::Builtin(format!(
                 "{}.{}",
@@ -1068,12 +1068,16 @@ fn preceded_by_fn_keyword(text: &str, start: usize) -> bool {
         .is_none_or(|ch| !is_identifier_continue(ch))
 }
 
-fn stdlib_function_detail(function: &StdlibFunctionFact) -> String {
-    TypeFact::function(function.params.clone(), function.returns.clone()).display_name()
+fn stdlib_function_detail_parts(function: &StdlibFunctionFact) -> DisplayParts {
+    DisplayParts::type_name(
+        TypeFact::function(function.params.clone(), function.returns.clone()).display_name(),
+    )
 }
 
-fn stdlib_method_detail(method: &StdlibMethodFact) -> String {
-    TypeFact::function(method.params.clone(), method.returns.clone()).display_name()
+fn stdlib_method_detail_parts(method: &StdlibMethodFact) -> DisplayParts {
+    DisplayParts::type_name(
+        TypeFact::function(method.params.clone(), method.returns.clone()).display_name(),
+    )
 }
 
 fn declaration_docs(

@@ -279,6 +279,10 @@ fn hover_reports_stdlib_function_fact() {
         "Function(i64 | f64, i64 | f64) -> i64 | f64"
     );
     assert_eq!(
+        hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
+    assert_eq!(
         hover.symbol(),
         Some(&SymbolRef::Builtin("math::max".to_owned()))
     );
@@ -302,6 +306,10 @@ fn hover_reports_stdlib_method_fact() {
     assert_eq!(
         hover.detail(),
         "Function(Function(i64) -> bool) -> Array(i64)"
+    );
+    assert_eq!(
+        hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
     );
     assert_eq!(
         hover.symbol(),
