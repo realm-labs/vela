@@ -675,6 +675,8 @@ Tests:
 - [x] `lsp_hover_reports_source_enum_variant_fact`
 - [x] `lsp_hover_reports_stdlib_function_fact`
 - [x] `lsp_hover_reports_stdlib_method_fact`
+- [x] `hover_reports_imported_function_const_and_global_facts`
+- [x] `lsp_hover_reports_imported_function_const_and_global_facts`
 - [x] `definition_follows_local_binding`
 - [x] `definition_follows_imported_module_declaration`
 - [x] `definition_follows_imported_const_and_global_declarations`

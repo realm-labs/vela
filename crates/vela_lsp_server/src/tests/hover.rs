@@ -4,6 +4,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
 
+mod cross_file;
+
 #[test]
 fn lsp_hover_reports_open_overlay_parameter_fact() {
     let mut server = LspServer::new();

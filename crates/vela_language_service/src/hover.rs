@@ -738,13 +738,17 @@ fn hover_from_declaration(
     declaration: &Declaration,
     range: DiagnosticRange,
 ) -> Hover {
-    let detail_parts = facts
-        .declaration(declaration.id)
-        .filter(|fact| !matches!(fact, TypeFact::Unknown))
-        .map_or_else(
-            || declaration_hover_detail_parts(graph, declaration),
-            |fact| DisplayParts::type_name(fact.display_name()),
-        );
+    let detail_parts = if matches!(declaration.kind, DeclarationKind::Function) {
+        declaration_hover_detail_parts(graph, declaration)
+    } else {
+        facts
+            .declaration(declaration.id)
+            .filter(|fact| !matches!(fact, TypeFact::Unknown))
+            .map_or_else(
+                || declaration_hover_detail_parts(graph, declaration),
+                |fact| DisplayParts::type_name(fact.display_name()),
+            )
+    };
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
         DeclarationKind::Const => HoverKind::Const,
@@ -1103,5 +1107,7 @@ fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
 }
 
+#[cfg(test)]
+mod cross_file_tests;
 #[cfg(test)]
 mod tests;

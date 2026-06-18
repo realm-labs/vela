@@ -249,7 +249,7 @@ These are the first places to compare current tests against the matrix:
    semantic-token fallback for schema type hints under a missing schema and
    service/protocol range filtering for requested semantic-token spans, plus
    service/protocol cross-file references for imported const/global value
-   uses.
+   uses and cross-file hover for imported function/const/global use sites.
 
 ## Completion Criteria For This Matrix
 
