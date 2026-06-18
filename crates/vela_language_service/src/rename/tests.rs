@@ -398,6 +398,35 @@ fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn private_method_rename_rejects_trait_impl_collision() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+struct Reward {
+    amount: i64
+}
+
+trait Rewardable {
+    fn grant(self) -> i64
+    fn award(self) -> i64
+}
+
+impl Rewardable for Reward {
+    fn grant(self) -> i64 { return self.amount }
+    fn award(self) -> i64 { return self.amount + 1 }
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    assert_eq!(
+        databases.rename(
+            &document,
+            Position::new(10, line(text, 10).find("grant").expect("impl method")),
+            "award",
+        ),
+        None
+    );
+}
+
+#[test]
 fn private_enum_variant_rename_updates_constructors_and_patterns() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

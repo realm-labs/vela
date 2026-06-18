@@ -118,6 +118,60 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_private_method_rename_rejects_trait_impl_collision() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+struct Reward {
+    amount: i64
+}
+
+trait Rewardable {
+    fn grant(self) -> i64
+    fn award(self) -> i64
+}
+
+impl Rewardable for Reward {
+    fn grant(self) -> i64 { return self.amount }
+    fn award(self) -> i64 { return self.amount + 1 }
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let rename = response_value(server.handle_json(&request(
+        2,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 10,
+                "character": line(text, 10).find("grant").expect("impl method")
+            },
+            "newName": "award"
+        }),
+    )));
+    assert_eq!(rename["result"], serde_json::Value::Null);
+}
+
+#[test]
 fn lsp_source_backed_schema_member_rename_rejects_same_kind_collisions() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

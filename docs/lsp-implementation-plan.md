@@ -1288,6 +1288,8 @@ Purpose: provide safe refactoring without changing runtime contracts.
   - [x] Reject local binding renames that collide with an existing function
     binding.
   - [x] Reject same-module declaration collisions through native LSP rename.
+  - [x] Reject trait-impl method renames that would collide with an existing
+    method in the same impl block.
   - [x] Reject imported declaration renames that would collide with an
     existing import alias or import binding.
   - [x] Reject source-backed schema member renames that would collide with an
@@ -1322,6 +1324,8 @@ Tests:
 - [x] `rename_rejects_scope_collision`
 - [x] `rename_rejects_module_declaration_collision`
 - [x] `lsp_rename_rejects_module_declaration_collision`
+- [x] `private_method_rename_rejects_trait_impl_collision`
+- [x] `lsp_private_method_rename_rejects_trait_impl_collision`
 - [x] `function_rename_rejects_import_alias_collision`
 - [x] `lsp_rename_rejects_import_alias_collision`
 - [x] `source_backed_schema_member_rename_rejects_same_kind_collisions`
