@@ -558,6 +558,53 @@ pub global active_config: RewardConfig"#;
     );
 }
 
+#[test]
+fn type_definition_follows_imported_const_and_global_source_type_hints() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+pub global active_bag: Bag"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let const_line = main_text.lines().nth(2).expect("const line");
+    let global_line = main_text.lines().nth(3).expect("global line");
+
+    let const_definition = databases
+        .type_definition(
+            &main,
+            Position::new(2, const_line.find("Bag").expect("const type hint")),
+        )
+        .expect("type definition should resolve imported const type hint");
+    assert_eq!(const_definition.document_id(), &inventory);
+    assert_eq!(const_definition.range().start().line, 0);
+    assert_eq!(const_definition.range().start().character, 11);
+    assert_eq!(
+        const_definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+
+    let global_definition = databases
+        .type_definition(
+            &main,
+            Position::new(3, global_line.find("Bag").expect("global type hint")),
+        )
+        .expect("type definition should resolve imported global type hint");
+    assert_eq!(global_definition.document_id(), &inventory);
+    assert_eq!(global_definition.range().start().line, 0);
+    assert_eq!(global_definition.range().start().character, 11);
+    assert_eq!(
+        global_definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
     let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

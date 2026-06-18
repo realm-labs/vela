@@ -200,3 +200,86 @@ fn lsp_type_definition_follows_imported_struct_constructor_type() {
 fn lsp_type_definition_follows_imported_const_and_global_source_types() {
     super::assert_imported_const_and_global_source_type_definitions();
 }
+
+#[test]
+fn lsp_type_definition_follows_imported_const_and_global_source_type_hints() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+pub const DEFAULT_BAG: Bag = Bag { slots: 2 }
+pub global active_bag: Bag"#;
+    let inventory_text = r#"pub struct Inventory {
+    slots: i64,
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": inventory_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": inventory_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let const_line = main_text.lines().nth(2).expect("const line should exist");
+    let global_line = main_text.lines().nth(3).expect("global line should exist");
+
+    let const_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": const_line
+                    .find("Bag")
+                    .expect("const type hint should exist")
+            }
+        }),
+    )));
+    assert_eq!(const_response["result"]["uri"], inventory_uri);
+    assert_eq!(const_response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(const_response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(const_response["result"]["range"]["end"]["character"], 20);
+
+    let global_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": global_line
+                    .find("Bag")
+                    .expect("global type hint should exist")
+            }
+        }),
+    )));
+    assert_eq!(global_response["result"]["uri"], inventory_uri);
+    assert_eq!(global_response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(global_response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(global_response["result"]["range"]["end"]["character"], 20);
+}

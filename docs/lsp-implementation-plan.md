@@ -248,9 +248,10 @@ coverage complete based only on the older capability phases.
     dynamic facts, and unresolved names.
   - W1 `typeDefinition` now has service and protocol coverage for imported
     local, parameter, trait, struct-field, enum-field, and return type hints
-    plus local and parameter source type aliases in addition to existing
-    imported field, function return, member, method return, struct
-    constructor, enum variant, const, and global source type paths.
+    plus const/global declaration type hints and local and parameter source
+    type aliases in addition to existing imported field, function return,
+    member, method return, struct constructor, enum variant, const, and global
+    source type paths.
 - [ ] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
@@ -784,6 +785,7 @@ Tests:
 - [x] `type_definition_follows_imported_field_source_type_hint`
 - [x] `type_definition_follows_imported_enum_field_source_type_hint`
 - [x] `type_definition_follows_imported_return_source_type_hint`
+- [x] `type_definition_follows_imported_const_and_global_source_type_hints`
 - [x] `type_definition_follows_imported_source_field_type_alias`
 - [x] `type_definition_follows_imported_function_return_source_type`
 - [x] `type_definition_follows_imported_source_member_type`
@@ -819,6 +821,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_field_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_enum_field_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_return_source_type_hint`
+- [x] `lsp_type_definition_follows_imported_const_and_global_source_type_hints`
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`
 - [x] `lsp_type_definition_follows_imported_source_method_return_type`
