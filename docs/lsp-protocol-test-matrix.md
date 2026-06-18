@@ -42,6 +42,12 @@ Every advertised protocol capability needs these proofs:
    the method anyway, add a negative fixture proving a stable method-not-found
    or explicit rejection response.
 
+If a protocol consumes declaration, binding, module, type, or reference facts,
+it must include at least one cross-file workspace fixture unless the method is
+purely lexical or purely local by design. Cross-file coverage is mandatory for
+navigation, hover, completion, signature help, references, rename, symbols,
+semantic tokens, inlay hints, diagnostics, code actions, and call hierarchy.
+
 For protocol rows that mutate source text, such as rename, code actions, and
 formatting, coverage must also prove that edits are source-owned, versioned
 where practical, conflict-checked, and deterministic.
@@ -66,6 +72,53 @@ Use these dimensions as row references in the matrix.
 | S11 | Incrementality and cancellation | Repeated queries, body-only edits, declaration/import fingerprint changes, reverse dependency invalidation, request cancellation, generation rejection. |
 | S12 | Trivia and formatting | Comments, shebang trivia, blank-line groups, indentation, top-level item spans, nested member spans, malformed-source fallback. |
 
+## Workspace And Cross-File Required Coverage
+
+`S0` and `S8` require more than "there is more than one file". For common LSP
+features, the fixture must prove that workspace module facts are used instead
+of same-file or text-only fallbacks.
+
+Use a small two or three file workspace as the minimum fixture shape:
+
+```text
+scripts/rewards.vela
+  pub const BASE_REWARD = 4
+  pub global reward_scale = 2
+  pub struct RewardConfig { item: String, count: i64 }
+  pub enum RewardOutcome { Granted { item: String, count: i64 }, Skipped }
+  pub fn reward_bonus(amount, scale = reward_scale) { ... }
+  impl RewardConfig { pub fn total(self) { ... } }
+
+scripts/main.vela
+  use rewards::{BASE_REWARD, reward_scale, RewardConfig, RewardOutcome, reward_bonus}
+  fn main() {
+    let cfg: RewardConfig = RewardConfig { item: "gold", count: BASE_REWARD }
+    let total = reward_bonus(cfg.total())
+    return RewardOutcome::Granted { item: cfg.item, count: total }
+  }
+```
+
+Where import-list syntax differs, keep the same semantic shape with the
+project's supported import syntax.
+
+| ID | Cross-file case | Required proof |
+|---|---|---|
+| W0 | Workspace setup | Configured root, disk snapshots, open overlay in the importing file, open overlay in the defining file, scratch fallback, and deleted/renamed imported file behavior. |
+| W1 | Cross-file navigation | `definition`, `declaration`, and `typeDefinition` from imported function calls, const/global uses, type hints, constructors, enum variants, member access through imported source types, and schema facts with source spans. |
+| W2 | Cross-file hover/completion/signature | Imported globals, functions, types, variants, fields, methods, and defaulted parameters surface the defining-file facts and docs. |
+| W3 | Cross-file references/highlights | References include defining file plus use files for functions, const/global symbols, source types, field/member uses, enum variants, and imported aliases where supported. Same-document highlight remains local while references spans the workspace. |
+| W4 | Cross-file rename | Rename of private source-owned functions, const/global symbols, source types, fields, methods, and variants edits defining and use files; public or schema-only renames report the right rejection or risk metadata. |
+| W5 | Cross-file call hierarchy | Incoming and outgoing calls cross module boundaries for imported source functions and typed source methods. Dynamic or unresolved calls are not guessed. |
+| W6 | Cross-file diagnostics and actions | Missing import, broken import after delete/rename, unused import, typo candidate from another module, and safe missing-import code action all use the workspace graph. |
+| W7 | Cross-file semantic tokens and inlay hints | Imported function calls, const/global uses, type hints, constructors, enum variants, and member uses keep source/schema/builtin provenance and type facts across files. |
+| W8 | Cross-file incrementality | Editing a function body in the defining file does not rebuild unrelated modules, but declaration/import fingerprint changes invalidate dependents and refresh open-file results. |
+
+Protocol fixtures should name the cross-file case explicitly, for example
+`lsp_definition_cross_file_function_call`,
+`lsp_definition_cross_file_global_use`,
+`lsp_references_cross_file_imported_function`, or
+`lsp_rename_cross_file_struct_field`.
+
 ## Protocol Matrix
 
 `Service proof` means an editor-neutral test in `vela_language_service` or the
@@ -83,18 +136,18 @@ in `vela_lsp_server`.
 | `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot and clears or refreshes diagnostics as appropriate. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
 | `textDocument/didSave` | Save is currently false | S0 | No provider dependency on save events. | Save notifications should not be required for correctness while `save` is false. |
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
-| `textDocument/completion` | `completionProvider` | S1-S11 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, and builtin completions. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; stale/cancelled queries discard; malformed cursor contexts recover. |
+| `textDocument/completion` | `completionProvider` | S1-S11 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported. | Unknown resolve payloads fail without panics; initial completion list stays lightweight. |
-| `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S9, S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args. | Unknown calls, dynamic `Any`, incomplete calls, stale schema. |
-| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions. | Unresolved names, schema facts without source spans, missing schema, dynamic `Any`, parser recovery. |
-| `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, imported declarations, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
-| `textDocument/declaration` | `declarationProvider` | S1, S3-S5, S8-S10 | Source declaration targets where declaration and definition are the same or explicitly distinct. | Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location. |
-| `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S10 | Variables and parameters with source/schema type facts jump to source/schema type declarations when source-backed. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit null policy. |
+| `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls, dynamic `Any`, incomplete calls, stale schema. |
+| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names, schema facts without source spans, missing schema, dynamic `Any`, parser recovery. |
+| `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, cross-file imported declarations, imported const/global uses, imported function calls, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
+| `textDocument/declaration` | `declarationProvider` | S1, S3-S5, S8-S10 | Source declaration targets, including cross-file imported declarations, where declaration and definition are the same or explicitly distinct. | Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location. |
+| `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S8, S10 | Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit null policy. |
 | `textDocument/implementation` | Not advertised | S1, S3, S4, S10 | No positive coverage until trait/impl implementation semantics are specified. | Capability remains absent/null and direct requests return method-not-found or an explicit unsupported response. |
-| `textDocument/references` | `referencesProvider` | S1-S6, S8-S11 | Locals, parameters, source declarations, imports, functions, fields, methods, variants, schema-backed source spans, read/write classification. | Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently. |
+| `textDocument/references` | `referencesProvider` | S1-S6, S8-S11 | Locals, parameters, source declarations, imports, functions, const/global uses, fields, methods, variants, schema-backed source spans, read/write classification, and cross-file uses. | Shadowed locals stay separate; schema-only, builtin, dynamic, unresolved, and missing-schema targets are classified or rejected consistently. |
 | `textDocument/documentHighlight` | `documentHighlightProvider` | S1-S6, S8-S10 | Same-document highlights for locals, params, functions, fields, methods, variants, schema member calls, read/write/text kind. | Parser recovery, dynamic members, unresolved names, shadowing. |
 | `textDocument/prepareRename` | `renameProvider.prepareProvider` | S1-S6, S8-S10 | Editable ranges for source-owned locals, private declarations, source members, variants, and source-backed schema spans where allowed. | Reject keywords, literals, schema-only host facts, builtin facts, dynamic `Any`, unresolved names, public ABI risk without metadata, collisions. |
-| `textDocument/rename` | `renameProvider` | S1-S6, S8-S11 | Versioned workspace edits for all references of an editable source-owned symbol, conflict checks, hot-reload risk metadata. | Overlapping edits, stale versions, visibility conflicts, name collisions, schema-only/builtin/dynamic/unresolved targets. |
+| `textDocument/rename` | `renameProvider` | S1-S6, S8-S11 | Versioned workspace edits for all references of an editable source-owned symbol across defining and importing files, conflict checks, hot-reload risk metadata. | Overlapping edits, stale versions, visibility conflicts, name collisions, schema-only/builtin/dynamic/unresolved targets. |
 | `textDocument/codeAction` | `codeActionProvider.quickfix` | S1, S3, S4, S6, S8-S10 | Diagnostic-backed typo fixes, missing imports, unused import removal, missing match arms, missing record fields. | Ambiguous imports, dynamic receiver typo fixes, speculative semantic rewrites, stale ranges. |
 | `textDocument/prepareCallHierarchy` | `callHierarchyProvider` | S1, S4, S5, S8-S10 | Source functions, source methods, trait defaults/interface methods, schema-backed methods with source spans where available. | Non-callable targets, dynamic calls, unresolved targets, schema-only targets without source spans. |
 | `callHierarchy/incomingCalls` | `callHierarchyProvider` | S1, S4, S5, S8-S11 | Incoming source and typed receiver method calls across modules, source/schema method call ranges. | Dynamic/unresolved calls are not guessed; stale indexes are rejected. |
