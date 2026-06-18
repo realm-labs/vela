@@ -38,6 +38,46 @@ slots: i64,
 }
 
 #[test]
+fn type_definition_follows_imported_local_source_type_alias() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+use game::inventory::make_inventory
+
+fn main() {
+let bag: Bag = make_inventory();
+return bag;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}
+
+pub fn make_inventory() -> Inventory {
+return Inventory { slots: 2 };
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let use_line = main_text.lines().nth(5).expect("bag use line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(5, use_line.find("bag").expect("bag use")),
+        )
+        .expect("type definition should resolve imported local source type alias");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_source_field_type_alias() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");

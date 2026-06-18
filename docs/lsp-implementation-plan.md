@@ -247,9 +247,9 @@ coverage complete based only on the older capability phases.
     types, fields, methods, enum variants, schema spans, builtin types,
     dynamic facts, and unresolved names.
   - W1 `typeDefinition` now has service and protocol coverage for imported
-    parameter source type aliases in addition to existing imported field,
-    function return, member, method return, enum variant, const, and global
-    source type paths.
+    local and parameter source type aliases in addition to existing imported
+    field, function return, member, method return, enum variant, const, and
+    global source type paths.
 - [ ] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
@@ -706,9 +706,9 @@ Purpose: expose semantic facts and navigation.
     type declarations when source-backed, and returns null for primitive,
     method, variant, dynamic, or unknown targets instead of falling back to an
     enclosing declaration.
-  - Cross-file type-definition coverage now includes imported source function
-    calls and imported source method calls whose return type is a source-owned
-    type.
+  - Cross-file type-definition coverage now includes imported source local
+    annotations, parameters, function calls, and source method calls whose
+    type or return type is source-owned.
 
 Tests:
 
@@ -774,6 +774,7 @@ Tests:
 - [x] `type_definition_follows_local_source_type`
 - [x] `type_definition_follows_source_field_type`
 - [x] `type_definition_follows_imported_parameter_source_type_alias`
+- [x] `type_definition_follows_imported_local_source_type_alias`
 - [x] `type_definition_follows_imported_source_field_type_alias`
 - [x] `type_definition_follows_imported_function_return_source_type`
 - [x] `type_definition_follows_imported_source_member_type`
@@ -801,6 +802,7 @@ Tests:
 - [x] `lsp_type_definition_follows_source_struct_field_type`
 - [x] `lsp_type_definition_follows_imported_source_struct_field_type_alias`
 - [x] `lsp_type_definition_follows_imported_parameter_source_type_alias`
+- [x] `lsp_type_definition_follows_imported_local_source_type_alias`
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`
 - [x] `lsp_type_definition_follows_imported_source_method_return_type`
