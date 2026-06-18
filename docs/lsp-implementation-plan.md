@@ -247,10 +247,10 @@ coverage complete based only on the older capability phases.
     types, fields, methods, enum variants, schema spans, builtin types,
     dynamic facts, and unresolved names.
   - W1 `typeDefinition` now has service and protocol coverage for imported
-    local, parameter, trait, field, and return type hints plus local and
-    parameter source type aliases in addition to existing imported field,
-    function return, member, method return, struct constructor, enum variant,
-    const, and global source type paths.
+    local, parameter, trait, struct-field, enum-field, and return type hints
+    plus local and parameter source type aliases in addition to existing
+    imported field, function return, member, method return, struct
+    constructor, enum variant, const, and global source type paths.
 - [ ] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
@@ -708,9 +708,10 @@ Purpose: expose semantic facts and navigation.
     method, variant, dynamic, or unknown targets instead of falling back to an
     enclosing declaration.
   - Cross-file type-definition coverage now includes imported source local
-    type-hint aliases, parameter, trait, field, and return type-hint aliases,
-    local annotations, parameters, struct constructors, function calls, and
-    source method calls whose type or return type is source-owned.
+    type-hint aliases, parameter, trait, struct-field, enum-field, and return
+    type-hint aliases, local annotations, parameters, struct constructors,
+    function calls, and source method calls whose type or return type is
+    source-owned.
 
 Tests:
 
@@ -781,6 +782,7 @@ Tests:
 - [x] `type_definition_follows_imported_parameter_source_type_hint`
 - [x] `type_definition_follows_imported_trait_source_type_hint`
 - [x] `type_definition_follows_imported_field_source_type_hint`
+- [x] `type_definition_follows_imported_enum_field_source_type_hint`
 - [x] `type_definition_follows_imported_return_source_type_hint`
 - [x] `type_definition_follows_imported_source_field_type_alias`
 - [x] `type_definition_follows_imported_function_return_source_type`
@@ -815,6 +817,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_parameter_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_trait_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_field_source_type_hint`
+- [x] `lsp_type_definition_follows_imported_enum_field_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_return_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`

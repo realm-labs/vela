@@ -224,6 +224,41 @@ slots: i64,
 }
 
 #[test]
+fn type_definition_follows_imported_enum_field_source_type_hint() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+enum Reward {
+Granted { inventory: Bag },
+Skipped,
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let field_line = main_text.lines().nth(3).expect("enum field line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(3, field_line.find("Bag").expect("type hint")),
+        )
+        .expect("type definition should resolve imported enum field type hint");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_return_source_type_hint() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
