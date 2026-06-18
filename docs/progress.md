@@ -380,6 +380,11 @@ outgoing source-owned inherent and trait default method calls where the
 receiver is produced by another source method return, reusing the same
 trait-default receiver resolution as references.
 
+M20.5 Phase 11 update: call hierarchy now covers prepare, incoming, and
+outgoing schema-backed methods and trait methods where the receiver is
+produced by another schema method return, matching the chained schema receiver
+coverage in references and document highlights.
+
 M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.

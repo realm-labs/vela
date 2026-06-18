@@ -324,9 +324,9 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP call hierarchy for source
     functions, imported function aliases, source methods, trait impl methods,
     trait default/interface methods, schema methods including
-    schema-function-return receivers, schema trait methods, cross-file method
-    calls, and empty prepare results for unresolved, dynamic, and non-callable
-    targets.
+    schema-function-return and schema-method-return receivers, schema trait
+    methods, cross-file method calls, and empty prepare results for
+    unresolved, dynamic, and non-callable targets.
 - [x] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1276,7 +1276,8 @@ Purpose: support workspace navigation and prepare rename.
     incoming, and caller/default-body outgoing call hierarchy for typed trait
     receiver calls.
   - [x] Serve schema-backed method and trait-method prepare, incoming, and
-    script-caller outgoing call hierarchy for typed receiver calls.
+    script-caller outgoing call hierarchy for typed receiver calls, including
+    schema function-return and schema method-return receivers.
 
 Tests:
 
@@ -1418,6 +1419,10 @@ Tests:
 - [x] `lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receivers`
 - [x] `call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_receivers`
 - [x] `lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_receivers`
+- [x] `call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers`
+- [x] `call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_receivers`
+- [x] `lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_receivers`
 - [x] `call_hierarchy_uses_source_method_calls_on_source_method_return_receivers`
 - [x] `lsp_call_hierarchy_uses_source_method_calls_on_source_method_return_receivers`
 - [x] `call_hierarchy_uses_source_trait_default_method_calls_on_source_method_return_receivers`

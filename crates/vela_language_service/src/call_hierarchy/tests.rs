@@ -5,6 +5,8 @@ use crate::{
 
 #[path = "tests/returned_receivers.rs"]
 mod returned_receivers;
+#[path = "tests/schema_method_return_receivers.rs"]
+mod schema_method_return_receivers;
 
 #[test]
 fn call_hierarchy_uses_resolved_call_graph() {
