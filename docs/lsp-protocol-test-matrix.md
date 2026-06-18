@@ -212,8 +212,9 @@ These are the first places to compare current tests against the matrix:
 1. Navigation semantics must stay separate per protocol. Current focused
    fixtures cover `typeDefinition` type-fact targets and null fallback for
    local source values, dynamic local values, source/schema member values,
-   schema types without source spans, and imported source type aliases used by
-   locals and source fields; the remaining audit is broader cross-file
+   schema types without source spans, imported source type aliases used by
+   locals and source fields, and imported source function calls whose return
+   type is source-owned; the remaining audit is broader cross-file
    type-definition coverage across W1.
 2. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now

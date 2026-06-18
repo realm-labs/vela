@@ -6,6 +6,8 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange,
+    callable_context::callable_facts,
+    path_calls,
     symbol_ref::{qualified_source_declaration_name, source_symbol_for_declaration},
     symbol_target::SymbolTarget,
 };
@@ -129,6 +131,10 @@ impl LanguageServiceDatabases {
             return Some(definition);
         }
 
+        if let Some(definition) = self.call_return_type_definition(&query, &target) {
+            return Some(definition);
+        }
+
         if target.is_schema_symbol() {
             return self.schema_type_definition_for_name(target.text());
         }
@@ -199,6 +205,21 @@ impl LanguageServiceDatabases {
             .facts()
             .field_fact(&owner, target.text())
             .cloned()
+    }
+
+    fn call_return_type_definition(
+        &self,
+        query: &QueryContext<'_>,
+        target: &SymbolTarget,
+    ) -> Option<Definition> {
+        let parsed = query.parsed_source()?;
+        let call_site = path_calls::path_call_sites(parsed, query.text())
+            .into_iter()
+            .find(|site| site.segment_range == target.range())?;
+        let callee = call_site.path.join("::");
+        callable_facts(self, &callee)
+            .iter()
+            .find_map(|callable| self.type_definition_for_fact(callable.returns()))
     }
 
     fn type_definition_for_fact(&self, fact: &TypeFact) -> Option<Definition> {

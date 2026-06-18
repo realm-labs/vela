@@ -633,6 +633,8 @@ Purpose: expose semantic facts and navigation.
     type declarations when source-backed, and returns null for primitive,
     method, variant, dynamic, or unknown targets instead of falling back to an
     enclosing declaration.
+  - Cross-file type-definition coverage now includes imported source function
+    calls whose return type is a source-owned type.
 
 Tests:
 
@@ -691,6 +693,7 @@ Tests:
 - [x] `type_definition_follows_source_field_type`
 - [x] `type_definition_follows_imported_local_source_type_alias`
 - [x] `type_definition_follows_imported_source_field_type_alias`
+- [x] `type_definition_follows_imported_function_return_source_type`
 - [x] `type_definition_returns_none_for_source_primitive_field`
 - [x] `type_definition_returns_none_for_dynamic_local_value`
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
@@ -709,6 +712,7 @@ Tests:
 - [x] `lsp_type_definition_returns_null_for_schema_type_without_source_span`
 - [x] `lsp_type_definition_follows_source_struct_field_type`
 - [x] `lsp_type_definition_follows_imported_source_struct_field_type_alias`
+- [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
 - [x] `lsp_type_definition_returns_null_for_dynamic_local_value`
 - [x] `lsp_type_definition_follows_schema_field_type_source_span`

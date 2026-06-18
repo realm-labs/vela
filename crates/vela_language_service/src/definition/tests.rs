@@ -296,6 +296,49 @@ slots: i64,
 }
 
 #[test]
+fn type_definition_follows_imported_function_return_source_type() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::make_inventory
+
+fn main() {
+return make_inventory();
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}
+
+pub fn make_inventory() -> Inventory {
+return Inventory { slots: 2 };
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let call_line = main_text.lines().nth(3).expect("call line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(
+                3,
+                call_line
+                    .find("make_inventory")
+                    .expect("imported function call"),
+            ),
+        )
+        .expect("type definition should resolve imported function return type");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_returns_none_for_source_primitive_field() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Cell {
