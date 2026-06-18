@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFunctionFact,
-    RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact,
+    RegistryIndexCapabilityFact, RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact,
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{PrimitiveTag, SourceId, Span};
@@ -153,6 +153,7 @@ fn parse_schema_hash(value: &str) -> Result<u64, SchemaArtifactError> {
 pub struct SchemaSourceLocations {
     types: BTreeMap<String, Span>,
     traits: BTreeMap<String, Span>,
+    modules: BTreeMap<String, Span>,
     fields: BTreeMap<(String, String), Span>,
     variants: BTreeMap<(String, String), Span>,
     methods: BTreeMap<(String, String), Span>,
@@ -169,6 +170,11 @@ impl SchemaSourceLocations {
     #[must_use]
     pub fn trait_span(&self, name: &str) -> Option<Span> {
         self.traits.get(name).copied()
+    }
+
+    #[must_use]
+    pub fn module_span(&self, name: &str) -> Option<Span> {
+        self.modules.get(name).copied()
     }
 
     #[must_use]
@@ -228,6 +234,8 @@ pub struct SchemaArtifactFacts {
     #[serde(default)]
     traits: Vec<SchemaNamedFact>,
     #[serde(default)]
+    modules: Vec<SchemaNamedFact>,
+    #[serde(default)]
     fields: Vec<SchemaMemberFact>,
     #[serde(default)]
     field_access: Vec<SchemaFieldAccessFact>,
@@ -262,6 +270,10 @@ impl SchemaArtifactFacts {
             traits: facts
                 .traits()
                 .map(|(name, fact)| SchemaNamedFact::new(name, fact, facts.trait_docs(name)))
+                .collect(),
+            modules: facts
+                .modules()
+                .map(SchemaNamedFact::from_registry_module)
                 .collect(),
             fields: facts
                 .fields()
@@ -338,6 +350,14 @@ impl SchemaArtifactFacts {
             if let Some(docs) = &entry.docs {
                 facts.insert_trait_docs(entry.name.clone(), docs.clone());
             }
+        }
+        for entry in &self.modules {
+            facts.insert_module(RegistryModuleFact::from_parts(
+                entry.name.clone(),
+                entry.fact.to_type_fact(),
+                entry.docs.clone(),
+                entry.source_span.and_then(SchemaSourceSpan::to_span),
+            ));
         }
         for entry in &self.fields {
             facts.insert_field(
@@ -438,6 +458,11 @@ impl SchemaArtifactFacts {
                 locations.traits.insert(entry.name.clone(), span);
             }
         }
+        for entry in &self.modules {
+            if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
+                locations.modules.insert(entry.name.clone(), span);
+            }
+        }
         for entry in &self.fields {
             if let Some(span) = entry.source_span.and_then(SchemaSourceSpan::to_span) {
                 locations
@@ -493,6 +518,14 @@ struct SchemaSourceSpan {
 }
 
 impl SchemaSourceSpan {
+    fn from_span(span: Span) -> Self {
+        Self {
+            source: span.source.get(),
+            start: span.start,
+            end: span.end,
+        }
+    }
+
     fn to_span(self) -> Option<Span> {
         (self.start <= self.end)
             .then(|| Span::new(SourceId::new(self.source), self.start, self.end))
@@ -521,6 +554,15 @@ impl SchemaNamedFact {
             fact: SchemaTypeFact::from_type_fact(fact),
             docs: docs.map(str::to_owned),
             source_span: None,
+        }
+    }
+
+    fn from_registry_module(value: RegistryModuleFact) -> Self {
+        Self {
+            name: value.name,
+            fact: SchemaTypeFact::from_type_fact(&value.fact),
+            docs: value.docs,
+            source_span: value.source_span.map(SchemaSourceSpan::from_span),
         }
     }
 }
@@ -941,6 +983,12 @@ mod tests {
         facts.insert_type_docs("Player", "Player host object.");
         facts.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
         facts.insert_trait_docs("Rewardable", "Rewardable host trait.");
+        facts.insert_module(RegistryModuleFact::from_parts(
+            "game::reward",
+            TypeFact::module("game::reward"),
+            Some("Reward module.".to_owned()),
+            Some(Span::new(SourceId::new(7), 10, 20)),
+        ));
         facts.insert_field("Player", "level", TypeFact::I64);
         facts.insert_field_docs("Player", "level", "Current player level.");
         facts.insert_field_access(RegistryFieldAccessFact {
@@ -1011,6 +1059,18 @@ mod tests {
         let round_tripped = parsed.to_registry_facts();
 
         assert_eq!(round_tripped, facts);
+        assert_eq!(
+            round_tripped.module_fact("game::reward"),
+            Some(&TypeFact::module("game::reward"))
+        );
+        assert_eq!(
+            round_tripped.module_docs("game::reward"),
+            Some("Reward module.")
+        );
+        assert_eq!(
+            round_tripped.module_source_span("game::reward"),
+            Some(Span::new(SourceId::new(7), 10, 20))
+        );
     }
 
     #[test]
@@ -1024,6 +1084,14 @@ mod tests {
                             "name": "Player",
                             "fact": { "kind": "host", "name": "Player" },
                             "docs": "Player host object."
+                        }
+                    ],
+                    "modules": [
+                        {
+                            "name": "game::reward",
+                            "fact": { "kind": "module", "name": "game::reward" },
+                            "docs": "Reward module.",
+                            "sourceSpan": { "source": 7, "start": 10, "end": 20 }
                         }
                     ],
                     "fields": [
@@ -1060,6 +1128,19 @@ mod tests {
         assert_eq!(
             facts.function_docs("game::reward::grant"),
             Some("Grant reward.")
+        );
+        assert_eq!(
+            facts.module_fact("game::reward"),
+            Some(&TypeFact::module("game::reward"))
+        );
+        assert_eq!(facts.module_docs("game::reward"), Some("Reward module."));
+        assert_eq!(
+            facts.module_source_span("game::reward"),
+            Some(Span::new(SourceId::new(7), 10, 20))
+        );
+        assert_eq!(
+            artifact.source_locations().module_span("game::reward"),
+            Some(Span::new(SourceId::new(7), 10, 20))
         );
     }
 

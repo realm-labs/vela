@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::PrimitiveTag;
+use vela_common::{PrimitiveTag, Span};
 use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
-use vela_reflect::modules::FunctionDesc;
+use vela_reflect::modules::{FunctionDesc, ModuleDesc};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, TraitMethodDesc, TypeDesc, TypeKind, TypeRegistry,
 };
@@ -118,6 +118,40 @@ impl RegistryFunctionFact {
         Self {
             name: name.into(),
             fact,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RegistryModuleFact {
+    pub name: String,
+    pub fact: TypeFact,
+    pub docs: Option<String>,
+    pub source_span: Option<Span>,
+}
+
+impl RegistryModuleFact {
+    fn new(desc: &ModuleDesc) -> Self {
+        Self {
+            name: desc.name.clone(),
+            fact: TypeFact::module(&desc.name),
+            docs: desc.docs.clone(),
+            source_span: desc.source_span,
+        }
+    }
+
+    #[must_use]
+    pub fn from_parts(
+        name: impl Into<String>,
+        fact: TypeFact,
+        docs: Option<String>,
+        source_span: Option<Span>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            fact,
+            docs,
+            source_span,
         }
     }
 }
@@ -257,6 +291,7 @@ pub struct RegistryFacts {
     method_docs: BTreeMap<(String, String), String>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
     trait_method_docs: BTreeMap<(String, String), String>,
+    modules: BTreeMap<String, RegistryModuleFact>,
     functions: BTreeMap<String, TypeFact>,
     function_docs: BTreeMap<String, String>,
     index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
@@ -375,6 +410,12 @@ impl RegistryFacts {
                 function.name.clone(),
                 function_effect_fact(&function.effects),
             );
+        }
+
+        for module in registry.modules() {
+            facts
+                .modules
+                .insert(module.name.clone(), RegistryModuleFact::new(module));
         }
 
         for trait_desc in registry.traits() {
@@ -614,6 +655,27 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn module_fact(&self, name: &str) -> Option<&TypeFact> {
+        self.modules.get(name).map(|module| &module.fact)
+    }
+
+    #[must_use]
+    pub fn module_docs(&self, name: &str) -> Option<&str> {
+        self.modules
+            .get(name)
+            .and_then(|module| module.docs.as_deref())
+    }
+
+    #[must_use]
+    pub fn module_source_span(&self, name: &str) -> Option<Span> {
+        self.modules.get(name).and_then(|module| module.source_span)
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = RegistryModuleFact> + '_ {
+        self.modules.values().cloned()
+    }
+
+    #[must_use]
     pub fn function_docs(&self, name: &str) -> Option<&str> {
         self.function_docs.get(name).map(String::as_str)
     }
@@ -801,6 +863,10 @@ impl RegistryFacts {
 
     pub fn insert_function(&mut self, name: impl Into<String>, fact: TypeFact) {
         self.functions.insert(name.into(), fact);
+    }
+
+    pub fn insert_module(&mut self, module: RegistryModuleFact) {
+        self.modules.insert(module.name.clone(), module);
     }
 
     pub fn insert_function_docs(&mut self, name: impl Into<String>, docs: impl Into<String>) {
@@ -1022,10 +1088,10 @@ fn collect_trait_methods(registry: &TypeRegistry, facts: &mut RegistryFacts) {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{HostMethodId, HostTypeId};
+    use vela_common::{HostMethodId, HostTypeId, SourceId, Span};
     use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
     use vela_reflect::access::{MethodAccess, MethodEffectSet};
-    use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
+    use vela_reflect::modules::{FunctionDesc, FunctionParamDesc, ModuleDesc};
     use vela_reflect::registry::{
         FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
         TypeKind, TypeRegistry, VariantDesc,
@@ -1034,7 +1100,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn registry_facts_cover_types_fields_methods_and_functions() {
+    fn registry_facts_cover_types_fields_methods_functions_and_modules() {
         let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .host_type(HostTypeId::new(1))
             .docs("Player host object.")
@@ -1081,6 +1147,11 @@ mod tests {
         registry.register(player);
         registry.register(inventory);
         registry.register(quest);
+        registry.register_module(
+            ModuleDesc::new("game::reward")
+                .docs("Reward module.")
+                .source_span(Span::new(SourceId::new(7), 10, 20)),
+        );
         registry.register_function(
             FunctionDesc::new(FunctionId::new(1), "game::reward::grant")
                 .param(FunctionParamDesc::new("player").type_hint("Player"))
@@ -1134,6 +1205,15 @@ mod tests {
                 vec![TypeFact::host("Player"), TypeFact::I64],
                 TypeFact::BOOL,
             ))
+        );
+        assert_eq!(
+            facts.module_fact("game::reward"),
+            Some(&TypeFact::module("game::reward"))
+        );
+        assert_eq!(facts.module_docs("game::reward"), Some("Reward module."));
+        assert_eq!(
+            facts.module_source_span("game::reward"),
+            Some(Span::new(SourceId::new(7), 10, 20))
         );
         assert_eq!(
             facts.trait_method_fact("Damageable", "damage"),

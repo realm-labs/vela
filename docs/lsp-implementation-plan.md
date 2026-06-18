@@ -524,19 +524,22 @@ cargo test -p vela_language_service
 Purpose: provide host-aware editor tooling without running host code.
 
 - [x] Define a schema artifact format for `TypeRegistry`/`RegistryFacts`.
-- [~] Export type, field, method, variant, trait, module, function, docs,
+- [x] Export type, field, method, variant, trait, module, function, docs,
   effect, permission, type-hint, stable-ID, and source-span metadata.
   - Schema artifacts now accept optional `sourceSpan` metadata for exported
     type, trait, member, variant, method, trait-method, and function facts.
   - Schema artifacts now round-trip optional docs metadata for type, trait,
     field, variant, method, trait-method, and function facts.
+  - Schema artifacts now export module facts with optional docs and source
+    spans from `RegistryFacts`.
 - [x] Load schema artifacts into language-service schema facts.
 - [x] Validate schema version/hash compatibility.
-- [~] Report missing, stale, or invalid schema diagnostics.
+- [x] Report missing, stale, or invalid schema diagnostics.
 - [x] Watch schema artifact changes through the LSP server.
 
 Tests:
 
+- [x] `registry_facts_cover_types_fields_methods_functions_and_modules`
 - [x] `schema_export_round_trips_registry_facts`
 - [x] `schema_hash_compatibility_accepts_matching_facts`
 - [x] `schema_hash_compatibility_rejects_stale_facts`
