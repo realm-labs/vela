@@ -615,8 +615,12 @@ Purpose: expose semantic facts and navigation.
 - [~] Implement go to declaration/type definition where LSP clients separate
   those requests.
   - Initial language-service and LSP support routes `textDocument/declaration`
-    and `textDocument/typeDefinition` through the same source/schema-backed
-    navigation spans as definition.
+    through the same source/schema-backed navigation spans as definition.
+  - `textDocument/typeDefinition` now resolves through type facts for local
+    values plus source/schema field member expressions, jumps to source/schema
+    type declarations when source-backed, and returns null for primitive,
+    method, variant, dynamic, or unknown targets instead of falling back to an
+    enclosing declaration.
 
 Tests:
 
@@ -667,21 +671,28 @@ Tests:
 - [x] `lsp_definition_follows_schema_variant_source_span`
 - [x] `declaration_follows_local_binding`
 - [x] `type_definition_follows_schema_source_span`
+- [x] `type_definition_follows_local_source_type`
+- [x] `type_definition_follows_source_field_type`
+- [x] `type_definition_returns_none_for_source_primitive_field`
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
 - [x] `lsp_declaration_follows_schema_source_span`
 - [x] `lsp_declaration_follows_schema_field_source_span`
 - [x] `lsp_declaration_follows_schema_method_source_span`
 - [x] `lsp_declaration_follows_schema_trait_method_source_span`
 - [x] `lsp_declaration_follows_schema_variant_source_span`
-- [x] `type_definition_follows_schema_field_source_span`
-- [x] `type_definition_follows_schema_method_source_span`
-- [x] `type_definition_follows_schema_trait_method_source_span`
-- [x] `type_definition_follows_schema_variant_source_span`
+- [x] `type_definition_follows_schema_field_type_source_span`
+- [x] `type_definition_returns_none_for_schema_primitive_field`
+- [x] `type_definition_returns_none_for_schema_method`
+- [x] `type_definition_returns_none_for_schema_trait_method`
+- [x] `type_definition_returns_none_for_schema_variant_without_owner_type_span`
 - [x] `lsp_type_definition_follows_schema_source_span`
-- [x] `lsp_type_definition_follows_schema_field_source_span`
-- [x] `lsp_type_definition_follows_schema_method_source_span`
-- [x] `lsp_type_definition_follows_schema_trait_method_source_span`
-- [x] `lsp_type_definition_follows_schema_variant_source_span`
+- [x] `lsp_type_definition_follows_source_struct_field_type`
+- [x] `lsp_type_definition_returns_null_for_source_primitive_field`
+- [x] `lsp_type_definition_follows_schema_field_type_source_span`
+- [x] `lsp_type_definition_returns_null_for_schema_primitive_field`
+- [x] `lsp_type_definition_returns_null_for_schema_method`
+- [x] `lsp_type_definition_returns_null_for_schema_trait_method`
+- [x] `lsp_type_definition_returns_null_for_schema_variant_without_owner_type_span`
 
 Validation:
 

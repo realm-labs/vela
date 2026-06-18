@@ -209,10 +209,10 @@ Each protocol fixture should declare:
 
 These are the first places to compare current tests against the matrix:
 
-1. Navigation semantics must be separate per protocol. `definition`,
-   `declaration`, and `typeDefinition` should not share a fallback that jumps
-   to an enclosing function when the selected symbol is a field, member, or
-   value expression.
+1. Navigation semantics must stay separate per protocol. Current focused
+   fixtures cover `typeDefinition` type-fact targets and null fallback for
+   local source values plus source/schema member values; the remaining audit is
+   broader cross-file/imported type-definition coverage across W1.
 2. `textDocument/implementation` is currently not part of Vela's advertised
    capability set. Keep the negative provider/method behavior pinned until
    trait/impl implementation semantics are specified.

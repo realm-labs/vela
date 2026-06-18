@@ -1,4 +1,4 @@
-use vela_analysis::type_fact::TypeFact;
+use vela_analysis::{hints::type_fact_from_hint, type_fact::TypeFact};
 use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -18,6 +18,33 @@ pub(super) fn source_member_definition_for_target(
     source_field_definition_for_target(databases, graph, target, receiver)
         .or_else(|| source_impl_method_definition_for_target(databases, graph, target, receiver))
         .or_else(|| source_trait_method_definition_for_target(databases, graph, target, receiver))
+}
+
+pub(super) fn source_field_type_fact_for_target(
+    databases: &LanguageServiceDatabases,
+    target: &SymbolTarget,
+) -> Option<TypeFact> {
+    let receiver = target.member_receiver_fact()?;
+    let graph = databases.hir_db().graph();
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Struct
+            || !owner_names
+                .iter()
+                .any(|owner| declaration_name_matches(graph, declaration, owner))
+        {
+            return None;
+        }
+        let field = graph
+            .struct_shape(declaration.id)?
+            .fields
+            .iter()
+            .find(|field| field.name == target.text())?;
+        field
+            .type_hint
+            .as_ref()
+            .map(|hint| type_fact_from_hint(graph, hint))
+    })
 }
 
 fn source_field_definition_for_target(

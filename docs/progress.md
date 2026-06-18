@@ -290,9 +290,11 @@ field source spans as well, closing the explicit protocol fixture parity gap
 with schema field definitions.
 
 M20.5 Phase 8 update: language-service and native LSP type-definition fixtures
-now cover schema-backed field, host-method, trait-method, and enum-variant
-source spans, matching the existing definition/declaration navigation path for
-clients that issue `textDocument/typeDefinition` separately.
+now resolve through type facts instead of sharing definition fallback behavior.
+Local source values plus source/schema field member expressions jump to
+source/schema type declarations when source-backed, while primitive fields,
+schema methods, schema trait methods, and schema variants without owner type
+spans return null for `textDocument/typeDefinition`.
 
 M20.5 Phase 7 update: completion now resolves schema-backed trait receiver
 method members in addition to schema-backed host receiver members.
@@ -314,8 +316,9 @@ variant declarations/constructor uses now report facts through the same hover
 path, including docs where the HIR metadata carries them.
 `vela_language_service` now exposes explicit declaration and type-definition
 navigation queries, and `vela_lsp_server` advertises and serves
-`textDocument/declaration` plus `textDocument/typeDefinition` using the same
-source/schema-backed spans as go-to-definition.
+`textDocument/declaration` plus `textDocument/typeDefinition`; declaration
+uses source/schema-backed definition spans, while type definition uses explicit
+type-fact targets and null degradation for non-type values.
 
 M20.5 highlighting completion update: semantic highlighting now has a
 service-owned Vela token taxonomy, native LSP full/delta/range projection with

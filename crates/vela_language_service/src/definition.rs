@@ -1,10 +1,13 @@
+use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::module_graph::Declaration;
+use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    SymbolRef, TextRange, symbol_ref::source_symbol_for_declaration, symbol_target::SymbolTarget,
+    SymbolRef, TextRange,
+    symbol_ref::{qualified_source_declaration_name, source_symbol_for_declaration},
+    symbol_target::SymbolTarget,
 };
 
 mod source_members;
@@ -113,7 +116,24 @@ impl LanguageServiceDatabases {
         document_id: &DocumentId,
         position: Position,
     ) -> Option<Definition> {
-        self.definition(document_id, position)
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let target = SymbolTarget::from_query(self, &query)?;
+
+        if let Some(fact) = self.member_type_fact_for_target(&target) {
+            return self.type_definition_for_fact(&fact);
+        }
+
+        if let Some(fact) = query.type_fact_for_range(self, target.range())
+            && let Some(definition) = self.type_definition_for_fact(&fact)
+        {
+            return Some(definition);
+        }
+
+        if target.is_schema_symbol() {
+            return self.schema_type_definition_for_name(target.text());
+        }
+
+        None
     }
 
     fn definition_from_span_with_symbol(
@@ -166,6 +186,89 @@ impl LanguageServiceDatabases {
         target
             .schema_symbol_span(self)
             .and_then(|span| self.definition_from_span_with_symbol(span, target.symbol().cloned()))
+    }
+
+    fn member_type_fact_for_target(&self, target: &SymbolTarget) -> Option<TypeFact> {
+        source_members::source_field_type_fact_for_target(self, target)
+            .or_else(|| self.schema_field_type_fact_for_target(target))
+    }
+
+    fn schema_field_type_fact_for_target(&self, target: &SymbolTarget) -> Option<TypeFact> {
+        let owner = target.member_receiver_fact().and_then(fact_owner_name)?;
+        self.schema_db()
+            .facts()
+            .field_fact(&owner, target.text())
+            .cloned()
+    }
+
+    fn type_definition_for_fact(&self, fact: &TypeFact) -> Option<Definition> {
+        match fact {
+            TypeFact::Record { name } => self
+                .source_type_definition_for_name(name, DeclarationKind::Struct)
+                .or_else(|| self.schema_type_definition_for_name(name)),
+            TypeFact::Enum { name, .. } => self
+                .source_type_definition_for_name(name, DeclarationKind::Enum)
+                .or_else(|| self.schema_type_definition_for_name(name)),
+            TypeFact::Host { name } => self.schema_type_definition_for_name(name),
+            TypeFact::Trait { name } => self
+                .source_type_definition_for_name(name, DeclarationKind::Trait)
+                .or_else(|| self.schema_trait_definition_for_name(name)),
+            TypeFact::Union(facts) => facts
+                .iter()
+                .find_map(|fact| self.type_definition_for_fact(fact)),
+            TypeFact::Unknown
+            | TypeFact::Never
+            | TypeFact::Any
+            | TypeFact::Primitive(_)
+            | TypeFact::Range
+            | TypeFact::Array { .. }
+            | TypeFact::Map { .. }
+            | TypeFact::Set { .. }
+            | TypeFact::Iterator { .. }
+            | TypeFact::Option { .. }
+            | TypeFact::OptionSome { .. }
+            | TypeFact::OptionNone
+            | TypeFact::Result { .. }
+            | TypeFact::ResultOk { .. }
+            | TypeFact::ResultErr { .. }
+            | TypeFact::Function { .. }
+            | TypeFact::Module { .. } => None,
+        }
+    }
+
+    fn source_type_definition_for_name(
+        &self,
+        name: &str,
+        kind: DeclarationKind,
+    ) -> Option<Definition> {
+        let declaration = source_declaration_for_fact_name(self.hir_db().graph(), name, kind)?;
+        self.definition_from_declaration(declaration)
+    }
+
+    fn schema_type_definition_for_name(&self, name: &str) -> Option<Definition> {
+        self.schema_db()
+            .source_locations()
+            .type_span(name)
+            .or_else(|| {
+                short_name(name)
+                    .and_then(|short| self.schema_db().source_locations().type_span(short))
+            })
+            .and_then(|span| {
+                self.definition_from_span_with_symbol(span, Some(SymbolRef::Schema(name.into())))
+            })
+    }
+
+    fn schema_trait_definition_for_name(&self, name: &str) -> Option<Definition> {
+        self.schema_db()
+            .source_locations()
+            .trait_span(name)
+            .or_else(|| {
+                short_name(name)
+                    .and_then(|short| self.schema_db().source_locations().trait_span(short))
+            })
+            .and_then(|span| {
+                self.definition_from_span_with_symbol(span, Some(SymbolRef::Schema(name.into())))
+            })
     }
 
     fn definition_local_symbol_for_binding(&self, binding: &LocalBinding) -> SymbolRef {
@@ -258,6 +361,41 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
     let relative = slice.find(name)?;
     let start = range.start + relative;
     Some(TextRange::new(start, start + name.len()))
+}
+
+fn fact_owner_name(fact: &TypeFact) -> Option<String> {
+    match fact {
+        TypeFact::Host { name }
+        | TypeFact::Record { name }
+        | TypeFact::Enum { name, .. }
+        | TypeFact::Trait { name } => Some(name.clone()),
+        _ => None,
+    }
+}
+
+fn source_declaration_for_fact_name<'a>(
+    graph: &'a ModuleGraph,
+    name: &str,
+    kind: DeclarationKind,
+) -> Option<&'a Declaration> {
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == kind
+                && qualified_source_declaration_name(graph, declaration) == name
+        })
+        .or_else(|| {
+            let short = short_name(name).unwrap_or(name);
+            let mut matches = graph
+                .declarations()
+                .filter(|declaration| declaration.kind == kind && declaration.name == short);
+            let declaration = matches.next()?;
+            matches.next().is_none().then_some(declaration)
+        })
+}
+
+fn short_name(name: &str) -> Option<&str> {
+    name.rsplit("::").next().filter(|short| *short != name)
 }
 
 #[cfg(test)]
@@ -420,6 +558,89 @@ fn assign_cell(cell: Cell) {
         let definition = databases.definition(
             &document,
             Position::new(5, use_line.find("missing").expect("unknown field use")),
+        );
+
+        assert!(definition.is_none());
+    }
+
+    #[test]
+    fn type_definition_follows_local_source_type() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Player {
+    level: i64,
+}
+
+fn main(player: Player) {
+    return player;
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(5).expect("player use line");
+
+        let definition = databases
+            .type_definition(
+                &document,
+                Position::new(5, use_line.find("player").expect("player use")),
+            )
+            .expect("type definition should resolve source struct");
+
+        assert_eq!(definition.document_id(), &document);
+        assert_eq!(definition.range().start().line, 0);
+        assert_eq!(definition.range().start().character, 7);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Source("game::main::Player".into()))
+        );
+    }
+
+    #[test]
+    fn type_definition_follows_source_field_type() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Inventory {
+    slots: i64,
+}
+
+struct Player {
+    inventory: Inventory,
+}
+
+fn main(player: Player) {
+    return player.inventory;
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(9).expect("field use line");
+
+        let definition = databases
+            .type_definition(
+                &document,
+                Position::new(9, use_line.find("inventory").expect("field use")),
+            )
+            .expect("type definition should resolve source field type");
+
+        assert_eq!(definition.document_id(), &document);
+        assert_eq!(definition.range().start().line, 0);
+        assert_eq!(definition.range().start().character, 7);
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Source("game::main::Inventory".into()))
+        );
+    }
+
+    #[test]
+    fn type_definition_returns_none_for_source_primitive_field() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Cell {
+    value: i64,
+}
+
+fn main(cell: Cell) {
+    return cell.value;
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(5).expect("field use line");
+
+        let definition = databases.type_definition(
+            &document,
+            Position::new(5, use_line.find("value").expect("field use")),
         );
 
         assert!(definition.is_none());
@@ -934,12 +1155,47 @@ fn assign_cell(cell: Cell) {
     }
 
     #[test]
-    fn type_definition_follows_schema_field_source_span() {
+    fn type_definition_follows_schema_field_type_source_span() {
         assert_schema_member_type_definition(
+            "pub fn main(player: Player) { return player.inventory }",
+            "inventory",
+            "pub fn inventory_type_marker() { return 1 }",
+            "inventory_type_marker",
+            |source, start, end| {
+                serde_json::json!({
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        },
+                        {
+                            "name": "Inventory",
+                            "fact": { "kind": "host", "name": "Inventory" },
+                            "sourceSpan": {
+                                "source": source,
+                                "start": start,
+                                "end": end
+                            }
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "owner": "Player",
+                            "name": "inventory",
+                            "fact": { "kind": "host", "name": "Inventory" }
+                        }
+                    ]
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn type_definition_returns_none_for_schema_primitive_field() {
+        assert_schema_member_type_definition_none(
             "pub fn main(player: Player) { return player.level }",
             "level",
             "pub fn level_marker() { return 1 }",
-            "level_marker",
             |source, start, end| {
                 serde_json::json!({
                     "types": [
@@ -966,12 +1222,11 @@ fn assign_cell(cell: Cell) {
     }
 
     #[test]
-    fn type_definition_follows_schema_method_source_span() {
-        assert_schema_member_type_definition(
+    fn type_definition_returns_none_for_schema_method() {
+        assert_schema_member_type_definition_none(
             "pub fn main(player: Player) { return player.grant(1) }",
             "grant",
             "pub fn grant_marker() { return true }",
-            "grant_marker",
             |source, start, end| {
                 serde_json::json!({
                     "types": [
@@ -1002,12 +1257,11 @@ fn assign_cell(cell: Cell) {
     }
 
     #[test]
-    fn type_definition_follows_schema_trait_method_source_span() {
-        assert_schema_member_type_definition(
+    fn type_definition_returns_none_for_schema_trait_method() {
+        assert_schema_member_type_definition_none(
             "pub fn main(rewardable: Rewardable) { return rewardable.preview(1) }",
             "preview",
             "pub fn preview_marker() { return true }",
-            "preview_marker",
             |source, start, end| {
                 serde_json::json!({
                     "traits": [
@@ -1038,13 +1292,12 @@ fn assign_cell(cell: Cell) {
     }
 
     #[test]
-    fn type_definition_follows_schema_variant_source_span() {
+    fn type_definition_returns_none_for_schema_variant_without_owner_type_span() {
         let main_text = "pub fn main() { return QuestState::Active }";
-        assert_schema_member_type_definition(
+        assert_schema_member_type_definition_none(
             main_text,
             "Active",
             "pub fn active_marker() { return 1 }",
-            "active_marker",
             |source, start, end| {
                 serde_json::json!({
                     "types": [
@@ -1115,6 +1368,44 @@ fn assign_cell(cell: Cell) {
         assert_eq!(definition.document_id(), &schema_source);
         assert_eq!(definition.range().start().character, target_start);
         assert_eq!(definition.range().end().character, target_end);
+    }
+
+    fn assert_schema_member_type_definition_none<F>(
+        main_text: &str,
+        usage_needle: &str,
+        schema_text: &str,
+        facts: F,
+    ) where
+        F: FnOnce(u32, usize, usize) -> serde_json::Value,
+    {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");
+        let mut databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(schema_source.clone(), schema_text),
+        ]);
+        let schema_record = databases
+            .source_db()
+            .records()
+            .get(&schema_source)
+            .expect("schema source should be indexed");
+        let artifact = serde_json::json!({
+            "formatVersion": 1,
+            "facts": facts(
+                schema_record.source_id().get(),
+                0,
+                schema_text.len(),
+            )
+        })
+        .to_string();
+        databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+        let definition = databases.type_definition(
+            &main,
+            Position::new(0, main_text.find(usage_needle).expect("usage should exist")),
+        );
+
+        assert!(definition.is_none());
     }
 
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
