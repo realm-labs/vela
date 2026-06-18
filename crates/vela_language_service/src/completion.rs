@@ -16,6 +16,8 @@ mod item;
 mod lambda_parameter;
 mod local;
 mod map_key;
+#[cfg(test)]
+mod member_tests;
 mod model;
 mod module_path;
 mod named_argument;
@@ -25,6 +27,7 @@ mod relevance;
 mod schema_function;
 mod schema_type;
 mod source_declaration;
+mod source_member;
 mod source_module;
 mod statement;
 mod stdlib_function;
@@ -50,6 +53,7 @@ use module_path::module_path_completion_items as module_path_context_completion_
 use named_argument::script_function_parameter_completions;
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use record_field::record_field_completion_items as record_field_context_completion_items;
+use source_member::source_member_completion_items as source_member_context_completion_items;
 use statement::statement_keyword_completions;
 use type_hint::type_hint_completion_items;
 
@@ -170,16 +174,25 @@ impl LanguageServiceDatabases {
         };
         let schema = self.schema_db().facts();
         let owner = schema_completion_owner(&receiver_fact);
-        let items = member_completions(schema, &receiver_fact)
-            .into_iter()
-            .filter(|item| label_segment_matches(&item.label, context.prefix()))
-            .map(|item| {
-                let completion = service_item_from_analysis_completion(item, context.prefix());
-                owner.as_deref().map_or(completion.clone(), |owner| {
-                    enrich_schema_member_completion_item(completion, schema, owner)
+        let mut items = source_member_context_completion_items(
+            self.hir_db().graph(),
+            schema,
+            &receiver_fact,
+            context.replace_range(),
+            context.prefix(),
+        );
+        items.extend(
+            member_completions(schema, &receiver_fact)
+                .into_iter()
+                .filter(|item| label_segment_matches(&item.label, context.prefix()))
+                .map(|item| {
+                    let completion = service_item_from_analysis_completion(item, context.prefix());
+                    owner.as_deref().map_or(completion.clone(), |owner| {
+                        enrich_schema_member_completion_item(completion, schema, owner)
+                    })
                 })
-            })
-            .collect::<Vec<_>>();
+                .collect::<Vec<_>>(),
+        );
         dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |_| true)
     }
 

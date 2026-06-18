@@ -808,7 +808,7 @@ fn is_lambda_parameter(param: &TypeFact, lambda: Option<&LambdaFact>) -> bool {
     param == &TypeFact::function(lambda.params.clone(), lambda.returns.clone())
 }
 
-fn query_type_fact_from_hint(
+pub(crate) fn query_type_fact_from_hint(
     graph: &ModuleGraph,
     hint: &HirTypeHint,
     schema: &RegistryFacts,

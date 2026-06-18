@@ -644,8 +644,8 @@ Tests:
 - [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
-- [ ] `member_completion_includes_source_impl_and_trait_methods`
-- [ ] `lsp_member_completion_includes_source_and_builtin_methods`
+- [x] `member_completion_includes_source_impl_and_trait_methods`
+- [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [ ] `completion_uses_short_type_labels_with_owner_details`
 - [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`
@@ -1812,8 +1812,8 @@ Tests:
 - [ ] `lsp_document_formatting_formats_container_type_hint_example`
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
-- [ ] `member_completion_includes_source_impl_and_trait_methods`
-- [ ] `lsp_member_completion_includes_source_and_builtin_methods`
+- [x] `member_completion_includes_source_impl_and_trait_methods`
+- [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [ ] `completion_uses_short_type_labels_with_owner_details`
 - [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`

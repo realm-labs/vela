@@ -253,6 +253,100 @@ fn lsp_member_completion_triggers_after_empty_dot_for_builtin_methods() {
     assert_no_completion(&response, "Array");
 }
 
+#[test]
+fn lsp_member_completion_includes_source_and_builtin_methods() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"
+struct Player { level: i64 }
+trait Rewardable {
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+impl Player {
+    fn level_up(self, amount: i64) -> bool { return amount > 0 }
+}
+impl Rewardable for Player {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+pub fn main(player: Player) {
+    player.
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let player_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": position_for(text, "player.")
+        }),
+    )));
+
+    assert_completion(&player_response, "level", 5, "i64");
+    assert_completion(&player_response, "level_up", 2, "Function(i64) -> bool");
+    assert_completion(&player_response, "grant", 2, "Function(i64) -> bool");
+    assert_completion(&player_response, "preview", 2, "Function(i64) -> bool");
+    assert_no_completion(&player_response, "Rewardable");
+
+    let builtin_uri = "file:///workspace/scripts/game/arrays.vela";
+    let builtin_text = "pub fn main(scores: Array<String>) { scores. }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": builtin_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": builtin_text
+            }
+        }),
+    )));
+
+    let builtin_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": builtin_uri },
+            "position": position_for(builtin_text, "scores.")
+        }),
+    )));
+
+    assert_completion(
+        &builtin_response,
+        "first",
+        2,
+        "Function() -> Option(String)",
+    );
+    assert_completion(&builtin_response, "join", 2, "Function(String) -> String");
+    assert_completion(
+        &builtin_response,
+        "map",
+        2,
+        "Function(Function(String) -> Any) -> Array(Any)",
+    );
+    assert_no_completion(&builtin_response, "Array");
+}
+
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
     assert_eq!(response["result"]["isIncomplete"], false);
     let Some(items) = response["result"]["items"].as_array() else {
@@ -264,6 +358,21 @@ fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail
         }),
         "{items:?}"
     );
+}
+
+fn position_for(text: &str, needle: &str) -> serde_json::Value {
+    let offset = text.find(needle).expect("needle should exist") + needle.len();
+    let mut line = 0usize;
+    let mut character = 0usize;
+    for ch in text[..offset].chars() {
+        if ch == '\n' {
+            line += 1;
+            character = 0;
+        } else {
+            character += ch.len_utf8();
+        }
+    }
+    serde_json::json!({ "line": line, "character": character })
 }
 
 fn resolve_completion(
