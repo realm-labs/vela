@@ -5,7 +5,7 @@ use crate::TextRange;
 
 use super::{
     CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-    accumulator::CompletionAccumulator, display_type_detail, relevance::completion_sort_text,
+    accumulator::CompletionAccumulator, display_type_detail_parts, relevance::completion_sort_text,
 };
 
 pub(super) fn dedupe_and_filter_analysis_items(
@@ -30,15 +30,17 @@ pub(super) fn service_item_from_analysis_completion(
     let kind = item.kind.into();
     let insert_text = callable_insert_text(kind, &item.label);
     let insert_format = completion_insert_format(insert_text.as_ref());
+    let detail_parts = display_type_detail_parts(item.fact.display_name());
     CompletionItem {
         sort_text: Some(completion_sort_text(kind, &item.label, prefix)),
         metadata: Default::default(),
         label: item.label,
         kind,
-        detail: display_type_detail(item.fact.display_name()),
+        detail: detail_parts.render(),
         insert_text,
         insert_format,
     }
+    .with_detail_parts(detail_parts)
 }
 
 fn enrich_analysis_completion_item(

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::TextRange;
+use crate::{DisplayParts, TextRange};
 
 use super::{
     CompletionItem, CompletionTextEdit,
@@ -91,6 +91,9 @@ impl CompletionAccumulator {
             .label_details
             .detail
             .get_or_insert_with(|| item.detail.clone());
+        item.metadata
+            .detail_parts
+            .get_or_insert_with(|| DisplayParts::plain(item.detail.clone()));
         item.metadata.relevance = completion_relevance(item.kind, &item.label, &self.prefix);
         item
     }
@@ -149,6 +152,20 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(labels, ["fn", "game::foo", "map"]);
+    }
+
+    #[test]
+    fn accumulator_preserves_structured_detail_parts() {
+        let mut accumulator = CompletionAccumulator::new(TextRange::new(0, 1), "v");
+        accumulator.add(
+            item("value", CompletionKind::Binding, None)
+                .with_detail_parts(DisplayParts::type_name("i64")),
+        );
+
+        let items = accumulator.into_items();
+
+        assert_eq!(items[0].detail(), "i64");
+        assert_eq!(items[0].detail_parts(), DisplayParts::type_name("i64"));
     }
 
     fn item(label: &str, kind: CompletionKind, sort_text: Option<String>) -> CompletionItem {

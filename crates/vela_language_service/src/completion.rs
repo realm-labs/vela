@@ -313,7 +313,11 @@ fn empty_completion_list(context: CompletionContext) -> CompletionList {
 }
 
 pub(super) fn display_type_detail(text: impl AsRef<str>) -> String {
-    DisplayParts::type_name(text.as_ref()).render()
+    display_type_detail_parts(text).render()
+}
+
+pub(super) fn display_type_detail_parts(text: impl AsRef<str>) -> DisplayParts {
+    DisplayParts::type_name(text.as_ref())
 }
 
 pub(super) fn display_qualified_detail(owner: &str, member: &str) -> String {

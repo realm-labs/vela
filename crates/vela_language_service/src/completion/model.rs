@@ -1,6 +1,6 @@
 use vela_analysis::completion::CompletionKind as AnalysisCompletionKind;
 
-use crate::TextRange;
+use crate::{DisplayParts, TextRange};
 
 use super::relevance::CompletionRelevance;
 use super::{lambda_parameter::LambdaParameterContext, map_key::MapKeyContext};
@@ -76,6 +76,7 @@ pub struct CompletionItemMetadata {
     pub(super) edit_range: Option<TextRange>,
     pub(super) text_edit: Option<CompletionTextEdit>,
     pub(super) filter_text: Option<String>,
+    pub(super) detail_parts: Option<DisplayParts>,
     pub(super) label_details: CompletionLabelDetails,
     pub(super) documentation: Option<String>,
     pub(super) relevance: CompletionRelevance,
@@ -141,6 +142,14 @@ impl CompletionItem {
     #[must_use]
     pub fn detail(&self) -> &str {
         &self.detail
+    }
+
+    #[must_use]
+    pub fn detail_parts(&self) -> DisplayParts {
+        self.metadata
+            .detail_parts
+            .clone()
+            .unwrap_or_else(|| DisplayParts::plain(self.detail.clone()))
     }
 
     #[must_use]
@@ -214,6 +223,13 @@ impl CompletionItem {
     #[must_use]
     pub(super) fn with_documentation(mut self, documentation: Option<&str>) -> Self {
         self.metadata.documentation = documentation.map(str::to_owned);
+        self
+    }
+
+    #[must_use]
+    pub(super) fn with_detail_parts(mut self, detail_parts: DisplayParts) -> Self {
+        self.detail = detail_parts.render();
+        self.metadata.detail_parts = Some(detail_parts);
         self
     }
 
