@@ -511,6 +511,48 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_record_constructor_local_member_uses() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    fn bonus(self, extra: i64) -> i64 { return self.amount + extra }
+}
+
+pub fn main() -> i64 {
+    let reward = Reward { amount: 1 }
+    return reward.amount + reward.bonus(1)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        10,
+        line(text, 10)
+            .find("amount")
+            .expect("field use should exist"),
+        "amount".len(),
+        SemanticTokenType::Property,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        10,
+        line(text, 10)
+            .find("bonus")
+            .expect("method use should exist"),
+        "bonus".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_script_trait_method_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -1107,6 +1149,16 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
     );
     assert_token_at(
         &tokens,
+        41,
+        line(HIGHLIGHTING_SHOWCASE, 41)
+            .rfind("amount")
+            .expect("source field from constructor local"),
+        "amount".len(),
+        SemanticTokenType::Property,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
         42,
         line(HIGHLIGHTING_SHOWCASE, 42)
             .rfind("level")
@@ -1160,10 +1212,10 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         46,
         line(HIGHLIGHTING_SHOWCASE, 46)
             .find("bonus")
-            .expect("source method collapse point"),
+            .expect("source method"),
         "bonus".len(),
-        SemanticTokenType::Variable,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
     );
     assert_token_at(
         &tokens,

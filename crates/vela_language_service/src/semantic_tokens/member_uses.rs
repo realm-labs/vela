@@ -5,6 +5,7 @@ use vela_analysis::{
 };
 use vela_hir::{
     binding::{BindingMap, BindingResolution},
+    ids::HirLocalId,
     module_graph::{Declaration, DeclarationKind, ModuleGraph},
     type_hint::HirTypeHint,
 };
@@ -23,6 +24,7 @@ pub(super) struct MemberUseContext<'a> {
     pub(super) schema: &'a RegistryFacts,
     pub(super) text: &'a str,
     pub(super) member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    pub(super) inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
 }
 
 pub(super) fn classify(
@@ -43,7 +45,13 @@ pub(super) fn classify(
         .bindings
         .resolution_at_span(receiver_span)
         .and_then(|resolution| {
-            type_fact_for_resolution(resolution, context.bindings, context.facts, context.schema)
+            type_fact_for_resolution(
+                resolution,
+                context.bindings,
+                context.facts,
+                context.schema,
+                context.inferred_local_facts,
+            )
         })?;
     let is_call = next_non_whitespace(context.text, range.end) == Some('(');
 
@@ -115,6 +123,7 @@ fn type_fact_for_resolution(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
     schema: &RegistryFacts,
+    inferred_local_facts: &BTreeMap<HirLocalId, TypeFact>,
 ) -> Option<TypeFact> {
     match resolution {
         BindingResolution::Local(local) => {
@@ -123,6 +132,7 @@ fn type_fact_for_resolution(
                 .local(*local)
                 .cloned()
                 .filter(|fact| !matches!(fact, TypeFact::Unknown))
+                .or_else(|| inferred_local_facts.get(local).cloned())
                 .or_else(|| schema_fact_for_local_hint(binding.type_hint.as_ref(), schema))
         }
         BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),

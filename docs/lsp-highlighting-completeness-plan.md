@@ -278,10 +278,8 @@ Phase 1 notes:
 - Baseline service/LSP tests pin current behavior without changing taxonomy.
 - Current visible collapse points include source structs/enums/traits all using
   `type`, const/global declarations using `variable`, booleans/null using
-  `keyword`, broad punctuation/operators using `operator`, unresolved showcase
-  identifiers remaining plain `variable`, and one source method call in the
-  broad fixture remaining a plain `variable` when receiver facts are not
-  stable.
+  `keyword`, broad punctuation/operators using `operator`, and unresolved
+  showcase identifiers remaining plain `variable`.
 - Zed and VS Code validators now check the shared fixture and fallback
   capture/scope metadata while keeping editor packages thin.
 
@@ -387,6 +385,9 @@ Phase 3 notes:
 - Source and schema enum variant constructor/path-expression/pattern uses now
   classify as `enumMember` with `source` or `host` plus `schema` provenance
   when existing HIR or schema facts prove the target.
+- Source member uses on locals initialized from source record constructors now
+  classify through an editor-only local fact side table, keeping HIR, analysis,
+  runtime, and language semantics unchanged.
 - Resolved-use classification is still incomplete: the broad showcase still
   records some unstable receiver/unresolved cases as plain variables.
 

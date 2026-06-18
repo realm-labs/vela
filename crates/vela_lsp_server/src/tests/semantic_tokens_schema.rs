@@ -554,7 +554,6 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
         .expect("semantic token legend should list token modifiers");
     let struct_token = token_type_index(token_types, "struct");
     let const_token = token_type_index(token_types, "const");
-    let variable = token_type_index(token_types, "variable");
     let keyword = token_type_index(token_types, "keyword");
     let boolean = token_type_index(token_types, "boolean");
     let property = token_type_index(token_types, "property");
@@ -639,6 +638,16 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     );
     assert_token_at(
         &tokens,
+        41,
+        line(HIGHLIGHTING_SHOWCASE, 41)
+            .rfind("amount")
+            .expect("source field from constructor local"),
+        "amount".len(),
+        property,
+        source,
+    );
+    assert_token_at(
+        &tokens,
         42,
         line(HIGHLIGHTING_SHOWCASE, 42)
             .rfind("level")
@@ -682,10 +691,10 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
         46,
         line(HIGHLIGHTING_SHOWCASE, 46)
             .find("bonus")
-            .expect("source method collapse point"),
+            .expect("source method"),
         "bonus".len(),
-        variable,
-        0,
+        method,
+        source,
     );
 
     fs::remove_dir_all(root).expect("temporary workspace should be removable");

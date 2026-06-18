@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-#[cfg(test)]
-use vela_analysis::type_fact::TypeFact;
 use vela_analysis::{
     facts::AnalysisFacts, registry::RegistryFacts, stdlib::stdlib_function_completion_facts,
+    type_fact::TypeFact,
 };
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
+use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::lexer::lex;
@@ -15,6 +15,7 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
 
 mod import_paths;
+mod local_record_facts;
 mod member_uses;
 mod path_sites;
 mod type_hints;
@@ -425,6 +426,7 @@ struct SemanticClassificationContext<'a> {
     path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
+    inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
 }
 
 impl SemanticTokenClassification {
@@ -454,6 +456,11 @@ impl LanguageServiceDatabases {
             .parsed_source(document_id)
             .map(|parsed| path_sites::collect(parsed, source.text()))
             .unwrap_or_default();
+        let inferred_local_facts = self
+            .parse_db()
+            .parsed_source(document_id)
+            .map(|parsed| local_record_facts::collect(self.hir_db().graph(), parsed))
+            .unwrap_or_default();
         let classifications = self.semantic_token_classifications(
             source.source_id(),
             source.text(),
@@ -462,6 +469,7 @@ impl LanguageServiceDatabases {
             &path_sites.calls,
             &path_sites.expressions,
             &path_sites.patterns,
+            &inferred_local_facts,
         );
         let mut semantic_tokens = Vec::new();
 
@@ -535,6 +543,7 @@ impl LanguageServiceDatabases {
         path_calls: &BTreeMap<(usize, usize), Vec<String>>,
         path_expressions: &BTreeMap<(usize, usize), Vec<String>>,
         pattern_paths: &BTreeMap<(usize, usize), Vec<String>>,
+        inferred_local_facts: &BTreeMap<HirLocalId, TypeFact>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
@@ -545,6 +554,7 @@ impl LanguageServiceDatabases {
             path_calls,
             path_expressions,
             pattern_paths,
+            inferred_local_facts,
         };
         for token in tokens {
             let TokenKind::Ident(name) = &token.kind else {
@@ -600,6 +610,7 @@ impl LanguageServiceDatabases {
                     schema,
                     text,
                     member_receivers: context.member_receivers,
+                    inferred_local_facts: context.inferred_local_facts,
                 };
                 if let Some(classification) = member_uses::classify(&member_context, name, range) {
                     return Some(classification);
