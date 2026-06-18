@@ -1,7 +1,7 @@
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -143,6 +143,10 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(definition) = self.source_enum_variant_owner_type_definition(&target) {
+            return Some(definition);
+        }
+
+        if let Some(definition) = self.imported_source_type_definition_for_target(&query, &target) {
             return Some(definition);
         }
 
@@ -309,6 +313,35 @@ impl LanguageServiceDatabases {
                     })
                     .then(|| self.definition_from_declaration(declaration))?
             })
+    }
+
+    fn imported_source_type_definition_for_target(
+        &self,
+        query: &QueryContext<'_>,
+        target: &SymbolTarget,
+    ) -> Option<Definition> {
+        if matches!(target.symbol(), Some(SymbolRef::Local(_))) {
+            return None;
+        }
+
+        let graph = self.hir_db().graph();
+        let module = graph.module_id(query.module_path()?)?;
+        graph.imports(module)?.iter().find_map(|import| {
+            let binding_name = import
+                .alias
+                .as_deref()
+                .or_else(|| import.path.last().map(String::as_str))?;
+            if binding_name != target.text() {
+                return None;
+            }
+            let ImportResolution::Declaration(declaration_id) = import.resolution?;
+            let declaration = graph.declaration(declaration_id)?;
+            matches!(
+                declaration.kind,
+                DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+            )
+            .then(|| self.definition_from_declaration(declaration))?
+        })
     }
 
     fn source_type_definition_for_name(
