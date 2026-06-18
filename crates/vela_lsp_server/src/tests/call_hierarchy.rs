@@ -340,6 +340,165 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn lsp_call_hierarchy_cross_file_source_method_calls() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["callHierarchyProvider"],
+        true
+    );
+    let main_text = "\
+use game::types::Reward
+pub fn first(reward: Reward) -> i64 {
+    return reward.grant(1)
+}
+
+pub fn second(reward: Reward) -> i64 {
+    return reward.grant(2)
+}";
+    let types_text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let types_uri = "file:///workspace/scripts/game/types.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": types_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": types_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let prepare_grant = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": types_uri },
+            "position": {
+                "line": 5,
+                "character": line(types_text, 5).find("grant").expect("method declaration")
+            }
+        }),
+    )));
+    let grant_items = prepare_grant["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(grant_items.len(), 1);
+    assert_eq!(grant_items[0]["name"], "grant");
+    assert_eq!(grant_items[0]["kind"], 12);
+    assert_eq!(grant_items[0]["uri"], types_uri);
+
+    let prepare_from_call = response_value(server.handle_json(&request(
+        3,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2).find("grant").expect("method call")
+            }
+        }),
+    )));
+    let call_items = prepare_from_call["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(call_items, grant_items);
+
+    let incoming = response_value(server.handle_json(&request(
+        4,
+        "callHierarchy/incomingCalls",
+        serde_json::json!({ "item": grant_items[0].clone() }),
+    )));
+    let incoming_calls = incoming["result"]
+        .as_array()
+        .expect("incomingCalls response should be an array");
+    assert_eq!(incoming_calls.len(), 2, "{incoming_calls:?}");
+    assert_eq!(incoming_calls[0]["from"]["name"], "first");
+    assert_eq!(incoming_calls[0]["from"]["uri"], main_uri);
+    assert_call_range(
+        incoming_calls[0]["fromRanges"]
+            .as_array()
+            .expect("incoming call should include ranges"),
+        2,
+        line(main_text, 2).find("grant").expect("first method call"),
+    );
+    assert_eq!(incoming_calls[1]["from"]["name"], "second");
+    assert_eq!(incoming_calls[1]["from"]["uri"], main_uri);
+    assert_call_range(
+        incoming_calls[1]["fromRanges"]
+            .as_array()
+            .expect("incoming call should include ranges"),
+        6,
+        line(main_text, 6)
+            .find("grant")
+            .expect("second method call"),
+    );
+
+    let prepare_first = response_value(server.handle_json(&request(
+        5,
+        "textDocument/prepareCallHierarchy",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 1,
+                "character": line(main_text, 1).find("first").expect("first declaration")
+            }
+        }),
+    )));
+    let first_items = prepare_first["result"]
+        .as_array()
+        .expect("prepareCallHierarchy response should be an array");
+    assert_eq!(first_items.len(), 1);
+
+    let outgoing = response_value(server.handle_json(&request(
+        6,
+        "callHierarchy/outgoingCalls",
+        serde_json::json!({ "item": first_items[0].clone() }),
+    )));
+    let outgoing_calls = outgoing["result"]
+        .as_array()
+        .expect("outgoingCalls response should be an array");
+    assert_eq!(outgoing_calls.len(), 1);
+    assert_eq!(outgoing_calls[0]["to"]["name"], "grant");
+    assert_eq!(outgoing_calls[0]["to"]["uri"], types_uri);
+    assert_call_range(
+        outgoing_calls[0]["fromRanges"]
+            .as_array()
+            .expect("outgoing call should include ranges"),
+        2,
+        line(main_text, 2).find("grant").expect("first method call"),
+    );
+}
+
+#[test]
 fn lsp_call_hierarchy_uses_resolved_trait_impl_method_calls() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

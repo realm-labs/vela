@@ -1093,6 +1093,8 @@ Purpose: support workspace navigation and prepare rename.
     outgoing call hierarchy for statically resolved calls.
   - [x] Serve source-owned inherent script method prepare, incoming, and
     outgoing call hierarchy for typed receiver calls.
+  - [x] Serve cross-file source-owned inherent script method prepare,
+    incoming, and outgoing call hierarchy for typed receiver calls.
   - [x] Serve source-owned trait impl method prepare, incoming, and outgoing
     call hierarchy for typed receiver calls.
   - [x] Serve source-owned trait default/interface method prepare, incoming,
@@ -1176,6 +1178,8 @@ Tests:
 - [x] `lsp_prepare_call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_script_method_calls`
+- [x] `call_hierarchy_cross_file_source_method_calls`
+- [x] `lsp_call_hierarchy_cross_file_source_method_calls`
 - [x] `call_hierarchy_uses_resolved_trait_impl_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_trait_impl_method_calls`
 - [x] `call_hierarchy_uses_trait_default_and_interface_methods`

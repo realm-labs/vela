@@ -199,6 +199,93 @@ pub fn main(reward: Reward) -> i64 {
 }
 
 #[test]
+fn call_hierarchy_cross_file_source_method_calls() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let types = DocumentId::from("/workspace/scripts/game/types.vela");
+    let main_text = "\
+use game::types::Reward
+pub fn first(reward: Reward) -> i64 {
+    return reward.grant(1)
+}
+
+pub fn second(reward: Reward) -> i64 {
+    return reward.grant(2)
+}";
+    let types_text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn grant(self, amount: i64) -> i64 { return amount }
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(types.clone(), types_text),
+    ]);
+
+    let prepared_from_declaration = databases.prepare_call_hierarchy(
+        &types,
+        Position::new(
+            5,
+            line(types_text, 5)
+                .find("grant")
+                .expect("method declaration should exist"),
+        ),
+    );
+    let prepared_from_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            2,
+            line(main_text, 2)
+                .find("grant")
+                .expect("method call should exist"),
+        ),
+    );
+
+    assert_eq!(prepared_from_declaration.len(), 1);
+    assert_eq!(prepared_from_declaration[0].name(), "grant");
+    assert_eq!(prepared_from_declaration[0].document_id(), &types);
+    assert_eq!(prepared_from_call, prepared_from_declaration);
+
+    let incoming = databases.incoming_calls(&prepared_from_declaration[0]);
+    assert_eq!(incoming.len(), 2, "{incoming:?}");
+    assert_eq!(incoming[0].from().name(), "first");
+    assert_eq!(incoming[0].from().document_id(), &main);
+    assert_range(
+        incoming[0].from_ranges(),
+        2,
+        line(main_text, 2).find("grant").expect("first method call"),
+    );
+    assert_eq!(incoming[1].from().name(), "second");
+    assert_eq!(incoming[1].from().document_id(), &main);
+    assert_range(
+        incoming[1].from_ranges(),
+        6,
+        line(main_text, 6)
+            .find("grant")
+            .expect("second method call"),
+    );
+
+    let first_item = databases
+        .prepare_call_hierarchy(
+            &main,
+            Position::new(1, line(main_text, 1).find("first").expect("first")),
+        )
+        .pop()
+        .expect("first should prepare a call hierarchy item");
+    let outgoing = databases.outgoing_calls(&first_item);
+    assert_eq!(outgoing.len(), 1);
+    assert_eq!(outgoing[0].to().name(), "grant");
+    assert_eq!(outgoing[0].to().document_id(), &types);
+    assert_range(
+        outgoing[0].from_ranges(),
+        2,
+        line(main_text, 2).find("grant").expect("first method call"),
+    );
+}
+
+#[test]
 fn call_hierarchy_uses_resolved_trait_impl_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
