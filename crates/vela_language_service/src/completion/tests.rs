@@ -888,6 +888,84 @@ fn member_context_is_detected_without_global_fallback() {
     assert!(completions.items().is_empty(), "{completions:?}");
 }
 
+#[test]
+#[ignore = "explicit Phase 8 completion scale checkpoint for roughly one million lines"]
+fn completion_contexts_scale_in_million_line_workspace() {
+    const MODULES: usize = 2_048;
+    const LINES_PER_MODULE: usize = 512;
+
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+f
+use mod_204::Type_
+pub fn typed(value: Type_) { return 1 }
+pub fn main(player: Player) {
+    value_204
+    player.le
+}";
+    let mut files = (0..MODULES)
+        .map(|index| completion_scale_file(index, LINES_PER_MODULE))
+        .collect::<Vec<_>>();
+    files.push(SourceFileSnapshot::new(document.clone(), text));
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "level", TypeFact::I64);
+    databases.set_schema_facts(schema);
+
+    let initial = databases.update(&project);
+    assert!(initial.metrics().total_lines() >= 1_000_000);
+
+    let item = databases.completion_items(&document, Position::new(0, "f".len()));
+    assert_eq!(item.context().kind(), CompletionContextKind::Item);
+    assert_completion(&item, "fn", CompletionKind::Snippet);
+
+    let module_path =
+        databases.completion_items(&document, Position::new(1, "use mod_204::Type_".len()));
+    assert_eq!(
+        module_path.context().kind(),
+        CompletionContextKind::ModulePath
+    );
+    assert_completion(&module_path, "Type_204", CompletionKind::Type);
+
+    let type_hint = databases.completion_items(
+        &document,
+        Position::new(2, "pub fn typed(value: Type_".len()),
+    );
+    assert_eq!(type_hint.context().kind(), CompletionContextKind::TypeHint);
+    assert_completion(&type_hint, "mod_2047::Type_2047", CompletionKind::Type);
+
+    let expression = databases.completion_items(&document, Position::new(4, "    value_204".len()));
+    assert_eq!(
+        expression.context().kind(),
+        CompletionContextKind::Expression
+    );
+    assert_completion(
+        &expression,
+        "mod_2047::value_2047",
+        CompletionKind::Function,
+    );
+
+    let member = databases.completion_items(&document, Position::new(5, "    player.le".len()));
+    assert_eq!(member.context().kind(), CompletionContextKind::Member);
+    assert_completion(&member, "level", CompletionKind::Field);
+}
+
+fn completion_scale_file(index: usize, lines: usize) -> SourceFileSnapshot {
+    let padding = (2..lines)
+        .map(|line| format!("// completion scale padding {index}:{line}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    SourceFileSnapshot::new(
+        format!("/workspace/scripts/mod_{index}.vela"),
+        format!(
+            "pub struct Type_{index} {{ field: i64 }}\npub fn value_{index}() {{ return {index} }}\n{padding}"
+        ),
+    )
+}
+
 fn completion<'a>(list: &'a CompletionList, label: &str) -> &'a CompletionItem {
     list.items()
         .iter()

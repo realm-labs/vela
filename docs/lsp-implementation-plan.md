@@ -239,6 +239,7 @@ Tests:
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
 - [x] `larger_synthetic_workspace_reports_indexing_metrics`
 - [x] `million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit`
+- [x] `completion_contexts_scale_in_million_line_workspace`
 
 Validation:
 

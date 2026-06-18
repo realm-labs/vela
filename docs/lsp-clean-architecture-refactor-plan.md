@@ -806,9 +806,12 @@ Purpose: make the new model viable for large workspaces and real editors.
   Query handlers still refresh databases through the shared project snapshot,
   but unchanged completion requests now have an LSP regression proving repeated
   per-keystroke queries do not reparse documents or rebuild HIR.
-- [ ] Add completion-specific scale tests for item, expression, type, member,
+- [x] Add completion-specific scale tests for item, expression, type, member,
   and module-path contexts in synthetic many-file workspaces near the
   one-million-line target.
+  An explicit ignored service checkpoint now builds a roughly one-million-line
+  synthetic workspace and verifies item, expression, type-hint, member, and
+  module-path completion contexts.
 - [ ] Add or reuse incremental declaration, import, type, member, stdlib,
   schema, local-scope, and reference indexes so completion producers can query
   context-relevant candidate sets without scanning all files.
