@@ -536,7 +536,8 @@ Purpose: make common authoring flows fast and schema-aware.
   - Initial service and LSP signature help support script function calls,
     schema-backed host/native function calls, stdlib function calls,
     source-owned inherent method calls, schema-backed host and trait method
-    calls, and stdlib callback method calls.
+    calls, stdlib callback method calls, and imported source function calls
+    with defaulted parameters.
 
 Tests:
 
@@ -575,6 +576,7 @@ Tests:
 - [x] `signature_help_resolves_schema_trait_method_call`
 - [x] `signature_help_resolves_stdlib_callback_method_call`
 - [x] `signature_help_resolves_stdlib_function_call`
+- [x] `signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `signature_help_returns_none_for_unknown_call`
 - [x] `signature_help_returns_none_for_dynamic_receiver_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
@@ -582,6 +584,7 @@ Tests:
 - [x] `lsp_signature_help_resolves_schema_trait_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
+- [x] `lsp_signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
 
 Validation:

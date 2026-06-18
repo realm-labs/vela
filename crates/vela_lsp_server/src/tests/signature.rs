@@ -56,6 +56,69 @@ fn lsp_signature_help_tracks_active_parameter() {
 }
 
 #[test]
+fn lsp_signature_help_resolves_imported_function_with_defaulted_parameter() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_text = "\
+use game::rewards::reward_bonus
+pub fn main(amount: i64) -> i64 {
+    return reward_bonus(amount, 2)
+}";
+    let rewards_text = "\
+pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
+    return amount * scale
+}";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
+    for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2)
+                    .find("2)")
+                    .expect("signature fixture should contain second argument")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 1);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "reward_bonus(amount: i64, scale: i64 (defaulted)) -> i64"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][1]["label"],
+        "scale: i64 (defaulted)"
+    );
+}
+
+#[test]
 fn lsp_signature_help_returns_null_for_unknown_and_dynamic_calls() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -667,4 +730,8 @@ fn schema_with_rewardable_trait_method() -> &'static str {
             ]
         }
     }"#
+}
+
+fn line(text: &str, line: usize) -> &str {
+    text.lines().nth(line).expect("line should exist")
 }

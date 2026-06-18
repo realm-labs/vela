@@ -219,7 +219,10 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         .map(|param| {
             let type_fact = param.type_fact().clone();
             let type_name = type_fact.display_name();
-            let label_parts = DisplayParts::parameter(param.name(), &type_name);
+            let mut label_parts = DisplayParts::parameter(param.name(), &type_name);
+            if param.defaulted() {
+                label_parts.extend(DisplayParts::plain(" (defaulted)"));
+            }
             SignatureParameter {
                 name: param.name().to_owned(),
                 label: label_parts.render(),
@@ -319,6 +322,45 @@ mod tests {
         assert_eq!(
             help.signatures()[0].label(),
             "grant(player: Player, amount: i64) -> bool"
+        );
+    }
+
+    #[test]
+    fn signature_help_resolves_imported_function_with_defaulted_parameter() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");
+        let main_text = "\
+use game::rewards::reward_bonus
+pub fn main(amount: i64) -> i64 {
+    return reward_bonus(amount, 2)
+}";
+        let rewards_text = "\
+pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
+    return amount * scale
+}";
+        let files = vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(rewards, rewards_text),
+        ];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let call_line = main_text.lines().nth(2).expect("call line should exist");
+        let position = Position::new(2, call_line.find("2)").expect("second argument"));
+        let help = databases
+            .signature_help(&main, position)
+            .expect("signature help should resolve imported function");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "reward_bonus(amount: i64, scale: i64 (defaulted)) -> i64"
+        );
+        assert_eq!(
+            help.signatures()[0].parameters()[1].label(),
+            "scale: i64 (defaulted)"
         );
     }
 
