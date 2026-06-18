@@ -4,6 +4,7 @@ use vela_analysis::type_fact::TypeFact;
 
 use crate::DisplayParts;
 use crate::QueryContext;
+use crate::symbol_ref::{schema_member_symbol, schema_variant_symbol};
 use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
@@ -254,16 +255,16 @@ fn enrich_schema_member_completion_item(
     match item.kind() {
         CompletionKind::Field if schema.field_fact(owner, &label).is_some() => item
             .with_documentation(schema.field_docs(owner, &label))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+            .with_symbol(schema_member_symbol(owner, &label)),
         CompletionKind::Method if schema.method_fact(owner, &label).is_some() => item
             .with_documentation(schema.method_docs(owner, &label))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+            .with_symbol(schema_member_symbol(owner, &label)),
         CompletionKind::Method if schema.trait_method_fact(owner, &label).is_some() => item
             .with_documentation(schema.trait_method_docs(owner, &label))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{label}"))),
+            .with_symbol(schema_member_symbol(owner, &label)),
         CompletionKind::Variant if schema.variant_fact(owner, &label).is_some() => item
             .with_documentation(schema.variant_docs(owner, &label))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{label}"))),
+            .with_symbol(schema_variant_symbol(owner, &label)),
         _ => item,
     }
 }

@@ -3,11 +3,10 @@ use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use crate::{
     TextRange,
     completion::{
-        CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-        dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
-        label_segment_matches,
+        CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
+        display_qualified_detail, display_type_detail, label_segment_matches,
     },
-    symbol_ref::source_enum_variant_symbol,
+    symbol_ref::{schema_variant_symbol, source_enum_variant_symbol},
 };
 
 pub(super) fn pattern_completion_items(
@@ -87,7 +86,7 @@ fn schema_pattern_variant_completions(
                 metadata: Default::default(),
             }
             .with_documentation(schema.variant_docs(&owner, &name))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{name}")))
+            .with_symbol(schema_variant_symbol(&owner, &name))
         })
         .collect()
 }

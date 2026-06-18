@@ -8,9 +8,10 @@ use vela_syntax::ast::{
 };
 
 use super::{
-    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
+    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
     accumulator::CompletionAccumulator, display_type_detail, model::RecordConstructor,
 };
+use crate::symbol_ref::schema_member_symbol;
 
 pub(super) fn record_constructor_at(
     source: &SourceFile,
@@ -301,7 +302,7 @@ fn schema_record_field_completions(
                 metadata: Default::default(),
             }
             .with_documentation(schema.field_docs(&owner, &name))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}.{name}")))
+            .with_symbol(schema_member_symbol(&owner, &name))
         })
         .collect()
 }

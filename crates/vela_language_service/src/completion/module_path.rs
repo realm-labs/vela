@@ -9,13 +9,13 @@ use vela_analysis::{
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
 use super::{
-    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
+    CompletionContext, CompletionInsertFormat, CompletionItem, CompletionKind,
     analysis_item::{callable_insert_text, completion_insert_format},
     dedupe_and_filter_service_items, display_qualified_detail, display_type_detail,
     label_segment_matches,
     relevance::completion_sort_text,
 };
-use crate::symbol_ref::source_enum_variant_symbol;
+use crate::symbol_ref::{schema_variant_symbol, source_enum_variant_symbol};
 
 pub(super) fn module_path_completion_items(
     graph: &ModuleGraph,
@@ -145,7 +145,7 @@ fn schema_enum_variant_path_completions(
                 metadata: Default::default(),
             }
             .with_documentation(schema.variant_docs(&owner, &name))
-            .with_symbol(CompletionSymbol::Schema(format!("{owner}::{name}")))
+            .with_symbol(schema_variant_symbol(&owner, &name))
         })
         .collect()
 }

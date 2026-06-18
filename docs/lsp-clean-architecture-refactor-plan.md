@@ -595,6 +595,8 @@ and semantic tokens use the same identities and display primitives.
   schema symbol constructors;
   schema reference identities for fields, methods, and variants now use the
   shared schema member/variant symbol constructors;
+  schema completion identities for members, record fields, and enum variants
+  now use the shared schema member/variant symbol constructors;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites
