@@ -631,7 +631,7 @@ and semantic tokens use the same identities and display primitives.
   protocol-neutral. Rename workspace edits now preserve the selected
   `SymbolRef` target through the service edit model without changing LSP
   projection.
-- [~] Route hover labels, completion details, signature labels, symbol labels,
+- [x] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.
   A shared `DisplayParts` segment model now exists in `vela_language_service`.
@@ -658,8 +658,9 @@ and semantic tokens use the same identities and display primitives.
   `DisplayParts`; named-argument and local completion details now preserve
   `DisplayParts`, and the obsolete string-only type detail helper has been
   removed; keyword and snippet completion details now carry explicit plain
-  `DisplayParts`; richer prose hover classification still needs to converge on
-  it.
+  `DisplayParts`; unresolved import and qualified-path hover details now carry
+  structured `DisplayParts`, and the generic string-only hover detail helper
+  has been removed.
 - [x] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from

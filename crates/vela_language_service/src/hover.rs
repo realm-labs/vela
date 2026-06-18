@@ -18,8 +18,8 @@ use vela_hir::type_hint::{
 };
 
 use crate::{
-    DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
-    QueryContext, SymbolRef, TextRange,
+    DiagnosticRange, DisplayPartKind, DisplayParts, DocumentId, LanguageServiceDatabases,
+    LineIndex, Position, QueryContext, SymbolRef, TextRange,
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, qualified_source_declaration_name,
         source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
@@ -74,25 +74,6 @@ impl Hover {
             docs,
             symbol,
         }
-    }
-
-    #[must_use]
-    pub(crate) fn plain_detail(
-        range: DiagnosticRange,
-        label: impl Into<String>,
-        kind: HoverKind,
-        detail: impl Into<String>,
-        docs: Option<String>,
-        symbol: Option<SymbolRef>,
-    ) -> Self {
-        Self::new(
-            range,
-            label,
-            kind,
-            DisplayParts::plain(detail),
-            docs,
-            symbol,
-        )
     }
 
     #[must_use]
@@ -389,11 +370,11 @@ fn hover_from_resolution_at_target(
                     .unwrap_or_else(|| hover_from_declaration(graph, facts, declaration, range))
             })
         }
-        BindingResolution::Import(name) => Some(Hover::plain_detail(
+        BindingResolution::Import(name) => Some(Hover::new(
             range,
             name.clone(),
             HoverKind::Unknown,
-            "unresolved import",
+            unresolved_detail_parts("import"),
             None,
             None,
         )),
@@ -402,17 +383,25 @@ fn hover_from_resolution_at_target(
             schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
                 .or_else(|| stdlib_function_hover(&qualified, range))
                 .or_else(|| {
-                    Some(Hover::plain_detail(
+                    Some(Hover::new(
                         range,
                         qualified,
                         HoverKind::Unknown,
-                        "unresolved qualified path",
+                        unresolved_detail_parts("qualified path"),
                         None,
                         None,
                     ))
                 })
         }
     }
+}
+
+fn unresolved_detail_parts(target: &str) -> DisplayParts {
+    let mut parts = DisplayParts::new();
+    parts.push(DisplayPartKind::Text, "unresolved");
+    parts.push(DisplayPartKind::Text, " ");
+    parts.push(DisplayPartKind::Symbol, target);
+    parts
 }
 
 fn enum_variant_hover_at_target(
