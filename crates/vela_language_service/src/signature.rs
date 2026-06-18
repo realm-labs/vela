@@ -643,6 +643,47 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     }
 
     #[test]
+    fn signature_help_resolves_schema_method_on_schema_function_return() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            pub fn main() { current_player().grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_function(
+            "current_player",
+            TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        );
+        schema.insert_method(
+            "Player",
+            "grant",
+            TypeFact::function(vec![TypeFact::I64, TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in method call");
+        let position = Position::new(1, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve schema method on returned receiver");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Player.grant(arg0: i64, arg1: i64) -> bool"
+        );
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "arg1: i64");
+    }
+
+    #[test]
     fn signature_help_resolves_schema_trait_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"

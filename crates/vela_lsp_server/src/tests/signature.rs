@@ -376,6 +376,74 @@ fn lsp_signature_help_resolves_schema_method_call() {
 }
 
 #[test]
+fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(&schema_path, schema_with_player_function_and_method())
+        .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main() { current_player().grant(1, 2) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 0,
+                "character": text.find("2)").unwrap_or_else(|| {
+                    panic!("signature fixture should contain second argument")
+                })
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 1);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "Player.grant(arg0: i64, arg1: i64) -> bool"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][1]["label"],
+        "arg1: i64"
+    );
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_signature_help_resolves_schema_enum_variant_call() {
     let root = temp_workspace();
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -651,6 +719,44 @@ fn schema_with_player_method() -> &'static str {
                 {
                     "name": "Player",
                     "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "methods": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [
+                            { "kind": "primitive", "name": "i64" },
+                            { "kind": "primitive", "name": "i64" }
+                        ],
+                        "returns": { "kind": "primitive", "name": "bool" }
+                    }
+                }
+            ]
+        }
+    }"#
+}
+
+fn schema_with_player_function_and_method() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "functions": [
+                {
+                    "name": "current_player",
+                    "fact": {
+                        "kind": "function",
+                        "params": [],
+                        "returns": { "kind": "host", "name": "Player" }
+                    }
                 }
             ],
             "methods": [

@@ -5,6 +5,7 @@ use vela_analysis::{
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
+use vela_common::SourceId;
 use vela_hir::{module_graph::ModuleGraph, type_hint::HirTypeHint};
 use vela_syntax::ast::{
     Argument, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, MapEntry,
@@ -12,13 +13,14 @@ use vela_syntax::ast::{
 };
 
 use crate::callable_context::query_type_fact_from_hint;
+use crate::{LanguageServiceDatabases, TextRange};
 
-pub(super) fn collect(
+pub(crate) fn collect(
     graph: &ModuleGraph,
     parsed: &SourceFile,
     schema: &RegistryFacts,
 ) -> BTreeMap<(usize, usize), TypeFact> {
-    let mut collector = ReceiverFactCollector {
+    let mut collector = ExpressionFactCollector {
         graph,
         schema,
         facts: BTreeMap::new(),
@@ -27,13 +29,36 @@ pub(super) fn collect(
     collector.facts
 }
 
-struct ReceiverFactCollector<'a> {
+pub(crate) fn fact_for_range(
+    databases: &LanguageServiceDatabases,
+    source_id: SourceId,
+    range: TextRange,
+) -> Option<TypeFact> {
+    let document_id =
+        databases
+            .source_db()
+            .records()
+            .iter()
+            .find_map(|(document_id, source)| {
+                (source.source_id() == source_id).then_some(document_id)
+            })?;
+    let parsed = databases.parse_db().parsed_source(document_id)?;
+    collect(
+        databases.hir_db().graph(),
+        parsed,
+        databases.schema_db().facts(),
+    )
+    .get(&text_range_key(range))
+    .cloned()
+}
+
+struct ExpressionFactCollector<'a> {
     graph: &'a ModuleGraph,
     schema: &'a RegistryFacts,
     facts: BTreeMap<(usize, usize), TypeFact>,
 }
 
-impl ReceiverFactCollector<'_> {
+impl ExpressionFactCollector<'_> {
     fn collect_source_file(&mut self, parsed: &SourceFile) {
         for item in &parsed.items {
             match &item.kind {
@@ -202,7 +227,7 @@ impl ReceiverFactCollector<'_> {
 
         let fact = type_fact_from_expr_with_registry(expr, scope, self.schema);
         if !matches!(fact, TypeFact::Unknown) {
-            self.facts.insert(text_range_key(expr.span), fact);
+            self.facts.insert(span_key(expr.span), fact);
         }
     }
 
@@ -252,6 +277,10 @@ impl ReceiverFactCollector<'_> {
     }
 }
 
-fn text_range_key(span: vela_common::Span) -> (usize, usize) {
+fn text_range_key(range: TextRange) -> (usize, usize) {
+    (range.start, range.end)
+}
+
+fn span_key(span: vela_common::Span) -> (usize, usize) {
     (span.start as usize, span.end as usize)
 }

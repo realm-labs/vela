@@ -6,7 +6,7 @@ use crate::callable_context::{
 use crate::{
     CursorContext, CursorContextKind, DocumentId, DocumentSnapshot, LanguageServiceDatabases,
     Position, SourceRecord, SourceVersion, TextRange, WorkspaceGeneration, WorkspaceSnapshot,
-    cursor_context_at,
+    cursor_context_at, expression_facts,
 };
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::registry::RegistryFacts;
@@ -416,10 +416,12 @@ pub(crate) fn type_fact_for_source_range(
     let span = Span::new(source_id, start, end);
     let graph = databases.hir_db().graph();
     let facts = AnalysisFacts::from_module_graph(graph);
-    binding_maps_at(databases, source_id, start).find_map(|bindings| {
-        let resolution = bindings.resolution_at_span(span)?;
-        type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
-    })
+    binding_maps_at(databases, source_id, start)
+        .find_map(|bindings| {
+            let resolution = bindings.resolution_at_span(span)?;
+            type_fact_for_resolution(resolution, bindings, &facts, databases.schema_db().facts())
+        })
+        .or_else(|| expression_facts::fact_for_range(databases, source_id, range))
 }
 
 fn query_bindings<'a>(
@@ -1012,5 +1014,52 @@ mod tests {
             "Function(i64) -> bool"
         );
         assert_eq!(stdlib_callable.returns().display_name(), "Array(i64)");
+    }
+
+    #[test]
+    fn query_context_resolves_member_callable_facts_from_expression_receivers() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "fn main() { current_player().grant(1, ) }";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let workspace = Workspace::new();
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let project = assemble_project_sources(&config, &files, &workspace.snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        let mut schema = vela_analysis::registry::RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_function(
+            "current_player",
+            TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        );
+        schema.insert_method(
+            "Player",
+            "grant",
+            TypeFact::function(vec![TypeFact::I64, TypeFact::I64], TypeFact::BOOL),
+        );
+        databases.set_schema_facts(schema);
+        databases.update(&project);
+
+        let line_index = LineIndex::new(source);
+        let position = line_index.position(source.find("grant(1, )").expect("method call") + 9);
+        let context = QueryContext::from_databases(&databases, &document, position)
+            .expect("schema method query");
+        let call = context
+            .call_argument_facts()
+            .expect("schema method call facts");
+        let (_, method) = call.callee().rsplit_once('.').expect("member call");
+        let callables = context.member_callable_facts(
+            &databases,
+            call.member_receiver().expect("schema method receiver"),
+            method,
+            call.args_prefix(),
+        );
+        let callable = callables
+            .iter()
+            .find(|callable| callable.origin() == CallableOrigin::SchemaMethod)
+            .expect("schema method callable facts from expression receiver");
+
+        assert_eq!(callable.name(), "Player.grant");
+        assert_eq!(callable.returns().display_name(), "bool");
+        assert_eq!(callable.params()[1].name(), "arg1");
     }
 }

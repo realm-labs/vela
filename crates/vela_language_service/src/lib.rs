@@ -8,6 +8,7 @@ mod cursor_context;
 mod definition;
 mod diagnostics;
 mod display;
+mod expression_facts;
 mod folding;
 mod formatting;
 mod hover;

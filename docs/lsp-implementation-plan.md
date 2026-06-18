@@ -265,8 +265,9 @@ coverage complete based only on the older capability phases.
     pass-through without payloads, and invalid payload rejection.
   - Current signature-help fixtures cover script, imported defaulted
     functions, script/source trait/schema/schema-trait/stdlib calls, callback
-    methods, enum variant calls, active parameters, incomplete calls, and
-    dynamic or unresolved null results.
+    methods, schema methods on schema function-return receivers, enum variant
+    calls, active parameters, incomplete calls, and dynamic or unresolved null
+    results.
   - Current hover fixtures cover source, cross-file, schema, stdlib, trait,
     method, field, enum variant, global, parameter, imported module path,
     docs/effects/permissions, parser-recovery, missing-schema `Any`
@@ -701,8 +702,8 @@ Purpose: make common authoring flows fast and schema-aware.
   - Initial service and LSP signature help support script function calls,
     schema-backed host/native function calls, stdlib function calls,
     source-owned inherent method calls, schema-backed host and trait method
-    calls, stdlib callback method calls, and imported source function calls
-    with defaulted parameters.
+    calls, schema methods on schema function-return receivers, stdlib callback
+    method calls, and imported source function calls with defaulted parameters.
 - [x] Close rust-analyzer-aligned completion gaps found in editor use.
   - Empty-prefix `.` on a known receiver must not return an empty list when
     the receiver has source, schema, trait, or builtin methods.
@@ -752,6 +753,7 @@ Tests:
 - [x] `lsp_signature_help_tracks_active_parameter`
 - [x] `signature_help_resolves_script_method_call`
 - [x] `signature_help_resolves_schema_method_call`
+- [x] `signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `signature_help_resolves_schema_trait_method_call`
 - [x] `signature_help_resolves_stdlib_callback_method_call`
 - [x] `signature_help_resolves_stdlib_function_call`
@@ -760,6 +762,7 @@ Tests:
 - [x] `signature_help_returns_none_for_dynamic_receiver_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_call`
+- [x] `lsp_signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `lsp_signature_help_resolves_schema_trait_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
@@ -768,6 +771,7 @@ Tests:
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
+- [x] `query_context_resolves_member_callable_facts_from_expression_receivers`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`

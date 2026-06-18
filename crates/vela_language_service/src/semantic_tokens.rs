@@ -14,6 +14,7 @@ use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+    expression_facts,
 };
 
 use self::result_id::{semantic_token_count_from_result_id, semantic_tokens_result_id};
@@ -23,7 +24,6 @@ mod local_record_facts;
 mod member_uses;
 mod path_sites;
 mod range;
-mod receiver_facts;
 mod result_id;
 mod type_hints;
 mod unresolved;
@@ -477,7 +477,7 @@ impl LanguageServiceDatabases {
             .parse_db()
             .parsed_source(document_id)
             .map(|parsed| {
-                receiver_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
+                expression_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
             })
             .unwrap_or_default();
         let path_sites = self
