@@ -204,7 +204,7 @@ coverage complete based only on the older capability phases.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
-- [ ] Audit rust-analyzer-aligned authoring behavior before treating the LSP
+- [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
   - Cover the authoring-core model itself: structured completion analysis
     for path, type, dot-access, call-argument, declaration-body, pattern, and
@@ -1409,12 +1409,12 @@ Tests:
 - [x] `lsp_range_formatting_formats_selected_struct_field_group`
 - [x] `range_formatting_formats_selected_enum_record_field_group`
 - [x] `lsp_range_formatting_formats_selected_enum_record_field_group`
-- [ ] `formatting_compacts_builtin_container_type_arguments`
-- [ ] `formatting_compacts_nested_result_container_type_arguments`
-- [ ] `formatting_preserves_container_type_arguments_on_one_line`
-- [ ] `formatting_formats_container_type_hint_example`
-- [ ] `lsp_document_formatting_compacts_container_type_arguments`
-- [ ] `lsp_document_formatting_formats_container_type_hint_example`
+- [x] `formatting_compacts_builtin_container_type_arguments`
+- [x] `formatting_compacts_nested_result_container_type_arguments`
+- [x] `formatting_preserves_container_type_arguments_on_one_line`
+- [x] `formatting_formats_container_type_hint_example`
+- [x] `lsp_document_formatting_compacts_container_type_arguments`
+- [x] `lsp_document_formatting_formats_container_type_hint_example`
 
 Validation:
 
@@ -1834,7 +1834,9 @@ Tests:
 - [x] `completion_item_keeps_rendering_projection_fields_separate`
 - [x] `formatting_compacts_builtin_container_type_arguments`
 - [x] `formatting_compacts_nested_result_container_type_arguments`
+- [x] `formatting_preserves_container_type_arguments_on_one_line`
 - [x] `formatting_formats_container_type_hint_example`
+- [x] `lsp_document_formatting_compacts_container_type_arguments`
 - [x] `lsp_document_formatting_formats_container_type_hint_example`
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`

@@ -198,6 +198,54 @@ fn main() {
 }
 
 #[test]
+fn lsp_document_formatting_compacts_container_type_arguments() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "fn score(scores:Array < i64 >, rewards:Map< String,i64 >, tags:Set <String>)->Result < Map < String , i64 > , String >{return result::ok(rewards)}"
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/formatting",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "options": { "tabSize": 4, "insertSpaces": true }
+        }),
+    )));
+    let edits = response["result"]
+        .as_array()
+        .expect("formatting should return edits");
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(
+        edits[0]["newText"],
+        "\
+fn score(scores: Array<i64>, rewards: Map<String, i64>, tags: Set<String>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards)
+}
+"
+    );
+}
+
+#[test]
 fn lsp_range_formatting_limits_edits_to_range() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

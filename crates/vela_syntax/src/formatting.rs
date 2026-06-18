@@ -946,6 +946,19 @@ struct Loader {
     }
 
     #[test]
+    fn formatting_preserves_container_type_arguments_on_one_line() {
+        let source = "\
+fn load(input: Result<Map<String, i64>, String>) -> Option<Array<Set<String>>> {
+    return option::some([])
+}
+";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(formatted.text(), source);
+    }
+
+    #[test]
     fn formatting_formats_container_type_hint_example() {
         let source = "\
 fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
