@@ -257,8 +257,9 @@ coverage complete based only on the older capability phases.
     const/global symbols, fields, methods, variants, imports, schema-backed
     source spans, shadowed locals, and dynamic or unresolved calls.
   - W3 references now have service and protocol coverage for cross-file
-    imported source field reads and source method calls in addition to
-    imported functions, const/global symbols, and module path segments.
+    imported source field reads, source method calls, and enum variant
+    constructors/patterns in addition to imported functions, const/global
+    symbols, and module path segments.
 - [ ] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1119,6 +1120,8 @@ Tests:
 - [x] `lsp_references_find_record_constructor_shorthand_field_labels`
 - [x] `references_find_enum_variant_constructors_and_patterns`
 - [x] `lsp_references_find_enum_variant_constructors_and_patterns`
+- [x] `references_find_cross_file_imported_source_enum_variant_uses`
+- [x] `lsp_references_find_cross_file_imported_source_enum_variant_uses`
 - [x] `references_find_enum_record_variant_field_labels_and_patterns`
 - [x] `lsp_references_find_enum_record_variant_field_labels_and_patterns`
 - [x] `references_find_script_method_calls`
