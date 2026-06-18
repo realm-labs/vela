@@ -320,9 +320,10 @@ coverage complete based only on the older capability phases.
     unresolved empty results.
   - Current fixtures cover service and native LSP call hierarchy for source
     functions, imported function aliases, source methods, trait impl methods,
-    trait default/interface methods, schema methods and trait methods,
-    cross-file method calls, and empty prepare results for unresolved,
-    dynamic, and non-callable targets.
+    trait default/interface methods, schema methods including
+    schema-function-return receivers, schema trait methods, cross-file method
+    calls, and empty prepare results for unresolved, dynamic, and non-callable
+    targets.
 - [x] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1349,6 +1350,8 @@ Tests:
 - [x] `lsp_call_hierarchy_cross_file_trait_default_and_interface_methods`
 - [x] `call_hierarchy_uses_schema_method_and_trait_method_calls`
 - [x] `lsp_call_hierarchy_uses_schema_method_and_trait_method_calls`
+- [x] `call_hierarchy_uses_schema_method_calls_on_schema_function_return_receivers`
+- [x] `lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receivers`
 
 Validation:
 

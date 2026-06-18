@@ -7,6 +7,7 @@ use std::{
 use super::{LspServer, notification, notification_value, request, response_value};
 
 mod cross_file;
+mod returned_receivers;
 mod values;
 
 #[test]
