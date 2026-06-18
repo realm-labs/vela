@@ -36,6 +36,11 @@ fn lsp_type_definition_follows_imported_field_source_type_hint() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_return_source_type_hint() {
+    assert_imported_return_source_type_hint_definition();
+}
+
+#[test]
 fn lsp_type_definition_follows_imported_function_return_source_type() {
     assert_imported_function_return_source_type_definition();
 }
@@ -533,6 +538,79 @@ fn main(player: Player) {
             "position": {
                 "line": 3,
                 "character": field_line
+                    .find("Bag")
+                    .expect("type hint should contain alias")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], inventory_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(response["result"]["range"]["end"]["character"], 20);
+}
+
+fn assert_imported_return_source_type_hint_definition() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = r#"use game::inventory::Inventory as Bag
+use game::inventory::make_inventory
+
+fn make_bag() -> Bag {
+    return make_inventory();
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+    slots: i64,
+}
+
+pub fn make_inventory() -> Inventory {
+    return Inventory { slots: 2 };
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": inventory_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": inventory_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let return_hint_line = main_text
+        .lines()
+        .nth(3)
+        .expect("return hint line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": return_hint_line
                     .find("Bag")
                     .expect("type hint should contain alias")
             }
