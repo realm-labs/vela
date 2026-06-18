@@ -101,6 +101,73 @@ fn lsp_hover_degrades_to_any_without_schema() {
 }
 
 #[test]
+fn lsp_hover_returns_null_for_unresolved_and_dynamic_members() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+pub fn unresolved() { return missing }
+pub fn dynamic(player) { return player.level }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let unresolved_line = text
+        .lines()
+        .next()
+        .expect("fixture should contain unresolved name");
+    let unresolved = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": unresolved_line.find("missing").unwrap_or_else(|| {
+                    panic!("hover fixture should contain unresolved name")
+                })
+            }
+        }),
+    )));
+    assert!(unresolved["result"].is_null(), "{unresolved:?}");
+
+    let dynamic_line = text
+        .lines()
+        .nth(1)
+        .expect("fixture should contain dynamic member");
+    let dynamic = response_value(server.handle_json(&request(
+        3,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": dynamic_line.find("level").unwrap_or_else(|| {
+                    panic!("hover fixture should contain dynamic member")
+                })
+            }
+        }),
+    )));
+    assert!(dynamic["result"].is_null(), "{dynamic:?}");
+}
+
+#[test]
 fn lsp_hover_reports_source_global_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

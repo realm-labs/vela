@@ -143,7 +143,7 @@ in `vela_lsp_server`.
 | `textDocument/completion` | `completionProvider` | S1-S11 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged. | Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight. |
 | `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return null; incomplete calls resolve only when target facts exist; stale schema. |
-| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names, schema facts without source spans, missing schema, dynamic `Any`, parser recovery. |
+| `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
 | `textDocument/definition` | `definitionProvider` | S1, S3-S5, S8-S10 | Local bindings, source declarations, cross-file imported declarations, imported const/global uses, imported function calls, source fields/methods/variants, schema facts with source spans. | Schema facts without source spans return no false enclosing declaration; dynamic/unresolved targets return no location. |
 | `textDocument/declaration` | `declarationProvider` | S1, S3-S5, S8-S10 | Source declaration targets, including cross-file imported declarations, where declaration and definition are the same or explicitly distinct. | Must not silently alias unrelated definition behavior for members or type facts; dynamic/unresolved targets return no location. |
 | `textDocument/typeDefinition` | `typeDefinitionProvider` | S1, S3, S4, S8, S10 | Variables, parameters, and member expressions with source/schema type facts jump to source/schema type declarations when source-backed, including imported source types. | Field values such as `cell.value` must not jump to the enclosing function by fallback; builtin/dynamic/unknown types use an explicit null policy. |
@@ -227,9 +227,10 @@ These are the first places to compare current tests against the matrix:
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
 5. Dynamic boundaries need explicit negative tests. Current focused fixtures
-   pin `typeDefinition` null results for dynamic local values and
+   pin `typeDefinition` null results for dynamic local values,
    `signatureHelp` null results for unresolved calls and dynamic receiver
-   calls; broader `Any`, missing schema, stale schema, unresolved name, and
+   calls, and `hover` null results for unresolved names plus dynamic receiver
+   members; broader `Any`, missing schema, stale schema, unresolved name, and
    parser recovery cases should degrade by returning null, empty results,
    diagnostics, or suppressed hints, not guessed semantic facts.
 6. Multi-file and overlay behavior should be present in each cross-file

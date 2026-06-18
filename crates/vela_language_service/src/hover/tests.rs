@@ -25,6 +25,40 @@ fn hover_degrades_to_any_without_schema() {
 }
 
 #[test]
+fn hover_returns_none_for_unresolved_name() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { return missing }";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+
+    assert!(
+        databases
+            .hover(
+                &document,
+                Position::new(0, text.find("missing").expect("unresolved name")),
+            )
+            .is_none(),
+        "unresolved names must not produce speculative hover facts"
+    );
+}
+
+#[test]
+fn hover_returns_none_for_dynamic_receiver_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player) { return player.level }";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+
+    assert!(
+        databases
+            .hover(
+                &document,
+                Position::new(0, text.find("level").expect("dynamic member")),
+            )
+            .is_none(),
+        "dynamic receiver members must not invent hover facts"
+    );
+}
+
+#[test]
 fn hover_reports_effects_and_permissions() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.grant(1) }";
