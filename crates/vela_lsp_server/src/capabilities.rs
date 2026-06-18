@@ -1,8 +1,8 @@
 use serde_json::{Value as JsonValue, json};
 
-use crate::semantic_tokens;
+use crate::semantic_tokens::{self, SemanticTokenProjection};
 
-pub(crate) fn initialize_result() -> JsonValue {
+pub(crate) fn initialize_result(semantic_token_projection: &SemanticTokenProjection) -> JsonValue {
     json!({
         "capabilities": {
             "workDoneProgress": true,
@@ -42,7 +42,7 @@ pub(crate) fn initialize_result() -> JsonValue {
             },
             "selectionRangeProvider": true,
             "semanticTokensProvider": {
-                "legend": semantic_tokens::semantic_tokens_legend(),
+                "legend": semantic_tokens::semantic_tokens_legend(semantic_token_projection),
                 "range": true,
                 "full": {
                     "delta": true

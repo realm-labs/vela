@@ -653,7 +653,10 @@ impl LspServer {
         self.refresh_databases_for_query(&document_id);
         let tokens = self.databases.semantic_tokens(&document_id);
 
-        JsonRpcResult::Response(success_response(id, lsp_semantic_tokens(&tokens)))
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_semantic_tokens(&tokens, &self.semantic_token_projection),
+        ))
     }
 
     pub(crate) fn semantic_tokens_full_delta(
@@ -681,7 +684,10 @@ impl LspServer {
             .databases
             .semantic_token_delta(&document_id, &params.previous_result_id);
 
-        JsonRpcResult::Response(success_response(id, lsp_semantic_token_delta(&delta)))
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_semantic_token_delta(&delta, &self.semantic_token_projection),
+        ))
     }
 
     pub(crate) fn semantic_tokens_range(
@@ -709,7 +715,7 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_semantic_tokens_range(&tokens, params.range),
+            lsp_semantic_tokens_range(&tokens, params.range, &self.semantic_token_projection),
         ))
     }
 

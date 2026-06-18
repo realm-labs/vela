@@ -799,6 +799,131 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {
+                "textDocument": {
+                    "semanticTokens": {
+                        "tokenTypes": [
+                            "namespace",
+                            "function",
+                            "method",
+                            "property",
+                            "variable",
+                            "parameter",
+                            "type",
+                            "enumMember",
+                            "keyword",
+                            "number",
+                            "string",
+                            "comment",
+                            "operator",
+                            "decorator",
+                            "macro",
+                            "struct",
+                            "enum",
+                            "interface"
+                        ],
+                        "tokenModifiers": [
+                            "declaration",
+                            "definition",
+                            "readonly",
+                            "deprecated",
+                            "defaultLibrary",
+                            "modification",
+                            "static",
+                            "documentation"
+                        ]
+                    }
+                }
+            }
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    assert!(
+        !token_types
+            .iter()
+            .any(|token_type| token_type == "builtinType")
+    );
+    assert!(
+        !token_types
+            .iter()
+            .any(|token_type| token_type == "arithmeticOperator")
+    );
+    assert!(
+        !token_modifiers
+            .iter()
+            .any(|token_modifier| token_modifier == "source")
+    );
+    let keyword = token_type_index(token_types, "keyword");
+    let variable = token_type_index(token_types, "variable");
+    let type_token = token_type_index(token_types, "type");
+    let operator = token_type_index(token_types, "operator");
+    let declaration = token_modifier_bit(token_modifiers, "declaration");
+    let default_library = token_modifier_bit(token_modifiers, "defaultLibrary");
+
+    let text = "pub fn main(flag: bool) { let value = flag == true return value + 1 }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        0,
+        text.find("bool").expect("builtin type should exist"),
+        "bool".len(),
+        type_token,
+        default_library,
+    );
+    assert_token(&tokens, text, "true", keyword);
+    assert_token(&tokens, text, "==", operator);
+    assert_token(&tokens, text, "+", operator);
+    assert_token_at(
+        &tokens,
+        0,
+        text.find("value").expect("local declaration should exist"),
+        "value".len(),
+        variable,
+        declaration,
+    );
+}
+
+#[test]
 fn lsp_semantic_token_delta_matches_full_tokens() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

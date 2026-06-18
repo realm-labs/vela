@@ -38,6 +38,7 @@ use vela_language_service::{
 use crate::capabilities::initialize_result;
 use crate::client::{InitializeParams, WorkspaceFolder};
 use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
+use crate::semantic_tokens::SemanticTokenProjection;
 
 pub use crate::config::LaunchConfiguration;
 
@@ -63,6 +64,7 @@ pub struct LspServer {
     open_documents: BTreeSet<DocumentId>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
+    semantic_token_projection: SemanticTokenProjection,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -198,7 +200,11 @@ impl LspServer {
         self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
         self.client_supports_watched_file_registration =
             params.capabilities.supports_watched_file_registration();
-        JsonRpcResult::Response(success_response(id, initialize_result()))
+        self.semantic_token_projection = params.capabilities.semantic_token_projection();
+        JsonRpcResult::Response(success_response(
+            id,
+            initialize_result(&self.semantic_token_projection),
+        ))
     }
 
     fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
