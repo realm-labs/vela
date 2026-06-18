@@ -261,6 +261,8 @@ coverage complete based only on the older capability phases.
     constructors/patterns plus enum record-variant fields in addition to
     imported functions, function aliases, const/global symbols, and module
     path segments.
+  - W3/W0 references now have protocol coverage proving watched-file deletion
+    of an imported defining source removes stale cross-file reference targets.
 - [ ] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1125,6 +1127,7 @@ Tests:
 - [x] `lsp_references_find_imported_function_uses`
 - [x] `references_find_imported_function_alias_uses`
 - [x] `lsp_references_find_imported_function_alias_uses`
+- [x] `lsp_references_drop_deleted_imported_source_file`
 - [x] `references_find_imported_const_and_global_uses`
 - [x] `lsp_references_find_imported_const_and_global_uses`
 - [x] `references_find_field_reads_and_writes`

@@ -1,3 +1,8 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use crate::tests::{LspServer, notification, notification_value, request, response_value};
 
 use super::{assert_reference, line};
@@ -133,6 +138,133 @@ impl Reward {
             .find("total")
             .expect("second method call should exist"),
     );
+}
+
+#[test]
+fn lsp_references_drop_deleted_imported_source_file() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let reward_path = root.join("scripts").join("game").join("reward.vela");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &reward_path,
+        "pub fn grant(amount: i64) -> i64 { return amount }",
+    )
+    .expect("source should be writable");
+
+    let root_uri = file_uri(&root);
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let reward_uri = file_uri(&reward_path);
+    let main_text = "\
+use game::reward::grant
+
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": root_uri,
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": file_uri(&config_path), "type": 1 },
+                { "uri": reward_uri.clone(), "type": 1 }
+            ]
+        }),
+    ));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+
+    let before = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(main_text, 3)
+                    .find("grant")
+                    .expect("grant call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let before_references = before["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert_eq!(before_references.len(), 3, "{before_references:?}");
+    assert_reference(before_references, &reward_uri, 0, "pub fn ".len());
+    assert_reference(
+        before_references,
+        &main_uri,
+        0,
+        line(main_text, 0)
+            .find("grant")
+            .expect("import should exist"),
+    );
+    assert_reference(
+        before_references,
+        &main_uri,
+        3,
+        line(main_text, 3).find("grant").expect("call should exist"),
+    );
+
+    fs::remove_file(&reward_path).expect("source should be removable");
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": reward_uri, "type": 3 }]
+        }),
+    ));
+
+    let after = response_value(server.handle_json(&request(
+        3,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(main_text, 3)
+                    .find("grant")
+                    .expect("grant call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let after_references = after["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert!(
+        after_references.is_empty(),
+        "deleted imported source must not leave stale references: {after_references:?}"
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
 #[test]
@@ -315,4 +447,32 @@ pub enum QuestState {
             .find("count")
             .expect("pattern field should exist"),
     );
+}
+
+fn temp_workspace() -> PathBuf {
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_nanos(),
+        Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+    };
+    let sequence = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "vela_lsp_references_cross_file_{}_{}_{}",
+        std::process::id(),
+        suffix,
+        sequence
+    ));
+    fs::create_dir_all(root.join("scripts").join("game"))
+        .expect("temporary workspace should be creatable");
+    root
+}
+
+fn file_uri(path: &Path) -> String {
+    let path = path.display().to_string().replace('\\', "/");
+    if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    }
 }
