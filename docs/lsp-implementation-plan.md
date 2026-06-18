@@ -321,10 +321,23 @@ coverage complete based only on the older capability phases.
     trait default/interface methods, schema methods and trait methods,
     cross-file method calls, and empty prepare results for unresolved,
     dynamic, and non-callable targets.
-- [ ] Audit rename and code actions.
+- [x] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
     missing imports, unused imports, match arms, and record fields.
+  - Current fixtures cover service and native LSP `prepareRename` and
+    `rename` for locals, private value/type/function declarations, imports
+    and aliased imports, struct fields, methods, enum variants, source-backed
+    schema types/functions/fields/methods/variants, versioned
+    `documentChanges`, source-owned edit-plan overlap rejection,
+    hot-reload/schema ABI risk change annotations, schema-only host rejection,
+    keyword/literal and non-source target rejection, module/import/scope/
+    trait-method/schema-member collisions, and cross-file workspace edits.
+  - Current fixtures cover service and native LSP `textDocument/codeAction`
+    quick fixes for unknown-field typo candidates, missing imports, unused
+    imports, non-exhaustive match arms, and missing record constructor fields,
+    plus ambiguous import rejection, dynamic receiver rejection, local syntax
+    pattern requirements, and open-overlay range stability.
 - [ ] Audit symbols, folding ranges, and selection ranges.
   - Cover document and workspace symbols, module-qualified source/schema
     facts, nested type/impl/trait members, imports, blocks, match arms,
