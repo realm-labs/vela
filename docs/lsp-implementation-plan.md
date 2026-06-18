@@ -787,8 +787,12 @@ Tests:
 - [x] `member_completion_includes_source_impl_and_trait_methods`
 - [x] `query_context_resolves_member_callable_facts_from_expression_receivers`
 - [x] `member_completion_uses_schema_function_return_receiver_facts`
+- [x] `member_completion_uses_schema_method_return_receiver_facts`
+- [x] `member_completion_uses_schema_trait_method_return_receiver_facts`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `lsp_member_completion_uses_schema_function_return_receiver_facts`
+- [x] `lsp_member_completion_uses_schema_method_return_receiver_facts`
+- [x] `lsp_member_completion_uses_schema_trait_method_return_receiver_facts`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [x] `struct_body_completion_enters_field_declaration_context`
@@ -2166,9 +2170,13 @@ Tests:
 - [x] `member_completion_includes_source_impl_and_trait_methods`
 - [x] `member_completion_uses_source_function_return_receiver_facts`
 - [x] `member_completion_uses_source_method_return_receiver_facts`
+- [x] `member_completion_uses_schema_method_return_receiver_facts`
+- [x] `member_completion_uses_schema_trait_method_return_receiver_facts`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `lsp_member_completion_uses_source_function_return_receiver_facts`
 - [x] `lsp_member_completion_uses_source_method_return_receiver_facts`
+- [x] `lsp_member_completion_uses_schema_method_return_receiver_facts`
+- [x] `lsp_member_completion_uses_schema_trait_method_return_receiver_facts`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [x] `struct_body_completion_enters_field_declaration_context`

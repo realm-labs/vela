@@ -87,6 +87,68 @@ fn member_completion_uses_schema_function_return_receiver_facts() {
 }
 
 #[test]
+fn member_completion_uses_schema_method_return_receiver_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { player.inventory(). }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_method(
+        "Player",
+        "inventory",
+        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+    );
+    schema.insert_field("Inventory", "count", TypeFact::I64);
+    schema.insert_method(
+        "Inventory",
+        "grant",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_function(
+        "global_grant",
+        TypeFact::function(Vec::new(), TypeFact::BOOL),
+    );
+
+    let completions = completions_for_with_schema(document, text, "player.inventory().", schema);
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "count", CompletionKind::Field);
+    assert_completion(&completions, "grant", CompletionKind::Method);
+    assert_no_completion(&completions, "inventory");
+    assert_no_completion(&completions, "global_grant");
+}
+
+#[test]
+fn member_completion_uses_schema_trait_method_return_receiver_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { player.rewardable(). }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_method(
+        "Player",
+        "rewardable",
+        TypeFact::function(Vec::new(), TypeFact::trait_type("Rewardable")),
+    );
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_function(
+        "global_preview",
+        TypeFact::function(Vec::new(), TypeFact::BOOL),
+    );
+
+    let completions = completions_for_with_schema(document, text, "player.rewardable().", schema);
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "preview", CompletionKind::Method);
+    assert_no_completion(&completions, "rewardable");
+    assert_no_completion(&completions, "global_preview");
+}
+
+#[test]
 fn member_completion_uses_source_function_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"

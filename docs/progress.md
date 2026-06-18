@@ -334,6 +334,11 @@ coverage for source-owned fields and methods on receivers produced by source
 function returns, matching the schema-return receiver path without falling
 back to unrelated globals.
 
+M20.5 Phase 7/19 update: service and native LSP member completion now also
+cover schema-backed fields, methods, and trait methods where the receiver is
+produced by another schema method return, preserving member-context
+suppression of unrelated globals through shared expression receiver facts.
+
 M20.5 Phase 11 update: references now have service and native LSP coverage for
 schema-backed method calls where the receiver is produced by a schema function
 return, using the shared expression receiver facts instead of binding-only
