@@ -782,6 +782,76 @@ return RewardOutcome::Granted;
     assert_eq!(response["result"]["range"]["end"]["character"], 22);
 }
 
+fn assert_imported_source_trait_method_return_type_definition() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let traits_uri = "file:///workspace/scripts/game/traits.vela";
+    let main_text = r#"use game::traits::Describable
+
+fn main(value: Describable) {
+    return value.describe();
+}"#;
+    let traits_text = r#"pub enum Description {
+    Short,
+    Long,
+}
+
+pub trait Describable {
+    fn describe(self) -> Description
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": traits_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": traits_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let call_line = main_text.lines().nth(3).expect("method call line");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": call_line
+                    .find("describe")
+                    .expect("trait method call should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], traits_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 9);
+    assert_eq!(response["result"]["range"]["end"]["character"], 20);
+}
+
 fn assert_imported_enum_variant_constructor_type_definition() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

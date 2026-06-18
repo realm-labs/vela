@@ -498,6 +498,45 @@ return RewardOutcome::Granted;
 }
 
 #[test]
+fn type_definition_follows_imported_source_trait_method_return_type() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let traits = DocumentId::from("/workspace/scripts/game/traits.vela");
+    let main_text = r#"use game::traits::Describable
+
+fn main(value: Describable) {
+return value.describe();
+}"#;
+    let traits_text = r#"pub enum Description {
+Short,
+Long,
+}
+
+pub trait Describable {
+fn describe(self) -> Description
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(traits.clone(), traits_text),
+    ]);
+    let call_line = main_text.lines().nth(3).expect("method call line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(3, call_line.find("describe").expect("trait method call")),
+        )
+        .expect("type definition should resolve imported source trait method return type");
+
+    assert_eq!(definition.document_id(), &traits);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 9);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::traits::Description".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_const_and_global_source_types() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let rewards = DocumentId::from("/workspace/scripts/game/rewards.vela");

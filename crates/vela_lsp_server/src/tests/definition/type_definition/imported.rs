@@ -187,6 +187,11 @@ fn lsp_type_definition_follows_imported_source_method_return_type() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_source_trait_method_return_type() {
+    super::assert_imported_source_trait_method_return_type_definition();
+}
+
+#[test]
 fn lsp_type_definition_follows_imported_enum_variant_constructor_type() {
     super::assert_imported_enum_variant_constructor_type_definition();
 }

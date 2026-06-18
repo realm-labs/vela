@@ -393,6 +393,10 @@ M20.5 Phase 8 update: native LSP definition fixtures now cover schema-backed
 host method and trait-method source spans in addition to schema types, fields,
 and variants.
 
+M20.5 Phase 8 update: service and native LSP type-definition fixtures now
+cover imported source trait method return types, extending the W1 cross-file
+navigation audit beyond inherent method return types.
+
 M20.5 Phase 8 update: native LSP declaration fixtures now cover schema-backed
 type and host-method source spans, proving clients that separate declaration
 from definition get the same schema-origin navigation.

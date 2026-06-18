@@ -954,6 +954,8 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_function_return_source_type`
 - [x] `lsp_type_definition_follows_imported_source_member_type`
 - [x] `lsp_type_definition_follows_imported_source_method_return_type`
+- [x] `type_definition_follows_imported_source_trait_method_return_type`
+- [x] `lsp_type_definition_follows_imported_source_trait_method_return_type`
 - [x] `lsp_type_definition_follows_imported_enum_variant_constructor_type`
 - [x] `lsp_type_definition_follows_imported_struct_constructor_type`
 - [x] `lsp_type_definition_follows_imported_const_and_global_source_types`
