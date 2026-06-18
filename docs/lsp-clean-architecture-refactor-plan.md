@@ -575,9 +575,11 @@ and semantic tokens use the same identities and display primitives.
   `SymbolRef` identity for local bindings, source declarations, and schema
   facts while keeping LSP projection protocol-neutral; inlay hints now carry
   shared `SymbolRef` identity for callable parameter hints, inferred local and
-  lambda type hints, and schema-backed host-path type hints. Diagnostics and
-  broader source/local identities still need to converge on the shared
-  identity directly. Document symbols now expose
+  lambda type hints, and schema-backed host-path type hints. Diagnostics now
+  carry optional shared `SymbolRef` identity, with service-owned unused import
+  diagnostics stamped with the resolved source declaration symbol; broader
+  diagnostic identities and source/local identities still need to converge on
+  the shared identity directly. Document symbols now expose
   `SymbolRef` identity for source declarations and nested source-owned
   members, and workspace symbols expose `SymbolRef` identity for source files,
   modules, source declarations, and schema facts while keeping LSP projection

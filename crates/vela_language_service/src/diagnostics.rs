@@ -9,7 +9,8 @@ use vela_hir::{
 };
 
 use crate::{
-    DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position, WorkspaceGeneration,
+    DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position, SymbolRef,
+    WorkspaceGeneration,
 };
 
 pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";
@@ -152,6 +153,7 @@ pub struct ServiceDiagnostic {
     code: Option<String>,
     message: String,
     message_parts: DisplayParts,
+    symbol: Option<SymbolRef>,
     range: Option<DiagnosticRange>,
     labels: Vec<DiagnosticLabel>,
     candidates: Vec<DiagnosticCandidate>,
@@ -177,6 +179,11 @@ impl ServiceDiagnostic {
     #[must_use]
     pub fn message_parts(&self) -> &DisplayParts {
         &self.message_parts
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
     }
 
     #[must_use]
@@ -468,11 +475,16 @@ impl LanguageServiceDatabases {
                     return None;
                 }
                 let binding_name = import_binding_name(import)?;
+                let symbol = graph.declaration(declaration).map(|declaration| {
+                    SymbolRef::Source(qualified_declaration_path(graph, declaration).join("::"))
+                });
                 let diagnostic = Diagnostic::warning(format!("unused import `{binding_name}`"))
                     .with_code(UNUSED_IMPORT_CODE)
                     .with_span(import.span)
                     .with_label(import.span, "import is never used");
-                Some(self.convert_diagnostic(&diagnostic))
+                let mut diagnostic = self.convert_diagnostic(&diagnostic);
+                diagnostic.symbol = symbol;
+                Some(diagnostic)
             })
             .collect()
     }
@@ -483,6 +495,7 @@ impl LanguageServiceDatabases {
             code: diagnostic.code.clone(),
             message: diagnostic.message.clone(),
             message_parts: DisplayParts::plain(diagnostic.message.clone()),
+            symbol: None,
             range: diagnostic.span.and_then(|span| self.range_for_span(span)),
             labels: diagnostic
                 .labels
@@ -551,6 +564,7 @@ fn schema_diagnostic(diagnostic: &crate::SchemaDiagnostic) -> ServiceDiagnostic 
         code: Some("schema::unavailable".to_owned()),
         message: message.clone(),
         message_parts: DisplayParts::plain(message),
+        symbol: None,
         range: None,
         labels: Vec::new(),
         candidates: Vec::new(),
@@ -920,6 +934,8 @@ mod tests {
                     && diagnostic.range().is_some()
                     && diagnostic.message() == "unused import `grant`"
                     && diagnostic.message_parts().render() == "unused import `grant`"
+                    && diagnostic.symbol()
+                        == Some(&SymbolRef::Source("game::reward::grant".to_owned()))
             }),
             "{:?}",
             diagnostics.diagnostics()
@@ -1104,6 +1120,7 @@ mod tests {
 
         assert_eq!(converted.message(), "unknown name `levle`");
         assert_eq!(converted.message_parts().render(), "unknown name `levle`");
+        assert_eq!(converted.symbol(), None);
         assert_eq!(
             converted.message_parts().parts()[0].kind(),
             DisplayPartKind::Text
