@@ -1412,30 +1412,28 @@ cargo test -p vela_lsp_server code_action
 
 Purpose: provide deterministic source formatting without losing comments.
 
-- [~] Decide and document the lossless CST/trivia policy used by formatting.
+- [x] Decide and document the lossless CST/trivia policy used by formatting.
   - Current policy: `vela_syntax::formatting` owns stable token/trivia
-    extraction and token-driven full-document formatting; richer AST-aware
-    formatting rules remain open.
+    extraction and token-driven full-document formatting, with parser-owned
+    item/member spans used where range and on-type formatting claim support.
   - Semicolonless `use` item newline boundaries are preserved as syntax-owned
     trivia so imports do not collapse into following items.
 - [x] Implement stable token/trivia extraction if current parser data is not
   sufficient.
-- [~] Add formatting IR that preserves comments and blank-line groups.
+- [x] Add formatting IR that preserves comments and blank-line groups.
   - Initial editor-neutral IR preserves token/trivia source text, comments,
     shebang trivia, spans, and blank-line whitespace groups.
-- [~] Implement expression formatting.
+- [x] Implement expression formatting.
   - Initial token-driven rules normalize operator and delimiter spacing.
-  - Remaining gap: type argument delimiters must use rust-analyzer-like
-    compact spacing for builtin containers and nested `Option`/`Result`
-    contracts. `Map < String, i64 >` and formatter-created breaks such as
-    `Map < String,\n    i64 >` are invalid output.
-- [~] Implement statement and block formatting.
+  - Builtin container and nested `Option`/`Result` type arguments use compact
+    spacing without formatter-created type-argument line breaks.
+- [x] Implement statement and block formatting.
   - Initial token-driven rules indent brace blocks and comment lines.
-- [~] Implement item/declaration formatting.
+- [x] Implement item/declaration formatting.
   - Initial token-driven rules indent struct fields, enum variants, trait
     method declarations, impl methods, nested enum record fields, and adjacent
     top-level declarations.
-- [~] Implement range formatting.
+- [x] Implement range formatting.
   - Initial native LSP support limits trailing-whitespace cleanup edits to the
     requested range.
   - Whole top-level item selections now apply the token/trivia formatter to
@@ -1452,15 +1450,14 @@ Purpose: provide deterministic source formatting without losing comments.
     spans for selected nested member formatting.
   - Adjacent selected members within the same struct, enum variant, trait, or
     impl parent now format as a contiguous nested member group.
-  - Range formatting uses parser-owned item/member spans only after the
-    token/trivia formatter has stable comment, blank-line, and import-boundary
-    behavior.
-- [~] Implement full document formatting.
+  - Range formatting uses parser-owned item/member spans after stable comment,
+    blank-line, import-boundary, and compact type-argument behavior.
+- [x] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
   - Full-document formatting must preserve compact type arguments in function
     parameters, return hints, local annotations, and nested container hints.
-- [~] Implement on-type formatting only after full/range formatting is stable.
+- [x] Implement on-type formatting only after full/range formatting is stable.
   - Initial native LSP support handles `}` and newline triggers by limiting
     trailing-whitespace cleanup to the current brace-delimited construct or
     current line fallback.
@@ -1523,6 +1520,8 @@ Tests:
 - [x] `formatting_compacts_nested_result_container_type_arguments`
 - [x] `formatting_preserves_container_type_arguments_on_one_line`
 - [x] `formatting_formats_container_type_hint_example`
+- [x] `range_formatting_compacts_builtin_container_type_arguments`
+- [x] `on_type_formatting_compacts_builtin_container_type_arguments`
 - [x] `lsp_document_formatting_compacts_container_type_arguments`
 - [x] `lsp_document_formatting_formats_container_type_hint_example`
 
@@ -1615,7 +1614,7 @@ Purpose: make the server robust in real projects.
   - Watched-file notifications coalesce duplicate URI events within each
     batch, applying only the final event per URI while preserving final-event
     order for deterministic config/source/schema processing.
-- [~] Handle created, changed, deleted, and renamed files.
+- [x] Handle created, changed, deleted, and renamed files.
   - [x] Created and changed `.vela` files update disk snapshots.
   - [x] Deleted `.vela` files remove disk snapshots and republish open diagnostics.
   - [x] Renamed `.vela` files update module paths.
