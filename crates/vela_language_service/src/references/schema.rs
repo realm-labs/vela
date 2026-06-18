@@ -4,6 +4,10 @@ use vela_syntax::ast::SourceFile;
 
 use crate::{
     LanguageServiceDatabases, SymbolRef, TextRange, member_access, path_calls, query_context,
+    symbol_ref::{
+        schema_member_symbol as shared_schema_member_symbol,
+        schema_variant_symbol as shared_schema_variant_symbol,
+    },
 };
 
 use super::{
@@ -129,15 +133,15 @@ pub(super) fn schema_variant_references(
 }
 
 fn schema_field_symbol(target: &SchemaFieldReferenceTarget) -> SymbolRef {
-    SymbolRef::Schema(format!("{}.{}", target.owner, target.field))
+    shared_schema_member_symbol(&target.owner, &target.field)
 }
 
 fn schema_method_symbol(target: &SchemaMethodReferenceTarget) -> SymbolRef {
-    SymbolRef::Schema(format!("{}.{}", target.owner, target.method))
+    shared_schema_member_symbol(&target.owner, &target.method)
 }
 
 fn schema_variant_symbol(target: &SchemaVariantReferenceTarget) -> SymbolRef {
-    SymbolRef::Schema(format!("{}::{}", target.owner, target.variant))
+    shared_schema_variant_symbol(&target.owner, &target.variant)
 }
 
 pub(super) fn schema_method_declaration_target(
