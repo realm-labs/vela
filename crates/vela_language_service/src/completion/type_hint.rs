@@ -13,7 +13,7 @@ use crate::{TextRange, symbol_ref::schema_symbol};
 
 use super::{
     CompletionInsertFormat, CompletionItem, CompletionKind, display_type_detail_parts,
-    label_segment_matches,
+    label_segment_matches, type_display::type_completion_item,
 };
 
 pub(super) fn type_hint_completion_items(
@@ -38,7 +38,7 @@ pub(super) fn type_hint_completion_items(
     items.extend(
         type_completions(schema)
             .into_iter()
-            .map(service_item_from_schema_type),
+            .map(|item| service_item_from_schema_type(item, prefix)),
     );
     items.extend(
         graph
@@ -51,7 +51,10 @@ pub(super) fn type_hint_completion_items(
                     AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
                 )
             })
-            .map(service_item_from_analysis),
+            .map(|item| {
+                let qualified_name = item.label.clone();
+                type_completion_item(item, &qualified_name, prefix)
+            }),
     );
     items.extend(
         graph
@@ -130,19 +133,11 @@ fn service_item_for_qualified_type_path(
         .split_once("::")
         .map_or(suffix, |(segment, _)| segment)
         .to_owned();
-    let detail_parts = display_type_detail_parts(item.fact.display_name());
-    Some(
-        CompletionItem {
-            label,
-            kind: CompletionKind::from(item.kind),
-            detail: detail_parts.render(),
-            insert_text: None,
-            insert_format: CompletionInsertFormat::PlainText,
-            sort_text: None,
-            metadata: Default::default(),
-        }
-        .with_detail_parts(detail_parts),
-    )
+    let qualified_name = format!("{module_base}::{suffix}");
+    let mut completion = type_completion_item(item, &qualified_name, prefix);
+    completion.label = label;
+    completion.insert_text = Some(completion.label.clone());
+    Some(completion)
 }
 
 fn is_type_position_analysis_item(item: &AnalysisCompletionItem) -> bool {
@@ -211,9 +206,10 @@ fn service_item_from_analysis(item: AnalysisCompletionItem) -> CompletionItem {
     .with_detail_parts(detail_parts)
 }
 
-fn service_item_from_schema_type(item: AnalysisCompletionItem) -> CompletionItem {
+fn service_item_from_schema_type(item: AnalysisCompletionItem, prefix: &str) -> CompletionItem {
     let symbol = schema_symbol(&item.label);
-    service_item_from_analysis(item).with_symbol(symbol)
+    let qualified_name = item.label.clone();
+    type_completion_item(item, &qualified_name, prefix).with_symbol(symbol)
 }
 
 #[cfg(test)]
@@ -224,7 +220,7 @@ mod tests {
     use crate::{
         DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
         WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
-        completion::{CompletionContextKind, CompletionList},
+        completion::{CompletionContextKind, CompletionItem, CompletionList},
     };
 
     #[test]
@@ -255,7 +251,11 @@ mod tests {
             completions.context().kind(),
             CompletionContextKind::TypeHint
         );
-        assert_completion(&completions, "game::main::Player", CompletionKind::Type);
+        assert_completion(&completions, "Player", CompletionKind::Type);
+        let player = completion(&completions, "Player");
+        assert_eq!(player.lookup(), "game::main::Player");
+        assert_eq!(player.filter_text(), "game::main::Player");
+        assert_eq!(player.label_details().description(), Some("game::main"));
         assert_completion(&completions, "Planet", CompletionKind::Type);
         assert_no_completion(&completions, "game::main::helper");
         assert_no_completion(&completions, "play");
@@ -365,6 +365,13 @@ mod tests {
                 .any(|item| item.label() == label && item.kind() == kind),
             "{list:?}"
         );
+    }
+
+    fn completion<'a>(list: &'a CompletionList, label: &str) -> &'a CompletionItem {
+        list.items()
+            .iter()
+            .find(|item| item.label() == label)
+            .unwrap_or_else(|| panic!("completion {label} should exist in {list:?}"))
     }
 
     fn assert_no_completion(list: &CompletionList, label: &str) {

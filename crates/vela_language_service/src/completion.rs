@@ -31,7 +31,10 @@ mod source_member;
 mod source_module;
 mod statement;
 mod stdlib_function;
+mod type_display;
 mod type_hint;
+#[cfg(test)]
+mod type_label_tests;
 
 pub use model::{
     CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,

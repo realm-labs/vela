@@ -83,6 +83,7 @@ mod code_action;
 mod completion_map;
 mod completion_member;
 mod completion_resolve;
+mod completion_type;
 mod formatting;
 mod inlay;
 mod lifecycle;

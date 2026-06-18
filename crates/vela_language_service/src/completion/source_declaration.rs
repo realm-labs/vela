@@ -13,6 +13,7 @@ use crate::{QueryContext, TextRange};
 use super::{
     CompletionItem, accumulator::CompletionAccumulator,
     analysis_item::service_item_from_analysis_completion, label_segment_matches,
+    type_display::type_completion_item,
 };
 
 pub(super) fn source_const_completion_items(
@@ -72,10 +73,15 @@ fn source_declaration_completion_items(
         &current_module,
     ) {
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
-            accumulator.add(
+            let completion = if matches!(
+                item.kind,
+                AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
+            ) {
+                type_completion_item(item, &symbol, prefix)
+            } else {
                 service_item_from_analysis_completion(item, prefix)
-                    .with_symbol(source_symbol(symbol)),
-            );
+            };
+            accumulator.add(completion.with_symbol(source_symbol(symbol)));
         }
     }
     accumulator.into_items()

@@ -844,7 +844,17 @@ fn lsp_type_hint_completion_uses_colon_trigger_context() {
         }),
     )));
 
-    assert_completion(&response, "game::main::Player", 22, "game::main::Player");
+    assert_completion(&response, "Player", 22, "game::main::Player");
+    let player = completion_item(&response, "Player");
+    assert_eq!(player["filterText"], "game::main::Player");
+    assert_eq!(
+        player["labelDetails"],
+        serde_json::json!({
+            "detail": "game::main::Player",
+            "description": "game::main"
+        })
+    );
+    assert_eq!(player["textEdit"]["newText"], "Player");
     assert_no_completion(&response, "game::main::helper");
 }
 

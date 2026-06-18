@@ -646,8 +646,8 @@ Tests:
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
-- [ ] `completion_uses_short_type_labels_with_owner_details`
-- [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
+- [x] `completion_uses_short_type_labels_with_owner_details`
+- [x] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`
 - [ ] `lsp_struct_body_completion_enters_field_declaration_context`
 - [x] `statement_completion_offers_for_in_and_match_snippets`
@@ -1787,7 +1787,7 @@ fn main() {
 - [ ] Unify member completion facts for source-owned struct fields, inherent
   impl methods, trait methods, schema-backed fields/methods, and builtin
   value/container methods.
-- [ ] Split completion display from insertion for source and schema types:
+- [x] Split completion display from insertion for source and schema types:
   `label` and inserted text stay as the short visible name, while module or
   owner path is projected through `labelDetails`, `detail`, or documentation.
 - [ ] Add a struct-field declaration completion context for
@@ -1814,8 +1814,8 @@ Tests:
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
-- [ ] `completion_uses_short_type_labels_with_owner_details`
-- [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
+- [x] `completion_uses_short_type_labels_with_owner_details`
+- [x] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [ ] `struct_body_completion_enters_field_declaration_context`
 - [ ] `lsp_struct_body_completion_enters_field_declaration_context`
 - [x] `statement_completion_offers_for_in_and_match_snippets`
