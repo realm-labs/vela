@@ -28,7 +28,6 @@
 ; Variables
 (let_statement name: (identifier) @variable)
 (binding_pattern (identifier) @variable)
-(path_expression (path (identifier) @variable))
 
 ((identifier) @variable.special
   (#eq? @variable.special "self"))
@@ -77,7 +76,7 @@
 ; Member and call sites
 (use_declaration path: (path (identifier) @namespace))
 (call_expression function: (field_expression field: (identifier) @function.method))
-(call_expression function: (path_expression (path) @function))
+(call_expression function: (path_expression (path (identifier) @function)))
 (field_expression field: (identifier) @property)
 (named_argument name: (identifier) @variable.parameter)
 (record_field_value name: (identifier) @property)
