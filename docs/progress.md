@@ -727,9 +727,10 @@ diagnostics.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
-- Continue the clean LSP architecture refactor from the remaining
-  scale/configuration/cancellation and cleanup/docs phases while keeping
-  incomplete capabilities unadvertised.
+- Keep the clean LSP architecture refactor as the validated M20.5 editor
+  tooling baseline; future LSP work should start from the shared
+  query/context/result/projection boundary instead of restoring old
+  completion or protocol-coupled paths.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
   contracts.

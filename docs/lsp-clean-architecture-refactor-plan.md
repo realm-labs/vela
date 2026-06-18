@@ -917,9 +917,10 @@ Purpose: complete the breaking cleanup.
     `SymbolRef`/`DisplayParts`/`EditPlan`/relevance/resolve payloads from the
     service, and LSP JSON projection isolated to `vela_lsp_server`.
 - [x] Update `docs/progress.md` only when milestone status changes.
-  - No `docs/progress.md` edit was required for this cleanup checkpoint:
-    M20.5 was already marked complete enough, and the plan remains active
-    until final acceptance validation is complete.
+  - After final acceptance validation, `docs/progress.md` now treats the clean
+    LSP architecture refactor as the validated M20.5 editor tooling baseline
+    and directs future LSP work to the shared query/context/result/projection
+    boundary.
 - [x] Update `docs/decisions.md` for any new durable architecture decision.
   - No new `docs/decisions.md` entry was required: the active
     Native-First LSP Boundary decision already points to this cleanup plan,
@@ -938,22 +939,34 @@ cargo test --workspace
 
 ## 15. Acceptance Criteria
 
-- [ ] At an item boundary, typing `f` ranks the `fn` keyword/snippet before
+- [x] At an item boundary, typing `f` ranks the `fn` keyword/snippet before
   stdlib functions, and typing `st` ranks `struct` before unrelated globals.
-- [ ] Expression-position completion still offers legal stdlib functions,
+- [x] Expression-position completion still offers legal stdlib functions,
   locals, declarations, modules, builtins, and schema facts with sensible
   relevance.
-- [ ] Type-position completion does not offer expression-only functions.
-- [ ] Member completion is receiver-aware and does not leak top-level globals.
-- [ ] LSP completion uses correct replacement ranges, filter text, snippets,
+- [x] Type-position completion does not offer expression-only functions.
+- [x] Member completion is receiver-aware and does not leak top-level globals.
+- [x] LSP completion uses correct replacement ranges, filter text, snippets,
   label details, sorting, preselect, docs, and deprecation tags where
   supported.
-- [ ] Hover, signature, definition, symbols, semantic tokens, references,
+- [x] Hover, signature, definition, symbols, semantic tokens, references,
   rename, code actions, formatting, and inlay hints route through shared
   query, symbol, display, and edit models where relevant.
-- [ ] Obsolete APIs are deleted rather than kept as compatibility shims.
-- [ ] The architecture remains analysis-only and does not change runtime
+- [x] Obsolete APIs are deleted rather than kept as compatibility shims.
+- [x] The architecture remains analysis-only and does not change runtime
   semantics.
+
+Acceptance validated with:
+
+```bash
+cargo test -p vela_language_service
+cargo test -p vela_lsp_server
+cargo test -p vela_language_service completion_contexts_scale_in_million_line_workspace -- --ignored
+cargo test -p vela_language_service million_line_synthetic_workspace_checkpoint -- --ignored
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
 
 ---
 
