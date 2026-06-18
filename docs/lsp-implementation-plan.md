@@ -926,7 +926,13 @@ Tests:
 - [x] `definition_follows_schema_trait_method_on_schema_method_return_receiver`
 - [x] `declaration_follows_schema_trait_method_on_schema_method_return_receiver`
 - [x] `definition_follows_schema_variant_source_span`
+- [x] `definition_follows_source_method_on_source_function_return_receiver`
+- [x] `declaration_follows_source_method_on_source_function_return_receiver`
+- [x] `definition_follows_source_method_on_source_method_return_receiver`
+- [x] `declaration_follows_source_method_on_source_method_return_receiver`
 - [x] `definition_follows_source_trait_default_method_on_source_function_return_receiver`
+- [x] `definition_follows_source_trait_default_method_on_source_method_return_receiver`
+- [x] `declaration_follows_source_trait_default_method_on_source_method_return_receiver`
 - [x] `lsp_definition_follows_schema_source_span`
 - [x] `lsp_definition_follows_schema_field_source_span`
 - [x] `lsp_definition_follows_schema_method_source_span`
@@ -936,7 +942,13 @@ Tests:
 - [x] `lsp_definition_follows_schema_trait_method_on_schema_method_return_receiver`
 - [x] `lsp_declaration_follows_schema_trait_method_on_schema_method_return_receiver`
 - [x] `lsp_definition_follows_schema_variant_source_span`
+- [x] `lsp_definition_follows_source_method_on_source_function_return_receiver`
+- [x] `lsp_declaration_follows_source_method_on_source_function_return_receiver`
+- [x] `lsp_definition_follows_source_method_on_source_method_return_receiver`
+- [x] `lsp_declaration_follows_source_method_on_source_method_return_receiver`
 - [x] `lsp_definition_follows_source_trait_default_method_on_source_function_return_receiver`
+- [x] `lsp_definition_follows_source_trait_default_method_on_source_method_return_receiver`
+- [x] `lsp_declaration_follows_source_trait_default_method_on_source_method_return_receiver`
 - [x] `lsp_definition_returns_null_for_schema_type_without_source_span`
 - [x] `declaration_follows_local_binding`
 - [x] `declaration_follows_source_trait_default_method_on_source_function_return_receiver`

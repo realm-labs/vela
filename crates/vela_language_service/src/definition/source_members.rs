@@ -102,7 +102,7 @@ fn source_impl_method_definition_for_target(
             .methods
             .iter()
             .find(|method| method.name == target.text())?;
-        definition_from_named_span_with_symbol(
+        definition_from_impl_method_span_with_symbol(
             databases,
             method.span,
             &method.name,
@@ -180,6 +180,27 @@ fn source_trait_default_method_definition_for_target(
     })
 }
 
+fn definition_from_impl_method_span_with_symbol(
+    databases: &LanguageServiceDatabases,
+    span: Span,
+    name: &str,
+    symbol: Option<crate::SymbolRef>,
+) -> Option<Definition> {
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|record| record.source_id() == span.source)?;
+    let body_start = usize::try_from(span.start).ok()?;
+    let range = function_name_range_before_body(source.text(), body_start, name)
+        .unwrap_or_else(|| TextRange::new(body_start, body_start));
+    Some(Definition {
+        document_id: source.document_id().clone(),
+        range: diagnostic_range(source.text(), range),
+        symbol,
+    })
+}
+
 fn definition_from_named_span_with_symbol(
     databases: &LanguageServiceDatabases,
     span: Span,
@@ -200,6 +221,41 @@ fn definition_from_named_span_with_symbol(
         range: diagnostic_range(source.text(), range),
         symbol,
     })
+}
+
+fn function_name_range_before_body(text: &str, body_start: usize, name: &str) -> Option<TextRange> {
+    let prefix = text.get(..body_start)?;
+    let function_token = last_function_token(prefix)?;
+    let name_start =
+        prefix[function_token + "fn".len()..].find(name)? + function_token + "fn".len();
+    let name_end = name_start + name.len();
+    if !has_identifier_boundaries(text, name_start, name_end) {
+        return None;
+    }
+    Some(TextRange::new(name_start, name_end))
+}
+
+fn last_function_token(text: &str) -> Option<usize> {
+    let mut search_end = text.len();
+    while let Some(offset) = text[..search_end].rfind("fn") {
+        if has_identifier_boundaries(text, offset, offset + "fn".len()) {
+            return Some(offset);
+        }
+        search_end = offset;
+    }
+    None
+}
+
+fn has_identifier_boundaries(text: &str, start: usize, end: usize) -> bool {
+    !text[..start]
+        .chars()
+        .next_back()
+        .is_some_and(is_identifier_char)
+        && !text[end..].chars().next().is_some_and(is_identifier_char)
+}
+
+fn is_identifier_char(character: char) -> bool {
+    character == '_' || character.is_ascii_alphanumeric()
 }
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {

@@ -249,6 +249,7 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
 }
 
 mod schema;
+mod source_return_receivers;
 mod type_definition;
 
 fn assert_unknown_source_member_navigation_null(method: &str) {
