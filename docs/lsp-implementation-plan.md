@@ -997,6 +997,8 @@ Tests:
 - [x] `lsp_references_find_imported_module_segments`
 - [x] `references_find_imported_function_uses`
 - [x] `lsp_references_find_imported_function_uses`
+- [x] `references_find_imported_const_and_global_uses`
+- [x] `lsp_references_find_imported_const_and_global_uses`
 - [x] `references_find_field_reads_and_writes`
 - [x] `lsp_references_find_field_reads_and_writes`
 - [x] `references_find_record_constructor_field_labels`

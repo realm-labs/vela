@@ -10,6 +10,7 @@ mod modules;
 mod schema;
 mod schema_fields;
 mod schema_variant_fields;
+mod values;
 
 #[test]
 fn lsp_references_find_local_binding_uses() {

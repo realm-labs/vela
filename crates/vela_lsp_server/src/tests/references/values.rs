@@ -1,0 +1,130 @@
+use crate::tests::{LspServer, notification, notification_value, request, response_value};
+
+use super::{assert_reference, line};
+
+#[test]
+fn lsp_references_find_imported_const_and_global_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_text = "\
+use game::rewards::BASE_REWARD
+use game::rewards::reward_scale
+pub fn main() -> i64 {
+    let first = BASE_REWARD
+    return first + reward_scale
+}";
+    let rewards_text = "\
+pub const BASE_REWARD = 4
+pub global reward_scale: i64";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
+    for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let const_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(main_text, 3)
+                    .find("BASE_REWARD")
+                    .expect("const use should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let const_references = const_response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(const_references.len(), 3, "{const_references:?}");
+    assert_reference(
+        const_references,
+        rewards_uri,
+        0,
+        line(rewards_text, 0)
+            .find("BASE_REWARD")
+            .expect("const declaration should exist"),
+    );
+    assert_reference(
+        const_references,
+        main_uri,
+        0,
+        line(main_text, 0)
+            .find("BASE_REWARD")
+            .expect("const import should exist"),
+    );
+    assert_reference(
+        const_references,
+        main_uri,
+        3,
+        line(main_text, 3)
+            .find("BASE_REWARD")
+            .expect("const use should exist"),
+    );
+
+    let global_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": line(main_text, 4)
+                    .find("reward_scale")
+                    .expect("global use should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let global_references = global_response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(global_references.len(), 3, "{global_references:?}");
+    assert_reference(
+        global_references,
+        rewards_uri,
+        1,
+        line(rewards_text, 1)
+            .find("reward_scale")
+            .expect("global declaration should exist"),
+    );
+    assert_reference(
+        global_references,
+        main_uri,
+        1,
+        line(main_text, 1)
+            .find("reward_scale")
+            .expect("global import should exist"),
+    );
+    assert_reference(
+        global_references,
+        main_uri,
+        4,
+        line(main_text, 4)
+            .find("reward_scale")
+            .expect("global use should exist"),
+    );
+}

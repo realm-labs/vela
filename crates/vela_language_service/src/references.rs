@@ -1279,4 +1279,6 @@ mod schema_field_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod value_tests;
+#[cfg(test)]
 mod variant_field_tests;

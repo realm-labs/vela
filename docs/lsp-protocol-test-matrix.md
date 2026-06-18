@@ -247,7 +247,9 @@ These are the first places to compare current tests against the matrix:
    pin `workspace/symbol` removal after deleted disk source files and
    source-only degradation when the configured host schema is missing, plus
    semantic-token fallback for schema type hints under a missing schema and
-   service/protocol range filtering for requested semantic-token spans.
+   service/protocol range filtering for requested semantic-token spans, plus
+   service/protocol cross-file references for imported const/global value
+   uses.
 
 ## Completion Criteria For This Matrix
 
