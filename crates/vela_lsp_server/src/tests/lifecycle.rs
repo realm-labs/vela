@@ -23,6 +23,39 @@ fn lsp_initialize_reports_capabilities() {
         env!("CARGO_PKG_VERSION")
     );
     assert_eq!(response["result"]["capabilities"]["workDoneProgress"], true);
+    let capabilities = response["result"]["capabilities"]
+        .as_object()
+        .expect("capabilities should be an object");
+    let mut capability_keys = capabilities.keys().map(String::as_str).collect::<Vec<_>>();
+    capability_keys.sort_unstable();
+    assert_eq!(
+        capability_keys,
+        vec![
+            "callHierarchyProvider",
+            "codeActionProvider",
+            "completionProvider",
+            "declarationProvider",
+            "definitionProvider",
+            "documentFormattingProvider",
+            "documentHighlightProvider",
+            "documentOnTypeFormattingProvider",
+            "documentRangeFormattingProvider",
+            "documentSymbolProvider",
+            "foldingRangeProvider",
+            "hoverProvider",
+            "inlayHintProvider",
+            "referencesProvider",
+            "renameProvider",
+            "selectionRangeProvider",
+            "semanticTokensProvider",
+            "signatureHelpProvider",
+            "textDocumentSync",
+            "typeDefinitionProvider",
+            "workDoneProgress",
+            "workspace",
+            "workspaceSymbolProvider",
+        ]
+    );
     assert_eq!(
         response["result"]["capabilities"]["textDocumentSync"]["openClose"],
         true
@@ -76,6 +109,14 @@ fn lsp_initialize_reports_capabilities() {
         serde_json::json!(["quickfix"])
     );
     assert_eq!(
+        response["result"]["capabilities"]["callHierarchyProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        response["result"]["capabilities"]["documentHighlightProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
         response["result"]["capabilities"]["documentFormattingProvider"],
         serde_json::json!(true)
     );
@@ -92,6 +133,14 @@ fn lsp_initialize_reports_capabilities() {
     );
     assert_eq!(
         response["result"]["capabilities"]["documentSymbolProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        response["result"]["capabilities"]["foldingRangeProvider"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        response["result"]["capabilities"]["selectionRangeProvider"],
         serde_json::json!(true)
     );
     assert_eq!(
@@ -238,6 +287,36 @@ fn lsp_missing_method_request_reports_invalid_request() {
     assert_eq!(response["id"], 7);
     assert_eq!(response["error"]["code"], -32600);
     assert_eq!(response["error"]["message"], "missing JSON-RPC method");
+}
+
+#[test]
+fn lsp_implementation_request_is_not_advertised_or_supported() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert!(
+        initialize["result"]["capabilities"]["implementationProvider"].is_null(),
+        "{initialize:?}"
+    );
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/implementation",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+
+    assert_eq!(response["id"], 2);
+    assert_eq!(response["error"]["code"], -32601);
 }
 
 #[test]
