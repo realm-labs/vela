@@ -4,6 +4,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
 
+mod schema_method_return_receivers;
+
 #[test]
 fn lsp_signature_help_tracks_active_parameter() {
     let mut server = LspServer::new();
