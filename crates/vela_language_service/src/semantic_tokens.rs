@@ -1185,4 +1185,6 @@ mod degradation_tests;
 #[cfg(test)]
 mod range_tests;
 #[cfg(test)]
+mod showcase_tests;
+#[cfg(test)]
 mod tests;
