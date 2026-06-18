@@ -41,7 +41,7 @@ use crate::{
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
-    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens, lsp_semantic_tokens_range},
+    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens},
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -721,11 +721,13 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let tokens = self.databases.semantic_tokens(&document_id);
+        let tokens = self
+            .databases
+            .semantic_tokens_in_range(&document_id, service_range(params.range));
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_semantic_tokens_range(&tokens, params.range, &self.semantic_token_projection),
+            lsp_semantic_tokens(&tokens, &self.semantic_token_projection),
         ))
     }
 

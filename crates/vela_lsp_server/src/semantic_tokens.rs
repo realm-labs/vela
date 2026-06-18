@@ -5,8 +5,6 @@ use vela_language_service::{
     SemanticToken, SemanticTokenDelta, SemanticTokenModifiers, SemanticTokenType, SemanticTokens,
 };
 
-use crate::protocol::{LspPosition, LspRange};
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SemanticTokenProjection {
     token_types: Vec<&'static str>,
@@ -71,20 +69,6 @@ pub(crate) fn lsp_semantic_tokens(
     })
 }
 
-pub(crate) fn lsp_semantic_tokens_range(
-    tokens: &SemanticTokens,
-    range: LspRange,
-    projection: &SemanticTokenProjection,
-) -> JsonValue {
-    let filtered = tokens
-        .tokens()
-        .iter()
-        .copied()
-        .filter(|token| token_overlaps_range(*token, range))
-        .collect::<Vec<_>>();
-    lsp_semantic_tokens(&SemanticTokens::new(filtered), projection)
-}
-
 pub(crate) fn lsp_semantic_token_delta(
     delta: &SemanticTokenDelta,
     projection: &SemanticTokenProjection,
@@ -127,24 +111,6 @@ fn semantic_token_data(tokens: &[SemanticToken], projection: &SemanticTokenProje
     }
 
     data
-}
-
-fn token_overlaps_range(token: SemanticToken, range: LspRange) -> bool {
-    let start = token.start();
-    let end = LspPosition {
-        line: u32::try_from(start.line).unwrap_or(u32::MAX),
-        character: u32::try_from(start.character.saturating_add(token.length()))
-            .unwrap_or(u32::MAX),
-    };
-    let start = LspPosition {
-        line: u32::try_from(start.line).unwrap_or(u32::MAX),
-        character: u32::try_from(start.character).unwrap_or(u32::MAX),
-    };
-    position_before(start, range.end) && position_before(range.start, end)
-}
-
-fn position_before(left: LspPosition, right: LspPosition) -> bool {
-    left.line < right.line || (left.line == right.line && left.character < right.character)
 }
 
 pub(crate) fn semantic_tokens_legend(projection: &SemanticTokenProjection) -> JsonValue {

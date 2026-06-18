@@ -12,12 +12,15 @@ use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 
-use crate::{DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange};
+use crate::{
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextRange,
+};
 
 mod import_paths;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
+mod range;
 mod type_hints;
 mod unresolved;
 mod variant_uses;
@@ -523,6 +526,15 @@ impl LanguageServiceDatabases {
             (start.line, start.character)
         });
         SemanticTokens::new(semantic_tokens)
+    }
+
+    #[must_use]
+    pub fn semantic_tokens_in_range(
+        &self,
+        document_id: &DocumentId,
+        range: DiagnosticRange,
+    ) -> SemanticTokens {
+        self.semantic_tokens(document_id).in_range(range)
     }
 
     #[must_use]
@@ -1170,5 +1182,7 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
 
 #[cfg(test)]
 mod degradation_tests;
+#[cfg(test)]
+mod range_tests;
 #[cfg(test)]
 mod tests;

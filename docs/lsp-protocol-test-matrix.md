@@ -246,7 +246,8 @@ These are the first places to compare current tests against the matrix:
    semantic tokens, diagnostics, and call hierarchy. Current focused fixtures
    pin `workspace/symbol` removal after deleted disk source files and
    source-only degradation when the configured host schema is missing, plus
-   semantic-token fallback for schema type hints under a missing schema.
+   semantic-token fallback for schema type hints under a missing schema and
+   service/protocol range filtering for requested semantic-token spans.
 
 ## Completion Criteria For This Matrix
 
