@@ -287,6 +287,11 @@ and native LSP coverage for source-owned trait method calls where the receiver
 is produced by a source function return, extending the direct typed trait
 receiver coverage through shared expression receiver facts.
 
+M20.5 Phase 10 update: service and native LSP semantic-token fixtures now
+also cover source-owned trait method calls where the receiver is produced by
+another source method return, matching chained source method classification
+through shared expression receiver facts.
+
 M20.5 Phase 7/19 update: service and native LSP member completion now cover
 source-owned fields and methods where the receiver is produced by another
 source method return, preserving member-context suppression of unrelated

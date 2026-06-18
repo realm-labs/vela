@@ -246,6 +246,90 @@ pub fn main() -> i64 {
     );
 }
 
+#[test]
+fn lsp_semantic_tokens_classify_source_trait_method_on_source_method_return() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let method = token_type_index(token_types, "method");
+    let source = token_modifier_bit(token_modifiers, "source");
+
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+trait Rewardable {
+    fn preview(self, amount: i64) -> i64 { return amount }
+}
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Rewardable for Inventory {}
+pub fn main(player: Player) -> i64 {
+    return player.inventory().preview(1)
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        10,
+        line(text, 10)
+            .find("inventory")
+            .expect("source method call should exist"),
+        "inventory".len(),
+        method,
+        source,
+    );
+    assert_token_at(
+        &tokens,
+        10,
+        line(text, 10)
+            .find("preview")
+            .expect("source trait method call should exist"),
+        "preview".len(),
+        method,
+        source,
+    );
+}
+
 #[derive(Debug)]
 struct DecodedToken {
     line: u64,

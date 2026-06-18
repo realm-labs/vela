@@ -1106,6 +1106,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_source_method_on_source_method_return`
 - [x] `semantic_tokens_classify_source_trait_method_on_source_function_return`
 - [x] `lsp_semantic_tokens_classify_source_trait_method_on_source_function_return`
+- [x] `semantic_tokens_classify_source_trait_method_on_source_method_return`
+- [x] `lsp_semantic_tokens_classify_source_trait_method_on_source_method_return`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `infers_schema_function_and_method_return_facts`
