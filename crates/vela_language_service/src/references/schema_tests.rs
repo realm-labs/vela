@@ -445,6 +445,91 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn document_highlight_marks_schema_method_calls_on_schema_function_return_receivers() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
+    let main_text = "\
+pub fn main() -> i64 {
+    let first = current_player().grant(1)
+    return current_player().grant(first)
+}";
+    let schema_text = "pub fn grant() { return 1 }";
+    let mut databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(schema.clone(), schema_text),
+    ]);
+    let schema_record = databases
+        .source_db()
+        .records()
+        .get(&schema)
+        .expect("schema source should be indexed");
+    let target_start = schema_text
+        .find("grant")
+        .expect("schema marker should exist");
+    let target_end = target_start + "grant".len();
+    let artifact = serde_json::json!({
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "Player",
+                    "fact": { "kind": "host", "name": "Player" }
+                }
+            ],
+            "functions": [
+                {
+                    "name": "current_player",
+                    "fact": {
+                        "kind": "function",
+                        "params": [],
+                        "returns": { "kind": "host", "name": "Player" }
+                    }
+                }
+            ],
+            "methods": [
+                {
+                    "owner": "Player",
+                    "name": "grant",
+                    "fact": {
+                        "kind": "function",
+                        "params": [{ "kind": "primitive", "name": "i64" }],
+                        "returns": { "kind": "primitive", "name": "i64" }
+                    },
+                    "sourceSpan": {
+                        "source": schema_record.source_id().get(),
+                        "start": target_start,
+                        "end": target_end
+                    }
+                }
+            ]
+        }
+    })
+    .to_string();
+    databases.load_schema_artifact_json("/workspace/target/vela/schema.json", &artifact);
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(1, line(main_text, 1).find("grant").expect("method call")),
+    );
+
+    assert_eq!(highlights.len(), 2, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        1,
+        line(main_text, 1).find("grant").expect("first method call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2)
+            .find("grant")
+            .expect("second method call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
 fn references_find_schema_variant_constructors_and_patterns() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");

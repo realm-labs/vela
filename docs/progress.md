@@ -268,6 +268,10 @@ native LSP coverage for source-owned method calls where the receiver is
 produced by a source function return, matching the schema-return receiver path
 through shared expression receiver facts.
 
+M20.5 Phase 11 update: document highlights now also have service and native
+LSP coverage for schema-backed method calls where the receiver is produced by
+a schema function return, matching the existing references coverage.
+
 M20.5 Phase 11 update: call hierarchy now has service and native LSP coverage
 for prepare, incoming, and outgoing schema method calls where the receiver is
 produced by a schema function return.

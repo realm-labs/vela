@@ -1336,6 +1336,8 @@ Tests:
 - [x] `lsp_document_highlight_marks_schema_field_reads_and_writes`
 - [x] `document_highlight_marks_schema_method_calls`
 - [x] `lsp_document_highlight_marks_schema_method_calls`
+- [x] `document_highlight_marks_schema_method_calls_on_schema_function_return_receivers`
+- [x] `lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_receivers`
 - [x] `document_highlight_marks_schema_variant_uses`
 - [x] `lsp_document_highlight_marks_schema_variant_uses`
 - [x] `call_hierarchy_uses_resolved_call_graph`
