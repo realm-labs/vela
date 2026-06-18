@@ -145,6 +145,12 @@ feature-specific producers run. Service results carry editor-neutral
 resolve payloads; `vela_lsp_server` remains the only layer that projects those
 models into LSP JSON-RPC shapes.
 
+Protocol-level test planning lives in
+[lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md). Future LSP coverage
+work should use that document as the protocol-first checklist for pairing each
+advertised method with service tests, JSON-RPC fixtures, syntax coverage, and
+negative/degraded behavior.
+
 ---
 
 ## Phase Status
