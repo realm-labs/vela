@@ -31,6 +31,63 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn prepare_rename_rejects_non_source_query_targets() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(value: Any) -> i64 {
+    let first = max(1, 2)
+    value.level
+    missing
+    return grant()
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_function(
+        "game::rewards::grant",
+        TypeFact::function(Vec::new(), TypeFact::I64),
+    );
+    schema.insert_function(
+        "game::quests::grant",
+        TypeFact::function(Vec::new(), TypeFact::I64),
+    );
+    let databases = databases_for_with_schema(
+        vec![SourceFileSnapshot::new(document.clone(), text)],
+        schema,
+    );
+
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(1, line(text, 1).find("max").expect("stdlib function"))
+        ),
+        None
+    );
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(2, line(text, 2).find("level").expect("dynamic member"))
+        ),
+        None
+    );
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(3, line(text, 3).find("missing").expect("unresolved name"))
+        ),
+        None
+    );
+    assert_eq!(
+        databases.prepare_rename(
+            &document,
+            Position::new(
+                4,
+                line(text, 4).find("grant").expect("ambiguous schema call")
+            )
+        ),
+        None
+    );
+}
+
+#[test]
 fn local_rename_updates_all_function_uses() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

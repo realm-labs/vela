@@ -719,8 +719,11 @@ source-owned edit plans.
   `ReferenceResolution` categories for source-owned, schema-owned, builtin,
   dynamic `Any`, and unresolved targets while preserving the LSP-facing
   location projection.
-- [ ] Make prepare-rename reject schema-owned, builtin, dynamic, unresolved,
+- [x] Make prepare-rename reject schema-owned, builtin, dynamic, unresolved,
   and ambiguous targets.
+  Prepare-rename now has fixtures for host-schema targets, builtin stdlib
+  functions, dynamic `Any` member access, unresolved names, and ambiguous
+  schema short-name calls; all reject instead of producing editable ranges.
 - [ ] Make rename produce an `EditPlan` with conflict checks and source-owned
   ranges only.
 - [ ] Ensure semantic tokens are generated from syntax/HIR classification and
@@ -728,9 +731,9 @@ source-owned edit plans.
 - [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
   Reference fixtures now cover local shadowing, source/schema/builtin/dynamic/
-  unresolved resolution categories, plus existing module, method, and field
-  cases. Failed rename and semantic-token stability fixtures remain to close
-  this bucket.
+  unresolved resolution categories, failed prepare-rename targets, plus
+  existing module, method, and field cases. Failed rename edit-plan and
+  semantic-token stability fixtures remain to close this bucket.
 
 Tests:
 
