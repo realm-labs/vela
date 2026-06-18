@@ -242,7 +242,7 @@ validation commands have passed locally.
 |---|---|---|
 | 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
 | 2. Token taxonomy and fallback policy | Complete | Expanded service token/modifier names, deterministic legend ordering, fallback policy, and direct taxonomy tests are in place. |
-| 3. Service semantic classification | Not started | Use syntax, HIR, TypeFacts, stdlib, and schema facts. |
+| 3. Service semantic classification | In progress | Declaration-kind, builtin-type, literal, operator/punctuation, and control-flow keyword classification are covered; richer resolved-use provenance remains. |
 | 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
 | 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
 | 6. VS Code fallback and scopes | Not started | Add grammar and semantic-token contribution coverage. |
@@ -344,7 +344,7 @@ cargo test -p vela_lsp_server semantic_tokens
 Goal: make `vela_language_service` classify the richer taxonomy from real Vela
 syntax and semantic facts instead of editor-specific heuristics.
 
-- [ ] Classify declarations by `DeclarationKind`: function, const/global,
+- [x] Classify declarations by `DeclarationKind`: function, const/global,
   struct, enum, trait, type alias, impl/self type, and module/import.
 - [ ] Classify uses through resolved binding, declaration, member, import, and
   schema facts: source functions, source methods, trait methods, source fields,
@@ -352,21 +352,30 @@ syntax and semantic facts instead of editor-specific heuristics.
   variants, schema functions, stdlib functions, and stdlib methods.
 - [ ] Distinguish source-owned, schema/host-owned, and stdlib/default-library
   symbols through modifiers without changing runtime semantics.
-- [ ] Classify builtin type hints separately from source and schema type hints.
-- [ ] Classify literals: strings, bytes, numbers, booleans, null, and comments.
+- [x] Classify builtin type hints separately from source and schema type hints.
+- [x] Classify literals: strings, bytes, numbers, booleans, null, and comments.
   If escape sequences or format specifiers are not yet represented in syntax,
   record that as a later syntax-token enhancement instead of faking it.
-- [ ] Classify control-flow keywords and operators with `controlFlow` where the
+- [x] Classify control-flow keywords and operators with `controlFlow` where the
   token role is clear, following rust-analyzer's modifier idea but with Vela
   syntax rules.
-- [ ] Split operator and punctuation families where the lexer exposes enough
+- [x] Split operator and punctuation families where the lexer exposes enough
   information: arithmetic, comparison, logical, negation, bitwise, assignment,
   dot/path, comma, colon, semicolon, braces, brackets, parentheses, and angle
   punctuation if Vela syntax uses it.
-- [ ] Keep parse-error and unresolved-name behavior stable. Tokenization should
+- [x] Keep parse-error and unresolved-name behavior stable. Tokenization should
   degrade gracefully and still return lexical tokens where possible.
-- [ ] Keep semantic-token production analysis-only and independent from VM,
+- [x] Keep semantic-token production analysis-only and independent from VM,
   runtime, host-state, and TypeRegistry mutation.
+
+Phase 3 notes:
+
+- Escape sequences and format specifier sub-token classification remain a later
+  syntax-token enhancement because the current syntax token stream does not
+  expose them separately.
+- Resolved-use provenance is still incomplete: source/schema/host/default-
+  library distinctions need stronger modifier coverage, and the broad showcase
+  still records some unstable receiver/unresolved cases as plain variables.
 
 Focused validation:
 

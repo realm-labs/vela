@@ -953,6 +953,16 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         &tokens,
         49,
         line(HIGHLIGHTING_SHOWCASE, 49)
+            .find("if")
+            .expect("control-flow keyword"),
+        "if".len(),
+        SemanticTokenType::Keyword,
+        SemanticTokenModifiers::CONTROL_FLOW,
+    );
+    assert_token_at(
+        &tokens,
+        49,
+        line(HIGHLIGHTING_SHOWCASE, 49)
             .find("&&")
             .expect("logical operator"),
         "&&".len(),

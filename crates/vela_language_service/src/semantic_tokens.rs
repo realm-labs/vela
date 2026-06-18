@@ -477,11 +477,7 @@ impl LanguageServiceDatabases {
             let classification = classifications
                 .get(&(range.start, range.end))
                 .copied()
-                .or_else(|| {
-                    token_type(&token.kind).map(|token_type| {
-                        SemanticTokenClassification::new(token_type, SemanticTokenModifiers::NONE)
-                    })
-                });
+                .or_else(|| token_classification(&token.kind));
             let Some(classification) = classification else {
                 continue;
             };
@@ -925,6 +921,14 @@ fn token_text(text: &str, range: TextRange) -> Option<&str> {
     text.get(range.start..range.end)
 }
 
+fn token_classification(kind: &TokenKind) -> Option<SemanticTokenClassification> {
+    let token_type = token_type(kind)?;
+    Some(SemanticTokenClassification::new(
+        token_type,
+        token_modifiers(kind),
+    ))
+}
+
 fn token_type(kind: &TokenKind) -> Option<SemanticTokenType> {
     match kind {
         TokenKind::Keyword(keyword) => Some(keyword_token_type(*keyword)),
@@ -945,6 +949,29 @@ fn keyword_token_type(keyword: Keyword) -> SemanticTokenType {
         Keyword::Null => SemanticTokenType::Null,
         _ => SemanticTokenType::Keyword,
     }
+}
+
+fn token_modifiers(kind: &TokenKind) -> SemanticTokenModifiers {
+    match kind {
+        TokenKind::Keyword(keyword) if is_control_flow_keyword(*keyword) => {
+            SemanticTokenModifiers::CONTROL_FLOW
+        }
+        _ => SemanticTokenModifiers::NONE,
+    }
+}
+
+fn is_control_flow_keyword(keyword: Keyword) -> bool {
+    matches!(
+        keyword,
+        Keyword::For
+            | Keyword::If
+            | Keyword::Else
+            | Keyword::Match
+            | Keyword::Return
+            | Keyword::Break
+            | Keyword::Continue
+            | Keyword::In
+    )
 }
 
 fn symbol_token_type(symbol: Symbol) -> Option<SemanticTokenType> {

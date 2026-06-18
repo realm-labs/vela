@@ -549,12 +549,14 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     let struct_token = token_type_index(token_types, "struct");
     let const_token = token_type_index(token_types, "const");
     let variable = token_type_index(token_types, "variable");
+    let keyword = token_type_index(token_types, "keyword");
     let boolean = token_type_index(token_types, "boolean");
     let property = token_type_index(token_types, "property");
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
     let host = token_modifier_bit(token_modifiers, "host");
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
+    let control_flow = token_modifier_bit(token_modifiers, "controlFlow");
     let declaration = token_modifier_bit(token_modifiers, "declaration");
     let definition = token_modifier_bit(token_modifiers, "definition");
 
@@ -655,6 +657,16 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
         "max".len(),
         function,
         builtin,
+    );
+    assert_token_at(
+        &tokens,
+        49,
+        line(HIGHLIGHTING_SHOWCASE, 49)
+            .find("if")
+            .expect("control-flow keyword"),
+        "if".len(),
+        keyword,
+        control_flow,
     );
     assert_token_at(
         &tokens,
