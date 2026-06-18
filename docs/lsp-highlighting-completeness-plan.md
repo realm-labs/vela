@@ -381,6 +381,9 @@ Phase 3 notes:
   carry `host` and stdlib facts continue to carry `defaultLibrary`.
 - Source-owned struct, enum, and trait type hints now carry `source`, keeping
   them distinct from builtin type hints and schema/host type hints.
+- Schema-backed type hints, fields, methods, trait methods, and functions now
+  carry both `host` and `schema`, while stdlib facts remain
+  `defaultLibrary`.
 - Resolved-use classification is still incomplete: the broad showcase still
   records some unstable receiver/unresolved cases as plain variables.
 

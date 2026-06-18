@@ -113,6 +113,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     let property = token_type_index(token_types, "property");
     let method = token_type_index(token_types, "method");
     let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -155,7 +157,7 @@ pub fn main(player: Player, names: Array<String>, rewardable: Rewardable) -> i64
             .expect("host field use should exist"),
         "level".len(),
         property,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -165,7 +167,7 @@ pub fn main(player: Player, names: Array<String>, rewardable: Rewardable) -> i64
             .expect("host method use should exist"),
         "grant".len(),
         method,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -175,7 +177,7 @@ pub fn main(player: Player, names: Array<String>, rewardable: Rewardable) -> i64
             .expect("schema trait method call should exist"),
         "preview".len(),
         method,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -259,6 +261,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_function_calls() {
         .expect("semantic token legend should list token modifiers");
     let function = token_type_index(token_types, "function");
     let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -300,7 +304,7 @@ pub fn main(player: Player) -> i64 {
             .expect("schema function call should exist"),
         "grant_reward".len(),
         function,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -375,6 +379,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
     let type_token = token_type_index(token_types, "type");
     let builtin_type = token_type_index(token_types, "builtinType");
     let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -414,7 +420,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         line(text, 0).find("Player").expect("schema type hint"),
         "Player".len(),
         type_token,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -448,7 +454,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
             .expect("local schema type hint"),
         "Player".len(),
         type_token,
-        host,
+        schema_host,
     );
     fs::remove_dir_all(root).expect("temporary workspace should be removable");
 }
@@ -555,6 +561,8 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
     let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
     let source = token_modifier_bit(token_modifiers, "source");
     let control_flow = token_modifier_bit(token_modifiers, "controlFlow");
@@ -637,7 +645,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .expect("host field"),
         "level".len(),
         property,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -647,7 +655,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
             .expect("host method"),
         "grant".len(),
         method,
-        host,
+        schema_host,
     );
     assert_token_at(
         &tokens,

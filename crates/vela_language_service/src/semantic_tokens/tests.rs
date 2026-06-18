@@ -625,6 +625,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
 
     assert_token_at(
         &tokens,
@@ -634,7 +635,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
             .expect("host field use should exist"),
         "level".len(),
         SemanticTokenType::Property,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -644,7 +645,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
             .expect("host method use should exist"),
         "grant".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -678,6 +679,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
 
     assert_token_at(
         &tokens,
@@ -687,7 +689,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
             .expect("schema trait method call should exist"),
         "preview".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
 }
 
@@ -711,6 +713,7 @@ pub fn main(player: Player) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
 
     assert_token_at(
         &tokens,
@@ -720,7 +723,7 @@ pub fn main(player: Player) -> i64 {
             .expect("schema function call should exist"),
         "grant_reward".len(),
         SemanticTokenType::Function,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -750,6 +753,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
 
     assert_token_at(
         &tokens,
@@ -757,7 +761,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         line(text, 0).find("Player").expect("schema type hint"),
         "Player".len(),
         SemanticTokenType::Type,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -791,7 +795,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
             .expect("local schema type hint"),
         "Player".len(),
         SemanticTokenType::Type,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
 }
 
@@ -830,6 +834,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         .union(SemanticTokenModifiers::SOURCE);
     let source_declaration =
         SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE);
+    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
 
     assert_token_at(
         &tokens,
@@ -937,7 +942,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("schema type hint"),
         "SchemaPlayer".len(),
         SemanticTokenType::Type,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -1013,7 +1018,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("host field"),
         "level".len(),
         SemanticTokenType::Property,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -1023,7 +1028,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("host method"),
         "grant".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,
@@ -1033,7 +1038,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .expect("schema trait method"),
         "preview".len(),
         SemanticTokenType::Method,
-        SemanticTokenModifiers::HOST,
+        schema_host,
     );
     assert_token_at(
         &tokens,

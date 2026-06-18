@@ -69,7 +69,7 @@ fn type_hint_modifiers(
             schema.type_fact(name).is_some() || schema.trait_fact(name).is_some()
         })
     {
-        return SemanticTokenModifiers::HOST;
+        return SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
     }
     if is_source_type_hint(graph, hint) {
         return SemanticTokenModifiers::SOURCE;

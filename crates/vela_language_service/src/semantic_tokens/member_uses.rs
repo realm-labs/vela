@@ -99,7 +99,7 @@ fn field_use_classification(
     if schema_field_exists(schema, receiver, name) {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Property,
-            host_modifier(receiver),
+            schema_host_modifier(receiver),
         ));
     }
     script_field_exists(graph, receiver, name).then(|| {
@@ -155,11 +155,11 @@ fn schema_method_modifiers(
 ) -> Option<SemanticTokenModifiers> {
     owner_names(receiver).iter().find_map(|owner| {
         if schema.method_fact(owner, method).is_some() {
-            Some(host_modifier(receiver))
+            Some(schema_host_modifier(receiver))
         } else {
             schema
                 .trait_method_fact(owner, method)
-                .map(|_| SemanticTokenModifiers::HOST)
+                .map(|_| SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA))
         }
     })
 }
@@ -250,6 +250,10 @@ fn host_modifier(receiver: &TypeFact) -> SemanticTokenModifiers {
     } else {
         SemanticTokenModifiers::NONE
     }
+}
+
+fn schema_host_modifier(receiver: &TypeFact) -> SemanticTokenModifiers {
+    host_modifier(receiver).union(SemanticTokenModifiers::SCHEMA)
 }
 
 fn impl_target_names(

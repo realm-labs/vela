@@ -728,7 +728,7 @@ fn function_call_classification(
     if schema.function_fact(&qualified).is_some() {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Function,
-            SemanticTokenModifiers::HOST,
+            SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA),
         ));
     }
     stdlib_function_completion_facts()

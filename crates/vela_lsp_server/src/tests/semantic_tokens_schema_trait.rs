@@ -85,6 +85,8 @@ fn lsp_semantic_tokens_classify_schema_trait_method_uses_as_host() {
         .expect("semantic token legend should list token modifiers");
     let method = token_type_index(token_types, "method");
     let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
 
     let text = "\
 pub fn main(rewardable: Rewardable) -> i64 {
@@ -124,7 +126,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
             .expect("schema trait method call should exist"),
         "preview".len(),
         method,
-        host,
+        schema_host,
     );
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
