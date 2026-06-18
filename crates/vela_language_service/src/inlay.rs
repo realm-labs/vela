@@ -19,7 +19,7 @@ use crate::callable_context::{
 };
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
-    TextRange,
+    SymbolRef, TextRange,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -33,6 +33,7 @@ pub struct InlayHint {
     position: Position,
     label: String,
     kind: InlayHintKind,
+    symbol: Option<SymbolRef>,
 }
 
 #[derive(Clone, Copy)]
@@ -136,6 +137,11 @@ impl InlayHint {
     #[must_use]
     pub const fn kind(&self) -> InlayHintKind {
         self.kind
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
     }
 }
 
@@ -421,13 +427,17 @@ impl LanguageServiceDatabases {
             if !context.range.contains(offset) {
                 continue;
             }
-            let Some(label) = callable.params().get(index).and_then(parameter_hint_label) else {
+            let Some(parameter) = callable.params().get(index) else {
+                continue;
+            };
+            let Some(label) = parameter_hint_label(parameter) else {
                 continue;
             };
             hints.push(InlayHint {
                 position: context.line_index.position(offset),
                 label,
                 kind: InlayHintKind::Parameter,
+                symbol: Some(parameter_symbol(callable.symbol(), parameter.name())),
             });
         }
     }
@@ -525,6 +535,7 @@ impl TypeHintCollector<'_, '_> {
                             position: self.line_index.position(position_offset),
                             label,
                             kind: InlayHintKind::Type,
+                            symbol: Some(SymbolRef::Local(name.clone())),
                         });
                     }
                     scope.insert_path([name.clone()], fact);
@@ -644,9 +655,9 @@ impl TypeHintCollector<'_, '_> {
 
     fn collect_field_hint(&mut self, expr: &Expr, base: &Expr, name: &str, scope: &ExprFactScope) {
         let receiver = type_fact_from_expr_with_registry(base, scope, self.context.schema);
-        if !matches!(receiver, TypeFact::Host { .. }) {
+        let TypeFact::Host { name: owner } = &receiver else {
             return;
-        }
+        };
         let fact = type_fact_from_expr_with_registry(expr, scope, self.context.schema);
         let Some(label) = type_hint_label(&fact) else {
             return;
@@ -659,6 +670,7 @@ impl TypeHintCollector<'_, '_> {
                 position: self.line_index.position(position_offset),
                 label,
                 kind: InlayHintKind::Type,
+                symbol: Some(SymbolRef::Schema(format!("{owner}.{name}"))),
             });
         }
     }
@@ -702,6 +714,7 @@ impl TypeHintCollector<'_, '_> {
                     position: self.line_index.position(position_offset),
                     label,
                     kind: InlayHintKind::Type,
+                    symbol: Some(SymbolRef::Local(param.name.clone())),
                 });
             }
             if let Some(fact) = fact {
@@ -721,6 +734,15 @@ fn parameter_hint_label(parameter: &CallableParameterFacts) -> Option<String> {
     }
     let name = parameter.name();
     (!name.is_empty()).then(|| DisplayParts::parameter_hint(name).render())
+}
+
+fn parameter_symbol(callable: &SymbolRef, parameter: &str) -> SymbolRef {
+    match callable {
+        SymbolRef::Source(symbol) => SymbolRef::Source(format!("{symbol}.{parameter}")),
+        SymbolRef::Schema(symbol) => SymbolRef::Schema(format!("{symbol}.{parameter}")),
+        SymbolRef::Builtin(symbol) => SymbolRef::Builtin(format!("{symbol}.{parameter}")),
+        SymbolRef::Local(symbol) => SymbolRef::Local(format!("{symbol}.{parameter}")),
+    }
 }
 
 fn declaration_scope(context: TypeHintContext<'_>) -> ExprFactScope {

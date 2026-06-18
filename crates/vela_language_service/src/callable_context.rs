@@ -11,7 +11,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 
 use crate::query_context::type_fact_for_source_range;
-use crate::{LanguageServiceDatabases, TextRange};
+use crate::{LanguageServiceDatabases, SymbolRef, TextRange};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CallableOrigin {
@@ -31,6 +31,7 @@ pub struct CallableFacts {
     params: Vec<CallableParameterFacts>,
     returns: TypeFact,
     origin: CallableOrigin,
+    symbol: SymbolRef,
 }
 
 impl CallableFacts {
@@ -52,6 +53,11 @@ impl CallableFacts {
     #[must_use]
     pub const fn origin(&self) -> CallableOrigin {
         self.origin
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> &SymbolRef {
+        &self.symbol
     }
 }
 
@@ -140,6 +146,7 @@ pub(crate) fn source_callable_facts(
                 params,
                 returns,
                 origin: CallableOrigin::Source,
+                symbol: SymbolRef::Source(qualified_declaration_label(graph, declaration.id)),
             })
         })
         .collect()
@@ -344,6 +351,7 @@ fn schema_method_callable_facts(
         params: indexed_callable_parameters(params.clone()),
         returns: returns.as_ref().clone(),
         origin: CallableOrigin::SchemaMethod,
+        symbol: SymbolRef::Schema(format!("{owner}.{method}")),
     }]
 }
 
@@ -403,6 +411,7 @@ fn source_variant_callable_facts(
                     params,
                     returns: TypeFact::enum_type(&owner, Some(&variant.name)),
                     origin: CallableOrigin::SourceVariant,
+                    symbol: SymbolRef::Source(format!("{owner}::{}", variant.name)),
                 })
             })
         })
@@ -422,6 +431,7 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                 params: indexed_callable_parameters(params),
                 returns: *returns,
                 origin: CallableOrigin::Schema,
+                symbol: SymbolRef::Schema(function.name.clone()),
             })
         })
         .collect()
@@ -440,10 +450,11 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 return None;
             }
             Some(CallableFacts {
-                name: owner,
+                name: owner.clone(),
                 params,
                 returns: variant.fact,
                 origin: CallableOrigin::SchemaVariant,
+                symbol: SymbolRef::Schema(owner),
             })
         })
         .collect()
@@ -506,6 +517,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
         params: indexed_callable_parameters(fact.params),
         returns: fact.returns,
         origin: CallableOrigin::Stdlib,
+        symbol: SymbolRef::Builtin(fact.name.to_owned()),
     }
 }
 
@@ -529,6 +541,7 @@ fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
         params,
         returns: fact.returns,
         origin: CallableOrigin::StdlibMethod,
+        symbol: SymbolRef::Builtin(format!("{}.{}", fact.receiver.display_name(), fact.method)),
     }
 }
 
@@ -559,6 +572,7 @@ fn callable_facts_from_signature(
             query_type_fact_from_hint(graph, hint, schema)
         });
     CallableFacts {
+        symbol: SymbolRef::Source(name.clone()),
         name,
         params,
         returns,

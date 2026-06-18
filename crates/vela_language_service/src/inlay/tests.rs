@@ -36,6 +36,13 @@ fn inlay_hints_show_parameter_names() {
             .iter()
             .all(|hint| hint.kind() == InlayHintKind::Parameter)
     );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Source("game::main::grant.amount".to_owned())),
+            Some(SymbolRef::Source("game::main::grant.reason".to_owned()))
+        ]
+    );
 }
 
 #[test]
@@ -118,6 +125,14 @@ pub fn main() {
         ]
     );
     assert!(hints.iter().all(|hint| hint.kind() == InlayHintKind::Type));
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Local("total".to_owned())),
+            Some(SymbolRef::Local("next".to_owned())),
+            Some(SymbolRef::Local("scripted".to_owned()))
+        ]
+    );
 }
 
 #[test]
@@ -182,6 +197,15 @@ fn inlay_hints_show_host_path_typefacts() {
             (Position::new(1, 27), ": i64".to_owned()),
             (Position::new(2, 16), ": i64".to_owned()),
             (Position::new(4, 17), "arg0:".to_owned())
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Local("next".to_owned())),
+            Some(SymbolRef::Schema("Player.level".to_owned())),
+            Some(SymbolRef::Schema("Player.level".to_owned())),
+            Some(SymbolRef::Schema("Player.grant.arg0".to_owned()))
         ]
     );
 }
@@ -303,6 +327,10 @@ fn inlay_hints_use_schema_function_names() {
         hint_labels(&hints),
         vec![(Position::new(0, 34), "arg0:".to_owned())]
     );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![Some(SymbolRef::Schema("host_grant.arg0".to_owned()))]
+    );
 }
 
 fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
@@ -310,4 +338,8 @@ fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
         .iter()
         .map(|hint| (hint.position(), hint.label().to_owned()))
         .collect()
+}
+
+fn hint_symbols(hints: &[InlayHint]) -> Vec<Option<SymbolRef>> {
+    hints.iter().map(|hint| hint.symbol().cloned()).collect()
 }
