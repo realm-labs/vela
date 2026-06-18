@@ -774,8 +774,12 @@ Purpose: keep editor mutations structured, local, and source-owned.
   facts only. Regression coverage now proves document formatting still works
   with unresolved HIR diagnostics and preserves semicolonless `use` item
   newline boundaries.
-- [ ] Add AST-aware range and on-type formatting only after token/trivia rules
+- [x] Add AST-aware range and on-type formatting only after token/trivia rules
   are stable.
+  Range and on-type formatting now use parser-owned item/member spans only
+  after token/trivia formatting preserves comments, blank-line groups, and
+  semicolonless `use` item boundaries; fallback cleanup remains
+  trivia-limited.
 - [~] Generate inlay hints from stable type and signature facts, not ad hoc
   string parsing.
   Parameter inlay hints now use semantic `SignatureParameter` names carried by

@@ -1037,6 +1037,8 @@ Purpose: provide deterministic source formatting without losing comments.
   - Current policy: `vela_syntax::formatting` owns stable token/trivia
     extraction and token-driven full-document formatting; richer AST-aware
     formatting rules remain open.
+  - Semicolonless `use` item newline boundaries are preserved as syntax-owned
+    trivia so imports do not collapse into following items.
 - [x] Implement stable token/trivia extraction if current parser data is not
   sufficient.
 - [~] Add formatting IR that preserves comments and blank-line groups.
@@ -1067,6 +1069,9 @@ Purpose: provide deterministic source formatting without losing comments.
     spans for selected nested member formatting.
   - Adjacent selected members within the same struct, enum variant, trait, or
     impl parent now format as a contiguous nested member group.
+  - Range formatting uses parser-owned item/member spans only after the
+    token/trivia formatter has stable comment, blank-line, and import-boundary
+    behavior.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
@@ -1080,6 +1085,8 @@ Purpose: provide deterministic source formatting without losing comments.
     parser-owned nested member while preserving enclosing indentation.
   - `}` triggers on completed enum record variants now reflow the nested
     parser-owned record fields without formatting the enclosing enum.
+  - On-type reflow is gated by parser-owned item/member spans and otherwise
+    falls back to trivia-limited whitespace cleanup.
 - [x] Add idempotence tests and malformed-source fallback behavior.
 
 Tests:
@@ -1088,7 +1095,9 @@ Tests:
 - [x] `formatting_is_idempotent`
 - [x] `range_formatting_limits_edits_to_range`
 - [x] `formatting_handles_malformed_source_without_panic`
+- [x] `formatting_does_not_depend_on_successful_hir_analysis`
 - [x] `formatting_extracts_comments_and_blank_line_groups`
+- [x] `formatting_preserves_newline_after_use_item`
 - [x] `formatting_ir_preserves_comments_and_blank_line_groups`
 - [x] `formatting_formats_expressions_and_function_blocks`
 - [x] `formatting_preserves_comments_while_formatting_blocks`
