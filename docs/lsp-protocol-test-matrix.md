@@ -231,7 +231,8 @@ These are the first places to compare current tests against the matrix:
    pin `typeDefinition` null results for dynamic local values,
    `signatureHelp` null results for unresolved calls and dynamic receiver
    calls, and `hover` null results for unresolved names plus dynamic receiver
-   members, plus `declaration` null results for unknown source members and
+   members while preserving parameter hovers under parser recovery, plus
+   `declaration` null results for unknown source members and
    dynamic receiver members, plus `references` and `documentHighlight` empty
    results for unresolved names and dynamic receiver members, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver

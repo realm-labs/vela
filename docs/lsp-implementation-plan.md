@@ -642,6 +642,7 @@ Tests:
 - [x] `hover_returns_none_for_unresolved_name`
 - [x] `hover_returns_none_for_dynamic_receiver_member`
 - [x] `hover_reports_script_parameter_fact`
+- [x] `hover_recovers_parameter_fact_after_body_parse_error`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
 - [x] `hover_reports_schema_trait_fact`
@@ -658,6 +659,7 @@ Tests:
 - [x] `hover_reports_stdlib_method_fact`
 - [x] `hover_reports_imported_module_path_fact`
 - [x] `lsp_hover_reports_open_overlay_parameter_fact`
+- [x] `lsp_hover_recovers_parameter_fact_after_body_parse_error`
 - [x] `lsp_hover_degrades_to_any_without_schema`
 - [x] `lsp_hover_returns_null_for_unresolved_and_dynamic_members`
 - [x] `lsp_hover_reports_effects_and_permissions`

@@ -271,6 +271,38 @@ fn hover_reports_script_parameter_fact() {
 }
 
 #[test]
+fn hover_recovers_parameter_fact_after_body_parse_error() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let value = amount +
+    return amount
+}";
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let return_line = text.lines().nth(2).expect("return line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(2, return_line.find("amount").expect("amount use")),
+        )
+        .expect("hover should resolve parameter after recovered body error");
+
+    assert_eq!(hover.kind(), HoverKind::Parameter);
+    assert_eq!(hover.label(), "amount");
+    assert_eq!(hover.detail(), "i64");
+    assert_eq!(hover.detail_parts(), &DisplayParts::type_name("i64"));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::local_at(
+            "amount",
+            document,
+            TextRange::new(12, 18)
+        ))
+    );
+}
+
+#[test]
 fn hover_reports_source_global_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "global score: i64\npub fn main() -> i64 { return score }";
