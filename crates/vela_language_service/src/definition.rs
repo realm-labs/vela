@@ -105,7 +105,8 @@ impl LanguageServiceDatabases {
         graph
             .declarations()
             .find(|declaration| {
-                declaration.span.source == source_id && declaration.span.contains(offset)
+                declaration.span.source == source_id
+                    && self.declaration_name_contains_target(declaration, &target)
             })
             .and_then(|declaration| self.definition_from_declaration(declaration))
     }
@@ -191,6 +192,30 @@ impl LanguageServiceDatabases {
                 declaration,
             )),
         })
+    }
+
+    fn declaration_name_contains_target(
+        &self,
+        declaration: &Declaration,
+        target: &SymbolTarget,
+    ) -> bool {
+        let Some(source) = self.source_record_for(declaration.span.source) else {
+            return false;
+        };
+        let Ok(start) = usize::try_from(declaration.span.start) else {
+            return false;
+        };
+        let Ok(end) = usize::try_from(declaration.span.end) else {
+            return false;
+        };
+        let Some(name_range) = name_range_in_text(
+            source.text(),
+            TextRange::new(start, end),
+            declaration.name.as_str(),
+        ) else {
+            return false;
+        };
+        name_range.start <= target.range().start && target.range().end <= name_range.end
     }
 
     fn source_record_for(&self, source_id: SourceId) -> Option<&crate::SourceRecord> {

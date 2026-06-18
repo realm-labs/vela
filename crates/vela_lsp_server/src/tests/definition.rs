@@ -177,6 +177,21 @@ fn lsp_declaration_returns_null_for_unknown_source_member() {
 }
 
 #[test]
+fn lsp_definition_returns_null_for_unresolved_name() {
+    assert_unresolved_name_navigation_null("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_returns_null_for_unresolved_name() {
+    assert_unresolved_name_navigation_null("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_returns_null_for_unresolved_name() {
+    assert_unresolved_name_navigation_null("textDocument/typeDefinition");
+}
+
+#[test]
 fn lsp_declaration_returns_null_for_dynamic_member() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -269,6 +284,48 @@ fn assign_cell(cell: Cell) {
     )));
 
     assert!(response["result"].is_null());
+}
+
+fn assert_unresolved_name_navigation_null(method: &str) {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn main() { return missing }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        method,
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 0,
+                "character": text
+                    .find("missing")
+                    .expect("unresolved name should exist")
+            }
+        }),
+    )));
+
+    assert!(response["result"].is_null(), "{response:?}");
 }
 
 fn assert_local_binding_navigation(method: &str) {

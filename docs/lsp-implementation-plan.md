@@ -271,7 +271,7 @@ coverage complete based only on the older capability phases.
     method, field, enum variant, global, parameter, imported module path,
     docs/effects/permissions, parser-recovery, missing-schema `Any`
     degradation, and dynamic or unresolved null results.
-- [ ] Audit navigation protocols.
+- [x] Audit navigation protocols.
   - Cover `definition`, `declaration`, `typeDefinition`, and negative
     `implementation` behavior for locals, globals, imported functions, source
     types, fields, methods, enum variants, schema spans, builtin types,
@@ -282,6 +282,14 @@ coverage complete based only on the older capability phases.
     type aliases in addition to existing imported field, function return,
     member, method return, struct constructor, enum variant, const, and global
     source type paths.
+  - Current fixtures cover service and native LSP `definition`,
+    `declaration`, and `typeDefinition` for local bindings, globals,
+    imported functions, imported const/global declarations, source fields,
+    source methods through return type queries, source enum variants,
+    schema type/member/variant source spans, stdlib-call adjacency, builtin
+    primitive and container types returning null, dynamic facts returning
+    null, unresolved bare names returning null, and unsupported
+    `textDocument/implementation` not being advertised or served.
 - [ ] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
