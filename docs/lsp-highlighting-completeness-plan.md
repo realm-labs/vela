@@ -244,7 +244,7 @@ validation commands have passed locally.
 | 2. Token taxonomy and fallback policy | Complete | Expanded service token/modifier names, deterministic legend ordering, fallback policy, and direct taxonomy tests are in place. |
 | 3. Service semantic classification | Complete | Declaration-kind, resolved-use provenance, builtin-type, literal, operator/punctuation, control-flow keyword, and unresolved-reference classification are covered. |
 | 4. LSP projection and capabilities | Complete | Legend projection remains service-owned; range tokens plus client capability fallback projection are covered in the server. |
-| 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
+| 5. Zed Tree-sitter fallback | Complete | Zed fallback captures now align with common syntax scopes and validator coverage pins the shared showcase surface. |
 | 6. VS Code fallback and scopes | Not started | Add grammar and semantic-token contribution coverage. |
 | 7. Cross-editor consistency fixtures | Not started | Align service, Zed, and VS Code behavior. |
 | 8. Docs and final validation | Not started | Update setup docs and run final validation. |
@@ -444,18 +444,18 @@ Phase 4 notes:
 Goal: make Zed's syntax fallback much closer to the LSP semantic token model
 while keeping it a grammar query, not a semantic engine.
 
-- [ ] Expand `editors/zed/languages/vela/highlights.scm` for declaration names,
+- [x] Expand `editors/zed/languages/vela/highlights.scm` for declaration names,
   function calls, method calls, field/property access, enum variants, type
   identifiers, builtin type identifiers where syntactically recognizable,
   attributes, comments, literals, operators, punctuation, and module/import
   path segments.
-- [ ] Keep captures aligned with Zed/Tree-sitter conventions where possible:
+- [x] Keep captures aligned with Zed/Tree-sitter conventions where possible:
   `@keyword`, `@function`, `@function.method`, `@type`, `@type.builtin`,
   `@property`, `@variable.parameter`, `@constant`, `@constant.builtin`,
   `@string`, `@number`, `@boolean`, `@comment`, `@operator`, and punctuation
   captures when supported.
-- [ ] Add or update checked-in fixture coverage for query captures.
-- [ ] Keep package validation strict that the extension launcher does not
+- [x] Add or update checked-in fixture coverage for query captures.
+- [x] Keep package validation strict that the extension launcher does not
   implement semantic highlighting itself.
 
 Focused validation:
@@ -469,6 +469,22 @@ npx --yes tree-sitter-cli@0.25.10 parse --quiet ../../site/src/syntax/fixtures/c
 
 If `complete.vela` is not the right fixture for highlighting coverage, add a
 dedicated highlighting fixture and validate that instead.
+
+Phase 5 notes:
+
+- Zed fallback highlighting remains a Tree-sitter query only. Enum declarations
+  use `@type`, enum variants use `@constant`, imports use `@namespace`, and
+  attributes use `@attribute` so themes can rely on common captures.
+- `editors/zed/scripts/validate-package.js` now checks the shared highlighting
+  showcase exists, validates the thin launcher boundary, and pins the fallback
+  capture set used by `highlights.scm`.
+- Validated with `node editors/zed/scripts/validate-package.js`,
+  `npx --yes tree-sitter-cli@0.25.10 generate`, and
+  `npx --yes tree-sitter-cli@0.25.10 parse --quiet
+  ../../site/src/syntax/fixtures/complete.vela
+  ../../tests/fixtures/lsp_highlighting/showcase.vela`. The parse command
+  returned success but emitted the local CLI warning that no parser directories
+  are configured.
 
 ---
 

@@ -44,9 +44,9 @@
 (function_declaration name: (identifier) @function)
 (trait_item name: (identifier) @function)
 (field_declaration name: (identifier) @property)
-(variant_declaration name: (identifier) @variant)
+(variant_declaration name: (identifier) @constant)
 (struct_declaration name: (identifier) @type)
-(enum_declaration name: (identifier) @enum)
+(enum_declaration name: (identifier) @type)
 (trait_declaration name: (identifier) @type)
 (const_declaration name: (identifier) @constant)
 (global_declaration name: (identifier) @constant)
@@ -54,7 +54,7 @@
 (lambda_parameter name: (identifier) @variable.parameter)
 
 ; Attributes
-(attribute "#" @preproc)
+(attribute "#" @attribute)
 (attribute path: (path) @attribute)
 (attribute_argument name: (identifier) @property)
 (attribute_map_entry key: (identifier) @property)
@@ -69,6 +69,7 @@
 (record_pattern variant: (path) @constructor)
 
 ; Member and call sites
+(use_declaration path: (path (identifier) @namespace))
 (call_expression function: (field_expression field: (identifier) @function.method))
 (call_expression function: (path_expression (path) @function))
 (field_expression field: (identifier) @property)

@@ -121,17 +121,26 @@ for (const marker of [
 
 const highlights = read("languages/vela/highlights.scm");
 for (const capture of [
+  "@namespace",
+  "@attribute",
   "@function",
   "@function.method",
   "@type",
   "@property",
   "@constant",
+  "@constant.builtin",
+  "@variable.parameter",
+  "@variable.special",
+  "@string.special",
   "@boolean",
+  "@number",
   "@operator",
   "@punctuation.delimiter",
   "@punctuation.bracket"
 ]) {
   assert(highlights.includes(capture), `Zed highlights query must include ${capture}`);
 }
+assert(!highlights.includes("@variant"), "Zed highlights query should use conventional captures for variants");
+assert(!highlights.includes("@enum"), "Zed highlights query should use @type for enum declarations");
 
 console.log("Zed extension package metadata and launcher boundary are valid.");
