@@ -242,7 +242,8 @@ These are the first places to compare current tests against the matrix:
 6. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,
    semantic tokens, diagnostics, and call hierarchy. Current focused fixtures
-   pin `workspace/symbol` removal after deleted disk source files.
+   pin `workspace/symbol` removal after deleted disk source files and
+   source-only degradation when the configured host schema is missing.
 
 ## Completion Criteria For This Matrix
 

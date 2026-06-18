@@ -1,4 +1,6 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{
+    LspServer, notification, notification_value, notification_values, request, response_value,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -349,6 +351,86 @@ fn lsp_workspace_symbols_drop_deleted_files() {
             .iter()
             .all(|symbol| symbol["location"]["uri"] != source_uri),
         "{after:?}"
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    let source_path = root.join("scripts").join("game").join("reward.vela");
+    fs::write(&source_path, "pub fn grant() -> i64 { return 1 }")
+        .expect("source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let notifications = notification_values(server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": file_uri(&config_path), "type": 1 },
+                { "uri": source_uri.clone(), "type": 1 }
+            ]
+        }),
+    )));
+    assert!(
+        notifications.iter().any(|notification| {
+            notification["method"] == "textDocument/publishDiagnostics"
+                && notification["params"]["uri"] == file_uri(&schema_path)
+                && notification["params"]["diagnostics"]
+                    .as_array()
+                    .is_some_and(|diagnostics| {
+                        diagnostics.iter().any(|diagnostic| {
+                            diagnostic["code"] == "schema::diagnostic"
+                                && diagnostic["message"]
+                                    .as_str()
+                                    .is_some_and(|message| message.contains("host schema"))
+                        })
+                    })
+        }),
+        "{notifications:?}"
+    );
+
+    let source_symbols = workspace_symbols(&mut server, 2, "grant");
+    assert!(
+        source_symbols.iter().any(|symbol| {
+            symbol["name"] == "game::reward::grant"
+                && symbol["kind"] == 12
+                && symbol["containerName"] == "game::reward"
+                && symbol["location"]["uri"] == source_uri
+        }),
+        "{source_symbols:?}"
+    );
+
+    let schema_symbols = workspace_symbols(&mut server, 3, "Player");
+    assert!(
+        schema_symbols
+            .iter()
+            .all(|symbol| symbol["location"]["uri"] != "vela-schema:"),
+        "{schema_symbols:?}"
     );
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");

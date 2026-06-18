@@ -1016,6 +1016,43 @@ pub fn main(amount: i64) -> i64 { return amount }";
         );
     }
 
+    #[test]
+    fn workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
+        let source = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let mut databases = databases_for(vec![SourceFileSnapshot::new(
+            source.clone(),
+            "pub fn grant() -> i64 { return 1 }",
+        )]);
+        databases.mark_schema_missing("/workspace/target/vela/schema.json");
+
+        let source_symbols = databases.workspace_symbols("grant");
+        assert!(
+            source_symbols.iter().any(|symbol| symbol.name() == "game::reward::grant"
+                && symbol.kind() == DocumentSymbolKind::Function
+                && matches!(
+                    symbol.location(),
+                    WorkspaceSymbolLocation::Source { document_id, .. } if document_id == &source
+                )),
+            "{source_symbols:?}"
+        );
+
+        let schema_symbols = databases.workspace_symbols("Player");
+        assert!(
+            schema_symbols
+                .iter()
+                .all(|symbol| !matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
+            "{schema_symbols:?}"
+        );
+        assert!(
+            databases
+                .schema_db()
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.message().contains("host schema")),
+            "missing schema diagnostic should be preserved"
+        );
+    }
+
     fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());

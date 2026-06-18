@@ -759,10 +759,12 @@ Tests:
 - [x] `workspace_symbols_include_module_symbols`
 - [x] `workspace_symbols_include_file_symbols`
 - [x] `workspace_symbols_include_schema_items`
+- [x] `workspace_symbols_degrade_to_source_only_when_schema_is_missing`
 - [x] `lsp_workspace_symbols_include_script_and_schema_symbols`
 - [x] `lsp_workspace_symbols_include_module_symbols`
 - [x] `lsp_workspace_symbols_include_file_symbols`
 - [x] `lsp_workspace_symbols_drop_deleted_files`
+- [x] `lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing`
 - [x] `folding_ranges_cover_items_and_blocks`
 - [x] `lsp_folding_ranges_cover_items_and_blocks`
 - [x] `selection_ranges_walk_syntax_ancestors`
