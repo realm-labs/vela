@@ -82,6 +82,49 @@ Editor plugins should be thin launchers around the native LSP binary. They may
 provide configuration UI and binary discovery, but feature behavior should live
 in `vela_language_service` or `vela_lsp_server`.
 
+## Query And Projection Boundary
+
+Editor requests flow through one shared service boundary:
+
+```text
+LSP request
+  -> vela_lsp_server protocol params and cancellation
+  -> WorkspaceSnapshot / LanguageServiceDatabases query
+  -> QueryContext with source, module, HIR, analysis, schema, and generation facts
+  -> CursorContext classification from parser/token spans
+  -> feature-specific producer
+  -> editor-neutral result model
+  -> vela_lsp_server protocol projection
+```
+
+`QueryContext` is the request-local fact carrier. It may expose service-owned
+document IDs, source ranges, module paths, binding maps, receiver facts,
+callable facts, local bindings visible before the cursor, schema facts, and
+generation/cancellation tokens. It must not expose LSP protocol structs,
+filesystem watchers, JSON-RPC request IDs, or editor-specific configuration
+objects.
+
+`CursorContext` is syntax-owned and shared by completion, hover, signature
+help, definition, references, rename, code actions, formatting entry points,
+and inlay hints where cursor classification matters. Feature code may extract
+additional syntax facts after the shared classifier selects a context, but it
+must not reclassify broad request kind through independent string scanning.
+
+Shared result models carry editor-neutral identity and display data:
+
+```text
+SymbolRef      source, schema, builtin, local, member, variant, and module identity
+DisplayParts   structured labels/details/diagnostic text before protocol rendering
+EditPlan       checked source-owned workspace edits with versions and conflicts
+Relevance      service-owned completion ranking metadata projected to sort/preselect
+```
+
+Completion producers return rich service items with replacement ranges,
+filter/lookup text, label details, snippet intent, deprecation, symbol
+identity, and optional resolve payloads. Expensive schema documentation is
+resolved lazily through a service-owned payload and projected by
+`vela_lsp_server` into `completionItem/resolve`.
+
 ## Workspace Model
 
 Vela is not a single-file scripting system. The LSP should prefer

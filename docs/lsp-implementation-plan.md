@@ -138,6 +138,13 @@ Protocol structs from `lsp-types` or any LSP server library must not appear in
 `vela_language_service` public APIs. Filesystem paths and URLs should be
 normalized into service-owned document IDs before analysis.
 
+The completed cleanup model routes feature requests through shared
+`QueryContext` and syntax-owned `CursorContext` construction before
+feature-specific producers run. Service results carry editor-neutral
+`SymbolRef`, `DisplayParts`, `EditPlan`, relevance metadata, and completion
+resolve payloads; `vela_lsp_server` remains the only layer that projects those
+models into LSP JSON-RPC shapes.
+
 ---
 
 ## Phase Status

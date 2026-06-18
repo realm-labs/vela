@@ -895,14 +895,36 @@ cargo test -p vela_lsp_server workspace
 
 Purpose: complete the breaking cleanup.
 
-- [ ] Delete obsolete completion context variants, compatibility conversion
+- [x] Delete obsolete completion context variants, compatibility conversion
   helpers, stale tests, and dead feature-local cursor scanners.
-- [ ] Update `docs/architecture/lsp.md` with the final query/result/projection
+  - Cleanup audit found no remaining obsolete completion context variants,
+    compatibility conversion helpers, or stale tests. `cargo clippy -p
+    vela_language_service -p vela_lsp_server --all-targets -- -D warnings`
+    verifies there are no dead private service/server paths. The remaining
+    record-constructor and map-key AST walks are live syntax fact extractors
+    run only after shared cursor classification selects those contexts.
+- [x] Update `docs/architecture/lsp.md` with the final query/result/projection
   boundary.
-- [ ] Update `docs/lsp-implementation-plan.md` if phase status or capability
+  - `docs/architecture/lsp.md` now records the LSP request -> service
+    snapshot -> `QueryContext` -> `CursorContext` -> feature producer ->
+    editor-neutral result -> protocol projection pipeline, plus the
+    `SymbolRef`, `DisplayParts`, `EditPlan`, `Relevance`, and lazy completion
+    resolve boundaries.
+- [x] Update `docs/lsp-implementation-plan.md` if phase status or capability
   ownership changes.
-- [ ] Update `docs/progress.md` only when milestone status changes.
-- [ ] Update `docs/decisions.md` for any new durable architecture decision.
+  - The architecture summary now records the completed cleanup model:
+    `QueryContext`/`CursorContext` before producers, editor-neutral
+    `SymbolRef`/`DisplayParts`/`EditPlan`/relevance/resolve payloads from the
+    service, and LSP JSON projection isolated to `vela_lsp_server`.
+- [x] Update `docs/progress.md` only when milestone status changes.
+  - No `docs/progress.md` edit was required for this cleanup checkpoint:
+    M20.5 was already marked complete enough, and the plan remains active
+    until final acceptance validation is complete.
+- [x] Update `docs/decisions.md` for any new durable architecture decision.
+  - No new `docs/decisions.md` entry was required: the active
+    Native-First LSP Boundary decision already points to this cleanup plan,
+    and the final query/result/projection boundary is documented in
+    `docs/architecture/lsp.md`.
 
 Validation:
 
