@@ -348,11 +348,18 @@ coverage complete based only on the older capability phases.
     reindexing; folding ranges for import groups, declarations, blocks, match
     arms, multiline literals, and parser-recovery degradation; and
     syntax-ancestry selection ranges under valid and recovered source.
-- [ ] Audit semantic tokens.
+- [x] Audit semantic tokens.
   - Cover full, delta, and range tokens across lexical and resolved
     classifications, cross-file imported symbols, source/schema/builtin
     provenance, unresolved references, parser recovery, and client fallback
     projection.
+  - Current fixtures cover service and native LSP full/range/delta semantic
+    tokens, lexical and trivia classes, resolved local/declaration/member
+    classes, cross-file imports and imported module path segments,
+    source/schema/stdlib/builtin provenance modifiers, unresolved import and
+    general unresolved-reference tokens, parser-recovery degradation with
+    retained HIR-backed classifications, missing-schema degradation, and
+    client legend fallback projection.
 - [ ] Audit formatting and inlay hints.
   - Cover full/range/on-type formatting, comments, blank lines, nested member
     selections, malformed source, parameter hints, local type hints, lambda
