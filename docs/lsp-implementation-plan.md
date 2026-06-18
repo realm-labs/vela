@@ -314,9 +314,10 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP `textDocument/references`
     and `textDocument/documentHighlight` for locals, imports, function aliases,
     const/global symbols, source type uses, module path segments, source and
-    schema fields, methods, trait impl uses, enum variants, record-variant
-    fields, schema-backed source spans, active-document-only highlights,
-    shadowed locals, and dynamic or unresolved empty results.
+    schema fields, methods including schema-function-return receivers, trait
+    impl uses, enum variants, record-variant fields, schema-backed source
+    spans, active-document-only highlights, shadowed locals, and dynamic or
+    unresolved empty results.
   - Current fixtures cover service and native LSP call hierarchy for source
     functions, imported function aliases, source methods, trait impl methods,
     trait default/interface methods, schema methods and trait methods,
@@ -1291,6 +1292,8 @@ Tests:
 - [x] `lsp_references_find_schema_record_variant_field_labels_and_patterns`
 - [x] `references_find_schema_method_calls`
 - [x] `lsp_references_find_schema_method_calls`
+- [x] `references_find_schema_method_calls_on_schema_function_return_receivers`
+- [x] `lsp_references_find_schema_method_calls_on_schema_function_return_receivers`
 - [x] `references_find_schema_trait_method_calls`
 - [x] `lsp_references_find_schema_trait_method_calls`
 - [x] `references_find_schema_variant_constructors_and_patterns`

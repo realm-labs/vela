@@ -243,6 +243,11 @@ M20.5 Phase 7 update: member completion now has service and native LSP
 coverage for schema-backed fields and methods on receivers produced by schema
 function returns, preserving member-context suppression of unrelated globals.
 
+M20.5 Phase 11 update: references now have service and native LSP coverage for
+schema-backed method calls where the receiver is produced by a schema function
+return, using the shared expression receiver facts instead of binding-only
+receiver spans.
+
 M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.

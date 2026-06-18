@@ -8,6 +8,7 @@ mod cross_file;
 mod degradation;
 mod highlight;
 mod modules;
+mod returned_receivers;
 mod schema;
 mod schema_fields;
 mod schema_variant_fields;
