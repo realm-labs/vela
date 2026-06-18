@@ -873,8 +873,14 @@ Purpose: make the new model viable for large workspaces and real editors.
     `editor_config_maps_to_workspace_config`,
     `lsp_workspace_configuration_request_updates_workspace_config`, and
     `invalid_vela_toml_publishes_config_diagnostic`.
-- [ ] Add stress fixtures or benchmarks for many files when a cheap
+- [x] Add stress fixtures or benchmarks for many files when a cheap
   representative test can be maintained.
+  - Maintained cheap stress coverage includes
+    `scale_fixture_avoids_full_rebuild_per_edit` and
+    `larger_synthetic_workspace_reports_indexing_metrics`; explicit
+    near-million-line checkpoints remain ignored and opt-in through
+    `million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit`
+    and `completion_contexts_scale_in_million_line_workspace`.
 
 Tests:
 
