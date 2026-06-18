@@ -223,6 +223,23 @@ completion provides Rust-like snippets such as `for in` and `match`. Rust-only
 features such as macros, borrow checking, Rust trait solving, or script
 generics remain out of scope.
 
+The LSP authoring correction is a model refactor, not a patch list.
+Completion should follow a rust-analyzer-style two-phase shape: build a
+structured service-owned `CompletionAnalysis` from syntax recovery plus
+semantic facts, run feature producers over explicit contexts such as path,
+type, dot access, declaration body, call argument, pattern, and statement, then
+render editor-neutral completion items and project to LSP. Member completion
+uses one combined source/schema/stdlib/builtin member surface, and completion
+item label, insertion text, owner details, docs, identity, ranking, and resolve
+payloads stay separate until protocol projection.
+
+The formatter side of the same correction belongs in `vela_syntax` as
+syntax-owned CST/AST layout policy. Rust-analyzer can delegate Rust formatting
+to rustfmt; Vela cannot rely on token-only whitespace cleanup for Rust-like
+type hints. Builtin container type arguments must share one compact layout
+rule across local annotations, parameters, returns, struct fields, enum fields,
+and nested `Option`/`Result` hints.
+
 Semantic highlighting uses an editor-neutral Vela taxonomy in
 `vela_language_service` with standard LSP names where they exist and explicit
 fallback names for custom token types. Custom tokens such as `builtinType`,

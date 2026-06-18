@@ -68,6 +68,17 @@ generics.
 The baseline applies before any LSP capability is considered user-facing
 complete:
 
+- Completion coverage must prove the authoring model before proving rendered
+  items. Tests should assert structured path, type, dot-access, declaration
+  body, call-argument, pattern, statement, expected-type, and expected-name
+  contexts separately from completion labels and LSP payloads.
+- Dot/member completion must come from a unified member surface that combines
+  source fields, source inherent methods, source trait methods, schema
+  members, and stdlib/builtin value or container methods. Producers must not
+  guess members by text prefix or fall back to globals for a typed `.` request.
+- Completion filtering, ranking, insertion text, label, label details,
+  documentation, symbol identity, and resolve payloads must be distinct
+  service fields before protocol projection.
 - Formatting must use compact type argument lists: `Array<i64>`,
   `Set<String>`, `Map<String, i64>`, and
   `Result<Map<String, i64>, String>`. It must not emit
@@ -118,6 +129,7 @@ Use these dimensions as row references in the matrix.
 | S11 | Incrementality and cancellation | Repeated queries, body-only edits, declaration/import fingerprint changes, reverse dependency invalidation, request cancellation, generation rejection. |
 | S12 | Trivia and formatting | Comments, shebang trivia, blank-line groups, indentation, top-level item spans, nested member spans, malformed-source fallback. |
 | S13 | Rust-analyzer-aligned authoring UX | Compact generic-like type formatting, typed receiver dot completion, field-declaration contexts, completion label/detail separation, and statement snippets for Rust-like constructs. |
+| S14 | Rust-analyzer-style authoring core | Structured `CompletionAnalysis`, path/type/dot/declaration/call/pattern/statement contexts, expected type/name, unified member index, and editor-neutral item rendering before LSP projection. |
 
 ## Workspace And Cross-File Required Coverage
 
@@ -183,7 +195,7 @@ in `vela_lsp_server`.
 | `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot, clears or refreshes diagnostics, and restores disk-backed query behavior for features such as definition. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
 | `textDocument/didSave` | Save is currently false | S0 | No provider dependency on save events. | Save notifications should not be required for correctness while `save` is false. |
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
-| `textDocument/completion` | `completionProvider` | S1-S11, S13 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress global/value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
+| `textDocument/completion` | `completionProvider` | S1-S11, S13, S14 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must prove structured authoring contexts before item rendering, then include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress global/value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged. | Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight. |
 | `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return null; incomplete calls resolve only when target facts exist; stale schema. |
 | `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
@@ -252,12 +264,16 @@ Each protocol fixture should declare:
 
 These are the first places to compare current tests against the matrix:
 
-1. Rust-analyzer-aligned authoring behavior is the top post-validation audit.
-   Add service and LSP fixtures for compact container type formatting using
-   `Array<i64>`, `Set<String>`, `Map<String, i64>`, and
+1. Rust-analyzer-style authoring core is the top post-validation audit. Add
+   service tests for structured `CompletionAnalysis` contexts before adding
+   rendered item assertions: empty-prefix dot access, type-argument locations,
+   struct-field declaration bodies, call arguments, statement positions, and
+   expected type/name. Then add service and LSP fixtures for compact container
+   type formatting using `Array<i64>`, `Set<String>`, `Map<String, i64>`, and
    `Result<Map<String, i64>, String>`; empty-prefix `.` completion on typed
    arrays/maps/sets and source structs; source inherent and trait method
-   completions; readable struct/type completion labels with details separated
+   completions through a unified member index; readable struct/type completion
+   labels with details separated
    from insert text; `struct Player { | }` field-declaration context
    completion; and `for in`/`match` statement snippets.
 2. Navigation semantics must stay separate per protocol. Current focused

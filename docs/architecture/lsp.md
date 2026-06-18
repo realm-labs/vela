@@ -125,6 +125,62 @@ identity, and optional resolve payloads. Expensive schema documentation is
 resolved lazily through a service-owned payload and projected by
 `vela_lsp_server` into `completionItem/resolve`.
 
+### Rust-Analyzer-Style Authoring Core
+
+Vela's Rust-like syntax should use a rust-analyzer-style authoring model where
+the syntax overlaps, adapted to Vela's dynamic and host-schema contracts. The
+goal is the shape of the editor architecture, not Rust-only semantics. The LSP
+must not import Rust macros, borrow checking, Rust trait solving, or
+script-language generics.
+
+Completion should be a two-phase pipeline:
+
+```text
+syntax recovery + semantic facts
+  -> structured CompletionAnalysis
+  -> feature producers
+  -> editor-neutral completion items
+  -> LSP projection
+```
+
+`CompletionAnalysis` is owned by `vela_language_service` and should replace
+patch-only request handling with explicit contexts:
+
+```text
+PathCompletionCtx { kind, type_location, qualifier }
+DotAccess { receiver_range, receiver_fact, access_kind, expected_type }
+RecordFieldContext { owner_type, field_mode }
+CallArgumentContext { callable, active_parameter }
+PatternContext
+StatementContext
+expected_type
+expected_name
+visible_scope
+```
+
+Path contexts should distinguish expression paths, type paths, item paths,
+module/import paths, pattern paths, and builtin type-argument positions.
+Type-location data should distinguish local annotations, function return
+hints, parameters, struct fields, enum fields, and nested builtin container
+arguments. Dot access should be a first-class context even with an empty
+prefix after `.`, and dynamic `Any` receivers should suppress member guesses
+instead of falling back to global completions.
+
+Member completion should flow through a unified `MemberCompletionIndex` built
+from source facts, schema facts, stdlib/builtin facts, and source trait/impl
+facts. Feature producers consume this index; they should not independently
+scan broad text contexts or invent receiver facts. Completion rendering must
+keep insertion text and display identity separate: labels stay short and
+insertable, while module paths, owner paths, docs, effects, and provenance are
+carried by detail, label details, documentation, or resolve payloads.
+
+Formatting should follow the same boundary principle. Rust-analyzer delegates
+Rust formatting to rustfmt; Vela needs a syntax-owned formatter that uses
+lossless CST/AST layout facts instead of a token-only whitespace state machine.
+In particular, builtin container type hints must share one compact layout rule
+across local annotations, parameters, return hints, struct fields, enum fields,
+and nested `Option`/`Result` arguments.
+
 ## Workspace Model
 
 Vela is not a single-file scripting system. The LSP should prefer

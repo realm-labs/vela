@@ -245,6 +245,11 @@ passes with `cargo fmt --all -- --check`,
 analysis-only capability track, but M20.5 now has an active
 rust-analyzer-aligned authoring correction slice for formatter, completion,
 and snippet behavior before user-facing LSP completion can be claimed.
+Phase 19 is scoped as a rust-analyzer-style authoring-core refactor:
+structured completion analysis; explicit path, type, dot, declaration, call,
+pattern, and statement contexts; a unified source/schema/stdlib/builtin member
+surface; separated completion display, insertion, and projection fields; and
+syntax-owned compact type-hint formatting.
 
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature

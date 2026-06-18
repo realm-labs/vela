@@ -85,8 +85,10 @@ or unadvertised until its service-level behavior is correct.
 - [ ] Support formatting once syntax trivia/lossless token policy is stable.
 - [ ] Support inlay hints from stable TypeFacts.
 - [ ] Align user-facing authoring behavior with rust-analyzer where Vela
-  syntax overlaps: compact type formatting, typed receiver completions,
-  declaration-body contexts, readable completion labels/details, and snippets.
+  syntax overlaps by adopting a structured authoring core:
+  `CompletionAnalysis`, explicit dot/path/type/declaration contexts, unified
+  member facts, readable completion item rendering, compact type formatting,
+  and statement snippets.
 - [ ] Build toward many-file workspaces whose total source size approaches one
   million lines with explicit source, parse, HIR, and analysis databases.
 - [ ] Use generation IDs and cancellation so stale request results are
@@ -188,6 +190,12 @@ coverage complete based only on the older capability phases.
     behavior, and the `textDocument/didClose` versus `openClose` contract.
 - [ ] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
+  - Cover the authoring-core model itself: structured completion analysis
+    for path, type, dot-access, call-argument, declaration-body, pattern, and
+    statement contexts before rendered completion items are asserted.
+  - Cover a unified member completion index built from source fields,
+    source impl methods, source trait methods, schema members, and
+    stdlib/builtin value/container members.
   - Cover compact type argument formatting for `Array<i64>`,
     `Set<String>`, `Map<String, i64>`, and
     `Result<Map<String, i64>, String>`.
@@ -1615,11 +1623,54 @@ cargo test --workspace
 
 ---
 
-## 23. Phase 19: Rust-Analyzer-Aligned Authoring Correction
+## 23. Phase 19: Rust-Analyzer-Style Authoring Core Refactor
 
 Purpose: close the real-editor gaps found after the Phase 18 validation pass
-and make Vela's Rust-like syntax feel predictable in editors that users compare
-against rust-analyzer.
+by changing the authoring model, not by layering one-off completion and
+formatting patches on top of the current coarse contexts. Vela should follow
+rust-analyzer's high-level architecture where the syntax overlaps:
+syntax-recovered context construction, semantic facts, feature producers,
+editor-neutral items, then LSP projection. This does not import Rust-only
+semantics such as macros, borrow checking, Rust trait solving, or
+script-language generics.
+
+Authoring-core tasks:
+
+- [ ] Use rust-analyzer's source layout as the reference model for the audit,
+  without copying Rust-only semantics:
+  `crates/ide-completion/src/lib.rs` for completion entry shape,
+  `crates/ide-completion/src/context.rs` for structured context fields,
+  `crates/ide-completion/src/context/analysis.rs` for expected type/name
+  analysis, `crates/ide-completion/src/completions/dot.rs` for dot/member
+  producers, and `crates/rust-analyzer/src/handlers/request.rs` for the LSP
+  formatting boundary that delegates Rust formatting to rustfmt.
+- [ ] Add a short source audit note in this plan or a linked design note that
+  maps rust-analyzer's completion shape to Vela's model:
+  context construction, dot completion, expected type/name, item rendering,
+  and rustfmt delegation versus Vela's own formatter.
+- [ ] Introduce a service-owned `CompletionAnalysis` model that is built once
+  per completion request from parser recovery, HIR/module facts, TypeFacts,
+  schema facts, and visible scope.
+- [ ] Represent explicit authoring contexts instead of a single broad
+  completion kind:
+  `PathCompletionCtx`, `TypeLocation`, `DotAccess`, `RecordFieldContext`,
+  `CallArgumentContext`, `PatternContext`, `StatementContext`,
+  `expected_type`, and `expected_name`.
+- [ ] Route `textDocument/completion` through `CompletionAnalysis` before any
+  feature producer runs. Feature producers may consume structured context and
+  semantic facts, but must not reclassify broad request kind through ad hoc
+  string scanning.
+- [ ] Add a unified `MemberCompletionIndex` for source-owned struct fields,
+  source inherent impl methods, source trait methods, schema-backed fields and
+  methods, and stdlib/builtin value/container methods.
+- [ ] Keep completion identity, filtering, labels, insertion text, details,
+  docs, snippets, and ranking as separate service-item fields before protocol
+  projection.
+- [ ] Move formatter follow-up from token-only whitespace decisions toward
+  syntax-owned AST/CST layout facts for declarations and type hints. The first
+  required slice is compact builtin container type-argument layout.
+
+Behavior closure tasks:
 
 - [ ] Add golden formatter fixtures for the container type hint examples that
   currently format incorrectly:
@@ -1662,6 +1713,11 @@ fn main() {
 
 Tests:
 
+- [ ] `completion_analysis_classifies_empty_dot_access`
+- [ ] `completion_analysis_classifies_type_argument_location`
+- [ ] `completion_analysis_classifies_struct_field_declaration_body`
+- [ ] `completion_analysis_tracks_expected_type_and_name`
+- [ ] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
 - [ ] `formatting_compacts_builtin_container_type_arguments`
 - [ ] `formatting_compacts_nested_result_container_type_arguments`
 - [ ] `formatting_formats_container_type_hint_example`
@@ -1682,6 +1738,7 @@ Validation:
 ```bash
 cargo test -p vela_syntax formatting
 cargo test -p vela_language_service formatting
+cargo test -p vela_language_service completion_analysis
 cargo test -p vela_language_service completion
 cargo test -p vela_lsp_server formatting
 cargo test -p vela_lsp_server completion
