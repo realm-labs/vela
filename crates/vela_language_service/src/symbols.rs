@@ -11,7 +11,7 @@ use crate::{
     SymbolRef, TextRange,
     symbol_ref::{
         source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
-        source_symbol_for_declaration, source_variant_field_symbol,
+        source_module_symbol, source_symbol_for_declaration, source_variant_field_symbol,
     },
 };
 
@@ -241,7 +241,7 @@ impl LanguageServiceDatabases {
                 let source = self.source_db().records().get(document_id)?;
                 let name_parts = DisplayParts::symbol(name);
                 Some(WorkspaceSymbol {
-                    symbol: SymbolRef::Source(name_parts.render()),
+                    symbol: source_module_symbol(module_path),
                     name: name_parts.render(),
                     name_parts,
                     detail: None,

@@ -14,7 +14,7 @@ use crate::{
     LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
     symbol_ref::{
         source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
-        source_symbol_for_declaration,
+        source_module_symbol_from_segments, source_symbol_for_declaration,
     },
 };
 
@@ -229,7 +229,7 @@ fn symbol_ref_for_import(
         let path = import.path[..=segment].to_vec();
         graph
             .module_id(&ModulePath::new(path.iter().cloned()))
-            .map(|_| SymbolRef::Source(path.join("::")))
+            .map(|_| source_module_symbol_from_segments(path.iter()))
     })
 }
 

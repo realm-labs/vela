@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_hir::module_graph::{ModuleGraph, ModulePath};
 
-use crate::{LanguageServiceDatabases, SymbolRef, TextRange};
+use crate::{LanguageServiceDatabases, TextRange, symbol_ref::source_module_symbol_from_segments};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, span_text_range, token_text,
@@ -82,7 +82,7 @@ pub(super) fn import_module_references(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(source.text(), range),
                 kind: ReferenceKind::Import,
-                symbol: SymbolRef::Source(target.path.join("::")),
+                symbol: source_module_symbol_from_segments(target.path.iter()),
             });
         }
     }
