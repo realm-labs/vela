@@ -5,6 +5,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod imports;
+
 #[test]
 fn lsp_prepare_rename_rejects_keywords_and_literals() {
     let mut server = LspServer::new();

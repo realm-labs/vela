@@ -1264,6 +1264,8 @@ Purpose: provide safe refactoring without changing runtime contracts.
 - [~] Implement public module declaration rename with import rewrites.
   - [x] Rename script function declarations, resolved import path segments,
     and resolved unaliased call sites.
+  - [x] Preserve import aliases while rewriting renamed source function path
+    segments.
 - [x] Implement field/method/variant rename only when ownership is known and
   source spans are script-owned.
   - [x] Rename source-owned private struct fields and typed receiver member
@@ -1306,6 +1308,8 @@ Tests:
 - [x] `lsp_rename_returns_versioned_document_changes`
 - [x] `private_function_rename_updates_imports`
 - [x] `lsp_private_function_rename_updates_imports`
+- [x] `private_function_rename_updates_aliased_import_path`
+- [x] `lsp_private_function_rename_updates_aliased_import_path`
 - [x] `private_value_declaration_rename_updates_uses`
 - [x] `lsp_private_value_declaration_rename_updates_uses`
 - [x] `lsp_private_type_declaration_rename_updates_type_hints`

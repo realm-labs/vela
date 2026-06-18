@@ -933,6 +933,38 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn private_function_rename_updates_aliased_import_path() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant as award
+pub fn main(amount: i64) -> i64 {
+    return award(amount)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper.clone(), helper_text),
+    ]);
+
+    let edit = databases
+        .rename(
+            &helper,
+            Position::new(0, line(helper_text, 0).find("grant").expect("declaration")),
+            "grant_reward",
+        )
+        .expect("script function rename should update aliased import path");
+
+    let main_edit = document_edit(&edit, &main);
+    assert_eq!(main_edit.edits().len(), 1);
+    assert_edit_at(main_edit.edits(), 0, 18, "grant_reward");
+
+    let helper_edit = document_edit(&edit, &helper);
+    assert_eq!(helper_edit.edits().len(), 1);
+    assert_edit_at(helper_edit.edits(), 0, 7, "grant_reward");
+}
+
+#[test]
 fn function_rename_rejects_import_alias_collision() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
