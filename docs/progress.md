@@ -498,6 +498,11 @@ schema methods, schema trait methods, and schema variants without owner type
 spans return null for `textDocument/typeDefinition`.
 
 M20.5 Phase 15 update: language-service and native LSP inlay fixtures now
+cover schema-backed method and trait-method calls where the receiver is
+produced by another schema method return, preserving dynamic `Any` parameter
+suppression through chained schema receiver facts.
+
+M20.5 Phase 15 update: language-service and native LSP inlay fixtures now
 cover stdlib callback/lambda parameter hint suppression when inferred
 collection facts cross dynamic `Any` boundaries, while preserving stable
 callback parameter hints for concrete collection element types.

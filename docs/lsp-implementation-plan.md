@@ -1759,7 +1759,9 @@ Tests:
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
 - [x] `inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_receiver`
+- [x] `inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return_receiver`
 - [x] `inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver`
+- [x] `inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_return_receiver`
 - [x] `inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
 - [x] `inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
@@ -1777,7 +1779,9 @@ Tests:
 - [x] `lsp_inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
 - [x] `lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_receiver`
+- [x] `lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver`
+- [x] `lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
