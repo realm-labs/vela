@@ -835,7 +835,10 @@ Purpose: make the new model viable for large workspaces and real editors.
     without embedding docs in the initial completion list. Native LSP advertises
     `completionItem/resolve` and resolves schema type, function, field, method,
     trait-method, and variant docs on demand.
-- [ ] Keep open-document queries prioritized over disk-only modules.
+- [x] Keep open-document queries prioritized over disk-only modules.
+  - `schedule_modules` emits invalidated open modules before workspace-only
+    modules with `WorkPriority::Open`, covered by
+    `open_file_recomputation_is_scheduled_before_workspace_work`.
 - [ ] Use workspace generation IDs to discard stale results.
 - [ ] Keep cancellation checks at query construction and expensive producer
   boundaries.
