@@ -410,6 +410,81 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver()
+ {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"trait Rewardable {
+    fn preview(self, raw: Any, count: i64) -> String { return "ok" }
+}
+struct Player { level: i64 }
+impl Rewardable for Player {}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() {
+    current_player().preview("raw", 1)
+    return current_player().preview("again", 2)
+}"#;
+    let first_call = text.lines().nth(7).expect("first call line");
+    let second_call = text.lines().nth(8).expect("second call line");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 10, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": {
+                    "line": 7,
+                    "character": first_call.find(", 1").expect("first count arg") + 2
+                },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 8,
+                    "character": second_call.find(", 2").expect("second count arg") + 2
+                },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
