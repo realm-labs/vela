@@ -195,6 +195,11 @@ another schema method return, matching chained schema receiver facts used by
 completion, signature help, references, call hierarchy, semantic tokens, and
 inlay hints.
 
+M20.5 Phase 8 update: service and native LSP definition/declaration fixtures
+now follow source spans for schema-backed methods and trait methods where the
+receiver is produced by another schema method return, matching the chained
+schema hover path.
+
 M20.5 clean LSP architecture Phase 6 update: references now have a
 `reference_query()` result model that distinguishes source-owned, schema-owned,
 builtin, dynamic `Any`, and unresolved targets; source/local reference identity
