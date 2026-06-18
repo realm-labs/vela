@@ -1,10 +1,10 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::module_graph::{Declaration, ModuleGraph};
+use vela_hir::module_graph::Declaration;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    SymbolRef, TextRange, symbol_target::SymbolTarget,
+    SymbolRef, TextRange, symbol_ref::source_symbol_for_declaration, symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -127,8 +127,10 @@ impl LanguageServiceDatabases {
         Some(Definition {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
-            symbol: source_declaration_symbol_name(self.hir_db().graph(), declaration)
-                .map(SymbolRef::Source),
+            symbol: Some(source_symbol_for_declaration(
+                self.hir_db().graph(),
+                declaration,
+            )),
         })
     }
 
@@ -190,18 +192,6 @@ fn definition_from_resolution_at_target(
             databases.definition_from_declaration(declaration)
         }
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn source_declaration_symbol_name(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-) -> Option<String> {
-    let module_path = graph.module_path(declaration.module)?;
-    if module_path.segments().is_empty() {
-        Some(declaration.name.clone())
-    } else {
-        Some(format!("{}::{}", module_path.join(), declaration.name))
     }
 }
 

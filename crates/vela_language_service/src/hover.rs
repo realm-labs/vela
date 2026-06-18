@@ -19,7 +19,12 @@ use vela_hir::type_hint::{
 
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
-    QueryContext, SymbolRef, TextRange, symbol_target::SymbolTarget,
+    QueryContext, SymbolRef, TextRange,
+    symbol_ref::{
+        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
+        source_member_symbol, source_symbol_for_declaration,
+    },
+    symbol_target::SymbolTarget,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -576,7 +581,7 @@ fn struct_field_hover(
         HoverKind::Field,
         struct_field_detail_parts(field),
         attr_docs(&field.attrs),
-        Some(SymbolRef::Source(format!("{owner}.{}", field.name))),
+        source_member_symbol(graph, declaration.id, &field.name),
     )
 }
 
@@ -603,7 +608,7 @@ fn impl_method_hover(
         HoverKind::Method,
         signature_detail_parts(&method.signature),
         None,
-        Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
+        source_impl_method_symbol(graph, declaration.id, &method.name),
     )
 }
 
@@ -620,7 +625,7 @@ fn trait_method_hover(
         HoverKind::Method,
         signature_detail_parts(&method.signature),
         attr_docs(&method.attrs),
-        Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
+        source_member_symbol(graph, declaration.id, &method.name),
     )
 }
 
@@ -666,7 +671,7 @@ fn enum_variant_hover(
         HoverKind::Variant,
         DisplayParts::type_name(enum_variant_detail(&owner, variant)),
         attr_docs(&variant.attrs),
-        Some(SymbolRef::Source(format!("{owner}::{}", variant.name))),
+        source_enum_variant_symbol(graph, declaration.id, &variant.name),
     )
 }
 
@@ -745,10 +750,7 @@ fn hover_from_declaration(
         kind,
         detail_parts,
         declaration_docs(graph, declaration),
-        Some(SymbolRef::Source(qualified_declaration_label(
-            graph,
-            declaration,
-        ))),
+        Some(source_symbol_for_declaration(graph, declaration)),
     )
 }
 
@@ -1067,15 +1069,7 @@ fn qualified_declaration_label(
     graph: &vela_hir::module_graph::ModuleGraph,
     declaration: &Declaration,
 ) -> String {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return declaration.name.clone();
-    };
-    let module = module_path.join();
-    if module.is_empty() {
-        declaration.name.clone()
-    } else {
-        format!("{module}::{}", declaration.name)
-    }
+    qualified_source_declaration_name(graph, declaration)
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
