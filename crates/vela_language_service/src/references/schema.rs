@@ -2,7 +2,9 @@ use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
 use vela_syntax::ast::SourceFile;
 
-use crate::{LanguageServiceDatabases, TextRange, member_access, path_calls, query_context};
+use crate::{
+    LanguageServiceDatabases, SymbolRef, TextRange, member_access, path_calls, query_context,
+};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, name_range_in_text, record_fields,
@@ -124,6 +126,18 @@ pub(super) fn schema_variant_references(
 
     sort_references(&mut references);
     references
+}
+
+fn schema_field_symbol(target: &SchemaFieldReferenceTarget) -> SymbolRef {
+    SymbolRef::Schema(format!("{}.{}", target.owner, target.field))
+}
+
+fn schema_method_symbol(target: &SchemaMethodReferenceTarget) -> SymbolRef {
+    SymbolRef::Schema(format!("{}.{}", target.owner, target.method))
+}
+
+fn schema_variant_symbol(target: &SchemaVariantReferenceTarget) -> SymbolRef {
+    SymbolRef::Schema(format!("{}::{}", target.owner, target.variant))
 }
 
 pub(super) fn schema_method_declaration_target(
@@ -305,6 +319,7 @@ fn reference_for_schema_method_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), range),
         kind: ReferenceKind::Declaration,
+        symbol: schema_method_symbol(target),
     })
 }
 
@@ -326,6 +341,7 @@ fn reference_for_schema_field_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), range),
         kind: ReferenceKind::Declaration,
+        symbol: schema_field_symbol(target),
     })
 }
 
@@ -347,6 +363,7 @@ fn reference_for_schema_variant_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), range),
         kind: ReferenceKind::Declaration,
+        symbol: schema_variant_symbol(target),
     })
 }
 
@@ -377,6 +394,7 @@ fn schema_method_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, site.member_range),
                 kind: ReferenceKind::Call,
+                symbol: schema_method_symbol(target),
             });
         }
     }
@@ -410,6 +428,7 @@ fn schema_field_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, site.member_range),
                 kind: resolved_use_reference_kind(text, site.member_range),
+                symbol: schema_field_symbol(target),
             });
         }
     }
@@ -443,6 +462,7 @@ fn schema_record_field_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Read,
+            symbol: schema_field_symbol(target),
         });
     });
     references
@@ -475,6 +495,7 @@ fn schema_record_variant_pattern_field_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Pattern,
+            symbol: schema_field_symbol(target),
         });
     });
     references
@@ -505,6 +526,7 @@ fn schema_variant_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, range),
                 kind: schema_variant_reference_kind(text, range),
+                symbol: schema_variant_symbol(target),
             });
         }
     }
@@ -525,6 +547,7 @@ fn schema_variant_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, range),
                 kind: schema_variant_reference_kind(text, range),
+                symbol: schema_variant_symbol(target),
             });
         }
     }

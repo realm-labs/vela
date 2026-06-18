@@ -8,7 +8,8 @@ use crate::LanguageServiceDatabases;
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
-    name_range_in_text, record_fields, record_variant_patterns, span_text_range, token_text,
+    name_range_in_text, record_fields, record_variant_patterns, source_variant_field_symbol,
+    span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -127,6 +128,7 @@ fn reference_for_variant_field_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), name_range),
         kind: ReferenceKind::Declaration,
+        symbol: source_variant_field_symbol(graph, target.owner, &target.variant, &target.field)?,
     })
 }
 
@@ -208,6 +210,13 @@ fn variant_constructor_field_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Read,
+            symbol: source_variant_field_symbol(
+                graph,
+                target.owner,
+                &target.variant,
+                &target.field,
+            )
+            .expect("variant field target should have a source symbol"),
         });
     });
     references
@@ -238,6 +247,13 @@ fn variant_pattern_field_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Pattern,
+            symbol: source_variant_field_symbol(
+                graph,
+                target.owner,
+                &target.variant,
+                &target.field,
+            )
+            .expect("variant field target should have a source symbol"),
         });
     });
     references

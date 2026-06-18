@@ -8,7 +8,7 @@ use vela_syntax::ast::SourceFile;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    TextRange, path_calls,
+    SymbolRef, TextRange, path_calls,
 };
 
 mod fields;
@@ -42,6 +42,7 @@ pub struct Reference {
     document_id: DocumentId,
     range: DiagnosticRange,
     kind: ReferenceKind,
+    symbol: SymbolRef,
 }
 
 impl Reference {
@@ -58,6 +59,11 @@ impl Reference {
     #[must_use]
     pub const fn kind(&self) -> ReferenceKind {
         self.kind
+    }
+
+    #[must_use]
+    pub const fn symbol(&self) -> &SymbolRef {
+        &self.symbol
     }
 }
 
@@ -311,7 +317,11 @@ impl LanguageServiceDatabases {
                 .filter_map(|(expression, resolution)| match resolution {
                     BindingResolution::Local(resolved) if *resolved == local => {
                         let expression = bindings.expression(expression)?;
-                        self.reference_for_resolved_use_span(expression.span)
+                        let binding = bindings.local(local)?;
+                        self.reference_for_resolved_use_span(
+                            expression.span,
+                            SymbolRef::Local(binding.name.clone()),
+                        )
                     }
                     BindingResolution::Local(_)
                     | BindingResolution::Declaration(_)
@@ -346,6 +356,12 @@ impl LanguageServiceDatabases {
         {
             references.push(reference);
         }
+        let Some(symbol) = graph
+            .declaration(declaration)
+            .map(|declaration| source_symbol_for_declaration(graph, declaration))
+        else {
+            return references;
+        };
 
         for module in graph.module_ids() {
             if let Some(imports) = graph.imports(module) {
@@ -360,6 +376,7 @@ impl LanguageServiceDatabases {
                                     .alias
                                     .as_deref()
                                     .or_else(|| import.path.last().map(String::as_str)),
+                                symbol.clone(),
                             )
                         }
                         Some(ImportResolution::Declaration(_)) | None => None,
@@ -378,7 +395,7 @@ impl LanguageServiceDatabases {
                     .filter_map(|(expression, resolution)| match resolution {
                         BindingResolution::Declaration(resolved) if *resolved == declaration => {
                             let expression = bindings.expression(expression)?;
-                            self.reference_for_resolved_use_span(expression.span)
+                            self.reference_for_resolved_use_span(expression.span, symbol.clone())
                         }
                         BindingResolution::Declaration(_)
                         | BindingResolution::Local(_)
@@ -415,9 +432,17 @@ impl LanguageServiceDatabases {
         {
             references.push(reference);
         }
+        let Some(symbol) = source_symbol_for_declaration_id(graph, target.owner) else {
+            return references;
+        };
 
         for source in self.source_db().records().values() {
-            references.extend(trait_impl_use_references_for_source(graph, source, target));
+            references.extend(trait_impl_use_references_for_source(
+                graph,
+                source,
+                target,
+                symbol.clone(),
+            ));
         }
 
         references.sort_by_key(|reference| {
@@ -445,10 +470,17 @@ impl LanguageServiceDatabases {
         {
             references.push(reference);
         }
+        let Some(symbol) = source_enum_variant_symbol(graph, target.owner, &target.variant) else {
+            return references;
+        };
 
         for source in self.source_db().records().values() {
             references.extend(enum_variant_use_references_for_source(
-                self, graph, source, target,
+                self,
+                graph,
+                source,
+                target,
+                symbol.clone(),
             ));
         }
 
@@ -478,6 +510,7 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range,
             kind,
+            symbol: source_symbol_for_declaration(self.hir_db().graph(), declaration),
         })
     }
 
@@ -490,10 +523,16 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), name_range),
             kind: ReferenceKind::Declaration,
+            symbol: SymbolRef::Local(binding.name.clone()),
         })
     }
 
-    fn reference_for_import(&self, span: Span, name: Option<&str>) -> Option<Reference> {
+    fn reference_for_import(
+        &self,
+        span: Span,
+        name: Option<&str>,
+        symbol: SymbolRef,
+    ) -> Option<Reference> {
         let source = self.source_record_for_reference(span.source)?;
         let span_range = span_text_range(span)?;
         let range = name
@@ -503,6 +542,7 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
             kind: ReferenceKind::Import,
+            symbol,
         })
     }
 
@@ -524,10 +564,11 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), name_range),
             kind: ReferenceKind::Declaration,
+            symbol: source_enum_variant_symbol(graph, target.owner, &target.variant)?,
         })
     }
 
-    fn reference_for_resolved_use_span(&self, span: Span) -> Option<Reference> {
+    fn reference_for_resolved_use_span(&self, span: Span, symbol: SymbolRef) -> Option<Reference> {
         let source = self.source_record_for_reference(span.source)?;
         let range = span_text_range(span)?;
         let kind = resolved_use_reference_kind(source.text(), range);
@@ -535,6 +576,7 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
             kind,
+            symbol,
         })
     }
 
@@ -622,6 +664,7 @@ fn trait_impl_use_references_for_source(
     graph: &ModuleGraph,
     source: &crate::SourceRecord,
     target: &TraitReferenceTarget,
+    symbol: SymbolRef,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let source_id = source.source_id();
@@ -648,6 +691,7 @@ fn trait_impl_use_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Read,
+            symbol: symbol.clone(),
         });
     }
     references
@@ -773,6 +817,7 @@ fn enum_variant_use_references_for_source(
     graph: &ModuleGraph,
     source: &crate::SourceRecord,
     target: &EnumVariantReferenceTarget,
+    symbol: SymbolRef,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
@@ -794,6 +839,7 @@ fn enum_variant_use_references_for_source(
                     range: site.segment_range,
                 },
                 target,
+                symbol.clone(),
                 &mut references,
             );
         }
@@ -816,6 +862,7 @@ fn enum_variant_use_references_for_source(
                     range: site.segment_range,
                 },
                 target,
+                symbol.clone(),
                 &mut references,
             );
         }
@@ -827,6 +874,7 @@ fn push_enum_variant_use_reference_for_path(
     graph: &ModuleGraph,
     site: EnumVariantUseReferenceSite<'_>,
     target: &EnumVariantReferenceTarget,
+    symbol: SymbolRef,
     references: &mut Vec<Reference>,
 ) {
     let source_id = site.source.source_id();
@@ -854,6 +902,7 @@ fn push_enum_variant_use_reference_for_path(
                 document_id: site.source.document_id().clone(),
                 range: diagnostic_range(site.text, site.range),
                 kind: found.kind,
+                symbol,
             });
             break;
         }
@@ -932,6 +981,91 @@ fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) ->
                 .join("::")
         })
         .unwrap_or_else(|| declaration.name.clone())
+}
+
+pub(super) fn source_symbol_for_declaration(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> SymbolRef {
+    SymbolRef::Source(qualified_declaration_name(graph, declaration))
+}
+
+pub(super) fn source_symbol_for_declaration_id(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+) -> Option<SymbolRef> {
+    graph
+        .declaration(declaration)
+        .map(|declaration| source_symbol_for_declaration(graph, declaration))
+}
+
+pub(super) fn source_member_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    member: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{owner}.{member}")))
+}
+
+pub(super) fn source_impl_method_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    method: &str,
+) -> Option<SymbolRef> {
+    let declaration = graph.declaration(declaration)?;
+    let metadata = graph.impl_metadata(declaration.id)?;
+    let owner = match &metadata.kind {
+        ImplMetadataKind::Inherent => metadata
+            .target_path
+            .last()
+            .map(|target| {
+                graph
+                    .module_path(declaration.module)
+                    .map(|path| {
+                        let module = path.join();
+                        if module.is_empty() {
+                            target.clone()
+                        } else {
+                            format!("{module}::{target}")
+                        }
+                    })
+                    .unwrap_or_else(|| target.clone())
+            })
+            .unwrap_or_else(|| qualified_declaration_name(graph, declaration)),
+        ImplMetadataKind::Trait { trait_path } => {
+            let trait_name = trait_path.join("::");
+            let target = metadata.target_path.join("::");
+            format!("{trait_name} for {target}")
+        }
+    };
+    Some(SymbolRef::Source(format!("{owner}.{method}")))
+}
+
+pub(super) fn source_enum_variant_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    variant: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{owner}::{variant}")))
+}
+
+pub(super) fn source_variant_field_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    variant: &str,
+    field: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(variant) = source_enum_variant_symbol(graph, declaration, variant)?
+    else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{variant}.{field}")))
 }
 
 fn declaration_reference_target(

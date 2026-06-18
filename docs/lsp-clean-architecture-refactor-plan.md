@@ -573,7 +573,7 @@ and semantic tokens use the same identities and display primitives.
   schema and builtin `SymbolRef` classification for schema member, variant,
   type, trait, function, and stdlib targets, and definition results now expose
   `SymbolRef` identity for local bindings, source declarations, and schema
-  facts while keeping LSP projection protocol-neutral; references, rename,
+  facts while keeping LSP projection protocol-neutral; rename edit planning,
   inlay hints, diagnostics, and broader source/local identities still need to
   converge on the shared identity directly. Document symbols now expose
   `SymbolRef` identity for source declarations and nested source-owned
@@ -583,7 +583,10 @@ and semantic tokens use the same identities and display primitives.
   declarations, source-owned members, locals, schema facts, and builtin
   symbols. Prepare-rename results now carry `SymbolRef` identity for local,
   source-owned, and source-backed schema targets without changing LSP protocol
-  projection.
+  projection. Reference results now carry `SymbolRef` identity for locals,
+  source declarations, source-owned members and variants, source modules, and
+  schema-owned fields, methods, and variants while keeping LSP projection
+  protocol-neutral.
 - [~] Route hover labels, completion details, signature labels, symbol labels,
   inlay labels, and diagnostics through `DisplayParts` or equivalent
   structured display helpers.

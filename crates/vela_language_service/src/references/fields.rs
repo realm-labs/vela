@@ -9,7 +9,7 @@ use crate::{LanguageServiceDatabases, member_access, query_context};
 use super::{
     Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
     name_range_in_text, record_fields, record_owner_names, resolved_use_reference_kind,
-    span_text_range, token_text,
+    source_member_symbol, span_text_range, token_text,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -143,6 +143,7 @@ fn reference_for_script_field_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), name_range),
         kind: ReferenceKind::Declaration,
+        symbol: source_member_symbol(graph, target.owner, &target.field)?,
     })
 }
 
@@ -173,6 +174,8 @@ fn script_field_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, site.member_range),
                 kind: resolved_use_reference_kind(text, site.member_range),
+                symbol: source_member_symbol(graph, target.owner, &target.field)
+                    .expect("field target should have a source symbol"),
             });
         }
     }
@@ -206,6 +209,8 @@ fn script_record_field_references_for_source(
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, name_range),
             kind: ReferenceKind::Read,
+            symbol: source_member_symbol(graph, target.owner, &target.field)
+                .expect("field target should have a source symbol"),
         });
     });
     references

@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
-    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    SourceFileSnapshot, SymbolRef, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 
 #[test]
@@ -38,6 +39,7 @@ pub fn main(amount: i64) -> i64 {
         line(text, 2).find("amount").expect("second read"),
         ReferenceKind::Read,
     );
+    assert_all_symbols(&references, &SymbolRef::Local("amount".into()));
 }
 
 #[test]
@@ -112,6 +114,10 @@ pub fn main(amount: i64) -> i64 {
         line(main_text, 3).find("grant").expect("second call"),
         ReferenceKind::Call,
     );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::reward::grant".into()),
+    );
 }
 
 #[test]
@@ -159,6 +165,10 @@ pub fn main(reward: Reward) -> i64 {
         7,
         line(text, 7).find("amount").expect("second field read"),
         ReferenceKind::Read,
+    );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::main::Reward.amount".into()),
     );
 }
 
@@ -215,6 +225,10 @@ pub fn main(state: QuestState) -> i64 {
         line(text, 11).find("Active").expect("Active pattern use"),
         ReferenceKind::Pattern,
     );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::main::QuestState::Active".into()),
+    );
 }
 
 #[test]
@@ -259,6 +273,10 @@ pub fn main(reward: Reward) -> i64 {
         10,
         line(text, 10).find("grant").expect("second method call"),
         ReferenceKind::Call,
+    );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::main::Reward.grant".into()),
     );
 }
 
@@ -771,6 +789,7 @@ pub fn main(player: Player) -> i64 {
         line(main_text, 3).find("level").expect("second field read"),
         ReferenceKind::Read,
     );
+    assert_all_symbols(&references, &SymbolRef::Schema("Player.level".into()));
 
     let declaration_references = databases.references(
         &schema,
@@ -1100,6 +1119,15 @@ pub fn main(player: Rewardable) -> i64 {
     );
 
     assert_eq!(declaration_references, references);
+}
+
+fn assert_all_symbols(references: &[Reference], symbol: &SymbolRef) {
+    assert!(
+        references
+            .iter()
+            .all(|reference| reference.symbol() == symbol),
+        "{references:?}"
+    );
 }
 
 fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {

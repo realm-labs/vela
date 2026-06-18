@@ -8,7 +8,7 @@ use crate::{LanguageServiceDatabases, TextRange, member_access, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, is_identifier_boundary,
-    is_identifier_continue, record_owner_names, span_text_range,
+    is_identifier_continue, record_owner_names, source_impl_method_symbol, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -113,6 +113,7 @@ fn reference_for_script_method_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), name_range),
         kind: ReferenceKind::Declaration,
+        symbol: source_impl_method_symbol(graph, target.owner, &target.method)?,
     })
 }
 
@@ -143,6 +144,8 @@ fn script_method_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, site.member_range),
                 kind: ReferenceKind::Call,
+                symbol: source_impl_method_symbol(graph, target.owner, &target.method)
+                    .expect("method target should have a source symbol"),
             });
         }
     }
