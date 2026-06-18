@@ -268,6 +268,161 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn lsp_references_refresh_renamed_imported_source_file() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let reward_path = root.join("scripts").join("game").join("reward.vela");
+    let bonus_path = root.join("scripts").join("game").join("bonus.vela");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &reward_path,
+        "pub fn grant(amount: i64) -> i64 { return amount }",
+    )
+    .expect("source should be writable");
+
+    let root_uri = file_uri(&root);
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let reward_uri = file_uri(&reward_path);
+    let bonus_uri = file_uri(&bonus_path);
+    let old_main_text = "\
+use game::reward::grant
+
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+    let new_main_text = "\
+use game::bonus::grant
+
+pub fn main(amount: i64) -> i64 {
+    return grant(amount)
+}";
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": root_uri,
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": file_uri(&config_path), "type": 1 },
+                { "uri": reward_uri.clone(), "type": 1 }
+            ]
+        }),
+    ));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": old_main_text
+            }
+        }),
+    )));
+
+    let before = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(old_main_text, 3)
+                    .find("grant")
+                    .expect("grant call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let before_references = before["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert_reference(before_references, &reward_uri, 0, "pub fn ".len());
+
+    fs::rename(&reward_path, &bonus_path).expect("source should be renameable");
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": reward_uri.clone(), "type": 3 },
+                { "uri": bonus_uri.clone(), "type": 1 }
+            ]
+        }),
+    ));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didChange",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "version": 2
+            },
+            "contentChanges": [
+                { "text": new_main_text }
+            ]
+        }),
+    )));
+
+    let after = response_value(server.handle_json(&request(
+        3,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(new_main_text, 3)
+                    .find("grant")
+                    .expect("grant call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let after_references = after["result"]
+        .as_array()
+        .expect("references response should be an array");
+    assert_eq!(after_references.len(), 3, "{after_references:?}");
+    assert_reference(after_references, &bonus_uri, 0, "pub fn ".len());
+    assert_reference(
+        after_references,
+        &main_uri,
+        0,
+        line(new_main_text, 0)
+            .find("grant")
+            .expect("import should exist"),
+    );
+    assert_reference(
+        after_references,
+        &main_uri,
+        3,
+        line(new_main_text, 3)
+            .find("grant")
+            .expect("call should exist"),
+    );
+    assert!(
+        after_references
+            .iter()
+            .all(|reference| reference["uri"] != reward_uri),
+        "renamed source must not leave stale references to old URI: {after_references:?}"
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
