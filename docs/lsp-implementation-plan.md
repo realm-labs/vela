@@ -1097,6 +1097,9 @@ Purpose: support workspace navigation and prepare rename.
     incoming, and outgoing call hierarchy for typed receiver calls.
   - [x] Serve source-owned trait impl method prepare, incoming, and outgoing
     call hierarchy for typed receiver calls.
+  - [x] Serve cross-file source-owned trait impl method prepare, incoming,
+    and outgoing call hierarchy for typed receiver calls, including method
+    bodies that call imported helper functions.
   - [x] Serve source-owned trait default/interface method prepare, incoming,
     and default-body outgoing call hierarchy for typed trait receiver calls.
   - [x] Serve schema-backed method and trait-method prepare, incoming, and
@@ -1182,6 +1185,8 @@ Tests:
 - [x] `lsp_call_hierarchy_cross_file_source_method_calls`
 - [x] `call_hierarchy_uses_resolved_trait_impl_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_trait_impl_method_calls`
+- [x] `call_hierarchy_cross_file_trait_impl_method_calls`
+- [x] `lsp_call_hierarchy_cross_file_trait_impl_method_calls`
 - [x] `call_hierarchy_uses_trait_default_and_interface_methods`
 - [x] `lsp_call_hierarchy_uses_trait_default_and_interface_methods`
 - [x] `call_hierarchy_uses_schema_method_and_trait_method_calls`
