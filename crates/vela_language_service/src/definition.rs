@@ -421,3 +421,5 @@ fn short_name(name: &str) -> Option<&str> {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod type_tests;

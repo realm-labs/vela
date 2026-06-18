@@ -181,6 +181,11 @@ fn lsp_type_definition_follows_imported_function_return_source_type() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_source_member_type() {
+    assert_imported_source_member_type_definition();
+}
+
+#[test]
 fn lsp_type_definition_returns_null_for_source_primitive_field() {
     assert_source_primitive_field_type_definition_null();
 }
@@ -603,6 +608,78 @@ pub fn make_inventory() -> Inventory {
                 "character": call_line
                     .find("make_inventory")
                     .expect("call should contain imported function name")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], inventory_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(response["result"]["range"]["end"]["character"], 20);
+}
+
+fn assert_imported_source_member_type_definition() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = r#"use game::inventory::Player
+
+fn main(player: Player) {
+return player.inventory;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}
+
+pub struct Player {
+inventory: Inventory,
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": inventory_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": inventory_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let field_use_line = main_text
+        .lines()
+        .nth(3)
+        .expect("field use line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": field_use_line
+                    .find("inventory")
+                    .expect("field use should contain name")
             }
         }),
     )));
