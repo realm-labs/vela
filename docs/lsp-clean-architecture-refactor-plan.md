@@ -735,7 +735,7 @@ source-owned edit plans.
   classifications; recovery fixtures now cover both lexical degradation and
   retained HIR-backed function/parameter classifications through an incomplete
   body expression.
-- [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
+- [x] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
   Reference fixtures now cover local shadowing, source/schema/builtin/dynamic/
   unresolved resolution categories, failed prepare-rename targets, checked

@@ -159,6 +159,14 @@ M20.5 Phase 8 update: native LSP hover fixtures now cover missing-schema
 type-hint degradation, matching the language service's `Any` fallback without
 running host code.
 
+M20.5 clean LSP architecture Phase 6 update: references now have a
+`reference_query()` result model that distinguishes source-owned, schema-owned,
+builtin, dynamic `Any`, and unresolved targets; source/local reference identity
+is pinned by a shadowing fixture; prepare-rename rejection covers schema-owned,
+builtin, dynamic, unresolved, and ambiguous targets; rename results now route
+through checked `EditPlan`s; and semantic-token recovery fixtures cover stable
+HIR-backed classifications under parser recovery.
+
 M20.5 Phase 12 update: native LSP rename fixtures now cover same-module
 declaration collision rejection, matching the language-service module
 declaration collision guard.
