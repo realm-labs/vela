@@ -49,6 +49,7 @@ pub(super) fn rename_script_method(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 

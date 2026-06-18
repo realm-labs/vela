@@ -56,6 +56,7 @@ pub(super) fn rename_enum_variant(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 

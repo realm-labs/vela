@@ -48,6 +48,7 @@ pub(super) fn rename_script_field(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 

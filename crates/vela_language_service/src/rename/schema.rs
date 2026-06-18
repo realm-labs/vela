@@ -97,6 +97,7 @@ pub(super) fn rename_schema_function(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 
@@ -128,6 +129,7 @@ pub(super) fn rename_schema_variant(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 
@@ -159,6 +161,7 @@ pub(super) fn rename_schema_type(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 
@@ -190,6 +193,7 @@ pub(super) fn rename_schema_member(
     Some(WorkspaceEdit {
         document_edits,
         risks: Vec::new(),
+        symbol: None,
     })
 }
 

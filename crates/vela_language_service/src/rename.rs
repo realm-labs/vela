@@ -53,6 +53,7 @@ impl PrepareRename {
 pub struct WorkspaceEdit {
     document_edits: Vec<DocumentTextEdit>,
     risks: Vec<RenameRisk>,
+    symbol: Option<SymbolRef>,
 }
 
 impl WorkspaceEdit {
@@ -61,7 +62,14 @@ impl WorkspaceEdit {
         Self {
             document_edits,
             risks: Vec::new(),
+            symbol: None,
         }
+    }
+
+    #[must_use]
+    fn with_symbol(mut self, symbol: SymbolRef) -> Self {
+        self.symbol = Some(symbol);
+        self
     }
 
     #[must_use]
@@ -72,6 +80,11 @@ impl WorkspaceEdit {
     #[must_use]
     pub fn risks(&self) -> &[RenameRisk] {
         &self.risks
+    }
+
+    #[must_use]
+    pub fn symbol(&self) -> Option<&SymbolRef> {
+        self.symbol.as_ref()
     }
 }
 
@@ -241,6 +254,7 @@ impl LanguageServiceDatabases {
                 .or_else(|| query.call_member_receiver_text()),
             member_receiver_fact.as_ref(),
         )?;
+        let symbol = target.symbol(self.hir_db().graph())?;
         match target {
             RenameTarget::Local(target) => {
                 self.rename_local(document_id, query.text(), target, new_name)
@@ -266,6 +280,7 @@ impl LanguageServiceDatabases {
                 variants::rename_enum_variant(self, target, new_name)
             }
         }
+        .map(|edit| edit.with_symbol(symbol))
     }
 
     fn rename_local(
@@ -314,6 +329,7 @@ impl LanguageServiceDatabases {
 
         Some(WorkspaceEdit {
             risks: Vec::new(),
+            symbol: None,
             document_edits: vec![document_text_edit_for_rename(
                 self,
                 document_id.clone(),
@@ -353,6 +369,7 @@ impl LanguageServiceDatabases {
         Some(WorkspaceEdit {
             document_edits,
             risks: rename_risks_for_declaration(target.declaration),
+            symbol: None,
         })
     }
 

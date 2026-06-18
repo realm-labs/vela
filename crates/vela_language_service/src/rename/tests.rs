@@ -60,6 +60,7 @@ pub fn main(amount: i64) -> i64 {
             "score",
         )
         .expect("local rename should produce edits");
+    assert_eq!(edit.symbol(), Some(&SymbolRef::Local("next".into())));
 
     let document_edit = edit
         .document_edits()
@@ -162,6 +163,10 @@ pub fn main() -> i64 {
             "BASE",
         )
         .expect("private const rename should produce edits");
+    assert_eq!(
+        edit.symbol(),
+        Some(&SymbolRef::Source("game::main::BONUS".into()))
+    );
 
     let document_edit = document_edit(&edit, &document);
     assert_eq!(document_edit.edits().len(), 3);
@@ -252,6 +257,10 @@ fn bump(player: Player) -> i64 {
             "rank",
         )
         .expect("private struct field rename should produce edits");
+    assert_eq!(
+        edit.symbol(),
+        Some(&SymbolRef::Source("game::main::Player.level".into()))
+    );
 
     let document_edit = document_edit(&edit, &document);
     assert_eq!(document_edit.edits().len(), 3);
@@ -704,6 +713,10 @@ pub fn main(player: Player) -> i64 {
             "rank",
         )
         .expect("source-backed schema field rename should produce edits");
+    assert_eq!(
+        edit.symbol(),
+        Some(&SymbolRef::Schema("Player.level".into()))
+    );
 
     let schema_edit = document_edit(&edit, &schema);
     assert_eq!(schema_edit.edits().len(), 1);
