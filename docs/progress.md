@@ -237,6 +237,10 @@ segments as module/namespace tokens through both the language service and
 native LSP server while preserving the resolved declaration class for the
 imported item.
 
+M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
+schema-backed enum variant constructor and pattern classifications, matching
+the existing language-service schema enum variant token path.
+
 M20.5 Phase 13 update: native LSP code-action fixtures now cover open-overlay
 range stability for schema-backed typo repairs when disk snapshots differ from
 the active editor buffer.

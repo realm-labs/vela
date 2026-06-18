@@ -320,6 +320,139 @@ pub fn main(player: Player) -> i64 {
 }
 
 #[test]
+fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "QuestState",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                    }
+                ],
+                "variants": [
+                    {
+                        "owner": "QuestState",
+                        "name": "Active",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": "Active" }
+                    },
+                    {
+                        "owner": "QuestState",
+                        "name": "Done",
+                        "fact": { "kind": "enum", "name": "QuestState", "variant": "Done" }
+                    }
+                ],
+                "fields": [
+                    {
+                        "owner": "QuestState::Done",
+                        "name": "0",
+                        "fact": { "kind": "primitive", "name": "i64" }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let enum_member = token_type_index(token_types, "enumMember");
+    let host = token_modifier_bit(token_modifiers, "host");
+    let schema = token_modifier_bit(token_modifiers, "schema");
+    let schema_host = host | schema;
+
+    let text = "\
+pub fn main(state: QuestState) -> QuestState {
+    let active = QuestState::Active
+    let done = QuestState::Done(1)
+    match state {
+        QuestState::Active => active
+        QuestState::Done(value) => done
+    }
+}";
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    for (line_index, variant) in [(1, "Active"), (2, "Done"), (4, "Active"), (5, "Done")] {
+        assert_token_at(
+            &tokens,
+            line_index,
+            line(text, line_index)
+                .find(variant)
+                .unwrap_or_else(|| panic!("{variant} should exist")),
+            variant.len(),
+            enum_member,
+            schema_host,
+        );
+    }
+
+    fs::remove_dir_all(root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
