@@ -205,6 +205,42 @@ fn lsp_initialized_registers_watched_files_when_supported() {
 }
 
 #[test]
+fn lsp_ignores_client_response_to_server_request() {
+    let mut server = LspServer::new();
+
+    let result = server.handle_json(
+        &serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "vela/watched-files",
+            "result": null
+        })
+        .to_string(),
+    );
+
+    assert_eq!(result, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_missing_method_request_reports_invalid_request() {
+    let mut server = LspServer::new();
+
+    let response = response_value(
+        server.handle_json(
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 7,
+                "params": {}
+            })
+            .to_string(),
+        ),
+    );
+
+    assert_eq!(response["id"], 7);
+    assert_eq!(response["error"]["code"], -32600);
+    assert_eq!(response["error"]["message"], "missing JSON-RPC method");
+}
+
+#[test]
 fn lsp_cancellation_discards_stale_request() {
     let mut server = LspServer::new();
     let cancel = server.handle_json(&notification(

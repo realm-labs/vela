@@ -127,7 +127,20 @@ impl LspServer {
             ));
         }
 
-        match message.method.as_str() {
+        let Some(method) = message.method.as_deref() else {
+            if message.extra.contains_key("result") || message.extra.contains_key("error") {
+                return JsonRpcResult::None;
+            }
+            return message.id.map_or(JsonRpcResult::None, |id| {
+                JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    "missing JSON-RPC method",
+                ))
+            });
+        };
+
+        match method {
             "$/cancelRequest" => self.cancel_request(message.id, message.params),
             "initialize" => self.initialize(message.id, message.params),
             "initialized" => self.initialized(message.id),
@@ -712,9 +725,12 @@ impl JsonRpcResult {
 struct JsonRpcMessage {
     jsonrpc: String,
     id: Option<RequestId>,
-    method: String,
+    #[serde(default)]
+    method: Option<String>,
     #[serde(default)]
     params: JsonValue,
+    #[serde(flatten)]
+    extra: BTreeMap<String, JsonValue>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
