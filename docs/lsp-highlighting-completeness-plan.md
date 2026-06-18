@@ -245,7 +245,7 @@ validation commands have passed locally.
 | 3. Service semantic classification | Complete | Declaration-kind, resolved-use provenance, builtin-type, literal, operator/punctuation, control-flow keyword, and unresolved-reference classification are covered. |
 | 4. LSP projection and capabilities | Complete | Legend projection remains service-owned; range tokens plus client capability fallback projection are covered in the server. |
 | 5. Zed Tree-sitter fallback | Complete | Zed fallback captures now align with common syntax scopes and validator coverage pins the shared showcase surface. |
-| 6. VS Code fallback and scopes | Not started | Add grammar and semantic-token contribution coverage. |
+| 6. VS Code fallback and scopes | Complete | TextMate fallback scopes and VS Code semantic token contribution metadata now cover custom Vela taxonomy names. |
 | 7. Cross-editor consistency fixtures | Not started | Align service, Zed, and VS Code behavior. |
 | 8. Docs and final validation | Not started | Update setup docs and run final validation. |
 
@@ -493,18 +493,18 @@ Phase 5 notes:
 Goal: make VS Code useful with TextMate fallback alone and richer with LSP
 semantic tokens.
 
-- [ ] Expand `editors/vscode/syntaxes/vela.tmLanguage.json` for declaration
+- [x] Expand `editors/vscode/syntaxes/vela.tmLanguage.json` for declaration
   names, calls, method calls, fields/properties, enum variants, type names,
   builtin types, attributes, literals, comments, operators, punctuation, and
   module/import paths where regex grammar can safely identify them.
-- [ ] Add `semanticTokenTypes`, `semanticTokenModifiers`, and
+- [x] Add `semanticTokenTypes`, `semanticTokenModifiers`, and
   `semanticTokenScopes` contributions to `editors/vscode/package.json` for all
   custom Vela tokens and modifiers that need theme fallback.
-- [ ] Keep VS Code contribution names aligned with the LSP legend strings from
+- [x] Keep VS Code contribution names aligned with the LSP legend strings from
   `vela_lsp_server`.
-- [ ] Keep `editors/vscode/extension.js` a thin launcher/configuration layer.
+- [x] Keep `editors/vscode/extension.js` a thin launcher/configuration layer.
   The package must not compute semantic classifications.
-- [ ] Update `editors/vscode/scripts/validate-package.js` if needed so it
+- [x] Update `editors/vscode/scripts/validate-package.js` if needed so it
   validates contribution metadata without allowing semantic logic in the
   launcher.
 
@@ -513,6 +513,18 @@ Focused validation:
 ```bash
 node editors/vscode/scripts/validate-package.js
 ```
+
+Phase 6 notes:
+
+- VS Code TextMate fallback now covers attributes, declaration names, type and
+  builtin type names, enum variants, module path segments, calls, member
+  accesses, record/named fields, literals, operators, and punctuation where a
+  regex grammar can identify them without semantic analysis.
+- `package.json` now contributes custom Vela semantic token types, modifiers,
+  and TextMate fallback scopes using VS Code's semantic highlighting
+  contribution points. The native LSP server remains the only semantic-token
+  provider.
+- Validated with `node editors/vscode/scripts/validate-package.js`.
 
 ---
 

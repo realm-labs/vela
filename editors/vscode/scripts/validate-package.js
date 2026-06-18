@@ -54,6 +54,68 @@ assert(grammar, "Vela grammar contribution is missing");
 assert(grammar.scopeName === "source.vela", "Vela grammar must use source.vela");
 assert(fs.existsSync(path.join(root, grammar.path)), "grammar path is missing");
 
+const expectedSemanticTokenTypes = [
+  "bytes",
+  "typeAlias",
+  "const",
+  "global",
+  "boolean",
+  "null",
+  "builtinType",
+  "label",
+  "unresolvedReference",
+  "arithmeticOperator",
+  "assignmentOperator",
+  "bitwiseOperator",
+  "comparisonOperator",
+  "logicalOperator",
+  "negationOperator",
+  "punctuation",
+  "brace",
+  "bracket",
+  "parenthesis",
+  "comma",
+  "dot",
+  "colon",
+  "semicolon",
+  "pathSeparator"
+];
+const semanticTokenTypes = manifest.contributes.semanticTokenTypes ?? [];
+for (const id of expectedSemanticTokenTypes) {
+  const entry = semanticTokenTypes.find((tokenType) => tokenType.id === id);
+  assert(entry, `semanticTokenTypes must include ${id}`);
+  assert(entry.superType, `semantic token type ${id} must declare a standard superType`);
+}
+
+const expectedSemanticTokenModifiers = [
+  "host",
+  "unresolved",
+  "source",
+  "public",
+  "mutable",
+  "callable",
+  "controlFlow",
+  "associated",
+  "trait",
+  "schema"
+];
+const semanticTokenModifiers = manifest.contributes.semanticTokenModifiers ?? [];
+for (const id of expectedSemanticTokenModifiers) {
+  assert(
+    semanticTokenModifiers.some((modifier) => modifier.id === id),
+    `semanticTokenModifiers must include ${id}`
+  );
+}
+
+const semanticTokenScopes = manifest.contributes.semanticTokenScopes ?? [];
+const velaScopes = semanticTokenScopes.find((entry) => entry.language === "vela");
+assert(velaScopes, "semanticTokenScopes must include Vela language mappings");
+for (const id of expectedSemanticTokenTypes) {
+  assert(velaScopes.scopes[id], `semanticTokenScopes must map ${id}`);
+}
+assert(velaScopes.scopes["function.defaultLibrary"], "semanticTokenScopes must map stdlib functions");
+assert(velaScopes.scopes["type.defaultLibrary"], "semanticTokenScopes must map builtin types");
+
 const languageConfiguration = readJson(language.configuration);
 assert(languageConfiguration.comments.lineComment === "//", "line comment configuration is missing");
 
@@ -73,9 +135,23 @@ for (const marker of [
 }
 for (const scope of [
   "entity.name.function.vela",
-  "constant.language.vela",
+  "entity.name.function.member.vela",
+  "entity.name.namespace.vela",
+  "entity.name.type.struct.vela",
+  "entity.name.type.enum.vela",
+  "entity.name.type.interface.vela",
+  "support.type.builtin.vela",
+  "constant.language.boolean.vela",
+  "constant.language.null.vela",
+  "constant.other.enum-member.vela",
   "constant.numeric.vela",
+  "string.quoted.bytes.vela",
+  "string.interpolated.vela",
+  "variable.other.property.vela",
   "keyword.operator.vela",
+  "punctuation.accessor.dot.vela",
+  "punctuation.separator.vela",
+  "punctuation.bracket.vela",
   "comment.line.double-slash.vela"
 ]) {
   assert(JSON.stringify(grammarJson).includes(scope), `TextMate grammar must include ${scope}`);

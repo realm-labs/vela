@@ -40,6 +40,261 @@
         "path": "./syntaxes/vela.tmLanguage.json"
       }
     ],
+    "semanticTokenTypes": [
+      {
+        "id": "bytes",
+        "superType": "string",
+        "description": "Vela bytes literal."
+      },
+      {
+        "id": "typeAlias",
+        "superType": "type",
+        "description": "Vela source type alias."
+      },
+      {
+        "id": "const",
+        "superType": "variable",
+        "description": "Vela constant declaration or reference."
+      },
+      {
+        "id": "global",
+        "superType": "variable",
+        "description": "Vela global declaration or reference."
+      },
+      {
+        "id": "boolean",
+        "superType": "keyword",
+        "description": "Vela boolean literal."
+      },
+      {
+        "id": "null",
+        "superType": "keyword",
+        "description": "Vela null literal."
+      },
+      {
+        "id": "builtinType",
+        "superType": "type",
+        "description": "Vela builtin type-hint contract."
+      },
+      {
+        "id": "label",
+        "superType": "variable",
+        "description": "Vela label."
+      },
+      {
+        "id": "unresolvedReference",
+        "superType": "variable",
+        "description": "Vela unresolved reference."
+      },
+      {
+        "id": "arithmeticOperator",
+        "superType": "operator",
+        "description": "Vela arithmetic operator."
+      },
+      {
+        "id": "assignmentOperator",
+        "superType": "operator",
+        "description": "Vela assignment operator."
+      },
+      {
+        "id": "bitwiseOperator",
+        "superType": "operator",
+        "description": "Vela bitwise operator."
+      },
+      {
+        "id": "comparisonOperator",
+        "superType": "operator",
+        "description": "Vela comparison operator."
+      },
+      {
+        "id": "logicalOperator",
+        "superType": "operator",
+        "description": "Vela logical operator."
+      },
+      {
+        "id": "negationOperator",
+        "superType": "operator",
+        "description": "Vela negation operator."
+      },
+      {
+        "id": "punctuation",
+        "superType": "operator",
+        "description": "Vela punctuation."
+      },
+      {
+        "id": "brace",
+        "superType": "operator",
+        "description": "Vela brace punctuation."
+      },
+      {
+        "id": "bracket",
+        "superType": "operator",
+        "description": "Vela bracket punctuation."
+      },
+      {
+        "id": "parenthesis",
+        "superType": "operator",
+        "description": "Vela parenthesis punctuation."
+      },
+      {
+        "id": "comma",
+        "superType": "operator",
+        "description": "Vela comma punctuation."
+      },
+      {
+        "id": "dot",
+        "superType": "operator",
+        "description": "Vela dot punctuation."
+      },
+      {
+        "id": "colon",
+        "superType": "operator",
+        "description": "Vela colon punctuation."
+      },
+      {
+        "id": "semicolon",
+        "superType": "operator",
+        "description": "Vela semicolon punctuation."
+      },
+      {
+        "id": "pathSeparator",
+        "superType": "operator",
+        "description": "Vela module path separator."
+      }
+    ],
+    "semanticTokenModifiers": [
+      {
+        "id": "host",
+        "description": "Vela host-owned symbol provenance."
+      },
+      {
+        "id": "unresolved",
+        "description": "Vela unresolved symbol marker."
+      },
+      {
+        "id": "source",
+        "description": "Vela source-owned symbol provenance."
+      },
+      {
+        "id": "public",
+        "description": "Vela public symbol marker."
+      },
+      {
+        "id": "mutable",
+        "description": "Vela mutable symbol marker."
+      },
+      {
+        "id": "callable",
+        "description": "Vela callable symbol marker."
+      },
+      {
+        "id": "controlFlow",
+        "description": "Vela control-flow keyword marker."
+      },
+      {
+        "id": "associated",
+        "description": "Vela associated item marker."
+      },
+      {
+        "id": "trait",
+        "description": "Vela trait-related symbol marker."
+      },
+      {
+        "id": "schema",
+        "description": "Vela schema-backed symbol provenance."
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "vela",
+        "scopes": {
+          "namespace": [
+            "entity.name.namespace.vela"
+          ],
+          "type.defaultLibrary": [
+            "support.type.builtin.vela"
+          ],
+          "function.defaultLibrary": [
+            "support.function.vela"
+          ],
+          "method.defaultLibrary": [
+            "support.function.member.vela"
+          ],
+          "bytes": [
+            "string.quoted.bytes.vela"
+          ],
+          "builtinType": [
+            "support.type.builtin.vela"
+          ],
+          "typeAlias": [
+            "entity.name.type.vela"
+          ],
+          "const": [
+            "variable.other.constant.vela"
+          ],
+          "global": [
+            "variable.other.constant.vela"
+          ],
+          "label": [
+            "entity.name.label.vela"
+          ],
+          "boolean": [
+            "constant.language.boolean.vela"
+          ],
+          "null": [
+            "constant.language.null.vela"
+          ],
+          "unresolvedReference": [
+            "invalid.illegal.unresolved.vela"
+          ],
+          "arithmeticOperator": [
+            "keyword.operator.vela"
+          ],
+          "assignmentOperator": [
+            "keyword.operator.vela"
+          ],
+          "bitwiseOperator": [
+            "keyword.operator.vela"
+          ],
+          "comparisonOperator": [
+            "keyword.operator.vela"
+          ],
+          "logicalOperator": [
+            "keyword.operator.vela"
+          ],
+          "negationOperator": [
+            "keyword.operator.vela"
+          ],
+          "punctuation": [
+            "punctuation.separator.vela"
+          ],
+          "brace": [
+            "punctuation.bracket.vela"
+          ],
+          "bracket": [
+            "punctuation.bracket.vela"
+          ],
+          "parenthesis": [
+            "punctuation.bracket.vela"
+          ],
+          "comma": [
+            "punctuation.separator.vela"
+          ],
+          "dot": [
+            "punctuation.accessor.dot.vela"
+          ],
+          "colon": [
+            "punctuation.separator.vela"
+          ],
+          "semicolon": [
+            "punctuation.separator.vela"
+          ],
+          "pathSeparator": [
+            "punctuation.accessor.double-colon.vela"
+          ]
+        }
+      }
+    ],
     "configuration": {
       "title": "Vela",
       "properties": {
