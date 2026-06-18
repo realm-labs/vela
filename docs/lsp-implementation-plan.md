@@ -1010,6 +1010,9 @@ Tests:
 - [x] `lsp_references_find_schema_trait_method_calls`
 - [x] `references_find_schema_variant_constructors_and_patterns`
 - [x] `lsp_references_find_schema_variant_constructors_and_patterns`
+- [x] `reference_query_reports_dynamic_any_resolution`
+- [x] `reference_query_reports_unresolved_resolution`
+- [x] `lsp_references_return_empty_for_dynamic_and_unresolved_targets`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `lsp_document_highlight_marks_local_declaration_and_reads`
