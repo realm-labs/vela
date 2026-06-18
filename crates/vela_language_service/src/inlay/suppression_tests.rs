@@ -88,6 +88,51 @@ fn inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_r
 }
 
 #[test]
+fn inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main() {
+    current_rewardable().preview("raw", 1)
+    let summary = current_rewardable().preview("again", 2)
+}"#;
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = vela_analysis::registry::RegistryFacts::default();
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_function(
+        "current_rewardable",
+        TypeFact::function(Vec::new(), TypeFact::trait_type("Rewardable")),
+    );
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::Any, TypeFact::I64], TypeFact::STRING),
+    );
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(1, line(text, 1).find(", 1").expect("first count arg") + 2),
+                "arg1:".to_owned()
+            ),
+            (
+                Position::new(2, "    let summary".len()),
+                ": String".to_owned()
+            ),
+            (
+                Position::new(2, line(text, 2).find(", 2").expect("second count arg") + 2),
+                "arg1:".to_owned()
+            )
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_source_function_and_method_parameters() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Player { level: i64 }
