@@ -6,33 +6,19 @@ use vela_analysis::type_fact::TypeFact;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ImplMetadataKind};
 
+use crate::CompletionSymbol;
 use crate::callable_context::query_type_fact_from_hint;
 use crate::symbol_ref::{source_impl_method_symbol, source_member_symbol};
-use crate::{CompletionSymbol, TextRange};
 
-use super::{
-    CompletionItem, accumulator::CompletionAccumulator,
-    analysis_item::service_item_from_analysis_completion, label_segment_matches,
-};
-
-pub(super) fn source_member_completion_items(
+pub(super) fn source_member_completion_candidates(
     graph: &ModuleGraph,
     schema: &RegistryFacts,
     receiver: &TypeFact,
-    replace_range: TextRange,
-    prefix: &str,
-) -> Vec<CompletionItem> {
-    let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
-    let items = source_field_completion_items(graph, schema, receiver)
+) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
+    source_field_completion_items(graph, schema, receiver)
         .into_iter()
-        .chain(source_method_completion_items(graph, schema, receiver));
-    for (item, symbol) in items {
-        if label_segment_matches(&item.label, prefix) {
-            accumulator
-                .add(service_item_from_analysis_completion(item, prefix).with_symbol(symbol));
-        }
-    }
-    accumulator.into_items()
+        .chain(source_method_completion_items(graph, schema, receiver))
+        .collect()
 }
 
 fn source_field_completion_items(

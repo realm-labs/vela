@@ -1,10 +1,5 @@
-use vela_analysis::completion::member_completions;
-use vela_analysis::registry::RegistryFacts;
-use vela_analysis::type_fact::TypeFact;
-
 use crate::DisplayParts;
 use crate::QueryContext;
-use crate::symbol_ref::{schema_member_symbol, schema_variant_symbol};
 use crate::{DocumentId, GenerationToken, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
@@ -19,6 +14,9 @@ mod item;
 mod lambda_parameter;
 mod local;
 mod map_key;
+mod member_index;
+#[cfg(test)]
+mod member_index_tests;
 #[cfg(test)]
 mod member_tests;
 mod model;
@@ -63,18 +61,17 @@ use expression::{
 use item::item_keyword_completions;
 use lambda_parameter::lambda_parameter_completion_items;
 use map_key::map_key_completion_items as map_key_context_completion_items;
+use member_index::MemberCompletionIndex;
 use model::{CallArgumentContext, MemberReceiver};
 use module_path::module_path_completion_items as module_path_context_completion_items;
 use named_argument::script_function_parameter_completions;
 use pattern::pattern_completion_items as pattern_context_completion_items;
 use record_field::record_field_completion_items as record_field_context_completion_items;
-use source_member::source_member_completion_items as source_member_context_completion_items;
 use statement::statement_keyword_completions;
 use struct_field::struct_field_completion_items as struct_field_context_completion_items;
 use type_hint::type_hint_completion_items;
 
 use accumulator::CompletionAccumulator;
-use analysis_item::service_item_from_analysis_completion;
 
 impl LanguageServiceDatabases {
     #[must_use]
@@ -196,28 +193,14 @@ impl LanguageServiceDatabases {
         let Some(receiver_fact) = query.type_fact_for_range(self, receiver.range) else {
             return Vec::new();
         };
-        let schema = self.schema_db().facts();
-        let owner = schema_completion_owner(&receiver_fact);
-        let mut items = source_member_context_completion_items(
+        let index = MemberCompletionIndex::for_receiver(
             self.hir_db().graph(),
-            schema,
+            self.schema_db().facts(),
             &receiver_fact,
             context.replace_range(),
             context.prefix(),
         );
-        items.extend(
-            member_completions(schema, &receiver_fact)
-                .into_iter()
-                .filter(|item| label_segment_matches(&item.label, context.prefix()))
-                .map(|item| {
-                    let completion = service_item_from_analysis_completion(item, context.prefix());
-                    owner.as_deref().map_or(completion.clone(), |owner| {
-                        enrich_schema_member_completion_item(completion, schema, owner)
-                    })
-                })
-                .collect::<Vec<_>>(),
-        );
-        dedupe_and_filter_service_items(items, context.replace_range(), context.prefix(), |_| true)
+        index.into_items()
     }
 
     fn record_field_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
@@ -317,46 +300,6 @@ impl LanguageServiceDatabases {
 
 fn is_identifier_continue(ch: char) -> bool {
     ch == '_' || ch.is_ascii_alphanumeric()
-}
-
-fn enrich_schema_member_completion_item(
-    item: CompletionItem,
-    schema: &RegistryFacts,
-    owner: &str,
-) -> CompletionItem {
-    let label = item.label().to_owned();
-    match item.kind() {
-        CompletionKind::Field if schema.field_fact(owner, &label).is_some() => {
-            item.with_symbol(schema_member_symbol(owner, &label))
-        }
-        CompletionKind::Method if schema.method_fact(owner, &label).is_some() => {
-            item.with_symbol(schema_member_symbol(owner, &label))
-        }
-        CompletionKind::Method if schema.trait_method_fact(owner, &label).is_some() => {
-            item.with_symbol(schema_member_symbol(owner, &label))
-        }
-        CompletionKind::Variant if schema.variant_fact(owner, &label).is_some() => {
-            item.with_symbol(schema_variant_symbol(owner, &label))
-        }
-        _ => item,
-    }
-}
-
-fn schema_completion_owner(fact: &TypeFact) -> Option<String> {
-    match fact {
-        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
-            Some(name.clone())
-        }
-        TypeFact::Enum {
-            name,
-            variant: Some(variant),
-        } => Some(format!("{name}::{variant}")),
-        TypeFact::Enum {
-            name,
-            variant: None,
-        } => Some(name.clone()),
-        _ => None,
-    }
 }
 
 fn dedupe_and_filter_service_items(

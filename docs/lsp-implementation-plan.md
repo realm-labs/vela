@@ -1773,7 +1773,7 @@ Audit note:
   feature producer runs. Feature producers may consume structured context and
   semantic facts, but must not reclassify broad request kind through ad hoc
   string scanning.
-- [ ] Add a unified `MemberCompletionIndex` for source-owned struct fields,
+- [x] Add a unified `MemberCompletionIndex` for source-owned struct fields,
   source inherent impl methods, source trait methods, schema-backed fields and
   methods, and stdlib/builtin value/container methods.
 - [ ] Keep completion identity, filtering, labels, insertion text, details,
@@ -1809,7 +1809,7 @@ fn main() {
   output through full-document, range, and on-type paths.
 - [ ] Extend completion context extraction so typed member access after `.`
   works with an empty prefix and never falls back to globals.
-- [ ] Unify member completion facts for source-owned struct fields, inherent
+- [x] Unify member completion facts for source-owned struct fields, inherent
   impl methods, trait methods, schema-backed fields/methods, and builtin
   value/container methods.
 - [x] Split completion display from insertion for source and schema types:
@@ -1830,7 +1830,7 @@ Tests:
 - [x] `completion_analysis_classifies_type_argument_location`
 - [x] `completion_analysis_classifies_struct_field_declaration_body`
 - [x] `completion_analysis_tracks_expected_type_and_name`
-- [ ] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
+- [x] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
 - [ ] `formatting_compacts_builtin_container_type_arguments`
 - [ ] `formatting_compacts_nested_result_container_type_arguments`
 - [ ] `formatting_formats_container_type_hint_example`
