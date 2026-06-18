@@ -289,6 +289,82 @@ fn lsp_workspace_symbols_include_file_symbols() {
     );
 }
 
+#[test]
+fn lsp_workspace_symbols_drop_deleted_files() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    let source_path = root.join("scripts").join("game").join("reward.vela");
+    fs::write(&source_path, "pub fn grant() -> i64 { return 1 }")
+        .expect("source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [
+                { "uri": file_uri(&config_path), "type": 1 },
+                { "uri": source_uri.clone(), "type": 1 }
+            ]
+        }),
+    ));
+
+    let before = workspace_symbols(&mut server, 2, "grant");
+    assert!(
+        before
+            .iter()
+            .any(|symbol| symbol["name"] == "game::reward::grant"
+                && symbol["location"]["uri"] == source_uri),
+        "{before:?}"
+    );
+
+    fs::remove_file(&source_path).expect("source should be removable");
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": source_uri.clone(), "type": 3 }]
+        }),
+    ));
+
+    let after = workspace_symbols(&mut server, 3, "grant");
+    assert!(
+        after
+            .iter()
+            .all(|symbol| symbol["location"]["uri"] != source_uri),
+        "{after:?}"
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn workspace_symbols(server: &mut LspServer, id: i64, query: &str) -> Vec<serde_json::Value> {
+    response_value(server.handle_json(&request(
+        id,
+        "workspace/symbol",
+        serde_json::json!({ "query": query }),
+    )))["result"]
+        .as_array()
+        .expect("workspace/symbol should return an array")
+        .clone()
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),

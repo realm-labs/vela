@@ -762,6 +762,7 @@ Tests:
 - [x] `lsp_workspace_symbols_include_script_and_schema_symbols`
 - [x] `lsp_workspace_symbols_include_module_symbols`
 - [x] `lsp_workspace_symbols_include_file_symbols`
+- [x] `lsp_workspace_symbols_drop_deleted_files`
 - [x] `folding_ranges_cover_items_and_blocks`
 - [x] `lsp_folding_ranges_cover_items_and_blocks`
 - [x] `selection_ranges_walk_syntax_ancestors`
