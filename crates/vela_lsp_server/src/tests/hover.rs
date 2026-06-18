@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{LspServer, notification, notification_value, request, response_value};
 
 mod cross_file;
+mod schema_method_return_receivers;
 
 #[test]
 fn lsp_hover_reports_open_overlay_parameter_fact() {

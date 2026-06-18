@@ -135,6 +135,118 @@ fn hover_reports_schema_trait_method_fact() {
 }
 
 #[test]
+fn hover_reports_schema_method_on_schema_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(player: Player) {
+    player.inventory().grant(1)
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_method(
+        "Player",
+        "inventory",
+        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+    );
+    schema.insert_method(
+        "Inventory",
+        "grant",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_method_docs("Inventory", "grant", "Grant inventory items.");
+    let databases = databases_for(&document, text, schema);
+
+    let call_line = text
+        .lines()
+        .nth(1)
+        .expect("schema method call line should exist");
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                1,
+                call_line
+                    .find("grant")
+                    .expect("chained schema method should exist"),
+            ),
+        )
+        .expect("hover should resolve schema method on method-return receiver");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "Inventory.grant");
+    assert_eq!(
+        hover.detail(),
+        "Function(i64) -> bool; effects: unknown; permissions: none"
+    );
+    assert_eq!(
+        hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
+    assert_eq!(hover.docs(), Some("Grant inventory items."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("Inventory.grant".to_owned()))
+    );
+}
+
+#[test]
+fn hover_reports_schema_trait_method_on_schema_method_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(player: Player) {
+    player.rewardable().preview(1)
+}";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
+    schema.insert_method(
+        "Player",
+        "rewardable",
+        TypeFact::function(Vec::new(), TypeFact::trait_type("Rewardable")),
+    );
+    schema.insert_trait_method(
+        "Rewardable",
+        "preview",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_trait_method_docs("Rewardable", "preview", "Preview a reward.");
+    let databases = databases_for(&document, text, schema);
+
+    let call_line = text
+        .lines()
+        .nth(1)
+        .expect("schema trait method call line should exist");
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                1,
+                call_line
+                    .find("preview")
+                    .expect("chained schema trait method should exist"),
+            ),
+        )
+        .expect("hover should resolve schema trait method on method-return receiver");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "Rewardable.preview");
+    assert_eq!(
+        hover.detail(),
+        "Function(i64) -> bool; effects: unknown; permissions: none"
+    );
+    assert_eq!(
+        hover.detail_parts().parts()[0].kind(),
+        DisplayPartKind::Type
+    );
+    assert_eq!(hover.docs(), Some("Preview a reward."));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Schema("Rewardable.preview".to_owned()))
+    );
+}
+
+#[test]
 fn hover_reports_schema_trait_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(rewardable: Rewardable) { return rewardable }";

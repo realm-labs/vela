@@ -868,6 +868,8 @@ Tests:
 - [x] `hover_recovers_parameter_fact_after_body_parse_error`
 - [x] `hover_reports_effects_and_permissions`
 - [x] `hover_reports_schema_trait_method_fact`
+- [x] `hover_reports_schema_method_on_schema_method_return_receiver`
+- [x] `hover_reports_schema_trait_method_on_schema_method_return_receiver`
 - [x] `hover_reports_schema_trait_fact`
 - [x] `hover_reports_schema_type_field_and_function_docs`
 - [x] `hover_reports_schema_enum_variant_fact`
@@ -891,6 +893,8 @@ Tests:
 - [x] `lsp_hover_reports_imported_module_path_fact`
 - [x] `lsp_hover_reports_schema_trait_fact`
 - [x] `lsp_hover_reports_schema_trait_method_fact`
+- [x] `lsp_hover_reports_schema_method_on_schema_method_return_receiver`
+- [x] `lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver`
 - [x] `lsp_hover_reports_schema_enum_variant_fact`
 - [x] `lsp_hover_reports_source_struct_field_fact`
 - [x] `lsp_hover_reports_source_method_fact`
