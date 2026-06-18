@@ -287,6 +287,11 @@ and native LSP coverage for source-owned trait method calls where the receiver
 is produced by a source function return, extending the direct typed trait
 receiver coverage through shared expression receiver facts.
 
+M20.5 Phase 7/19 update: service and native LSP member completion now cover
+source-owned fields and methods where the receiver is produced by another
+source method return, preserving member-context suppression of unrelated
+globals through shared expression receiver facts.
+
 M20.5 Phase 7 update: signature help and shared member callable queries now
 use expression receiver facts, so schema method signatures resolve when the
 receiver is produced by a schema function return in both the language service

@@ -376,6 +376,61 @@ pub fn main() { current_player(). }"#;
 }
 
 #[test]
+fn lsp_member_completion_uses_source_method_return_receiver_facts() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+fn global_grant() -> bool { return true }
+pub fn main(player: Player) { player.inventory(). }"#;
+    let main_line = text.lines().nth(10).expect("main line");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 10,
+                "character": main_line.find(". }").expect("dot") + 1
+            }
+        }),
+    )));
+
+    assert_completion(&response, "count", 5, "i64");
+    assert_completion(&response, "grant", 2, "Function(i64) -> bool");
+    assert_no_completion(&response, "inventory");
+    assert_no_completion(&response, "global_grant");
+}
+
+#[test]
 fn lsp_member_completion_triggers_after_empty_dot_for_builtin_methods() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

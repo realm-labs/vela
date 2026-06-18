@@ -107,6 +107,30 @@ pub fn main() { current_player(). }"#;
     assert_no_completion(&completions, "global_grant");
 }
 
+#[test]
+fn member_completion_uses_source_method_return_receiver_facts() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64) -> bool { return amount > 0 }
+}
+fn global_grant() -> bool { return true }
+pub fn main(player: Player) { player.inventory(). }"#;
+
+    let completions = completions_for(document, text, "player.inventory().");
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "count", CompletionKind::Field);
+    assert_completion(&completions, "grant", CompletionKind::Method);
+    assert_no_completion(&completions, "inventory");
+    assert_no_completion(&completions, "global_grant");
+}
+
 fn completions_for(document: DocumentId, text: &str, needle: &str) -> CompletionList {
     completions_for_with_schema(document, text, needle, RegistryFacts::default())
 }
