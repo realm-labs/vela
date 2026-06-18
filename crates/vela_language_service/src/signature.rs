@@ -571,6 +571,42 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     }
 
     #[test]
+    fn signature_help_resolves_source_trait_default_method_on_source_function_return() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            trait Rewardable {
+                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            struct Player { level: i64 }
+            impl Rewardable for Player {}
+            fn current_player() -> Player { return Player { level: 1 } }
+            pub fn main() { current_player().grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(7).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in returned receiver trait method call");
+        let position = Position::new(7, argument_offset);
+        let help = databases.signature_help(&document, position).expect(
+            "signature help should resolve source trait default method on returned receiver",
+        );
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "game::main::Rewardable.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].name(), "amount");
+        assert_eq!(help.signatures()[0].parameters()[1].name(), "bonus");
+    }
+
+    #[test]
     fn signature_help_resolves_source_enum_variant_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"

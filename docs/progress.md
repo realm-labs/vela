@@ -282,6 +282,10 @@ signatures when the receiver is produced by a source function return, matching
 the source-return member completion path through the shared expression
 receiver facts.
 
+M20.5 Phase 7 update: service and native LSP signature-help fixtures now cover
+source-owned trait default methods where the receiver is produced by a source
+function return, matching direct record receiver and semantic-token coverage.
+
 M20.5 Phase 7 update: member completion now has service and native LSP
 coverage for schema-backed fields and methods on receivers produced by schema
 function returns, preserving member-context suppression of unrelated globals.
