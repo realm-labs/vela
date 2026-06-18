@@ -58,6 +58,11 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
         "game::reward",
         "pub struct Reward { amount: i64 }\npub fn grant() { return 1; }",
     ));
+    graph.add_source(source(
+        3,
+        "game::quest",
+        "pub enum QuestState { Active, Done }",
+    ));
 
     assert_eq!(
         graph.module_child_segments(&ModulePath::root()),
@@ -65,13 +70,14 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
     );
     assert_eq!(
         graph.module_child_segments(&ModulePath::from_qualified("game")),
-        vec!["player", "reward"]
+        vec!["player", "quest", "reward"]
     );
     assert_eq!(
         graph.module_completion_labels(),
         vec![
             "game".to_owned(),
             "game::player".to_owned(),
+            "game::quest".to_owned(),
             "game::reward".to_owned(),
         ]
     );
@@ -98,6 +104,44 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
             .map(|declaration| declaration.name.as_str())
             .collect::<Vec<_>>(),
         vec!["Player", "level"]
+    );
+    assert_eq!(
+        graph
+            .declarations_by_name("QuestState")
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["QuestState"]
+    );
+    assert_eq!(
+        graph
+            .declarations_by_kind(DeclarationKind::Enum)
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["QuestState"]
+    );
+    assert_eq!(
+        graph
+            .declaration_by_type_path(
+                &[
+                    "game".to_owned(),
+                    "quest".to_owned(),
+                    "QuestState".to_owned()
+                ],
+                &[],
+                DeclarationKind::Enum,
+            )
+            .map(|declaration| declaration.name.as_str()),
+        Some("QuestState")
+    );
+    assert_eq!(
+        graph
+            .declarations_by_path_base("QuestState", DeclarationKind::Enum)
+            .into_iter()
+            .map(|declaration| declaration.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["QuestState"]
     );
 }
 

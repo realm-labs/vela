@@ -45,6 +45,7 @@ pub struct ModuleGraph {
     module_children: BTreeMap<ModulePath, BTreeSet<String>>,
     declarations: BTreeMap<HirDeclId, Declaration>,
     declarations_by_name: BTreeMap<String, BTreeSet<HirDeclId>>,
+    declarations_by_kind: BTreeMap<DeclarationKind, BTreeSet<HirDeclId>>,
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     global_metadata: BTreeMap<HirDeclId, GlobalMetadata>,
@@ -414,6 +415,16 @@ impl ModuleGraph {
     }
 
     #[must_use]
+    pub fn declarations_by_name(&self, name: &str) -> Vec<&Declaration> {
+        self.declarations_by_name
+            .get(name)
+            .into_iter()
+            .flat_map(|declarations| declarations.iter())
+            .filter_map(|declaration| self.declarations.get(declaration))
+            .collect()
+    }
+
+    #[must_use]
     pub fn declarations_by_name_prefix(&self, prefix: &str) -> Vec<&Declaration> {
         if prefix.is_empty() {
             return self.declarations.values().collect();
@@ -424,6 +435,54 @@ impl ModuleGraph {
             .take_while(|(name, _)| name.starts_with(prefix))
             .flat_map(|(_, declarations)| declarations.iter())
             .filter_map(|declaration| self.declarations.get(declaration))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn declarations_by_kind(&self, kind: DeclarationKind) -> Vec<&Declaration> {
+        self.declarations_by_kind
+            .get(&kind)
+            .into_iter()
+            .flat_map(|declarations| declarations.iter())
+            .filter_map(|declaration| self.declarations.get(declaration))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn declaration_by_type_path(
+        &self,
+        path: &[String],
+        current_module: &[String],
+        kind: DeclarationKind,
+    ) -> Option<&Declaration> {
+        let (name, module_segments) = path.split_last()?;
+        let module_path = if module_segments.is_empty() {
+            ModulePath::new(current_module.iter().cloned())
+        } else {
+            ModulePath::new(module_segments.iter().cloned())
+        };
+        let module = self.module_id(&module_path)?;
+        let declaration = self.module(module)?.get(name)?;
+        self.declaration(declaration)
+            .filter(|declaration| declaration.kind == kind)
+    }
+
+    #[must_use]
+    pub fn declarations_by_path_base(
+        &self,
+        base: &str,
+        kind: DeclarationKind,
+    ) -> Vec<&Declaration> {
+        let path = ModulePath::from_qualified(base);
+        if path.segments().len() > 1 {
+            return self
+                .declaration_by_type_path(path.segments(), &[], kind)
+                .into_iter()
+                .collect();
+        }
+        self.declarations_by_name(base)
+            .into_iter()
+            .filter(|declaration| declaration.kind == kind)
             .collect()
     }
 
@@ -541,6 +600,10 @@ impl ModuleGraph {
 
         self.declarations_by_name
             .entry(name)
+            .or_default()
+            .insert(id);
+        self.declarations_by_kind
+            .entry(kind)
             .or_default()
             .insert(id);
         self.declarations.insert(id, declaration);

@@ -64,7 +64,7 @@ pub struct Declaration {
     pub span: Span,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum DeclarationKind {
     Const,
     Global,

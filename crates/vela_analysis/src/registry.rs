@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::PrimitiveTag;
 use vela_reflect::access::{FunctionEffectSet, MethodAccess, MethodEffectSet};
@@ -247,9 +247,11 @@ pub struct RegistryFacts {
     traits: BTreeMap<String, TypeFact>,
     trait_docs: BTreeMap<String, String>,
     fields: BTreeMap<(String, String), TypeFact>,
+    fields_by_short_owner: BTreeMap<String, BTreeSet<(String, String)>>,
     field_docs: BTreeMap<(String, String), String>,
     field_access: BTreeMap<(String, String), RegistryFieldAccessFact>,
     variants: BTreeMap<(String, String), TypeFact>,
+    variants_by_short_owner: BTreeMap<String, BTreeSet<(String, String)>>,
     variant_docs: BTreeMap<(String, String), String>,
     methods: BTreeMap<(String, String), TypeFact>,
     method_docs: BTreeMap<(String, String), String>,
@@ -401,6 +403,7 @@ impl RegistryFacts {
         }
 
         collect_trait_methods(registry, &mut facts);
+        facts.rebuild_owner_indexes();
 
         facts
     }
@@ -457,6 +460,31 @@ impl RegistryFacts {
     }
 
     #[must_use]
+    pub fn fields_for_owner(&self, owner: &str) -> Vec<RegistryMemberFact> {
+        self.fields
+            .range((owner.to_owned(), String::new())..)
+            .take_while(|((field_owner, _), _)| field_owner == owner)
+            .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn fields_for_owner_or_short_name(&self, owner: &str) -> Vec<RegistryMemberFact> {
+        let mut fields = self.fields_for_owner(owner);
+        if owner.contains("::") {
+            if let Some(short_owner) = owner.rsplit("::").next() {
+                fields.extend(self.fields_for_owner(short_owner));
+            }
+        } else if let Some(keys) = self.fields_by_short_owner.get(owner) {
+            fields.extend(keys.iter().filter_map(|key| {
+                let fact = self.fields.get(key)?;
+                Some(RegistryMemberFact::new(&key.0, &key.1, fact.clone()))
+            }));
+        }
+        fields
+    }
+
+    #[must_use]
     pub fn index_capability_fact(&self, owner: &str) -> Option<&RegistryIndexCapabilityFact> {
         self.index_capabilities.get(owner)
     }
@@ -490,6 +518,31 @@ impl RegistryFacts {
         self.variants
             .iter()
             .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
+    }
+
+    #[must_use]
+    pub fn variants_for_owner(&self, owner: &str) -> Vec<RegistryMemberFact> {
+        self.variants
+            .range((owner.to_owned(), String::new())..)
+            .take_while(|((variant_owner, _), _)| variant_owner == owner)
+            .map(|((owner, name), fact)| RegistryMemberFact::new(owner, name, fact.clone()))
+            .collect()
+    }
+
+    #[must_use]
+    pub fn variants_for_owner_or_short_name(&self, owner: &str) -> Vec<RegistryMemberFact> {
+        let mut variants = self.variants_for_owner(owner);
+        if owner.contains("::") {
+            if let Some(short_owner) = owner.rsplit("::").next() {
+                variants.extend(self.variants_for_owner(short_owner));
+            }
+        } else if let Some(keys) = self.variants_by_short_owner.get(owner) {
+            variants.extend(keys.iter().filter_map(|key| {
+                let fact = self.variants.get(key)?;
+                Some(RegistryMemberFact::new(&key.0, &key.1, fact.clone()))
+            }));
+        }
+        variants
     }
 
     #[must_use]
@@ -640,7 +693,10 @@ impl RegistryFacts {
         name: impl Into<String>,
         fact: TypeFact,
     ) {
-        self.fields.insert((owner.into(), name.into()), fact);
+        let owner = owner.into();
+        let name = name.into();
+        self.index_field_owner(&owner, &name);
+        self.fields.insert((owner, name), fact);
     }
 
     pub fn insert_field_docs(
@@ -664,7 +720,10 @@ impl RegistryFacts {
         name: impl Into<String>,
         fact: TypeFact,
     ) {
-        self.variants.insert((owner.into(), name.into()), fact);
+        let owner = owner.into();
+        let name = name.into();
+        self.index_variant_owner(&owner, &name);
+        self.variants.insert((owner, name), fact);
     }
 
     pub fn insert_variant_docs(
@@ -755,6 +814,39 @@ impl RegistryFacts {
     pub fn insert_index_capability(&mut self, capability: RegistryIndexCapabilityFact) {
         self.index_capabilities
             .insert(capability.owner.clone(), capability);
+    }
+
+    fn rebuild_owner_indexes(&mut self) {
+        self.fields_by_short_owner.clear();
+        for (owner, name) in self.fields.keys().cloned().collect::<Vec<_>>() {
+            self.index_field_owner(&owner, &name);
+        }
+        self.variants_by_short_owner.clear();
+        for (owner, name) in self.variants.keys().cloned().collect::<Vec<_>>() {
+            self.index_variant_owner(&owner, &name);
+        }
+    }
+
+    fn index_field_owner(&mut self, owner: &str, name: &str) {
+        if let Some(short_owner) = owner.rsplit("::").next()
+            && short_owner != owner
+        {
+            self.fields_by_short_owner
+                .entry(short_owner.to_owned())
+                .or_default()
+                .insert((owner.to_owned(), name.to_owned()));
+        }
+    }
+
+    fn index_variant_owner(&mut self, owner: &str, name: &str) {
+        if let Some(short_owner) = owner.rsplit("::").next()
+            && short_owner != owner
+        {
+            self.variants_by_short_owner
+                .entry(short_owner.to_owned())
+                .or_default()
+                .insert((owner.to_owned(), name.to_owned()));
+        }
     }
 }
 
@@ -1088,6 +1180,46 @@ mod tests {
         assert_eq!(
             facts.field_fact("Player", "mystery"),
             Some(&TypeFact::Unknown)
+        );
+    }
+
+    #[test]
+    fn owner_scoped_member_indexes_include_qualified_short_names() {
+        let mut facts = RegistryFacts::default();
+        facts.insert_field("game::Player", "level", TypeFact::I64);
+        facts.insert_variant(
+            "game::QuestState",
+            "Active",
+            TypeFact::enum_type("game::QuestState", Some("Active")),
+        );
+
+        assert_eq!(
+            facts
+                .fields_for_owner_or_short_name("game::Player")
+                .into_iter()
+                .map(|field| (field.owner, field.name, field.fact))
+                .collect::<Vec<_>>(),
+            vec![("game::Player".to_owned(), "level".to_owned(), TypeFact::I64)]
+        );
+        assert_eq!(
+            facts
+                .fields_for_owner_or_short_name("Player")
+                .into_iter()
+                .map(|field| (field.owner, field.name, field.fact))
+                .collect::<Vec<_>>(),
+            vec![("game::Player".to_owned(), "level".to_owned(), TypeFact::I64)]
+        );
+        assert_eq!(
+            facts
+                .variants_for_owner_or_short_name("QuestState")
+                .into_iter()
+                .map(|variant| (variant.owner, variant.name, variant.fact))
+                .collect::<Vec<_>>(),
+            vec![(
+                "game::QuestState".to_owned(),
+                "Active".to_owned(),
+                TypeFact::enum_type("game::QuestState", Some("Active"))
+            )]
         );
     }
 

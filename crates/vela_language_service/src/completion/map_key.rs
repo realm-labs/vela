@@ -267,12 +267,11 @@ fn script_enum_key_declaration<'a>(
     map_key: &MapKeyContext,
     key_hint: &HirTypeHint,
 ) -> Option<&'a vela_hir::module_graph::Declaration> {
-    let name = key_hint.path.last()?;
-    graph.declarations().find(|declaration| {
-        declaration.kind == DeclarationKind::Enum
-            && declaration.name == *name
-            && type_hint_path_matches(graph, declaration, key_hint, &map_key.current_module)
-    })
+    graph.declaration_by_type_path(
+        &key_hint.path,
+        &map_key.current_module,
+        DeclarationKind::Enum,
+    )
 }
 
 fn schema_enum_variant_key_completions(
@@ -280,10 +279,9 @@ fn schema_enum_variant_key_completions(
     key_hint: &HirTypeHint,
 ) -> Vec<CompletionItem> {
     let owner = key_hint.path.join("::");
-    let short_owner = key_hint.path.last().map(String::as_str);
     schema
-        .variants()
-        .filter(|variant| variant.owner == owner || Some(variant.owner.as_str()) == short_owner)
+        .variants_for_owner_or_short_name(&owner)
+        .into_iter()
         .map(|variant| {
             let owner = variant.owner;
             let name = variant.name;
@@ -301,21 +299,4 @@ fn schema_enum_variant_key_completions(
             .with_symbol(schema_variant_symbol(&owner, &name))
         })
         .collect()
-}
-
-fn type_hint_path_matches(
-    graph: &ModuleGraph,
-    declaration: &vela_hir::module_graph::Declaration,
-    hint: &HirTypeHint,
-    current_module: &[String],
-) -> bool {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return false;
-    };
-    let path = &hint.path;
-    if path.len() == 1 {
-        return module_path.segments() == current_module;
-    }
-    let expected = path[..path.len().saturating_sub(1)].join("::");
-    module_path.join() == expected
 }

@@ -240,28 +240,11 @@ fn script_record_constructor_declaration<'a>(
     graph: &'a ModuleGraph,
     constructor: &RecordConstructor,
 ) -> Option<&'a vela_hir::module_graph::Declaration> {
-    let name = constructor.path.last()?;
-    graph.declarations().find(|declaration| {
-        declaration.kind == DeclarationKind::Struct
-            && declaration.name == *name
-            && record_constructor_path_matches(graph, declaration, constructor)
-    })
-}
-
-fn record_constructor_path_matches(
-    graph: &ModuleGraph,
-    declaration: &vela_hir::module_graph::Declaration,
-    constructor: &RecordConstructor,
-) -> bool {
-    let Some(module_path) = graph.module_path(declaration.module) else {
-        return false;
-    };
-    let path = &constructor.path;
-    if path.len() == 1 {
-        return module_path.segments() == constructor.current_module;
-    }
-    let expected = path[..path.len().saturating_sub(1)].join("::");
-    module_path.join() == expected
+    graph.declaration_by_type_path(
+        &constructor.path,
+        &constructor.current_module,
+        DeclarationKind::Struct,
+    )
 }
 
 fn field_completion_from_hint(graph: &ModuleGraph, field: &StructFieldHint) -> CompletionItem {
@@ -287,10 +270,9 @@ fn schema_record_field_completions(
     constructor: &RecordConstructor,
 ) -> Vec<CompletionItem> {
     let owner = constructor.path.join("::");
-    let short_owner = constructor.path.last().map(String::as_str);
     schema
-        .fields()
-        .filter(|field| field.owner == owner || Some(field.owner.as_str()) == short_owner)
+        .fields_for_owner_or_short_name(&owner)
+        .into_iter()
         .map(|field| {
             let owner = field.owner;
             let name = field.name;

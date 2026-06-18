@@ -812,15 +812,19 @@ Purpose: make the new model viable for large workspaces and real editors.
   An explicit ignored service checkpoint now builds a roughly one-million-line
   synthetic workspace and verifies item, expression, type-hint, member, and
   module-path completion contexts.
-- [~] Add or reuse incremental declaration, import, type, member, stdlib,
+- [x] Add or reuse incremental declaration, import, type, member, stdlib,
   schema, local-scope, and reference indexes so completion producers can query
   context-relevant candidate sets without scanning all files.
   - HIR now keeps declaration-name, per-module declaration, virtual module
-    child, and module-label indexes. Source declaration, module-path,
-    expression module, and type-hint completion producers consume those
-    indexes instead of scanning every declaration for source/module candidates.
-    Member, schema, stdlib, local-scope, import, and reference candidate paths
-    still need explicit audit or index reuse proof.
+    child, module-label, declaration-kind, exact-name, and type-path lookup
+    indexes. Source declaration, module-path, expression module, type-hint,
+    record-field, map-key, and pattern completion producers consume those
+    indexes for source/module/type/variant candidates. Schema field and
+    variant completion now uses registry owner/short-owner maps, member
+    completion is receiver-scoped, stdlib and builtin candidates come from
+    bounded fact tables, locals come from the request-local binding map, and
+    references/rename reuse the existing binding/reference query indexes
+    rather than participating in completion candidate scans.
 - [x] Track module fingerprints so body-only edits preserve declaration and
   import indexes.
   - Parse summaries expose declaration/import fingerprints per module, and

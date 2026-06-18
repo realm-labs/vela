@@ -114,9 +114,8 @@ fn script_enum_variant_path_completions(
     prefix: &str,
 ) -> Vec<CompletionItem> {
     graph
-        .declarations()
-        .filter(|declaration| declaration.kind == DeclarationKind::Enum)
-        .filter(|declaration| declaration_owner_matches(graph, declaration, base))
+        .declarations_by_path_base(base, DeclarationKind::Enum)
+        .into_iter()
         .filter_map(|declaration| {
             let owner = declaration_owner_label(graph, declaration)?;
             let shape = graph.enum_shape(declaration.id)?;
@@ -152,8 +151,8 @@ fn schema_enum_variant_path_completions(
     prefix: &str,
 ) -> Vec<CompletionItem> {
     schema
-        .variants()
-        .filter(|variant| owner_matches_path_base(&variant.owner, base))
+        .variants_for_owner_or_short_name(base)
+        .into_iter()
         .map(|variant| {
             let owner = variant.owner;
             let name = variant.name;
@@ -174,12 +173,6 @@ fn schema_enum_variant_path_completions(
         .collect()
 }
 
-fn declaration_owner_matches(graph: &ModuleGraph, declaration: &Declaration, base: &str) -> bool {
-    declaration_owner_label(graph, declaration)
-        .as_deref()
-        .is_some_and(|owner| owner_matches_path_base(owner, base))
-}
-
 fn declaration_owner_label(graph: &ModuleGraph, declaration: &Declaration) -> Option<String> {
     let module_path = graph.module_path(declaration.module)?;
     if module_path.segments().is_empty() {
@@ -190,8 +183,4 @@ fn declaration_owner_label(graph: &ModuleGraph, declaration: &Declaration) -> Op
             &declaration.name,
         ))
     }
-}
-
-fn owner_matches_path_base(owner: &str, base: &str) -> bool {
-    owner == base || owner.rsplit("::").next() == Some(base)
 }

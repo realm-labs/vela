@@ -28,8 +28,8 @@ fn script_pattern_variant_completions(
     current_module: &[String],
 ) -> Vec<CompletionItem> {
     graph
-        .declarations()
-        .filter(|declaration| declaration.kind == DeclarationKind::Enum)
+        .declarations_by_kind(DeclarationKind::Enum)
+        .into_iter()
         .filter_map(|declaration| {
             let shape = graph.enum_shape(declaration.id)?;
             let detail = enum_pattern_detail(graph, declaration, current_module);
