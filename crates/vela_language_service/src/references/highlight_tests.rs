@@ -104,6 +104,90 @@ pub fn main(state: QuestState) -> i64 {
 }
 
 #[test]
+fn document_highlight_imported_symbol_stays_in_active_document() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant
+pub fn main(amount: i64) -> i64 {
+    let first = grant(amount)
+    return grant(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper.clone(), helper_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+        true,
+    );
+    assert_eq!(references.len(), 4, "{references:?}");
+    assert_reference(
+        &references,
+        &helper,
+        0,
+        helper_text.find("grant").expect("helper declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        &main,
+        0,
+        line(main_text, 0).find("grant").expect("import"),
+        ReferenceKind::Import,
+    );
+    assert_reference(
+        &references,
+        &main,
+        2,
+        line(main_text, 2).find("grant").expect("first call"),
+        ReferenceKind::Call,
+    );
+    assert_reference(
+        &references,
+        &main,
+        3,
+        line(main_text, 3).find("grant").expect("second call"),
+        ReferenceKind::Call,
+    );
+
+    let highlights = databases.document_highlights(
+        &main,
+        Position::new(2, line(main_text, 2).find("grant").expect("grant call")),
+    );
+    assert_eq!(highlights.len(), 3, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        0,
+        line(main_text, 0).find("grant").expect("import"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2).find("grant").expect("first call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        3,
+        line(main_text, 3).find("grant").expect("second call"),
+        DocumentHighlightKind::Call,
+    );
+    assert!(
+        highlights.iter().all(|highlight| {
+            highlight.range().start().line != 0
+                || highlight.range().start().character
+                    != helper_text.find("grant").expect("helper declaration")
+        }),
+        "{highlights:?}"
+    );
+}
+
+#[test]
 fn document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -137,6 +221,24 @@ pub fn dynamic(value: Any) { return value.level }";
     assert!(
         dynamic.is_empty(),
         "dynamic receiver members must not invent highlight targets"
+    );
+}
+
+fn assert_reference(
+    references: &[Reference],
+    document_id: &DocumentId,
+    line: usize,
+    character: usize,
+    kind: ReferenceKind,
+) {
+    assert!(
+        references.iter().any(|reference| {
+            reference.document_id() == document_id
+                && reference.range().start().line == line
+                && reference.range().start().character == character
+                && reference.kind() == kind
+        }),
+        "{references:?}"
     );
 }
 
