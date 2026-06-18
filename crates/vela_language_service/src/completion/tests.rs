@@ -368,6 +368,62 @@ fn member_completion_uses_schema_trait_method_facts() {
 }
 
 #[test]
+fn member_completion_triggers_after_dot_with_empty_prefix() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(player: Player) { player. }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_field("Player", "level", TypeFact::I64);
+    schema.insert_method(
+        "Player",
+        "level_up",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_function(
+        "spawn_player",
+        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+    );
+    databases.set_schema_facts(schema);
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find(". }").expect("dot") + 1),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "level", CompletionKind::Field);
+    assert_completion(&completions, "level_up", CompletionKind::Method);
+    assert_no_completion(&completions, "spawn_player");
+}
+
+#[test]
+fn member_completion_includes_builtin_container_methods() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main(scores: Array<String>) { scores. }";
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(0, text.find(". }").expect("dot") + 1),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert_completion(&completions, "first", CompletionKind::Method);
+    assert_completion(&completions, "join", CompletionKind::Method);
+    assert_completion(&completions, "map", CompletionKind::Method);
+    assert_no_completion(&completions, "Array");
+}
+
+#[test]
 fn record_field_completion_requires_known_type() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player { id: String level: i64 }\npub fn main() { let player = Player { id: \"p1\", le } }";

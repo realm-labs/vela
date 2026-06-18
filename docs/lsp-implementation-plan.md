@@ -642,8 +642,8 @@ Tests:
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
 - [x] `lsp_signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
-- [ ] `member_completion_triggers_after_dot_with_empty_prefix`
-- [ ] `member_completion_includes_builtin_container_methods`
+- [x] `member_completion_triggers_after_dot_with_empty_prefix`
+- [x] `member_completion_includes_builtin_container_methods`
 - [ ] `member_completion_includes_source_impl_and_trait_methods`
 - [ ] `lsp_member_completion_includes_source_and_builtin_methods`
 - [ ] `completion_uses_short_type_labels_with_owner_details`
@@ -1810,8 +1810,8 @@ Tests:
 - [ ] `formatting_compacts_nested_result_container_type_arguments`
 - [ ] `formatting_formats_container_type_hint_example`
 - [ ] `lsp_document_formatting_formats_container_type_hint_example`
-- [ ] `member_completion_triggers_after_dot_with_empty_prefix`
-- [ ] `member_completion_includes_builtin_container_methods`
+- [x] `member_completion_triggers_after_dot_with_empty_prefix`
+- [x] `member_completion_includes_builtin_container_methods`
 - [ ] `member_completion_includes_source_impl_and_trait_methods`
 - [ ] `lsp_member_completion_includes_source_and_builtin_methods`
 - [ ] `completion_uses_short_type_labels_with_owner_details`
