@@ -916,6 +916,99 @@ pub fn main() {
     );
 }
 
+#[test]
+fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
+    let root = temp_workspace();
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &schema_path,
+        schema_with_dynamic_quest_state_tuple_variant(),
+    )
+    .expect("schema artifact should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {
+                "workspace": {
+                    "roots": [file_uri(&root.join("scripts"))]
+                },
+                "host": {
+                    "schema": file_uri(&schema_path)
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = r#"pub fn main() {
+    QuestState::Dynamic("raw", 1)
+    QuestState::Stable("ok", 2)
+}"#;
+    let stable_line = text.lines().nth(2).expect("stable line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 4, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": { "line": 1, "character": 31 },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 2,
+                    "character": stable_line.find("\"ok\"").expect("stable first arg")
+                },
+                "label": "arg0:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": {
+                    "line": 2,
+                    "character": stable_line.find(", 2").expect("stable second arg") + 2
+                },
+                "label": "arg1:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
@@ -962,6 +1055,54 @@ fn schema_with_quest_state_tuple_variant() -> &'static str {
                 },
                 {
                     "owner": "QuestState::Active",
+                    "name": "1",
+                    "fact": { "kind": "primitive", "name": "i64" }
+                }
+            ]
+        }
+    }"#
+}
+
+fn schema_with_dynamic_quest_state_tuple_variant() -> &'static str {
+    r#"{
+        "formatVersion": 1,
+        "facts": {
+            "types": [
+                {
+                    "name": "QuestState",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": null }
+                }
+            ],
+            "variants": [
+                {
+                    "owner": "QuestState",
+                    "name": "Dynamic",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Dynamic" }
+                },
+                {
+                    "owner": "QuestState",
+                    "name": "Stable",
+                    "fact": { "kind": "enum", "name": "QuestState", "variant": "Stable" }
+                }
+            ],
+            "fields": [
+                {
+                    "owner": "QuestState::Dynamic",
+                    "name": "0",
+                    "fact": { "kind": "any" }
+                },
+                {
+                    "owner": "QuestState::Dynamic",
+                    "name": "1",
+                    "fact": { "kind": "primitive", "name": "i64" }
+                },
+                {
+                    "owner": "QuestState::Stable",
+                    "name": "0",
+                    "fact": { "kind": "primitive", "name": "string" }
+                },
+                {
+                    "owner": "QuestState::Stable",
                     "name": "1",
                     "fact": { "kind": "primitive", "name": "i64" }
                 }

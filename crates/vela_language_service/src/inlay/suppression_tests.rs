@@ -102,11 +102,66 @@ pub fn main() {
     );
 }
 
+#[test]
+fn inlay_hints_suppress_any_schema_enum_variant_payloads() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main() {
+    QuestState::Dynamic("raw", 1)
+    QuestState::Stable("ok", 2)
+}"#;
+    let stable_line = line(text, 2);
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = vela_analysis::registry::RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Dynamic",
+        TypeFact::enum_type("QuestState", Some("Dynamic")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Stable",
+        TypeFact::enum_type("QuestState", Some("Stable")),
+    );
+    schema.insert_field("QuestState::Dynamic", "0", TypeFact::Any);
+    schema.insert_field("QuestState::Dynamic", "1", TypeFact::I64);
+    schema.insert_field("QuestState::Stable", "0", TypeFact::STRING);
+    schema.insert_field("QuestState::Stable", "1", TypeFact::I64);
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (Position::new(1, 31), "arg1:".to_owned()),
+            (
+                Position::new(2, stable_line.find("\"ok\"").expect("stable first arg")),
+                "arg0:".to_owned(),
+            ),
+            (
+                Position::new(2, stable_line.find(", 2").expect("stable second arg") + 2),
+                "arg1:".to_owned(),
+            )
+        ]
+    );
+}
+
 fn hint_labels(hints: &[InlayHint]) -> Vec<(Position, String)> {
     hints
         .iter()
         .map(|hint| (hint.position(), hint.label().to_owned()))
         .collect()
+}
+
+fn line(text: &str, line: usize) -> &str {
+    text.lines().nth(line).expect("line should exist")
 }
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {

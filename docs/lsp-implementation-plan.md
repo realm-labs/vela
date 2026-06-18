@@ -1678,6 +1678,7 @@ Tests:
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
 - [x] `inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `inlay_hints_suppress_any_enum_variant_payloads`
+- [x] `inlay_hints_suppress_any_schema_enum_variant_payloads`
 - [x] `lsp_inlay_hints_show_parameter_names`
 - [x] `lsp_inlay_hints_show_source_method_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
@@ -1688,6 +1689,7 @@ Tests:
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
 - [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_enum_variant_payloads`
+- [x] `lsp_inlay_hints_suppress_any_schema_enum_variant_payloads`
 - [x] `lsp_inlay_hints_respect_requested_range`
 
 Validation:

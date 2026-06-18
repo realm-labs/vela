@@ -207,6 +207,10 @@ M20.5 Phase 15 update: native LSP inlay fixtures now cover missing-schema
 degradation, preserving the language-service behavior that unstable host facts
 do not surface as `Any` hints.
 
+M20.5 Phase 15 update: service and native LSP inlay fixtures now cover
+schema-backed tuple-variant payload hints crossing dynamic `Any` facts,
+matching source-owned variant payload suppression.
+
 M20.5 Phase 14 update: selected struct fields, enum record fields, adjacent
 nested declaration member groups, completed multi-line top-level items,
 completed nested impl/trait methods, and completed enum record variants now
