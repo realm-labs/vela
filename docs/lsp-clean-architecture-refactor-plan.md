@@ -729,14 +729,18 @@ source-owned edit plans.
   `WorkspaceEdit` now owns an `EditPlan`; rename producers route through the
   shared checked builder that sorts, deduplicates, versions source documents,
   and rejects overlapping edit ranges before LSP projection.
-- [ ] Ensure semantic tokens are generated from syntax/HIR classification and
+- [x] Ensure semantic tokens are generated from syntax/HIR classification and
   stay stable under parser recovery.
+  Semantic tokens already layer lexer/syntax tokens with HIR/schema
+  classifications; recovery fixtures now cover both lexical degradation and
+  retained HIR-backed function/parameter classifications through an incomplete
+  body expression.
 - [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
   Reference fixtures now cover local shadowing, source/schema/builtin/dynamic/
   unresolved resolution categories, failed prepare-rename targets, checked
-  edit-plan conflict rejection, plus existing module, method, and field cases.
-  Semantic-token stability fixtures remain to close this bucket.
+  edit-plan conflict rejection, semantic-token parser recovery stability, plus
+  existing module, method, and field cases.
 
 Tests:
 

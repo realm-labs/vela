@@ -282,6 +282,58 @@ pub fn main( {
 }
 
 #[test]
+fn semantic_tokens_keep_hir_classifications_under_recovered_body_error() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let value = amount +
+    return amount
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0).find("main").expect("function should exist"),
+        "main".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::DEFINITION),
+    );
+    assert_token_at(
+        &tokens,
+        0,
+        line(text, 0)
+            .find("amount")
+            .expect("parameter declaration should exist"),
+        "amount".len(),
+        SemanticTokenType::Parameter,
+        SemanticTokenModifiers::DECLARATION,
+    );
+    assert_token_at(
+        &tokens,
+        1,
+        line(text, 1)
+            .find("amount")
+            .expect("parameter read should exist"),
+        "amount".len(),
+        SemanticTokenType::Parameter,
+        SemanticTokenModifiers::NONE,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2)
+            .find("amount")
+            .expect("recovered parameter read should exist"),
+        "amount".len(),
+        SemanticTokenType::Parameter,
+        SemanticTokenModifiers::NONE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_script_members() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
