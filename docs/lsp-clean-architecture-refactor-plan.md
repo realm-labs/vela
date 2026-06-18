@@ -780,11 +780,11 @@ Purpose: keep editor mutations structured, local, and source-owned.
   after token/trivia formatting preserves comments, blank-line groups, and
   semicolonless `use` item boundaries; fallback cleanup remains
   trivia-limited.
-- [~] Generate inlay hints from stable type and signature facts, not ad hoc
+- [x] Generate inlay hints from stable type and signature facts, not ad hoc
   string parsing.
-  Parameter inlay hints now use semantic `SignatureParameter` names carried by
-  signature facts instead of parsing formatted signature labels; broader inlay
-  and display-part unification remains open.
+  Parameter-name hints use shared `CallableParameterFacts`, type hints use
+  stable `TypeFact` values, dynamic `Any`/unknown boundaries are suppressed,
+  and inlay labels now carry `DisplayParts` before LSP rendering.
 
 Tests:
 

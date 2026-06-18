@@ -32,7 +32,7 @@ pub enum InlayHintKind {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct InlayHint {
     position: Position,
-    label: String,
+    label: DisplayParts,
     kind: InlayHintKind,
     symbol: Option<SymbolRef>,
 }
@@ -134,7 +134,12 @@ impl InlayHint {
     }
 
     #[must_use]
-    pub fn label(&self) -> &str {
+    pub fn label(&self) -> String {
+        self.label.render()
+    }
+
+    #[must_use]
+    pub fn label_parts(&self) -> &DisplayParts {
         &self.label
     }
 
@@ -747,12 +752,12 @@ impl TypeHintCollector<'_, '_> {
     }
 }
 
-fn parameter_hint_label(parameter: &CallableParameterFacts) -> Option<String> {
+fn parameter_hint_label(parameter: &CallableParameterFacts) -> Option<DisplayParts> {
     if !is_stable_type_fact(parameter.type_fact()) {
         return None;
     }
     let name = parameter.name();
-    (!name.is_empty()).then(|| DisplayParts::parameter_hint(name).render())
+    (!name.is_empty()).then(|| DisplayParts::parameter_hint(name))
 }
 
 fn parameter_symbol(callable: &SymbolRef, parameter: &str) -> SymbolRef {
@@ -837,10 +842,10 @@ fn lambda_parameter_facts(
         .and_then(|fact| fact.lambda.map(|lambda| lambda.params))
 }
 
-fn type_hint_label(fact: &TypeFact) -> Option<String> {
+fn type_hint_label(fact: &TypeFact) -> Option<DisplayParts> {
     is_stable_type_fact(fact).then(|| {
         let type_name = fact.display_name();
-        DisplayParts::type_annotation(&type_name).render()
+        DisplayParts::type_annotation(&type_name)
     })
 }
 

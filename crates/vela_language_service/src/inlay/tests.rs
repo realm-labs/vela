@@ -1,6 +1,7 @@
 use super::*;
 use crate::{
-    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
@@ -92,6 +93,10 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
         hints
             .iter()
             .all(|hint| hint.kind() == InlayHintKind::Parameter)
+    );
+    assert_eq!(
+        hints[0].label_parts().parts()[0].kind(),
+        DisplayPartKind::Parameter
     );
     assert_eq!(
         hint_symbols(&hints),

@@ -1155,6 +1155,8 @@ Purpose: expose gradual type facts without implying static typing.
     suppresses already named arguments.
   - Parameter hints suppress schema/script/variant parameters whose facts cross
     dynamic `Any` or unknown boundaries.
+  - Inlay labels are stored as editor-neutral `DisplayParts` in the language
+    service and rendered only at LSP projection boundaries.
 - [x] Add inferred local type hints from stable TypeFacts.
   - Ordinary `let` bindings now expose stable inferred `TypeFact` labels and
     suppress explicit annotations plus unstable `unknown`/`Any` boundaries.
@@ -1175,7 +1177,8 @@ Purpose: expose gradual type facts without implying static typing.
 
 Tests:
 
-- [x] `inlay_hints_show_parameter_names`
+- [x] `inlay_hints_show_parameter_names` checks rendered labels and structured
+  label parts
 - [x] `inlay_hints_skip_named_arguments_and_unknown_calls`
 - [x] `inlay_hints_use_schema_function_names`
 - [x] `inlay_hints_show_source_method_parameter_names`

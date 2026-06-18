@@ -369,6 +369,17 @@ semantics-preserving. Current code actions remain diagnostic-backed and keep
 ambiguous/dynamic fixes rejected rather than offering speculative semantic
 rewrites.
 
+M20.5 clean LSP architecture Phase 7 update: code actions now build all quick
+fix edits through checked `EditPlan`s, keep ambiguous imports, dynamic receiver
+typos, and unproven semantic rewrites rejected, and pin semantic rewrite
+helpers to local syntax patterns. Formatting remains syntax-owned through
+`vela_syntax::formatting`, preserves comment/blank-line trivia plus
+semicolonless `use` item boundaries, and still formats when HIR analysis has
+unresolved imports. Range and on-type formatting are gated by parser-owned
+item/member spans with trivia-limited fallbacks. Inlay hints now use shared
+callable parameter facts, stable `TypeFact`s, `Any`/unknown suppression, and
+`DisplayParts` labels before native LSP rendering.
+
 ## Current Milestone State
 
 ### Available Now
@@ -717,8 +728,7 @@ diagnostics.
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
 - Continue the clean LSP architecture refactor from the remaining
-  references/rename/semantic-token, code-action/formatting/inlay,
-  scale/configuration/cancellation, and cleanup/docs phases while keeping
+  scale/configuration/cancellation and cleanup/docs phases while keeping
   incomplete capabilities unadvertised.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
