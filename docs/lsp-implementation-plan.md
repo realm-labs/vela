@@ -30,6 +30,22 @@ and incremental invalidation; existing `vela_syntax`, `vela_hir`,
 `vela_analysis`, and `vela_reflect` remain the semantic source of truth.
 Prefer `compile_dir` module-graph semantics with open-document overlays and a
 host schema artifact loaded from exported TypeRegistry/RegistryFacts metadata.
+For authoring UX work, especially Phase 19, follow a rust-analyzer-style
+model where Vela syntax overlaps: build structured completion analysis from
+syntax recovery and semantic facts, run feature producers over explicit
+path/type/dot/declaration/call/pattern/statement contexts, keep member facts
+unified across source/schema/stdlib/builtin surfaces, keep completion display
+separate from insertion/projection fields, and keep formatting in a
+syntax-owned CST/AST layout boundary. When a local rust-analyzer checkout is
+available, including `~/CLionProjects/rust-analyzer` in this development
+setup, inspect it before changing LSP authoring behavior; the most relevant
+references are `crates/ide-completion/src/lib.rs`,
+`crates/ide-completion/src/context.rs`,
+`crates/ide-completion/src/context/analysis.rs`,
+`crates/ide-completion/src/completions/dot.rs`, and
+`crates/rust-analyzer/src/handlers/request.rs`. Borrow the editor model, not
+Rust-only semantics: no macros, borrow checking, Rust trait solving, or
+script-language generics.
 Scale toward Vela workspaces whose total source size approaches one million
 lines across many files and modules by avoiding per-keystroke full project
 rebuilds, prioritizing open-file queries, using generation-based cancellation,
