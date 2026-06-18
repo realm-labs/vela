@@ -1,4 +1,4 @@
-use vela_analysis::{hints::type_fact_from_hint, type_fact::TypeFact};
+use vela_analysis::{hints::type_fact_from_hint_in_module, type_fact::TypeFact};
 use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -43,7 +43,7 @@ pub(super) fn source_field_type_fact_for_target(
         field
             .type_hint
             .as_ref()
-            .map(|hint| type_fact_from_hint(graph, hint))
+            .map(|hint| type_fact_from_hint_in_module(graph, declaration.module, hint))
     })
 }
 

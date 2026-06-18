@@ -9,7 +9,7 @@ pub fn type_fact_from_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> TypeFact 
     type_fact_from_hir_hint(graph, None, hint)
 }
 
-pub(crate) fn type_fact_from_hint_in_module(
+pub fn type_fact_from_hint_in_module(
     graph: &ModuleGraph,
     module: ModuleId,
     hint: &HirTypeHint,

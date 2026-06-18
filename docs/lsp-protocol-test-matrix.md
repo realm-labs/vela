@@ -211,8 +211,9 @@ These are the first places to compare current tests against the matrix:
 
 1. Navigation semantics must stay separate per protocol. Current focused
    fixtures cover `typeDefinition` type-fact targets and null fallback for
-   local source values plus source/schema member values; the remaining audit is
-   broader cross-file/imported type-definition coverage across W1.
+   local source values, source/schema member values, and imported source type
+   aliases used by locals and source fields; the remaining audit is broader
+   cross-file type-definition coverage across W1.
 2. `textDocument/implementation` is currently not part of Vela's advertised
    capability set. Keep the negative provider/method behavior pinned until
    trait/impl implementation semantics are specified.
