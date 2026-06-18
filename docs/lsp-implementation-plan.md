@@ -902,13 +902,16 @@ Tests:
 - [x] `definition_follows_schema_method_source_span`
 - [x] `definition_follows_schema_trait_method_source_span`
 - [x] `definition_follows_schema_variant_source_span`
+- [x] `definition_follows_source_trait_default_method_on_source_function_return_receiver`
 - [x] `lsp_definition_follows_schema_source_span`
 - [x] `lsp_definition_follows_schema_field_source_span`
 - [x] `lsp_definition_follows_schema_method_source_span`
 - [x] `lsp_definition_follows_schema_trait_method_source_span`
 - [x] `lsp_definition_follows_schema_variant_source_span`
+- [x] `lsp_definition_follows_source_trait_default_method_on_source_function_return_receiver`
 - [x] `lsp_definition_returns_null_for_schema_type_without_source_span`
 - [x] `declaration_follows_local_binding`
+- [x] `declaration_follows_source_trait_default_method_on_source_function_return_receiver`
 - [x] `declaration_does_not_fallback_to_enclosing_function_for_unknown_member`
 - [x] `declaration_returns_none_for_dynamic_member`
 - [x] `type_definition_follows_schema_source_span`
@@ -938,6 +941,7 @@ Tests:
 - [x] `lsp_declaration_follows_schema_method_source_span`
 - [x] `lsp_declaration_follows_schema_trait_method_source_span`
 - [x] `lsp_declaration_follows_schema_variant_source_span`
+- [x] `lsp_declaration_follows_source_trait_default_method_on_source_function_return_receiver`
 - [x] `lsp_declaration_returns_null_for_schema_type_without_source_span`
 - [x] `lsp_declaration_returns_null_for_unknown_source_member`
 - [x] `lsp_declaration_returns_null_for_dynamic_member`

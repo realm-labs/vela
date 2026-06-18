@@ -410,6 +410,10 @@ trait default method calls where the receiver is produced by a source function
 return, using trait declaration docs and signatures instead of inventing a
 record-owned method fact.
 
+M20.5 Phase 8 update: service and native LSP definition/declaration now also
+resolve source-owned trait default method calls where the receiver is produced
+by a source function return, landing on the trait method declaration.
+
 M20.5 Phase 16 update: deleting `vela.toml` now has explicit watcher coverage
 that clears published configuration diagnostics and returns the server to
 workspace-root/editor fallback configuration.

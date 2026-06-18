@@ -17,6 +17,9 @@ pub(super) fn source_member_definition_for_target(
     let graph = databases.hir_db().graph();
     source_field_definition_for_target(databases, graph, target, receiver)
         .or_else(|| source_impl_method_definition_for_target(databases, graph, target, receiver))
+        .or_else(|| {
+            source_trait_default_method_definition_for_target(databases, graph, target, receiver)
+        })
         .or_else(|| source_trait_method_definition_for_target(databases, graph, target, receiver))
 }
 
@@ -133,6 +136,46 @@ fn source_trait_method_definition_for_target(
             method.span,
             &method.name,
             source_member_symbol(graph, declaration.id, &method.name),
+        )
+    })
+}
+
+fn source_trait_default_method_definition_for_target(
+    databases: &LanguageServiceDatabases,
+    graph: &ModuleGraph,
+    target: &SymbolTarget,
+    receiver: &TypeFact,
+) -> Option<Definition> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return None;
+        };
+        if !owner_names
+            .iter()
+            .any(|owner| impl_target_matches(&metadata.target_path, owner))
+            || metadata
+                .methods
+                .iter()
+                .any(|method| method.name == target.text())
+        {
+            return None;
+        }
+        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        let method = graph
+            .trait_shape(trait_declaration.id)?
+            .methods
+            .iter()
+            .find(|method| method.name == target.text() && method.has_default)?;
+        definition_from_named_span_with_symbol(
+            databases,
+            method.span,
+            &method.name,
+            source_member_symbol(graph, trait_declaration.id, &method.name),
         )
     })
 }
@@ -258,6 +301,17 @@ fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owne
                 }
             })
             .is_some_and(|qualified| qualified == owner)
+}
+
+fn trait_declaration_for_path<'a>(
+    graph: &'a ModuleGraph,
+    trait_path: &[String],
+) -> Option<&'a Declaration> {
+    let owner = trait_path.join("::");
+    graph.declarations().find(|declaration| {
+        declaration.kind == DeclarationKind::Trait
+            && (declaration.name == owner || declaration_name_matches(graph, declaration, &owner))
+    })
 }
 
 fn impl_target_matches(path: &[String], owner: &str) -> bool {

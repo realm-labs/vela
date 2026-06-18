@@ -167,6 +167,20 @@ fn lsp_declaration_follows_source_struct_field_member_access() {
 }
 
 #[test]
+fn lsp_definition_follows_source_trait_default_method_on_source_function_return_receiver() {
+    assert_source_trait_default_method_navigation_on_source_function_return_receiver(
+        "textDocument/definition",
+    );
+}
+
+#[test]
+fn lsp_declaration_follows_source_trait_default_method_on_source_function_return_receiver() {
+    assert_source_trait_default_method_navigation_on_source_function_return_receiver(
+        "textDocument/declaration",
+    );
+}
+
+#[test]
 fn lsp_definition_returns_null_for_unknown_source_member() {
     assert_unknown_source_member_navigation_null("textDocument/definition");
 }
@@ -447,6 +461,81 @@ fn main() {
             .find("value")
             .expect("field declaration should contain name")
             + "value".len()
+    );
+}
+
+fn assert_source_trait_default_method_navigation_on_source_function_return_receiver(method: &str) {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+}
+struct Player {
+    level: i64,
+}
+impl Rewardable for Player {}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() {
+    return current_player().preview(1)
+}"#;
+    let call_line = text
+        .lines()
+        .nth(10)
+        .expect("trait default method call line should exist");
+    let declaration_line = text
+        .lines()
+        .nth(2)
+        .expect("trait method declaration line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        method,
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 10,
+                "character": call_line
+                    .find("preview")
+                    .expect("trait default method call should exist")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 2);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        declaration_line
+            .find("preview")
+            .expect("trait method declaration should exist")
+    );
+    assert_eq!(
+        response["result"]["range"]["end"]["character"],
+        declaration_line
+            .find("preview")
+            .expect("trait method declaration should exist")
+            + "preview".len()
     );
 }
 
