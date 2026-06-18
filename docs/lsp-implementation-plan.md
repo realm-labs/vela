@@ -580,7 +580,7 @@ Purpose: make common authoring flows fast and schema-aware.
     source-owned inherent method calls, schema-backed host and trait method
     calls, stdlib callback method calls, and imported source function calls
     with defaulted parameters.
-- [ ] Close rust-analyzer-aligned completion gaps found in editor use.
+- [x] Close rust-analyzer-aligned completion gaps found in editor use.
   - Empty-prefix `.` on a known receiver must not return an empty list when
     the receiver has source, schema, trait, or builtin methods.
   - Source-owned struct fields, inherent impl methods, and trait methods must
@@ -1776,7 +1776,7 @@ Audit note:
 - [x] Add a unified `MemberCompletionIndex` for source-owned struct fields,
   source inherent impl methods, source trait methods, schema-backed fields and
   methods, and stdlib/builtin value/container methods.
-- [ ] Keep completion identity, filtering, labels, insertion text, details,
+- [x] Keep completion identity, filtering, labels, insertion text, details,
   docs, snippets, and ranking as separate service-item fields before protocol
   projection.
 - [x] Move formatter follow-up from token-only whitespace decisions toward
@@ -1807,7 +1807,7 @@ fn main() {
   `<` or `>`, exactly one space after commas, no formatter-created type
   argument line breaks without an explicit line-width policy, and idempotent
   output through full-document, range, and on-type paths.
-- [ ] Extend completion context extraction so typed member access after `.`
+- [x] Extend completion context extraction so typed member access after `.`
   works with an empty prefix and never falls back to globals.
 - [x] Unify member completion facts for source-owned struct fields, inherent
   impl methods, trait methods, schema-backed fields/methods, and builtin
@@ -1818,10 +1818,10 @@ fn main() {
 - [x] Add a struct-field declaration completion context for
   `struct Player { | }`, with field snippets and type-hint completion after
   `:`, and suppress expression/global/constructor fallback in that context.
-- [ ] Add statement-position snippets for `for in` and `match`. Known-enum
+- [x] Add statement-position snippets for `for in` and `match`. Known-enum
   match-arm expansion remains a code action; completion should provide the
   skeleton only.
-- [ ] Add native LSP JSON-RPC fixtures mirroring the service tests for each
+- [x] Add native LSP JSON-RPC fixtures mirroring the service tests for each
   correction so editor protocol projection cannot regress independently.
 
 Tests:
@@ -1831,6 +1831,7 @@ Tests:
 - [x] `completion_analysis_classifies_struct_field_declaration_body`
 - [x] `completion_analysis_tracks_expected_type_and_name`
 - [x] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
+- [x] `completion_item_keeps_rendering_projection_fields_separate`
 - [x] `formatting_compacts_builtin_container_type_arguments`
 - [x] `formatting_compacts_nested_result_container_type_arguments`
 - [x] `formatting_formats_container_type_hint_example`

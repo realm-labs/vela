@@ -409,4 +409,76 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn completion_item_keeps_rendering_projection_fields_separate() {
+        let detail_parts = DisplayParts::qualified("game::reward", "Reward");
+        let item = CompletionItem {
+            label: "Reward".to_owned(),
+            kind: CompletionKind::Type,
+            detail: detail_parts.render(),
+            insert_text: Some("Reward".to_owned()),
+            insert_format: CompletionInsertFormat::Snippet,
+            sort_text: Some("0030_01_game::reward::Reward".to_owned()),
+            metadata: CompletionItemMetadata {
+                lookup: Some("game::reward::Reward".to_owned()),
+                edit_range: Some(TextRange::new(10, 12)),
+                text_edit: Some(CompletionTextEdit {
+                    range: TextRange::new(10, 12),
+                    new_text: "Reward".to_owned(),
+                }),
+                filter_text: Some("game::reward::Reward".to_owned()),
+                detail_parts: Some(detail_parts.clone()),
+                label_details: CompletionLabelDetails {
+                    detail: Some("game::reward::Reward".to_owned()),
+                    description: Some("game::reward".to_owned()),
+                },
+                documentation: Some("Reward data.".to_owned()),
+                relevance: CompletionRelevance {
+                    kind_rank: 30,
+                    match_rank: 1,
+                },
+                deprecated: true,
+                symbol: Some(CompletionSymbol::Source("game::reward::Reward".to_owned())),
+                resolve: Some(CompletionResolvePayload::Documentation {
+                    symbol: CompletionSymbol::Source("game::reward::Reward".to_owned()),
+                }),
+            },
+        };
+
+        assert_eq!(item.label(), "Reward");
+        assert_eq!(item.lookup(), "game::reward::Reward");
+        assert_eq!(item.filter_text(), "game::reward::Reward");
+        assert_eq!(item.detail(), "game::reward::Reward");
+        assert_eq!(item.detail_parts(), detail_parts);
+        assert_eq!(item.insert_text(), Some("Reward"));
+        assert_eq!(item.insert_format(), CompletionInsertFormat::Snippet);
+        assert_eq!(
+            item.text_edit().map(CompletionTextEdit::new_text),
+            Some("Reward")
+        );
+        assert_eq!(item.edit_range(), Some(TextRange::new(10, 12)));
+        assert_eq!(item.label_details().detail(), Some("game::reward::Reward"));
+        assert_eq!(item.label_details().description(), Some("game::reward"));
+        assert_eq!(item.documentation(), Some("Reward data."));
+        assert_eq!(
+            item.relevance(),
+            CompletionRelevance {
+                kind_rank: 30,
+                match_rank: 1
+            }
+        );
+        assert!(item.deprecated());
+        assert_eq!(
+            item.symbol(),
+            Some(&CompletionSymbol::Source("game::reward::Reward".to_owned()))
+        );
+        assert_eq!(
+            item.resolve_payload(),
+            Some(&CompletionResolvePayload::Documentation {
+                symbol: CompletionSymbol::Source("game::reward::Reward".to_owned())
+            })
+        );
+        assert_eq!(item.sort_text(), Some("0030_01_game::reward::Reward"));
+    }
 }
