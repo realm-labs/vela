@@ -107,7 +107,8 @@ impl LanguageServiceDatabases {
                 {
                     return Some(hover);
                 }
-                if let Some(hover) = hover_from_local_declaration(bindings, &facts, &target, range)
+                if let Some(hover) =
+                    hover_from_local_declaration(self, bindings, &facts, &target, range)
                 {
                     return Some(hover);
                 }
@@ -306,7 +307,7 @@ fn hover_from_resolution_at_target(
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
             let fact = local_fact(binding, facts).unwrap_or(TypeFact::Unknown);
-            Some(local_hover(binding, fact, range))
+            Some(local_hover(databases, binding, fact, range))
         }
         BindingResolution::Declaration(declaration) => {
             graph.declaration(*declaration).map(|declaration| {
@@ -642,6 +643,7 @@ fn enum_variant_detail(owner: &str, variant: &EnumVariantHint) -> String {
 }
 
 fn hover_from_local_declaration(
+    databases: &LanguageServiceDatabases,
     bindings: &BindingMap,
     facts: &AnalysisFacts,
     target: &SymbolTarget,
@@ -655,6 +657,7 @@ fn hover_from_local_declaration(
             && target.range().end <= end)
             .then(|| {
                 local_hover(
+                    databases,
                     binding,
                     local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
                     range,
@@ -720,7 +723,12 @@ fn declaration_hover_detail(
     .unwrap_or_else(|| TypeFact::Unknown.display_name())
 }
 
-fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -> Hover {
+fn local_hover(
+    databases: &LanguageServiceDatabases,
+    binding: &LocalBinding,
+    fact: TypeFact,
+    range: DiagnosticRange,
+) -> Hover {
     let kind = match binding.kind {
         LocalBindingKind::Parameter | LocalBindingKind::LambdaParameter => HoverKind::Parameter,
         LocalBindingKind::Let | LocalBindingKind::For | LocalBindingKind::Pattern => {
@@ -733,8 +741,28 @@ fn local_hover(binding: &LocalBinding, fact: TypeFact, range: DiagnosticRange) -
         kind,
         detail: fact.display_name(),
         docs: None,
-        symbol: Some(SymbolRef::Local(binding.name.clone())),
+        symbol: Some(local_symbol_for_binding(databases, binding)),
     }
+}
+
+fn local_symbol_for_binding(
+    databases: &LanguageServiceDatabases,
+    binding: &LocalBinding,
+) -> SymbolRef {
+    let Some(source) = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == binding.span.source)
+    else {
+        return SymbolRef::local(binding.name.clone());
+    };
+    SymbolRef::local_from_span(
+        binding.name.clone(),
+        source.document_id().clone(),
+        source.text(),
+        binding.span,
+    )
 }
 
 fn source_type_hint_hover(

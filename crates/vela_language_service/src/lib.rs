@@ -73,7 +73,7 @@ pub use semantic_tokens::{
     SemanticTokenType, SemanticTokens,
 };
 pub use signature::{SignatureHelp, SignatureInformation, SignatureParameter};
-pub use symbol_ref::SymbolRef;
+pub use symbol_ref::{LocalSymbolRef, SymbolRef};
 pub use symbols::{DocumentSymbol, DocumentSymbolKind, WorkspaceSymbol, WorkspaceSymbolLocation};
 pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{

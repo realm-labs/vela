@@ -51,7 +51,8 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(prepare.document_id(), &document);
     assert_eq!(prepare.placeholder(), "next");
     assert_eq!(prepare.range().start(), Position::new(2, 4));
-    assert_eq!(prepare.symbol(), &SymbolRef::Local("next".into()));
+    let symbol = SymbolRef::local_at("next", document.clone(), TextRange::new(42, 46));
+    assert_eq!(prepare.symbol(), &symbol);
 
     let edit = databases
         .rename(
@@ -60,7 +61,7 @@ pub fn main(amount: i64) -> i64 {
             "score",
         )
         .expect("local rename should produce edits");
-    assert_eq!(edit.symbol(), Some(&SymbolRef::Local("next".into())));
+    assert_eq!(edit.symbol(), Some(&symbol));
 
     let document_edit = edit
         .document_edits()

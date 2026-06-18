@@ -86,7 +86,16 @@ fn lsp_completion_symbol(symbol: &CompletionSymbol) -> JsonValue {
         CompletionSymbol::Source(name) => json!({ "kind": "source", "name": name }),
         CompletionSymbol::Schema(name) => json!({ "kind": "schema", "name": name }),
         CompletionSymbol::Builtin(name) => json!({ "kind": "builtin", "name": name }),
-        CompletionSymbol::Local(name) => json!({ "kind": "local", "name": name }),
+        CompletionSymbol::Local(local) => {
+            let mut value = json!({ "kind": "local", "name": local.name() });
+            if let Some(document_id) = local.document_id() {
+                value["documentId"] = json!(document_id.as_str());
+            }
+            if let Some(range) = local.range() {
+                value["range"] = json!({ "start": range.start, "end": range.end });
+            }
+            value
+        }
     }
 }
 

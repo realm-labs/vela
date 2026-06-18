@@ -207,7 +207,14 @@ fn hover_reports_script_parameter_fact() {
     assert_eq!(hover.kind(), HoverKind::Parameter);
     assert_eq!(hover.label(), "amount");
     assert_eq!(hover.detail(), "i64");
-    assert_eq!(hover.symbol(), Some(&SymbolRef::Local("amount".to_owned())));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::local_at(
+            "amount",
+            document,
+            TextRange::new(12, 18)
+        ))
+    );
 }
 
 #[test]

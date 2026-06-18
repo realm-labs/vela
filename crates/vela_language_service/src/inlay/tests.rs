@@ -128,9 +128,21 @@ pub fn main() {
     assert_eq!(
         hint_symbols(&hints),
         vec![
-            Some(SymbolRef::Local("total".to_owned())),
-            Some(SymbolRef::Local("next".to_owned())),
-            Some(SymbolRef::Local("scripted".to_owned()))
+            Some(SymbolRef::local_at(
+                "total",
+                document.clone(),
+                TextRange::new(46, 51)
+            )),
+            Some(SymbolRef::local_at(
+                "next",
+                document.clone(),
+                TextRange::new(69, 73)
+            )),
+            Some(SymbolRef::local_at(
+                "scripted",
+                document.clone(),
+                TextRange::new(95, 103)
+            ))
         ]
     );
 }
@@ -202,7 +214,11 @@ fn inlay_hints_show_host_path_typefacts() {
     assert_eq!(
         hint_symbols(&hints),
         vec![
-            Some(SymbolRef::Local("next".to_owned())),
+            Some(SymbolRef::local_at(
+                "next",
+                document.clone(),
+                TextRange::new(38, 42)
+            )),
             Some(SymbolRef::Schema("Player.level".to_owned())),
             Some(SymbolRef::Schema("Player.level".to_owned())),
             Some(SymbolRef::Schema("Player.grant.arg0".to_owned()))

@@ -320,7 +320,7 @@ impl LanguageServiceDatabases {
                         let binding = bindings.local(local)?;
                         self.reference_for_resolved_use_span(
                             expression.span,
-                            SymbolRef::Local(binding.name.clone()),
+                            self.reference_local_symbol_for_binding(binding),
                         )
                     }
                     BindingResolution::Local(_)
@@ -523,8 +523,20 @@ impl LanguageServiceDatabases {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), name_range),
             kind: ReferenceKind::Declaration,
-            symbol: SymbolRef::Local(binding.name.clone()),
+            symbol: self.reference_local_symbol_for_binding(binding),
         })
+    }
+
+    fn reference_local_symbol_for_binding(&self, binding: &LocalBinding) -> SymbolRef {
+        let Some(source) = self.source_record_for_reference(binding.span.source) else {
+            return SymbolRef::local(binding.name.clone());
+        };
+        SymbolRef::local_from_span(
+            binding.name.clone(),
+            source.document_id().clone(),
+            source.text(),
+            binding.span,
+        )
     }
 
     fn reference_for_import(

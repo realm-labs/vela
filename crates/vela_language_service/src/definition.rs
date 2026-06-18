@@ -69,7 +69,7 @@ impl LanguageServiceDatabases {
             if let Some(binding) = local_declaration_at_target(bindings, &target, self) {
                 return self.definition_from_span_with_symbol(
                     binding.span,
-                    Some(SymbolRef::Local(binding.name.clone())),
+                    Some(self.definition_local_symbol_for_binding(binding)),
                 );
             }
         }
@@ -147,6 +147,18 @@ impl LanguageServiceDatabases {
             .schema_symbol_span(self)
             .and_then(|span| self.definition_from_span_with_symbol(span, target.symbol().cloned()))
     }
+
+    fn definition_local_symbol_for_binding(&self, binding: &LocalBinding) -> SymbolRef {
+        let Some(source) = self.source_record_for(binding.span.source) else {
+            return SymbolRef::local(binding.name.clone());
+        };
+        SymbolRef::local_from_span(
+            binding.name.clone(),
+            source.document_id().clone(),
+            source.text(),
+            binding.span,
+        )
+    }
 }
 
 fn definition_from_resolution_at_target(
@@ -170,10 +182,8 @@ fn definition_from_resolution_at_target(
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
-            databases.definition_from_span_with_symbol(
-                binding.span,
-                Some(SymbolRef::Local(binding.name.clone())),
-            )
+            let symbol = databases.definition_local_symbol_for_binding(binding);
+            databases.definition_from_span_with_symbol(binding.span, Some(symbol))
         }
         BindingResolution::Declaration(declaration) => {
             let declaration = graph.declaration(*declaration)?;
@@ -263,7 +273,11 @@ mod tests {
         );
         assert_eq!(
             definition.symbol(),
-            Some(&SymbolRef::Local("amount".into()))
+            Some(&SymbolRef::local_at(
+                "amount",
+                document.clone(),
+                TextRange::new(12, 18)
+            ))
         );
     }
 
@@ -289,7 +303,11 @@ mod tests {
         );
         assert_eq!(
             declaration.symbol(),
-            Some(&SymbolRef::Local("amount".into()))
+            Some(&SymbolRef::local_at(
+                "amount",
+                document.clone(),
+                TextRange::new(12, 18)
+            ))
         );
     }
 

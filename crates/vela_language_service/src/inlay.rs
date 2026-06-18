@@ -98,6 +98,7 @@ impl<'a> TypeHintContext<'a> {
 }
 
 struct TypeHintCollector<'a, 'hints> {
+    document_id: &'a DocumentId,
     source_text: &'a str,
     line_index: &'a LineIndex,
     range: DiagnosticRangeOffsets,
@@ -107,6 +108,7 @@ struct TypeHintCollector<'a, 'hints> {
 
 impl<'a, 'hints> TypeHintCollector<'a, 'hints> {
     fn new(
+        document_id: &'a DocumentId,
         source_text: &'a str,
         line_index: &'a LineIndex,
         range: DiagnosticRangeOffsets,
@@ -114,6 +116,7 @@ impl<'a, 'hints> TypeHintCollector<'a, 'hints> {
         hints: &'hints mut Vec<InlayHint>,
     ) -> Self {
         Self {
+            document_id,
             source_text,
             line_index,
             range,
@@ -201,6 +204,7 @@ impl LanguageServiceDatabases {
         let facts = AnalysisFacts::from_module_graph(graph);
         let schema = self.schema_db().facts();
         let mut type_collector = TypeHintCollector::new(
+            document_id,
             source.text(),
             &line_index,
             range_offsets,
@@ -535,7 +539,14 @@ impl TypeHintCollector<'_, '_> {
                             position: self.line_index.position(position_offset),
                             label,
                             kind: InlayHintKind::Type,
-                            symbol: Some(SymbolRef::Local(name.clone())),
+                            symbol: Some(SymbolRef::local_at(
+                                name.clone(),
+                                self.document_id.clone(),
+                                TextRange::new(
+                                    position_offset.saturating_sub(name.len()),
+                                    position_offset,
+                                ),
+                            )),
                         });
                     }
                     scope.insert_path([name.clone()], fact);
@@ -714,7 +725,14 @@ impl TypeHintCollector<'_, '_> {
                     position: self.line_index.position(position_offset),
                     label,
                     kind: InlayHintKind::Type,
-                    symbol: Some(SymbolRef::Local(param.name.clone())),
+                    symbol: Some(SymbolRef::local_at(
+                        param.name.clone(),
+                        self.document_id.clone(),
+                        TextRange::new(
+                            position_offset.saturating_sub(param.name.len()),
+                            position_offset,
+                        ),
+                    )),
                 });
             }
             if let Some(fact) = fact {
@@ -741,7 +759,7 @@ fn parameter_symbol(callable: &SymbolRef, parameter: &str) -> SymbolRef {
         SymbolRef::Source(symbol) => SymbolRef::Source(format!("{symbol}.{parameter}")),
         SymbolRef::Schema(symbol) => SymbolRef::Schema(format!("{symbol}.{parameter}")),
         SymbolRef::Builtin(symbol) => SymbolRef::Builtin(format!("{symbol}.{parameter}")),
-        SymbolRef::Local(symbol) => SymbolRef::Local(format!("{symbol}.{parameter}")),
+        SymbolRef::Local(symbol) => SymbolRef::local(format!("{}.{}", symbol.name(), parameter)),
     }
 }
 

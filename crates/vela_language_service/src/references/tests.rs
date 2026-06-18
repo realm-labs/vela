@@ -39,7 +39,10 @@ pub fn main(amount: i64) -> i64 {
         line(text, 2).find("amount").expect("second read"),
         ReferenceKind::Read,
     );
-    assert_all_symbols(&references, &SymbolRef::Local("amount".into()));
+    assert_all_symbols(
+        &references,
+        &SymbolRef::local_at("amount", document, TextRange::new(12, 18)),
+    );
 }
 
 #[test]

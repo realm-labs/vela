@@ -220,7 +220,7 @@ impl LanguageServiceDatabases {
             document_id: document_id.clone(),
             range: token_range,
             placeholder: target.placeholder().to_owned(),
-            symbol: target.symbol(self.hir_db().graph())?,
+            symbol: target.symbol(self.hir_db().graph(), self)?,
         })
     }
 
@@ -254,7 +254,7 @@ impl LanguageServiceDatabases {
                 .or_else(|| query.call_member_receiver_text()),
             member_receiver_fact.as_ref(),
         )?;
-        let symbol = target.symbol(self.hir_db().graph())?;
+        let symbol = target.symbol(self.hir_db().graph(), self)?;
         match target {
             RenameTarget::Local(target) => {
                 self.rename_local(document_id, query.text(), target, new_name)
@@ -550,9 +550,13 @@ impl RenameTarget<'_> {
         }
     }
 
-    fn symbol(&self, graph: &ModuleGraph) -> Option<SymbolRef> {
+    fn symbol(
+        &self,
+        graph: &ModuleGraph,
+        databases: &LanguageServiceDatabases,
+    ) -> Option<SymbolRef> {
         match self {
-            Self::Local(target) => Some(SymbolRef::Local(target.placeholder.clone())),
+            Self::Local(target) => Some(local_symbol_for_target(databases, target)),
             Self::Declaration(target) => Some(SymbolRef::Source(source_symbol_for_declaration(
                 graph,
                 target.declaration,
@@ -584,6 +588,29 @@ impl RenameTarget<'_> {
             ))),
         }
     }
+}
+
+fn local_symbol_for_target(
+    databases: &LanguageServiceDatabases,
+    target: &LocalRenameTarget<'_>,
+) -> SymbolRef {
+    let Some(binding) = target.bindings.local(target.local) else {
+        return SymbolRef::local(target.placeholder.clone());
+    };
+    let Some(source) = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == binding.span.source)
+    else {
+        return SymbolRef::local(binding.name.clone());
+    };
+    SymbolRef::local_from_span(
+        binding.name.clone(),
+        source.document_id().clone(),
+        source.text(),
+        binding.span,
+    )
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
