@@ -239,6 +239,11 @@ use expression receiver facts, so schema method signatures resolve when the
 receiver is produced by a schema function return in both the language service
 and native LSP protocol.
 
+M20.5 Phase 7 update: signature help now also resolves source-owned method
+signatures when the receiver is produced by a source function return, matching
+the source-return member completion path through the shared expression
+receiver facts.
+
 M20.5 Phase 7 update: member completion now has service and native LSP
 coverage for schema-backed fields and methods on receivers produced by schema
 function returns, preserving member-context suppression of unrelated globals.

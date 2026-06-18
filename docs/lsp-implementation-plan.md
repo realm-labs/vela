@@ -265,7 +265,7 @@ coverage complete based only on the older capability phases.
     pass-through without payloads, and invalid payload rejection.
   - Current signature-help fixtures cover script, imported defaulted
     functions, script/source trait/schema/schema-trait/stdlib calls, callback
-    methods, schema methods on schema function-return receivers, enum variant
+    methods, source/schema methods on function-return receivers, enum variant
     calls, active parameters, incomplete calls, and dynamic or unresolved null
     results.
   - Current hover fixtures cover source, cross-file, schema, stdlib, trait,
@@ -704,8 +704,9 @@ Purpose: make common authoring flows fast and schema-aware.
   - Initial service and LSP signature help support script function calls,
     schema-backed host/native function calls, stdlib function calls,
     source-owned inherent method calls, schema-backed host and trait method
-    calls, schema methods on schema function-return receivers, stdlib callback
-    method calls, and imported source function calls with defaulted parameters.
+    calls, source and schema methods on function-return receivers, stdlib
+    callback method calls, and imported source function calls with defaulted
+    parameters.
 - [x] Close rust-analyzer-aligned completion gaps found in editor use.
   - Empty-prefix `.` on a known receiver must not return an empty list when
     the receiver has source, schema, trait, or builtin methods.

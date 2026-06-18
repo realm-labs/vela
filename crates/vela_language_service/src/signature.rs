@@ -433,6 +433,41 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     }
 
     #[test]
+    fn signature_help_resolves_source_method_on_source_function_return() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+            struct Player { level: i64 }
+            impl Player {
+                fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+            }
+            fn current_player() -> Player { return Player { level: 1 } }
+            pub fn main() { current_player().grant(1, 2) }
+        "#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let main_line = text.lines().nth(6).expect("main line should exist");
+        let argument_offset = main_line
+            .find("2)")
+            .expect("second argument should exist in returned receiver method call");
+        let position = Position::new(6, argument_offset);
+        let help = databases
+            .signature_help(&document, position)
+            .expect("signature help should resolve source method on returned receiver");
+
+        assert_eq!(help.active_parameter(), 1);
+        assert_eq!(
+            help.signatures()[0].label(),
+            "Player.grant(amount: i64, bonus: i64) -> i64"
+        );
+        assert_eq!(help.signatures()[0].parameters()[0].label(), "amount: i64");
+        assert_eq!(help.signatures()[0].parameters()[1].label(), "bonus: i64");
+    }
+
+    #[test]
     fn signature_help_resolves_source_trait_receiver_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"
