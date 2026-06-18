@@ -12,6 +12,7 @@ mod returned_receivers;
 mod schema;
 mod schema_fields;
 mod schema_variant_fields;
+mod source_method_return_receivers;
 mod values;
 
 #[test]

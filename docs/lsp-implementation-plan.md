@@ -1319,6 +1319,10 @@ Tests:
 - [x] `lsp_references_find_source_method_calls_on_source_function_return_receivers`
 - [x] `references_find_source_trait_default_method_calls_on_source_function_return_receivers`
 - [x] `lsp_references_find_source_trait_default_method_calls_on_source_function_return_receivers`
+- [x] `references_find_source_method_calls_on_source_method_return_receivers`
+- [x] `lsp_references_find_source_method_calls_on_source_method_return_receivers`
+- [x] `references_find_source_trait_default_method_calls_on_source_method_return_receivers`
+- [x] `lsp_references_find_source_trait_default_method_calls_on_source_method_return_receivers`
 - [x] `references_find_trait_impl_uses`
 - [x] `lsp_references_find_trait_impl_uses`
 - [x] `references_find_schema_field_reads_and_writes`
@@ -1366,6 +1370,10 @@ Tests:
 - [x] `lsp_document_highlight_marks_source_method_calls_on_source_function_return_receivers`
 - [x] `document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers`
 - [x] `lsp_document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers`
+- [x] `document_highlight_marks_source_method_calls_on_source_method_return_receivers`
+- [x] `lsp_document_highlight_marks_source_method_calls_on_source_method_return_receivers`
+- [x] `document_highlight_marks_source_trait_default_method_calls_on_source_method_return_receivers`
+- [x] `lsp_document_highlight_marks_source_trait_default_method_calls_on_source_method_return_receivers`
 - [x] `document_highlight_marks_trait_impl_uses`
 - [x] `lsp_document_highlight_marks_trait_impl_uses`
 - [x] `document_highlight_marks_schema_field_reads_and_writes`
