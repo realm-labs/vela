@@ -671,13 +671,16 @@ and semantic tokens use the same identities and display primitives.
   segments to source declaration/module identities, and local hover/definition
   plus import module and script-owned member hover consume that shared identity
   before falling back to feature-local logic.
-- [~] Ensure schema-owned symbols can be displayed and completed without
+- [x] Ensure schema-owned symbols can be displayed and completed without
   pretending they have source definitions.
   Completion edit metadata now uses editor-neutral `edit_range` naming instead
   of source-definition terminology, and schema-backed record field completions
   carry schema documentation plus `SymbolRef::Schema` identity through LSP
-  projection. Remaining schema-owned surfaces should be audited before this is
-  considered complete.
+  projection. Schema-backed completion, hover, references, rename prepare, and
+  workspace symbol surfaces now carry schema identities without source-backed
+  locations unless schema source spans are present; definition/type-definition
+  now avoid falling back to the enclosing script declaration for schema-owned
+  targets without source spans.
 - [~] Preserve source-span accuracy for script-owned symbols.
   Source enum variant completions in module-path, map-key, and pattern
   contexts now carry `SymbolRef::Source` identities through service and LSP

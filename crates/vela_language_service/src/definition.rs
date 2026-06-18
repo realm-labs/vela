@@ -79,14 +79,16 @@ impl LanguageServiceDatabases {
             }
         }
 
-        self.schema_definition_for_target(&target).or_else(|| {
-            graph
-                .declarations()
-                .find(|declaration| {
-                    declaration.span.source == source_id && declaration.span.contains(offset)
-                })
-                .and_then(|declaration| self.definition_from_declaration(declaration))
-        })
+        if target.is_schema_symbol() {
+            return self.schema_definition_for_target(&target);
+        }
+
+        graph
+            .declarations()
+            .find(|declaration| {
+                declaration.span.source == source_id && declaration.span.contains(offset)
+            })
+            .and_then(|declaration| self.definition_from_declaration(declaration))
     }
 
     #[must_use]
@@ -249,6 +251,8 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
 
 #[cfg(test)]
 mod tests {
+    use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
+
     use super::*;
     use crate::{
         SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
@@ -405,6 +409,28 @@ fn main() {
             definition.symbol(),
             Some(&SymbolRef::Schema("Player".into()))
         );
+    }
+
+    #[test]
+    fn schema_type_without_source_span_does_not_fabricate_definition() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let main_text = "pub fn main(player: Player) { return 1 }";
+        let mut databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), main_text)]);
+        let mut schema = RegistryFacts::default();
+        schema.insert_type("Player", TypeFact::host("Player"));
+        databases.set_schema_facts(schema);
+
+        let definition = databases.type_definition(
+            &main,
+            Position::new(
+                0,
+                main_text
+                    .find("Player")
+                    .expect("schema type hint should exist"),
+            ),
+        );
+
+        assert!(definition.is_none());
     }
 
     #[test]
