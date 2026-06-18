@@ -214,8 +214,9 @@ These are the first places to compare current tests against the matrix:
    local source values, dynamic local values, source/schema member values,
    schema types without source spans, imported source type aliases used by
    locals and source fields, imported source function calls whose return type
-   is source-owned, member access through imported source types, imported enum
-   variant constructors whose owner type is source-owned, and `definition` for
+   is source-owned, imported const/global values whose types are source-owned,
+   member access through imported source types, imported enum variant
+   constructors whose owner type is source-owned, and `definition` for
    imported const/global value uses; the remaining audit is
    broader cross-file type-definition coverage across W1.
 2. `textDocument/implementation` remains intentionally unadvertised until

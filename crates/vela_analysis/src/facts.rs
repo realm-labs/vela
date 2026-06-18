@@ -101,6 +101,9 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
             .type_hint
             .as_ref()
             .map(|hint| type_fact_from_hint_in_module(graph, metadata.module, hint)),
+        DeclarationKind::Global => graph
+            .global_metadata(declaration)
+            .map(|global| type_fact_from_hint_in_module(graph, metadata.module, &global.type_hint)),
         DeclarationKind::Function => graph.function_signature(declaration).map(|signature| {
             let params = signature
                 .params
@@ -119,7 +122,7 @@ fn declaration_fact(graph: &ModuleGraph, declaration: HirDeclId) -> Option<TypeF
                 });
             TypeFact::function(params, returns)
         }),
-        DeclarationKind::Global | DeclarationKind::Impl => None,
+        DeclarationKind::Impl => None,
         DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait => None,
     }
 }
@@ -257,5 +260,55 @@ mod tests {
         assert!(saw_amount);
         assert!(saw_base);
         assert!(saw_bonus);
+    }
+
+    #[test]
+    fn analysis_facts_include_global_type_hints() {
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(1),
+            ModulePath::from_qualified("game"),
+            r#"
+            struct Player { level: i64 }
+            global active: Player
+            fn current() {
+                return active;
+            }
+            "#,
+        ));
+        graph.resolve_imports();
+        assert_eq!(graph.diagnostics(), &[]);
+
+        let active = graph
+            .declarations()
+            .find(|declaration| declaration.name == "active")
+            .expect("active global declaration");
+        let current = graph
+            .declarations()
+            .find(|declaration| declaration.name == "current")
+            .expect("current function declaration");
+        let bindings = graph.bindings(current.id).expect("current bindings");
+        let facts = AnalysisFacts::from_module_graph(&graph);
+
+        assert_eq!(
+            facts.declaration(active.id),
+            Some(&TypeFact::record("game::Player"))
+        );
+
+        let mut saw_active = false;
+        for (expression, resolution) in bindings.resolutions() {
+            let BindingResolution::Declaration(declaration) = resolution else {
+                continue;
+            };
+            if *declaration == active.id {
+                saw_active = true;
+                assert_eq!(
+                    facts.expression(expression),
+                    Some(&TypeFact::record("game::Player"))
+                );
+            }
+        }
+
+        assert!(saw_active);
     }
 }

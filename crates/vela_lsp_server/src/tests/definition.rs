@@ -191,6 +191,11 @@ fn lsp_type_definition_follows_imported_enum_variant_constructor_type() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_const_and_global_source_types() {
+    assert_imported_const_and_global_source_type_definitions();
+}
+
+#[test]
 fn lsp_type_definition_returns_null_for_source_primitive_field() {
     assert_source_primitive_field_type_definition_null();
 }
@@ -762,6 +767,92 @@ fn main() {
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
     assert_eq!(response["result"]["range"]["start"]["character"], 9);
     assert_eq!(response["result"]["range"]["end"]["character"], 22);
+}
+
+fn assert_imported_const_and_global_source_type_definitions() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
+    let main_text = r#"use game::rewards::DEFAULT_CONFIG
+use game::rewards::active_config
+
+fn main() {
+    return DEFAULT_CONFIG.count + active_config.count;
+}"#;
+    let rewards_text = r#"pub struct RewardConfig {
+    count: i64,
+}
+
+pub const DEFAULT_CONFIG: RewardConfig = RewardConfig { count: 1 }
+pub global active_config: RewardConfig"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": rewards_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": rewards_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let return_line = main_text.lines().nth(4).expect("return line should exist");
+
+    let const_response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": return_line
+                    .find("DEFAULT_CONFIG")
+                    .expect("imported const use should exist")
+            }
+        }),
+    )));
+    assert_eq!(const_response["result"]["uri"], rewards_uri);
+    assert_eq!(const_response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(const_response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(const_response["result"]["range"]["end"]["character"], 23);
+
+    let global_response = response_value(server.handle_json(&request(
+        3,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 4,
+                "character": return_line
+                    .find("active_config")
+                    .expect("imported global use should exist")
+            }
+        }),
+    )));
+    assert_eq!(global_response["result"]["uri"], rewards_uri);
+    assert_eq!(global_response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(global_response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(global_response["result"]["range"]["end"]["character"], 23);
 }
 
 fn assert_source_primitive_field_type_definition_null() {
