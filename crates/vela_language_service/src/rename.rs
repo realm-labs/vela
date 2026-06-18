@@ -12,6 +12,10 @@ use vela_syntax::token::Keyword;
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SourceVersion, SymbolRef, TextRange,
+    symbol_ref::{
+        qualified_source_declaration_path, source_enum_variant_symbol, source_member_symbol,
+        source_symbol_for_declaration,
+    },
 };
 
 mod fields;
@@ -557,25 +561,14 @@ impl RenameTarget<'_> {
     ) -> Option<SymbolRef> {
         match self {
             Self::Local(target) => Some(local_symbol_for_target(databases, target)),
-            Self::Declaration(target) => Some(SymbolRef::Source(source_symbol_for_declaration(
-                graph,
-                target.declaration,
-            ))),
-            Self::ScriptField(target) => Some(SymbolRef::Source(format!(
-                "{}.{}",
-                source_symbol_for_declaration_id(graph, target.owner)?,
-                target.field
-            ))),
-            Self::ScriptMethod(target) => Some(SymbolRef::Source(format!(
-                "{}.{}",
-                source_symbol_for_declaration_id(graph, target.owner)?,
-                target.method
-            ))),
-            Self::EnumVariant(target) => Some(SymbolRef::Source(format!(
-                "{}::{}",
-                source_symbol_for_declaration_id(graph, target.owner)?,
-                target.variant
-            ))),
+            Self::Declaration(target) => {
+                Some(source_symbol_for_declaration(graph, target.declaration))
+            }
+            Self::ScriptField(target) => source_member_symbol(graph, target.owner, &target.field),
+            Self::ScriptMethod(target) => source_member_symbol(graph, target.owner, &target.method),
+            Self::EnumVariant(target) => {
+                source_enum_variant_symbol(graph, target.owner, &target.variant)
+            }
             Self::SchemaMember(target) => Some(SymbolRef::Schema(format!(
                 "{}.{}",
                 target.owner, target.member
@@ -896,7 +889,7 @@ fn type_hint_target_declaration<'a>(
     } else {
         graph
             .declarations()
-            .find(|declaration| qualified_declaration_path(graph, declaration) == hint.path)?
+            .find(|declaration| qualified_source_declaration_path(graph, declaration) == hint.path)?
             .id
     };
     graph.declaration(declaration_id)
@@ -1017,29 +1010,6 @@ pub(super) fn type_hint_name_range(
 ) -> Option<TextRange> {
     let span_range = span_text_range(hint.span)?;
     last_name_range_in_text(text, span_range, name)
-}
-
-fn qualified_declaration_path(graph: &ModuleGraph, declaration: &Declaration) -> Vec<String> {
-    graph
-        .module_path(declaration.module)
-        .map(|path| {
-            path.segments()
-                .iter()
-                .chain(std::iter::once(&declaration.name))
-                .cloned()
-                .collect()
-        })
-        .unwrap_or_else(|| vec![declaration.name.clone()])
-}
-
-fn source_symbol_for_declaration(graph: &ModuleGraph, declaration: &Declaration) -> String {
-    qualified_declaration_path(graph, declaration).join("::")
-}
-
-fn source_symbol_for_declaration_id(graph: &ModuleGraph, declaration: HirDeclId) -> Option<String> {
-    graph
-        .declaration(declaration)
-        .map(|declaration| source_symbol_for_declaration(graph, declaration))
 }
 
 pub(super) fn document_text_edit_for_rename(

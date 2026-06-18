@@ -5,11 +5,14 @@ use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 
-use crate::{DocumentId, LanguageServiceDatabases, member_access, query_context};
+use crate::{
+    DocumentId, LanguageServiceDatabases, member_access, query_context,
+    symbol_ref::qualified_source_declaration_path,
+};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, document_text_edit_for_rename,
-    name_range_in_text, qualified_declaration_path, span_text_range,
+    name_range_in_text, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -252,5 +255,6 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
 }
 
 fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
-    declaration.name == owner || qualified_declaration_path(graph, declaration).join("::") == owner
+    declaration.name == owner
+        || qualified_source_declaration_path(graph, declaration).join("::") == owner
 }

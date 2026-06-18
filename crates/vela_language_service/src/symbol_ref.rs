@@ -1,4 +1,7 @@
 use vela_common::Span;
+use vela_hir::ids::HirDeclId;
+use vela_hir::module_graph::{Declaration, ModuleGraph};
+use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{DocumentId, TextRange};
 
@@ -96,4 +99,112 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
     let relative = slice.find(name)?;
     let start = range.start + relative;
     Some(TextRange::new(start, start + name.len()))
+}
+
+pub(crate) fn qualified_source_declaration_path(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> Vec<String> {
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_else(|| vec![declaration.name.clone()])
+}
+
+pub(crate) fn qualified_source_declaration_name(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> String {
+    qualified_source_declaration_path(graph, declaration).join("::")
+}
+
+pub(crate) fn source_symbol_for_declaration(
+    graph: &ModuleGraph,
+    declaration: &Declaration,
+) -> SymbolRef {
+    SymbolRef::Source(qualified_source_declaration_name(graph, declaration))
+}
+
+pub(crate) fn source_symbol_for_declaration_id(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+) -> Option<SymbolRef> {
+    graph
+        .declaration(declaration)
+        .map(|declaration| source_symbol_for_declaration(graph, declaration))
+}
+
+pub(crate) fn source_member_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    member: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{owner}.{member}")))
+}
+
+pub(crate) fn source_impl_method_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    method: &str,
+) -> Option<SymbolRef> {
+    let declaration = graph.declaration(declaration)?;
+    let metadata = graph.impl_metadata(declaration.id)?;
+    let owner = match &metadata.kind {
+        ImplMetadataKind::Inherent => metadata
+            .target_path
+            .last()
+            .map(|target| {
+                graph
+                    .module_path(declaration.module)
+                    .map(|path| {
+                        let module = path.join();
+                        if module.is_empty() {
+                            target.clone()
+                        } else {
+                            format!("{module}::{target}")
+                        }
+                    })
+                    .unwrap_or_else(|| target.clone())
+            })
+            .unwrap_or_else(|| qualified_source_declaration_name(graph, declaration)),
+        ImplMetadataKind::Trait { trait_path } => {
+            let trait_name = trait_path.join("::");
+            let target = metadata.target_path.join("::");
+            format!("{trait_name} for {target}")
+        }
+    };
+    Some(SymbolRef::Source(format!("{owner}.{method}")))
+}
+
+pub(crate) fn source_enum_variant_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    variant: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{owner}::{variant}")))
+}
+
+pub(crate) fn source_variant_field_symbol(
+    graph: &ModuleGraph,
+    declaration: HirDeclId,
+    variant: &str,
+    field: &str,
+) -> Option<SymbolRef> {
+    let SymbolRef::Source(variant) = source_enum_variant_symbol(graph, declaration, variant)?
+    else {
+        return None;
+    };
+    Some(SymbolRef::Source(format!("{variant}.{field}")))
 }

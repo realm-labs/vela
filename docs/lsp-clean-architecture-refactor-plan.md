@@ -581,9 +581,10 @@ and semantic tokens use the same identities and display primitives.
   identity now carries an optional source document plus declaration name range,
   and local-backed definition, hover, references, rename edits, and inferred
   local/lambda inlay hints stamp that precise identity when the binding span is
-  available; broader diagnostic identities and remaining source/member
-  identities still need to converge on the shared identity directly. Document
-  symbols now expose
+  available. Source declaration/member/variant symbol construction now lives in
+  the shared `SymbolRef` boundary and is consumed by references and rename;
+  broader diagnostic identities and remaining source/member producer sites
+  still need to converge on it directly. Document symbols now expose
   `SymbolRef` identity for source declarations and nested source-owned
   members, and workspace symbols expose `SymbolRef` identity for source files,
   modules, source declarations, and schema facts while keeping LSP projection

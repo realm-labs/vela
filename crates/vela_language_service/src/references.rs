@@ -9,6 +9,11 @@ use vela_syntax::ast::SourceFile;
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
     SymbolRef, TextRange, path_calls,
+    symbol_ref::{
+        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
+        source_member_symbol, source_symbol_for_declaration, source_symbol_for_declaration_id,
+        source_variant_field_symbol,
+    },
 };
 
 mod fields;
@@ -725,7 +730,7 @@ fn declaration_path_matches(
     if path.len() == 1 {
         return path.first().is_some_and(|name| name == &declaration.name);
     }
-    qualified_declaration_name(graph, declaration) == path.join("::")
+    qualified_source_declaration_name(graph, declaration) == path.join("::")
 }
 
 fn trait_path_name_range_in_text(
@@ -978,106 +983,7 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
 }
 
 fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
-    declaration.name == owner || qualified_declaration_name(graph, declaration) == owner
-}
-
-fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
-    graph
-        .module_path(declaration.module)
-        .map(|path| {
-            path.segments()
-                .iter()
-                .chain(std::iter::once(&declaration.name))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("::")
-        })
-        .unwrap_or_else(|| declaration.name.clone())
-}
-
-pub(super) fn source_symbol_for_declaration(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-) -> SymbolRef {
-    SymbolRef::Source(qualified_declaration_name(graph, declaration))
-}
-
-pub(super) fn source_symbol_for_declaration_id(
-    graph: &ModuleGraph,
-    declaration: HirDeclId,
-) -> Option<SymbolRef> {
-    graph
-        .declaration(declaration)
-        .map(|declaration| source_symbol_for_declaration(graph, declaration))
-}
-
-pub(super) fn source_member_symbol(
-    graph: &ModuleGraph,
-    declaration: HirDeclId,
-    member: &str,
-) -> Option<SymbolRef> {
-    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
-        return None;
-    };
-    Some(SymbolRef::Source(format!("{owner}.{member}")))
-}
-
-pub(super) fn source_impl_method_symbol(
-    graph: &ModuleGraph,
-    declaration: HirDeclId,
-    method: &str,
-) -> Option<SymbolRef> {
-    let declaration = graph.declaration(declaration)?;
-    let metadata = graph.impl_metadata(declaration.id)?;
-    let owner = match &metadata.kind {
-        ImplMetadataKind::Inherent => metadata
-            .target_path
-            .last()
-            .map(|target| {
-                graph
-                    .module_path(declaration.module)
-                    .map(|path| {
-                        let module = path.join();
-                        if module.is_empty() {
-                            target.clone()
-                        } else {
-                            format!("{module}::{target}")
-                        }
-                    })
-                    .unwrap_or_else(|| target.clone())
-            })
-            .unwrap_or_else(|| qualified_declaration_name(graph, declaration)),
-        ImplMetadataKind::Trait { trait_path } => {
-            let trait_name = trait_path.join("::");
-            let target = metadata.target_path.join("::");
-            format!("{trait_name} for {target}")
-        }
-    };
-    Some(SymbolRef::Source(format!("{owner}.{method}")))
-}
-
-pub(super) fn source_enum_variant_symbol(
-    graph: &ModuleGraph,
-    declaration: HirDeclId,
-    variant: &str,
-) -> Option<SymbolRef> {
-    let SymbolRef::Source(owner) = source_symbol_for_declaration_id(graph, declaration)? else {
-        return None;
-    };
-    Some(SymbolRef::Source(format!("{owner}::{variant}")))
-}
-
-pub(super) fn source_variant_field_symbol(
-    graph: &ModuleGraph,
-    declaration: HirDeclId,
-    variant: &str,
-    field: &str,
-) -> Option<SymbolRef> {
-    let SymbolRef::Source(variant) = source_enum_variant_symbol(graph, declaration, variant)?
-    else {
-        return None;
-    };
-    Some(SymbolRef::Source(format!("{variant}.{field}")))
+    declaration.name == owner || qualified_source_declaration_name(graph, declaration) == owner
 }
 
 fn declaration_reference_target(
