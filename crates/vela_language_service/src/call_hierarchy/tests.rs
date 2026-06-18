@@ -557,6 +557,146 @@ pub fn main(rewardable: Rewardable) -> i64 {
 }
 
 #[test]
+fn call_hierarchy_cross_file_trait_default_and_interface_methods() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let math = DocumentId::from("/workspace/scripts/game/math.vela");
+    let traits = DocumentId::from("/workspace/scripts/game/traits.vela");
+    let main_text = "\
+use game::traits::Rewardable
+pub fn main(rewardable: Rewardable) -> i64 {
+    let first = rewardable.grant(1)
+    return rewardable.preview(first)
+}";
+    let math_text = "pub fn clamp(value: i64) -> i64 { return value }";
+    let traits_text = "\
+use game::math::clamp
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64 { return clamp(amount) }
+    fn preview(self, amount: i64) -> i64;
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(math.clone(), math_text),
+        SourceFileSnapshot::new(traits.clone(), traits_text),
+    ]);
+
+    let grant_from_declaration = databases.prepare_call_hierarchy(
+        &traits,
+        Position::new(
+            2,
+            line(traits_text, 2)
+                .find("grant")
+                .expect("trait default method declaration"),
+        ),
+    );
+    let grant_from_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            2,
+            line(main_text, 2)
+                .find("grant")
+                .expect("trait default method call"),
+        ),
+    );
+    let preview_from_declaration = databases.prepare_call_hierarchy(
+        &traits,
+        Position::new(
+            3,
+            line(traits_text, 3)
+                .find("preview")
+                .expect("trait interface method declaration"),
+        ),
+    );
+    let preview_from_call = databases.prepare_call_hierarchy(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("preview")
+                .expect("trait interface method call"),
+        ),
+    );
+
+    assert_eq!(grant_from_declaration.len(), 1);
+    assert_eq!(grant_from_declaration[0].name(), "grant");
+    assert_eq!(grant_from_declaration[0].document_id(), &traits);
+    assert_eq!(grant_from_call, grant_from_declaration);
+    assert_eq!(preview_from_declaration.len(), 1);
+    assert_eq!(preview_from_declaration[0].name(), "preview");
+    assert_eq!(preview_from_declaration[0].document_id(), &traits);
+    assert_eq!(preview_from_call, preview_from_declaration);
+
+    let grant_incoming = databases.incoming_calls(&grant_from_declaration[0]);
+    assert_eq!(grant_incoming.len(), 1);
+    assert_eq!(grant_incoming[0].from().name(), "main");
+    assert_eq!(grant_incoming[0].from().document_id(), &main);
+    assert_range(
+        grant_incoming[0].from_ranges(),
+        2,
+        line(main_text, 2)
+            .find("grant")
+            .expect("trait default method call"),
+    );
+
+    let preview_incoming = databases.incoming_calls(&preview_from_declaration[0]);
+    assert_eq!(preview_incoming.len(), 1);
+    assert_eq!(preview_incoming[0].from().name(), "main");
+    assert_eq!(preview_incoming[0].from().document_id(), &main);
+    assert_range(
+        preview_incoming[0].from_ranges(),
+        3,
+        line(main_text, 3)
+            .find("preview")
+            .expect("trait interface method call"),
+    );
+
+    let main_item = databases
+        .prepare_call_hierarchy(
+            &main,
+            Position::new(1, line(main_text, 1).find("main").expect("main")),
+        )
+        .pop()
+        .expect("main should prepare a call hierarchy item");
+    let main_outgoing = databases.outgoing_calls(&main_item);
+    assert_eq!(main_outgoing.len(), 2, "{main_outgoing:?}");
+    assert_outgoing_call(
+        &main_outgoing,
+        "grant",
+        &traits,
+        2,
+        line(main_text, 2)
+            .find("grant")
+            .expect("trait default method call"),
+    );
+    assert_outgoing_call(
+        &main_outgoing,
+        "preview",
+        &traits,
+        3,
+        line(main_text, 3)
+            .find("preview")
+            .expect("trait interface method call"),
+    );
+
+    let grant_outgoing = databases.outgoing_calls(&grant_from_declaration[0]);
+    assert_eq!(grant_outgoing.len(), 1);
+    assert_eq!(grant_outgoing[0].to().name(), "clamp");
+    assert_eq!(grant_outgoing[0].to().document_id(), &math);
+    assert_range(
+        grant_outgoing[0].from_ranges(),
+        2,
+        line(traits_text, 2)
+            .find("clamp")
+            .expect("imported helper call"),
+    );
+    assert!(
+        databases
+            .outgoing_calls(&preview_from_declaration[0])
+            .is_empty()
+    );
+}
+
+#[test]
 fn call_hierarchy_uses_schema_method_and_trait_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema = DocumentId::from("/workspace/scripts/schema_defs.vela");
