@@ -28,3 +28,23 @@ the authoritative workspace configuration when present.
 ```bash
 npm run validate
 ```
+
+## Local VSIX Packaging
+
+Build a debug `vela_lsp_server`, bundle it into the extension, validate the
+package metadata, and create a local VSIX:
+
+```bash
+npm run package
+```
+
+Useful variants:
+
+```bash
+npm run package:release
+npm run package:no-server
+```
+
+`package:no-server` creates a VSIX without a bundled language-server binary.
+Users must set `vela.server.path` in VS Code settings when installing that
+package.

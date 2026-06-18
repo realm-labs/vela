@@ -17,7 +17,10 @@
   ],
   "main": "./extension.js",
   "scripts": {
-    "validate": "node scripts/validate-package.js"
+    "validate": "node scripts/validate-package.js",
+    "package": "node scripts/package-vsix.js",
+    "package:release": "node scripts/package-vsix.js --release",
+    "package:no-server": "node scripts/package-vsix.js --no-bundle-server"
   },
   "contributes": {
     "languages": [
