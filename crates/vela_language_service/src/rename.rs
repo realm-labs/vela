@@ -11,7 +11,7 @@ use vela_syntax::token::Keyword;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
-    SourceVersion, SymbolRef, TextRange,
+    SymbolRef, TextRange,
     symbol_ref::{
         qualified_source_declaration_path, schema_member_symbol, schema_symbol,
         schema_variant_symbol, source_enum_variant_symbol, source_member_symbol,
@@ -19,212 +19,15 @@ use crate::{
     },
 };
 
+mod edit;
 mod fields;
 mod methods;
 mod schema;
 mod variants;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct PrepareRename {
-    document_id: DocumentId,
-    range: DiagnosticRange,
-    placeholder: String,
-    symbol: SymbolRef,
-}
-
-impl PrepareRename {
-    #[must_use]
-    pub fn document_id(&self) -> &DocumentId {
-        &self.document_id
-    }
-
-    #[must_use]
-    pub const fn range(&self) -> DiagnosticRange {
-        self.range
-    }
-
-    #[must_use]
-    pub fn placeholder(&self) -> &str {
-        &self.placeholder
-    }
-
-    #[must_use]
-    pub const fn symbol(&self) -> &SymbolRef {
-        &self.symbol
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct WorkspaceEdit {
-    edit_plan: EditPlan,
-    risks: Vec<RenameRisk>,
-    symbol: Option<SymbolRef>,
-}
-
-impl WorkspaceEdit {
-    #[must_use]
-    pub fn new(document_edits: Vec<DocumentTextEdit>) -> Self {
-        Self {
-            edit_plan: EditPlan::unchecked(document_edits),
-            risks: Vec::new(),
-            symbol: None,
-        }
-    }
-
-    #[must_use]
-    pub fn try_new(document_edits: Vec<DocumentTextEdit>) -> Option<Self> {
-        Self::checked(document_edits, Vec::new())
-    }
-
-    fn checked(document_edits: Vec<DocumentTextEdit>, risks: Vec<RenameRisk>) -> Option<Self> {
-        Some(Self {
-            edit_plan: EditPlan::new(document_edits)?,
-            risks,
-            symbol: None,
-        })
-    }
-
-    #[must_use]
-    fn with_symbol(mut self, symbol: SymbolRef) -> Self {
-        self.symbol = Some(symbol);
-        self
-    }
-
-    #[must_use]
-    pub const fn edit_plan(&self) -> &EditPlan {
-        &self.edit_plan
-    }
-
-    #[must_use]
-    pub fn document_edits(&self) -> &[DocumentTextEdit] {
-        self.edit_plan.document_edits()
-    }
-
-    #[must_use]
-    pub fn risks(&self) -> &[RenameRisk] {
-        &self.risks
-    }
-
-    #[must_use]
-    pub fn symbol(&self) -> Option<&SymbolRef> {
-        self.symbol.as_ref()
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct EditPlan {
-    document_edits: Vec<DocumentTextEdit>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RenameRisk {
-    kind: RenameRiskKind,
-    message: String,
-}
-
-impl RenameRisk {
-    #[must_use]
-    pub const fn kind(&self) -> RenameRiskKind {
-        self.kind
-    }
-
-    #[must_use]
-    pub fn message(&self) -> &str {
-        &self.message
-    }
-}
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum RenameRiskKind {
-    HotReloadAbi,
-    SchemaAbi,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct DocumentTextEdit {
-    document_id: DocumentId,
-    document_version: Option<SourceVersion>,
-    edits: Vec<TextEdit>,
-}
-
-impl DocumentTextEdit {
-    #[must_use]
-    pub fn new(document_id: DocumentId, edits: Vec<TextEdit>) -> Self {
-        Self {
-            document_id,
-            document_version: None,
-            edits,
-        }
-    }
-
-    #[must_use]
-    pub fn new_versioned(
-        document_id: DocumentId,
-        document_version: SourceVersion,
-        edits: Vec<TextEdit>,
-    ) -> Self {
-        Self {
-            document_id,
-            document_version: Some(document_version),
-            edits,
-        }
-    }
-
-    #[must_use]
-    pub fn document_id(&self) -> &DocumentId {
-        &self.document_id
-    }
-
-    #[must_use]
-    pub const fn document_version(&self) -> Option<SourceVersion> {
-        self.document_version
-    }
-
-    #[must_use]
-    pub fn edits(&self) -> &[TextEdit] {
-        &self.edits
-    }
-}
-
-impl EditPlan {
-    fn unchecked(document_edits: Vec<DocumentTextEdit>) -> Self {
-        Self { document_edits }
-    }
-
-    fn new(document_edits: Vec<DocumentTextEdit>) -> Option<Self> {
-        edits_are_non_overlapping(&document_edits).then_some(Self { document_edits })
-    }
-
-    #[must_use]
-    pub fn document_edits(&self) -> &[DocumentTextEdit] {
-        &self.document_edits
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TextEdit {
-    range: DiagnosticRange,
-    new_text: String,
-}
-
-impl TextEdit {
-    #[must_use]
-    pub fn new(range: DiagnosticRange, new_text: impl Into<String>) -> Self {
-        Self {
-            range,
-            new_text: new_text.into(),
-        }
-    }
-
-    #[must_use]
-    pub const fn range(&self) -> DiagnosticRange {
-        self.range
-    }
-
-    #[must_use]
-    pub fn new_text(&self) -> &str {
-        &self.new_text
-    }
-}
+pub use edit::{
+    DocumentTextEdit, EditPlan, PrepareRename, RenameRisk, RenameRiskKind, TextEdit, WorkspaceEdit,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct RenameToken {
@@ -1062,30 +865,6 @@ pub(super) fn workspace_edit_for_rename(
         })
         .collect::<Vec<_>>();
     WorkspaceEdit::checked(document_edits, risks)
-}
-
-fn edits_are_non_overlapping(document_edits: &[DocumentTextEdit]) -> bool {
-    let mut ranges_by_document = BTreeMap::<DocumentId, Vec<DiagnosticRange>>::new();
-    for document_edit in document_edits {
-        let ranges = ranges_by_document
-            .entry(document_edit.document_id.clone())
-            .or_default();
-        ranges.extend(document_edit.edits.iter().map(TextEdit::range));
-    }
-    ranges_by_document
-        .values_mut()
-        .all(|ranges| ranges_are_non_overlapping(ranges))
-}
-
-fn ranges_are_non_overlapping(ranges: &mut [DiagnosticRange]) -> bool {
-    ranges.sort_by_key(|range| position_key(range.start()));
-    ranges
-        .windows(2)
-        .all(|pair| position_key(pair[0].end()) <= position_key(pair[1].start()))
-}
-
-const fn position_key(position: Position) -> (usize, usize) {
-    (position.line, position.character)
 }
 
 fn local_use_at_token(bindings: &BindingMap, token: &RenameToken) -> Option<HirLocalId> {
