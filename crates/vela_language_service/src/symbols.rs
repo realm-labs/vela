@@ -9,6 +9,10 @@ use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord,
     SymbolRef, TextRange,
+    symbol_ref::{
+        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
+        source_symbol_for_declaration, source_variant_field_symbol,
+    },
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -274,7 +278,7 @@ impl LanguageServiceDatabases {
                     let range = diagnostic_range(source.text(), span_range(declaration.span)?);
                     let detail_parts = detail_parts_for_declaration(graph, declaration);
                     Some(WorkspaceSymbol {
-                        symbol: SymbolRef::Source(rendered_name.clone()),
+                        symbol: source_symbol_for_declaration(graph, declaration),
                         name: rendered_name,
                         name_parts: name,
                         detail: detail_parts.as_ref().map(DisplayParts::render),
@@ -387,8 +391,7 @@ fn symbol_from_declaration(
     source: &SourceRecord,
 ) -> Option<DocumentSymbol> {
     let kind = kind_for_declaration(declaration.kind);
-    let symbol_name = source_declaration_symbol_name(graph, declaration)?;
-    let children = children_for_declaration(graph, declaration, source, &symbol_name);
+    let children = children_for_declaration(graph, declaration, source);
     symbol_from_span(
         source,
         declaration.span,
@@ -396,20 +399,8 @@ fn symbol_from_declaration(
         detail_parts_for_declaration(graph, declaration),
         kind,
         children,
-        SymbolRef::Source(symbol_name),
+        source_symbol_for_declaration(graph, declaration),
     )
-}
-
-fn source_declaration_symbol_name(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-) -> Option<String> {
-    let module_path = graph.module_path(declaration.module)?;
-    if module_path.segments().is_empty() {
-        Some(declaration.name.clone())
-    } else {
-        Some(DisplayParts::qualified(&module_path.join(), &declaration.name).render())
-    }
 }
 
 fn kind_for_declaration(kind: DeclarationKind) -> DocumentSymbolKind {
@@ -428,7 +419,6 @@ fn children_for_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
     source: &SourceRecord,
-    parent_symbol: &str,
 ) -> Vec<DocumentSymbol> {
     match declaration.kind {
         DeclarationKind::Struct => graph
@@ -446,7 +436,7 @@ fn children_for_declaration(
                         .map(|hint| DisplayParts::type_name(hint.display())),
                     DocumentSymbolKind::Field,
                     Vec::new(),
-                    SymbolRef::Source(format!("{parent_symbol}.{}", field.name)),
+                    source_member_symbol(graph, declaration.id, &field.name)?,
                 )
             })
             .collect(),
@@ -460,7 +450,6 @@ fn children_for_declaration(
                     EnumVariantFieldsHint::Tuple(params) => params
                         .iter()
                         .filter_map(|param| {
-                            let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                             symbol_from_span(
                                 source,
                                 param.span,
@@ -471,14 +460,18 @@ fn children_for_declaration(
                                     .map(|hint| DisplayParts::type_name(hint.display())),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
-                                SymbolRef::Source(format!("{variant_symbol}.{}", param.name)),
+                                source_variant_field_symbol(
+                                    graph,
+                                    declaration.id,
+                                    &variant.name,
+                                    &param.name,
+                                )?,
                             )
                         })
                         .collect(),
                     EnumVariantFieldsHint::Record(fields) => fields
                         .iter()
                         .filter_map(|field| {
-                            let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                             symbol_from_span(
                                 source,
                                 field.span,
@@ -489,12 +482,16 @@ fn children_for_declaration(
                                     .map(|hint| DisplayParts::type_name(hint.display())),
                                 DocumentSymbolKind::Field,
                                 Vec::new(),
-                                SymbolRef::Source(format!("{variant_symbol}.{}", field.name)),
+                                source_variant_field_symbol(
+                                    graph,
+                                    declaration.id,
+                                    &variant.name,
+                                    &field.name,
+                                )?,
                             )
                         })
                         .collect(),
                 };
-                let variant_symbol = format!("{parent_symbol}::{}", variant.name);
                 symbol_from_span(
                     source,
                     variant.span,
@@ -502,7 +499,7 @@ fn children_for_declaration(
                     None,
                     DocumentSymbolKind::EnumMember,
                     children,
-                    SymbolRef::Source(variant_symbol),
+                    source_enum_variant_symbol(graph, declaration.id, &variant.name)?,
                 )
             })
             .collect(),
@@ -518,7 +515,7 @@ fn children_for_declaration(
                     Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
-                    SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
+                    source_member_symbol(graph, declaration.id, &method.name)?,
                 )
             })
             .collect(),
@@ -534,7 +531,7 @@ fn children_for_declaration(
                     Some(signature_detail_parts(&method.signature)),
                     DocumentSymbolKind::Method,
                     Vec::new(),
-                    SymbolRef::Source(format!("{parent_symbol}.{}", method.name)),
+                    source_impl_method_symbol(graph, declaration.id, &method.name)?,
                 )
             })
             .collect(),
@@ -832,7 +829,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
         assert_eq!(symbol_names(impl_player.children()), ["heal"]);
         assert_eq!(
             impl_player.children()[0].symbol(),
-            &SymbolRef::Source("game::main::impl Player.heal".to_owned())
+            &SymbolRef::Source("game::main::Player.heal".to_owned())
         );
 
         let main = symbol(&symbols, "main");
