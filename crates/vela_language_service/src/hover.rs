@@ -361,7 +361,13 @@ fn hover_from_resolution_at_target(
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
             let fact = local_fact(binding, facts).unwrap_or(TypeFact::Unknown);
-            Some(local_hover(databases, binding, fact, range))
+            Some(local_hover(
+                databases,
+                binding,
+                fact,
+                range,
+                target.symbol().cloned(),
+            ))
         }
         BindingResolution::Declaration(declaration) => {
             graph.declaration(*declaration).map(|declaration| {
@@ -717,6 +723,7 @@ fn hover_from_local_declaration(
                     binding,
                     local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
                     range,
+                    target.symbol().cloned(),
                 )
             })
     })
@@ -784,6 +791,7 @@ fn local_hover(
     binding: &LocalBinding,
     fact: TypeFact,
     range: DiagnosticRange,
+    symbol: Option<SymbolRef>,
 ) -> Hover {
     let kind = match binding.kind {
         LocalBindingKind::Parameter | LocalBindingKind::LambdaParameter => HoverKind::Parameter,
@@ -797,7 +805,7 @@ fn local_hover(
         kind,
         DisplayParts::type_name(fact.display_name()),
         None,
-        Some(local_symbol_for_binding(databases, binding)),
+        Some(symbol.unwrap_or_else(|| local_symbol_for_binding(databases, binding))),
     )
 }
 

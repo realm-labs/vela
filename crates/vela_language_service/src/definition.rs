@@ -69,7 +69,12 @@ impl LanguageServiceDatabases {
             if let Some(binding) = local_declaration_at_target(bindings, &target, self) {
                 return self.definition_from_span_with_symbol(
                     binding.span,
-                    Some(self.definition_local_symbol_for_binding(binding)),
+                    Some(
+                        target
+                            .symbol()
+                            .cloned()
+                            .unwrap_or_else(|| self.definition_local_symbol_for_binding(binding)),
+                    ),
                 );
             }
         }
@@ -184,7 +189,10 @@ fn definition_from_resolution_at_target(
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
-            let symbol = databases.definition_local_symbol_for_binding(binding);
+            let symbol = target
+                .symbol()
+                .cloned()
+                .unwrap_or_else(|| databases.definition_local_symbol_for_binding(binding));
             databases.definition_from_span_with_symbol(binding.span, Some(symbol))
         }
         BindingResolution::Declaration(declaration) => {

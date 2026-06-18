@@ -4,8 +4,15 @@ use vela_analysis::{
     type_fact::TypeFact,
 };
 use vela_common::Span;
+use vela_hir::{
+    binding::{BindingMap, BindingResolution, LocalBinding},
+    module_graph::Declaration,
+};
 
-use crate::{LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls};
+use crate::{
+    LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
+    symbol_ref::{source_enum_variant_symbol, source_symbol_for_declaration},
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SymbolTarget {
@@ -25,7 +32,7 @@ impl SymbolTarget {
         let member_receiver = query.member_receiver_range();
         let member_receiver_fact =
             member_receiver.and_then(|range| query.type_fact_for_range(databases, range));
-        let symbol = symbol_ref_for(databases, &text, member_receiver_fact.as_ref());
+        let symbol = symbol_ref_for(databases, query, &text, member_receiver_fact.as_ref());
         Some(Self {
             text,
             range,
@@ -106,6 +113,158 @@ impl SymbolTarget {
 
 fn symbol_ref_for(
     databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    text: &str,
+    member_receiver_fact: Option<&TypeFact>,
+) -> Option<SymbolRef> {
+    symbol_ref_from_bindings(databases, query, text)
+        .or_else(|| symbol_ref_for_source_declaration(databases, query, text))
+        .or_else(|| fact_symbol_ref_for(databases, text, member_receiver_fact))
+}
+
+fn symbol_ref_from_bindings(
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    text: &str,
+) -> Option<SymbolRef> {
+    let range = query.identifier_range()?;
+    let bindings = query.bindings()?;
+    symbol_ref_from_resolution(databases, bindings, text, range)
+        .or_else(|| local_symbol_at_range(databases, bindings, text, range))
+}
+
+fn symbol_ref_from_resolution(
+    databases: &LanguageServiceDatabases,
+    bindings: &BindingMap,
+    text: &str,
+    range: TextRange,
+) -> Option<SymbolRef> {
+    let graph = databases.hir_db().graph();
+    let resolution = bindings
+        .resolutions()
+        .filter_map(|(expression, resolution)| {
+            let expression = bindings.expression(expression)?;
+            let start = usize::try_from(expression.span.start).ok()?;
+            let end = usize::try_from(expression.span.end).ok()?;
+            (start <= range.start && range.end <= end)
+                .then_some((end.saturating_sub(start), resolution))
+        })
+        .min_by_key(|(len, _)| *len)?
+        .1;
+    match resolution {
+        BindingResolution::Local(local) => {
+            let binding = bindings.local(*local)?;
+            Some(local_symbol_for_binding(databases, binding))
+        }
+        BindingResolution::Declaration(declaration) => graph
+            .declaration(*declaration)
+            .and_then(|declaration| source_symbol_for_declaration_target(graph, declaration, text)),
+        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
+    }
+}
+
+fn local_symbol_at_range(
+    databases: &LanguageServiceDatabases,
+    bindings: &BindingMap,
+    text: &str,
+    range: TextRange,
+) -> Option<SymbolRef> {
+    bindings
+        .locals()
+        .find(|binding| {
+            binding.name == text
+                && local_name_range(databases, binding)
+                    .is_some_and(|name_range| contains_range(name_range, range))
+        })
+        .map(|binding| local_symbol_for_binding(databases, binding))
+}
+
+fn symbol_ref_for_source_declaration(
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    text: &str,
+) -> Option<SymbolRef> {
+    let range = query.identifier_range()?;
+    let source_id = query.source_id()?;
+    let graph = databases.hir_db().graph();
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.name == text
+                && declaration.span.source == source_id
+                && declaration_name_range(databases, declaration)
+                    .is_some_and(|name_range| contains_range(name_range, range))
+        })
+        .map(|declaration| source_symbol_for_declaration(graph, declaration))
+}
+
+fn source_symbol_for_declaration_target(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    declaration: &Declaration,
+    text: &str,
+) -> Option<SymbolRef> {
+    graph
+        .enum_shape(declaration.id)
+        .and_then(|shape| {
+            shape
+                .variants
+                .iter()
+                .find(|variant| variant.name == text)
+                .and_then(|variant| {
+                    source_enum_variant_symbol(graph, declaration.id, &variant.name)
+                })
+        })
+        .or_else(|| Some(source_symbol_for_declaration(graph, declaration)))
+}
+
+fn local_symbol_for_binding(
+    databases: &LanguageServiceDatabases,
+    binding: &LocalBinding,
+) -> SymbolRef {
+    let Some(source) = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == binding.span.source)
+    else {
+        return SymbolRef::local(binding.name.clone());
+    };
+    SymbolRef::local_from_span(
+        binding.name.clone(),
+        source.document_id().clone(),
+        source.text(),
+        binding.span,
+    )
+}
+
+fn local_name_range(
+    databases: &LanguageServiceDatabases,
+    binding: &LocalBinding,
+) -> Option<TextRange> {
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == binding.span.source)?;
+    let span_range = span_text_range(binding.span)?;
+    name_range_in_text(source.text(), span_range, &binding.name)
+}
+
+fn declaration_name_range(
+    databases: &LanguageServiceDatabases,
+    declaration: &Declaration,
+) -> Option<TextRange> {
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == declaration.span.source)?;
+    let span_range = span_text_range(declaration.span)?;
+    name_range_in_text(source.text(), span_range, &declaration.name)
+}
+
+fn fact_symbol_ref_for(
+    databases: &LanguageServiceDatabases,
     text: &str,
     member_receiver_fact: Option<&TypeFact>,
 ) -> Option<SymbolRef> {
@@ -126,6 +285,23 @@ fn symbol_ref_for(
         }
     }
     schema_symbol_ref(schema, text).or_else(|| stdlib_function_symbol_ref(text))
+}
+
+fn span_text_range(span: Span) -> Option<TextRange> {
+    let start = usize::try_from(span.start).ok()?;
+    let end = usize::try_from(span.end).ok()?;
+    Some(TextRange::new(start, end))
+}
+
+fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRange> {
+    let slice = text.get(range.start..range.end)?;
+    let relative = slice.find(name)?;
+    let start = range.start + relative;
+    Some(TextRange::new(start, start + name.len()))
+}
+
+fn contains_range(container: TextRange, contained: TextRange) -> bool {
+    container.start <= contained.start && contained.end <= container.end
 }
 
 fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
@@ -198,4 +374,99 @@ fn schema_variant_owner(
     });
     let matched = matches.next()?;
     matches.next().is_none().then_some(matched)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        DocumentId, Position, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+        assemble_project_sources,
+    };
+
+    #[test]
+    fn target_resolves_local_symbol_from_bindings() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "pub fn main(amount: i64) -> i64 { return amount }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let query = QueryContext::from_databases(
+            &databases,
+            &document,
+            Position::new(0, text.rfind("amount").expect("local use should exist")),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::local_at(
+                "amount",
+                document,
+                TextRange::new(12, 18)
+            ))
+        );
+    }
+
+    #[test]
+    fn target_resolves_source_declaration_symbol_from_bindings() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "fn grant() { return 1 }\nfn main() { return grant() }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let query = QueryContext::from_databases(
+            &databases,
+            &document,
+            Position::new(
+                1,
+                text.lines()
+                    .nth(1)
+                    .expect("call line should exist")
+                    .find("grant")
+                    .expect("grant call should exist"),
+            ),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::main::grant".to_owned()))
+        );
+    }
+
+    #[test]
+    fn target_resolves_source_enum_variant_symbol_from_bindings() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "enum Reward { Coins(amount: i64) }\nfn main() { return Reward::Coins(1) }";
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let query = QueryContext::from_databases(
+            &databases,
+            &document,
+            Position::new(
+                1,
+                text.lines()
+                    .nth(1)
+                    .expect("call line should exist")
+                    .find("Coins")
+                    .expect("variant call should exist"),
+            ),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::main::Reward::Coins".to_owned()))
+        );
+    }
+
+    fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        databases
+    }
 }
