@@ -318,6 +318,142 @@ pub global reward_scale: i64";
 }
 
 #[test]
+fn document_highlight_imported_source_field_and_method_stays_in_active_document() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let types = DocumentId::from("/workspace/scripts/game/types.vela");
+    let main_text = "\
+use game::types::Reward
+
+pub fn main(reward: Reward) -> i64 {
+    let first = reward.amount
+    let second = reward.total()
+    return first + second + reward.amount + reward.total()
+}";
+    let types_text = "\
+pub struct Reward {
+    amount: i64
+}
+
+impl Reward {
+    pub fn total(self) -> i64 { return 1 }
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(types.clone(), types_text),
+        SourceFileSnapshot::new(main.clone(), main_text),
+    ]);
+
+    let field_references = databases.references(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("amount")
+                .expect("first field read should exist"),
+        ),
+        true,
+    );
+    assert_eq!(field_references.len(), 3, "{field_references:?}");
+    assert_reference(
+        &field_references,
+        &types,
+        1,
+        line(types_text, 1)
+            .find("amount")
+            .expect("field declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+
+    let field_highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("amount")
+                .expect("first field read should exist"),
+        ),
+    );
+    assert_eq!(field_highlights.len(), 2, "{field_highlights:?}");
+    assert_highlight(
+        &field_highlights,
+        3,
+        line(main_text, 3)
+            .find("amount")
+            .expect("first field read should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &field_highlights,
+        5,
+        line(main_text, 5)
+            .find("amount")
+            .expect("second field read should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_no_highlight(
+        &field_highlights,
+        1,
+        line(types_text, 1)
+            .find("amount")
+            .expect("field declaration should exist"),
+    );
+
+    let method_references = databases.references(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("total")
+                .expect("first method call should exist"),
+        ),
+        true,
+    );
+    assert_eq!(method_references.len(), 3, "{method_references:?}");
+    assert_reference(
+        &method_references,
+        &types,
+        5,
+        line(types_text, 5)
+            .find("total")
+            .expect("method declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+
+    let method_highlights = databases.document_highlights(
+        &main,
+        Position::new(
+            4,
+            line(main_text, 4)
+                .find("total")
+                .expect("first method call should exist"),
+        ),
+    );
+    assert_eq!(method_highlights.len(), 2, "{method_highlights:?}");
+    assert_highlight(
+        &method_highlights,
+        4,
+        line(main_text, 4)
+            .find("total")
+            .expect("first method call should exist"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &method_highlights,
+        5,
+        line(main_text, 5)
+            .find("total")
+            .expect("second method call should exist"),
+        DocumentHighlightKind::Call,
+    );
+    assert_no_highlight(
+        &method_highlights,
+        5,
+        line(types_text, 5)
+            .find("total")
+            .expect("method declaration should exist"),
+    );
+}
+
+#[test]
 fn document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
