@@ -1,14 +1,14 @@
 # Native LSP Protocol Test Matrix
 
-> **Document status:** planning matrix for future LSP test coverage.
+> **Document status:** accepted matrix for the current advertised native LSP
+> capability surface.
 > **Scope:** advertised LSP protocol behavior plus the Vela syntax and symbol
 > surface each protocol must cover before it is considered complete.
 
-This document turns the LSP coverage target into a protocol-first matrix. It is
-not a claim that the current test suite already covers every row. Future LSP
-tests should start from this matrix, choose one protocol row, then cover the
-applicable Vela syntax dimensions through both `vela_language_service` tests
-and `vela_lsp_server` JSON-RPC fixtures.
+This document records the protocol-first matrix used to accept the current
+native LSP coverage. Future LSP tests should start from this matrix, choose one
+protocol row, then preserve both `vela_language_service` tests and
+`vela_lsp_server` JSON-RPC fixtures for the applicable Vela syntax dimensions.
 
 Execution progress for auditing and filling this matrix is tracked in
 [lsp-implementation-plan.md](lsp-implementation-plan.md), section
@@ -260,9 +260,9 @@ Each protocol fixture should declare:
 - Expected diagnostics or absence of diagnostics when relevant.
 - Any client capabilities needed to exercise fallback projection.
 
-## High-Priority Coverage Gaps To Audit First
+## High-Priority Coverage Audits
 
-These are the first places to compare current tests against the matrix:
+These were the first places compared against the matrix before acceptance:
 
 1. Rust-analyzer-style authoring core is the top post-validation audit. Add
    service tests for structured `CompletionAnalysis` contexts before adding
@@ -335,9 +335,10 @@ A protocol row is complete when:
   explicit.
 - The relevant focused command passes.
 
-The LSP protocol matrix is complete only when every advertised row above meets
-that bar, every unsupported row is negatively pinned, and the full validation
-set for LSP docs or implementation changes passes:
+The LSP protocol matrix is accepted for the current advertised native LSP
+surface: every advertised row above has service/protocol proof, every
+unsupported row is negatively pinned, and the full validation set for LSP docs
+or implementation changes passes:
 
 ```bash
 cargo test -p vela_language_service

@@ -390,11 +390,16 @@ coverage complete based only on the older capability phases.
     `--root`, `--schema`, and `--version` parsing, launch-configuration
     fallback behavior, and VS Code/Zed package validators that keep editor
     packages thin launchers around `vela_lsp_server` over stdio.
-- [ ] Complete matrix acceptance.
+- [x] Complete matrix acceptance.
   - Every advertised row in
     [lsp-protocol-test-matrix.md](lsp-protocol-test-matrix.md) has service
     proof, protocol proof, applicable syntax coverage, cross-file coverage
     where required, negative/degraded coverage, and focused validation.
+  - Matrix acceptance is validated by the protocol-first audit rows above,
+    `cargo test -p vela_language_service`, `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`,
+    `cargo clippy --workspace --all-targets -- -D warnings`, and
+    `cargo test --workspace`.
 
 Validation for tracker-only documentation changes:
 

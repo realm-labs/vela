@@ -252,9 +252,10 @@ behavior in the shared LSP/language-service layers. The Zed package under
 native-server stdio command hook. Both editor package validators now assert
 that launcher packages do not implement LSP request behavior.
 
-M20.5 Phase 18/19 update: the validation gate has started. `cargo test -p
-vela_language_service` passes all 146 language-service unit tests plus
-doctests, and `cargo test -p vela_lsp_server` passes all 110 library tests, 3
+M20.5 Phase 18/19 update: the protocol matrix acceptance gate is complete for
+the current advertised native LSP surface. `cargo test -p
+vela_language_service` passes all 383 active language-service tests plus
+doctests, and `cargo test -p vela_lsp_server` passes all 279 library tests, 3
 CLI/main tests, and doctests. Parser/HIR/analysis focused tests also pass with
 `cargo test -p vela_syntax`, `cargo test -p vela_hir`, and `cargo test -p
 vela_analysis`. The explicit many-file scale checkpoint
