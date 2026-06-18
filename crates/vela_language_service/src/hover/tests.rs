@@ -2,7 +2,8 @@ use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 
 use super::*;
 use crate::{
-    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    DisplayParts, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
+    assemble_project_sources,
 };
 
 #[test]
@@ -207,6 +208,7 @@ fn hover_reports_script_parameter_fact() {
     assert_eq!(hover.kind(), HoverKind::Parameter);
     assert_eq!(hover.label(), "amount");
     assert_eq!(hover.detail(), "i64");
+    assert_eq!(hover.detail_parts(), &DisplayParts::type_name("i64"));
     assert_eq!(
         hover.symbol(),
         Some(&SymbolRef::local_at(

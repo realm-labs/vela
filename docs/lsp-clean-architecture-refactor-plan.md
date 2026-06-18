@@ -608,12 +608,16 @@ and semantic tokens use the same identities and display primitives.
   user-visible strings. Completion items now carry structured detail parts
   alongside their rendered `detail`, with the accumulator defaulting older
   prose details to plain display parts and typed local/analysis-backed details
-  preserving type display parts. Document and workspace symbol names/details
-  now carry `DisplayParts` alongside their rendered strings while keeping LSP
-  projection stable. Diagnostic messages, labels, candidates, and repair hint
-  titles/replacements now carry `DisplayParts` alongside their rendered strings
-  while keeping LSP projection stable; richer prose completion classification
-  and remaining hover details still need to converge on it.
+  preserving type display parts. Hover results now carry structured detail
+  parts alongside their rendered detail; local, declaration, schema type,
+  schema variant, source field, and source method details preserve type or
+  signature parts while permission/effect prose remains plain. Document and
+  workspace symbol names/details now carry `DisplayParts` alongside their
+  rendered strings while keeping LSP projection stable. Diagnostic messages,
+  labels, candidates, and repair hint titles/replacements now carry
+  `DisplayParts` alongside their rendered strings while keeping LSP projection
+  stable; richer prose completion and hover classification still need to
+  converge on it.
 - [~] Make go-to-definition and hover resolve symbols through the shared
   cursor context before falling back to feature-local logic.
   Hover and definition now consume a shared `SymbolTarget` built from

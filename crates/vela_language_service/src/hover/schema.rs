@@ -1,7 +1,7 @@
 use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 use vela_analysis::type_fact::TypeFact;
 
-use crate::{DiagnosticRange, SymbolRef};
+use crate::{DiagnosticRange, DisplayParts, SymbolRef};
 
 use super::{Hover, HoverKind};
 
@@ -26,22 +26,24 @@ pub(super) fn member_hover(
                 )
             },
         );
-        return Some(Hover {
+        return Some(Hover::plain_detail(
             range,
-            label: format!("{owner}.{member}"),
-            kind: HoverKind::Field,
+            format!("{owner}.{member}"),
+            HoverKind::Field,
             detail,
-            docs: schema.field_docs(&owner, member).map(str::to_owned),
-            symbol: Some(SymbolRef::Schema(format!("{owner}.{member}"))),
-        });
+            schema.field_docs(&owner, member).map(str::to_owned),
+            Some(SymbolRef::Schema(format!("{owner}.{member}"))),
+        ));
     }
-    method_fact(schema, &owner, member).map(|fact| Hover {
-        range,
-        label: format!("{owner}.{member}"),
-        kind: HoverKind::Method,
-        detail: method_detail(schema, &owner, member, fact),
-        docs: method_docs(schema, &owner, member).map(str::to_owned),
-        symbol: Some(SymbolRef::Schema(format!("{owner}.{member}"))),
+    method_fact(schema, &owner, member).map(|fact| {
+        Hover::plain_detail(
+            range,
+            format!("{owner}.{member}"),
+            HoverKind::Method,
+            method_detail(schema, &owner, member, fact),
+            method_docs(schema, &owner, member).map(str::to_owned),
+            Some(SymbolRef::Schema(format!("{owner}.{member}"))),
+        )
     })
 }
 
@@ -51,24 +53,24 @@ pub(super) fn symbol_hover(
     range: DiagnosticRange,
 ) -> Option<Hover> {
     if let Some(fact) = schema.type_fact(name) {
-        return Some(Hover {
+        return Some(Hover::new(
             range,
-            label: name.to_owned(),
-            kind: HoverKind::Type,
-            detail: fact.display_name(),
-            docs: schema.type_docs(name).map(str::to_owned),
-            symbol: Some(SymbolRef::Schema(name.to_owned())),
-        });
+            name.to_owned(),
+            HoverKind::Type,
+            DisplayParts::type_name(fact.display_name()),
+            schema.type_docs(name).map(str::to_owned),
+            Some(SymbolRef::Schema(name.to_owned())),
+        ));
     }
     if let Some(fact) = schema.trait_fact(name) {
-        return Some(Hover {
+        return Some(Hover::new(
             range,
-            label: name.to_owned(),
-            kind: HoverKind::Trait,
-            detail: fact.display_name(),
-            docs: schema.trait_docs(name).map(str::to_owned),
-            symbol: Some(SymbolRef::Schema(name.to_owned())),
-        });
+            name.to_owned(),
+            HoverKind::Trait,
+            DisplayParts::type_name(fact.display_name()),
+            schema.trait_docs(name).map(str::to_owned),
+            Some(SymbolRef::Schema(name.to_owned())),
+        ));
     }
     schema
         .functions()
@@ -80,13 +82,15 @@ pub(super) fn symbol_hover(
                     .next()
                     .is_some_and(|segment| segment == name)
         })
-        .map(|function| Hover {
-            range,
-            label: function.name.clone(),
-            kind: HoverKind::Function,
-            detail: function_detail(schema, &function.name, &function.fact),
-            docs: schema.function_docs(&function.name).map(str::to_owned),
-            symbol: Some(SymbolRef::Schema(function.name.clone())),
+        .map(|function| {
+            Hover::plain_detail(
+                range,
+                function.name.clone(),
+                HoverKind::Function,
+                function_detail(schema, &function.name, &function.fact),
+                schema.function_docs(&function.name).map(str::to_owned),
+                Some(SymbolRef::Schema(function.name.clone())),
+            )
         })
         .or_else(|| qualified_variant_hover(schema, name, range))
         .or_else(|| unique_variant_hover(schema, name, range))
@@ -98,13 +102,15 @@ fn qualified_variant_hover(
     range: DiagnosticRange,
 ) -> Option<Hover> {
     let (owner, variant) = name.rsplit_once("::")?;
-    schema.variant_fact(owner, variant).map(|fact| Hover {
-        range,
-        label: name.to_owned(),
-        kind: HoverKind::Variant,
-        detail: fact.display_name(),
-        docs: schema.variant_docs(owner, variant).map(str::to_owned),
-        symbol: Some(SymbolRef::Schema(name.to_owned())),
+    schema.variant_fact(owner, variant).map(|fact| {
+        Hover::new(
+            range,
+            name.to_owned(),
+            HoverKind::Variant,
+            DisplayParts::type_name(fact.display_name()),
+            schema.variant_docs(owner, variant).map(str::to_owned),
+            Some(SymbolRef::Schema(name.to_owned())),
+        )
     })
 }
 
@@ -117,19 +123,19 @@ fn unique_variant_hover(
     let variant = variants.next()?;
     variants.next().is_none().then(|| {
         let label = format!("{}::{}", variant.owner, variant.name);
-        Hover {
+        Hover::new(
             range,
             label,
-            kind: HoverKind::Variant,
-            detail: variant.fact.display_name(),
-            docs: schema
+            HoverKind::Variant,
+            DisplayParts::type_name(variant.fact.display_name()),
+            schema
                 .variant_docs(&variant.owner, &variant.name)
                 .map(str::to_owned),
-            symbol: Some(SymbolRef::Schema(format!(
+            Some(SymbolRef::Schema(format!(
                 "{}::{}",
                 variant.owner, variant.name
             ))),
-        }
+        )
     })
 }
 

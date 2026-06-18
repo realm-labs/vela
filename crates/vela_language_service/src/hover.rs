@@ -44,11 +44,51 @@ pub struct Hover {
     label: String,
     kind: HoverKind,
     detail: String,
+    detail_parts: DisplayParts,
     docs: Option<String>,
     symbol: Option<SymbolRef>,
 }
 
 impl Hover {
+    #[must_use]
+    pub(crate) fn new(
+        range: DiagnosticRange,
+        label: impl Into<String>,
+        kind: HoverKind,
+        detail_parts: DisplayParts,
+        docs: Option<String>,
+        symbol: Option<SymbolRef>,
+    ) -> Self {
+        Self {
+            range,
+            label: label.into(),
+            kind,
+            detail: detail_parts.render(),
+            detail_parts,
+            docs,
+            symbol,
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn plain_detail(
+        range: DiagnosticRange,
+        label: impl Into<String>,
+        kind: HoverKind,
+        detail: impl Into<String>,
+        docs: Option<String>,
+        symbol: Option<SymbolRef>,
+    ) -> Self {
+        Self::new(
+            range,
+            label,
+            kind,
+            DisplayParts::plain(detail),
+            docs,
+            symbol,
+        )
+    }
+
     #[must_use]
     pub const fn range(&self) -> DiagnosticRange {
         self.range
@@ -67,6 +107,11 @@ impl Hover {
     #[must_use]
     pub fn detail(&self) -> &str {
         &self.detail
+    }
+
+    #[must_use]
+    pub const fn detail_parts(&self) -> &DisplayParts {
+        &self.detail_parts
     }
 
     #[must_use]
@@ -218,14 +263,14 @@ fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) ->
     let module_path = ModulePath::new(path.iter().cloned());
     graph.module_id(&module_path)?;
     let label = module_path.join();
-    Some(Hover {
+    Some(Hover::new(
         range,
-        label: label.clone(),
-        kind: HoverKind::Module,
-        detail: DisplayParts::keyword_symbol("module", &label).render(),
-        docs: None,
-        symbol: None,
-    })
+        label.clone(),
+        HoverKind::Module,
+        DisplayParts::keyword_symbol("module", &label),
+        None,
+        None,
+    ))
 }
 
 fn import_path_segment_at(text: &str, import: &Import, target: &SymbolTarget) -> Option<usize> {
@@ -259,28 +304,32 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
                     .next()
                     .is_some_and(|segment| segment == name)
         })
-        .map(|function| Hover {
-            range,
-            label: function.name.to_owned(),
-            kind: HoverKind::Function,
-            detail: stdlib_function_detail(&function),
-            docs: None,
-            symbol: Some(SymbolRef::Builtin(function.name.to_owned())),
+        .map(|function| {
+            Hover::plain_detail(
+                range,
+                function.name.to_owned(),
+                HoverKind::Function,
+                stdlib_function_detail(&function),
+                None,
+                Some(SymbolRef::Builtin(function.name.to_owned())),
+            )
         })
 }
 
 fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange) -> Option<Hover> {
-    stdlib_method_fact(receiver, method, None).map(|fact| Hover {
-        range,
-        label: DisplayParts::member(&receiver.display_name(), fact.method).render(),
-        kind: HoverKind::Method,
-        detail: stdlib_method_detail(&fact),
-        docs: None,
-        symbol: Some(SymbolRef::Builtin(format!(
-            "{}.{}",
-            receiver.display_name(),
-            fact.method
-        ))),
+    stdlib_method_fact(receiver, method, None).map(|fact| {
+        Hover::plain_detail(
+            range,
+            DisplayParts::member(&receiver.display_name(), fact.method).render(),
+            HoverKind::Method,
+            stdlib_method_detail(&fact),
+            None,
+            Some(SymbolRef::Builtin(format!(
+                "{}.{}",
+                receiver.display_name(),
+                fact.method
+            ))),
+        )
     })
 }
 
@@ -315,27 +364,27 @@ fn hover_from_resolution_at_target(
                     .unwrap_or_else(|| hover_from_declaration(graph, facts, declaration, range))
             })
         }
-        BindingResolution::Import(name) => Some(Hover {
+        BindingResolution::Import(name) => Some(Hover::plain_detail(
             range,
-            label: name.clone(),
-            kind: HoverKind::Unknown,
-            detail: "unresolved import".to_owned(),
-            docs: None,
-            symbol: None,
-        }),
+            name.clone(),
+            HoverKind::Unknown,
+            "unresolved import",
+            None,
+            None,
+        )),
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
             schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
                 .or_else(|| stdlib_function_hover(&qualified, range))
                 .or_else(|| {
-                    Some(Hover {
+                    Some(Hover::plain_detail(
                         range,
-                        label: qualified,
-                        kind: HoverKind::Unknown,
-                        detail: "unresolved qualified path".to_owned(),
-                        docs: None,
-                        symbol: None,
-                    })
+                        qualified,
+                        HoverKind::Unknown,
+                        "unresolved qualified path",
+                        None,
+                        None,
+                    ))
                 })
         }
     }
@@ -521,14 +570,23 @@ fn struct_field_hover(
     range: DiagnosticRange,
 ) -> Hover {
     let owner = qualified_declaration_label(graph, declaration);
-    Hover {
+    Hover::new(
         range,
-        label: DisplayParts::member(&owner, &field.name).render(),
-        kind: HoverKind::Field,
-        detail: struct_field_detail(field),
-        docs: attr_docs(&field.attrs),
-        symbol: Some(SymbolRef::Source(format!("{owner}.{}", field.name))),
-    }
+        DisplayParts::member(&owner, &field.name).render(),
+        HoverKind::Field,
+        struct_field_detail_parts(field),
+        attr_docs(&field.attrs),
+        Some(SymbolRef::Source(format!("{owner}.{}", field.name))),
+    )
+}
+
+fn struct_field_detail_parts(field: &StructFieldHint) -> DisplayParts {
+    DisplayParts::type_name(
+        field
+            .type_hint
+            .as_ref()
+            .map_or_else(|| TypeFact::Any.display_name(), |hint| hint.display()),
+    )
 }
 
 fn impl_method_hover(
@@ -539,14 +597,14 @@ fn impl_method_hover(
     range: DiagnosticRange,
 ) -> Hover {
     let owner = impl_owner_label(graph, declaration, metadata);
-    Hover {
+    Hover::new(
         range,
-        label: DisplayParts::member(&owner, &method.name).render(),
-        kind: HoverKind::Method,
-        detail: signature_detail(&method.signature),
-        docs: None,
-        symbol: Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
-    }
+        DisplayParts::member(&owner, &method.name).render(),
+        HoverKind::Method,
+        signature_detail_parts(&method.signature),
+        None,
+        Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
+    )
 }
 
 fn trait_method_hover(
@@ -556,17 +614,17 @@ fn trait_method_hover(
     range: DiagnosticRange,
 ) -> Hover {
     let owner = qualified_declaration_label(graph, declaration);
-    Hover {
+    Hover::new(
         range,
-        label: DisplayParts::member(&owner, &method.name).render(),
-        kind: HoverKind::Method,
-        detail: signature_detail(&method.signature),
-        docs: attr_docs(&method.attrs),
-        symbol: Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
-    }
+        DisplayParts::member(&owner, &method.name).render(),
+        HoverKind::Method,
+        signature_detail_parts(&method.signature),
+        attr_docs(&method.attrs),
+        Some(SymbolRef::Source(format!("{owner}.{}", method.name))),
+    )
 }
 
-fn signature_detail(signature: &FunctionSignature) -> String {
+fn signature_detail_parts(signature: &FunctionSignature) -> DisplayParts {
     let params = signature.params.iter().map(|param| {
         param.type_hint.as_ref().map_or_else(
             || DisplayParts::plain(param.name.as_str()),
@@ -574,14 +632,7 @@ fn signature_detail(signature: &FunctionSignature) -> String {
         )
     });
     let return_type = signature.return_type.as_ref().map(|hint| hint.display());
-    DisplayParts::signature(params, return_type.as_deref()).render()
-}
-
-fn struct_field_detail(field: &StructFieldHint) -> String {
-    field
-        .type_hint
-        .as_ref()
-        .map_or_else(|| TypeFact::Any.display_name(), |hint| hint.display())
+    DisplayParts::signature(params, return_type.as_deref())
 }
 
 fn enum_variant_hover_for_declaration(
@@ -609,14 +660,14 @@ fn enum_variant_hover(
 ) -> Hover {
     let owner = qualified_declaration_label(graph, declaration);
     let label = DisplayParts::qualified(&owner, &variant.name).render();
-    Hover {
+    Hover::new(
         range,
         label,
-        kind: HoverKind::Variant,
-        detail: enum_variant_detail(&owner, variant),
-        docs: attr_docs(&variant.attrs),
-        symbol: Some(SymbolRef::Source(format!("{owner}::{}", variant.name))),
-    }
+        HoverKind::Variant,
+        DisplayParts::type_name(enum_variant_detail(&owner, variant)),
+        attr_docs(&variant.attrs),
+        Some(SymbolRef::Source(format!("{owner}::{}", variant.name))),
+    )
 }
 
 fn enum_variant_detail(owner: &str, variant: &EnumVariantHint) -> String {
@@ -672,12 +723,12 @@ fn hover_from_declaration(
     declaration: &Declaration,
     range: DiagnosticRange,
 ) -> Hover {
-    let detail = facts
+    let detail_parts = facts
         .declaration(declaration.id)
         .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .map_or_else(
-            || declaration_hover_detail(graph, declaration),
-            TypeFact::display_name,
+            || declaration_hover_detail_parts(graph, declaration),
+            |fact| DisplayParts::type_name(fact.display_name()),
         );
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
@@ -688,39 +739,42 @@ fn hover_from_declaration(
         DeclarationKind::Trait => HoverKind::Trait,
         DeclarationKind::Impl => HoverKind::Unknown,
     };
-    Hover {
+    Hover::new(
         range,
         label,
         kind,
-        detail,
-        docs: declaration_docs(graph, declaration),
-        symbol: Some(SymbolRef::Source(qualified_declaration_label(
+        detail_parts,
+        declaration_docs(graph, declaration),
+        Some(SymbolRef::Source(qualified_declaration_label(
             graph,
             declaration,
         ))),
-    }
+    )
 }
 
-fn declaration_hover_detail(
+fn declaration_hover_detail_parts(
     graph: &vela_hir::module_graph::ModuleGraph,
     declaration: &Declaration,
-) -> String {
+) -> DisplayParts {
     match declaration.kind {
-        DeclarationKind::Const => graph
-            .const_metadata(declaration.id)
-            .and_then(|metadata| metadata.type_hint.as_ref().map(|hint| hint.display())),
+        DeclarationKind::Const => graph.const_metadata(declaration.id).and_then(|metadata| {
+            metadata
+                .type_hint
+                .as_ref()
+                .map(|hint| DisplayParts::type_name(hint.display()))
+        }),
         DeclarationKind::Global => graph
             .global_metadata(declaration.id)
-            .map(|metadata| metadata.type_hint.display()),
+            .map(|metadata| DisplayParts::type_name(metadata.type_hint.display())),
         DeclarationKind::Function => graph
             .function_signature(declaration.id)
-            .map(signature_detail),
+            .map(signature_detail_parts),
         DeclarationKind::Struct
         | DeclarationKind::Enum
         | DeclarationKind::Trait
         | DeclarationKind::Impl => None,
     }
-    .unwrap_or_else(|| TypeFact::Unknown.display_name())
+    .unwrap_or_else(|| DisplayParts::type_name(TypeFact::Unknown.display_name()))
 }
 
 fn local_hover(
@@ -735,14 +789,14 @@ fn local_hover(
             HoverKind::Local
         }
     };
-    Hover {
+    Hover::new(
         range,
-        label: binding.name.clone(),
+        binding.name.clone(),
         kind,
-        detail: fact.display_name(),
-        docs: None,
-        symbol: Some(local_symbol_for_binding(databases, binding)),
-    }
+        DisplayParts::type_name(fact.display_name()),
+        None,
+        Some(local_symbol_for_binding(databases, binding)),
+    )
 }
 
 fn local_symbol_for_binding(
@@ -791,17 +845,21 @@ fn local_fact(binding: &LocalBinding, facts: &AnalysisFacts) -> Option<TypeFact>
 }
 
 fn type_hint_hover(schema: &RegistryFacts, name: &str, range: DiagnosticRange) -> Option<Hover> {
-    starts_like_type_name(name).then(|| Hover {
-        range,
-        label: name.to_owned(),
-        kind: HoverKind::Type,
-        detail: schema
-            .type_fact(name)
-            .cloned()
-            .unwrap_or(TypeFact::Any)
-            .display_name(),
-        docs: None,
-        symbol: None,
+    starts_like_type_name(name).then(|| {
+        Hover::new(
+            range,
+            name.to_owned(),
+            HoverKind::Type,
+            DisplayParts::type_name(
+                schema
+                    .type_fact(name)
+                    .cloned()
+                    .unwrap_or(TypeFact::Any)
+                    .display_name(),
+            ),
+            None,
+            None,
+        )
     })
 }
 
