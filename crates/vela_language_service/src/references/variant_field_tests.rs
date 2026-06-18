@@ -121,6 +121,74 @@ pub enum QuestState {
     );
 }
 
+#[test]
+fn references_find_cross_file_imported_source_enum_record_variant_field_uses() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let types = DocumentId::from("/workspace/scripts/game/types.vela");
+    let main_text = "\
+use game::types::QuestState
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count: current } => { return current }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let types_text = "\
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(types.clone(), types_text),
+        SourceFileSnapshot::new(main.clone(), main_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(
+            3,
+            line(main_text, 3)
+                .find("count")
+                .expect("constructor field should exist"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &types,
+        1,
+        line(types_text, 1)
+            .find("count")
+            .expect("variant field declaration should exist"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        3,
+        line(main_text, 3)
+            .find("count")
+            .expect("constructor field should exist"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        8,
+        line(main_text, 8)
+            .find("count")
+            .expect("pattern field should exist"),
+        ReferenceKind::Pattern,
+    );
+}
+
 fn assert_reference(references: &[Reference], line: usize, character: usize, kind: ReferenceKind) {
     assert!(
         references.iter().any(|reference| {

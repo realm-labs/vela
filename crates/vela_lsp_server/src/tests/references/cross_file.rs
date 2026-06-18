@@ -225,3 +225,94 @@ pub enum QuestState {
             .expect("pattern variant should exist"),
     );
 }
+
+#[test]
+fn lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let types_uri = "file:///workspace/scripts/game/types.vela";
+    let main_text = "\
+use game::types::QuestState
+
+pub fn active(count: i64) -> QuestState {
+    return QuestState::Active { count: count }
+}
+
+pub fn main(state: QuestState) -> i64 {
+    match state {
+        QuestState::Active { count: current } => { return current }
+        QuestState::Done => { return 0 }
+    }
+}";
+    let types_text = "\
+pub enum QuestState {
+    Active { count: i64 },
+    Done
+}";
+    for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": line(main_text, 3)
+                    .find("count")
+                    .expect("constructor field should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        references,
+        types_uri,
+        1,
+        line(types_text, 1)
+            .find("count")
+            .expect("variant field declaration should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        3,
+        line(main_text, 3)
+            .find("count")
+            .expect("constructor field should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        8,
+        line(main_text, 8)
+            .find("count")
+            .expect("pattern field should exist"),
+    );
+}
