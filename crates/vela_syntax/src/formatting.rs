@@ -130,6 +130,7 @@ struct Formatter {
     delimiter_stack: Vec<Symbol>,
     brace_context_stack: Vec<BraceContext>,
     declaration_brace_pending: bool,
+    use_item_pending: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -167,9 +168,18 @@ impl Formatter {
     fn write_trivia(&mut self, kind: TriviaKind, text: &str) {
         match kind {
             TriviaKind::Whitespace => {
+                let newline_count = text.matches('\n').count();
+                if newline_count > 0 && self.use_item_pending && self.delimiter_stack.is_empty() {
+                    self.newline();
+                    self.pending_blank_lines = self
+                        .pending_blank_lines
+                        .max(newline_count.saturating_sub(1));
+                    self.use_item_pending = false;
+                    return;
+                }
                 self.pending_blank_lines = self
                     .pending_blank_lines
-                    .max(text.matches('\n').count().saturating_sub(1));
+                    .max(newline_count.saturating_sub(1));
             }
             TriviaKind::LineComment | TriviaKind::Shebang => self.write_line_comment(text),
             TriviaKind::BlockComment => self.write_block_comment(text),
@@ -434,6 +444,10 @@ impl Formatter {
     fn observe_token(&mut self, token: &TokenKind) {
         if let TokenKind::Keyword(keyword) = token {
             match keyword {
+                Keyword::Use => {
+                    self.declaration_brace_pending = false;
+                    self.use_item_pending = true;
+                }
                 Keyword::Struct | Keyword::Enum | Keyword::Trait | Keyword::Impl => {
                     self.declaration_brace_pending = true;
                 }
@@ -446,9 +460,9 @@ impl Formatter {
                 | Keyword::Match
                 | Keyword::Return
                 | Keyword::Break
-                | Keyword::Continue
-                | Keyword::Use => {
+                | Keyword::Continue => {
                     self.declaration_brace_pending = false;
+                    self.use_item_pending = false;
                 }
                 Keyword::Pub
                 | Keyword::For
@@ -784,6 +798,23 @@ mod tests {
         assert_eq!(
             formatted.text(),
             "pub fn main() {\n    return 1 + 2 * 3\n}\n"
+        );
+    }
+
+    #[test]
+    fn formatting_preserves_newline_after_use_item() {
+        let source = "use game::reward::grant\npub fn main(){return 1}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+use game::reward::grant
+pub fn main() {
+    return 1
+}
+"
         );
     }
 

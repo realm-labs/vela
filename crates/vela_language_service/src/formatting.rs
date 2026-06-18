@@ -784,6 +784,45 @@ mod tests {
     }
 
     #[test]
+    fn formatting_does_not_depend_on_successful_hir_analysis() {
+        let document_id = DocumentId::from("/workspace/scripts/game/main.vela");
+        let source = "use game::reward::grant_bonus\npub fn main(){return 1}";
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::new("/workspace/scripts")]);
+        let files = vec![
+            SourceFileSnapshot::new(document_id.clone(), source),
+            SourceFileSnapshot::new(
+                "/workspace/scripts/game/reward.vela",
+                "pub fn grant() { return 1 }",
+            ),
+        ];
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let diagnostics = databases.diagnostics_for_document(&document_id);
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code() == Some("hir::unresolved_import")),
+            "fixture should keep a semantic analysis error"
+        );
+
+        let edits = databases.document_formatting(&document_id);
+        let formatted = apply_edits(source, &edits);
+
+        assert_eq!(
+            formatted,
+            "\
+use game::reward::grant_bonus
+pub fn main() {
+    return 1
+}
+"
+        );
+    }
+
+    #[test]
     fn formatting_formats_item_declarations() {
         let source = "pub struct Player{level:i64 name:String}impl Player{fn heal(amount:i64)->i64{return amount}}";
         let edits = format_source(source);

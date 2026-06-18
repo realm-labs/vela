@@ -768,8 +768,12 @@ Purpose: keep editor mutations structured, local, and source-owned.
   LSP layers; semantic rewrite helpers now have a regression test proving they
   stay silent unless the diagnostic range contains the local syntax pattern
   they know how to edit.
-- [ ] Keep formatting syntax-owned and trivia-preserving. Do not rely on
+- [x] Keep formatting syntax-owned and trivia-preserving. Do not rely on
   successful HIR or analysis.
+  Formatting remains routed through `vela_syntax::formatting` and syntax parse
+  facts only. Regression coverage now proves document formatting still works
+  with unresolved HIR diagnostics and preserves semicolonless `use` item
+  newline boundaries.
 - [ ] Add AST-aware range and on-type formatting only after token/trivia rules
   are stable.
 - [~] Generate inlay hints from stable type and signature facts, not ad hoc
