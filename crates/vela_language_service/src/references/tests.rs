@@ -46,6 +46,64 @@ pub fn main(amount: i64) -> i64 {
 }
 
 #[test]
+fn references_keep_shadowed_local_bindings_separate() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub fn main(amount: i64) -> i64 {
+    let first = amount + 1
+    let amount = first + 1
+    return amount + first
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let parameter_references = databases.references(
+        &document,
+        Position::new(1, line(text, 1).find("amount").expect("parameter use")),
+        true,
+    );
+
+    assert_eq!(parameter_references.len(), 2, "{parameter_references:?}");
+    assert_reference(
+        &parameter_references,
+        0,
+        line(text, 0).find("amount").expect("parameter declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &parameter_references,
+        1,
+        line(text, 1).find("amount").expect("parameter read"),
+        ReferenceKind::Read,
+    );
+    assert_all_symbols(
+        &parameter_references,
+        &SymbolRef::local_at("amount", document.clone(), TextRange::new(12, 18)),
+    );
+
+    let shadow_declaration = line(text, 2).find("amount").expect("shadow declaration");
+    let shadow_references =
+        databases.references(&document, Position::new(2, shadow_declaration), true);
+
+    assert_eq!(shadow_references.len(), 2, "{shadow_references:?}");
+    assert_reference(
+        &shadow_references,
+        2,
+        shadow_declaration,
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &shadow_references,
+        3,
+        line(text, 3).find("amount").expect("shadow read"),
+        ReferenceKind::Read,
+    );
+    assert_all_symbols(
+        &shadow_references,
+        &SymbolRef::local_at("amount", document, TextRange::new(69, 75)),
+    );
+}
+
+#[test]
 fn references_can_exclude_local_declaration() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(amount: i64) -> i64 { return amount }";

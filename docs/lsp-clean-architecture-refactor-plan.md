@@ -707,8 +707,12 @@ cargo test -p vela_lsp_server definition
 Purpose: make cross-reference features use explicit symbol identity and
 source-owned edit plans.
 
-- [ ] Build references from symbol identity plus syntax/HIR binding facts, not
+- [x] Build references from symbol identity plus syntax/HIR binding facts, not
   plain text matching.
+  Source/local references now route through `BindingResolution` and all
+  reference result paths carry shared `SymbolRef` identities; the
+  `references_keep_shadowed_local_bindings_separate` fixture pins that
+  same-named local bindings do not collapse through text matching.
 - [ ] Distinguish source-owned references, schema-owned facts, builtin facts,
   dynamic `Any` facts, and unresolved names.
 - [ ] Make prepare-rename reject schema-owned, builtin, dynamic, unresolved,
@@ -717,8 +721,11 @@ source-owned edit plans.
   ranges only.
 - [ ] Ensure semantic tokens are generated from syntax/HIR classification and
   stay stable under parser recovery.
-- [ ] Add fixtures for shadowing, modules, methods, fields, and failed rename
+- [~] Add fixtures for shadowing, modules, methods, fields, and failed rename
   targets.
+  Reference fixtures now cover local shadowing plus existing module, method,
+  and field cases. Failed rename and semantic-token stability fixtures remain
+  to close this bucket.
 
 Tests:
 
