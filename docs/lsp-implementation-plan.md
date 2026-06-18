@@ -1410,6 +1410,10 @@ Tests:
 - [x] `lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receivers`
 - [x] `call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_receivers`
 - [x] `lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_receivers`
+- [x] `call_hierarchy_uses_source_method_calls_on_source_method_return_receivers`
+- [x] `lsp_call_hierarchy_uses_source_method_calls_on_source_method_return_receivers`
+- [x] `call_hierarchy_uses_source_trait_default_method_calls_on_source_method_return_receivers`
+- [x] `lsp_call_hierarchy_uses_source_trait_default_method_calls_on_source_method_return_receivers`
 
 Validation:
 

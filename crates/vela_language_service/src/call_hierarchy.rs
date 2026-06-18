@@ -3,6 +3,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::{HirDeclId, HirNodeId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
+use vela_hir::type_hint::ImplMetadataKind;
 
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, QueryContext,
@@ -856,6 +857,10 @@ fn method_target_for_receiver_fact(
     script_method_owner(graph, receiver, method)
         .map(CallHierarchyTarget::Method)
         .or_else(|| {
+            source_trait_default_method_owner(graph, receiver, method)
+                .map(CallHierarchyTarget::TraitMethod)
+        })
+        .or_else(|| {
             trait_method_owner(graph, receiver, method).map(CallHierarchyTarget::TraitMethod)
         })
         .or_else(|| {
@@ -897,6 +902,41 @@ fn script_method_owner(
     })
 }
 
+fn source_trait_default_method_owner(
+    graph: &ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+) -> Option<TraitMethodCallTarget> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return None;
+        };
+        let matches_owner = owner_names.iter().any(|owner| {
+            metadata
+                .target_path
+                .last()
+                .is_some_and(|name| name == owner)
+                || metadata.target_path.join("::") == *owner
+        });
+        if !matches_owner || metadata.methods.iter().any(|entry| entry.name == method) {
+            return None;
+        }
+        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        graph
+            .trait_shape(trait_declaration)
+            .and_then(|shape| shape.methods.iter().find(|entry| entry.name == method))
+            .map(|entry| TraitMethodCallTarget {
+                owner: trait_declaration,
+                method: entry.name.clone(),
+            })
+    })
+}
+
 fn trait_method_owner(
     graph: &ModuleGraph,
     receiver: &TypeFact,
@@ -909,7 +949,7 @@ fn trait_method_owner(
         }
         let matches_owner = owner_names
             .iter()
-            .any(|owner| declaration_name_matches(declaration, owner));
+            .any(|owner| declaration_name_matches(graph, declaration, owner));
         if !matches_owner {
             return None;
         }
@@ -925,13 +965,35 @@ fn trait_method_owner(
     })
 }
 
-fn declaration_name_matches(declaration: &Declaration, owner: &str) -> bool {
+fn trait_declaration_for_path(graph: &ModuleGraph, trait_path: &[String]) -> Option<HirDeclId> {
+    let owner = trait_path.join("::");
+    graph
+        .declarations()
+        .find(|declaration| {
+            declaration.kind == DeclarationKind::Trait
+                && declaration_name_matches(graph, declaration, &owner)
+        })
+        .map(|declaration| declaration.id)
+}
+
+fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
     declaration.name == owner
-        || declaration
-            .name
-            .rsplit("::")
-            .next()
-            .is_some_and(|short| short == owner)
+        || qualified_declaration_name(graph, declaration) == owner
+        || declaration.name.rsplit("::").next() == Some(owner)
+}
+
+fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {
+    graph
+        .module_path(declaration.module)
+        .map(|path| {
+            path.segments()
+                .iter()
+                .chain(std::iter::once(&declaration.name))
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("::")
+        })
+        .unwrap_or_else(|| declaration.name.clone())
 }
 
 fn record_owner_names(receiver: &TypeFact) -> Vec<String> {

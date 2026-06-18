@@ -8,6 +8,7 @@ use super::{LspServer, notification, notification_value, request, response_value
 
 mod cross_file;
 mod returned_receivers;
+mod source_method_return_receivers;
 mod values;
 
 #[test]
