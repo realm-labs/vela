@@ -1187,6 +1187,8 @@ mod module_tests;
 #[cfg(test)]
 mod schema_field_tests;
 #[cfg(test)]
+mod schema_tests;
+#[cfg(test)]
 mod tests;
 #[cfg(test)]
 mod value_tests;
