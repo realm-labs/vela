@@ -217,9 +217,11 @@ Semantic highlighting uses an editor-neutral Vela taxonomy in
 fallback names for custom token types. Custom tokens such as `builtinType`,
 `const`, `global`, `boolean`, `null`, operator families, punctuation families,
 and unresolved references keep their Vela-specific names in the primary
-legend, while `vela_lsp_server` remains responsible for any future
-client-specific fallback projection. Editor packages may contribute fallback
-scope metadata, but must not compute semantic classifications.
+legend. `vela_lsp_server` owns client-specific fallback projection: clients
+that declare limited semantic-token support receive standard fallback token
+names and supported modifier fallbacks in the server legend without changing
+service classification. Editor packages may contribute fallback scope metadata,
+but must not compute semantic classifications.
 
 ### Function Identity
 

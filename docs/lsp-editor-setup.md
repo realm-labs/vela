@@ -65,8 +65,9 @@ configuration through `vela.toml`, initialization options, or
 
 The repository includes a thin VS Code extension package under
 `editors/vscode`. It contributes the `vela` language ID, `.vela` file
-association, syntax metadata, settings, and a `vscode-languageclient` launcher
-for the native server.
+association, TextMate syntax metadata, semantic-token type/scope contribution
+metadata, settings, and a `vscode-languageclient` launcher for the native
+server.
 
 For local extension development:
 
@@ -116,6 +117,27 @@ If neither setting is present, put `vela_lsp_server` on `PATH`, or unpack a
 release artifact and expose the binary to Zed. Project roots and schema
 configuration still come from `vela.toml`; the Zed package does not implement
 Vela analysis or LSP request behavior.
+
+## Highlighting Model
+
+The native server provides semantic tokens through LSP. The editor-neutral
+classification lives in `vela_language_service`, and LSP legend/range/delta
+projection plus client-specific custom-token fallback lives in
+`vela_lsp_server`.
+
+Editor packages provide fallback highlighting only:
+
+- Zed uses `editors/zed/languages/vela/highlights.scm` as a Tree-sitter syntax
+  fallback for declarations, calls, members, types, literals, operators,
+  punctuation, attributes, and imports.
+- VS Code uses `editors/vscode/syntaxes/vela.tmLanguage.json` as a TextMate
+  fallback and declares Vela custom semantic token types, modifiers, and
+  TextMate fallback scopes in `editors/vscode/package.json`.
+
+Fallback grammars do not resolve names, inspect schemas, run scripts, or read
+host state. Source/schema/stdlib provenance, unresolved references, and other
+semantic distinctions come from the native server when the editor enables LSP
+semantic highlighting.
 
 ## Project Configuration
 

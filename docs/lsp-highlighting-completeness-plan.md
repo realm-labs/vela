@@ -247,7 +247,7 @@ validation commands have passed locally.
 | 5. Zed Tree-sitter fallback | Complete | Zed fallback captures now align with common syntax scopes and validator coverage pins the shared showcase surface. |
 | 6. VS Code fallback and scopes | Complete | TextMate fallback scopes and VS Code semantic token contribution metadata now cover custom Vela taxonomy names. |
 | 7. Cross-editor consistency fixtures | Complete | Shared consistency table now maps showcase concepts to service tokens, Zed captures, and VS Code scopes. |
-| 8. Docs and final validation | Not started | Update setup docs and run final validation. |
+| 8. Docs and final validation | Complete | Setup/progress/decision docs are updated and final focused plus full validation passed. |
 
 ---
 
@@ -573,19 +573,34 @@ Phase 7 notes:
 
 Goal: document how Vela highlighting works and validate the completed track.
 
-- [ ] Update `docs/lsp-editor-setup.md` with the final Zed and VS Code
+- [x] Update `docs/lsp-editor-setup.md` with the final Zed and VS Code
   highlighting model: Tree-sitter/TextMate fallback plus LSP semantic tokens
   from the native server.
-- [ ] Update `docs/lsp-implementation-plan.md` or `docs/architecture/lsp.md`
+- [x] Update `docs/lsp-implementation-plan.md` or `docs/architecture/lsp.md`
   only if the durable LSP architecture contract changes.
-- [ ] Update `docs/progress.md` only when milestone status, current focus,
+- [x] Update `docs/progress.md` only when milestone status, current focus,
   available capability coverage, validation expectations, or remaining gaps
   change. Do not append routine implementation notes.
-- [ ] Update `docs/decisions.md` if the final taxonomy introduces a durable
+- [x] Update `docs/decisions.md` if the final taxonomy introduces a durable
   design decision, such as a custom-token fallback policy.
-- [ ] Run focused validation for LSP and editor packages.
-- [ ] Run default full validation when completing the entire plan or before a
+- [x] Run focused validation for LSP and editor packages.
+- [x] Run default full validation when completing the entire plan or before a
   final merge checkpoint.
+
+Phase 8 notes:
+
+- `docs/lsp-editor-setup.md` now documents the final highlighting model:
+  native LSP semantic tokens plus Zed Tree-sitter and VS Code TextMate fallback
+  metadata.
+- No `docs/lsp-implementation-plan.md` or `docs/architecture/lsp.md` update was
+  required; the existing LSP boundary already assigns classification to
+  `vela_language_service`, protocol projection to `vela_lsp_server`, and thin
+  behavior-free editor packages.
+- `docs/progress.md` records the completed highlighting capability coverage,
+  and `docs/decisions.md` records the durable custom-token fallback projection
+  rule.
+- Final validation passed with focused service/LSP/editor checks plus the
+  default workspace validation commands listed below.
 
 Focused validation:
 
@@ -601,31 +616,43 @@ node editors/vscode/scripts/validate-package.js
 
 ## 15. Acceptance Criteria
 
-- [ ] Vela has a documented semantic token taxonomy with explicit standard LSP
+- [x] Vela has a documented semantic token taxonomy with explicit standard LSP
   names or standard fallback names for every custom token.
-- [ ] Functions, methods, stdlib calls, schema/host calls, source calls, and
+- [x] Functions, methods, stdlib calls, schema/host calls, source calls, and
   unresolved calls are distinguishable in service semantic tokens.
-- [ ] Structs, enums, traits/interfaces, type aliases, enum variants, fields,
+- [x] Structs, enums, traits/interfaces, type aliases, enum variants, fields,
   properties, modules, imports, constants/globals, parameters, locals, builtin
   types, source types, and schema types are distinguishable where analysis facts
   allow it.
-- [ ] Literals, comments, attributes, control-flow keywords, operators, and
+- [x] Literals, comments, attributes, control-flow keywords, operators, and
   punctuation have complete lexical or semantic coverage and degrade under
   parse errors.
-- [ ] The LSP server advertises and serves a legend that matches the service
+- [x] The LSP server advertises and serves a legend that matches the service
   taxonomy, preserves full/delta behavior, and supports range tokens if that
   phase is completed.
-- [ ] Zed fallback highlighting covers the main Vela syntax surface through
+- [x] Zed fallback highlighting covers the main Vela syntax surface through
   Tree-sitter queries without duplicating semantic analysis.
-- [ ] VS Code fallback highlighting and semantic-token scope contribution
+- [x] VS Code fallback highlighting and semantic-token scope contribution
   metadata cover the same main concepts without duplicating semantic analysis.
-- [ ] Cross-editor fixtures show which concepts are handled semantically by LSP
+- [x] Cross-editor fixtures show which concepts are handled semantically by LSP
   and which are fallback-only in Zed or VS Code.
-- [ ] Editor packages remain thin launchers/configuration packages around the
+- [x] Editor packages remain thin launchers/configuration packages around the
   native server.
-- [ ] No runtime behavior, host access behavior, reflection behavior, TypeRegistry
+- [x] No runtime behavior, host access behavior, reflection behavior, TypeRegistry
   structure, script syntax semantics, or VM behavior changes solely for
   highlighting.
+
+Acceptance validated with:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo test -p vela_language_service semantic_tokens
+cargo test -p vela_lsp_server semantic_tokens
+node editors/zed/scripts/validate-package.js
+node editors/vscode/scripts/validate-package.js
+```
 
 ---
 

@@ -431,6 +431,17 @@ struct SemanticClassificationContext<'a> {
     unresolved_identifiers: &'a unresolved::IdentifierRanges,
 }
 
+struct SemanticClassificationInput<'a> {
+    source_id: SourceId,
+    text: &'a str,
+    tokens: &'a [Token],
+    member_receivers: &'a BTreeMap<(usize, usize), TextRange>,
+    path_calls: &'a BTreeMap<(usize, usize), Vec<String>>,
+    path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
+    pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
+    inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
+}
+
 impl SemanticTokenClassification {
     const fn new(token_type: SemanticTokenType, modifiers: SemanticTokenModifiers) -> Self {
         Self {
@@ -463,16 +474,16 @@ impl LanguageServiceDatabases {
             .parsed_source(document_id)
             .map(|parsed| local_record_facts::collect(self.hir_db().graph(), parsed))
             .unwrap_or_default();
-        let classifications = self.semantic_token_classifications(
-            source.source_id(),
-            source.text(),
-            &lexed.tokens,
-            &member_receivers,
-            &path_sites.calls,
-            &path_sites.expressions,
-            &path_sites.patterns,
-            &inferred_local_facts,
-        );
+        let classifications = self.semantic_token_classifications(&SemanticClassificationInput {
+            source_id: source.source_id(),
+            text: source.text(),
+            tokens: &lexed.tokens,
+            member_receivers: &member_receivers,
+            path_calls: &path_sites.calls,
+            path_expressions: &path_sites.expressions,
+            pattern_paths: &path_sites.patterns,
+            inferred_local_facts: &inferred_local_facts,
+        });
         let mut semantic_tokens = Vec::new();
 
         for range in comment_ranges(source.text(), &lexed.tokens) {
@@ -538,38 +549,35 @@ impl LanguageServiceDatabases {
 
     fn semantic_token_classifications(
         &self,
-        source_id: SourceId,
-        text: &str,
-        tokens: &[Token],
-        member_receivers: &BTreeMap<(usize, usize), TextRange>,
-        path_calls: &BTreeMap<(usize, usize), Vec<String>>,
-        path_expressions: &BTreeMap<(usize, usize), Vec<String>>,
-        pattern_paths: &BTreeMap<(usize, usize), Vec<String>>,
-        inferred_local_facts: &BTreeMap<HirLocalId, TypeFact>,
+        input: &SemanticClassificationInput<'_>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
-        let unresolved_identifiers = unresolved::ranges(graph, source_id);
+        let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
         let context = SemanticClassificationContext {
             facts: &facts,
-            member_receivers,
-            path_calls,
-            path_expressions,
-            pattern_paths,
-            inferred_local_facts,
+            member_receivers: input.member_receivers,
+            path_calls: input.path_calls,
+            path_expressions: input.path_expressions,
+            pattern_paths: input.pattern_paths,
+            inferred_local_facts: input.inferred_local_facts,
             unresolved_identifiers: &unresolved_identifiers,
         };
-        for token in tokens {
+        for token in input.tokens {
             let TokenKind::Ident(name) = &token.kind else {
                 continue;
             };
             let Some(range) = token_range(token.span) else {
                 continue;
             };
-            if let Some(classification) =
-                self.semantic_classification_for_identifier(source_id, text, name, range, &context)
-            {
+            if let Some(classification) = self.semantic_classification_for_identifier(
+                input.source_id,
+                input.text,
+                name,
+                range,
+                &context,
+            ) {
                 classifications.insert((range.start, range.end), classification);
             }
         }

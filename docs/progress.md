@@ -317,6 +317,14 @@ navigation queries, and `vela_lsp_server` advertises and serves
 `textDocument/declaration` plus `textDocument/typeDefinition` using the same
 source/schema-backed spans as go-to-definition.
 
+M20.5 highlighting completion update: semantic highlighting now has a
+service-owned Vela token taxonomy, native LSP full/delta/range projection with
+client-specific fallback, Zed Tree-sitter syntax fallback captures, VS Code
+TextMate plus semantic-token scope metadata, and a shared consistency table
+validated across service, LSP, and editor package checks. Editor packages
+remain thin launchers/configuration layers and do not compute semantic
+classification.
+
 M20.5 Phase 16 update: clients that support dynamic watched-file registration
 now receive a `client/registerCapability` request for configured `.vela`
 source roots, workspace `vela.toml`, and the configured host schema artifact
