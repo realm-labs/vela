@@ -179,7 +179,7 @@ coverage complete based only on the older capability phases.
 
 - [x] Add a protocol-first LSP test matrix document and link it from this
   implementation plan.
-- [ ] Audit lifecycle capabilities against handlers and matrix rows.
+- [x] Audit lifecycle capabilities against handlers and matrix rows.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
@@ -191,6 +191,8 @@ coverage complete based only on the older capability phases.
   - Cover `didOpen`, `didChange`, `didClose` or capability correction,
     publish diagnostics, stale generations, parser recovery, missing imports,
     config diagnostics, and schema degradation.
+  - `textDocument/didClose` now has protocol coverage for scratch diagnostic
+    clearing and disk snapshot restoration after closing an open overlay.
 - [ ] Audit completion, completion resolve, signature help, and hover.
   - Cover all matrix syntax dimensions that apply, including cross-file
     imports, globals, functions, methods, type hints, defaulted parameters,
@@ -415,6 +417,7 @@ Purpose: expose the service through a native LSP binary.
 - [x] Advertise only implemented capabilities.
 - [x] Implement full document sync first.
 - [x] Add incremental document sync after text edit application is tested.
+- [x] Implement `didClose` for the advertised `openClose` sync contract.
 - [x] Implement workspace folder/config handling.
   - [x] Capture `initialize` workspace roots for open-document diagnostics.
   - [x] Load `vela.toml` and workspace files through the platform layer.
@@ -432,6 +435,8 @@ Tests:
 - [x] `lsp_did_open_publishes_diagnostics`
 - [x] `lsp_did_change_replaces_document_text`
 - [x] `lsp_did_change_applies_incremental_text_edit`
+- [x] `lsp_did_close_clears_scratch_diagnostics`
+- [x] `lsp_did_close_restores_disk_snapshot_diagnostics`
 - [x] `lsp_initialize_uses_workspace_root_for_document_sync`
 - [x] `file_create_adds_module`
 - [x] `lsp_cancellation_discards_stale_request`

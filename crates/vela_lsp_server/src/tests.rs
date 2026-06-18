@@ -86,7 +86,36 @@ mod inlay;
 mod lifecycle;
 mod stdio;
 mod document_sync {
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     use super::{LspServer, notification, notification_value, request, response_value};
+
+    fn temp_workspace() -> PathBuf {
+        let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
+            Ok(duration) => duration.as_nanos(),
+            Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
+        };
+        let root = std::env::temp_dir().join(format!(
+            "vela_lsp_server_sync_{}_{}",
+            std::process::id(),
+            suffix
+        ));
+        if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
+            panic!("temporary workspace should be creatable: {error}");
+        }
+        root
+    }
+
+    fn file_uri(path: &Path) -> String {
+        let path = path.display().to_string().replace('\\', "/");
+        if path.starts_with('/') {
+            format!("file://{path}")
+        } else {
+            format!("file:///{path}")
+        }
+    }
 
     #[test]
     fn lsp_did_open_publishes_diagnostics() {
@@ -224,6 +253,105 @@ mod document_sync {
             panic!("incremental didChange should publish diagnostics");
         };
         assert!(change_diagnostics.is_empty(), "{change_diagnostics:?}");
+    }
+
+    #[test]
+    fn lsp_did_close_clears_scratch_diagnostics() {
+        let mut server = LspServer::new();
+        let uri = "file:///workspace/main.vela";
+        let open = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
+                }
+            }),
+        )));
+        let open_diagnostics = open["params"]["diagnostics"]
+            .as_array()
+            .expect("didOpen should publish diagnostics");
+        assert_eq!(open_diagnostics.len(), 1);
+
+        let close = notification_value(server.handle_json(&notification(
+            "textDocument/didClose",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri
+                }
+            }),
+        )));
+
+        assert_eq!(close["method"], "textDocument/publishDiagnostics");
+        assert_eq!(close["params"]["uri"], uri);
+        let close_diagnostics = close["params"]["diagnostics"]
+            .as_array()
+            .expect("didClose should publish diagnostics");
+        assert!(close_diagnostics.is_empty(), "{close_diagnostics:?}");
+    }
+
+    #[test]
+    fn lsp_did_close_restores_disk_snapshot_diagnostics() {
+        let root = temp_workspace();
+        let source_path = root.join("scripts").join("game").join("main.vela");
+        fs::write(
+            &source_path,
+            "pub fn main(scores: Array<i64>) { return scores.first() }",
+        )
+        .expect("disk source should be writable");
+        let source_uri = file_uri(&source_path);
+
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root.join("scripts")),
+                "capabilities": {}
+            }),
+        )));
+        assert_eq!(
+            server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [{ "uri": source_uri, "type": 1 }]
+                }),
+            )),
+            super::JsonRpcResult::None
+        );
+        let open = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": source_uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
+                }
+            }),
+        )));
+        let open_diagnostics = open["params"]["diagnostics"]
+            .as_array()
+            .expect("didOpen should publish diagnostics");
+        assert_eq!(open_diagnostics.len(), 1);
+
+        let close = notification_value(server.handle_json(&notification(
+            "textDocument/didClose",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": source_uri
+                }
+            }),
+        )));
+
+        let close_diagnostics = close["params"]["diagnostics"]
+            .as_array()
+            .expect("didClose should publish restored disk diagnostics");
+        assert!(close_diagnostics.is_empty(), "{close_diagnostics:?}");
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
     }
 
     #[test]

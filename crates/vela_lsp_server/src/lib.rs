@@ -148,6 +148,7 @@ impl LspServer {
             "exit" => self.exit(message.id),
             "textDocument/didOpen" => self.did_open(message.id, message.params),
             "textDocument/didChange" => self.did_change(message.id, message.params),
+            "textDocument/didClose" => self.did_close(message.id, message.params),
             "textDocument/completion" => self.completion(message.id, message.params),
             "completionItem/resolve" => self.completion_resolve(message.id, message.params),
             "textDocument/codeAction" => self.code_action(message.id, message.params),
@@ -337,6 +338,38 @@ impl LspServer {
         self.open_documents.insert(document_id.clone());
 
         self.publish_current_diagnostics(&uri, &document_id)
+    }
+
+    fn did_close(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
+        if let Some(id) = id {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "`textDocument/didClose` must be sent as a notification",
+            ));
+        }
+
+        let params = match serde_json::from_value::<DidCloseTextDocumentParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                    "",
+                    Vec::new(),
+                    Some(format!("invalid didClose params: {error}")),
+                ));
+            }
+        };
+
+        let uri = params.text_document.uri;
+        let document_id = DocumentId::from(uri.clone());
+        self.workspace.close_document(&document_id);
+        self.open_documents.remove(&document_id);
+
+        if self.disk_sources.contains_key(&document_id) {
+            self.publish_current_diagnostics(&uri, &document_id)
+        } else {
+            JsonRpcResult::Notification(publish_diagnostics_notification(&uri, Vec::new(), None))
+        }
     }
 
     fn did_change_watched_files(
@@ -759,6 +792,17 @@ struct TextDocumentItem {
 struct DidChangeTextDocumentParams {
     text_document: VersionedTextDocumentIdentifier,
     content_changes: Vec<TextDocumentContentChangeEvent>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DidCloseTextDocumentParams {
+    text_document: TextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct TextDocumentIdentifier {
+    uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
