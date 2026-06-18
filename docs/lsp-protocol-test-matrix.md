@@ -56,6 +56,48 @@ For protocol rows that mutate source text, such as rename, code actions, and
 formatting, coverage must also prove that edits are source-owned, versioned
 where practical, conflict-checked, and deterministic.
 
+## Rust-Analyzer Alignment Baseline
+
+Vela intentionally uses Rust-like item, type, method-call, and block syntax.
+Where the syntax overlaps, the LSP user experience should follow
+rust-analyzer's behavior model unless Vela has a documented language reason not
+to. This is an editor-behavior target, not permission to import Rust-only
+semantics such as macros, borrow checking, Rust trait solving, or script
+generics.
+
+The baseline applies before any LSP capability is considered user-facing
+complete:
+
+- Formatting must use compact type argument lists: `Array<i64>`,
+  `Set<String>`, `Map<String, i64>`, and
+  `Result<Map<String, i64>, String>`. It must not emit
+  `Map < String, i64 >`, `Array < i64 >`, or formatter-introduced line breaks
+  inside type arguments while no explicit line-width policy exists.
+- Function signatures, return type hints, local type annotations, and nested
+  builtin container hints must share the same spacing rule. The formatter must
+  be idempotent on those examples through service and LSP formatting paths.
+- Dot completion on a statically known receiver must trigger with an empty
+  prefix after `.` and must include the receiver's known field and method
+  surface: source struct fields, inherent impl methods, trait methods,
+  schema-backed fields and methods, and builtin value/container methods such as
+  `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Option<T>`, `Result<T, E>`,
+  `String`, and `Bytes` methods. Dynamic `Any` receivers still suppress member
+  guesses and must not fall back to global completions.
+- Completion labels must be readable insertion labels. A source or schema type
+  completion should show `Player` as the label and insert `Player`, while the
+  module path or owner path lives in `labelDetails`, `detail`, or
+  documentation. Long fully qualified paths must not be appended to the label
+  or inserted text.
+- `struct Player { | }` is a struct-field declaration context. Completion
+  there should offer field-declaration snippets or valid field-name/type
+  assistance, then type-hint completion after `:`, but it must not show global
+  expression items, constructor completions, module path noise, or the struct
+  itself as a value.
+- Statement-position snippets must include at least `for in` and `match`
+  templates with snippet insert text and stable cursor stops. When the scrutinee
+  type is a known enum, match-arm generation remains a code action, but the
+  basic `match` skeleton belongs in completion.
+
 ## Vela Syntax And Symbol Dimensions
 
 Use these dimensions as row references in the matrix.
@@ -75,6 +117,7 @@ Use these dimensions as row references in the matrix.
 | S10 | Symbol ownership | Local, parameter, source declaration, source member, source variant, schema/host fact, stdlib fact, builtin fact, module, dynamic `Any`, unresolved. |
 | S11 | Incrementality and cancellation | Repeated queries, body-only edits, declaration/import fingerprint changes, reverse dependency invalidation, request cancellation, generation rejection. |
 | S12 | Trivia and formatting | Comments, shebang trivia, blank-line groups, indentation, top-level item spans, nested member spans, malformed-source fallback. |
+| S13 | Rust-analyzer-aligned authoring UX | Compact generic-like type formatting, typed receiver dot completion, field-declaration contexts, completion label/detail separation, and statement snippets for Rust-like constructs. |
 
 ## Workspace And Cross-File Required Coverage
 
@@ -140,7 +183,7 @@ in `vela_lsp_server`.
 | `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot, clears or refreshes diagnostics, and restores disk-backed query behavior for features such as definition. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
 | `textDocument/didSave` | Save is currently false | S0 | No provider dependency on save events. | Save notifications should not be required for correctness while `save` is false. |
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
-| `textDocument/completion` | `completionProvider` | S1-S11 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; stale/cancelled queries discard; malformed cursor contexts recover. |
+| `textDocument/completion` | `completionProvider` | S1-S11, S13 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. Must include empty-prefix typed receiver `.` completions for source/schema/builtin methods and fields, struct-field declaration body contexts, readable label/detail separation for source and schema types, and `for in`/`match` snippets. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; struct declaration bodies suppress global/value/constructor fallback; labels and insert text must not contain unrelated fully qualified path suffixes; stale/cancelled queries discard; malformed cursor contexts recover. |
 | `completionItem/resolve` | Completion resolve | S3, S4, S5, S10 | Lazy docs/details for schema, stdlib, and source-backed items where supported; items without lazy payloads pass through unchanged. | Unknown resolve payloads return an invalid-request error without panics; initial completion list stays lightweight. |
 | `textDocument/signatureHelp` | `signatureHelpProvider` | S3, S5, S8-S10 | Source functions, source methods, schema functions/methods, trait methods, stdlib functions/methods, active parameter, named/default args, and imported function/method calls. | Unknown calls and dynamic `Any` receiver calls return null; incomplete calls resolve only when target facts exist; stale schema. |
 | `textDocument/hover` | `hoverProvider` | S1-S10 | Locals, params, declarations, fields, methods, variants, modules, type hints, schema facts, stdlib facts, docs, effects, permissions, and imported source facts. | Unresolved names and dynamic `Any` member targets return null; missing-schema type hints degrade to `Any`; schema facts without source spans and parser recovery remain explicit audits. |
@@ -163,9 +206,9 @@ in `vela_lsp_server`.
 | `textDocument/semanticTokens/full` | `semanticTokensProvider.full` | S1-S10 | Lexical and resolved tokens for declarations, uses, literals, operators, punctuation, provenance modifiers, unresolved references. | Parser recovery, missing schema fallback, client token/modifier fallback projection. |
 | `textDocument/semanticTokens/full/delta` | Semantic-token delta | S1-S11 | Stable result IDs and deterministic full-replacement or delta behavior after edits. | Stale result IDs, edits that change line indexes, cancelled/stale generations. |
 | `textDocument/semanticTokens/range` | Semantic-token range | S1-S11 | Requested range filters full service tokens and encodes valid relative ranges; empty requested ranges return an empty token stream. | Malformed sources and client capability fallback. |
-| `textDocument/formatting` | `documentFormattingProvider` | S1, S2, S4, S6-S9, S12 | Full-document deterministic formatting, comment/blank-line preservation, final newline, idempotence. | Malformed source, unresolved HIR, syntax-only fallback. |
+| `textDocument/formatting` | `documentFormattingProvider` | S1, S2, S4, S6-S9, S12, S13 | Full-document deterministic formatting, comment/blank-line preservation, final newline, idempotence, compact builtin container type arguments, nested `Option`/`Result` type hints, function signatures, local annotations, and map/set/array examples without formatter-invented type-argument line breaks. | Malformed source, unresolved HIR, syntax-only fallback, incomplete type argument lists, and long lines without an explicit line-width policy. |
 | `textDocument/rangeFormatting` | `documentRangeFormattingProvider` | S1, S2, S4, S6-S9, S12 | Selected top-level item, nested members, field groups, whitespace-padded selections, trailing whitespace cleanup. | Partial unsupported ranges return conservative edits only. |
-| `textDocument/onTypeFormatting` | `documentOnTypeFormattingProvider` | S1, S2, S4, S6-S9, S12 | `}` and newline triggers for completed items, methods, enum record variants, current construct cleanup. | Unsupported triggers and incomplete constructs fall back safely. |
+| `textDocument/onTypeFormatting` | `documentOnTypeFormattingProvider` | S1, S2, S4, S6-S9, S12, S13 | `}` and newline triggers for completed items, methods, enum record variants, current construct cleanup, and preserving the same compact type-argument spacing as full-document formatting. | Unsupported triggers, incomplete constructs, and incomplete type argument lists fall back safely. |
 | `textDocument/inlayHint` | `inlayHintProvider` | S2-S6, S9-S11 | Parameter names, local type facts, lambda parameter facts, host-path type facts, tuple-variant payload names, requested range. | Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints. |
 | `workspace/didChangeWatchedFiles` | Watched files | S0, S8, S9, S11 | Create/change/delete/rename `.vela`, `vela.toml`, and schema artifact events update project/schema state and diagnostics. | Coalesced duplicate events, missing files, invalid config/schema, deleted schema. |
 | `workspace/didChangeConfiguration` | Configuration | S0, S9, S11 | Editor settings map to service-owned workspace config, roots, schema path, reload behavior. | Invalid settings degrade to diagnostics; no protocol types leak into service APIs. |
@@ -209,7 +252,15 @@ Each protocol fixture should declare:
 
 These are the first places to compare current tests against the matrix:
 
-1. Navigation semantics must stay separate per protocol. Current focused
+1. Rust-analyzer-aligned authoring behavior is the top post-validation audit.
+   Add service and LSP fixtures for compact container type formatting using
+   `Array<i64>`, `Set<String>`, `Map<String, i64>`, and
+   `Result<Map<String, i64>, String>`; empty-prefix `.` completion on typed
+   arrays/maps/sets and source structs; source inherent and trait method
+   completions; readable struct/type completion labels with details separated
+   from insert text; `struct Player { | }` field-declaration context
+   completion; and `for in`/`match` statement snippets.
+2. Navigation semantics must stay separate per protocol. Current focused
    fixtures cover `typeDefinition` type-fact targets and null fallback for
    local source values, dynamic local values, source/schema member values,
    schema types without source spans, imported source type aliases used by
@@ -220,18 +271,18 @@ These are the first places to compare current tests against the matrix:
     constructors whose owner type is source-owned, and `definition` for
    imported const/global value uses; the remaining audit is
    broader cross-file type-definition coverage across W1.
-2. `textDocument/implementation` remains intentionally unadvertised until
+3. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now
    pins both the absent capability and direct request rejection.
-3. `textDocumentSync.openClose` is advertised and `textDocument/didClose`
+4. `textDocumentSync.openClose` is advertised and `textDocument/didClose`
    behavior is covered for scratch diagnostics, disk-backed diagnostic
    restoration, and disk-backed definition queries after closing an overlay;
    remaining audits should focus on other cross-feature close/open
    interactions rather than basic capability support.
-4. Capability-to-handler consistency should be audited for every advertised
+5. Capability-to-handler consistency should be audited for every advertised
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
-5. Dynamic boundaries need explicit negative tests. Current focused fixtures
+6. Dynamic boundaries need explicit negative tests. Current focused fixtures
    pin `typeDefinition` null results for dynamic local values,
    `signatureHelp` null results for unresolved calls and dynamic receiver
    calls, and `hover` null results for unresolved names plus dynamic receiver
@@ -244,7 +295,7 @@ These are the first places to compare current tests against the matrix:
    schema, unresolved name, and parser recovery cases should degrade by
    returning null, empty results, diagnostics, or suppressed hints, not guessed
    semantic facts.
-6. Multi-file and overlay behavior should be present in each cross-file
+7. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,
    semantic tokens, diagnostics, and call hierarchy. Current focused fixtures
    pin `workspace/symbol` removal after deleted disk source files and

@@ -212,6 +212,17 @@ avoiding Rust-specific macro, trait-solver, and full Salsa complexity unless a
 Vela-specific need appears. The execution plan lives in
 [lsp-clean-architecture-refactor-plan.md](lsp-clean-architecture-refactor-plan.md).
 
+LSP authoring UX should align with rust-analyzer where Vela syntax overlaps.
+This is a user-facing behavior contract, not a semantic import from Rust:
+formatter output keeps Rust-like type argument spacing such as
+`Map<String, i64>`; typed receiver `.` completion uses known source, schema,
+trait, and builtin method facts without global fallback; completion labels stay
+short and put owner/module paths in detail fields; declaration bodies such as
+`struct Player { }` use declaration-specific contexts; and statement
+completion provides Rust-like snippets such as `for in` and `match`. Rust-only
+features such as macros, borrow checking, Rust trait solving, or script
+generics remain out of scope.
+
 Semantic highlighting uses an editor-neutral Vela taxonomy in
 `vela_language_service` with standard LSP names where they exist and explicit
 fallback names for custom token types. Custom tokens such as `builtinType`,

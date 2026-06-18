@@ -84,6 +84,9 @@ or unadvertised until its service-level behavior is correct.
   typo repairs.
 - [ ] Support formatting once syntax trivia/lossless token policy is stable.
 - [ ] Support inlay hints from stable TypeFacts.
+- [ ] Align user-facing authoring behavior with rust-analyzer where Vela
+  syntax overlaps: compact type formatting, typed receiver completions,
+  declaration-body contexts, readable completion labels/details, and snippets.
 - [ ] Build toward many-file workspaces whose total source size approaches one
   million lines with explicit source, parse, HIR, and analysis databases.
 - [ ] Use generation IDs and cancellation so stale request results are
@@ -183,6 +186,21 @@ coverage complete based only on the older capability phases.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
+- [ ] Audit rust-analyzer-aligned authoring behavior before treating the LSP
+  as user-facing complete.
+  - Cover compact type argument formatting for `Array<i64>`,
+    `Set<String>`, `Map<String, i64>`, and
+    `Result<Map<String, i64>, String>`.
+  - Cover empty-prefix `.` completion on typed source structs,
+    source impl/trait methods, schema host receivers, and builtin
+    `Array`/`Map`/`Set`/`Iterator`/`Option`/`Result`/`String`/`Bytes`
+    methods.
+  - Cover struct-field declaration contexts after `struct Player {` and
+    type-hint contexts after a field `:`.
+  - Cover readable completion label/detail separation so `Player` inserts as
+    `Player` and owner paths are projected only as detail/labelDetails/docs.
+  - Cover statement snippets for `for in` and `match` through service tests
+    and LSP JSON-RPC fixtures.
 - [ ] Add or audit the canonical cross-file workspace fixture family.
   - Cover imported functions, const/global symbols, source types, enum
     variants, fields, methods, open overlays in defining and importing files,
@@ -538,6 +556,20 @@ Purpose: make common authoring flows fast and schema-aware.
     source-owned inherent method calls, schema-backed host and trait method
     calls, stdlib callback method calls, and imported source function calls
     with defaulted parameters.
+- [ ] Close rust-analyzer-aligned completion gaps found in editor use.
+  - Empty-prefix `.` on a known receiver must not return an empty list when
+    the receiver has source, schema, trait, or builtin methods.
+  - Source-owned struct fields, inherent impl methods, and trait methods must
+    use the same typed receiver path as schema-backed members.
+  - Builtin value and container method completions must be available for
+    `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Option<T>`,
+    `Result<T, E>`, `String`, and `Bytes`.
+  - Top-level item/type completions must keep labels and insert text short
+    and put owner/module paths in structured detail fields.
+  - `struct Player { | }` must be classified as a field-declaration context,
+    not as expression/global fallback.
+  - Statement completion must expose `for in` and `match` snippets with
+    snippet insert text.
 
 Tests:
 
@@ -586,6 +618,16 @@ Tests:
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
 - [x] `lsp_signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
+- [ ] `member_completion_triggers_after_dot_with_empty_prefix`
+- [ ] `member_completion_includes_builtin_container_methods`
+- [ ] `member_completion_includes_source_impl_and_trait_methods`
+- [ ] `lsp_member_completion_includes_source_and_builtin_methods`
+- [ ] `completion_uses_short_type_labels_with_owner_details`
+- [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
+- [ ] `struct_body_completion_enters_field_declaration_context`
+- [ ] `lsp_struct_body_completion_enters_field_declaration_context`
+- [ ] `statement_completion_offers_for_in_and_match_snippets`
+- [ ] `lsp_statement_completion_offers_for_in_and_match_snippets`
 
 Validation:
 
@@ -1249,6 +1291,10 @@ Purpose: provide deterministic source formatting without losing comments.
     shebang trivia, spans, and blank-line whitespace groups.
 - [~] Implement expression formatting.
   - Initial token-driven rules normalize operator and delimiter spacing.
+  - Remaining gap: type argument delimiters must use rust-analyzer-like
+    compact spacing for builtin containers and nested `Option`/`Result`
+    contracts. `Map < String, i64 >` and formatter-created breaks such as
+    `Map < String,\n    i64 >` are invalid output.
 - [~] Implement statement and block formatting.
   - Initial token-driven rules indent brace blocks and comment lines.
 - [~] Implement item/declaration formatting.
@@ -1278,6 +1324,8 @@ Purpose: provide deterministic source formatting without losing comments.
 - [~] Implement full document formatting.
   - Native LSP full-document formatting now uses the token/trivia formatter
     for spacing, brace indentation, comment preservation, and final newline.
+  - Full-document formatting must preserve compact type arguments in function
+    parameters, return hints, local annotations, and nested container hints.
 - [~] Implement on-type formatting only after full/range formatting is stable.
   - Initial native LSP support handles `}` and newline triggers by limiting
     trailing-whitespace cleanup to the current brace-delimited construct or
@@ -1337,6 +1385,12 @@ Tests:
 - [x] `lsp_range_formatting_formats_selected_struct_field_group`
 - [x] `range_formatting_formats_selected_enum_record_field_group`
 - [x] `lsp_range_formatting_formats_selected_enum_record_field_group`
+- [ ] `formatting_compacts_builtin_container_type_arguments`
+- [ ] `formatting_compacts_nested_result_container_type_arguments`
+- [ ] `formatting_preserves_container_type_arguments_on_one_line`
+- [ ] `formatting_formats_container_type_hint_example`
+- [ ] `lsp_document_formatting_compacts_container_type_arguments`
+- [ ] `lsp_document_formatting_formats_container_type_hint_example`
 
 Validation:
 
@@ -1545,6 +1599,12 @@ Purpose: prove the LSP track is complete enough to run alongside runtime work.
   - No archive needed; the validation summary is recorded in
     `docs/progress.md`.
 
+Post-validation editor use has exposed user-facing authoring gaps that this
+gate did not catch. The Phase 18 validation proves the protocol plumbing and
+baseline capability coverage that existed at the time, but it is not enough to
+call the LSP user-facing complete until the Phase 19 rust-analyzer-aligned
+correction slice below passes.
+
 Validation:
 
 ```bash
@@ -1555,7 +1615,90 @@ cargo test --workspace
 
 ---
 
-## 23. First Executable Task
+## 23. Phase 19: Rust-Analyzer-Aligned Authoring Correction
+
+Purpose: close the real-editor gaps found after the Phase 18 validation pass
+and make Vela's Rust-like syntax feel predictable in editors that users compare
+against rust-analyzer.
+
+- [ ] Add golden formatter fixtures for the container type hint examples that
+  currently format incorrectly:
+
+```vela
+fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards);
+}
+
+fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let rewards: Map<String, i64> = {
+        "xp": 5
+    };
+    let tags: Set<String> = set::from_array(["daily", "vip"]);
+    return score(scores, rewards, tags).unwrap_or(0);
+}
+```
+
+- [ ] Fix `vela_syntax::formatting` so type arguments have no spaces around
+  `<` or `>`, exactly one space after commas, no formatter-created type
+  argument line breaks without an explicit line-width policy, and idempotent
+  output through full-document, range, and on-type paths.
+- [ ] Extend completion context extraction so typed member access after `.`
+  works with an empty prefix and never falls back to globals.
+- [ ] Unify member completion facts for source-owned struct fields, inherent
+  impl methods, trait methods, schema-backed fields/methods, and builtin
+  value/container methods.
+- [ ] Split completion display from insertion for source and schema types:
+  `label` and inserted text stay as the short visible name, while module or
+  owner path is projected through `labelDetails`, `detail`, or documentation.
+- [ ] Add a struct-field declaration completion context for
+  `struct Player { | }`, with field snippets and type-hint completion after
+  `:`, and suppress expression/global/constructor fallback in that context.
+- [ ] Add statement-position snippets for `for in` and `match`. Known-enum
+  match-arm expansion remains a code action; completion should provide the
+  skeleton only.
+- [ ] Add native LSP JSON-RPC fixtures mirroring the service tests for each
+  correction so editor protocol projection cannot regress independently.
+
+Tests:
+
+- [ ] `formatting_compacts_builtin_container_type_arguments`
+- [ ] `formatting_compacts_nested_result_container_type_arguments`
+- [ ] `formatting_formats_container_type_hint_example`
+- [ ] `lsp_document_formatting_formats_container_type_hint_example`
+- [ ] `member_completion_triggers_after_dot_with_empty_prefix`
+- [ ] `member_completion_includes_builtin_container_methods`
+- [ ] `member_completion_includes_source_impl_and_trait_methods`
+- [ ] `lsp_member_completion_includes_source_and_builtin_methods`
+- [ ] `completion_uses_short_type_labels_with_owner_details`
+- [ ] `lsp_completion_uses_short_type_labels_with_owner_details`
+- [ ] `struct_body_completion_enters_field_declaration_context`
+- [ ] `lsp_struct_body_completion_enters_field_declaration_context`
+- [ ] `statement_completion_offers_for_in_and_match_snippets`
+- [ ] `lsp_statement_completion_offers_for_in_and_match_snippets`
+
+Validation:
+
+```bash
+cargo test -p vela_syntax formatting
+cargo test -p vela_language_service formatting
+cargo test -p vela_language_service completion
+cargo test -p vela_lsp_server formatting
+cargo test -p vela_lsp_server completion
+```
+
+Run the full workspace validation before closing Phase 19 or restoring any
+"user-facing complete" claim for the native LSP:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+```
+
+---
+
+## 24. First Executable Task
 
 ```text
 Task: Implement the `vela_language_service` workspace skeleton.
@@ -1583,7 +1726,7 @@ Validation:
 
 ---
 
-## 24. Checkpoint Rules
+## 25. Checkpoint Rules
 
 - Mark each task checkbox only after focused tests and validation pass.
 - Commit small verified checkpoints with Conventional Commit messages.
