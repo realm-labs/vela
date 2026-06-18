@@ -13,8 +13,9 @@ use vela_hir::{
 use crate::{
     LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
     symbol_ref::{
-        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
-        source_module_symbol_from_segments, source_symbol_for_declaration,
+        schema_member_symbol, schema_symbol, schema_variant_symbol, source_enum_variant_symbol,
+        source_impl_method_symbol, source_member_symbol, source_module_symbol_from_segments,
+        source_symbol_for_declaration,
     },
 };
 
@@ -109,7 +110,7 @@ impl SymbolTarget {
                 .schema_db()
                 .source_locations()
                 .variant_span(&owner, variant)?;
-            return Some((span, SymbolRef::Schema(format!("{owner}::{variant}"))));
+            return Some((span, schema_variant_symbol(&owner, variant)));
         }
         None
     }
@@ -395,7 +396,7 @@ fn fact_symbol_ref_for(
                 || schema.method_fact(&owner, text).is_some()
                 || schema.trait_method_fact(&owner, text).is_some())
         {
-            return Some(SymbolRef::Schema(format!("{owner}.{text}")));
+            return Some(schema_member_symbol(&owner, text));
         }
         if stdlib_method_fact(receiver_fact, text, None).is_some() {
             return Some(SymbolRef::Builtin(format!(
@@ -568,19 +569,19 @@ fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
         || schema.trait_fact(text).is_some()
         || schema.function_fact(text).is_some()
     {
-        return Some(SymbolRef::Schema(text.to_owned()));
+        return Some(schema_symbol(text));
     }
     if let Some((owner, variant)) = text.rsplit_once("::")
         && schema.variant_fact(owner, variant).is_some()
     {
-        return Some(SymbolRef::Schema(text.to_owned()));
+        return Some(schema_variant_symbol(owner, variant));
     }
     let mut variants = schema.variants().filter(|variant| variant.name == text);
     let variant = variants.next()?;
     variants
         .next()
         .is_none()
-        .then(|| SymbolRef::Schema(format!("{}::{}", variant.owner, variant.name)))
+        .then(|| schema_variant_symbol(&variant.owner, &variant.name))
 }
 
 fn stdlib_function_symbol_ref(text: &str) -> Option<SymbolRef> {
