@@ -3,6 +3,9 @@ use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 
+#[path = "tests/returned_receivers.rs"]
+mod returned_receivers;
+
 #[test]
 fn call_hierarchy_uses_resolved_call_graph() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");

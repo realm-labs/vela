@@ -294,6 +294,10 @@ M20.5 Phase 11 update: call hierarchy now has service and native LSP coverage
 for prepare, incoming, and outgoing schema method calls where the receiver is
 produced by a schema function return.
 
+M20.5 Phase 11 update: call hierarchy now also covers prepare, incoming, and
+outgoing schema-backed trait method calls where the receiver is produced by a
+schema function return, matching references and document highlights.
+
 M20.5 Phase 10 update: native LSP semantic-token fixtures now cover
 source-owned field and inherent-method call-site classifications, matching the
 existing language-service member-use classification path.
