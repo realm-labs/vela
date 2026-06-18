@@ -193,6 +193,8 @@ coverage complete based only on the older capability phases.
     config diagnostics, and schema degradation.
   - `textDocument/didClose` now has protocol coverage for scratch diagnostic
     clearing and disk snapshot restoration after closing an open overlay.
+  - Disk snapshot restoration after `textDocument/didClose` now has
+    cross-feature definition-query coverage in addition to diagnostics.
 - [ ] Audit completion, completion resolve, signature help, and hover.
   - Cover all matrix syntax dimensions that apply, including cross-file
     imports, globals, functions, methods, type hints, defaulted parameters,
@@ -437,6 +439,7 @@ Tests:
 - [x] `lsp_did_change_applies_incremental_text_edit`
 - [x] `lsp_did_close_clears_scratch_diagnostics`
 - [x] `lsp_did_close_restores_disk_snapshot_diagnostics`
+- [x] `lsp_did_close_restores_disk_snapshot_definition_queries`
 - [x] `lsp_initialize_uses_workspace_root_for_document_sync`
 - [x] `file_create_adds_module`
 - [x] `lsp_cancellation_discards_stale_request`

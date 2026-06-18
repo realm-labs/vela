@@ -355,6 +355,134 @@ mod document_sync {
     }
 
     #[test]
+    fn lsp_did_close_restores_disk_snapshot_definition_queries() {
+        let root = temp_workspace();
+        let source_path = root.join("scripts").join("game").join("main.vela");
+        let disk_source = r#"struct DiskCell {
+    disk_value: i64,
+}
+
+fn main(cell: DiskCell) {
+    return cell.disk_value;
+}"#;
+        let overlay_source = r#"struct OverlayCell {
+    overlay_value: i64,
+}
+
+fn main(cell: OverlayCell) {
+    return cell.overlay_value;
+}"#;
+        fs::write(&source_path, disk_source).expect("disk source should be writable");
+        let source_uri = file_uri(&source_path);
+
+        let mut server = LspServer::new();
+        let _ = response_value(server.handle_json(&request(
+            1,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "rootUri": file_uri(&root.join("scripts")),
+                "capabilities": {}
+            }),
+        )));
+        assert_eq!(
+            server.handle_json(&notification(
+                "workspace/didChangeWatchedFiles",
+                serde_json::json!({
+                    "changes": [{ "uri": source_uri, "type": 1 }]
+                }),
+            )),
+            super::JsonRpcResult::None
+        );
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": source_uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": overlay_source
+                }
+            }),
+        )));
+
+        let overlay_use_line = overlay_source
+            .lines()
+            .nth(5)
+            .expect("overlay field use line should exist");
+        let overlay_definition = response_value(server.handle_json(&request(
+            2,
+            "textDocument/definition",
+            serde_json::json!({
+                "textDocument": { "uri": source_uri },
+                "position": {
+                    "line": 5,
+                    "character": overlay_use_line
+                        .find("overlay_value")
+                        .expect("overlay field use should exist")
+                }
+            }),
+        )));
+
+        assert_eq!(overlay_definition["result"]["uri"], source_uri);
+        assert_eq!(overlay_definition["result"]["range"]["start"]["line"], 1);
+        assert_eq!(
+            overlay_definition["result"]["range"]["end"]["character"],
+            overlay_source
+                .lines()
+                .nth(1)
+                .expect("overlay field declaration line should exist")
+                .find("overlay_value")
+                .expect("overlay field declaration should exist")
+                + "overlay_value".len()
+        );
+
+        let close = notification_value(server.handle_json(&notification(
+            "textDocument/didClose",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": source_uri
+                }
+            }),
+        )));
+        assert_eq!(close["method"], "textDocument/publishDiagnostics");
+        assert_eq!(close["params"]["uri"], source_uri);
+
+        let disk_use_line = disk_source
+            .lines()
+            .nth(5)
+            .expect("disk field use line should exist");
+        let disk_definition = response_value(server.handle_json(&request(
+            3,
+            "textDocument/definition",
+            serde_json::json!({
+                "textDocument": { "uri": source_uri },
+                "position": {
+                    "line": 5,
+                    "character": disk_use_line
+                        .find("disk_value")
+                        .expect("disk field use should exist")
+                }
+            }),
+        )));
+
+        assert_eq!(disk_definition["result"]["uri"], source_uri);
+        assert_eq!(disk_definition["result"]["range"]["start"]["line"], 1);
+        assert_eq!(
+            disk_definition["result"]["range"]["end"]["character"],
+            disk_source
+                .lines()
+                .nth(1)
+                .expect("disk field declaration line should exist")
+                .find("disk_value")
+                .expect("disk field declaration should exist")
+                + "disk_value".len()
+        );
+
+        fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+    }
+
+    #[test]
     fn lsp_initialize_uses_workspace_root_for_document_sync() {
         let mut server = LspServer::new();
         let response = response_value(server.handle_json(&request(

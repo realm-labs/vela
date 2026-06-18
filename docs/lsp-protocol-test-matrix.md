@@ -137,7 +137,7 @@ in `vela_lsp_server`.
 | `$/cancelRequest` | Cancellation | S11 | Stale queued or expensive requests are discarded by generation/cancellation tokens. | Unknown or already-completed request IDs do not panic. |
 | `textDocument/didOpen` | Text document sync | S0, S1, S9, S11 | Open overlay wins over disk and publishes diagnostics for syntax/HIR/analysis/schema facts. | Missing workspace config, scratch file mode, malformed source, missing schema. |
 | `textDocument/didChange` | Incremental text sync | S0, S1, S2, S9, S11 | Full and incremental edits update overlays, versions, line indexes, diagnostics, completions, hovers, semantic tokens. | Out-of-order or stale versions do not publish stale facts; malformed incremental edits reject cleanly. |
-| `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot and clears or refreshes diagnostics as appropriate. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
+| `textDocument/didClose` | `textDocumentSync.openClose` | S0, S11 | Closing removes overlay or restores disk snapshot, clears or refreshes diagnostics, and restores disk-backed query behavior for features such as definition. | If unsupported, stop advertising `openClose`; otherwise add a protocol fixture. |
 | `textDocument/didSave` | Save is currently false | S0 | No provider dependency on save events. | Save notifications should not be required for correctness while `save` is false. |
 | `textDocument/publishDiagnostics` | Server notification | S0, S1, S3, S8, S9, S11 | Parser, HIR, analysis, schema, config, missing import, unused import, and structured repair metadata project to LSP diagnostics. | One-file syntax errors do not block unrelated modules; stale schema degrades to `Any`; deleted files clear diagnostics. |
 | `textDocument/completion` | `completionProvider` | S1-S11 | Item, statement, expression, type, member, record field, map key, module path, call argument, lambda parameter, schema, stdlib, builtin, and cross-file imported declaration completions. | Dynamic receivers suppress member guesses; unknown constructors suppress record fields; stale/cancelled queries discard; malformed cursor contexts recover. |
@@ -219,9 +219,10 @@ These are the first places to compare current tests against the matrix:
    trait/impl implementation semantics are specified; lifecycle coverage now
    pins both the absent capability and direct request rejection.
 3. `textDocumentSync.openClose` is advertised and `textDocument/didClose`
-   behavior is covered for scratch and disk-backed overlays; remaining audits
-   should focus on cross-feature close/open interactions rather than basic
-   capability support.
+   behavior is covered for scratch diagnostics, disk-backed diagnostic
+   restoration, and disk-backed definition queries after closing an overlay;
+   remaining audits should focus on other cross-feature close/open
+   interactions rather than basic capability support.
 4. Capability-to-handler consistency should be audited for every advertised
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
