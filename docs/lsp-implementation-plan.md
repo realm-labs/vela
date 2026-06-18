@@ -256,8 +256,8 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP completion for open-overlay
     declarations, expression/item/statement/module/type/member/record/map-key/
     pattern/named-argument/lambda-parameter contexts, source and schema
-    facts, schema-function-return member receivers, stdlib and builtin facts,
-    defaulted parameters, short labels with separate projection fields,
+    facts, source/schema function-return member receivers, stdlib and builtin
+    facts, defaulted parameters, short labels with separate projection fields,
     repeated-query cache reuse, stale/cancelled completion rejection, and
     malformed/incomplete contexts without global fallback.
   - Current fixtures cover `completionItem/resolve` payload projection,
@@ -2068,7 +2068,9 @@ Tests:
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
+- [x] `member_completion_uses_source_function_return_receiver_facts`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
+- [x] `lsp_member_completion_uses_source_function_return_receiver_facts`
 - [x] `completion_uses_short_type_labels_with_owner_details`
 - [x] `lsp_completion_uses_short_type_labels_with_owner_details`
 - [x] `struct_body_completion_enters_field_declaration_context`

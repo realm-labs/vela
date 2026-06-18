@@ -227,6 +227,9 @@ fn call_fact(
             {
                 return fact;
             }
+            if let Some(fact) = scope.path_fact(path).and_then(function_return_fact) {
+                return fact;
+            }
 
             let Some((method, receiver_path)) = path.split_last() else {
                 return TypeFact::Unknown;

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_analysis::{
     expression::{ExprFactScope, type_fact_from_expr_with_registry},
+    facts::AnalysisFacts,
     registry::RegistryFacts,
     type_fact::TypeFact,
 };
@@ -23,6 +24,7 @@ pub(crate) fn collect(
     let mut collector = ExpressionFactCollector {
         graph,
         schema,
+        declarations: declaration_scope(graph),
         facts: BTreeMap::new(),
     };
     collector.collect_source_file(parsed);
@@ -55,6 +57,7 @@ pub(crate) fn fact_for_range(
 struct ExpressionFactCollector<'a> {
     graph: &'a ModuleGraph,
     schema: &'a RegistryFacts,
+    declarations: ExprFactScope,
     facts: BTreeMap<(usize, usize), TypeFact>,
 }
 
@@ -63,14 +66,15 @@ impl ExpressionFactCollector<'_> {
         for item in &parsed.items {
             match &item.kind {
                 ItemKind::Const(item) => {
-                    let mut scope = ExprFactScope::new();
+                    let mut scope = self.root_scope();
                     self.collect_expr(&item.value, &mut scope);
                 }
                 ItemKind::Function(item) => self.collect_function(item),
                 ItemKind::Trait(item) => {
                     for method in &item.methods {
                         if let Some(body) = &method.default_body {
-                            let mut scope = self.param_scope(&method.params);
+                            let mut scope = self.root_scope();
+                            self.insert_params(&mut scope, &method.params);
                             self.collect_block(body, &mut scope);
                         }
                     }
@@ -89,24 +93,27 @@ impl ExpressionFactCollector<'_> {
     }
 
     fn collect_function(&mut self, item: &FunctionItem) {
-        let mut scope = self.param_scope(&item.params);
+        let mut scope = self.root_scope();
+        self.insert_params(&mut scope, &item.params);
         self.collect_block(&item.body, &mut scope);
     }
 
-    fn param_scope(&self, params: &[Param]) -> ExprFactScope {
-        let mut scope = ExprFactScope::new();
+    fn root_scope(&self) -> ExprFactScope {
+        self.declarations.clone()
+    }
+
+    fn insert_params(&self, scope: &mut ExprFactScope, params: &[Param]) {
         for param in params {
             if let Some(type_hint) = &param.type_hint {
                 scope.insert_path([param.name.clone()], self.type_fact_from_hint(type_hint));
             }
             if let Some(default) = &param.default_value {
-                let fact = type_fact_from_expr_with_registry(default, &scope, self.schema);
+                let fact = type_fact_from_expr_with_registry(default, scope, self.schema);
                 if !matches!(fact, TypeFact::Unknown) {
                     scope.insert_path([param.name.clone()], fact);
                 }
             }
         }
-        scope
     }
 
     fn collect_block(&mut self, block: &Block, scope: &mut ExprFactScope) {
@@ -279,6 +286,23 @@ impl ExpressionFactCollector<'_> {
 
 fn text_range_key(range: TextRange) -> (usize, usize) {
     (range.start, range.end)
+}
+
+fn declaration_scope(graph: &ModuleGraph) -> ExprFactScope {
+    let mut scope = ExprFactScope::new();
+    let facts = AnalysisFacts::from_module_graph(graph);
+    for (declaration_id, fact) in facts.declarations() {
+        let Some(declaration) = graph.declaration(declaration_id) else {
+            continue;
+        };
+        scope.insert_path([declaration.name.clone()], fact.clone());
+        if let Some(module_path) = graph.module_path(declaration.module) {
+            let mut path = module_path.segments().to_vec();
+            path.push(declaration.name.clone());
+            scope.insert_path(path, fact.clone());
+        }
+    }
+    scope
 }
 
 fn span_key(span: vela_common::Span) -> (usize, usize) {
