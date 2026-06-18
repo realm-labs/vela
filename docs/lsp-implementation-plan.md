@@ -314,8 +314,8 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP `textDocument/references`
     and `textDocument/documentHighlight` for locals, imports, function aliases,
     const/global symbols, source type uses, module path segments, source and
-    schema fields, methods including schema-function-return receivers, trait
-    impl uses, enum variants, record-variant fields, schema-backed source
+    schema fields, methods including source/schema function-return receivers,
+    trait impl uses, enum variants, record-variant fields, schema-backed source
     spans, active-document-only highlights, shadowed locals, and dynamic or
     unresolved empty results.
   - Current fixtures cover service and native LSP call hierarchy for source
@@ -1285,6 +1285,8 @@ Tests:
 - [x] `lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses`
 - [x] `references_find_script_method_calls`
 - [x] `lsp_references_find_script_method_calls`
+- [x] `references_find_source_method_calls_on_source_function_return_receivers`
+- [x] `lsp_references_find_source_method_calls_on_source_function_return_receivers`
 - [x] `references_find_trait_impl_uses`
 - [x] `lsp_references_find_trait_impl_uses`
 - [x] `references_find_schema_field_reads_and_writes`
@@ -1326,6 +1328,8 @@ Tests:
 - [x] `lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets`
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
+- [x] `document_highlight_marks_source_method_calls_on_source_function_return_receivers`
+- [x] `lsp_document_highlight_marks_source_method_calls_on_source_function_return_receivers`
 - [x] `document_highlight_marks_trait_impl_uses`
 - [x] `lsp_document_highlight_marks_trait_impl_uses`
 - [x] `document_highlight_marks_schema_field_reads_and_writes`

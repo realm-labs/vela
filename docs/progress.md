@@ -263,6 +263,11 @@ schema-backed method calls where the receiver is produced by a schema function
 return, using the shared expression receiver facts instead of binding-only
 receiver spans.
 
+M20.5 Phase 11 update: references and document highlights now have service and
+native LSP coverage for source-owned method calls where the receiver is
+produced by a source function return, matching the schema-return receiver path
+through shared expression receiver facts.
+
 M20.5 Phase 11 update: call hierarchy now has service and native LSP coverage
 for prepare, incoming, and outgoing schema method calls where the receiver is
 produced by a schema function return.
