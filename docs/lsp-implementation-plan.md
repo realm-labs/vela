@@ -761,6 +761,7 @@ Tests:
 - [x] `lsp_signature_help_tracks_active_parameter`
 - [x] `signature_help_resolves_script_method_call`
 - [x] `signature_help_resolves_source_trait_default_method_on_source_function_return`
+- [x] `signature_help_resolves_source_method_on_source_method_return`
 - [x] `signature_help_resolves_schema_method_call`
 - [x] `signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `signature_help_resolves_schema_trait_method_call`
@@ -772,6 +773,7 @@ Tests:
 - [x] `signature_help_returns_none_for_dynamic_receiver_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_source_trait_default_method_on_source_function_return`
+- [x] `lsp_signature_help_resolves_source_method_on_source_method_return`
 - [x] `lsp_signature_help_resolves_schema_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `lsp_signature_help_resolves_schema_trait_method_call`

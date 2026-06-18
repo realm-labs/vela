@@ -308,6 +308,71 @@ pub fn main() { current_player().grant(1, 2) }";
 }
 
 #[test]
+fn lsp_signature_help_resolves_source_method_on_source_method_return() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+struct Player { level: i64 }
+struct Inventory { count: i64 }
+impl Player {
+    fn inventory(self) -> Inventory { return Inventory { count: 1 } }
+}
+impl Inventory {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+pub fn main(player: Player) { player.inventory().grant(1, 2) }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let call_line = text
+        .lines()
+        .nth(8)
+        .expect("fixture should contain chained method call");
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/signatureHelp",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 8,
+                "character": call_line.find("2)").unwrap_or_else(|| {
+                    panic!("signature fixture should contain second argument")
+                })
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["activeSignature"], 0);
+    assert_eq!(response["result"]["activeParameter"], 1);
+    assert_eq!(
+        response["result"]["signatures"][0]["label"],
+        "Inventory.grant(amount: i64, bonus: i64) -> i64"
+    );
+    assert_eq!(
+        response["result"]["signatures"][0]["parameters"][1]["label"],
+        "bonus: i64"
+    );
+}
+
+#[test]
 fn lsp_signature_help_resolves_source_trait_default_method_call() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
