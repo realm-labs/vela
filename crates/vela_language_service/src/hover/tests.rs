@@ -605,6 +605,51 @@ pub fn main(rewardable: Rewardable) {
 }
 
 #[test]
+fn hover_reports_source_trait_default_method_on_source_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+}
+struct Player {
+    level: i64,
+}
+impl Rewardable for Player {}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() {
+    return current_player().preview(1)
+}"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let call_line = text
+        .lines()
+        .nth(10)
+        .expect("trait default method call line should exist");
+
+    let hover = databases
+        .hover(
+            &document,
+            Position::new(
+                10,
+                call_line
+                    .find("preview")
+                    .expect("trait default method call should exist"),
+            ),
+        )
+        .expect("hover should resolve trait default method use");
+
+    assert_eq!(hover.kind(), HoverKind::Method);
+    assert_eq!(hover.label(), "game::main::Rewardable.preview");
+    assert_eq!(hover.detail(), "(self, amount: i64) -> bool");
+    assert_eq!(hover.docs(), Some("Preview reward"));
+    assert_eq!(
+        hover.symbol(),
+        Some(&SymbolRef::Source(
+            "game::main::Rewardable.preview".to_owned()
+        ))
+    );
+}
+
+#[test]
 fn hover_reports_source_enum_variant_fact() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum QuestState {

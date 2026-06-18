@@ -595,6 +595,71 @@ pub fn main(rewardable: Rewardable) {
 }
 
 #[test]
+fn lsp_hover_reports_source_trait_default_method_on_source_function_return_receiver() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = r#"trait Rewardable {
+    #[doc("Preview reward")]
+    fn preview(self, amount: i64) -> bool { return amount > 0 }
+}
+struct Player {
+    level: i64,
+}
+impl Rewardable for Player {}
+fn current_player() -> Player { return Player { level: 1 } }
+pub fn main() {
+    return current_player().preview(1)
+}"#;
+    let method_line = text
+        .lines()
+        .nth(10)
+        .expect("trait default method use line should exist");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/game/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" },
+            "position": {
+                "line": 10,
+                "character": method_line.find("preview").unwrap_or_else(|| {
+                    panic!("hover fixture should contain trait default method use")
+                })
+            }
+        }),
+    )));
+
+    let value = response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover contents should be markdown");
+    assert!(value.contains("game::main::Rewardable.preview"), "{value}");
+    assert!(
+        value.contains("_method_: (self, amount: i64) -> bool"),
+        "{value}"
+    );
+    assert!(value.contains("Preview reward"), "{value}");
+}
+
+#[test]
 fn lsp_hover_reports_source_trait_fact() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

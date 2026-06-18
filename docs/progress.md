@@ -405,6 +405,11 @@ M20.5 Phase 8 update: source and schema trait hovers now use a first-class
 type-hint hover now consults module-graph type declarations before falling
 back to schema or unknown type-hint degradation.
 
+M20.5 Phase 8 update: service and native LSP hover now resolve source-owned
+trait default method calls where the receiver is produced by a source function
+return, using trait declaration docs and signatures instead of inventing a
+record-owned method fact.
+
 M20.5 Phase 16 update: deleting `vela.toml` now has explicit watcher coverage
 that clears published configuration diagnostics and returns the server to
 workspace-root/editor fallback configuration.

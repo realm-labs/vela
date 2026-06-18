@@ -210,6 +210,14 @@ impl LanguageServiceDatabases {
         {
             return Some(hover.with_preferred_symbol(target.symbol().cloned()));
         }
+        if let Some(hover) = script_trait_default_method_hover(
+            self.hir_db().graph(),
+            receiver_fact,
+            target.text(),
+            range,
+        ) {
+            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
+        }
         if let Some(hover) =
             script_trait_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
@@ -574,6 +582,38 @@ fn script_trait_method_hover(
             .iter()
             .find(|entry| entry.name == method)
             .map(|entry| trait_method_hover(graph, declaration, entry, range))
+    })
+}
+
+fn script_trait_default_method_hover(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    receiver: &TypeFact,
+    method: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let owner_names = record_owner_names(receiver);
+    graph.declarations().find_map(|declaration| {
+        if declaration.kind != DeclarationKind::Impl {
+            return None;
+        }
+        let metadata = graph.impl_metadata(declaration.id)?;
+        let ImplMetadataKind::Trait { trait_path } = &metadata.kind else {
+            return None;
+        };
+        if !owner_names
+            .iter()
+            .any(|owner| impl_target_matches(&metadata.target_path, owner))
+            || metadata.methods.iter().any(|entry| entry.name == method)
+        {
+            return None;
+        }
+        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        graph
+            .trait_shape(trait_declaration.id)?
+            .methods
+            .iter()
+            .find(|entry| entry.name == method && entry.has_default)
+            .map(|entry| trait_method_hover(graph, trait_declaration, entry, range))
     })
 }
 
@@ -972,6 +1012,18 @@ fn declaration_name_matches(
     owner: &str,
 ) -> bool {
     declaration.name == owner || qualified_declaration_label(graph, declaration) == owner
+}
+
+fn trait_declaration_for_path<'a>(
+    graph: &'a vela_hir::module_graph::ModuleGraph,
+    trait_path: &[String],
+) -> Option<&'a Declaration> {
+    let owner = trait_path.join("::");
+    graph.declarations().find(|declaration| {
+        declaration.kind == DeclarationKind::Trait
+            && (declaration.name == owner
+                || qualified_declaration_label(graph, declaration) == owner)
+    })
 }
 
 fn impl_owner_label(
