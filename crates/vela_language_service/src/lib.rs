@@ -32,9 +32,12 @@ mod workspace;
 pub use call_hierarchy::{CallHierarchyItem, IncomingCall, OutgoingCall};
 pub use code_action::{CodeAction, CodeActionKind};
 pub use completion::{
-    CompletionContext, CompletionContextKind, CompletionInsertFormat, CompletionItem,
-    CompletionItemMetadata, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionRelevance, CompletionResolvePayload, CompletionSymbol, CompletionTextEdit,
+    CompletionAnalysis, CompletionAnalysisKind, CompletionCallArgumentContext, CompletionContext,
+    CompletionContextKind, CompletionDeclaration, CompletionDeclarationKind,
+    CompletionInsertFormat, CompletionItem, CompletionItemMetadata, CompletionKind,
+    CompletionLabelDetails, CompletionList, CompletionRelevance, CompletionResolvePayload,
+    CompletionSymbol, CompletionTextEdit, DotAccess, PathCompletionCtx, PathCompletionKind,
+    PatternContext, RecordFieldContext, StatementContext, TypeLocation,
 };
 pub use cursor_context::{CursorContext, CursorContextKind, ModulePathRole, cursor_context_at};
 pub use definition::Definition;

@@ -1724,7 +1724,7 @@ script-language generics.
 
 Authoring-core tasks:
 
-- [ ] Use rust-analyzer's source layout as the reference model for the audit,
+- [x] Use rust-analyzer's source layout as the reference model for the audit,
   without copying Rust-only semantics:
   `crates/ide-completion/src/lib.rs` for completion entry shape,
   `crates/ide-completion/src/context.rs` for structured context fields,
@@ -1732,19 +1732,44 @@ Authoring-core tasks:
   analysis, `crates/ide-completion/src/completions/dot.rs` for dot/member
   producers, and `crates/rust-analyzer/src/handlers/request.rs` for the LSP
   formatting boundary that delegates Rust formatting to rustfmt.
-- [ ] Add a short source audit note in this plan or a linked design note that
+- [x] Add a short source audit note in this plan or a linked design note that
   maps rust-analyzer's completion shape to Vela's model:
   context construction, dot completion, expected type/name, item rendering,
   and rustfmt delegation versus Vela's own formatter.
-- [ ] Introduce a service-owned `CompletionAnalysis` model that is built once
+
+Audit note:
+
+- rust-analyzer's completion entry point builds a request-local
+  `CompletionContext` plus `CompletionAnalysis`, then runs feature producers
+  over structured contexts rather than letting each producer rediscover the
+  syntax shape. Vela mirrors that with `CompletionAnalysis` built from
+  `CursorContext`, HIR/module facts, TypeFacts, schema facts, and visible scope
+  before completion dispatch.
+- rust-analyzer's dot completion consumes a `DotAccess` carrying receiver type
+  facts and keeps fields/methods in one producer path. Vela mirrors the shape
+  with `DotAccess { receiver_range, receiver_fact }` and keeps dynamic `Any`
+  receivers from falling back to globals.
+- rust-analyzer's expected type/name analysis is stored beside the completion
+  context. Vela records call-argument `expected_type` and `expected_name` from
+  callable facts so later producers can rank and filter without ad hoc string
+  scans.
+- rust-analyzer separates completion item rendering and LSP projection.
+  Vela keeps label, lookup/filter text, insertion text, label details,
+  documentation resolve payloads, and relevance as service fields before
+  native LSP conversion.
+- rust-analyzer delegates formatting at the LSP boundary to rustfmt. Vela
+  cannot delegate to rustfmt, so formatting remains inside the syntax-owned
+  service boundary and should move toward CST/AST layout facts for type hints
+  and declarations.
+- [x] Introduce a service-owned `CompletionAnalysis` model that is built once
   per completion request from parser recovery, HIR/module facts, TypeFacts,
   schema facts, and visible scope.
-- [ ] Represent explicit authoring contexts instead of a single broad
+- [x] Represent explicit authoring contexts instead of a single broad
   completion kind:
   `PathCompletionCtx`, `TypeLocation`, `DotAccess`, `RecordFieldContext`,
   `CallArgumentContext`, `PatternContext`, `StatementContext`,
   `expected_type`, and `expected_name`.
-- [ ] Route `textDocument/completion` through `CompletionAnalysis` before any
+- [x] Route `textDocument/completion` through `CompletionAnalysis` before any
   feature producer runs. Feature producers may consume structured context and
   semantic facts, but must not reclassify broad request kind through ad hoc
   string scanning.
@@ -1801,10 +1826,10 @@ fn main() {
 
 Tests:
 
-- [ ] `completion_analysis_classifies_empty_dot_access`
-- [ ] `completion_analysis_classifies_type_argument_location`
-- [ ] `completion_analysis_classifies_struct_field_declaration_body`
-- [ ] `completion_analysis_tracks_expected_type_and_name`
+- [x] `completion_analysis_classifies_empty_dot_access`
+- [x] `completion_analysis_classifies_type_argument_location`
+- [x] `completion_analysis_classifies_struct_field_declaration_body`
+- [x] `completion_analysis_tracks_expected_type_and_name`
 - [ ] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
 - [ ] `formatting_compacts_builtin_container_type_arguments`
 - [ ] `formatting_compacts_nested_result_container_type_arguments`

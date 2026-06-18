@@ -2,6 +2,7 @@ use vela_analysis::completion::CompletionKind as AnalysisCompletionKind;
 
 use crate::{DisplayParts, TextRange};
 
+use super::analysis::CompletionAnalysis;
 use super::relevance::CompletionRelevance;
 use super::{lambda_parameter::LambdaParameterContext, map_key::MapKeyContext};
 
@@ -359,6 +360,7 @@ impl CompletionContext {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CompletionList {
     pub(super) context: CompletionContext,
+    pub(super) analysis: CompletionAnalysis,
     pub(super) items: Vec<CompletionItem>,
 }
 
@@ -366,6 +368,11 @@ impl CompletionList {
     #[must_use]
     pub fn context(&self) -> &CompletionContext {
         &self.context
+    }
+
+    #[must_use]
+    pub const fn analysis(&self) -> &CompletionAnalysis {
+        &self.analysis
     }
 
     #[must_use]

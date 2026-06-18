@@ -8,7 +8,10 @@ use crate::symbol_ref::{schema_member_symbol, schema_variant_symbol};
 use crate::{DocumentId, GenerationToken, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
+mod analysis;
 mod analysis_item;
+#[cfg(test)]
+mod analysis_tests;
 mod builtin_value;
 mod context;
 mod expression;
@@ -46,6 +49,12 @@ pub use model::{
 };
 pub use relevance::CompletionRelevance;
 
+use analysis::completion_analysis;
+pub use analysis::{
+    CompletionAnalysis, CompletionAnalysisKind, CompletionCallArgumentContext,
+    CompletionDeclaration, CompletionDeclarationKind, DotAccess, PathCompletionCtx,
+    PathCompletionKind, PatternContext, RecordFieldContext, StatementContext, TypeLocation,
+};
 use context::completion_context;
 use expression::{
     expression_completion_items as expression_context_completion_items,
@@ -96,7 +105,8 @@ impl LanguageServiceDatabases {
         };
         self.completion_query_is_current(token).then_some(())?;
         let context = completion_context(&query);
-        let items = match context.kind {
+        let analysis = completion_analysis(self, &query, &context);
+        let items = match analysis.context_kind() {
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
             CompletionContextKind::Item => self.item_completion_items(&context),
             CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
@@ -117,7 +127,11 @@ impl LanguageServiceDatabases {
             CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
         };
         self.completion_query_is_current(token).then_some(())?;
-        Some(CompletionList { context, items })
+        Some(CompletionList {
+            context,
+            analysis,
+            items,
+        })
     }
 
     fn completion_query_is_current(&self, token: Option<&GenerationToken>) -> bool {
@@ -366,8 +380,10 @@ fn label_segment_matches(label: &str, prefix: &str) -> bool {
 }
 
 fn empty_completion_list(context: CompletionContext) -> CompletionList {
+    let analysis = CompletionAnalysis::from_context_only(&context);
     CompletionList {
         context,
+        analysis,
         items: Vec::new(),
     }
 }
