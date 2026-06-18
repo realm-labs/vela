@@ -290,7 +290,7 @@ coverage complete based only on the older capability phases.
     primitive and container types returning null, dynamic facts returning
     null, unresolved bare names returning null, and unsupported
     `textDocument/implementation` not being advertised or served.
-- [ ] Audit references, document highlights, and call hierarchy.
+- [x] Audit references, document highlights, and call hierarchy.
   - Cover same-document and cross-file references for functions,
     const/global symbols, fields, methods, variants, imports, schema-backed
     source spans, shadowed locals, and dynamic or unresolved calls.
@@ -310,6 +310,17 @@ coverage complete based only on the older capability phases.
     the imported defining file wins over a stale disk snapshot.
   - W3/W0 references now have protocol coverage proving an open overlay in
     the importing file wins over a stale disk snapshot.
+  - Current fixtures cover service and native LSP `textDocument/references`
+    and `textDocument/documentHighlight` for locals, imports, function aliases,
+    const/global symbols, source type uses, module path segments, source and
+    schema fields, methods, trait impl uses, enum variants, record-variant
+    fields, schema-backed source spans, active-document-only highlights,
+    shadowed locals, and dynamic or unresolved empty results.
+  - Current fixtures cover service and native LSP call hierarchy for source
+    functions, imported function aliases, source methods, trait impl methods,
+    trait default/interface methods, schema methods and trait methods,
+    cross-file method calls, and empty prepare results for unresolved,
+    dynamic, and non-callable targets.
 - [ ] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
