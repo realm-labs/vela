@@ -609,6 +609,9 @@ and semantic tokens use the same identities and display primitives.
   schema type/trait/function completion adapters now use the shared schema
   symbol constructor, leaving no production `CompletionSymbol::Schema`
   construction outside the shared helper boundary;
+  builtin/stdlib hover, callable, cursor-target, and inlay parameter symbols
+  now use shared builtin symbol constructors, leaving only tests and helper
+  pattern matches with direct `SymbolRef::Builtin` construction;
   document and workspace symbols now use the shared constructors for source
   declarations and nested source-owned members;
   broader diagnostic identities and remaining source/member producer sites

@@ -21,8 +21,9 @@ use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
     QueryContext, SymbolRef, TextRange,
     symbol_ref::{
-        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
-        source_member_symbol, source_symbol_for_declaration,
+        builtin_member_symbol, builtin_symbol, qualified_source_declaration_name,
+        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
+        source_symbol_for_declaration,
     },
     symbol_target::SymbolTarget,
 };
@@ -333,7 +334,7 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
                 HoverKind::Function,
                 stdlib_function_detail_parts(&function),
                 None,
-                Some(SymbolRef::Builtin(function.name.to_owned())),
+                Some(builtin_symbol(function.name)),
             )
         })
 }
@@ -346,11 +347,7 @@ fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange
             HoverKind::Method,
             stdlib_method_detail_parts(&fact),
             None,
-            Some(SymbolRef::Builtin(format!(
-                "{}.{}",
-                receiver.display_name(),
-                fact.method
-            ))),
+            Some(builtin_member_symbol(&receiver.display_name(), fact.method)),
         )
     })
 }

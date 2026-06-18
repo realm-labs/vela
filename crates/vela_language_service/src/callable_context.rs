@@ -14,9 +14,9 @@ use crate::query_context::type_fact_for_source_range;
 use crate::{
     LanguageServiceDatabases, SymbolRef, TextRange,
     symbol_ref::{
-        qualified_source_declaration_name, schema_member_symbol, schema_symbol,
-        schema_variant_symbol, source_enum_variant_symbol, source_impl_method_symbol,
-        source_member_symbol, source_symbol_for_declaration,
+        builtin_member_symbol, builtin_symbol, qualified_source_declaration_name,
+        schema_member_symbol, schema_symbol, schema_variant_symbol, source_enum_variant_symbol,
+        source_impl_method_symbol, source_member_symbol, source_symbol_for_declaration,
     },
 };
 
@@ -527,7 +527,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
         params: indexed_callable_parameters(fact.params),
         returns: fact.returns,
         origin: CallableOrigin::Stdlib,
-        symbol: SymbolRef::Builtin(fact.name.to_owned()),
+        symbol: builtin_symbol(fact.name),
     }
 }
 
@@ -551,7 +551,7 @@ fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
         params,
         returns: fact.returns,
         origin: CallableOrigin::StdlibMethod,
-        symbol: SymbolRef::Builtin(format!("{}.{}", fact.receiver.display_name(), fact.method)),
+        symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
     }
 }
 

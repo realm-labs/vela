@@ -13,9 +13,9 @@ use vela_hir::{
 use crate::{
     LanguageServiceDatabases, QueryContext, SymbolRef, TextRange, path_calls,
     symbol_ref::{
-        schema_member_symbol, schema_symbol, schema_variant_symbol, source_enum_variant_symbol,
-        source_impl_method_symbol, source_member_symbol, source_module_symbol_from_segments,
-        source_symbol_for_declaration,
+        builtin_member_symbol, builtin_symbol, schema_member_symbol, schema_symbol,
+        schema_variant_symbol, source_enum_variant_symbol, source_impl_method_symbol,
+        source_member_symbol, source_module_symbol_from_segments, source_symbol_for_declaration,
     },
 };
 
@@ -399,10 +399,7 @@ fn fact_symbol_ref_for(
             return Some(schema_member_symbol(&owner, text));
         }
         if stdlib_method_fact(receiver_fact, text, None).is_some() {
-            return Some(SymbolRef::Builtin(format!(
-                "{}.{text}",
-                receiver_fact.display_name()
-            )));
+            return Some(builtin_member_symbol(&receiver_fact.display_name(), text));
         }
     }
     schema_symbol_ref(schema, text).or_else(|| stdlib_function_symbol_ref(text))
@@ -595,7 +592,7 @@ fn stdlib_function_symbol_ref(text: &str) -> Option<SymbolRef> {
                     .next()
                     .is_some_and(|segment| segment == text)
         })
-        .map(|function| SymbolRef::Builtin(function.name.to_owned()))
+        .map(|function| builtin_symbol(function.name))
 }
 
 fn fact_owner_name(fact: &TypeFact) -> Option<String> {

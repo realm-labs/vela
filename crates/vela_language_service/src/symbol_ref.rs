@@ -230,3 +230,11 @@ pub(crate) fn schema_member_symbol(owner: &str, member: &str) -> SymbolRef {
 pub(crate) fn schema_variant_symbol(owner: &str, variant: &str) -> SymbolRef {
     SymbolRef::Schema(format!("{owner}::{variant}"))
 }
+
+pub(crate) fn builtin_symbol(name: impl Into<String>) -> SymbolRef {
+    SymbolRef::Builtin(name.into())
+}
+
+pub(crate) fn builtin_member_symbol(owner: &str, member: &str) -> SymbolRef {
+    SymbolRef::Builtin(format!("{owner}.{member}"))
+}

@@ -17,7 +17,7 @@ use vela_syntax::ast::{
 use crate::callable_context::{
     CallableFacts, CallableParameterFacts, callable_facts, member_callable_facts,
 };
-use crate::symbol_ref::schema_member_symbol;
+use crate::symbol_ref::{builtin_member_symbol, schema_member_symbol};
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
     SymbolRef, TextRange,
@@ -759,7 +759,7 @@ fn parameter_symbol(callable: &SymbolRef, parameter: &str) -> SymbolRef {
     match callable {
         SymbolRef::Source(symbol) => SymbolRef::Source(format!("{symbol}.{parameter}")),
         SymbolRef::Schema(symbol) => schema_member_symbol(symbol, parameter),
-        SymbolRef::Builtin(symbol) => SymbolRef::Builtin(format!("{symbol}.{parameter}")),
+        SymbolRef::Builtin(symbol) => builtin_member_symbol(symbol, parameter),
         SymbolRef::Local(symbol) => SymbolRef::local(format!("{}.{}", symbol.name(), parameter)),
     }
 }
