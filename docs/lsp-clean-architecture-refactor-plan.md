@@ -839,7 +839,11 @@ Purpose: make the new model viable for large workspaces and real editors.
   - `schedule_modules` emits invalidated open modules before workspace-only
     modules with `WorkPriority::Open`, covered by
     `open_file_recomputation_is_scheduled_before_workspace_work`.
-- [ ] Use workspace generation IDs to discard stale results.
+- [x] Use workspace generation IDs to discard stale results.
+  - Background request tokens carry the current workspace generation, and
+    `accept_background_result` rejects results whose generation no longer
+    matches. Covered by `stale_background_diagnostics_are_not_published` and
+    `partial_diagnostics_report_stale_generation`.
 - [ ] Keep cancellation checks at query construction and expensive producer
   boundaries.
 - [ ] Ensure configuration is loaded through `vela.toml`, launch flags, and
