@@ -1095,7 +1095,14 @@ pub fn main(player: Player) {
         Position::new(2, "pub fn typed(value: Type_".len()),
     );
     assert_eq!(type_hint.context().kind(), CompletionContextKind::TypeHint);
-    assert_completion(&type_hint, "mod_2047::Type_2047", CompletionKind::Type);
+    assert_completion(&type_hint, "Type_2047", CompletionKind::Type);
+    let type_completion = completion(&type_hint, "Type_2047");
+    assert_eq!(type_completion.lookup(), "mod_2047::Type_2047");
+    assert_eq!(type_completion.filter_text(), "mod_2047::Type_2047");
+    assert_eq!(
+        type_completion.label_details().description(),
+        Some("mod_2047")
+    );
 
     let expression = databases.completion_items(&document, Position::new(4, "    value_204".len()));
     assert_eq!(
