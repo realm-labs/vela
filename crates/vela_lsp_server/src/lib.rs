@@ -15,6 +15,7 @@ mod protocol;
 mod queries;
 mod references;
 mod rename;
+mod rpc;
 mod selection;
 mod semantic_tokens;
 mod signature;
@@ -26,7 +27,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use protocol::{LspPosition, LspRange};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
@@ -38,11 +39,15 @@ use vela_language_service::{
 use crate::capabilities::initialize_result;
 use crate::client::{InitializeParams, WorkspaceFolder};
 use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
+pub use crate::rpc::JsonRpcResult;
+pub(crate) use crate::rpc::{
+    CancelRequestParams, ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response,
+    success_response,
+};
 use crate::semantic_tokens::SemanticTokenProjection;
 
 pub use crate::config::LaunchConfiguration;
 
-const JSONRPC_VERSION: &str = "2.0";
 const FILE_CHANGE_DELETED: u8 = 3;
 const CONFIG_FILE: &str = "vela.toml";
 const SOURCE_EXTENSION: &str = ".vela";
@@ -716,61 +721,6 @@ impl LspServer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JsonRpcResult {
-    Response(String),
-    Notification(String),
-    Notifications(Vec<String>),
-    None,
-}
-
-impl JsonRpcResult {
-    #[must_use]
-    pub fn into_response(self) -> Option<String> {
-        match self {
-            Self::Response(response) => Some(response),
-            Self::Notification(_) | Self::Notifications(_) | Self::None => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_notification(self) -> Option<String> {
-        match self {
-            Self::Notification(notification) => Some(notification),
-            Self::Notifications(mut notifications) if notifications.len() == 1 => {
-                notifications.pop()
-            }
-            Self::Response(_) | Self::Notifications(_) | Self::None => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_notifications(self) -> Option<Vec<String>> {
-        match self {
-            Self::Notification(notification) => Some(vec![notification]),
-            Self::Notifications(notifications) => Some(notifications),
-            Self::Response(_) | Self::None => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct JsonRpcMessage {
-    jsonrpc: String,
-    id: Option<RequestId>,
-    #[serde(default)]
-    method: Option<String>,
-    #[serde(default)]
-    params: JsonValue,
-    #[serde(flatten)]
-    extra: BTreeMap<String, JsonValue>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct CancelRequestParams {
-    id: RequestId,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DidOpenTextDocumentParams {
@@ -859,32 +809,6 @@ fn coalesced_watched_file_changes(changes: Vec<FileEvent>) -> Vec<FileEvent> {
         .collect::<Vec<_>>();
     events.sort_by_key(|(index, _)| *index);
     events.into_iter().map(|(_, event)| event).collect()
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(untagged)]
-enum RequestId {
-    Number(i64),
-    String(String),
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ErrorCode {
-    ParseError,
-    InvalidRequest,
-    MethodNotFound,
-    RequestCancelled,
-}
-
-impl ErrorCode {
-    const fn value(self) -> i32 {
-        match self {
-            Self::ParseError => -32700,
-            Self::InvalidRequest => -32600,
-            Self::MethodNotFound => -32601,
-            Self::RequestCancelled => -32800,
-        }
-    }
 }
 
 fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String> {
@@ -1200,27 +1124,6 @@ fn work_done_progress_notification(value: JsonValue) -> String {
         "params": {
             "token": WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN,
             "value": value
-        }
-    })
-    .to_string()
-}
-
-fn success_response(id: RequestId, result: JsonValue) -> String {
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "id": id,
-        "result": result
-    })
-    .to_string()
-}
-
-fn error_response(id: Option<RequestId>, code: ErrorCode, message: impl Into<String>) -> String {
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "id": id,
-        "error": {
-            "code": code.value(),
-            "message": message.into()
         }
     })
     .to_string()
