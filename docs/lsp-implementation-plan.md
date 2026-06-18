@@ -225,10 +225,16 @@ coverage complete based only on the older capability phases.
     `Player` and owner paths are projected only as detail/labelDetails/docs.
   - Cover statement snippets for `for in` and `match` through service tests
     and LSP JSON-RPC fixtures.
-- [ ] Add or audit the canonical cross-file workspace fixture family.
+- [x] Add or audit the canonical cross-file workspace fixture family.
   - Cover imported functions, const/global symbols, source types, enum
     variants, fields, methods, open overlays in defining and importing files,
     and file delete/rename invalidation.
+  - Current fixture family includes service and LSP cross-file coverage for
+    imported function/defaulted-parameter facts, const/global hover and
+    references, imported source type navigation, source field and method
+    references, enum variant and record-variant field references, call
+    hierarchy across source and trait methods, open overlays in defining and
+    importing files, and watched-file delete/rename invalidation.
 - [ ] Audit document sync, diagnostics, progress, and cancellation fixtures.
   - Cover `didOpen`, `didChange`, `didClose` or capability correction,
     publish diagnostics, stale generations, parser recovery, missing imports,
