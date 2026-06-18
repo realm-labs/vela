@@ -906,6 +906,54 @@ fn member_context_is_detected_without_global_fallback() {
 }
 
 #[test]
+fn cancellable_completion_discards_stale_generation_results() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project_for_completion(
+        document.clone(),
+        "pub fn main() { return value }",
+    ));
+    let stale = databases.begin_background_request();
+
+    databases.update(&project_for_completion(
+        document.clone(),
+        "pub fn main() { return updated }",
+    ));
+
+    assert!(
+        databases
+            .cancellable_completion_items(&document, Position::new(0, 22), &stale)
+            .is_none()
+    );
+    let fresh = databases.begin_background_request();
+    let completions = databases
+        .cancellable_completion_items(&document, Position::new(0, 22), &fresh)
+        .expect("fresh completion should return items");
+    assert_eq!(
+        completions.context().kind(),
+        CompletionContextKind::Expression
+    );
+}
+
+#[test]
+fn cancellable_completion_discards_cancelled_queries() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project_for_completion(
+        document.clone(),
+        "pub fn main() { return false }",
+    ));
+    let (token, handle) = databases.begin_cancellable_background_request();
+    handle.cancel();
+
+    assert!(
+        databases
+            .cancellable_completion_items(&document, Position::new(0, 22), &token)
+            .is_none()
+    );
+}
+
+#[test]
 #[ignore = "explicit Phase 8 completion scale checkpoint for roughly one million lines"]
 fn completion_contexts_scale_in_million_line_workspace() {
     const MODULES: usize = 2_048;
@@ -988,6 +1036,12 @@ fn completion<'a>(list: &'a CompletionList, label: &str) -> &'a CompletionItem {
         .iter()
         .find(|item| item.label() == label)
         .unwrap_or_else(|| panic!("completion {label} should exist in {list:?}"))
+}
+
+fn project_for_completion(document: DocumentId, text: &str) -> crate::ProjectSources {
+    let files = vec![SourceFileSnapshot::new(document, text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    assemble_project_sources(&config, &files, &Workspace::new().snapshot())
 }
 
 fn assert_completion(list: &CompletionList, label: &str, kind: CompletionKind) {

@@ -844,8 +844,15 @@ Purpose: make the new model viable for large workspaces and real editors.
     `accept_background_result` rejects results whose generation no longer
     matches. Covered by `stale_background_diagnostics_are_not_published` and
     `partial_diagnostics_report_stale_generation`.
-- [ ] Keep cancellation checks at query construction and expensive producer
+- [x] Keep cancellation checks at query construction and expensive producer
   boundaries.
+  - Completion now has a token-guarded query path that rejects stale or
+    cancelled generation tokens before query context construction, before
+    producer dispatch, and before publishing results. Existing background
+    diagnostics and native LSP request cancellation keep their cancellation
+    gates, with completion coverage in
+    `cancellable_completion_discards_stale_generation_results` and
+    `cancellable_completion_discards_cancelled_queries`.
 - [ ] Ensure configuration is loaded through `vela.toml`, launch flags, and
   LSP settings without putting protocol types in the service.
 - [ ] Add stress fixtures or benchmarks for many files when a cheap

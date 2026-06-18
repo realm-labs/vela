@@ -5,7 +5,7 @@ use vela_analysis::type_fact::TypeFact;
 use crate::DisplayParts;
 use crate::QueryContext;
 use crate::symbol_ref::{schema_member_symbol, schema_variant_symbol};
-use crate::{DocumentId, LanguageServiceDatabases, Position, TextRange};
+use crate::{DocumentId, GenerationToken, LanguageServiceDatabases, Position, TextRange};
 
 mod accumulator;
 mod analysis_item;
@@ -59,9 +59,31 @@ use analysis_item::service_item_from_analysis_completion;
 impl LanguageServiceDatabases {
     #[must_use]
     pub fn completion_items(&self, document_id: &DocumentId, position: Position) -> CompletionList {
+        self.completion_items_with_optional_token(document_id, position, None)
+            .unwrap_or_else(|| empty_completion_list(CompletionContext::expression(0, "")))
+    }
+
+    #[must_use]
+    pub fn cancellable_completion_items(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        token: &GenerationToken,
+    ) -> Option<CompletionList> {
+        self.completion_items_with_optional_token(document_id, position, Some(token))
+    }
+
+    fn completion_items_with_optional_token(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        token: Option<&GenerationToken>,
+    ) -> Option<CompletionList> {
+        self.completion_query_is_current(token).then_some(())?;
         let Some(query) = QueryContext::from_databases(self, document_id, position) else {
-            return empty_completion_list(CompletionContext::expression(0, ""));
+            return Some(empty_completion_list(CompletionContext::expression(0, "")));
         };
+        self.completion_query_is_current(token).then_some(())?;
         let context = completion_context(&query);
         let items = match context.kind {
             CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
@@ -80,7 +102,12 @@ impl LanguageServiceDatabases {
             }
             CompletionContextKind::TypeHint => self.type_hint_completion_items(&context),
         };
-        CompletionList { context, items }
+        self.completion_query_is_current(token).then_some(())?;
+        Some(CompletionList { context, items })
+    }
+
+    fn completion_query_is_current(&self, token: Option<&GenerationToken>) -> bool {
+        token.is_none_or(|token| token.generation() == self.generation() && !token.is_cancelled())
     }
 
     fn expression_completion_items(

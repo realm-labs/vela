@@ -229,6 +229,9 @@ Purpose: make the service scale before adding expensive features.
 - [x] Invalidate HIR and analysis by changed declaration/import fingerprints.
 - [x] Prioritize open-file recomputation over workspace background work.
 - [x] Add cancellation and stale-generation result handling.
+  - Completion queries now expose a token-guarded path that checks generation
+    and cancellation before query construction, before producer dispatch, and
+    before returning results.
 
 Tests:
 
