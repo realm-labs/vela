@@ -317,6 +317,23 @@ return cell.value;
 }
 
 #[test]
+fn type_definition_returns_none_for_dynamic_local_value() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"fn main(value) {
+return value;
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let use_line = text.lines().nth(1).expect("value use line");
+
+    let definition = databases.type_definition(
+        &document,
+        Position::new(1, use_line.find("value").expect("value use")),
+    );
+
+    assert!(definition.is_none());
+}
+
+#[test]
 fn type_definition_follows_schema_source_span() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let schema_source = DocumentId::from("/workspace/scripts/schema_defs.vela");

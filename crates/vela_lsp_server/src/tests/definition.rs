@@ -96,6 +96,11 @@ fn lsp_type_definition_returns_null_for_source_primitive_field() {
 }
 
 #[test]
+fn lsp_type_definition_returns_null_for_dynamic_local_value() {
+    assert_dynamic_local_value_type_definition_null();
+}
+
+#[test]
 fn lsp_definition_returns_null_for_unknown_source_member() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
@@ -439,6 +444,51 @@ fn main(cell: Cell) {
                 "character": field_use_line
                     .find("value")
                     .expect("field use should contain name")
+            }
+        }),
+    )));
+
+    assert!(response["result"].is_null());
+}
+
+fn assert_dynamic_local_value_type_definition_null() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"fn main(value) {
+    return value;
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let use_line = text.lines().nth(1).expect("value use line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 1,
+                "character": use_line
+                    .find("value")
+                    .expect("value use should contain name")
             }
         }),
     )));

@@ -211,10 +211,10 @@ These are the first places to compare current tests against the matrix:
 
 1. Navigation semantics must stay separate per protocol. Current focused
    fixtures cover `typeDefinition` type-fact targets and null fallback for
-   local source values, source/schema member values, schema types without
-   source spans, and imported source type aliases used by locals and source
-   fields; the remaining audit is broader cross-file type-definition coverage
-   across W1.
+   local source values, dynamic local values, source/schema member values,
+   schema types without source spans, and imported source type aliases used by
+   locals and source fields; the remaining audit is broader cross-file
+   type-definition coverage across W1.
 2. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now
    pins both the absent capability and direct request rejection.
@@ -225,10 +225,11 @@ These are the first places to compare current tests against the matrix:
 4. Capability-to-handler consistency should be audited for every advertised
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
-5. Dynamic boundaries need explicit negative tests. `Any`, missing schema,
-   stale schema, unresolved names, and parser recovery should degrade by
-   returning null, empty results, diagnostics, or suppressed hints, not guessed
-   semantic facts.
+5. Dynamic boundaries need explicit negative tests. Current focused fixtures
+   pin `typeDefinition` null results for dynamic local values; broader `Any`,
+   missing schema, stale schema, unresolved name, and parser recovery cases
+   should degrade by returning null, empty results, diagnostics, or suppressed
+   hints, not guessed semantic facts.
 6. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,
    semantic tokens, diagnostics, and call hierarchy.
