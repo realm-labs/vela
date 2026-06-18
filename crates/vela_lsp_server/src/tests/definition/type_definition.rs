@@ -1,73 +1,10 @@
 use super::super::{LspServer, notification, notification_value, request, response_value};
 
+mod imported;
+
 #[test]
 fn lsp_type_definition_follows_source_struct_field_type() {
     assert_source_struct_field_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_source_struct_field_type_alias() {
-    assert_imported_source_struct_field_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_parameter_source_type_alias() {
-    assert_imported_parameter_source_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_local_source_type_alias() {
-    assert_imported_local_source_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_local_source_type_hint() {
-    assert_imported_local_source_type_hint_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_parameter_source_type_hint() {
-    assert_imported_parameter_source_type_hint_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_field_source_type_hint() {
-    assert_imported_field_source_type_hint_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_return_source_type_hint() {
-    assert_imported_return_source_type_hint_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_function_return_source_type() {
-    assert_imported_function_return_source_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_source_member_type() {
-    assert_imported_source_member_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_source_method_return_type() {
-    assert_imported_source_method_return_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_enum_variant_constructor_type() {
-    assert_imported_enum_variant_constructor_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_struct_constructor_type() {
-    assert_imported_struct_constructor_type_definition();
-}
-
-#[test]
-fn lsp_type_definition_follows_imported_const_and_global_source_types() {
-    assert_imported_const_and_global_source_type_definitions();
 }
 
 #[test]

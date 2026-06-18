@@ -152,6 +152,40 @@ slots: i64,
 }
 
 #[test]
+fn type_definition_follows_imported_trait_source_type_hint() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let traits = DocumentId::from("/workspace/scripts/game/traits.vela");
+    let main_text = r#"use game::traits::Describable as Named
+
+fn describe(value: Named) {
+return value;
+}"#;
+    let traits_text = r#"pub trait Describable {
+fn describe(self) -> String
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(traits.clone(), traits_text),
+    ]);
+    let parameter_line = main_text.lines().nth(2).expect("parameter line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(2, parameter_line.find("Named").expect("type hint")),
+        )
+        .expect("type definition should resolve imported trait type hint");
+
+    assert_eq!(definition.document_id(), &traits);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 10);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::traits::Describable".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_field_source_type_hint() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
