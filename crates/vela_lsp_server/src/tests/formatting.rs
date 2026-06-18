@@ -83,6 +83,47 @@ fn lsp_document_formatting_returns_empty_edits_when_idempotent() {
 }
 
 #[test]
+fn lsp_document_formatting_handles_malformed_source_without_panic() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": "pub fn main( {   "
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/formatting",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "options": { "tabSize": 4, "insertSpaces": true }
+        }),
+    )));
+    let edits = response["result"]
+        .as_array()
+        .expect("formatting should return edits");
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0]["newText"], "pub fn main( {\n");
+}
+
+#[test]
 fn lsp_document_formatting_formats_declarations() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

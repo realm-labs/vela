@@ -360,11 +360,20 @@ coverage complete based only on the older capability phases.
     general unresolved-reference tokens, parser-recovery degradation with
     retained HIR-backed classifications, missing-schema degradation, and
     client legend fallback projection.
-- [ ] Audit formatting and inlay hints.
+- [x] Audit formatting and inlay hints.
   - Cover full/range/on-type formatting, comments, blank lines, nested member
     selections, malformed source, parameter hints, local type hints, lambda
     facts, host-path hints, tuple-variant payload hints, range filtering, and
     `Any` suppression.
+  - Current fixtures cover service and native LSP document/range/on-type
+    formatting, comment and blank-line preservation, compact builtin container
+    type arguments, nested member and field-group selections, malformed-source
+    formatting degradation, idempotence, unsupported trigger fallback, and
+    syntax-only formatting under HIR errors. Inlay fixtures cover service and
+    native LSP parameter-name hints, local type hints, lambda parameter facts,
+    host-path type facts, source/schema tuple-variant payload names, requested
+    range filtering, missing-schema degradation, unknown-call suppression, and
+    `Any` suppression for source/schema call parameters and variant payloads.
 - [ ] Audit workspace, configuration, file watching, schema reload, and launch
   behavior.
   - Cover `workspace/didChangeWatchedFiles`,
