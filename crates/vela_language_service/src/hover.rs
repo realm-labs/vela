@@ -259,12 +259,22 @@ impl LanguageServiceDatabases {
                 let declaration = graph.declaration(declaration)?;
                 return Some(hover_from_declaration(graph, facts, declaration, range));
             }
-            module_hover(graph, &import.path[..=segment], range)
+            module_hover(
+                graph,
+                &import.path[..=segment],
+                range,
+                target.symbol().cloned(),
+            )
         })
     }
 }
 
-fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) -> Option<Hover> {
+fn module_hover(
+    graph: &ModuleGraph,
+    path: &[String],
+    range: DiagnosticRange,
+    symbol: Option<SymbolRef>,
+) -> Option<Hover> {
     let module_path = ModulePath::new(path.iter().cloned());
     graph.module_id(&module_path)?;
     let label = module_path.join();
@@ -274,7 +284,7 @@ fn module_hover(graph: &ModuleGraph, path: &[String], range: DiagnosticRange) ->
         HoverKind::Module,
         DisplayParts::keyword_symbol("module", &label),
         None,
-        None,
+        symbol,
     ))
 }
 

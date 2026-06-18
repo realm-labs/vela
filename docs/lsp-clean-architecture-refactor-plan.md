@@ -630,10 +630,11 @@ and semantic tokens use the same identities and display primitives.
   `QueryContext` identifier ranges, member receiver facts, schema source-span
   lookups, and schema/builtin `SymbolRef` classification. `SymbolTarget` now
   resolves local binding, local declaration, source declaration, and source enum
-  variant identities from the query binding context, and local hover/definition
-  consume that shared identity before falling back to feature-local logic.
-  Imports and script-owned member fallbacks still need deeper shared symbol
-  resolution before this item is complete.
+  variant identities from the query binding context, resolves import path
+  segments to source declaration/module identities, and local hover/definition
+  plus import module hover consume that shared identity before falling back to
+  feature-local logic. Script-owned member fallbacks still need deeper shared
+  symbol resolution before this item is complete.
 - [~] Ensure schema-owned symbols can be displayed and completed without
   pretending they have source definitions.
   Completion edit metadata now uses editor-neutral `edit_range` naming instead

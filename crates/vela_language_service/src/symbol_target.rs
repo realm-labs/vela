@@ -6,7 +6,7 @@ use vela_analysis::{
 use vela_common::Span;
 use vela_hir::{
     binding::{BindingMap, BindingResolution, LocalBinding},
-    module_graph::Declaration,
+    module_graph::{Declaration, Import, ImportResolution, ModulePath},
 };
 
 use crate::{
@@ -119,6 +119,7 @@ fn symbol_ref_for(
 ) -> Option<SymbolRef> {
     symbol_ref_from_bindings(databases, query, text)
         .or_else(|| symbol_ref_for_source_declaration(databases, query, text))
+        .or_else(|| symbol_ref_for_import(databases, query, text))
         .or_else(|| fact_symbol_ref_for(databases, text, member_receiver_fact))
 }
 
@@ -196,6 +197,32 @@ fn symbol_ref_for_source_declaration(
                     .is_some_and(|name_range| contains_range(name_range, range))
         })
         .map(|declaration| source_symbol_for_declaration(graph, declaration))
+}
+
+fn symbol_ref_for_import(
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    text: &str,
+) -> Option<SymbolRef> {
+    let range = query.identifier_range()?;
+    let source_id = query.source_id()?;
+    let graph = databases.hir_db().graph();
+    let module = graph.module_id(query.module_path()?)?;
+    graph.imports(module)?.iter().find_map(|import| {
+        if import.span.source != source_id {
+            return None;
+        }
+        let segment = import_segment_index(query.text(), import, text, range)?;
+        if segment + 1 == import.path.len() {
+            let ImportResolution::Declaration(declaration) = import.resolution?;
+            let declaration = graph.declaration(declaration)?;
+            return Some(source_symbol_for_declaration(graph, declaration));
+        }
+        let path = import.path[..=segment].to_vec();
+        graph
+            .module_id(&ModulePath::new(path.iter().cloned()))
+            .map(|_| SymbolRef::Source(path.join("::")))
+    })
 }
 
 fn source_symbol_for_declaration_target(
@@ -302,6 +329,36 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
 
 fn contains_range(container: TextRange, contained: TextRange) -> bool {
     container.start <= contained.start && contained.end <= container.end
+}
+
+fn import_segment_index(
+    text: &str,
+    import: &Import,
+    segment_text: &str,
+    range: TextRange,
+) -> Option<usize> {
+    let import_range = span_text_range(import.span)?;
+    if !contains_range(import_range, range) {
+        return None;
+    }
+    let import_text = text.get(import_range.start..import_range.end)?;
+    let mut search_start = 0usize;
+    for (index, segment) in import.path.iter().enumerate() {
+        if segment != segment_text {
+            search_start = search_start.saturating_add(segment.len() + "::".len());
+            continue;
+        }
+        let relative = import_text.get(search_start..)?.find(segment)? + search_start;
+        let segment_range = TextRange::new(
+            import_range.start + relative,
+            import_range.start + relative + segment.len(),
+        );
+        if contains_range(segment_range, range) {
+            return Some(index);
+        }
+        search_start = relative + segment.len();
+    }
+    None
 }
 
 fn schema_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
@@ -459,6 +516,54 @@ mod tests {
         assert_eq!(
             target.symbol(),
             Some(&SymbolRef::Source("game::main::Reward::Coins".to_owned()))
+        );
+    }
+
+    #[test]
+    fn target_resolves_imported_declaration_symbol() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let main_text = "use game::reward::grant\nfn main() { return grant() }";
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(reward, "pub fn grant() -> i64 { return 1 }"),
+        ]);
+        let query = QueryContext::from_databases(
+            &databases,
+            &main,
+            Position::new(0, main_text.find("grant").expect("import should exist")),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::reward::grant".to_owned()))
+        );
+    }
+
+    #[test]
+    fn target_resolves_import_module_segment_symbol() {
+        let main = DocumentId::from("/workspace/scripts/game/main.vela");
+        let reward = DocumentId::from("/workspace/scripts/game/reward.vela");
+        let main_text = "use game::reward::grant\nfn main() { return grant() }";
+        let databases = databases_for(vec![
+            SourceFileSnapshot::new(main.clone(), main_text),
+            SourceFileSnapshot::new(reward, "pub fn grant() -> i64 { return 1 }"),
+        ]);
+        let query = QueryContext::from_databases(
+            &databases,
+            &main,
+            Position::new(0, main_text.find("reward").expect("module segment")),
+        )
+        .expect("query should exist");
+
+        let target = SymbolTarget::from_query(&databases, &query).expect("target should resolve");
+
+        assert_eq!(
+            target.symbol(),
+            Some(&SymbolRef::Source("game::reward".to_owned()))
         );
     }
 
