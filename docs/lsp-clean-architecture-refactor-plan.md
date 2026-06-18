@@ -802,7 +802,10 @@ cargo test -p vela_lsp_server formatting
 
 Purpose: make the new model viable for large workspaces and real editors.
 
-- [ ] Audit request paths for avoidable per-keystroke full-workspace rebuilds.
+- [x] Audit request paths for avoidable per-keystroke full-workspace rebuilds.
+  Query handlers still refresh databases through the shared project snapshot,
+  but unchanged completion requests now have an LSP regression proving repeated
+  per-keystroke queries do not reparse documents or rebuild HIR.
 - [ ] Add completion-specific scale tests for item, expression, type, member,
   and module-path contexts in synthetic many-file workspaces near the
   one-million-line target.

@@ -235,6 +235,7 @@ Tests:
 - [x] `stale_background_diagnostics_are_not_published`
 - [x] `cancelled_background_diagnostics_are_not_published`
 - [x] `open_file_recomputation_is_scheduled_before_workspace_work`
+- [x] `lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir`
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
 - [x] `larger_synthetic_workspace_reports_indexing_metrics`
 - [x] `million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit`

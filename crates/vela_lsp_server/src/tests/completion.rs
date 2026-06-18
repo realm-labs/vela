@@ -41,6 +41,60 @@ fn lsp_completion_uses_open_overlay_declarations() {
 }
 
 #[test]
+fn lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "pub fn grant() { return 1 }\npub fn main() { gra }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let position = serde_json::json!({
+        "line": 1,
+        "character": text.lines().nth(1).expect("main line").find("gra").expect("prefix") + "gra".len()
+    });
+
+    let before_parse_count = server.databases.parse_db().parse_count();
+    let before_hir_rebuild_count = server.databases.hir_db().rebuild_count();
+    for id in 2..=3 {
+        let response = response_value(server.handle_json(&request(
+            id,
+            "textDocument/completion",
+            serde_json::json!({
+                "textDocument": { "uri": uri },
+                "position": position
+            }),
+        )));
+        assert_completion(&response, "grant", 3, "Function() -> unknown");
+    }
+
+    assert_eq!(
+        server.databases.parse_db().parse_count(),
+        before_parse_count
+    );
+    assert_eq!(
+        server.databases.hir_db().rebuild_count(),
+        before_hir_rebuild_count
+    );
+}
+
+#[test]
 fn lsp_expression_completion_projects_builtin_values() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
