@@ -11,6 +11,7 @@ use vela_hir::{
 use crate::{
     DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position, SymbolRef,
     WorkspaceGeneration,
+    symbol_ref::{qualified_source_declaration_path, source_symbol_for_declaration},
 };
 
 pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";
@@ -475,9 +476,9 @@ impl LanguageServiceDatabases {
                     return None;
                 }
                 let binding_name = import_binding_name(import)?;
-                let symbol = graph.declaration(declaration).map(|declaration| {
-                    SymbolRef::Source(qualified_declaration_path(graph, declaration).join("::"))
-                });
+                let symbol = graph
+                    .declaration(declaration)
+                    .map(|declaration| source_symbol_for_declaration(graph, declaration));
                 let diagnostic = Diagnostic::warning(format!("unused import `{binding_name}`"))
                     .with_code(UNUSED_IMPORT_CODE)
                     .with_span(import.span)
@@ -734,7 +735,7 @@ fn type_hint_target_declaration<'a>(
     } else {
         graph
             .declarations()
-            .find(|declaration| qualified_declaration_path(graph, declaration) == hint.path)?
+            .find(|declaration| qualified_source_declaration_path(graph, declaration) == hint.path)?
             .id
     };
     graph.declaration(declaration_id)
@@ -759,19 +760,6 @@ fn import_binding_name(import: &Import) -> Option<&str> {
         .alias
         .as_deref()
         .or_else(|| import.path.last().map(String::as_str))
-}
-
-fn qualified_declaration_path(graph: &ModuleGraph, declaration: &Declaration) -> Vec<String> {
-    graph
-        .module_path(declaration.module)
-        .map(|path| {
-            path.segments()
-                .iter()
-                .chain(std::iter::once(&declaration.name))
-                .cloned()
-                .collect()
-        })
-        .unwrap_or_else(|| vec![declaration.name.clone()])
 }
 
 fn is_hir_diagnostic(diagnostic: &Diagnostic) -> bool {

@@ -583,7 +583,7 @@ and semantic tokens use the same identities and display primitives.
   local/lambda inlay hints stamp that precise identity when the binding span is
   available. Source declaration/member/variant symbol construction now lives in
   the shared `SymbolRef` boundary and is consumed by references and rename;
-  hover and definition now route source declarations, struct fields,
+  diagnostics, hover, and definition now route source declarations, struct fields,
   impl/trait methods, and enum variants through those shared constructors;
   broader diagnostic identities and remaining source/member producer sites
   still need to converge on it directly. Document symbols now expose
