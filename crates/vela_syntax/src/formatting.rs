@@ -128,6 +128,7 @@ struct Formatter {
     pending_blank_lines: usize,
     previous_token: Option<TokenKind>,
     delimiter_stack: Vec<Symbol>,
+    type_argument_depth: usize,
     brace_context_stack: Vec<BraceContext>,
     declaration_brace_pending: bool,
     use_item_pending: bool,
@@ -168,6 +169,9 @@ impl Formatter {
     fn write_trivia(&mut self, kind: TriviaKind, text: &str) {
         match kind {
             TriviaKind::Whitespace => {
+                if self.in_type_arguments() {
+                    return;
+                }
                 let newline_count = text.matches('\n').count();
                 if newline_count > 0 && self.use_item_pending && self.delimiter_stack.is_empty() {
                     self.newline();
@@ -267,7 +271,9 @@ impl Formatter {
             Symbol::Comma => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
-                if self.in_brace_block() {
+                if self.in_type_arguments() {
+                    self.output.push(' ');
+                } else if self.in_brace_block() {
                     self.newline();
                 } else {
                     self.output.push(' ');
@@ -285,6 +291,21 @@ impl Formatter {
             Symbol::Colon => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
+                self.output.push(' ');
+            }
+            Symbol::Less if self.starts_type_arguments() => {
+                self.trim_trailing_horizontal_space();
+                self.write_indent_if_needed();
+                self.output.push_str(text);
+                self.type_argument_depth = self.type_argument_depth.saturating_add(1);
+            }
+            Symbol::Greater if self.in_type_arguments() => {
+                self.write_type_argument_close(text);
+            }
+            Symbol::GreaterEqual if self.in_type_arguments() => {
+                self.write_type_argument_close(">");
+                self.output.push(' ');
+                self.output.push('=');
                 self.output.push(' ');
             }
             Symbol::Arrow | Symbol::FatArrow => self.write_spaced_symbol(text),
@@ -422,6 +443,24 @@ impl Formatter {
         self.brace_context_stack.last() == Some(&BraceContext::DeclarationMembers)
     }
 
+    fn in_type_arguments(&self) -> bool {
+        self.type_argument_depth > 0
+    }
+
+    fn starts_type_arguments(&self) -> bool {
+        matches!(
+            self.previous_token.as_ref(),
+            Some(TokenKind::Ident(name)) if is_builtin_container_type_name(name)
+        )
+    }
+
+    fn write_type_argument_close(&mut self, text: &str) {
+        self.trim_trailing_horizontal_space();
+        self.write_indent_if_needed();
+        self.output.push_str(text);
+        self.type_argument_depth = self.type_argument_depth.saturating_sub(1);
+    }
+
     fn next_brace_context(&self) -> BraceContext {
         if self.declaration_brace_pending || self.starts_nested_declaration_members() {
             BraceContext::DeclarationMembers
@@ -556,6 +595,13 @@ fn previous_token_can_end_declaration_member(previous: Option<&TokenKind>) -> bo
                 | TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Null)
                 | TokenKind::Symbol(Symbol::RParen | Symbol::RBrace | Symbol::RBracket)
         )
+    )
+}
+
+fn is_builtin_container_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "Array" | "Map" | "Set" | "Iterator" | "Option" | "Result"
     )
 }
 
@@ -864,6 +910,71 @@ impl Player {
 }
 "
         );
+    }
+
+    #[test]
+    fn formatting_compacts_builtin_container_type_arguments() {
+        let source = "fn score(scores:Array < i64 >, rewards:Map< String,i64 >, tags:Set <String>)->Result < Map < String , i64 > , String >{return result::ok(rewards)}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+fn score(scores: Array<i64>, rewards: Map<String, i64>, tags: Set<String>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards)
+}
+"
+        );
+    }
+
+    #[test]
+    fn formatting_compacts_nested_result_container_type_arguments() {
+        let source =
+            "struct Loader{cache:Option < Result < Array < Map < String , i64 > > , String > >}";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+struct Loader {
+    cache: Option<Result<Array<Map<String, i64>>, String>>
+}
+"
+        );
+    }
+
+    #[test]
+    fn formatting_formats_container_type_hint_example() {
+        let source = "\
+fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
+
+fn main(){let scores:Array < i64 > = [1,2,3];let rewards:Map < String,i64 >={\"xp\":5};let tags:Set < String > = set::from_array([\"daily\",\"vip\"]);return score(scores,rewards,tags).unwrap_or(0)}
+";
+        let formatted = format_source(source_id(), source);
+
+        assert!(formatted.diagnostics().is_empty());
+        assert_eq!(
+            formatted.text(),
+            "\
+fn load_rewards(rewards: Map<String, i64>) -> Result<Map<String, i64>, String> {
+    return result::ok(rewards)
+}
+
+fn main() {
+    let scores: Array<i64> = [1, 2, 3];
+    let rewards: Map<String, i64> = {
+        \"xp\": 5
+    };
+    let tags: Set<String> = set::from_array([\"daily\", \"vip\"]);
+    return score(scores, rewards, tags).unwrap_or(0)
+}
+"
+        );
+
+        let reformatted = format_source(source_id(), formatted.text());
+        assert_eq!(reformatted.text(), formatted.text());
     }
 
     #[test]

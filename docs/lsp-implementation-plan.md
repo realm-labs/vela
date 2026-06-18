@@ -1779,13 +1779,13 @@ Audit note:
 - [ ] Keep completion identity, filtering, labels, insertion text, details,
   docs, snippets, and ranking as separate service-item fields before protocol
   projection.
-- [ ] Move formatter follow-up from token-only whitespace decisions toward
+- [x] Move formatter follow-up from token-only whitespace decisions toward
   syntax-owned AST/CST layout facts for declarations and type hints. The first
   required slice is compact builtin container type-argument layout.
 
 Behavior closure tasks:
 
-- [ ] Add golden formatter fixtures for the container type hint examples that
+- [x] Add golden formatter fixtures for the container type hint examples that
   currently format incorrectly:
 
 ```vela
@@ -1803,7 +1803,7 @@ fn main() {
 }
 ```
 
-- [ ] Fix `vela_syntax::formatting` so type arguments have no spaces around
+- [x] Fix `vela_syntax::formatting` so type arguments have no spaces around
   `<` or `>`, exactly one space after commas, no formatter-created type
   argument line breaks without an explicit line-width policy, and idempotent
   output through full-document, range, and on-type paths.
@@ -1831,10 +1831,10 @@ Tests:
 - [x] `completion_analysis_classifies_struct_field_declaration_body`
 - [x] `completion_analysis_tracks_expected_type_and_name`
 - [x] `member_completion_index_unifies_source_schema_trait_and_builtin_members`
-- [ ] `formatting_compacts_builtin_container_type_arguments`
-- [ ] `formatting_compacts_nested_result_container_type_arguments`
-- [ ] `formatting_formats_container_type_hint_example`
-- [ ] `lsp_document_formatting_formats_container_type_hint_example`
+- [x] `formatting_compacts_builtin_container_type_arguments`
+- [x] `formatting_compacts_nested_result_container_type_arguments`
+- [x] `formatting_formats_container_type_hint_example`
+- [x] `lsp_document_formatting_formats_container_type_hint_example`
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
