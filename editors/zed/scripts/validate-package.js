@@ -159,5 +159,26 @@ for (const entry of consistency) {
     `Zed highlights query must include ${entry.zedCapture} for ${entry.concept}`
   );
 }
+assert(
+  !highlights.includes("\n(identifier) @variable"),
+  "Zed highlights query must not use a bare identifier fallback that overrides declarations"
+);
+const variableFallbackCapture = highlights.indexOf("(path_expression (path (identifier) @variable))");
+assert(variableFallbackCapture >= 0, "Zed highlights query must include a path-expression variable fallback");
+for (const specificCapture of [
+  "(function_declaration name: (identifier) @function)",
+  "(struct_declaration name: (identifier) @type)",
+  "(enum_declaration name: (identifier) @type)",
+  "(trait_declaration name: (identifier) @type)",
+  "(const_declaration name: (identifier) @constant)",
+  "(call_expression function: (path_expression (path) @function))"
+]) {
+  const index = highlights.indexOf(specificCapture);
+  assert(index >= 0, `Zed highlights query must include ${specificCapture}`);
+  assert(
+    variableFallbackCapture < index,
+    `variable fallback must come before ${specificCapture} so specific captures win`
+  );
+}
 
 console.log("Zed extension package metadata and launcher boundary are valid.");

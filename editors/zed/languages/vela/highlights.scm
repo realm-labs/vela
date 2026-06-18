@@ -24,6 +24,12 @@
 
 (boolean_literal) @boolean
 (null_literal) @constant.builtin
+
+; Variables
+(let_statement name: (identifier) @variable)
+(binding_pattern (identifier) @variable)
+(path_expression (path (identifier) @variable))
+
 ((identifier) @variable.special
   (#eq? @variable.special "self"))
 
@@ -77,11 +83,6 @@
 (record_field_value name: (identifier) @property)
 (record_pattern_field name: (identifier) @property)
 (map_entry key: (identifier) @property)
-
-; Variables
-(binding_pattern (identifier) @variable)
-(path_expression (path (identifier) @variable))
-(identifier) @variable
 
 ; Operators and punctuation
 [
