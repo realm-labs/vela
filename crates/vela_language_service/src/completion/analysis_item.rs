@@ -1,11 +1,11 @@
 use vela_analysis::completion::CompletionItem as AnalysisCompletionItem;
 use vela_analysis::registry::RegistryFacts;
 
-use crate::TextRange;
+use crate::{TextRange, symbol_ref::schema_symbol};
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol,
-    accumulator::CompletionAccumulator, display_type_detail_parts, relevance::completion_sort_text,
+    CompletionInsertFormat, CompletionItem, CompletionKind, accumulator::CompletionAccumulator,
+    display_type_detail_parts, relevance::completion_sort_text,
 };
 
 pub(super) fn dedupe_and_filter_analysis_items(
@@ -54,13 +54,13 @@ fn enrich_analysis_completion_item(
     match item.kind() {
         CompletionKind::Type if schema.type_fact(&label).is_some() => item
             .with_documentation(schema.type_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
+            .with_symbol(schema_symbol(label)),
         CompletionKind::Trait if schema.trait_fact(&label).is_some() => item
             .with_documentation(schema.trait_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
+            .with_symbol(schema_symbol(label)),
         CompletionKind::Function if schema.function_fact(&label).is_some() => item
             .with_documentation(schema.function_docs(&label))
-            .with_symbol(CompletionSymbol::Schema(label)),
+            .with_symbol(schema_symbol(label)),
         _ => item,
     }
 }

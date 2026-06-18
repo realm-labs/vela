@@ -9,10 +9,10 @@ use vela_analysis::{
 };
 use vela_hir::module_graph::ModuleGraph;
 
-use crate::TextRange;
+use crate::{TextRange, symbol_ref::schema_symbol};
 
 use super::{
-    CompletionInsertFormat, CompletionItem, CompletionKind, CompletionSymbol, display_type_detail,
+    CompletionInsertFormat, CompletionItem, CompletionKind, display_type_detail,
     label_segment_matches,
 };
 
@@ -186,7 +186,7 @@ fn service_item_from_schema_type(
         AnalysisCompletionKind::Trait => schema.trait_docs(&item.label),
         _ => None,
     };
-    let symbol = CompletionSymbol::Schema(item.label.clone());
+    let symbol = schema_symbol(&item.label);
     service_item_from_analysis(item)
         .with_documentation(docs)
         .with_symbol(symbol)
