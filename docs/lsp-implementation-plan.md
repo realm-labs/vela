@@ -759,6 +759,7 @@ Tests:
 - [x] `signature_help_resolves_schema_method_call`
 - [x] `signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `signature_help_resolves_schema_trait_method_call`
+- [x] `signature_help_resolves_schema_trait_method_on_schema_function_return`
 - [x] `signature_help_resolves_stdlib_callback_method_call`
 - [x] `signature_help_resolves_stdlib_function_call`
 - [x] `signature_help_resolves_imported_function_with_defaulted_parameter`
@@ -768,6 +769,7 @@ Tests:
 - [x] `lsp_signature_help_resolves_schema_method_call`
 - [x] `lsp_signature_help_resolves_schema_method_on_schema_function_return`
 - [x] `lsp_signature_help_resolves_schema_trait_method_call`
+- [x] `lsp_signature_help_resolves_schema_trait_method_on_schema_function_return`
 - [x] `lsp_signature_help_resolves_stdlib_callback_method_call`
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
 - [x] `lsp_signature_help_resolves_imported_function_with_defaulted_parameter`
