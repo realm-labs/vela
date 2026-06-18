@@ -758,7 +758,10 @@ cargo test -p vela_lsp_server rename
 
 Purpose: keep editor mutations structured, local, and source-owned.
 
-- [ ] Route quick fixes through structured diagnostics and `EditPlan`.
+- [x] Route quick fixes through structured diagnostics and `EditPlan`.
+  Quick fixes now continue to originate from structured diagnostics,
+  candidates, and repair hints, and all code-action edits are built through the
+  checked `WorkspaceEdit::try_new`/`EditPlan` path before LSP projection.
 - [ ] Reject ambiguous imports, dynamic receiver typo fixes, and semantic
   rewrites without a proven local pattern.
 - [ ] Keep formatting syntax-owned and trivia-preserving. Do not rely on

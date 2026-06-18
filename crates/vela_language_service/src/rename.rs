@@ -71,6 +71,11 @@ impl WorkspaceEdit {
         }
     }
 
+    #[must_use]
+    pub fn try_new(document_edits: Vec<DocumentTextEdit>) -> Option<Self> {
+        Self::checked(document_edits, Vec::new())
+    }
+
     fn checked(document_edits: Vec<DocumentTextEdit>, risks: Vec<RenameRisk>) -> Option<Self> {
         Some(Self {
             edit_plan: EditPlan::new(document_edits)?,

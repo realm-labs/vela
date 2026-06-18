@@ -116,14 +116,14 @@ impl LanguageServiceDatabases {
         };
         let import_path = format!("{}::{}", module_path.join(), declaration.name);
         let range = import_insertion_range(text);
-        vec![CodeAction {
-            title: format!("Import `{import_path}`"),
-            kind: CodeActionKind::QuickFix,
-            edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
-                document_id.clone(),
-                vec![TextEdit::new(range, format!("use {import_path}\n"))],
-            )]),
-        }]
+        quick_fix(
+            format!("Import `{import_path}`"),
+            document_id.clone(),
+            range,
+            format!("use {import_path}\n"),
+        )
+        .into_iter()
+        .collect()
     }
 }
 
@@ -135,7 +135,7 @@ fn repair_hint_actions(
         .repair_hints()
         .iter()
         .filter(|hint| hint.document_id() == document_id)
-        .map(|hint| {
+        .filter_map(|hint| {
             quick_fix(
                 hint.title().to_owned(),
                 document_id.clone(),
@@ -164,7 +164,7 @@ fn candidate_actions(
     diagnostic
         .candidates()
         .iter()
-        .map(|candidate| {
+        .filter_map(|candidate| {
             quick_fix(
                 format!("Replace with `{}`", candidate.replacement()),
                 document_id.clone(),
@@ -179,16 +179,16 @@ fn quick_fix(
     title: String,
     document_id: DocumentId,
     range: DiagnosticRange,
-    replacement: &str,
-) -> CodeAction {
-    CodeAction {
+    replacement: impl Into<String>,
+) -> Option<CodeAction> {
+    Some(CodeAction {
         title,
         kind: CodeActionKind::QuickFix,
-        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
+        edit: WorkspaceEdit::try_new(vec![DocumentTextEdit::new(
             document_id,
-            vec![TextEdit::new(range, replacement)],
-        )]),
-    }
+            vec![TextEdit::new(range, replacement.into())],
+        )])?,
+    })
 }
 
 fn importable_declaration(
@@ -250,14 +250,14 @@ fn remove_unused_import_actions(
         return Vec::new();
     };
 
-    vec![CodeAction {
-        title: "Remove unused import".to_owned(),
-        kind: CodeActionKind::QuickFix,
-        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
-            document_id.clone(),
-            vec![TextEdit::new(line_range, "")],
-        )]),
-    }]
+    quick_fix(
+        "Remove unused import".to_owned(),
+        document_id.clone(),
+        line_range,
+        "",
+    )
+    .into_iter()
+    .collect()
 }
 
 fn full_line_range(text: &str, range: DiagnosticRange) -> Option<DiagnosticRange> {
@@ -308,14 +308,14 @@ fn fill_match_arm_actions(
     }
     edit_text.push_str(&closing_indent);
 
-    vec![CodeAction {
-        title: format!("Add missing match arms for `{enum_name}`"),
-        kind: CodeActionKind::QuickFix,
-        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
-            document_id.clone(),
-            vec![TextEdit::new(insert_range, edit_text)],
-        )]),
-    }]
+    quick_fix(
+        format!("Add missing match arms for `{enum_name}`"),
+        document_id.clone(),
+        insert_range,
+        edit_text,
+    )
+    .into_iter()
+    .collect()
 }
 
 fn fill_missing_record_field_actions(
@@ -336,14 +336,14 @@ fn fill_missing_record_field_actions(
         return Vec::new();
     };
 
-    vec![CodeAction {
-        title: format!("Add missing field `{field}`"),
-        kind: CodeActionKind::QuickFix,
-        edit: WorkspaceEdit::new(vec![DocumentTextEdit::new(
-            document_id.clone(),
-            vec![TextEdit::new(insert_range, edit_text)],
-        )]),
-    }]
+    quick_fix(
+        format!("Add missing field `{field}`"),
+        document_id.clone(),
+        insert_range,
+        edit_text,
+    )
+    .into_iter()
+    .collect()
 }
 
 fn record_field_insertion(
@@ -536,6 +536,10 @@ mod tests {
             .find(|action| action.title() == "Replace with `level`")
             .expect("candidate typo quick fix should exist");
         assert_eq!(action.kind(), CodeActionKind::QuickFix);
+        assert_eq!(
+            action.edit().edit_plan().document_edits(),
+            action.edit().document_edits()
+        );
         let document_edit = &action.edit().document_edits()[0];
         assert_eq!(document_edit.document_id(), &document);
         let edit = &document_edit.edits()[0];
