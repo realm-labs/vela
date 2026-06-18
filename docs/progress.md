@@ -305,6 +305,11 @@ native LSP coverage for source-owned method calls where the receiver is
 produced by a source function return, matching the schema-return receiver path
 through shared expression receiver facts.
 
+M20.5 Phase 11 update: references and document highlights now also cover
+source-owned trait default method calls where the receiver is produced by a
+source function return, matching the signature-help and semantic-token
+returned-receiver coverage.
+
 M20.5 Phase 11 update: document highlights now also have service and native
 LSP coverage for schema-backed method calls where the receiver is produced by
 a schema function return, matching the existing references coverage.

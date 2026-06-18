@@ -60,6 +60,70 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn references_find_source_trait_default_method_calls_on_source_function_return_receivers() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub struct Player {
+    level: i64
+}
+
+impl Rewardable for Player {}
+
+fn current_player() -> Player { return Player { level: 1 } }
+
+pub fn main() -> i64 {
+    let first = current_player().grant(1)
+    return current_player().grant(first)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let references = databases.references(
+        &document,
+        Position::new(
+            13,
+            line(text, 13)
+                .find("grant")
+                .expect("first returned receiver trait method call"),
+        ),
+        true,
+    );
+
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_reference(
+        &references,
+        1,
+        line(text, 1)
+            .find("grant")
+            .expect("trait method declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference(
+        &references,
+        13,
+        line(text, 13)
+            .find("grant")
+            .expect("first trait method call"),
+        ReferenceKind::Call,
+    );
+    assert_reference(
+        &references,
+        14,
+        line(text, 14)
+            .find("grant")
+            .expect("second trait method call"),
+        ReferenceKind::Call,
+    );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::main::Rewardable.grant".into()),
+    );
+}
+
+#[test]
 fn document_highlight_marks_source_method_calls_on_source_function_return_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\
@@ -106,6 +170,66 @@ pub fn main() -> i64 {
         &highlights,
         12,
         line(text, 12).find("grant").expect("second method call"),
+        DocumentHighlightKind::Call,
+    );
+}
+
+#[test]
+fn document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers()
+{
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+pub trait Rewardable {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+
+pub struct Player {
+    level: i64
+}
+
+impl Rewardable for Player {}
+
+fn current_player() -> Player { return Player { level: 1 } }
+
+pub fn main() -> i64 {
+    let first = current_player().grant(1)
+    return current_player().grant(first)
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let highlights = databases.document_highlights(
+        &document,
+        Position::new(
+            13,
+            line(text, 13)
+                .find("grant")
+                .expect("first returned receiver trait method call"),
+        ),
+    );
+
+    assert_eq!(highlights.len(), 3, "{highlights:?}");
+    assert_highlight(
+        &highlights,
+        1,
+        line(text, 1)
+            .find("grant")
+            .expect("trait method declaration"),
+        DocumentHighlightKind::Text,
+    );
+    assert_highlight(
+        &highlights,
+        13,
+        line(text, 13)
+            .find("grant")
+            .expect("first trait method call"),
+        DocumentHighlightKind::Call,
+    );
+    assert_highlight(
+        &highlights,
+        14,
+        line(text, 14)
+            .find("grant")
+            .expect("second trait method call"),
         DocumentHighlightKind::Call,
     );
 }
