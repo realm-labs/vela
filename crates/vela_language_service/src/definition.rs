@@ -7,6 +7,8 @@ use crate::{
     SymbolRef, TextRange, symbol_ref::source_symbol_for_declaration, symbol_target::SymbolTarget,
 };
 
+mod source_members;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Definition {
     document_id: DocumentId,
@@ -53,6 +55,15 @@ impl LanguageServiceDatabases {
             .and_then(|(span, symbol)| self.definition_from_span_with_symbol(span, Some(symbol)))
         {
             return Some(definition);
+        }
+
+        if let Some(definition) = source_members::source_member_definition_for_target(self, &target)
+        {
+            return Some(definition);
+        }
+
+        if query.member_receiver_range().is_some() {
+            return None;
         }
 
         for declaration in graph.declarations() {
@@ -354,6 +365,64 @@ fn main() {
             definition.symbol(),
             Some(&SymbolRef::Source("game::main::add_mixed".into()))
         );
+    }
+
+    #[test]
+    fn definition_follows_source_struct_field_member_access() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Cell {
+    value: i64,
+}
+
+fn assign_cell(cell: Cell, value) {
+    cell.value = value;
+    return cell.value;
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let field_line = text.lines().nth(5).expect("field write line");
+
+        let definition = databases
+            .definition(
+                &document,
+                Position::new(5, field_line.find("value").expect("field use")),
+            )
+            .expect("definition should resolve source field");
+
+        assert_eq!(definition.document_id(), &document);
+        assert_eq!(definition.range().start().line, 1);
+        assert_eq!(
+            definition.range().start().character,
+            text.lines()
+                .nth(1)
+                .expect("field declaration line")
+                .find("value")
+                .expect("field declaration")
+        );
+        assert_eq!(
+            definition.symbol(),
+            Some(&SymbolRef::Source("game::main::Cell.value".into()))
+        );
+    }
+
+    #[test]
+    fn definition_does_not_fallback_to_enclosing_function_for_unknown_member() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"struct Cell {
+    value: i64,
+}
+
+fn assign_cell(cell: Cell) {
+    return cell.missing;
+}"#;
+        let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+        let use_line = text.lines().nth(5).expect("member use line");
+
+        let definition = databases.definition(
+            &document,
+            Position::new(5, use_line.find("missing").expect("unknown field use")),
+        );
+
+        assert!(definition.is_none());
     }
 
     #[test]

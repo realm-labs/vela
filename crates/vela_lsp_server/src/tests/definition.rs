@@ -71,6 +71,71 @@ fn main() {
 }
 
 #[test]
+fn lsp_definition_follows_source_struct_field_member_access() {
+    assert_source_struct_field_navigation("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_follows_source_struct_field_member_access() {
+    assert_source_struct_field_navigation("textDocument/declaration");
+}
+
+#[test]
+fn lsp_type_definition_follows_source_struct_field_member_access() {
+    assert_source_struct_field_navigation("textDocument/typeDefinition");
+}
+
+#[test]
+fn lsp_definition_returns_null_for_unknown_source_member() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"struct Cell {
+    value: i64,
+}
+
+fn assign_cell(cell: Cell) {
+    return cell.missing;
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let use_line = text.lines().nth(5).expect("member use line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/definition",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 5,
+                "character": use_line
+                    .find("missing")
+                    .expect("unknown member should exist")
+            }
+        }),
+    )));
+
+    assert!(response["result"].is_null());
+}
+
+#[test]
 fn lsp_definition_follows_schema_source_span() {
     assert_schema_source_navigation("textDocument/definition");
 }
@@ -600,6 +665,79 @@ fn assert_local_binding_navigation(method: &str) {
     assert_eq!(
         response["result"]["range"]["start"]["character"],
         text.find("amount").expect("parameter declaration")
+    );
+}
+
+fn assert_source_struct_field_navigation(method: &str) {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"struct Cell {
+    value: i64,
+}
+
+fn assign_cell(cell: Cell, value) {
+    cell.value = value;
+    return cell.value;
+}
+
+fn main() {
+    let cell: Cell = Cell { value: 1 };
+    return assign_cell(cell, "bad");
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let field_use_line = text.lines().nth(5).expect("field use line should exist");
+    let field_declaration_line = text
+        .lines()
+        .nth(1)
+        .expect("field declaration line should exist");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        method,
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 5,
+                "character": field_use_line
+                    .find("value")
+                    .expect("field use should contain name")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 1);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        field_declaration_line
+            .find("value")
+            .expect("field declaration should contain name")
+    );
+    assert_eq!(
+        response["result"]["range"]["end"]["character"],
+        field_declaration_line
+            .find("value")
+            .expect("field declaration should contain name")
+            + "value".len()
     );
 }
 
