@@ -1244,8 +1244,18 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
             .find("missing_symbol")
             .expect("unresolved match arm"),
         "missing_symbol".len(),
-        SemanticTokenType::Variable,
-        SemanticTokenModifiers::NONE,
+        SemanticTokenType::UnresolvedReference,
+        SemanticTokenModifiers::UNRESOLVED,
+    );
+    assert_token_at(
+        &tokens,
+        63,
+        line(HIGHLIGHTING_SHOWCASE, 63)
+            .find("unknown_call")
+            .expect("unresolved call"),
+        "unknown_call".len(),
+        SemanticTokenType::UnresolvedReference,
+        SemanticTokenModifiers::UNRESOLVED,
     );
 }
 

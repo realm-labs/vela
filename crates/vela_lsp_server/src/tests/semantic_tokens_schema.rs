@@ -559,11 +559,13 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     let property = token_type_index(token_types, "property");
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
+    let unresolved_reference = token_type_index(token_types, "unresolvedReference");
     let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
     let schema_host = host | schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
     let source = token_modifier_bit(token_modifiers, "source");
+    let unresolved = token_modifier_bit(token_modifiers, "unresolved");
     let control_flow = token_modifier_bit(token_modifiers, "controlFlow");
     let declaration = token_modifier_bit(token_modifiers, "declaration");
     let definition = token_modifier_bit(token_modifiers, "definition");
@@ -695,6 +697,26 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
         "bonus".len(),
         method,
         source,
+    );
+    assert_token_at(
+        &tokens,
+        60,
+        line(HIGHLIGHTING_SHOWCASE, 60)
+            .find("missing_symbol")
+            .expect("unresolved match arm"),
+        "missing_symbol".len(),
+        unresolved_reference,
+        unresolved,
+    );
+    assert_token_at(
+        &tokens,
+        63,
+        line(HIGHLIGHTING_SHOWCASE, 63)
+            .find("unknown_call")
+            .expect("unresolved call"),
+        "unknown_call".len(),
+        unresolved_reference,
+        unresolved,
     );
 
     fs::remove_dir_all(root).expect("temporary workspace should be removable");

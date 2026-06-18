@@ -242,7 +242,7 @@ validation commands have passed locally.
 |---|---|---|
 | 1. Baseline inventory and fixtures | Complete | Shared showcase fixture and baseline service/LSP/editor validator coverage now pin current collapse points before taxonomy changes. |
 | 2. Token taxonomy and fallback policy | Complete | Expanded service token/modifier names, deterministic legend ordering, fallback policy, and direct taxonomy tests are in place. |
-| 3. Service semantic classification | In progress | Declaration-kind, builtin-type, literal, operator/punctuation, and control-flow keyword classification are covered; richer resolved-use provenance remains. |
+| 3. Service semantic classification | Complete | Declaration-kind, resolved-use provenance, builtin-type, literal, operator/punctuation, control-flow keyword, and unresolved-reference classification are covered. |
 | 4. LSP projection and capabilities | Not started | Keep protocol behavior in `vela_lsp_server`. |
 | 5. Zed Tree-sitter fallback | Not started | Improve `highlights.scm` without semantic analysis. |
 | 6. VS Code fallback and scopes | Not started | Add grammar and semantic-token contribution coverage. |
@@ -344,7 +344,7 @@ syntax and semantic facts instead of editor-specific heuristics.
 
 - [x] Classify declarations by `DeclarationKind`: function, const/global,
   struct, enum, trait, type alias, impl/self type, and module/import.
-- [ ] Classify uses through resolved binding, declaration, member, import, and
+- [x] Classify uses through resolved binding, declaration, member, import, and
   schema facts: source functions, source methods, trait methods, source fields,
   enum variants, module path segments, schema fields, schema methods, schema
   variants, schema functions, stdlib functions, and stdlib methods.
@@ -388,8 +388,9 @@ Phase 3 notes:
 - Source member uses on locals initialized from source record constructors now
   classify through an editor-only local fact side table, keeping HIR, analysis,
   runtime, and language semantics unchanged.
-- Resolved-use classification is still incomplete: the broad showcase still
-  records some unstable receiver/unresolved cases as plain variables.
+- Unresolved plain names with HIR diagnostics and unresolved call names that do
+  not resolve as source, schema, or stdlib calls now classify as
+  `unresolvedReference` with the `unresolved` modifier.
 
 Focused validation:
 

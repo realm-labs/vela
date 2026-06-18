@@ -19,6 +19,7 @@ mod local_record_facts;
 mod member_uses;
 mod path_sites;
 mod type_hints;
+mod unresolved;
 mod variant_uses;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -427,6 +428,7 @@ struct SemanticClassificationContext<'a> {
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
+    unresolved_identifiers: &'a unresolved::IdentifierRanges,
 }
 
 impl SemanticTokenClassification {
@@ -548,6 +550,7 @@ impl LanguageServiceDatabases {
         let mut classifications = BTreeMap::new();
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
+        let unresolved_identifiers = unresolved::ranges(graph, source_id);
         let context = SemanticClassificationContext {
             facts: &facts,
             member_receivers,
@@ -555,6 +558,7 @@ impl LanguageServiceDatabases {
             path_expressions,
             pattern_paths,
             inferred_local_facts,
+            unresolved_identifiers: &unresolved_identifiers,
         };
         for token in tokens {
             let TokenKind::Ident(name) = &token.kind else {
@@ -640,7 +644,13 @@ impl LanguageServiceDatabases {
                 {
                     return Some(classification);
                 }
-                if let Some(classification) = unresolved_identifier_classification(bindings, span) {
+                if let Some(classification) = unresolved::classification(
+                    bindings,
+                    span,
+                    context.path_calls,
+                    context.unresolved_identifiers,
+                    range,
+                ) {
                     return Some(classification);
                 }
             }
@@ -716,22 +726,6 @@ fn resolved_identifier_classification(
             .map(declaration_use_classification),
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
-}
-
-fn unresolved_identifier_classification(
-    bindings: &BindingMap,
-    span: Span,
-) -> Option<SemanticTokenClassification> {
-    matches!(
-        bindings.resolution_at_span(span)?,
-        BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)
-    )
-    .then(|| {
-        SemanticTokenClassification::new(
-            SemanticTokenType::UnresolvedReference,
-            SemanticTokenModifiers::UNRESOLVED,
-        )
-    })
 }
 
 fn function_call_classification(
