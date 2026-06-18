@@ -128,3 +128,89 @@ pub global reward_scale: i64";
             .expect("global use should exist"),
     );
 }
+
+#[test]
+fn lsp_references_find_imported_function_alias_uses() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_text = "\
+use game::reward::grant as award
+pub fn main(amount: i64) -> i64 {
+    let first = award(amount)
+    return award(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let helper_uri = "file:///workspace/scripts/game/reward.vela";
+    for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
+        let _ = notification_value(server.handle_json(&notification(
+            "textDocument/didOpen",
+            serde_json::json!({
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "vela",
+                    "version": 1,
+                    "text": text
+                }
+            }),
+        )));
+    }
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 2,
+                "character": line(main_text, 2)
+                    .find("award")
+                    .expect("first alias call should exist")
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )));
+    let references = response["result"]
+        .as_array()
+        .expect("references response should be an array");
+
+    assert_eq!(references.len(), 4, "{references:?}");
+    assert_reference(
+        references,
+        helper_uri,
+        0,
+        helper_text.find("grant").expect("function declaration"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        0,
+        line(main_text, 0)
+            .find("award")
+            .expect("import alias should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        2,
+        line(main_text, 2)
+            .find("award")
+            .expect("first alias call should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        3,
+        line(main_text, 3)
+            .find("award")
+            .expect("second alias call should exist"),
+    );
+}

@@ -112,6 +112,63 @@ pub global reward_scale: i64";
     );
 }
 
+#[test]
+fn references_find_imported_function_alias_uses() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "\
+use game::reward::grant as award
+pub fn main(amount: i64) -> i64 {
+    let first = award(amount)
+    return award(first)
+}";
+    let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(helper.clone(), helper_text),
+    ]);
+
+    let references = databases.references(
+        &main,
+        Position::new(2, line(main_text, 2).find("award").expect("alias call")),
+        true,
+    );
+
+    assert_eq!(references.len(), 4, "{references:?}");
+    assert_reference_in_document(
+        &references,
+        &helper,
+        0,
+        helper_text.find("grant").expect("function declaration"),
+        ReferenceKind::Declaration,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        0,
+        line(main_text, 0).find("award").expect("import alias"),
+        ReferenceKind::Import,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2).find("award").expect("first alias call"),
+        ReferenceKind::Call,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        3,
+        line(main_text, 3).find("award").expect("second alias call"),
+        ReferenceKind::Call,
+    );
+    assert_all_symbols(
+        &references,
+        &SymbolRef::Source("game::reward::grant".into()),
+    );
+}
+
 fn assert_all_symbols(references: &[Reference], symbol: &SymbolRef) {
     assert!(
         references
