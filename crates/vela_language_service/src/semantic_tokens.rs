@@ -1177,4 +1177,6 @@ mod schema_call_tests;
 #[cfg(test)]
 mod showcase_tests;
 #[cfg(test)]
+mod source_call_tests;
+#[cfg(test)]
 mod tests;

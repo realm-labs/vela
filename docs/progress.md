@@ -234,6 +234,11 @@ classification uses expression receiver facts so schema method calls on schema
 function-return receivers classify as host/schema methods in both the service
 and native LSP protocol.
 
+M20.5 Phase 10 update: semantic-token member classification now has service
+and native LSP coverage for source-owned method calls where the receiver is
+produced by a source function return, matching the schema-return receiver path
+through shared expression receiver facts.
+
 M20.5 Phase 7 update: signature help and shared member callable queries now
 use expression receiver facts, so schema method signatures resolve when the
 receiver is produced by a schema function return in both the language service

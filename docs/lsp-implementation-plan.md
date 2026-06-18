@@ -359,10 +359,11 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP full/range/delta semantic
     tokens, lexical and trivia classes, resolved local/declaration/member
     classes, cross-file imports and imported module path segments,
-    source/schema/stdlib/builtin provenance modifiers, unresolved import and
-    general unresolved-reference tokens, parser-recovery degradation with
-    retained HIR-backed classifications, missing-schema degradation, and
-    client legend fallback projection.
+    source/schema/stdlib/builtin provenance modifiers, source/schema method
+    calls on function-return receivers, unresolved import and general
+    unresolved-reference tokens, parser-recovery degradation with retained
+    HIR-backed classifications, missing-schema degradation, and client legend
+    fallback projection.
 - [x] Audit formatting and inlay hints.
   - Cover full/range/on-type formatting, comments, blank lines, nested member
     selections, malformed source, parameter hints, local type hints, lambda
@@ -1077,6 +1078,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_script_member_uses`
 - [x] `semantic_tokens_classify_script_trait_method_uses`
 - [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
+- [x] `semantic_tokens_classify_source_method_on_source_function_return`
+- [x] `lsp_semantic_tokens_classify_source_method_on_source_function_return`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `infers_schema_function_and_method_return_facts`

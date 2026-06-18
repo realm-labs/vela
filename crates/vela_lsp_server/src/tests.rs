@@ -556,6 +556,7 @@ mod semantic_tokens;
 mod semantic_tokens_degradation;
 mod semantic_tokens_schema;
 mod semantic_tokens_schema_trait;
+mod semantic_tokens_source;
 mod signature;
 mod symbols;
 
