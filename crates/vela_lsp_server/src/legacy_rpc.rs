@@ -49,23 +49,21 @@ impl JsonRpcResult {
     }
 
     #[must_use]
-    pub fn into_notification(self) -> Option<String> {
+    pub fn into_notification_message(self) -> Option<Message> {
         match self {
-            Self::Notification(notification) => Some(serialize_message(&notification)),
-            Self::Notifications(mut notifications) if notifications.len() == 1 => notifications
-                .pop()
-                .map(|message| serialize_message(&message)),
+            Self::Notification(notification) => Some(notification),
+            Self::Notifications(mut notifications) if notifications.len() == 1 => {
+                notifications.pop()
+            }
             Self::Response(_) | Self::Notifications(_) | Self::None => None,
         }
     }
 
     #[must_use]
-    pub fn into_notifications(self) -> Option<Vec<String>> {
+    pub fn into_notification_messages(self) -> Option<Vec<Message>> {
         match self {
-            Self::Notification(notification) => Some(vec![serialize_message(&notification)]),
-            Self::Notifications(notifications) => {
-                Some(notifications.iter().map(serialize_message).collect())
-            }
+            Self::Notification(notification) => Some(vec![notification]),
+            Self::Notifications(notifications) => Some(notifications),
             Self::Response(_) | Self::None => None,
         }
     }

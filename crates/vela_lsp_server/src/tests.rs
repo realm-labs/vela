@@ -1,4 +1,5 @@
 use crate::{JsonRpcResult, LspServer};
+use lsp_server::Message;
 use serde_json::Value as JsonValue;
 
 fn request(id: i64, method: &str, params: JsonValue) -> String {
@@ -28,20 +29,21 @@ fn response_value(result: JsonRpcResult) -> JsonValue {
 }
 
 fn notification_value(result: JsonRpcResult) -> JsonValue {
-    let Some(notification) = result.into_notification() else {
+    let Some(notification) = result.into_notification_message() else {
         panic!("notification should return a JSON-RPC notification");
     };
-    json_value(&notification)
+    message_value(&notification)
 }
 
 fn notification_values(result: JsonRpcResult) -> Vec<JsonValue> {
-    let Some(notifications) = result.into_notifications() else {
+    let Some(notifications) = result.into_notification_messages() else {
         panic!("result should contain JSON-RPC notifications");
     };
-    notifications
-        .iter()
-        .map(|notification| json_value(notification))
-        .collect()
+    notifications.iter().map(message_value).collect()
+}
+
+fn message_value(message: &Message) -> JsonValue {
+    json_value(&crate::rpc::serialize_message(message))
 }
 
 fn json_value(source: &str) -> JsonValue {

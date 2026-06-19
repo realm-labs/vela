@@ -1789,6 +1789,9 @@ node editors/vscode/scripts/validate-package.js
     out of the typed transport module into the test-only legacy helper module.
     The transport module now owns typed stdio/TCP connection code, message
     serialization for profiling/tracing, and typed message metadata only.
+  - Replaced legacy notification result extractors that returned serialized
+    JSON strings with typed `lsp_server::Message` extractors, so remaining
+    compatibility tests consume typed notifications before any JSON assertion.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.
