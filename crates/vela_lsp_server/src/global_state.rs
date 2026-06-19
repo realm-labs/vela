@@ -3,10 +3,11 @@ use std::collections::BTreeSet;
 use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
-    CallHierarchyPrepareParams, CompletionParams, DidChangeConfigurationParams,
-    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
-    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams,
-    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentPositionParams,
+    CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
+    CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
+    DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, ReferenceParams,
+    RenameParams, SignatureHelpParams, TextDocumentPositionParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -431,6 +432,28 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.prepare_call_hierarchy_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn incoming_calls(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyIncomingCallsParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.incoming_calls_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn outgoing_calls(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyOutgoingCallsParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.outgoing_calls_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1602,6 +1625,77 @@ pub fn main(amount: i64) -> i64 {
     }
 
     #[test]
+    fn typed_call_hierarchy_incoming_and_outgoing_dispatch_project_calls() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let main_line = text.lines().nth(1).expect("main line should exist");
+        let grant_character = main_line
+            .find("grant")
+            .expect("main line should contain grant");
+        let main_character = main_line
+            .find("main")
+            .expect("main line should contain main");
+        let grant_item: lsp_types::CallHierarchyItem =
+            serde_json::from_value(
+                typed_prepare_call_hierarchy_response(
+                    &mut state,
+                    18,
+                    &document,
+                    1,
+                    grant_character,
+                )["result"][0]
+                    .clone(),
+            )
+            .expect("grant item should deserialize");
+        let main_item: lsp_types::CallHierarchyItem =
+            serde_json::from_value(
+                typed_prepare_call_hierarchy_response(&mut state, 19, &document, 1, main_character)
+                    ["result"][0]
+                    .clone(),
+            )
+            .expect("main item should deserialize");
+
+        let incoming = typed_incoming_calls_response(&mut state, 20, grant_item);
+        let outgoing = typed_outgoing_calls_response(&mut state, 21, main_item);
+
+        let incoming = incoming["result"]
+            .as_array()
+            .expect("incomingCalls response should be an array");
+        assert_eq!(incoming.len(), 1, "{incoming:?}");
+        assert_eq!(incoming[0]["from"]["name"], "main");
+        assert_eq!(
+            incoming[0]["fromRanges"]
+                .as_array()
+                .expect("incomingCalls should contain fromRanges")
+                .len(),
+            1
+        );
+
+        let outgoing = outgoing["result"]
+            .as_array()
+            .expect("outgoingCalls response should be an array");
+        assert_eq!(outgoing.len(), 1, "{outgoing:?}");
+        assert_eq!(outgoing[0]["to"]["name"], "grant");
+        assert_eq!(
+            outgoing[0]["fromRanges"]
+                .as_array()
+                .expect("outgoingCalls should contain fromRanges")
+                .len(),
+            1
+        );
+    }
+
+    #[test]
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1703,6 +1797,50 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed prepareCallHierarchy should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_incoming_calls_response(
+        state: &mut GlobalState,
+        id: i32,
+        item: lsp_types::CallHierarchyItem,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "callHierarchy/incomingCalls".to_owned(),
+            params: serde_json::to_value(lsp_types::CallHierarchyIncomingCallsParams {
+                item,
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("incomingCalls params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed incomingCalls should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_outgoing_calls_response(
+        state: &mut GlobalState,
+        id: i32,
+        item: lsp_types::CallHierarchyItem,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "callHierarchy/outgoingCalls".to_owned(),
+            params: serde_json::to_value(lsp_types::CallHierarchyOutgoingCallsParams {
+                item,
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("outgoingCalls params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed outgoingCalls should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

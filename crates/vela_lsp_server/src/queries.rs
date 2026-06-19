@@ -814,6 +814,33 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_incoming_calls(&calls)))
     }
 
+    pub(crate) fn incoming_calls_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CallHierarchyIncomingCallsParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.item.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid incomingCalls item range: {error}"),
+                ));
+            }
+        };
+        let calls = self.databases.incoming_calls(&item);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::incoming_calls(&calls))
+                .expect("typed incomingCalls response should serialize"),
+        ))
+    }
+
     pub(crate) fn outgoing_calls(
         &mut self,
         id: Option<RequestId>,
@@ -849,6 +876,33 @@ impl LspServer {
         let calls = self.databases.outgoing_calls(&item);
 
         JsonRpcResult::Response(success_response(id, lsp_outgoing_calls(&calls)))
+    }
+
+    pub(crate) fn outgoing_calls_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CallHierarchyOutgoingCallsParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.item.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid outgoingCalls item range: {error}"),
+                ));
+            }
+        };
+        let calls = self.databases.outgoing_calls(&item);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::outgoing_calls(&calls))
+                .expect("typed outgoingCalls response should serialize"),
+        ))
     }
 
     pub(crate) fn document_highlight(

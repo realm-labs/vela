@@ -4,8 +4,9 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
-    DiagnosticRange, DocumentTextEdit, Hover, HoverKind, LineIndex, PrepareRename, Reference,
-    RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
+    DiagnosticRange, DocumentTextEdit, Hover, HoverKind, IncomingCall, LineIndex, OutgoingCall,
+    PrepareRename, Reference, RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit,
+    TextRange, WorkspaceEdit,
 };
 
 pub(crate) fn completion_response(
@@ -99,6 +100,36 @@ pub(crate) fn call_hierarchy_items(
     items: &[ServiceCallHierarchyItem],
 ) -> Vec<lsp_types::CallHierarchyItem> {
     items.iter().map(call_hierarchy_item).collect()
+}
+
+pub(crate) fn incoming_calls(calls: &[IncomingCall]) -> Vec<lsp_types::CallHierarchyIncomingCall> {
+    calls
+        .iter()
+        .map(|call| lsp_types::CallHierarchyIncomingCall {
+            from: call_hierarchy_item(call.from()),
+            from_ranges: call
+                .from_ranges()
+                .iter()
+                .copied()
+                .map(diagnostic_range)
+                .collect(),
+        })
+        .collect()
+}
+
+pub(crate) fn outgoing_calls(calls: &[OutgoingCall]) -> Vec<lsp_types::CallHierarchyOutgoingCall> {
+    calls
+        .iter()
+        .map(|call| lsp_types::CallHierarchyOutgoingCall {
+            to: call_hierarchy_item(call.to()),
+            from_ranges: call
+                .from_ranges()
+                .iter()
+                .copied()
+                .map(diagnostic_range)
+                .collect(),
+        })
+        .collect()
 }
 
 fn location(
@@ -746,5 +777,54 @@ pub fn main(amount: i64) -> i64 {
             )
         );
         assert!(items[0].data.is_some());
+    }
+
+    #[test]
+    fn incoming_and_outgoing_calls_project_typed_calls() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let grant_position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("main line should exist")
+                .find("grant")
+                .expect("call should contain grant"),
+        );
+        let main_position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("main line should exist")
+                .find("main")
+                .expect("line should contain main"),
+        );
+        let grant = databases
+            .prepare_call_hierarchy(&document, grant_position)
+            .into_iter()
+            .next()
+            .expect("grant should prepare call hierarchy");
+        let main = databases
+            .prepare_call_hierarchy(&document, main_position)
+            .into_iter()
+            .next()
+            .expect("main should prepare call hierarchy");
+
+        let incoming = incoming_calls(&databases.incoming_calls(&grant));
+        let outgoing = outgoing_calls(&databases.outgoing_calls(&main));
+
+        assert_eq!(incoming.len(), 1);
+        assert_eq!(incoming[0].from.name, "main");
+        assert_eq!(incoming[0].from_ranges.len(), 1);
+        assert_eq!(outgoing.len(), 1);
+        assert_eq!(outgoing[0].to.name, "grant");
+        assert_eq!(outgoing[0].from_ranges.len(), 1);
     }
 }

@@ -633,6 +633,8 @@ cargo test -p vela_lsp_server workspace_folders
     `lsp/from_proto.rs`.
   - `textDocument/prepareCallHierarchy` now converts typed
     `CallHierarchyPrepareParams` through `lsp/from_proto.rs`.
+  - `callHierarchy/incomingCalls` and `callHierarchy/outgoingCalls` now
+    decode typed `CallHierarchyItem` params through `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -649,6 +651,9 @@ cargo test -p vela_lsp_server workspace_folders
     `changes`, versioned `documentChanges`, and change annotations.
   - Prepare call hierarchy now projects through typed
     `lsp_types::CallHierarchyItem` values.
+  - Incoming and outgoing call hierarchy now project through typed
+    `lsp_types::CallHierarchyIncomingCall` and
+    `lsp_types::CallHierarchyOutgoingCall` values.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -732,6 +737,17 @@ cargo test -p vela_lsp_server workspace_folders
     `CallHierarchyPrepareParams` through `GlobalState` and typed
     `lsp_types::CallHierarchyItem` projection through `lsp/to_proto.rs`.
     Validated with `cargo test -p vela_lsp_server call_hierarchy`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service call_hierarchy`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `callHierarchy/incomingCalls` and `callHierarchy/outgoingCalls` now use
+    typed params through `GlobalState`, decode typed `CallHierarchyItem`
+    inputs through `lsp/from_proto.rs`, and project typed incoming/outgoing
+    call results through `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server call_hierarchy`,
     `cargo test -p vela_lsp_server lsp::from_proto::tests`,
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,

@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use vela_language_service::{DiagnosticRange, DocumentId, Position};
+use vela_language_service::{
+    CallHierarchyItem as ServiceCallHierarchyItem, DiagnosticRange, DocumentId, Position,
+};
 
 use crate::{
     line_index::LineIndex,
@@ -108,6 +110,18 @@ pub(crate) fn prepare_call_hierarchy_params(
     params: &lsp_types::CallHierarchyPrepareParams,
 ) -> Result<TextDocumentPositionInput, String> {
     text_document_position(text, &params.text_document_position_params)
+}
+
+pub(crate) fn call_hierarchy_item(
+    text: &str,
+    item: &lsp_types::CallHierarchyItem,
+) -> Result<ServiceCallHierarchyItem, String> {
+    Ok(ServiceCallHierarchyItem::new(
+        item.name.clone(),
+        document_id(&item.uri),
+        range(text, item.range)?,
+        range(text, item.selection_range)?,
+    ))
 }
 
 pub(crate) fn text_document_range(
@@ -382,6 +396,36 @@ mod tests {
             DocumentId::from("file:///workspace/scripts/main.vela")
         );
         assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn call_hierarchy_item_converts_ranges_and_document_id() {
+        let item = lsp_types::CallHierarchyItem {
+            name: "grant".to_owned(),
+            kind: lsp_types::SymbolKind::FUNCTION,
+            tags: None,
+            detail: None,
+            uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela").expect("valid URI"),
+            range: lsp_types::Range::new(
+                lsp_types::Position::new(0, 0),
+                lsp_types::Position::new(0, 12),
+            ),
+            selection_range: lsp_types::Range::new(
+                lsp_types::Position::new(0, 7),
+                lsp_types::Position::new(0, 12),
+            ),
+            data: None,
+        };
+
+        let item = call_hierarchy_item("pub fn grant()", &item).expect("item should convert");
+
+        assert_eq!(item.name(), "grant");
+        assert_eq!(
+            item.document_id(),
+            &DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(item.selection_range().start(), Position::new(0, 7));
+        assert_eq!(item.selection_range().end(), Position::new(0, 12));
     }
 
     #[test]
