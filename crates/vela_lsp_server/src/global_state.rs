@@ -39,6 +39,7 @@ pub(crate) struct GlobalState {
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
     watched_files_registered: bool,
+    watch_files_enabled: bool,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -56,6 +57,7 @@ pub(crate) struct GlobalStateSnapshot {
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
     watched_files_registered: bool,
+    watch_files_enabled: bool,
     generation: WorkspaceGeneration,
     initialized: bool,
     shutdown_requested: bool,
@@ -103,6 +105,10 @@ impl GlobalStateSnapshot {
         self.watched_files_registered
     }
 
+    pub(crate) const fn watch_files_enabled(&self) -> bool {
+        self.watch_files_enabled
+    }
+
     pub(crate) const fn is_initialized(&self) -> bool {
         self.initialized
     }
@@ -114,6 +120,7 @@ impl GlobalStateSnapshot {
 
 impl GlobalState {
     pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
+        let watch_files_enabled = launch_configuration.watch_files_enabled();
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
         Self {
             sender,
@@ -125,6 +132,7 @@ impl GlobalState {
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
             watched_files_registered: false,
+            watch_files_enabled,
             initialized: false,
             shutdown_requested: false,
             exited: false,
@@ -148,6 +156,7 @@ impl GlobalState {
                 .client_supports_watched_file_registration,
             semantic_token_projection: self.semantic_token_projection.clone(),
             watched_files_registered: self.watched_files_registered,
+            watch_files_enabled: self.watch_files_enabled,
             generation: self.server.databases.generation(),
             initialized: self.initialized,
             shutdown_requested: self.shutdown_requested,
@@ -191,7 +200,11 @@ impl GlobalState {
     }
 
     pub(crate) fn apply_config_change(&mut self, change: ConfigChange) {
+        let watch_files_enabled = change.watch_files_enabled();
         self.server.apply_config_change(change);
+        if let Some(enabled) = watch_files_enabled {
+            self.watch_files_enabled = enabled;
+        }
     }
 
     pub(crate) fn initialize(
@@ -335,6 +348,7 @@ impl GlobalState {
             self.server.client_supports_watched_file_registration;
         self.semantic_token_projection = self.server.semantic_token_projection.clone();
         self.watched_files_registered |= self.server.watched_files_registered;
+        self.watch_files_enabled = !self.server.file_watching_disabled;
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -346,7 +360,7 @@ impl GlobalState {
 
     fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
         if self.client_supports_watched_file_registration
-            && !self.server.file_watching_disabled
+            && self.watch_files_enabled
             && !self.watched_files_registered
             && let Some(registration) = watching::registration_request(
                 self.server.config.as_ref(),
@@ -451,6 +465,7 @@ mod tests {
             Some(&["declaration".to_owned()]),
         );
         state.watched_files_registered = true;
+        state.watch_files_enabled = false;
         state.initialized = true;
         state.server.initialized = true;
 
@@ -465,6 +480,7 @@ mod tests {
         state.client_supports_watched_file_registration = false;
         state.semantic_token_projection = SemanticTokenProjection::default();
         state.watched_files_registered = false;
+        state.watch_files_enabled = true;
         state.server.shutdown_requested = true;
 
         assert_eq!(
@@ -485,6 +501,7 @@ mod tests {
             &SemanticTokenProjection::default()
         );
         assert!(snapshot.watched_files_registered());
+        assert!(!snapshot.watch_files_enabled());
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
     }
@@ -570,6 +587,27 @@ mod tests {
         assert!(state.watched_files_registered);
         assert!(state.server.watched_files_registered);
         assert_eq!(second, JsonRpcResult::None);
+    }
+
+    #[test]
+    fn typed_initialized_uses_global_watch_setting() {
+        let (sender, _receiver) = unbounded();
+        let mut launch_configuration = LaunchConfiguration::new();
+        launch_configuration.set_watch_files_enabled(false);
+        let mut state = GlobalState::new(sender, launch_configuration);
+        state
+            .server
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
+        state.client_supports_watched_file_registration = true;
+        state.server.file_watching_disabled = false;
+
+        let result = state.initialized(lsp_types::InitializedParams {});
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(!state.watch_files_enabled);
+        assert!(!state.watched_files_registered);
+        assert!(!state.server.watched_files_registered);
     }
 
     #[test]
