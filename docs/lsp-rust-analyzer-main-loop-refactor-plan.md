@@ -1376,6 +1376,13 @@ cargo test -p vela_lsp_server semantic_tokens
     response helpers. Validated with `cargo test -p vela_lsp_server`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - Standalone `success_response` and `error_response` helper functions have
+    been deleted; `JsonRpcResult` constructors now serialize typed
+    `lsp_server::Response` values directly, and profiler/result-summary
+    labels no longer keep the removed helper names alive. Validated with
+    `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

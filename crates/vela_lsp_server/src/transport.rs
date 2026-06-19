@@ -319,7 +319,7 @@ impl MessageMetadata {
             },
             Message::Response(response) => Self {
                 kind: if response.error.is_some() {
-                    "error_response"
+                    "json_rpc_error"
                 } else {
                     "response"
                 },

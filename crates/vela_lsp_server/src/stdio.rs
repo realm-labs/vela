@@ -257,7 +257,7 @@ impl MessageMetadata {
             (Some(_), Some(_)) => "request",
             (Some(_), None) => "notification",
             (None, Some(_)) if value.get("result").is_some() => "response",
-            (None, Some(_)) if value.get("error").is_some() => "error_response",
+            (None, Some(_)) if value.get("error").is_some() => "json_rpc_error",
             _ => "unknown",
         };
         Self {

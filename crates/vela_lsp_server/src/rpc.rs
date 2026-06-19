@@ -93,7 +93,11 @@ impl ErrorCode {
 
 impl JsonRpcResult {
     pub(crate) fn ok(id: RequestId, result: JsonValue) -> Self {
-        Self::Response(success_response(id, result))
+        Self::Response(serialize_response(Response {
+            id,
+            result: Some(result),
+            error: None,
+        }))
     }
 
     pub(crate) fn error(
@@ -101,45 +105,31 @@ impl JsonRpcResult {
         code: ErrorCode,
         message: impl Into<String>,
     ) -> Self {
-        Self::Response(error_response(id, code, message))
-    }
-}
-
-pub(crate) fn success_response(id: RequestId, result: JsonValue) -> String {
-    serialize_response(Response {
-        id,
-        result: Some(result),
-        error: None,
-    })
-}
-
-pub(crate) fn error_response(
-    id: Option<RequestId>,
-    code: ErrorCode,
-    message: impl Into<String>,
-) -> String {
-    let message = message.into();
-    if let Some(id) = id {
-        return serialize_response(Response {
-            id,
-            result: None,
-            error: Some(ResponseError {
-                code: code.value(),
-                message,
-                data: None,
-            }),
-        });
-    }
-
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "id": null,
-        "error": {
-            "code": code.value(),
-            "message": message
+        let message = message.into();
+        if let Some(id) = id {
+            return Self::Response(serialize_response(Response {
+                id,
+                result: None,
+                error: Some(ResponseError {
+                    code: code.value(),
+                    message,
+                    data: None,
+                }),
+            }));
         }
-    })
-    .to_string()
+
+        Self::Response(
+            json!({
+                "jsonrpc": JSONRPC_VERSION,
+                "id": null,
+                "error": {
+                    "code": code.value(),
+                    "message": message
+                }
+            })
+            .to_string(),
+        )
+    }
 }
 
 fn serialize_response(response: Response) -> String {
