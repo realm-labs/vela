@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use lsp_server::{Message, Response, ResponseError};
 use lsp_types::NumberOrString;
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -91,12 +92,11 @@ impl ErrorCode {
 }
 
 pub(crate) fn success_response(id: RequestId, result: JsonValue) -> String {
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "id": id,
-        "result": result
+    serialize_response(Response {
+        id,
+        result: Some(result),
+        error: None,
     })
-    .to_string()
 }
 
 pub(crate) fn error_response(
@@ -104,15 +104,41 @@ pub(crate) fn error_response(
     code: ErrorCode,
     message: impl Into<String>,
 ) -> String {
+    let message = message.into();
+    if let Some(id) = id {
+        return serialize_response(Response {
+            id,
+            result: None,
+            error: Some(ResponseError {
+                code: code.value(),
+                message,
+                data: None,
+            }),
+        });
+    }
+
     json!({
         "jsonrpc": JSONRPC_VERSION,
-        "id": id,
+        "id": null,
         "error": {
             "code": code.value(),
-            "message": message.into()
+            "message": message
         }
     })
     .to_string()
+}
+
+fn serialize_response(response: Response) -> String {
+    let mut value = serde_json::to_value(Message::Response(response))
+        .expect("typed LSP response should serialize");
+    let object = value
+        .as_object_mut()
+        .expect("typed LSP response should serialize to an object");
+    object.insert(
+        "jsonrpc".to_owned(),
+        JsonValue::String(JSONRPC_VERSION.to_owned()),
+    );
+    value.to_string()
 }
 
 pub(crate) fn request_id_from_lsp(id: lsp_server::RequestId) -> RequestId {

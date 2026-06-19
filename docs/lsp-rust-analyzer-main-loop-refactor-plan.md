@@ -1326,6 +1326,17 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
     and
     `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`.
+  - Request-bound success and error response envelopes now serialize through
+    upstream `lsp_server::Response` values before adding the JSON-RPC version
+    marker; the remaining `id: null` parse-error response stays as the
+    temporary raw JSON path until `JsonRpcMessage` is removed. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
+    `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
