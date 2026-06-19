@@ -11,6 +11,7 @@ mod folding;
 mod formatting;
 mod hover;
 mod inlay;
+mod lifecycle;
 mod protocol;
 mod queries;
 mod references;
@@ -36,13 +37,11 @@ use vela_language_service::{
     missing_import_diagnostics,
 };
 
-use crate::capabilities::initialize_result;
-use crate::client::{InitializeParams, WorkspaceFolder};
+use crate::client::WorkspaceFolder;
 use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
 pub use crate::rpc::JsonRpcResult;
 pub(crate) use crate::rpc::{
-    CancelRequestParams, ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response,
-    success_response,
+    ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response, success_response,
 };
 use crate::semantic_tokens::SemanticTokenProjection;
 
@@ -160,7 +159,7 @@ impl LspServer {
             });
         }
 
-        if !self.initialized && !is_pre_initialize_method(method) {
+        if !self.initialized && !lifecycle::is_pre_initialize_method(method) {
             return message.id.map_or(JsonRpcResult::None, |id| {
                 JsonRpcResult::Response(error_response(
                     Some(id),
@@ -224,86 +223,6 @@ impl LspServer {
             }
             method => self.method_not_found(message.id, method),
         }
-    }
-
-    fn initialize(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
-        let Some(id) = id else {
-            return JsonRpcResult::None;
-        };
-        if self.initialized {
-            return JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "server is already initialized",
-            ));
-        }
-
-        let params = match serde_json::from_value::<InitializeParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid initialize params: {error}"),
-                ));
-            }
-        };
-        self.initialized = true;
-        self.workspace_roots = workspace_roots_from_initialize(&params);
-        if params.initialization_options.is_some() {
-            self.editor_config = params.initialization_options.clone();
-        }
-        self.config = workspace_config_from_roots_and_editor_config(
-            &self.workspace_roots,
-            self.editor_config.as_ref(),
-        );
-        self.reload_schema_from_config();
-        self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
-        self.client_supports_watched_file_registration =
-            params.capabilities.supports_watched_file_registration();
-        self.semantic_token_projection = params.capabilities.semantic_token_projection();
-        JsonRpcResult::Response(success_response(
-            id,
-            initialize_result(&self.semantic_token_projection),
-        ))
-    }
-
-    fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
-        if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "`initialized` must be sent as a notification",
-            ));
-        }
-        if self.client_supports_watched_file_registration
-            && !self.watched_files_registered
-            && let Some(registration) =
-                watching::registration_request(self.config.as_ref(), &self.workspace_roots)
-        {
-            self.watched_files_registered = true;
-            return JsonRpcResult::Notification(registration);
-        }
-        JsonRpcResult::None
-    }
-
-    fn shutdown(&mut self, id: Option<RequestId>) -> JsonRpcResult {
-        let Some(id) = id else {
-            return JsonRpcResult::None;
-        };
-        self.shutdown_requested = true;
-        JsonRpcResult::Response(success_response(id, JsonValue::Null))
-    }
-
-    fn exit(&mut self, id: Option<RequestId>) -> JsonRpcResult {
-        self.exited = true;
-        id.map_or(JsonRpcResult::None, |id| {
-            JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "`exit` must be sent as a notification",
-            ))
-        })
     }
 
     fn did_open(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
@@ -460,22 +379,6 @@ impl LspServer {
         } else {
             result
         }
-    }
-
-    fn cancel_request(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
-        if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "`$/cancelRequest` must be sent as a notification",
-            ));
-        }
-
-        let Ok(params) = serde_json::from_value::<CancelRequestParams>(params) else {
-            return JsonRpcResult::None;
-        };
-        self.cancelled_requests.insert(params.id);
-        JsonRpcResult::None
     }
 
     fn did_change_workspace_folders(
@@ -753,23 +656,6 @@ impl LspServer {
             })
             .collect()
     }
-
-    fn method_not_found(&self, id: Option<RequestId>, method: &str) -> JsonRpcResult {
-        id.map_or(JsonRpcResult::None, |id| {
-            JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::MethodNotFound,
-                format!("method `{method}` is not implemented"),
-            ))
-        })
-    }
-}
-
-fn is_pre_initialize_method(method: &str) -> bool {
-    matches!(
-        method,
-        "initialize" | "initialized" | "exit" | "$/cancelRequest"
-    )
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -860,17 +746,6 @@ fn coalesced_watched_file_changes(changes: Vec<FileEvent>) -> Vec<FileEvent> {
         .collect::<Vec<_>>();
     events.sort_by_key(|(index, _)| *index);
     events.into_iter().map(|(_, event)| event).collect()
-}
-
-fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String> {
-    params
-        .workspace_folders
-        .iter()
-        .flatten()
-        .map(|folder| WorkspaceRoot::from(folder.uri.clone()))
-        .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
-        .map(|root| root.path().to_owned())
-        .collect()
 }
 
 fn is_config_uri(uri: &str) -> bool {
