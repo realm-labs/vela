@@ -78,7 +78,7 @@ fn dispatch_request(
             GlobalStateSnapshot::completion_resolve,
             RetryTask::completion_resolve,
         )
-        .on_latency_sensitive_snapshot_typed::<HoverRequest>(GlobalStateSnapshot::hover)
+        .on_latency_sensitive_snapshot_messages_typed::<HoverRequest>(GlobalStateSnapshot::hover)
         .on_latency_sensitive_snapshot_typed::<SignatureHelpRequest>(
             GlobalStateSnapshot::signature_help,
         )
@@ -386,6 +386,18 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
+    pub(crate) fn on_latency_sensitive_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_snapshot_messages_typed::<R>(f);
+        self
+    }
+
     pub(crate) fn on_retryable_latency_snapshot_typed<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
@@ -496,6 +508,33 @@ impl<'a> RequestDispatcher<'a> {
             f(snapshot, id.clone(), params)
         })) {
             Ok(result) => typed_messages(result),
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
+    }
+
+    fn dispatch_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
+        })) {
+            Ok(messages) => messages,
             Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
         };
     }

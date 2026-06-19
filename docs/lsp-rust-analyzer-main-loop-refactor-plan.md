@@ -1481,6 +1481,11 @@ cargo test -p vela_lsp_server semantic_tokens
     `lsp_server::Message` directly instead of creating a temporary
     `JsonRpcResult` notification wrapper. Validated with
     `cargo test -p vela_lsp_server typed_did_close`.
+  - The typed hover snapshot request handler now returns
+    `lsp_server::Message` batches directly through a typed snapshot dispatcher
+    branch, leaving the remaining snapshot request handlers for follow-up
+    slices. Validated with `cargo test -p vela_lsp_server hover` and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

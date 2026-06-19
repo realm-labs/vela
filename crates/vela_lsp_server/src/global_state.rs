@@ -201,15 +201,15 @@ impl GlobalStateSnapshot {
         )
     }
 
-    pub(crate) fn hover(self, id: lsp_server::RequestId, params: HoverParams) -> JsonRpcResult {
+    pub(crate) fn hover(self, id: lsp_server::RequestId, params: HoverParams) -> Vec<Message> {
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::hover_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid hover position: {error}"),
                 );
@@ -217,7 +217,7 @@ impl GlobalStateSnapshot {
         };
         let hover = self.databases.hover(&input.document_id, input.position);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(hover.as_ref().map(to_proto::hover))
                 .expect("typed hover response should serialize"),
