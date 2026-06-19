@@ -1848,6 +1848,8 @@ node editors/vscode/scripts/validate-package.js
   - Converted the source-return-receiver hover fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
+  - Converted the top-level hover fixture off `LspServer::handle_json` and
+    onto the shared typed request/notification helpers.
   - Converted the imported-module references/highlights fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
