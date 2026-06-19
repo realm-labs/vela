@@ -1365,6 +1365,12 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server workspace_folders`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - Typed `GlobalState` and `GlobalStateSnapshot` request handlers now route
+    success and invalid-parameter responses through `JsonRpcResult`
+    constructors instead of importing standalone response helpers. Validated
+    with `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

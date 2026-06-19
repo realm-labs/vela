@@ -20,7 +20,6 @@ use vela_language_service::{
 };
 
 use crate::lsp::{from_proto, to_proto};
-use crate::rpc::{error_response, success_response};
 use crate::{
     ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
     apply_lsp_document_changes,
@@ -159,11 +158,11 @@ impl GlobalStateSnapshot {
         let input = match from_proto::completion_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid completion position: {error}"),
-                ));
+                );
             }
         };
         let completions = self
@@ -171,11 +170,11 @@ impl GlobalStateSnapshot {
             .completion_items(&input.document_id, input.position);
         let line_index = ServiceLineIndex::new(&text);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::completion_response(&completions, &line_index))
                 .expect("typed completion response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn completion_resolve(
@@ -189,20 +188,20 @@ impl GlobalStateSnapshot {
         let payload = match service_completion_resolve_payload(&params_value) {
             Ok(payload) => payload,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid completionItem/resolve payload: {error}"),
-                ));
+                );
             }
         };
         let documentation =
             payload.and_then(|payload| self.databases.completion_documentation(&payload));
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
                 .expect("typed completion item should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn hover(self, id: lsp_server::RequestId, params: HoverParams) -> JsonRpcResult {
@@ -213,20 +212,20 @@ impl GlobalStateSnapshot {
         let input = match from_proto::hover_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid hover position: {error}"),
-                ));
+                );
             }
         };
         let hover = self.databases.hover(&input.document_id, input.position);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(hover.as_ref().map(to_proto::hover))
                 .expect("typed hover response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn signature_help(
@@ -241,22 +240,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::signature_help_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid signatureHelp position: {error}"),
-                ));
+                );
             }
         };
         let signatures = self
             .databases
             .signature_help(&input.document_id, input.position);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(signatures.as_ref().map(to_proto::signature_help))
                 .expect("typed signatureHelp response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn semantic_tokens_full(
@@ -268,14 +267,14 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::semantic_tokens_params(&params);
         let tokens = self.databases.semantic_tokens(&document_id);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::semantic_tokens(
                 &tokens,
                 &self.semantic_token_projection,
             ))
             .expect("typed semanticTokens/full response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn semantic_tokens_full_delta(
@@ -289,14 +288,14 @@ impl GlobalStateSnapshot {
             .databases
             .semantic_token_delta(&input.document_id, &input.previous_result_id);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::semantic_tokens_delta(
                 &delta,
                 &self.semantic_token_projection,
             ))
             .expect("typed semanticTokens/full/delta response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn semantic_tokens_range(
@@ -310,25 +309,25 @@ impl GlobalStateSnapshot {
         let input = match from_proto::semantic_tokens_range_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid semanticTokens/range params: {error}"),
-                ));
+                );
             }
         };
         let tokens = self
             .databases
             .semantic_tokens_in_range(&input.document_id, input.range);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::semantic_tokens_range(
                 &tokens,
                 &self.semantic_token_projection,
             ))
             .expect("typed semanticTokens/range response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn formatting(
@@ -340,11 +339,11 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::document_formatting_params(&params);
         let edits = self.databases.document_formatting(&document_id);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed formatting response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn range_formatting(
@@ -358,22 +357,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::range_formatting_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid rangeFormatting params: {error}"),
-                ));
+                );
             }
         };
         let edits = self
             .databases
             .range_formatting(&input.document_id, input.range);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed rangeFormatting response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn on_type_formatting(
@@ -387,22 +386,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::on_type_formatting_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid onTypeFormatting params: {error}"),
-                ));
+                );
             }
         };
         let edits =
             self.databases
                 .on_type_formatting(&input.document_id, input.position, &input.trigger);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed onTypeFormatting response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn definition(
@@ -455,11 +454,11 @@ impl GlobalStateSnapshot {
         let input = match from_proto::reference_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid references position: {error}"),
-                ));
+                );
             }
         };
         let references = self.databases.references(
@@ -468,11 +467,11 @@ impl GlobalStateSnapshot {
             params.context.include_declaration,
         );
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::reference_locations(&references))
                 .expect("typed references response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn document_highlight(
@@ -487,22 +486,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::document_highlight_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid documentHighlight params: {error}"),
-                ));
+                );
             }
         };
         let highlights = self
             .databases
             .document_highlights(&input.document_id, input.position);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::document_highlights(&highlights))
                 .expect("typed documentHighlight response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn document_symbol(
@@ -514,11 +513,11 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::document_symbol_params(&params);
         let symbols = self.databases.document_symbols(&document_id);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::document_symbols(&symbols))
                 .expect("typed documentSymbol response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn workspace_symbol(
@@ -531,11 +530,11 @@ impl GlobalStateSnapshot {
             .databases
             .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::workspace_symbols(&symbols))
                 .expect("typed workspace/symbol response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn folding_range(
@@ -547,11 +546,11 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::folding_range_params(&params);
         let ranges = self.databases.folding_ranges(&document_id);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::folding_ranges(&ranges))
                 .expect("typed foldingRange response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn selection_range(
@@ -565,22 +564,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::selection_range_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid selectionRange params: {error}"),
-                ));
+                );
             }
         };
         let ranges = self
             .databases
             .selection_ranges(&input.document_id, &input.positions);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::selection_ranges(&ranges))
                 .expect("typed selectionRange response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn prepare_rename(
@@ -594,22 +593,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::prepare_rename_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid prepareRename position: {error}"),
-                ));
+                );
             }
         };
         let prepare = self
             .databases
             .prepare_rename(&input.document_id, input.position);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
                 .expect("typed prepareRename response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> JsonRpcResult {
@@ -619,22 +618,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::rename_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid rename position: {error}"),
-                ));
+                );
             }
         };
         let edit = self
             .databases
             .rename(&input.document_id, input.position, &params.new_name);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
                 .expect("typed rename response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn prepare_call_hierarchy(
@@ -649,22 +648,22 @@ impl GlobalStateSnapshot {
         let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid prepareCallHierarchy position: {error}"),
-                ));
+                );
             }
         };
         let items = self
             .databases
             .prepare_call_hierarchy(&input.document_id, input.position);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::call_hierarchy_items(&items))
                 .expect("typed prepareCallHierarchy response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn incoming_calls(
@@ -678,20 +677,20 @@ impl GlobalStateSnapshot {
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid incomingCalls item range: {error}"),
-                ));
+                );
             }
         };
         let calls = self.databases.incoming_calls(&item);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::incoming_calls(&calls))
                 .expect("typed incomingCalls response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn outgoing_calls(
@@ -705,20 +704,20 @@ impl GlobalStateSnapshot {
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid outgoingCalls item range: {error}"),
-                ));
+                );
             }
         };
         let calls = self.databases.outgoing_calls(&item);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::outgoing_calls(&calls))
                 .expect("typed outgoingCalls response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn code_action(
@@ -732,20 +731,20 @@ impl GlobalStateSnapshot {
         let input = match from_proto::code_action_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid codeAction params: {error}"),
-                ));
+                );
             }
         };
         let actions = self.databases.code_actions(&input.document_id, input.range);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::code_actions(&actions))
                 .expect("typed codeAction response should serialize"),
-        ))
+        )
     }
 
     pub(crate) fn inlay_hint(
@@ -759,20 +758,20 @@ impl GlobalStateSnapshot {
         let input = match from_proto::inlay_hint_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid inlayHint params: {error}"),
-                ));
+                );
             }
         };
         let hints = self.databases.inlay_hints(&input.document_id, input.range);
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(to_proto::inlay_hints(&hints))
                 .expect("typed inlayHint response should serialize"),
-        ))
+        )
     }
 
     fn navigation_location(
@@ -789,11 +788,11 @@ impl GlobalStateSnapshot {
         let input = match from_proto::goto_definition_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     format!("invalid {method_name} position: {error}"),
-                ));
+                );
             }
         };
         let definition = match query {
@@ -808,11 +807,11 @@ impl GlobalStateSnapshot {
                 .type_definition(&input.document_id, input.position),
         };
 
-        JsonRpcResult::Response(success_response(
+        JsonRpcResult::ok(
             id,
             serde_json::to_value(definition.as_ref().map(to_proto::definition_location))
                 .expect("typed navigation response should serialize"),
-        ))
+        )
     }
 }
 
@@ -996,11 +995,11 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         if self.initialized {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "server is already initialized",
-            ));
+            );
         }
 
         let editor_config = match params
@@ -1011,11 +1010,11 @@ impl GlobalState {
         {
             Ok(editor_config) => editor_config,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidParams,
                     format!("invalid initialize params: {error}"),
-                ));
+                );
             }
         };
 
@@ -1030,17 +1029,14 @@ impl GlobalState {
             lsp_supports_watched_file_registration(&params);
         self.semantic_token_projection = lsp_semantic_token_projection(&params);
         self.sync_client_capabilities_to_legacy_server();
-        JsonRpcResult::Response(success_response(
-            id,
-            initialize_result(&self.semantic_token_projection),
-        ))
+        JsonRpcResult::ok(id, initialize_result(&self.semantic_token_projection))
     }
 
     pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         self.shutdown_requested = true;
         self.server.shutdown_requested = true;
-        JsonRpcResult::Response(success_response(id, serde_json::Value::Null))
+        JsonRpcResult::ok(id, serde_json::Value::Null)
     }
 
     pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> JsonRpcResult {
