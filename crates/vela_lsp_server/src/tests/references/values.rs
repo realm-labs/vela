@@ -1,11 +1,14 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_reference, line};
 
 #[test]
 fn lsp_references_find_imported_const_and_global_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -13,7 +16,7 @@ fn lsp_references_find_imported_const_and_global_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::rewards::BASE_REWARD
 use game::rewards::reward_scale
@@ -27,7 +30,8 @@ pub global reward_scale: i64";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -37,10 +41,11 @@ pub global reward_scale: i64";
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let const_response = response_value(server.handle_json(&request(
+    let const_response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -53,7 +58,7 @@ pub global reward_scale: i64";
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let const_references = const_response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -84,7 +89,8 @@ pub global reward_scale: i64";
             .expect("const use should exist"),
     );
 
-    let global_response = response_value(server.handle_json(&request(
+    let global_response = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/references",
         serde_json::json!({
@@ -97,7 +103,7 @@ pub global reward_scale: i64";
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let global_references = global_response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -132,7 +138,8 @@ pub global reward_scale: i64";
 #[test]
 fn lsp_references_find_imported_function_alias_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -140,7 +147,7 @@ fn lsp_references_find_imported_function_alias_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::reward::grant as award
 pub fn main(amount: i64) -> i64 {
@@ -151,7 +158,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -161,10 +169,11 @@ pub fn main(amount: i64) -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -177,7 +186,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -218,7 +227,8 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_references_find_imported_source_type_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -226,7 +236,7 @@ fn lsp_references_find_imported_source_type_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
     let main_text = "\
@@ -243,7 +253,8 @@ pub struct Inventory {
     slots: i64
 }";
     for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -253,10 +264,11 @@ pub struct Inventory {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -269,7 +281,7 @@ pub struct Inventory {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
