@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 
 use crate::{
     ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState,
-    rpc::request_id_from_lsp,
+    global_state::GlobalStateSnapshot, rpc::request_id_from_lsp,
 };
 
 pub(crate) fn dispatch_message(
@@ -58,8 +58,10 @@ fn dispatch_request(
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
-        .on_latency_sensitive_typed::<Completion>(GlobalState::completion)
-        .on_latency_sensitive_typed::<ResolveCompletionItem>(GlobalState::completion_resolve)
+        .on_latency_sensitive_snapshot_typed::<Completion>(GlobalStateSnapshot::completion)
+        .on_latency_sensitive_snapshot_typed::<ResolveCompletionItem>(
+            GlobalStateSnapshot::completion_resolve,
+        )
         .on_latency_sensitive_typed::<HoverRequest>(GlobalState::hover)
         .on_latency_sensitive_typed::<SignatureHelpRequest>(GlobalState::signature_help)
         .on_latency_sensitive_typed::<SemanticTokensFullRequest>(GlobalState::semantic_tokens_full)
@@ -150,6 +152,18 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
+    pub(crate) fn on_latency_sensitive_snapshot_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_snapshot_typed::<R>(f);
+        self
+    }
+
     pub(crate) fn on_worker_typed<R>(
         &mut self,
         f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
@@ -205,6 +219,33 @@ impl<'a> RequestDispatcher<'a> {
         };
         self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
             f(self.global_state, id.clone(), params)
+        })) {
+            Ok(result) => result,
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
+    }
+
+    fn dispatch_snapshot_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
         })) {
             Ok(result) => result,
             Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),

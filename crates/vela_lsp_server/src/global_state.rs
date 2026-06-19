@@ -14,14 +14,16 @@ use lsp_types::{
     WorkspaceSymbolParams,
 };
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
-    WorkspaceSnapshot,
+    DocumentId, LanguageServiceDatabases, LineIndex as ServiceLineIndex, WorkspaceConfig,
+    WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
 };
 
+use crate::lsp::{from_proto, to_proto};
 use crate::{
     ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
     apply_lsp_document_changes,
     capabilities::initialize_result,
+    completion::service_completion_resolve_payload,
     config::EditorConfiguration,
     config_change::ConfigChange,
     error_response,
@@ -144,6 +146,79 @@ impl GlobalStateSnapshot {
     pub(crate) const fn is_shutdown_requested(&self) -> bool {
         self.shutdown_requested
     }
+
+    pub(crate) fn completion(
+        self,
+        id: lsp_server::RequestId,
+        params: CompletionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::completion_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completion position: {error}"),
+                ));
+            }
+        };
+        let completions = self
+            .databases
+            .completion_items(&input.document_id, input.position);
+        let line_index = ServiceLineIndex::new(&text);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::completion_response(&completions, &line_index))
+                .expect("typed completion response should serialize"),
+        ))
+    }
+
+    pub(crate) fn completion_resolve(
+        self,
+        id: lsp_server::RequestId,
+        params: lsp_types::CompletionItem,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let params_value =
+            serde_json::to_value(&params).expect("typed completion item should serialize");
+        let payload = match service_completion_resolve_payload(&params_value) {
+            Ok(payload) => payload,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completionItem/resolve payload: {error}"),
+                ));
+            }
+        };
+        let documentation =
+            payload.and_then(|payload| self.databases.completion_documentation(&payload));
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
+                .expect("typed completion item should serialize"),
+        ))
+    }
+}
+
+fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
+    snapshot
+        .workspace
+        .document_text(document_id)
+        .map(std::borrow::ToOwned::to_owned)
+        .or_else(|| {
+            snapshot
+                .databases
+                .source_db()
+                .records()
+                .get(document_id)
+                .map(|source| source.text().to_owned())
+        })
+        .unwrap_or_default()
 }
 
 impl GlobalState {
@@ -331,26 +406,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn completion(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: CompletionParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.completion_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn completion_resolve(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: lsp_types::CompletionItem,
-    ) -> JsonRpcResult {
-        self.server
-            .completion_resolve_typed(request_id_from_lsp(id), params)
     }
 
     pub(crate) fn hover(
