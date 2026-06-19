@@ -224,7 +224,7 @@ Downstream ownership should become:
 
 ### Phase 1: Add rowan syntax foundation
 
-- [ ] Task: Add the syntax tree primitives without changing production parsing yet.
+- [x] Task: Add the syntax tree primitives without changing production parsing yet.
 
 Expected behavior:
 
@@ -497,7 +497,7 @@ LSP/editor package behavior or needs a VSIX verification pass.
 
 ## 9. First Execution Tasks
 
-- [ ] Task 1: Add rowan syntax primitives.
+- [x] Task 1: Add rowan syntax primitives.
 
 Context: This establishes `SyntaxKind`, `VelaLanguage`, aliases, and `Parse<T>`
 without migrating callers.

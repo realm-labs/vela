@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+rowan = { workspace = true }
 vela_common = { workspace = true }
 
 [lints]

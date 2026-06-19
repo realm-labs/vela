@@ -119,6 +119,14 @@ module graph resolution, declaration IDs, binding maps, type-hint metadata, and
 top-level semantic diagnostics. The bytecode compiler consumes HIR diagnostics
 and metadata before bytecode emission.
 
+The syntax layer is moving to a `rowan`-backed lossless CST as the durable
+source representation. `vela_syntax` owns `SyntaxKind`, `VelaLanguage`, syntax
+node/token aliases, and `Parse<T>` green-tree results. Typed AST APIs should be
+views over CST nodes and tokens after migration, while semantic extraction
+belongs in explicit AST accessors, HIR lowering, analysis, and compiler code.
+The old owned AST and non-lossless parser APIs are pre-release internals and
+may be removed once downstream callers migrate.
+
 There is no separate public IR crate yet. `HIR + TypeFacts + bytecode` is the
 current semantic pipeline; a lower IR/MIR should only be introduced when
 optimization, CFG/data-flow, register allocation, or lowering complexity

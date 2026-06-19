@@ -122,6 +122,12 @@ M19/M20 optimization. It remains analysis-only: no script or host execution, no
 runtime semantic changes, and no custom IDE product. Debugger/DAP and Cranelift
 JIT remain separate roadmap tracks.
 
+The lossless CST rowan refactor has started as a breaking syntax foundation
+track. Phase 1 is complete: `vela_syntax` now has the `rowan` dependency,
+`SyntaxKind`, `VelaLanguage`, syntax node/token aliases, `SyntaxTreeBuilder`,
+and a minimal `Parse<T>` green-tree shell while the old production parser
+remains unchanged for follow-on lexer/parser migration.
+
 ## Milestone Snapshot
 
 | Milestone | Status | Current note |
