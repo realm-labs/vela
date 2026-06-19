@@ -1430,6 +1430,11 @@ cargo test -p vela_lsp_server semantic_tokens
     `lsp_server::Message` batches, and the main loop sends those batches
     directly instead of wrapping immediate dispatch output as task results.
     Validated with `cargo test -p vela_lsp_server task`.
+  - The task scheduler API now accepts typed `lsp_server::Message` batches
+    from scheduled jobs instead of `JsonRpcResult`; dispatcher enqueue paths
+    convert temporary handler results before crossing the background task
+    boundary. Validated with `cargo test -p vela_lsp_server task` and
+    `cargo test -p vela_lsp_server lifecycle`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

@@ -79,6 +79,12 @@ impl JsonRpcResult {
     }
 }
 
+pub(crate) fn typed_messages(result: JsonRpcResult) -> Vec<Message> {
+    result
+        .into_messages()
+        .expect("JSON-RPC result should contain typed LSP messages")
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct CancelRequestParams {
     pub(crate) id: RequestId,

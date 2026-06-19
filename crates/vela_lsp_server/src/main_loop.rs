@@ -127,7 +127,7 @@ mod tests {
     use crossbeam_channel::unbounded;
     use lsp_server::{Message, Notification, RequestId, Response};
 
-    use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState, task::TaskLane};
+    use crate::{LaunchConfiguration, global_state::GlobalState, task::TaskLane};
 
     use super::{MAIN_LOOP_THREAD_NAME, MainLoopEvent, next_event, spawn_latency_main_loop_thread};
 
@@ -137,9 +137,9 @@ mod tests {
         let (_message_sender, message_receiver) = unbounded();
         let state = GlobalState::new(response_sender, LaunchConfiguration::default());
 
-        state.task_scheduler().spawn(TaskLane::Worker, || {
-            JsonRpcResult::Response(test_response("worker"))
-        });
+        state
+            .task_scheduler()
+            .spawn(TaskLane::Worker, || test_messages("worker"));
 
         let event = next_event(&message_receiver, &state).expect("task event should be selected");
 
@@ -168,7 +168,7 @@ mod tests {
                 release_task_receiver
                     .recv()
                     .expect("task release signal should be received");
-                JsonRpcResult::Response(test_response("worker"))
+                test_messages("worker")
             },
         );
 
@@ -218,12 +218,12 @@ mod tests {
         state.task_scheduler().spawn_for_method(
             TaskLane::Worker,
             "textDocument/references",
-            || JsonRpcResult::Response(test_response("worker")),
+            || test_messages("worker"),
         );
         state.task_scheduler().spawn_for_method(
             TaskLane::Formatting,
             "textDocument/formatting",
-            || JsonRpcResult::Response(test_response("formatting")),
+            || test_messages("formatting"),
         );
         wait_for_ready_task_results(&state);
 
@@ -290,6 +290,10 @@ mod tests {
             result: Some(serde_json::json!(value)),
             error: None,
         }
+    }
+
+    fn test_messages(value: &str) -> Vec<Message> {
+        vec![Message::Response(test_response(value))]
     }
 
     fn assert_response_messages(messages: Vec<Message>, response: Response) {

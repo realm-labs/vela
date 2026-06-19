@@ -8,6 +8,7 @@ use lsp_types::{
 };
 use vela_language_service::GenerationToken;
 
+#[cfg(test)]
 use crate::JsonRpcResult;
 
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
@@ -258,7 +259,7 @@ impl TaskScheduler {
     pub(crate) fn spawn(
         &self,
         lane: TaskLane,
-        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+        job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
         self.spawn_labeled(lane, None, None, None, None, job);
     }
@@ -268,7 +269,7 @@ impl TaskScheduler {
         &self,
         lane: TaskLane,
         method: impl Into<String>,
-        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+        job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
         self.spawn_labeled(lane, Some(method.into()), None, None, None, job);
     }
@@ -280,7 +281,7 @@ impl TaskScheduler {
         method: impl Into<String>,
         request_id: RequestId,
         generation: GenerationToken,
-        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+        job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
         self.spawn_labeled(
             lane,
@@ -299,7 +300,7 @@ impl TaskScheduler {
         request_id: RequestId,
         generation: GenerationToken,
         retry: RetryTask,
-        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+        job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
         self.spawn_labeled(
             lane,
@@ -318,10 +319,10 @@ impl TaskScheduler {
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
         retry: Option<RetryTask>,
-        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+        job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
         let task = Box::new(move || {
-            TaskResult::lane_method_request_generation_response(
+            TaskResult::lane_method_request_generation_messages(
                 lane,
                 method,
                 request_id,
@@ -375,20 +376,24 @@ impl TaskResult {
         method: Option<String>,
         result: JsonRpcResult,
     ) -> Self {
-        Self::lane_method_request_generation_response(lane, method, None, None, None, result)
+        Self::lane_method_request_generation_messages(
+            lane,
+            method,
+            None,
+            None,
+            None,
+            crate::rpc::typed_messages(result),
+        )
     }
 
-    pub(crate) fn lane_method_request_generation_response(
+    pub(crate) fn lane_method_request_generation_messages(
         lane: TaskLane,
         method: Option<String>,
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
         retry: Option<RetryTask>,
-        result: JsonRpcResult,
+        messages: Vec<Message>,
     ) -> Self {
-        let messages = result
-            .into_messages()
-            .expect("task result should contain typed LSP messages");
         Self::Response {
             lane,
             method,
@@ -496,15 +501,9 @@ mod tests {
     fn task_scheduler_executes_lane_jobs_on_background_workers() {
         let scheduler = TaskScheduler::new();
 
-        scheduler.spawn(TaskLane::Latency, || {
-            JsonRpcResult::Response(test_response("latency"))
-        });
-        scheduler.spawn(TaskLane::Formatting, || {
-            JsonRpcResult::Response(test_response("formatting"))
-        });
-        scheduler.spawn(TaskLane::Worker, || {
-            JsonRpcResult::Response(test_response("worker"))
-        });
+        scheduler.spawn(TaskLane::Latency, || test_messages("latency"));
+        scheduler.spawn(TaskLane::Formatting, || test_messages("formatting"));
+        scheduler.spawn(TaskLane::Worker, || test_messages("worker"));
 
         let latency = scheduler
             .latency_results()
@@ -537,7 +536,7 @@ mod tests {
                 Some("VelaLspWorkerTask"),
                 "worker thread should still identify the lane"
             );
-            JsonRpcResult::Response(test_response("references"))
+            test_messages("references")
         });
 
         let task = scheduler
@@ -562,7 +561,7 @@ mod tests {
             "textDocument/formatting",
             request_id.clone(),
             token.clone(),
-            || JsonRpcResult::Response(test_response("formatted")),
+            || test_messages("formatted"),
         );
 
         let task = scheduler
@@ -588,6 +587,10 @@ mod tests {
             .map(crate::rpc::serialize_message)
             .collect::<Vec<_>>();
         assert_eq!(actual, vec![expected]);
+    }
+
+    fn test_messages(value: &str) -> Vec<Message> {
+        vec![Message::Response(test_response(value))]
     }
 
     fn test_response(value: &str) -> Response {

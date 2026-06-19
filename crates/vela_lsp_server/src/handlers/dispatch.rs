@@ -23,6 +23,7 @@ use crate::{
     ErrorCode, JsonRpcResult,
     global_state::GlobalState,
     global_state::GlobalStateSnapshot,
+    rpc::typed_messages,
     task::{RetryTask, TaskLane},
 };
 
@@ -326,11 +327,15 @@ where
         request_id.clone(),
         generation,
         retry(id.clone(), request_id, params.clone(), attempts),
-        move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            f(snapshot, id.clone(), params)
-        })) {
-            Ok(result) => result,
-            Err(payload) => handler_panic(id, method, payload.as_ref()),
+        move || {
+            typed_messages(
+                match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    f(snapshot, id.clone(), params)
+                })) {
+                    Ok(result) => result,
+                    Err(payload) => handler_panic(id, method, payload.as_ref()),
+                },
+            )
         },
     );
 }
@@ -519,11 +524,15 @@ impl<'a> RequestDispatcher<'a> {
             R::METHOD,
             request_id,
             generation,
-            move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                f(snapshot, id.clone(), params)
-            })) {
-                Ok(result) => result,
-                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+            move || {
+                typed_messages(
+                    match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                        f(snapshot, id.clone(), params)
+                    })) {
+                        Ok(result) => result,
+                        Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                    },
+                )
             },
         );
         self.result = JsonRpcResult::None;
@@ -563,11 +572,15 @@ impl<'a> RequestDispatcher<'a> {
                 request_id,
                 generation,
                 retry,
-                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    f(snapshot, id.clone(), params)
-                })) {
-                    Ok(result) => result,
-                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                move || {
+                    typed_messages(
+                        match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                            f(snapshot, id.clone(), params)
+                        })) {
+                            Ok(result) => result,
+                            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                        },
+                    )
                 },
             );
         self.result = JsonRpcResult::None;
