@@ -8,7 +8,6 @@ mod config;
 mod config_change;
 mod definition;
 mod folding;
-mod formatting;
 mod global_state;
 mod handlers;
 mod hover;

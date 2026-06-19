@@ -11,7 +11,6 @@ use crate::{
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
-    formatting::lsp_text_edits,
     hover::lsp_hover,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
@@ -1098,7 +1097,11 @@ impl LspServer {
         self.refresh_databases_for_query(&document_id);
         let edits = self.databases.document_formatting(&document_id);
 
-        JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed formatting response should serialize"),
+        ))
     }
 
     pub(crate) fn formatting_typed(
@@ -1145,7 +1148,11 @@ impl LspServer {
         };
         let edits = self.databases.range_formatting(&document_id, range);
 
-        JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed rangeFormatting response should serialize"),
+        ))
     }
 
     pub(crate) fn range_formatting_typed(
@@ -1208,7 +1215,11 @@ impl LspServer {
             .databases
             .on_type_formatting(&document_id, position, &params.ch);
 
-        JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed onTypeFormatting response should serialize"),
+        ))
     }
 
     pub(crate) fn on_type_formatting_typed(

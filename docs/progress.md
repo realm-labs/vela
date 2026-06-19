@@ -298,6 +298,9 @@ tokens, code actions, and inlay hints now enter through typed
 projection. Legacy request-dispatch helper methods were removed; remaining
 Phase 4 cleanup is raw JSON/protocol helper retirement, while Phase 5 task
 pool scheduling is the next architectural milestone.
+Code action, inlay hint, semantic token, and formatting compatibility paths
+now serialize typed `lsp/to_proto.rs` projections instead of keeping duplicate
+raw response encoders.
 
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
