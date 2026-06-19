@@ -1,6 +1,8 @@
 use std::{fs, path::PathBuf};
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_workspace};
 
@@ -8,7 +10,8 @@ use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_worksp
 fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_method_return_fixture();
 
-    let prepare_grant = response_value(fixture.server.handle_json(&request(
+    let prepare_grant = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -20,7 +23,7 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
                     .expect("grant declaration")
             }
         }),
-    )));
+    ));
     let grant_items = prepare_grant["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -28,7 +31,8 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
     assert_eq!(grant_items[0]["name"], "grant");
     assert_eq!(grant_items[0]["uri"], fixture.schema_uri);
 
-    let prepare_grant_call = response_value(fixture.server.handle_json(&request(
+    let prepare_grant_call = response_value(handle_request(
+        &mut fixture.server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -38,7 +42,7 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
                 "character": line(fixture.text, 1).find("grant").expect("grant call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_grant_call["result"]
             .as_array()
@@ -46,11 +50,12 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
         grant_items
     );
 
-    let incoming = response_value(fixture.server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut fixture.server,
         4,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -75,11 +80,12 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
     );
 
     let main_items = prepare_main_items(&mut fixture);
-    let outgoing = response_value(fixture.server.handle_json(&request(
+    let outgoing = response_value(handle_request(
+        &mut fixture.server,
         5,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let outgoing_calls = outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -128,7 +134,8 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_method_return_receivers
 fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_trait_method_return_fixture();
 
-    let prepare_preview = response_value(fixture.server.handle_json(&request(
+    let prepare_preview = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -140,7 +147,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
                     .expect("preview declaration")
             }
         }),
-    )));
+    ));
     let preview_items = prepare_preview["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -148,7 +155,8 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
     assert_eq!(preview_items[0]["name"], "preview");
     assert_eq!(preview_items[0]["uri"], fixture.schema_uri);
 
-    let prepare_preview_call = response_value(fixture.server.handle_json(&request(
+    let prepare_preview_call = response_value(handle_request(
+        &mut fixture.server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -160,7 +168,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
                     .expect("preview call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_preview_call["result"]
             .as_array()
@@ -168,11 +176,12 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
         preview_items
     );
 
-    let incoming = response_value(fixture.server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut fixture.server,
         4,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -197,11 +206,12 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_method_return_rec
     );
 
     let main_items = prepare_main_items(&mut fixture);
-    let outgoing = response_value(fixture.server.handle_json(&request(
+    let outgoing = response_value(handle_request(
+        &mut fixture.server,
         5,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let outgoing_calls = outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -407,7 +417,8 @@ fn open_fixture(
     fs::write(&schema_path, schema_artifact).expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -415,20 +426,22 @@ fn open_fixture(
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -438,10 +451,11 @@ fn open_fixture(
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -451,7 +465,7 @@ fn open_fixture(
                 "text": text
             }
         }),
-    )));
+    ));
 
     SchemaReturnFixture {
         server,
@@ -464,7 +478,8 @@ fn open_fixture(
 }
 
 fn prepare_main_items(fixture: &mut SchemaReturnFixture) -> Vec<serde_json::Value> {
-    let prepare_main = response_value(fixture.server.handle_json(&request(
+    let prepare_main = response_value(handle_request(
+        &mut fixture.server,
         6,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -474,7 +489,7 @@ fn prepare_main_items(fixture: &mut SchemaReturnFixture) -> Vec<serde_json::Valu
                 "character": line(fixture.text, 0).find("main").expect("main declaration")
             }
         }),
-    )));
+    ));
     let main_items = prepare_main["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
