@@ -212,6 +212,8 @@ coverage complete based only on the older capability phases.
     correctness does not depend on save events.
   - Requests after `shutdown` now return a stable invalid-request error until
     the client sends the allowed `exit` notification.
+  - `$/cancelRequest` now has protocol fixtures for stale queued requests,
+    unknown request IDs, and already-completed request IDs.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
   - Cover the authoring-core model itself: structured completion analysis

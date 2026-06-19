@@ -172,6 +172,10 @@ M20.5 lifecycle update: native LSP feature requests before `initialize` now
 return a stable server-not-initialized error, and an early `initialized`
 notification alone does not unlock request handling.
 
+M20.5 lifecycle update: native LSP cancellation fixtures now cover stale
+queued requests plus unknown and already-completed request IDs as no-response
+no-ops that do not poison later requests.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

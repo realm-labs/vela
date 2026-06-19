@@ -432,6 +432,58 @@ fn lsp_cancellation_discards_stale_request() {
 }
 
 #[test]
+fn lsp_cancellation_ignores_unknown_request_id() {
+    let mut server = LspServer::new();
+    let cancel = server.handle_json(&notification(
+        "$/cancelRequest",
+        serde_json::json!({ "id": 404 }),
+    ));
+    let response = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(cancel, JsonRpcResult::None);
+    assert!(server.is_initialized());
+    assert_eq!(response["id"], 1);
+    assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
+}
+
+#[test]
+fn lsp_cancellation_ignores_completed_request_id() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+    let cancel = server.handle_json(&notification(
+        "$/cancelRequest",
+        serde_json::json!({ "id": 1 }),
+    ));
+    let hover = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+
+    assert_eq!(initialize["id"], 1);
+    assert_eq!(cancel, JsonRpcResult::None);
+    assert_eq!(hover["id"], 2);
+    assert!(hover["result"].is_null());
+}
+
+#[test]
 fn lsp_shutdown_exits_without_background_tasks() {
     let mut server = LspServer::new();
     let response = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
