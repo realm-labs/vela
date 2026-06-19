@@ -172,6 +172,10 @@ M20.5 lifecycle update: unsupported providers now have broader protocol
 coverage: unadvertised request methods return method-not-found, unsupported
 notifications are no-response no-ops, and later supported requests still work.
 
+M20.5 lifecycle update: malformed `initialize` params now return a stable
+invalid-request error without marking the server initialized, leaving a later
+valid `initialize` request free to complete normally.
+
 M20.5 lifecycle update: native LSP capability fixtures now pin
 `textDocumentSync.save = false`, and `textDocument/didSave` notifications are
 no-response no-ops so editor correctness does not depend on save events.

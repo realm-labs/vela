@@ -238,8 +238,17 @@ impl LspServer {
             ));
         }
 
+        let params = match serde_json::from_value::<InitializeParams>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid initialize params: {error}"),
+                ));
+            }
+        };
         self.initialized = true;
-        let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
         self.workspace_roots = workspace_roots_from_initialize(&params);
         if params.initialization_options.is_some() {
             self.editor_config = params.initialization_options.clone();

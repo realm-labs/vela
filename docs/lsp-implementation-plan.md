@@ -209,6 +209,9 @@ coverage complete based only on the older capability phases.
     supported requests.
   - Repeated `initialize` requests now return a stable invalid-request error
     without resetting workspace roots, editor configuration, or capabilities.
+  - Malformed `initialize` params now return a stable invalid-request error
+    without marking the server initialized, so a later valid initialize can
+    still complete normally.
   - Requests before a successful `initialize` now return a stable
     server-not-initialized error, including `shutdown`; an early
     `initialized` alone does not unlock feature requests.

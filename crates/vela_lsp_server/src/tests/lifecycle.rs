@@ -253,6 +253,41 @@ fn lsp_rejects_repeated_initialize_without_resetting_state() {
 }
 
 #[test]
+fn lsp_rejects_malformed_initialize_without_initializing() {
+    let mut server = LspServer::new();
+    let malformed = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": []
+        }),
+    )));
+    let initialize = response_value(server.handle_json(&request(
+        2,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(malformed["id"], 1);
+    assert_eq!(malformed["error"]["code"], -32600);
+    assert!(
+        malformed["error"]["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("invalid initialize params"))
+    );
+    assert_eq!(initialize["id"], 2);
+    assert_eq!(
+        initialize["result"]["serverInfo"]["name"],
+        "vela_lsp_server"
+    );
+    assert!(server.is_initialized());
+}
+
+#[test]
 fn lsp_initialized_notification_has_no_response() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
