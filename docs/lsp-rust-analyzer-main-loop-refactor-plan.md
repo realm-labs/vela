@@ -1886,6 +1886,8 @@ node editors/vscode/scripts/validate-package.js
   - Converted the schema-method-return signature fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
+  - Converted the signature fixture off `LspServer::handle_json` and onto the
+    shared typed request/notification helpers.
   - Converted the semantic-token missing-schema degradation fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.

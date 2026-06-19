@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 mod dynamic;
 mod schema_method_return_receivers;
@@ -13,7 +13,8 @@ static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 #[test]
 fn lsp_signature_help_tracks_active_parameter() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -21,9 +22,10 @@ fn lsp_signature_help_tracks_active_parameter() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -33,9 +35,10 @@ fn lsp_signature_help_tracks_active_parameter() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -47,7 +50,7 @@ fn lsp_signature_help_tracks_active_parameter() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -64,7 +67,8 @@ fn lsp_signature_help_tracks_active_parameter() {
 #[test]
 fn lsp_signature_help_resolves_imported_function_with_defaulted_parameter() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -72,7 +76,7 @@ fn lsp_signature_help_resolves_imported_function_with_defaulted_parameter() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::rewards::reward_bonus
 pub fn main(amount: i64) -> i64 {
@@ -85,7 +89,8 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -95,10 +100,11 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -110,7 +116,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
                     .expect("signature fixture should contain second argument")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -127,7 +133,8 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
 #[test]
 fn lsp_signature_help_returns_null_for_unknown_and_dynamic_calls() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -135,12 +142,13 @@ fn lsp_signature_help_returns_null_for_unknown_and_dynamic_calls() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 pub fn unresolved() { missing(1, 2) }
 pub fn dynamic(player) { player.grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -150,13 +158,14 @@ pub fn dynamic(player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let unresolved_line = text
         .lines()
         .next()
         .expect("fixture should contain unresolved call");
-    let unresolved = response_value(server.handle_json(&request(
+    let unresolved = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -168,14 +177,15 @@ pub fn dynamic(player) { player.grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
     assert!(unresolved["result"].is_null(), "{unresolved:?}");
 
     let dynamic_line = text
         .lines()
         .nth(1)
         .expect("fixture should contain dynamic receiver call");
-    let dynamic = response_value(server.handle_json(&request(
+    let dynamic = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -187,14 +197,15 @@ pub fn dynamic(player) { player.grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
     assert!(dynamic["result"].is_null(), "{dynamic:?}");
 }
 
 #[test]
 fn lsp_signature_help_resolves_script_method_call() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -202,14 +213,15 @@ fn lsp_signature_help_resolves_script_method_call() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 struct Player { level: i64 }
 impl Player {
     fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
 }
 pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -219,13 +231,14 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(4)
         .expect("fixture should contain method call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -237,7 +250,7 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -254,7 +267,8 @@ pub fn main(player: Player) { player.grant(1, 2) }";
 #[test]
 fn lsp_signature_help_resolves_source_method_on_source_function_return() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -262,7 +276,7 @@ fn lsp_signature_help_resolves_source_method_on_source_function_return() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 struct Player { level: i64 }
@@ -271,7 +285,8 @@ impl Player {
 }
 fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -281,13 +296,14 @@ pub fn main() { current_player().grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(5)
         .expect("fixture should contain returned receiver method call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -299,7 +315,7 @@ pub fn main() { current_player().grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -316,7 +332,8 @@ pub fn main() { current_player().grant(1, 2) }";
 #[test]
 fn lsp_signature_help_resolves_source_method_on_source_method_return() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -324,7 +341,7 @@ fn lsp_signature_help_resolves_source_method_on_source_method_return() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 struct Player { level: i64 }
@@ -336,7 +353,8 @@ impl Inventory {
     fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
 }
 pub fn main(player: Player) { player.inventory().grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -346,13 +364,14 @@ pub fn main(player: Player) { player.inventory().grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(8)
         .expect("fixture should contain chained method call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -364,7 +383,7 @@ pub fn main(player: Player) { player.inventory().grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -381,7 +400,8 @@ pub fn main(player: Player) { player.inventory().grant(1, 2) }";
 #[test]
 fn lsp_signature_help_resolves_source_trait_default_method_call() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -389,7 +409,7 @@ fn lsp_signature_help_resolves_source_trait_default_method_call() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 trait Rewardable {
@@ -398,7 +418,8 @@ trait Rewardable {
 struct Player { level: i64 }
 impl Rewardable for Player {}
 pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -408,13 +429,14 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(5)
         .expect("fixture should contain trait default method call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -426,7 +448,7 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -443,7 +465,8 @@ pub fn main(player: Player) { player.grant(1, 2) }";
 #[test]
 fn lsp_signature_help_resolves_source_trait_default_method_on_source_function_return() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -451,7 +474,7 @@ fn lsp_signature_help_resolves_source_trait_default_method_on_source_function_re
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 trait Rewardable {
@@ -461,7 +484,8 @@ struct Player { level: i64 }
 impl Rewardable for Player {}
 fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -471,13 +495,14 @@ pub fn main() { current_player().grant(1, 2) }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(6)
         .expect("fixture should contain returned receiver trait method call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -489,7 +514,7 @@ pub fn main() { current_player().grant(1, 2) }";
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -513,7 +538,8 @@ fn lsp_signature_help_resolves_schema_method_call() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -529,10 +555,11 @@ fn lsp_signature_help_resolves_schema_method_call() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -542,9 +569,10 @@ fn lsp_signature_help_resolves_schema_method_call() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -556,7 +584,7 @@ fn lsp_signature_help_resolves_schema_method_call() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -581,7 +609,8 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -597,10 +626,11 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -610,9 +640,10 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -624,7 +655,7 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -649,7 +680,8 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -665,10 +697,11 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -678,9 +711,10 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -690,7 +724,7 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
                 "character": text.find(", 3").expect("second argument") + 2
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -714,7 +748,8 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -730,10 +765,11 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -743,9 +779,10 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -757,7 +794,7 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -785,7 +822,8 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
     .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -801,10 +839,11 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { current_reward().preview(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -814,9 +853,10 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -828,7 +868,7 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
@@ -846,7 +886,8 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
 #[test]
 fn lsp_signature_help_resolves_stdlib_callback_method_call() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -854,13 +895,14 @@ fn lsp_signature_help_resolves_stdlib_callback_method_call() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 pub fn main(scores: Array<i64>) {
     scores.filter(|score| score > 0)
 }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -870,13 +912,14 @@ pub fn main(scores: Array<i64>) {
                 "text": text
             }
         }),
-    )));
+    ));
 
     let call_line = text
         .lines()
         .nth(1)
         .expect("fixture should contain filter call");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -888,7 +931,7 @@ pub fn main(scores: Array<i64>) {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 0);
@@ -905,7 +948,8 @@ pub fn main(scores: Array<i64>) {
 #[test]
 fn lsp_signature_help_resolves_stdlib_function_call() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -913,10 +957,11 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { math::max(1, 2) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -926,9 +971,10 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/signatureHelp",
         serde_json::json!({
@@ -940,7 +986,7 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
                 })
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["activeSignature"], 0);
     assert_eq!(response["result"]["activeParameter"], 1);
