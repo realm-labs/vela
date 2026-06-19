@@ -1435,6 +1435,10 @@ cargo test -p vela_lsp_server semantic_tokens
     convert temporary handler results before crossing the background task
     boundary. Validated with `cargo test -p vela_lsp_server task` and
     `cargo test -p vela_lsp_server lifecycle`.
+  - Stale and cancelled task completions now produce typed messages directly
+    through `GlobalState::send_messages`; the old transport
+    `JsonRpcResult`-to-message helper and wrapper-based result summary path
+    have been deleted. Validated with `cargo test -p vela_lsp_server task`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

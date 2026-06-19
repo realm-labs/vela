@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
-use crate::{JsonRpcResult, LaunchConfiguration, rpc};
+use crate::{LaunchConfiguration, rpc};
 
 pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let listener = bind_loopback_tcp_listener(address)?;
@@ -128,10 +128,6 @@ pub fn run_connection(
     configuration: LaunchConfiguration,
 ) -> anyhow::Result<()> {
     crate::main_loop::run_on_latency_thread(connection, configuration)
-}
-
-pub(crate) fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {
-    result.into_messages()
 }
 
 pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<String> {
@@ -369,30 +365,6 @@ impl ResultSummary {
                     .map(|message| rpc::serialize_message(message).len())
                     .sum(),
             },
-        }
-    }
-
-    pub(crate) fn from_result(result: &JsonRpcResult) -> Self {
-        match result {
-            JsonRpcResult::Response(message) => Self {
-                kind: "response",
-                messages: 1,
-                bytes: rpc::serialize_message(&Message::Response(message.clone())).len(),
-            },
-            JsonRpcResult::Notification(message) => Self {
-                kind: "notification",
-                messages: 1,
-                bytes: rpc::serialize_message(message).len(),
-            },
-            JsonRpcResult::Notifications(messages) => Self {
-                kind: "notifications",
-                messages: messages.len(),
-                bytes: messages
-                    .iter()
-                    .map(|message| rpc::serialize_message(message).len())
-                    .sum(),
-            },
-            JsonRpcResult::None => Self::none(),
         }
     }
 

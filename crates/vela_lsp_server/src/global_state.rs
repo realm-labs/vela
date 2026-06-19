@@ -33,11 +33,11 @@ use crate::{
     },
     publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
-    rpc::request_id_from_number_or_string,
+    rpc::{request_id_from_number_or_string, typed_messages},
     semantic_tokens::SemanticTokenProjection,
     source_version,
     task::{TaskResult, TaskScheduler},
-    transport::{ResultSummary, messages_from_result},
+    transport::ResultSummary,
     watching, with_work_done_progress,
 };
 
@@ -896,14 +896,6 @@ impl GlobalState {
         result
     }
 
-    pub(crate) fn send_result(&self, result: JsonRpcResult) -> anyhow::Result<ResultSummary> {
-        let summary = ResultSummary::from_result(&result);
-        for message in messages_from_result(result)? {
-            self.sender.send(message)?;
-        }
-        Ok(summary)
-    }
-
     pub(crate) fn send_messages(&self, messages: Vec<Message>) -> anyhow::Result<ResultSummary> {
         let summary = ResultSummary::from_messages(&messages);
         for message in messages {
@@ -928,19 +920,19 @@ impl GlobalState {
         }
         if is_cancelled {
             if let Some(request_id) = request_id {
-                return self.send_result(dispatch::request_cancelled(request_id));
+                return self.send_messages(typed_messages(dispatch::request_cancelled(request_id)));
             }
-            return self.send_result(JsonRpcResult::None);
+            return self.send_messages(Vec::new());
         }
         if is_stale {
             if let Some(retry) = retry.and_then(|retry| retry.next_attempt()) {
                 dispatch::retry_stale_request(self, retry);
-                return self.send_result(JsonRpcResult::None);
+                return self.send_messages(Vec::new());
             }
             if let Some(request_id) = request_id {
-                return self.send_result(dispatch::content_modified(request_id));
+                return self.send_messages(typed_messages(dispatch::content_modified(request_id)));
             }
-            return self.send_result(JsonRpcResult::None);
+            return self.send_messages(Vec::new());
         }
         self.send_messages(result.into_messages())
     }
