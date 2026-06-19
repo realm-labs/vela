@@ -2,12 +2,21 @@
 
 const path = require("path");
 const vscode = require("vscode");
-const { LanguageClient } = require("vscode-languageclient/node");
 
 let client;
+let outputChannel;
+let traceOutputChannel;
+
+function log(message) {
+  outputChannel?.appendLine(`[${new Date().toISOString()}] ${message}`);
+}
 
 function config() {
   return vscode.workspace.getConfiguration("vela");
+}
+
+function serverEnabled() {
+  return config().get("server.enabled", true);
 }
 
 function configuredRoots() {
@@ -57,30 +66,89 @@ function workspaceFolderPath() {
 }
 
 function activate(context) {
+  outputChannel = vscode.window.createOutputChannel("Vela");
+  context.subscriptions.push(outputChannel);
+  context.subscriptions.push(vscode.commands.registerCommand("vela.showOutput", () => {
+    outputChannel.show(true);
+  }));
+  log("Activating Vela extension.");
+
+  if (!serverEnabled()) {
+    log("Native language server is disabled by vela.server.enabled=false.");
+    return;
+  }
+
+  const {
+    CloseAction,
+    ErrorAction,
+    LanguageClient,
+    RevealOutputChannelOn
+  } = require("vscode-languageclient/node");
+  traceOutputChannel = vscode.window.createOutputChannel("Vela LSP Trace");
+  context.subscriptions.push(traceOutputChannel);
+
+  const command = serverCommand(context);
+  const args = serverArgs();
+  const cwd = workspaceFolderPath();
+  log(`Starting native language server: ${command} ${args.join(" ")}`);
+  log(`Language server cwd: ${cwd ?? "<none>"}`);
+
   const serverOptions = {
-    command: serverCommand(context),
-    args: serverArgs(),
-    options: {
-      cwd: workspaceFolderPath()
-    }
+    command,
+    args,
+    options: cwd ? { cwd } : undefined
   };
   const clientOptions = {
     documentSelector: [{ scheme: "file", language: "vela" }],
     initializationOptions: initializationOptions(),
+    outputChannel,
+    traceOutputChannel,
+    revealOutputChannelOn: RevealOutputChannelOn.Never,
+    initializationFailedHandler: (error) => {
+      log(`Language server initialization failed: ${error?.message ?? String(error)}`);
+      return false;
+    },
+    errorHandler: {
+      error: (error, _message, count) => {
+        log(`Language server connection error${count ? ` #${count}` : ""}: ${error.message}`);
+        return { action: ErrorAction.Shutdown, handled: true };
+      },
+      closed: () => {
+        log("Language server connection closed; not restarting automatically.");
+        return { action: CloseAction.DoNotRestart, handled: true };
+      }
+    },
+    connectionOptions: {
+      maxRestartCount: 0
+    },
     synchronize: {
       configurationSection: "vela"
     }
   };
 
   client = new LanguageClient("vela", "Vela Language Server", serverOptions, clientOptions);
-  context.subscriptions.push(client.start());
+  context.subscriptions.push({ dispose: () => { void stopClient(); } });
+  client.start().then(
+    () => log("Language server started."),
+    (error) => log(`Language server start failed: ${error?.message ?? String(error)}`)
+  );
 }
 
-function deactivate() {
+function stopClient() {
   if (!client) {
     return undefined;
   }
-  return client.stop();
+  const activeClient = client;
+  client = undefined;
+  log("Stopping language server.");
+  return activeClient.stop().then(
+    () => log("Language server stopped."),
+    (error) => log(`Language server stop failed: ${error?.message ?? String(error)}`)
+  );
+}
+
+function deactivate() {
+  return stopClient();
 }
 
 module.exports = {

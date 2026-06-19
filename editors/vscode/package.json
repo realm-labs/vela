@@ -13,7 +13,8 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:vela"
+    "onLanguage:vela",
+    "onCommand:vela.showOutput"
   ],
   "main": "./extension.js",
   "scripts": {
@@ -23,6 +24,12 @@
     "package:no-server": "node scripts/package-vsix.js --no-bundle-server"
   },
   "contributes": {
+    "commands": [
+      {
+        "command": "vela.showOutput",
+        "title": "Vela: Show Output"
+      }
+    ],
     "languages": [
       {
         "id": "vela",
@@ -304,6 +311,11 @@
     "configuration": {
       "title": "Vela",
       "properties": {
+        "vela.server.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the native Vela language server. Disable this to isolate grammar or extension activation issues without loading vscode-languageclient."
+        },
         "vela.server.path": {
           "type": "string",
           "default": "",
@@ -331,6 +343,16 @@
           "type": "string",
           "default": "",
           "description": "Fallback path to a static Vela host schema artifact."
+        },
+        "vela.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace Vela language-server protocol messages to the Vela LSP Trace output channel."
         }
       }
     }

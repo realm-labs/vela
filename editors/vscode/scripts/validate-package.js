@@ -51,7 +51,12 @@ function assertThinLauncher(source, label) {
 const manifest = readJson("package.json");
 assert(manifest.main === "./extension.js", "package main must point at extension.js");
 assert(manifest.activationEvents.includes("onLanguage:vela"), "Vela language activation is missing");
+assert(manifest.activationEvents.includes("onCommand:vela.showOutput"), "Vela output command activation is missing");
 assert(manifest.dependencies["vscode-languageclient"], "vscode-languageclient dependency is required");
+assert(
+  manifest.contributes.commands.some((entry) => entry.command === "vela.showOutput"),
+  "Vela output command contribution is missing"
+);
 
 const language = manifest.contributes.languages.find((entry) => entry.id === "vela");
 assert(language, "Vela language contribution is missing");
@@ -127,6 +132,9 @@ assert(velaScopes.scopes["type.defaultLibrary"], "semanticTokenScopes must map b
 
 const languageConfiguration = readJson(language.configuration);
 assert(languageConfiguration.comments.lineComment === "//", "line comment configuration is missing");
+const configuration = manifest.contributes.configuration.properties;
+assert(configuration["vela.server.enabled"], "server enabled debug setting is missing");
+assert(configuration["vela.trace.server"], "LSP trace setting is missing");
 
 const grammarJson = readJson(grammar.path);
 assert(grammarJson.scopeName === "source.vela", "grammar scopeName must match manifest");
@@ -171,6 +179,12 @@ const extensionSource = fs.readFileSync(path.join(root, "extension.js"), "utf8")
 assert(extensionSource.includes("LanguageClient"), "extension must use vscode-languageclient");
 assert(extensionSource.includes("serverCommand"), "extension must provide server command discovery");
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
+assert(extensionSource.includes("createOutputChannel"), "extension must create debug output channels");
+assert(extensionSource.includes("initializationFailedHandler"), "extension must log initialization failures");
+assert(
+  !extensionSource.includes("context.subscriptions.push(client.start())"),
+  "extension must not store the client.start() Promise as a disposable"
+);
 assert(
   !extensionSource.includes("createFileSystemWatcher"),
   "extension must not create workspace file watchers; native LSP server owns watcher registration"
