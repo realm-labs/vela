@@ -5,7 +5,9 @@ use lsp_server::Message;
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
 };
-use vela_language_service::WorkspaceRoot;
+use vela_language_service::{
+    DocumentId, LanguageServiceDatabases, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
+};
 
 use crate::{
     ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
@@ -34,6 +36,54 @@ pub(crate) struct GlobalState {
     server: LspServer,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub(crate) struct GlobalStateSnapshot {
+    launch_configuration: LaunchConfiguration,
+    workspace: WorkspaceSnapshot,
+    databases: LanguageServiceDatabases,
+    workspace_roots: BTreeSet<String>,
+    open_documents: BTreeSet<DocumentId>,
+    generation: WorkspaceGeneration,
+    initialized: bool,
+    shutdown_requested: bool,
+}
+
+#[allow(dead_code)]
+impl GlobalStateSnapshot {
+    pub(crate) const fn launch_configuration(&self) -> &LaunchConfiguration {
+        &self.launch_configuration
+    }
+
+    pub(crate) const fn workspace(&self) -> &WorkspaceSnapshot {
+        &self.workspace
+    }
+
+    pub(crate) const fn databases(&self) -> &LanguageServiceDatabases {
+        &self.databases
+    }
+
+    pub(crate) const fn generation(&self) -> WorkspaceGeneration {
+        self.generation
+    }
+
+    pub(crate) const fn workspace_roots(&self) -> &BTreeSet<String> {
+        &self.workspace_roots
+    }
+
+    pub(crate) const fn open_documents(&self) -> &BTreeSet<DocumentId> {
+        &self.open_documents
+    }
+
+    pub(crate) const fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    pub(crate) const fn is_shutdown_requested(&self) -> bool {
+        self.shutdown_requested
+    }
+}
+
 impl GlobalState {
     pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
@@ -48,6 +98,20 @@ impl GlobalState {
 
     pub(crate) const fn launch_configuration(&self) -> &LaunchConfiguration {
         &self.launch_configuration
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
+        GlobalStateSnapshot {
+            launch_configuration: self.launch_configuration.clone(),
+            workspace: self.server.workspace.snapshot(),
+            databases: self.server.databases.clone(),
+            workspace_roots: self.server.workspace_roots.clone(),
+            open_documents: self.server.open_documents.clone(),
+            generation: self.server.databases.generation(),
+            initialized: self.server.initialized,
+            shutdown_requested: self.server.shutdown_requested,
+        }
     }
 
     pub(crate) fn handle_message(&mut self, message: &Message, input: &str) -> JsonRpcResult {
@@ -258,5 +322,57 @@ impl RequestQueue {
 
     fn finish(&mut self, id: &str) {
         self.incoming.remove(id);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crossbeam_channel::unbounded;
+    use vela_language_service::{DocumentId, SourceVersion};
+
+    use super::*;
+
+    #[test]
+    fn snapshot_captures_read_only_global_state() {
+        let (sender, _receiver) = unbounded();
+        let mut launch_configuration = LaunchConfiguration::new();
+        launch_configuration.add_workspace_root("/workspace/scripts");
+        let mut state = GlobalState::new(sender, launch_configuration);
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+
+        state
+            .server
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
+        state.server.open_documents.insert(document.clone());
+        state.server.workspace.open_document(
+            document.clone(),
+            "fn main() { 1 }",
+            SourceVersion::new(3),
+        );
+        state.server.initialized = true;
+
+        let snapshot = state.snapshot();
+        state.server.workspace.change_document(
+            document.clone(),
+            "fn main() { 2 }",
+            SourceVersion::new(4),
+        );
+        state.server.open_documents.clear();
+        state.server.shutdown_requested = true;
+
+        assert_eq!(
+            snapshot.launch_configuration().workspace_roots(),
+            ["/workspace/scripts"]
+        );
+        assert_eq!(
+            snapshot.workspace().document_text(&document),
+            Some("fn main() { 1 }")
+        );
+        assert_eq!(snapshot.generation(), snapshot.databases().generation());
+        assert!(snapshot.workspace_roots().contains("/workspace/scripts"));
+        assert!(snapshot.open_documents().contains(&document));
+        assert!(snapshot.is_initialized());
+        assert!(!snapshot.is_shutdown_requested());
     }
 }

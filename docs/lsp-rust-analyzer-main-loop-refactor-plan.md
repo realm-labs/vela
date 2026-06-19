@@ -433,6 +433,11 @@ cargo test -p vela_lsp_server lifecycle
 - [~] Introduce `global_state.rs` with `GlobalState`, request queue, launch
   configuration, workspace state, language-service databases, shutdown/exited
   flags, and send/respond helpers.
+  - `GlobalStateSnapshot` now clones immutable launch configuration,
+    workspace snapshot, language-service databases, workspace roots, open
+    document IDs, generation, and lifecycle flags for future read-only
+    request handlers. Migrating read-only handlers to consume snapshots
+    remains open for Phase 5.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

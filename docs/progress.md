@@ -239,6 +239,12 @@ JSON-RPC internal errors and notification failures as no-response events while
 keeping the main loop alive. Legacy feature-handler panic coverage remains
 part of the pending typed request migration.
 
+M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
+configuration, workspace snapshot, language-service databases, workspace
+roots, open document IDs, generation, and lifecycle flags for future
+read-only request handlers. Routing read-only feature handlers through that
+snapshot remains pending with the task-lane migration.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,
