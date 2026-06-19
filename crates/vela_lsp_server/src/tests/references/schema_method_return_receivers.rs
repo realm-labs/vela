@@ -1,6 +1,8 @@
 use std::{fs, path::PathBuf};
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_highlight, assert_reference, file_uri, line, temp_workspace};
 
@@ -8,7 +10,8 @@ use super::{assert_highlight, assert_reference, file_uri, line, temp_workspace};
 fn lsp_references_find_schema_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_method_return_fixture();
 
-    let response = response_value(fixture.server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -21,7 +24,7 @@ fn lsp_references_find_schema_method_calls_on_schema_method_return_receivers() {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -60,7 +63,8 @@ fn lsp_references_find_schema_method_calls_on_schema_method_return_receivers() {
 fn lsp_references_find_schema_trait_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_trait_method_return_fixture();
 
-    let response = response_value(fixture.server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -73,7 +77,7 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_method_return_receive
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -112,7 +116,8 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_method_return_receive
 fn lsp_document_highlight_marks_schema_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_method_return_fixture();
 
-    let response = response_value(fixture.server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -124,7 +129,7 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_method_return_rece
                     .expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -154,7 +159,8 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_method_return_rece
 fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_method_return_receivers() {
     let mut fixture = open_schema_trait_method_return_fixture();
 
-    let response = response_value(fixture.server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut fixture.server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -166,7 +172,7 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_method_retur
                     .expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -343,7 +349,8 @@ fn open_fixture(
     fs::write(&schema_path, schema_artifact).expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -351,16 +358,18 @@ fn open_fixture(
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -370,10 +379,11 @@ fn open_fixture(
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -383,7 +393,7 @@ fn open_fixture(
                 "text": text
             }
         }),
-    )));
+    ));
 
     SchemaReturnFixture {
         server,
