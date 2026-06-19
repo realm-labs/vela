@@ -288,6 +288,48 @@ fn lsp_rejects_malformed_initialize_without_initializing() {
 }
 
 #[test]
+fn lsp_initialize_notification_does_not_initialize() {
+    let mut server = LspServer::new();
+    let notification_result = server.handle_json(&notification(
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    ));
+    let early_hover = response_value(server.handle_json(&request(
+        1,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+    let initialize = response_value(server.handle_json(&request(
+        2,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(notification_result, JsonRpcResult::None);
+    assert_eq!(early_hover["id"], 1);
+    assert_eq!(early_hover["error"]["code"], -32002);
+    assert_eq!(
+        early_hover["error"]["message"],
+        "server has not been initialized"
+    );
+    assert_eq!(initialize["id"], 2);
+    assert_eq!(
+        initialize["result"]["serverInfo"]["name"],
+        "vela_lsp_server"
+    );
+    assert!(server.is_initialized());
+}
+
+#[test]
 fn lsp_initialized_notification_has_no_response() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

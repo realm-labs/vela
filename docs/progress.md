@@ -176,6 +176,10 @@ M20.5 lifecycle update: malformed `initialize` params now return a stable
 invalid-request error without marking the server initialized, leaving a later
 valid `initialize` request free to complete normally.
 
+M20.5 lifecycle update: notification-shaped `initialize` messages are now
+covered as no-response no-ops that leave the server uninitialized and do not
+poison a later valid `initialize` request.
+
 M20.5 lifecycle update: native LSP capability fixtures now pin
 `textDocumentSync.save = false`, and `textDocument/didSave` notifications are
 no-response no-ops so editor correctness does not depend on save events.
