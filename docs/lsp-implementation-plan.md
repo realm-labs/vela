@@ -204,6 +204,9 @@ coverage complete based only on the older capability phases.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
+  - `textDocumentSync.save` is now pinned false, and
+    `textDocument/didSave` notifications are no-response no-ops so editor
+    correctness does not depend on save events.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
   - Cover the authoring-core model itself: structured completion analysis

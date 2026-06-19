@@ -160,6 +160,10 @@ M20.5 Phase 17 update: native LSP workspace-folder coverage now includes
 removed-root degradation, proving stale disk module facts are cleared while
 open overlays remain authoritative for republished diagnostics.
 
+M20.5 lifecycle update: native LSP capability fixtures now pin
+`textDocumentSync.save = false`, and `textDocument/didSave` notifications are
+no-response no-ops so editor correctness does not depend on save events.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

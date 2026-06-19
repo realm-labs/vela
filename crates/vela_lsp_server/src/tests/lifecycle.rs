@@ -65,6 +65,10 @@ fn lsp_initialize_reports_capabilities() {
         2
     );
     assert_eq!(
+        response["result"]["capabilities"]["textDocumentSync"]["save"],
+        false
+    );
+    assert_eq!(
         response["result"]["capabilities"]["completionProvider"]["resolveProvider"],
         true
     );
@@ -199,6 +203,33 @@ fn lsp_initialized_notification_has_no_response() {
     let result = server.handle_json(&notification("initialized", serde_json::json!({})));
 
     assert!(server.is_initialized());
+    assert_eq!(result, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_did_save_is_not_advertised_and_has_no_response() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(
+        initialize["result"]["capabilities"]["textDocumentSync"]["save"],
+        false
+    );
+
+    let result = server.handle_json(&notification(
+        "textDocument/didSave",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
+        }),
+    ));
+
     assert_eq!(result, JsonRpcResult::None);
 }
 
