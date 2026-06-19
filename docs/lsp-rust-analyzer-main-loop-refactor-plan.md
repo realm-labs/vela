@@ -1916,6 +1916,9 @@ node editors/vscode/scripts/validate-package.js
   - Converted the top-level call-hierarchy fixture off
     `LspServer::handle_json` and onto typed request/notification helpers with
     local setup helpers to keep the active test file reviewable.
+  - Converted the top-level rename fixture off `LspServer::handle_json` and
+    onto typed request/notification helpers with local setup helpers for
+    initialized workspaces and versioned document opens.
   - Converted the cross-file call hierarchy fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
