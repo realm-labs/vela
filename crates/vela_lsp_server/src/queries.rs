@@ -1304,4 +1304,21 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(id, lsp_workspace_symbols(&symbols)))
     }
+
+    pub(crate) fn workspace_symbol_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::WorkspaceSymbolParams,
+    ) -> JsonRpcResult {
+        self.refresh_databases_for_workspace_query();
+        let symbols = self
+            .databases
+            .workspace_symbols(from_proto::workspace_symbol_params(&params));
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::workspace_symbols(&symbols))
+                .expect("typed workspace/symbol response should serialize"),
+        ))
+    }
 }

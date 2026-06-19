@@ -55,7 +55,7 @@ fn lsp_workspace_symbol(symbol: &WorkspaceSymbol) -> JsonValue {
     if let Some(detail) = symbol.detail()
         && let Some(object) = value.as_object_mut()
     {
-        object.insert("detail".to_owned(), JsonValue::String(detail.to_owned()));
+        object.insert("data".to_owned(), json!({ "detail": detail }));
     }
     if let Some(container_name) = symbol.container_name()
         && let Some(object) = value.as_object_mut()

@@ -7,7 +7,7 @@ use vela_language_service::{
     DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
     DocumentTextEdit, Hover, HoverKind, IncomingCall, LineIndex, OutgoingCall, PrepareRename,
     Reference, RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
-    WorkspaceEdit,
+    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
 };
 
 pub(crate) fn completion_response(
@@ -91,6 +91,10 @@ pub(crate) fn document_highlights(
 
 pub(crate) fn document_symbols(symbols: &[DocumentSymbol]) -> lsp_types::DocumentSymbolResponse {
     lsp_types::DocumentSymbolResponse::Nested(symbols.iter().map(document_symbol).collect())
+}
+
+pub(crate) fn workspace_symbols(symbols: &[WorkspaceSymbol]) -> lsp_types::WorkspaceSymbolResponse {
+    lsp_types::WorkspaceSymbolResponse::Nested(symbols.iter().map(workspace_symbol).collect())
 }
 
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
@@ -220,6 +224,35 @@ fn document_symbol(symbol: &DocumentSymbol) -> lsp_types::DocumentSymbol {
         children: (!symbol.children().is_empty())
             .then(|| symbol.children().iter().map(document_symbol).collect()),
     }
+}
+
+fn workspace_symbol(symbol: &WorkspaceSymbol) -> lsp_types::WorkspaceSymbol {
+    lsp_types::WorkspaceSymbol {
+        name: symbol.name().to_owned(),
+        kind: symbol_kind(symbol.kind()),
+        tags: None,
+        container_name: symbol.container_name().map(str::to_owned),
+        location: workspace_symbol_location(symbol.location()),
+        data: workspace_symbol_data(symbol),
+    }
+}
+
+fn workspace_symbol_location(
+    location: &WorkspaceSymbolLocation,
+) -> lsp_types::OneOf<lsp_types::Location, lsp_types::WorkspaceLocation> {
+    match location {
+        WorkspaceSymbolLocation::Source { document_id, range } => {
+            lsp_types::OneOf::Left(self::location(document_id, *range))
+        }
+        WorkspaceSymbolLocation::Schema => lsp_types::OneOf::Right(lsp_types::WorkspaceLocation {
+            uri: lsp_types::Url::parse("vela-schema:")
+                .expect("schema workspace symbol URI should parse"),
+        }),
+    }
+}
+
+fn workspace_symbol_data(symbol: &WorkspaceSymbol) -> Option<JsonValue> {
+    symbol.detail().map(|detail| json!({ "detail": detail }))
 }
 
 const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {
@@ -801,6 +834,37 @@ pub fn main(player: Player) -> i64 {
         assert!(symbols.iter().any(|symbol| {
             symbol.name == "main" && symbol.kind == lsp_types::SymbolKind::FUNCTION
         }));
+    }
+
+    #[test]
+    fn workspace_symbols_project_typed_nested_symbols() {
+        let document = DocumentId::from("file:///workspace/scripts/game/reward.vela");
+        let source = "pub fn grant() -> i64 { return 1 }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let symbols = databases.workspace_symbols("reward.vela");
+
+        let symbols = workspace_symbols(&symbols);
+
+        let lsp_types::WorkspaceSymbolResponse::Nested(symbols) = symbols else {
+            panic!("workspace symbols should project nested response");
+        };
+        let reward = symbols
+            .iter()
+            .find(|symbol| symbol.name == "reward.vela")
+            .expect("file symbol should project");
+        assert_eq!(reward.kind, lsp_types::SymbolKind::FILE);
+        assert_eq!(
+            reward.data.as_ref().and_then(|data| data.get("detail")),
+            Some(&json!("game::reward"))
+        );
+        let lsp_types::OneOf::Left(location) = &reward.location else {
+            panic!("source workspace symbol should use source location");
+        };
+        assert_eq!(location.uri.as_str(), document.as_str());
     }
 
     #[test]

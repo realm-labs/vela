@@ -14,6 +14,7 @@ use lsp_types::{
         HoverRequest, InlayHintRequest, PrepareRenameRequest, References, Rename,
         ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullDeltaRequest,
         SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
+        WorkspaceSymbolRequest,
     },
 };
 use serde::de::DeserializeOwned;
@@ -69,6 +70,7 @@ fn dispatch_request(
         .on_worker_typed::<References>(GlobalState::references)
         .on_worker_typed::<DocumentHighlightRequest>(GlobalState::document_highlight)
         .on_worker_typed::<DocumentSymbolRequest>(GlobalState::document_symbol)
+        .on_worker_typed::<WorkspaceSymbolRequest>(GlobalState::workspace_symbol)
         .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker_typed::<Rename>(GlobalState::rename)
         .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)

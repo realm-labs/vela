@@ -102,6 +102,10 @@ pub(crate) fn document_symbol_params(params: &lsp_types::DocumentSymbolParams) -
     document_id(&params.text_document.uri)
 }
 
+pub(crate) fn workspace_symbol_params(params: &lsp_types::WorkspaceSymbolParams) -> &str {
+    &params.query
+}
+
 pub(crate) fn prepare_rename_params(
     text: &str,
     params: &lsp_types::TextDocumentPositionParams,
@@ -382,6 +386,17 @@ mod tests {
             document_symbol_params(&params),
             DocumentId::from("file:///workspace/scripts/main.vela")
         );
+    }
+
+    #[test]
+    fn workspace_symbol_params_convert_query() {
+        let params = lsp_types::WorkspaceSymbolParams {
+            query: "Player".to_owned(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        assert_eq!(workspace_symbol_params(&params), "Player");
     }
 
     #[test]

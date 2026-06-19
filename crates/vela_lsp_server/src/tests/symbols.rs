@@ -178,7 +178,7 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         symbols.iter().any(|symbol| {
             symbol["name"] == "Player::level"
                 && symbol["kind"] == 8
-                && symbol["detail"] == "i64"
+                && symbol["data"]["detail"] == "i64"
                 && symbol["containerName"] == "Player"
         }),
         "{symbols:?}"
@@ -284,7 +284,7 @@ fn lsp_workspace_symbols_include_file_symbols() {
         symbols.iter().any(|symbol| {
             symbol["name"] == "reward.vela"
                 && symbol["kind"] == 1
-                && symbol["detail"] == "game::reward"
+                && symbol["data"]["detail"] == "game::reward"
                 && symbol["location"]["uri"] == uri
         }),
         "{symbols:?}"

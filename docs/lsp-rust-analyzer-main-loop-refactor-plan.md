@@ -631,6 +631,8 @@ cargo test -p vela_lsp_server workspace_folders
     `DocumentHighlightParams` through `lsp/from_proto.rs`.
   - `textDocument/documentSymbol` now converts typed
     `DocumentSymbolParams` through `lsp/from_proto.rs`.
+  - `workspace/symbol` now converts typed `WorkspaceSymbolParams` query text
+    through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -653,6 +655,10 @@ cargo test -p vela_lsp_server workspace_folders
     `lsp_types::DocumentHighlight` values.
   - Document symbols now project through typed
     `lsp_types::DocumentSymbolResponse::Nested` values.
+  - Workspace symbols now project through typed
+    `lsp_types::WorkspaceSymbolResponse::Nested` values, preserving Vela
+    detail metadata in `data.detail` because upstream `WorkspaceSymbol` has
+    no top-level `detail` field.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -782,6 +788,19 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service document_symbols`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `workspace/symbol` now uses typed `WorkspaceSymbolParams` through
+    `GlobalState` and typed
+    `lsp_types::WorkspaceSymbolResponse::Nested` projection through
+    `lsp/to_proto.rs`; Vela workspace-symbol detail strings are now carried
+    as extension payload `data.detail` in both typed and legacy projection
+    helpers. Validated with `cargo test -p vela_lsp_server workspace_symbol`,
+    `cargo test -p vela_lsp_server symbols`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service workspace_symbols`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

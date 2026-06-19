@@ -165,6 +165,11 @@ refactor, the old manual stdio runner and custom JSON-RPC envelope types may
 remain only as temporary compatibility wrappers for tests and phased handler
 migration; they are not durable production architecture.
 
+Workspace symbol detail metadata is a Vela protocol extension carried in
+`WorkspaceSymbol.data.detail`. Upstream `lsp_types::WorkspaceSymbol` has no
+top-level `detail` field, so both typed and transitional legacy projections
+must keep module/type detail there while preserving ordinary LSP symbol fields.
+
 The optional native LSP TCP transport is a debug/remote-integration extension,
 not the default editor transport. It must be selected explicitly with
 `--listen <host:port>`, bind only loopback addresses unless a future unsafe

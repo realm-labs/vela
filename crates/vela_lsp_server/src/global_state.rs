@@ -8,7 +8,7 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams,
     DocumentSymbolParams, HoverParams, ReferenceParams, RenameParams, SignatureHelpParams,
-    TextDocumentPositionParams,
+    TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -422,6 +422,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.document_symbol_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn workspace_symbol(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: WorkspaceSymbolParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.workspace_symbol_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1626,6 +1637,37 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_workspace_symbol_dispatch_projects_symbols() {
+        let (sender, _receiver) = unbounded();
+        let mut launch_configuration = LaunchConfiguration::new();
+        launch_configuration.add_workspace_root("/workspace/scripts");
+        let mut state = GlobalState::new(sender, launch_configuration);
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/game/reward.vela");
+        let text = "pub fn grant() -> i64 { return 1 }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let response = typed_workspace_symbol_response(&mut state, 17, "reward.vela");
+        let symbols = response["result"]
+            .as_array()
+            .expect("workspaceSymbol response should be an array");
+        let reward = symbols
+            .iter()
+            .find(|symbol| symbol["name"] == "reward.vela")
+            .expect("file symbol should project");
+
+        assert_eq!(reward["kind"], 1);
+        assert_eq!(reward["data"]["detail"], "game::reward");
+        assert_eq!(reward["location"]["uri"], document.as_str());
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2105,6 +2147,28 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed documentSymbol should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_workspace_symbol_response(
+        state: &mut GlobalState,
+        id: i32,
+        query: &str,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "workspace/symbol".to_owned(),
+            params: serde_json::to_value(lsp_types::WorkspaceSymbolParams {
+                query: query.to_owned(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("workspaceSymbol params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed workspaceSymbol should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
