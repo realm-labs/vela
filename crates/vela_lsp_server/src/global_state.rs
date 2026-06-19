@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crossbeam_channel::Sender;
-use lsp_server::{Message, RequestId};
+use lsp_server::{Message, RequestId, Response, ResponseError};
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
@@ -988,10 +988,10 @@ impl GlobalState {
         &mut self,
         id: lsp_server::RequestId,
         params: lsp_types::InitializeParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         if self.initialized {
-            return JsonRpcResult::error(
-                Some(id),
+            return response_error_messages(
+                id,
                 ErrorCode::InvalidRequest,
                 "server is already initialized",
             );
@@ -1005,8 +1005,8 @@ impl GlobalState {
         {
             Ok(editor_config) => editor_config,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidParams,
                     format!("invalid initialize params: {error}"),
                 );
@@ -1024,13 +1024,13 @@ impl GlobalState {
             lsp_supports_watched_file_registration(&params);
         self.semantic_token_projection = lsp_semantic_token_projection(&params);
         self.sync_client_capabilities_to_legacy_server();
-        JsonRpcResult::ok(id, initialize_result(&self.semantic_token_projection))
+        response_ok_messages(id, initialize_result(&self.semantic_token_projection))
     }
 
-    pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
+    pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> Vec<Message> {
         self.shutdown_requested = true;
         self.server.shutdown_requested = true;
-        JsonRpcResult::ok(id, serde_json::Value::Null)
+        response_ok_messages(id, serde_json::Value::Null)
     }
 
     pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> Vec<Message> {
@@ -1272,6 +1272,30 @@ impl GlobalState {
     }
 }
 
+fn response_ok_messages(id: lsp_server::RequestId, result: serde_json::Value) -> Vec<Message> {
+    vec![Message::Response(Response {
+        id,
+        result: Some(result),
+        error: None,
+    })]
+}
+
+fn response_error_messages(
+    id: lsp_server::RequestId,
+    code: ErrorCode,
+    message: impl Into<String>,
+) -> Vec<Message> {
+    vec![Message::Response(Response {
+        id,
+        result: None,
+        error: Some(ResponseError {
+            code: code.value(),
+            message: message.into(),
+            data: None,
+        }),
+    })]
+}
+
 #[derive(Debug, Default)]
 struct RequestQueue {
     incoming: BTreeSet<RequestId>,
@@ -1491,7 +1515,7 @@ mod tests {
 
         let initialize = state.initialize(lsp_server::RequestId::from(1), params);
 
-        assert!(initialize.into_response().is_some());
+        assert_has_messages(&initialize);
         assert!(state.client_supports_work_done_progress);
         assert!(state.client_supports_watched_file_registration);
         assert_eq!(state.semantic_token_projection, expected_projection);
@@ -1829,12 +1853,12 @@ mod tests {
                 ..lsp_types::InitializeParams::default()
             },
         );
-        assert!(initialize.into_response().is_some());
+        assert_has_messages(&initialize);
         assert!(state.is_initialized());
         assert!(state.server.initialized);
 
         let shutdown = state.shutdown(lsp_server::RequestId::from(2), ());
-        assert!(shutdown.into_response().is_some());
+        assert_has_messages(&shutdown);
         assert!(state.is_shutdown_requested());
         assert!(state.server.shutdown_requested);
 

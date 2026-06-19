@@ -364,7 +364,7 @@ impl<'a> RequestDispatcher<'a> {
 
     pub(crate) fn on_sync_mut_typed<R>(
         &mut self,
-        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> Vec<Message>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
@@ -449,7 +449,7 @@ impl<'a> RequestDispatcher<'a> {
 
     fn dispatch_typed<R>(
         &mut self,
-        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> Vec<Message>,
     ) where
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug,
@@ -468,7 +468,7 @@ impl<'a> RequestDispatcher<'a> {
         self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
             f(self.global_state, id.clone(), params)
         })) {
-            Ok(result) => typed_messages(result),
+            Ok(messages) => messages,
             Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
         };
     }
@@ -785,7 +785,7 @@ mod tests {
         _state: &mut GlobalState,
         _id: lsp_server::RequestId,
         _params: lsp_types::InitializeParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         panic!("synthetic request panic")
     }
 

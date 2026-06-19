@@ -1471,6 +1471,12 @@ cargo test -p vela_lsp_server semantic_tokens
     Validated with `cargo test -p vela_lsp_server handlers::dispatch`,
     `cargo test -p vela_lsp_server task`, and
     `cargo test -p vela_lsp_server lifecycle`.
+  - The typed `GlobalState` initialize and shutdown handlers now return
+    `lsp_server::Message` batches directly, and the synchronous typed request
+    dispatcher accepts typed handler output for those lifecycle requests.
+    Validated with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server handlers::dispatch`, and
+    `cargo test -p vela_lsp_server typed_initialized`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
