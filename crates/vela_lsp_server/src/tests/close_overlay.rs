@@ -275,6 +275,82 @@ pub fn main() -> i64 {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_did_close_restores_disk_snapshot_reference_queries() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"pub fn disk_only() -> i64 { return 1 }
+pub fn main() -> i64 {
+    return disk_only()
+}"#;
+    let overlay_source = r#"pub fn overlay_only() -> i64 { return 2 }
+pub fn main() -> i64 {
+    return overlay_only()
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_references = response_value(server.handle_json(&references_request(
+        2,
+        &source_uri,
+        overlay_source,
+        "overlay_only",
+    )));
+    assert_reference_ranges(&overlay_references, &source_uri, &[(0, 7, 19), (2, 11, 23)]);
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_references = response_value(server.handle_json(&references_request(
+        3,
+        &source_uri,
+        disk_source,
+        "disk_only",
+    )));
+    assert_reference_ranges(&disk_references, &source_uri, &[(0, 7, 16), (2, 11, 20)]);
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn completion_labels(response: &serde_json::Value) -> Vec<String> {
     response["result"]["items"]
         .as_array()
@@ -337,6 +413,49 @@ fn hover_value(response: &serde_json::Value) -> String {
         .as_str()
         .expect("hover response should contain markdown")
         .to_owned()
+}
+
+fn references_request(id: i64, uri: &str, source: &str, target: &str) -> String {
+    request(
+        id,
+        "textDocument/references",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 2,
+                "character": references_character(source, target)
+            },
+            "context": { "includeDeclaration": true }
+        }),
+    )
+}
+
+fn references_character(source: &str, target: &str) -> usize {
+    let line = source.lines().nth(2).expect("references line should exist");
+    line.find(target).expect("references target should exist")
+}
+
+fn assert_reference_ranges(
+    response: &serde_json::Value,
+    expected_uri: &str,
+    expected_ranges: &[(usize, usize, usize)],
+) {
+    let references = response["result"]
+        .as_array()
+        .expect("references response should contain an array");
+    assert_eq!(references.len(), expected_ranges.len(), "{references:?}");
+    for (line, start, end) in expected_ranges {
+        assert!(
+            references.iter().any(|reference| {
+                reference["uri"] == expected_uri
+                    && reference["range"]["start"]["line"] == *line
+                    && reference["range"]["start"]["character"] == *start
+                    && reference["range"]["end"]["line"] == *line
+                    && reference["range"]["end"]["character"] == *end
+            }),
+            "missing reference range ({line}, {start}, {end}) in {references:?}"
+        );
+    }
 }
 
 fn assert_type_definition_range(
