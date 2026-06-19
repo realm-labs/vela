@@ -1,0 +1,167 @@
+#![allow(dead_code)]
+
+use vela_language_service::{DiagnosticRange, DocumentId, Position};
+
+use crate::{
+    line_index::LineIndex,
+    protocol::{LspPosition, LspRange},
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FormattingOptions {
+    pub(crate) tab_size: u32,
+    pub(crate) insert_spaces: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TextDocumentPositionInput {
+    pub(crate) document_id: DocumentId,
+    pub(crate) position: Position,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct TextDocumentRangeInput {
+    pub(crate) document_id: DocumentId,
+    pub(crate) range: DiagnosticRange,
+}
+
+pub(crate) fn document_id(uri: &lsp_types::Url) -> DocumentId {
+    DocumentId::from(uri.to_string())
+}
+
+pub(crate) fn position(text: &str, position: lsp_types::Position) -> Result<Position, String> {
+    LineIndex::new(text).service_position(local_position(position))
+}
+
+pub(crate) fn range(text: &str, range: lsp_types::Range) -> Result<DiagnosticRange, String> {
+    LineIndex::new(text).service_range(local_range(range))
+}
+
+pub(crate) fn formatting_options(options: &lsp_types::FormattingOptions) -> FormattingOptions {
+    FormattingOptions {
+        tab_size: options.tab_size,
+        insert_spaces: options.insert_spaces,
+    }
+}
+
+pub(crate) fn text_document_position(
+    text: &str,
+    params: &lsp_types::TextDocumentPositionParams,
+) -> Result<TextDocumentPositionInput, String> {
+    Ok(TextDocumentPositionInput {
+        document_id: document_id(&params.text_document.uri),
+        position: position(text, params.position)?,
+    })
+}
+
+pub(crate) fn text_document_range(
+    text: &str,
+    text_document: &lsp_types::TextDocumentIdentifier,
+    range: lsp_types::Range,
+) -> Result<TextDocumentRangeInput, String> {
+    Ok(TextDocumentRangeInput {
+        document_id: document_id(&text_document.uri),
+        range: self::range(text, range)?,
+    })
+}
+
+fn local_range(range: lsp_types::Range) -> LspRange {
+    LspRange {
+        start: local_position(range.start),
+        end: local_position(range.end),
+    }
+}
+
+fn local_position(position: lsp_types::Position) -> LspPosition {
+    LspPosition {
+        line: position.line,
+        character: position.character,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn document_id_uses_lsp_uri_text() {
+        let uri = lsp_types::Url::parse("file:///workspace/scripts/main.vela").expect("valid URI");
+
+        assert_eq!(
+            document_id(&uri),
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+    }
+
+    #[test]
+    fn position_uses_utf16_line_index_conversion() {
+        let text = "let icon = \"💎\"\nnext";
+
+        assert_eq!(
+            position(text, lsp_types::Position::new(0, 14))
+                .expect("position after wide character should convert"),
+            Position::new(0, 16)
+        );
+        assert!(
+            position(text, lsp_types::Position::new(0, 13)).is_err(),
+            "halfway through a UTF-16 surrogate pair should be rejected"
+        );
+    }
+
+    #[test]
+    fn range_uses_utf16_line_index_conversion() {
+        let text = "let icon = \"💎\"\nnext";
+
+        let range = range(
+            text,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 12),
+                lsp_types::Position::new(0, 14),
+            ),
+        )
+        .expect("range around wide character should convert");
+
+        assert_eq!(range.start(), Position::new(0, 12));
+        assert_eq!(range.end(), Position::new(0, 16));
+    }
+
+    #[test]
+    fn text_document_position_converts_uri_and_position() {
+        let params = lsp_types::TextDocumentPositionParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            position: lsp_types::Position::new(1, 0),
+        };
+
+        let input =
+            text_document_position("first\nsecond", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(1, 0));
+    }
+
+    #[test]
+    fn formatting_options_copy_lsp_settings() {
+        let options = lsp_types::FormattingOptions {
+            tab_size: 2,
+            insert_spaces: true,
+            properties: Default::default(),
+            trim_trailing_whitespace: None,
+            insert_final_newline: None,
+            trim_final_newlines: None,
+        };
+
+        assert_eq!(
+            formatting_options(&options),
+            FormattingOptions {
+                tab_size: 2,
+                insert_spaces: true,
+            }
+        );
+    }
+}

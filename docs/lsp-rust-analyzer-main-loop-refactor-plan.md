@@ -612,9 +612,13 @@ cargo test -p vela_lsp_server workspace_folders
 
 ### Phase 4: Typed Read-Only Request Migration
 
-- [ ] Create `lsp/from_proto.rs` for `Url`, `Position`, `Range`, formatting
+- [~] Create `lsp/from_proto.rs` for `Url`, `Position`, `Range`, formatting
   options, and request-specific params conversion into service inputs using
   the shared `line_index.rs` conversion boundary.
+  - Initial `lsp/from_proto.rs` now owns URI-to-`DocumentId`, UTF-16
+    position/range conversion through `line_index.rs`, formatting option
+    copying, and typed text-document position/range input helpers. Existing
+    feature handlers still need to migrate onto this boundary.
 - [ ] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and

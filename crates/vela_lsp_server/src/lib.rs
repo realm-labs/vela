@@ -16,6 +16,7 @@ mod hover;
 mod inlay;
 mod lifecycle;
 mod line_index;
+mod lsp;
 pub mod main_loop;
 mod protocol;
 mod queries;
