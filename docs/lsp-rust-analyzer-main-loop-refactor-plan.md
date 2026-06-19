@@ -497,6 +497,10 @@ cargo test -p vela_lsp_server lifecycle
   - Typed request parameter decode failures now use the shared dispatcher
     `InvalidParams` projection (`-32602`) while invalid lifecycle state remains
     `InvalidRequest`.
+  - Shared dispatcher helpers now project typed `RequestCancelled` (`-32800`)
+    and `ContentModified` (`-32801`) LSP errors, preparing stale-result
+    handling to reuse central JSON-RPC error construction when Phase 6 adds
+    background tasks.
 - [x] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and
   `$/cancelRequest` to typed dispatch.
 - [x] Preserve current lifecycle behavior for repeated initialize, malformed

@@ -77,6 +77,7 @@ pub(crate) enum ErrorCode {
     InternalError,
     ServerNotInitialized,
     RequestCancelled,
+    ContentModified,
 }
 
 impl ErrorCode {
@@ -89,6 +90,7 @@ impl ErrorCode {
             Self::InternalError => -32603,
             Self::ServerNotInitialized => -32002,
             Self::RequestCancelled => -32800,
+            Self::ContentModified => -32801,
         }
     }
 }

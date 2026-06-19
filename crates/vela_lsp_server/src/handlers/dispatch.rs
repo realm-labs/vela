@@ -334,6 +334,15 @@ fn request_cancelled(id: RequestId) -> JsonRpcResult {
     ))
 }
 
+#[allow(dead_code)]
+fn content_modified(id: RequestId) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(id),
+        ErrorCode::ContentModified,
+        "request result is stale because the document was modified",
+    ))
+}
+
 fn invalid_params(
     id: lsp_server::RequestId,
     method: &str,
@@ -451,6 +460,42 @@ mod tests {
             response["error"]["message"]
                 .as_str()
                 .is_some_and(|message| message.contains("handler for `initialize` panicked"))
+        );
+    }
+
+    #[test]
+    fn dispatcher_projects_content_modified_as_lsp_error() {
+        let result = content_modified(RequestId::String("hover-1".to_owned()));
+        let response = result
+            .into_response()
+            .expect("content-modified should be projected as response");
+        let response =
+            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+
+        assert_eq!(response["id"], "hover-1");
+        assert_eq!(response["error"]["code"], -32801);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("stale"))
+        );
+    }
+
+    #[test]
+    fn dispatcher_projects_request_cancelled_as_lsp_error() {
+        let result = request_cancelled(RequestId::Number(7));
+        let response = result
+            .into_response()
+            .expect("request-cancelled should be projected as response");
+        let response =
+            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["error"]["code"], -32800);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("cancelled"))
         );
     }
 
