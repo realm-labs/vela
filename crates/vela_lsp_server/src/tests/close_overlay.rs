@@ -6,6 +6,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
+#[derive(Debug, Clone, Copy)]
+struct SemanticTokenRange {
+    line: u64,
+    character: u64,
+    length: u64,
+    token_type: u64,
+}
+
 #[test]
 fn lsp_did_close_restores_disk_snapshot_completion_queries() {
     let root = temp_workspace();
@@ -98,6 +106,85 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
         disk_completion.iter().all(|label| label != "overlay_only"),
         "{disk_completion:?}"
     );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_did_close_restores_disk_snapshot_semantic_tokens() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"pub fn disk_only() -> i64 { return 1 }
+pub fn main() -> i64 {
+    return disk_only()
+}"#;
+    let overlay_source = r#"pub fn overlay_only() -> i64 { return 2 }
+pub fn main() -> i64 {
+    return overlay_only()
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    let function = semantic_token_type_index(&initialize, "function");
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_tokens = semantic_tokens(&response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": source_uri }
+        }),
+    ))));
+    assert_semantic_token_for_target(&overlay_tokens, overlay_source, "overlay_only", function);
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_tokens = semantic_tokens(&response_value(server.handle_json(&request(
+        3,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": source_uri }
+        }),
+    ))));
+    assert_semantic_token_for_target(&disk_tokens, disk_source, "disk_only", function);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
@@ -440,6 +527,73 @@ fn completion_labels(response: &serde_json::Value) -> Vec<String> {
 fn completion_character(source: &str, prefix: &str) -> usize {
     let line = source.lines().nth(1).expect("completion line should exist");
     line.find(prefix).expect("completion prefix should exist") + prefix.len()
+}
+
+fn semantic_tokens(response: &serde_json::Value) -> Vec<SemanticTokenRange> {
+    let data = response["result"]["data"]
+        .as_array()
+        .expect("semantic token response should include data");
+    let mut line = 0;
+    let mut character = 0;
+    data.chunks_exact(5)
+        .map(|chunk| {
+            let delta_line = chunk[0].as_u64().expect("line delta should be numeric");
+            let delta_start = chunk[1].as_u64().expect("start delta should be numeric");
+            line += delta_line;
+            if delta_line == 0 {
+                character += delta_start;
+            } else {
+                character = delta_start;
+            }
+            SemanticTokenRange {
+                line,
+                character,
+                length: chunk[2].as_u64().expect("length should be numeric"),
+                token_type: chunk[3].as_u64().expect("token type should be numeric"),
+            }
+        })
+        .collect()
+}
+
+fn semantic_token_type_index(initialize: &serde_json::Value, name: &str) -> u64 {
+    initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+        .as_array()
+        .expect("semantic token legend should list token types")
+        .iter()
+        .position(|token_type| token_type == name)
+        .expect("semantic token type should exist") as u64
+}
+
+fn assert_semantic_token_for_target(
+    tokens: &[SemanticTokenRange],
+    source: &str,
+    target: &str,
+    token_type: u64,
+) {
+    let (line, character) = source_position(source, target);
+    let length = target.len() as u64;
+    assert!(
+        tokens.iter().any(|token| {
+            token.line == line
+                && token.character == character
+                && token.length == length
+                && token.token_type == token_type
+        }),
+        "missing semantic token for {target:?} at ({line}, {character}) in {tokens:?}"
+    );
+}
+
+fn source_position(source: &str, target: &str) -> (u64, u64) {
+    let offset = source.find(target).expect("target should exist in source");
+    let mut line = 0;
+    let mut line_start = 0;
+    for (index, byte) in source.bytes().enumerate().take(offset) {
+        if byte == b'\n' {
+            line += 1;
+            line_start = index + 1;
+        }
+    }
+    (line, (offset - line_start) as u64)
 }
 
 fn type_definition_request(id: i64, uri: &str, source: &str) -> String {
