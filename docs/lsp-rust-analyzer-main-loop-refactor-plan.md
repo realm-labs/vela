@@ -1522,6 +1522,13 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_document_symbol`,
     `cargo test -p vela_lsp_server handlers::dispatch`, and
     `cargo test -p vela_lsp_server task`.
+  - The typed workspace-symbol snapshot request handler now returns
+    `lsp_server::Message` batches directly through the retryable typed worker
+    snapshot dispatcher and retry replay paths. Validated with
+    `cargo test -p vela_lsp_server workspace_symbol`,
+    `cargo test -p vela_lsp_server typed_workspace_symbol`,
+    `cargo test -p vela_lsp_server handlers::dispatch`, and
+    `cargo test -p vela_lsp_server task`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

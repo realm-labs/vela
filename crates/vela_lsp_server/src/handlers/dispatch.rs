@@ -102,7 +102,7 @@ fn dispatch_request(
             GlobalStateSnapshot::document_symbol,
             RetryTask::document_symbol,
         )
-        .on_retryable_worker_snapshot_typed::<WorkspaceSymbolRequest>(
+        .on_retryable_worker_snapshot_messages_typed::<WorkspaceSymbolRequest>(
             GlobalStateSnapshot::workspace_symbol,
             RetryTask::workspace_symbol,
         )
@@ -282,9 +282,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Worker,
                     method: <WorkspaceSymbolRequest as lsp_types::request::Request>::METHOD,
                     id,

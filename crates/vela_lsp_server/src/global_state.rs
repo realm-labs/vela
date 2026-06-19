@@ -510,12 +510,12 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: WorkspaceSymbolParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let symbols = self
             .databases
             .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::workspace_symbols(&symbols))
                 .expect("typed workspace/symbol response should serialize"),
