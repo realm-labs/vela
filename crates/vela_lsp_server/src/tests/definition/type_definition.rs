@@ -1,5 +1,6 @@
 use super::super::{LspServer, notification, notification_value, request, response_value};
 
+mod dynamic;
 mod imported;
 
 #[test]

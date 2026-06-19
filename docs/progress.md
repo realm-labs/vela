@@ -211,6 +211,10 @@ method-return receivers, plus source trait default methods on source
 method-return receivers. Inherent source-method navigation now anchors on the
 method name instead of the lowered method body span.
 
+M20.5 Phase 8 update: service and native LSP type-definition fixtures now pin
+dynamic receiver-member boundaries, returning null for `Any` member targets
+instead of fabricating a type location.
+
 M20.5 clean LSP architecture Phase 6 update: references now have a
 `reference_query()` result model that distinguishes source-owned, schema-owned,
 builtin, dynamic `Any`, and unresolved targets; source/local reference identity

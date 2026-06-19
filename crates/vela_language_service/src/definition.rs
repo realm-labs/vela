@@ -532,6 +532,8 @@ fn short_name(name: &str) -> Option<&str> {
 }
 
 #[cfg(test)]
+mod dynamic_tests;
+#[cfg(test)]
 mod schema_return_tests;
 #[cfg(test)]
 mod source_return_tests;

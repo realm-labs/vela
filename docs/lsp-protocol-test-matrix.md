@@ -299,7 +299,8 @@ These were the first places compared against the matrix before acceptance:
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.
 6. Dynamic boundaries need explicit negative tests. Current focused fixtures
-   pin `typeDefinition` null results for dynamic local values,
+   pin `typeDefinition` null results for dynamic local values and dynamic
+   receiver members,
    `signatureHelp` null results for unresolved calls and dynamic receiver
    calls, and `hover` null results for unresolved names plus dynamic receiver
    members while preserving parameter hovers under parser recovery, plus

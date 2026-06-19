@@ -975,6 +975,7 @@ Tests:
 - [x] `type_definition_follows_imported_const_and_global_source_types`
 - [x] `type_definition_returns_none_for_source_primitive_field`
 - [x] `type_definition_returns_none_for_dynamic_local_value`
+- [x] `type_definition_returns_none_for_dynamic_receiver_member`
 - [x] `lsp_declaration_follows_open_overlay_local_binding`
 - [x] `lsp_declaration_follows_schema_source_span`
 - [x] `lsp_declaration_follows_schema_field_source_span`
@@ -1013,6 +1014,7 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_const_and_global_source_types`
 - [x] `lsp_type_definition_returns_null_for_source_primitive_field`
 - [x] `lsp_type_definition_returns_null_for_dynamic_local_value`
+- [x] `lsp_type_definition_returns_null_for_dynamic_receiver_member`
 - [x] `lsp_type_definition_follows_schema_field_type_source_span`
 - [x] `lsp_type_definition_returns_null_for_schema_primitive_field`
 - [x] `lsp_type_definition_returns_null_for_schema_method`
