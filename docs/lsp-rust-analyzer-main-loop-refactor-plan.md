@@ -621,16 +621,19 @@ cargo test -p vela_lsp_server workspace_folders
     feature handlers still need to migrate onto this boundary.
   - `textDocument/completion` now uses typed `CompletionParams` through the
     latency-sensitive dispatch category and converts its nested text-document
-    position through `lsp/from_proto.rs`; result projection still uses the
-    existing JSON helper until `lsp/to_proto.rs` lands.
-- [ ] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
+    position through `lsp/from_proto.rs`.
+- [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
   inlay hints.
+  - Initial `lsp/to_proto.rs` now projects completion lists into typed
+    `lsp_types::CompletionResponse` values. Broader feature projections and
+    legacy raw JSON helpers remain to migrate.
 - [ ] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
-    `GlobalState`; `completionItem/resolve` still uses the temporary legacy
-    payload path.
+    `GlobalState` and typed completion result projection through
+    `lsp/to_proto.rs`; `completionItem/resolve` still uses the temporary
+    legacy payload path.
 - [ ] Migrate hover, signature help, definition, declaration, type definition,
   references, prepare rename, rename, call hierarchy, document highlight,
   document symbols, workspace symbols, folding, formatting, range formatting,

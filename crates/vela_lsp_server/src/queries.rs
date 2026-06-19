@@ -17,7 +17,7 @@ use crate::{
     formatting::lsp_text_edits,
     hover::lsp_hover,
     inlay::lsp_inlay_hints,
-    lsp::from_proto,
+    lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
     protocol::CallHierarchyPrepareParams,
@@ -155,7 +155,8 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_completion_list(&completions, &line_index),
+            serde_json::to_value(to_proto::completion_response(&completions, &line_index))
+                .expect("typed completion response should serialize"),
         ))
     }
 
