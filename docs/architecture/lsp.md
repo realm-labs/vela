@@ -22,7 +22,7 @@ VS Code / Zed / JetBrains / CLI
         |
         v
 vela_lsp_server
-  LSP JSON-RPC, file watching, editor config, cancellation, progress
+  typed LSP transport, file watching, editor config, cancellation, progress
         |
         v
 vela_language_service
@@ -69,7 +69,7 @@ mutate TypeRegistry or runtime type structure
 
 ```text
 LSP initialize/shutdown lifecycle
-JSON-RPC transport over stdio or sockets
+typed `lsp_server::Message` transport over stdio or optional loopback TCP
 didOpen/didChange/didClose/didSave handling
 workspace folder and file-watch events
 request cancellation
@@ -77,6 +77,57 @@ progress and work-done notifications
 publishDiagnostics
 mapping between LSP positions and language-service offsets
 ```
+
+## Protocol And Main Loop Boundary
+
+Vela follows rust-analyzer's editor-server shape: editor packages launch a
+native process, the process builds an `lsp_server::Connection`, and a single
+main loop owns the mutable coordinator state. The current rust-analyzer
+production entry in the local reference checkout is stdio-only; Vela keeps
+stdio as the default editor transport for the same reason. Vela's TCP mode is
+a debug/remote-integration extension, not a rust-analyzer compatibility
+requirement.
+
+The protocol boundary is typed:
+
+```text
+stdio or loopback TCP bytes
+  -> lsp_server::Message
+  -> main_loop event pump
+  -> GlobalState request queue, cancellation, generations, and config
+  -> typed request/notification dispatch
+  -> vela_language_service snapshot query
+  -> typed LSP response/progress/diagnostic messages
+```
+
+Production code must not route normal stdio or TCP traffic through
+hand-written JSON-RPC envelopes, custom request IDs, manual Content-Length
+parsers, or stringly request builders. JSON serialization is limited to the
+wire boundary, tracing/profiling byte counts, and tests that inspect final
+protocol shapes. Invalid params, method-not-found, cancellation, stale
+generations, handler panics, and response projection errors flow through the
+shared dispatcher/main-loop path.
+
+`GlobalState` is the only mutable protocol coordinator. It owns lifecycle
+flags, workspace roots, editor configuration, watcher settings, request queue
+state, generation checks, cancellation handles, and task scheduling. Request
+handlers receive typed params and either mutate `GlobalState` directly for
+coordinator work or take immutable snapshots for read-only language-service
+queries. Long-running or latency-sensitive work is scheduled through explicit
+main-loop lanes:
+
+```text
+mutable notifications/lifecycle/config   main loop, ordered
+latency-sensitive reads                  bounded latency lane
+formatting                               formatting lane
+workspace diagnostics/reload/indexing    background lane
+```
+
+Optional TCP must feed the same typed connection, main loop, request queue,
+`GlobalState`, handler dispatch, cancellation, profiling, and projection
+modules as stdio. TCP binding defaults to loopback-only addresses and must not
+accept unauthenticated non-loopback listeners unless a future explicit opt-in
+flag defines that risk and its validation.
 
 Editor plugins should be thin launchers around the native LSP binary. They may
 provide configuration UI and binary discovery, but feature behavior should live
@@ -399,7 +450,8 @@ LSP work should be validated with:
 language-service unit tests for source overlays and invalidation
 module graph tests for multi-file import changes
 snapshot fixtures for diagnostics, completion, hover, and definitions
-LSP JSON-RPC fixtures for initialize, document sync, and requests
+typed in-memory LSP fixtures for initialize, document sync, and requests
+stdio and loopback-TCP smoke tests through the same main loop
 synthetic scale tests that approach one million lines without full rebuilds per edit
 full workspace cargo checks before milestone checkpoints
 ```

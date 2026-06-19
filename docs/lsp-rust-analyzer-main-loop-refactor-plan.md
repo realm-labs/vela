@@ -1982,7 +1982,7 @@ node editors/vscode/scripts/validate-package.js
     helpers.
   - Converted lifecycle request/notification fixture traffic off the legacy
     custom request/notification builders and onto the shared typed helpers.
-- [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
+- [x] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.
 - [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs
   to reference this execution document.
