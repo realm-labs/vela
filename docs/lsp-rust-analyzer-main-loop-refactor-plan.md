@@ -1808,6 +1808,8 @@ node editors/vscode/scripts/validate-package.js
     legacy JSON-RPC harness.
   - Converted the folding feature fixtures off `LspServer::handle_json` and
     onto the shared typed request/notification helpers.
+  - Converted the selection-range feature fixtures off `LspServer::handle_json`
+    and onto the shared typed request/notification helpers.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.

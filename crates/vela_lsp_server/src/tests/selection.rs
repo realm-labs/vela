@@ -1,9 +1,10 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_selection_ranges_walk_syntax_ancestors() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,7 +12,7 @@ fn lsp_selection_ranges_walk_syntax_ancestors() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 pub fn main(player: Player) -> i64 {
     let next = player.level + 1
@@ -21,7 +22,8 @@ pub fn main(player: Player) -> i64 {
     return 0
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -31,16 +33,17 @@ pub fn main(player: Player) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/selectionRange",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "positions": [{ "line": 1, "character": 22 }]
         }),
-    )));
+    ));
 
     let ranges = response["result"]
         .as_array()
@@ -83,7 +86,8 @@ fn flatten_selection_chain(range: &serde_json::Value) -> Vec<&serde_json::Value>
 #[test]
 fn lsp_selection_ranges_preserve_ancestors_under_parser_recovery() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -91,7 +95,7 @@ fn lsp_selection_ranges_preserve_ancestors_under_parser_recovery() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 pub fn main(player: Player) -> i64 {
     let next = player.level + 1
@@ -99,7 +103,8 @@ pub fn main(player: Player) -> i64 {
         return next
 ";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -109,16 +114,17 @@ pub fn main(player: Player) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/selectionRange",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "positions": [{ "line": 1, "character": 22 }]
         }),
-    )));
+    ));
 
     let ranges = response["result"]
         .as_array()
