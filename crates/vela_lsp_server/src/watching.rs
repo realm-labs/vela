@@ -7,14 +7,14 @@ use lsp_types::{
 };
 use vela_language_service::WorkspaceConfig;
 
-use crate::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_path, transport};
+use crate::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_path};
 
 const WATCHED_FILES_REGISTRATION_ID: &str = "vela/watched-files";
 
 pub(crate) fn registration_request(
     config: Option<&WorkspaceConfig>,
     workspace_roots: &BTreeSet<String>,
-) -> Option<String> {
+) -> Option<lsp_server::Message> {
     let watchers = watched_file_watchers(config, workspace_roots);
     if watchers.is_empty() {
         return None;
@@ -36,10 +36,7 @@ pub(crate) fn registration_request(
         method: RegisterCapability::METHOD.to_owned(),
         params: serde_json::to_value(params).expect("registration params should serialize"),
     };
-    Some(
-        transport::serialize_json_rpc_message(&lsp_server::Message::Request(request))
-            .expect("registration request should serialize"),
-    )
+    Some(lsp_server::Message::Request(request))
 }
 
 fn watched_file_watchers(

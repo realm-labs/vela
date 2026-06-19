@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
-use crate::{JsonRpcResult, LaunchConfiguration};
+use crate::{JsonRpcResult, LaunchConfiguration, rpc};
 
 pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let listener = bind_loopback_tcp_listener(address)?;
@@ -131,30 +131,11 @@ pub fn run_connection(
 }
 
 pub(crate) fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {
-    let strings = match result {
-        JsonRpcResult::Response(message) | JsonRpcResult::Notification(message) => vec![message],
-        JsonRpcResult::Notifications(messages) => messages,
-        JsonRpcResult::None => Vec::new(),
-    };
-    strings
-        .into_iter()
-        .map(|message| {
-            let value = serde_json::from_str::<serde_json::Value>(&message)?;
-            message_from_json_rpc(value)
-        })
-        .collect()
+    result.into_messages()
 }
 
 pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<String> {
-    let mut value = serde_json::to_value(message)?;
-    let object = value
-        .as_object_mut()
-        .ok_or_else(|| anyhow::anyhow!("LSP message did not serialize to an object"))?;
-    object.insert(
-        "jsonrpc".to_owned(),
-        serde_json::Value::String("2.0".to_owned()),
-    );
-    serde_json::to_string(&value).map_err(Into::into)
+    Ok(rpc::serialize_message(message))
 }
 
 pub(crate) fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
@@ -367,17 +348,25 @@ impl ResultSummary {
             JsonRpcResult::Response(message) => Self {
                 kind: "response",
                 messages: 1,
+                bytes: rpc::serialize_message(&Message::Response(message.clone())).len(),
+            },
+            JsonRpcResult::RawResponse(message) => Self {
+                kind: "response",
+                messages: 1,
                 bytes: message.len(),
             },
             JsonRpcResult::Notification(message) => Self {
                 kind: "notification",
                 messages: 1,
-                bytes: message.len(),
+                bytes: rpc::serialize_message(message).len(),
             },
             JsonRpcResult::Notifications(messages) => Self {
                 kind: "notifications",
                 messages: messages.len(),
-                bytes: messages.iter().map(String::len).sum(),
+                bytes: messages
+                    .iter()
+                    .map(|message| rpc::serialize_message(message).len())
+                    .sum(),
             },
             JsonRpcResult::None => Self::none(),
         }

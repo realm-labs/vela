@@ -25,7 +25,7 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use lsp_server::{Message, RequestId};
+use lsp_server::{Message, Notification, RequestId};
 use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -618,7 +618,7 @@ impl LspServer {
         diagnostics
     }
 
-    fn config_diagnostic_notifications(&self) -> Vec<String> {
+    fn config_diagnostic_notifications(&self) -> Vec<Message> {
         self.config_documents
             .iter()
             .map(|document_id| {
@@ -631,7 +631,7 @@ impl LspServer {
             .collect()
     }
 
-    fn schema_diagnostic_notifications(&self) -> Vec<String> {
+    fn schema_diagnostic_notifications(&self) -> Vec<Message> {
         let diagnostics = to_proto::schema_diagnostics(self.databases.schema_db().diagnostics());
         let active_document = self
             .schema_path()
@@ -865,7 +865,7 @@ fn publish_diagnostics_notification(
     uri: &str,
     diagnostics: Vec<lsp_types::Diagnostic>,
     error: Option<String>,
-) -> String {
+) -> Message {
     let uri = lsp_types::Url::parse(uri).expect("diagnostic document URI should parse");
     let params = lsp_types::PublishDiagnosticsParams {
         uri,
@@ -879,19 +879,21 @@ fn publish_diagnostics_notification(
     {
         object.insert("error".to_owned(), JsonValue::String(error));
     }
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "method": "textDocument/publishDiagnostics",
-        "params": params
+    Message::Notification(Notification {
+        method: "textDocument/publishDiagnostics".to_owned(),
+        params,
     })
-    .to_string()
 }
 
 pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
     let notifications = match result {
         JsonRpcResult::Notification(notification) => vec![notification],
         JsonRpcResult::Notifications(notifications) => notifications,
-        other @ (JsonRpcResult::Response(_) | JsonRpcResult::None) => return other,
+        other @ (JsonRpcResult::Response(_)
+        | JsonRpcResult::RawResponse(_)
+        | JsonRpcResult::None) => {
+            return other;
+        }
     };
     if notifications.is_empty() {
         return JsonRpcResult::None;
@@ -911,16 +913,14 @@ pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> Jso
     JsonRpcResult::Notifications(wrapped)
 }
 
-fn work_done_progress_notification(value: JsonValue) -> String {
-    json!({
-        "jsonrpc": JSONRPC_VERSION,
-        "method": "$/progress",
-        "params": {
+fn work_done_progress_notification(value: JsonValue) -> Message {
+    Message::Notification(Notification {
+        method: "$/progress".to_owned(),
+        params: json!({
             "token": WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN,
             "value": value
-        }
+        }),
     })
-    .to_string()
 }
 
 #[cfg(test)]

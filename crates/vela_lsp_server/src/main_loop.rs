@@ -125,7 +125,7 @@ mod tests {
     };
 
     use crossbeam_channel::unbounded;
-    use lsp_server::{Message, Notification};
+    use lsp_server::{Message, Notification, RequestId, Response};
 
     use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState, task::TaskLane};
 
@@ -138,7 +138,7 @@ mod tests {
         let state = GlobalState::new(response_sender, LaunchConfiguration::default());
 
         state.task_scheduler().spawn(TaskLane::Worker, || {
-            JsonRpcResult::Response("worker".to_owned())
+            JsonRpcResult::Response(test_response("worker"))
         });
 
         let event = next_event(&message_receiver, &state).expect("task event should be selected");
@@ -149,7 +149,7 @@ mod tests {
         assert_eq!(task.lane(), TaskLane::Worker);
         assert_eq!(
             task.into_result(),
-            JsonRpcResult::Response("worker".to_owned())
+            JsonRpcResult::Response(test_response("worker"))
         );
     }
 
@@ -171,7 +171,7 @@ mod tests {
                 release_task_receiver
                     .recv()
                     .expect("task release signal should be received");
-                JsonRpcResult::Response("worker".to_owned())
+                JsonRpcResult::Response(test_response("worker"))
             },
         );
 
@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(task.method(), Some("textDocument/references"));
         assert_eq!(
             task.into_result(),
-            JsonRpcResult::Response("worker".to_owned())
+            JsonRpcResult::Response(test_response("worker"))
         );
     }
 
@@ -224,12 +224,12 @@ mod tests {
         state.task_scheduler().spawn_for_method(
             TaskLane::Worker,
             "textDocument/references",
-            || JsonRpcResult::Response("worker".to_owned()),
+            || JsonRpcResult::Response(test_response("worker")),
         );
         state.task_scheduler().spawn_for_method(
             TaskLane::Formatting,
             "textDocument/formatting",
-            || JsonRpcResult::Response("formatting".to_owned()),
+            || JsonRpcResult::Response(test_response("formatting")),
         );
         wait_for_ready_task_results(&state);
 
@@ -243,7 +243,7 @@ mod tests {
         assert_eq!(task.method(), Some("textDocument/formatting"));
         assert_eq!(
             task.into_result(),
-            JsonRpcResult::Response("formatting".to_owned())
+            JsonRpcResult::Response(test_response("formatting"))
         );
 
         let worker = state
@@ -291,5 +291,13 @@ mod tests {
             thread::sleep(Duration::from_millis(1));
         }
         panic!("formatting and worker task results should be ready");
+    }
+
+    fn test_response(value: &str) -> Response {
+        Response {
+            id: RequestId::from(value.to_owned()),
+            result: Some(serde_json::json!(value)),
+            error: None,
+        }
     }
 }

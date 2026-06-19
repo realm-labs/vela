@@ -2,7 +2,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, Write};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer};
+use crate::{JsonRpcResult, LaunchConfiguration, LspServer, rpc};
 
 pub fn run_stdio<R, W>(reader: R, writer: W) -> io::Result<()>
 where
@@ -113,12 +113,16 @@ where
 
     fn write_result(&mut self, result: JsonRpcResult) -> io::Result<()> {
         match result {
-            JsonRpcResult::Response(message) | JsonRpcResult::Notification(message) => {
-                self.write_message(&message)
+            JsonRpcResult::Response(response) => self.write_message(&rpc::serialize_message(
+                &lsp_server::Message::Response(response),
+            )),
+            JsonRpcResult::RawResponse(message) => self.write_message(&message),
+            JsonRpcResult::Notification(message) => {
+                self.write_message(&rpc::serialize_message(&message))
             }
             JsonRpcResult::Notifications(messages) => {
                 for message in messages {
-                    self.write_message(&message)?;
+                    self.write_message(&rpc::serialize_message(&message))?;
                 }
                 Ok(())
             }
@@ -289,17 +293,26 @@ impl ResultSummary {
             JsonRpcResult::Response(message) => Self {
                 kind: "response",
                 messages: 1,
+                bytes: rpc::serialize_message(&lsp_server::Message::Response(message.clone()))
+                    .len(),
+            },
+            JsonRpcResult::RawResponse(message) => Self {
+                kind: "response",
+                messages: 1,
                 bytes: message.len(),
             },
             JsonRpcResult::Notification(message) => Self {
                 kind: "notification",
                 messages: 1,
-                bytes: message.len(),
+                bytes: rpc::serialize_message(message).len(),
             },
             JsonRpcResult::Notifications(messages) => Self {
                 kind: "notifications",
                 messages: messages.len(),
-                bytes: messages.iter().map(String::len).sum(),
+                bytes: messages
+                    .iter()
+                    .map(|message| rpc::serialize_message(message).len())
+                    .sum(),
             },
             JsonRpcResult::None => Self::none(),
         }

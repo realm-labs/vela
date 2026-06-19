@@ -1403,6 +1403,19 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - Temporary `JsonRpcResult` payloads now carry typed `lsp_server::Response`
+    and `lsp_server::Message` values for normal responses, server requests,
+    and notifications; serialization is pushed to stdio/test edges and the
+    typed main loop sends messages directly. The only remaining raw response
+    payload is the JSON-RPC parse-error `id: null` escape hatch until
+    `JsonRpcResult` is removed. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server stdio`,
+    `cargo test -p vela_lsp_server tcp`,
+    `cargo test -p vela_lsp_server task`,
+    `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

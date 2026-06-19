@@ -449,12 +449,13 @@ fn spawn_lane_worker(lane: TaskLane) -> (Sender<TaskJob>, Receiver<TaskResult>) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lsp_server::Response;
     use std::time::Duration;
     use vela_language_service::LanguageServiceDatabases;
 
     #[test]
     fn task_result_preserves_json_rpc_result() {
-        let result = JsonRpcResult::Response("{\"jsonrpc\":\"2.0\"}".to_owned());
+        let result = JsonRpcResult::Response(test_response("main"));
 
         let task_result = TaskResult::response(result.clone());
 
@@ -490,13 +491,13 @@ mod tests {
         let scheduler = TaskScheduler::new();
 
         scheduler.spawn(TaskLane::Latency, || {
-            JsonRpcResult::Response("latency".to_owned())
+            JsonRpcResult::Response(test_response("latency"))
         });
         scheduler.spawn(TaskLane::Formatting, || {
-            JsonRpcResult::Response("formatting".to_owned())
+            JsonRpcResult::Response(test_response("formatting"))
         });
         scheduler.spawn(TaskLane::Worker, || {
-            JsonRpcResult::Response("worker".to_owned())
+            JsonRpcResult::Response(test_response("worker"))
         });
 
         let latency = scheduler
@@ -517,15 +518,15 @@ mod tests {
         assert_eq!(worker.lane(), TaskLane::Worker);
         assert_eq!(
             latency.into_result(),
-            JsonRpcResult::Response("latency".to_owned())
+            JsonRpcResult::Response(test_response("latency"))
         );
         assert_eq!(
             formatting.into_result(),
-            JsonRpcResult::Response("formatting".to_owned())
+            JsonRpcResult::Response(test_response("formatting"))
         );
         assert_eq!(
             worker.into_result(),
-            JsonRpcResult::Response("worker".to_owned())
+            JsonRpcResult::Response(test_response("worker"))
         );
     }
 
@@ -539,7 +540,7 @@ mod tests {
                 Some("VelaLspWorkerTask"),
                 "worker thread should still identify the lane"
             );
-            JsonRpcResult::Response("references".to_owned())
+            JsonRpcResult::Response(test_response("references"))
         });
 
         let task = scheduler
@@ -551,7 +552,7 @@ mod tests {
         assert_eq!(task.method(), Some("textDocument/references"));
         assert_eq!(
             task.into_result(),
-            JsonRpcResult::Response("references".to_owned())
+            JsonRpcResult::Response(test_response("references"))
         );
     }
 
@@ -567,7 +568,7 @@ mod tests {
             "textDocument/formatting",
             request_id.clone(),
             token.clone(),
-            || JsonRpcResult::Response("formatted".to_owned()),
+            || JsonRpcResult::Response(test_response("formatted")),
         );
 
         let task = scheduler
@@ -585,7 +586,15 @@ mod tests {
         assert!(!generation.is_cancelled());
         assert_eq!(
             task.into_result(),
-            JsonRpcResult::Response("formatted".to_owned())
+            JsonRpcResult::Response(test_response("formatted"))
         );
+    }
+
+    fn test_response(value: &str) -> Response {
+        Response {
+            id: RequestId::from(value.to_owned()),
+            result: Some(serde_json::json!(value)),
+            error: None,
+        }
     }
 }

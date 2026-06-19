@@ -1508,7 +1508,8 @@ mod tests {
             panic!("expected watched-file registration notification");
         };
         let registration: serde_json::Value =
-            serde_json::from_str(&registration).expect("registration should be JSON");
+            serde_json::from_str(&crate::rpc::serialize_message(&registration))
+                .expect("registration should be JSON");
         assert_eq!(
             registration["method"],
             serde_json::json!("client/registerCapability")
@@ -1559,7 +1560,8 @@ mod tests {
             panic!("expected watched-file registration notification");
         };
         let registration: serde_json::Value =
-            serde_json::from_str(&registration).expect("registration should be JSON");
+            serde_json::from_str(&crate::rpc::serialize_message(&registration))
+                .expect("registration should be JSON");
         let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
             .as_array()
             .expect("watchers should be an array");
