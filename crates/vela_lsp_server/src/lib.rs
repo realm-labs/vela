@@ -20,6 +20,7 @@ pub mod main_loop;
 mod protocol;
 mod queries;
 mod references;
+mod reload;
 mod rename;
 mod rpc;
 mod selection;
@@ -532,7 +533,7 @@ impl LspServer {
         })
     }
 
-    fn schema_path(&self) -> Option<&str> {
+    pub(crate) fn schema_path(&self) -> Option<&str> {
         self.config
             .as_ref()
             .and_then(|config| config.schema().path())

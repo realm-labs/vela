@@ -4,7 +4,6 @@ use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
-    FileChangeType,
 };
 use vela_language_service::WorkspaceRoot;
 
@@ -20,6 +19,7 @@ use crate::{
         lsp_supports_work_done_progress, workspace_roots_from_lsp_initialize,
     },
     publish_diagnostics_notification,
+    reload::{ReloadOperation, ReloadScheduler, ReloadWork},
     rpc::request_id_from_lsp,
     success_response,
     transport::{ResultSummary, messages_from_result},
@@ -30,6 +30,7 @@ pub(crate) struct GlobalState {
     sender: Sender<Message>,
     launch_configuration: LaunchConfiguration,
     request_queue: RequestQueue,
+    reload_scheduler: ReloadScheduler,
     server: LspServer,
 }
 
@@ -40,6 +41,7 @@ impl GlobalState {
             sender,
             launch_configuration,
             request_queue: RequestQueue::default(),
+            reload_scheduler: ReloadScheduler::default(),
             server,
         }
     }
@@ -181,7 +183,11 @@ impl GlobalState {
             let root = WorkspaceRoot::from(folder.uri.to_string());
             workspace_roots.insert(root.path().to_owned());
         }
-        self.apply_config_change(ConfigChange::from_workspace_roots(workspace_roots));
+        self.reload_scheduler
+            .schedule_workspace_roots(workspace_roots);
+        for work in self.reload_scheduler.drain() {
+            self.apply_reload_work(work);
+        }
         self.publish_workspace_diagnostics()
     }
 
@@ -189,16 +195,14 @@ impl GlobalState {
         &mut self,
         params: DidChangeWatchedFilesParams,
     ) -> JsonRpcResult {
-        for change in coalesced_watched_file_changes(params.changes) {
-            let uri = change.uri.to_string();
-            let config_change = if change.typ == FileChangeType::DELETED {
-                self.server.remove_watched_file(&uri)
-            } else {
-                self.server.upsert_watched_file(&uri)
-            };
-            if let Some(config_change) = config_change {
-                self.apply_config_change(config_change);
-            }
+        let schema_path = self.server.schema_path().map(str::to_owned);
+        self.reload_scheduler.schedule_watched_files(
+            params.changes,
+            schema_path.as_deref(),
+            &self.server.open_documents,
+        );
+        for work in self.reload_scheduler.drain() {
+            self.apply_reload_work(work);
         }
         self.publish_workspace_diagnostics()
     }
@@ -214,6 +218,23 @@ impl GlobalState {
             with_work_done_progress(result, "Vela workspace diagnostics")
         } else {
             result
+        }
+    }
+
+    fn apply_reload_work(&mut self, work: ReloadWork) {
+        match work {
+            ReloadWork::WatchedFile { uri, operation, .. } => {
+                let config_change = match operation {
+                    ReloadOperation::Upsert => self.server.upsert_watched_file(&uri),
+                    ReloadOperation::Remove => self.server.remove_watched_file(&uri),
+                };
+                if let Some(config_change) = config_change {
+                    self.apply_config_change(config_change);
+                }
+            }
+            ReloadWork::WorkspaceRoots { roots, .. } => {
+                self.apply_config_change(ConfigChange::from_workspace_roots(roots));
+            }
         }
     }
 }
@@ -238,26 +259,4 @@ impl RequestQueue {
     fn finish(&mut self, id: &str) {
         self.incoming.remove(id);
     }
-}
-
-fn coalesced_watched_file_changes(changes: Vec<lsp_types::FileEvent>) -> Vec<lsp_types::FileEvent> {
-    let mut latest_by_uri = std::collections::BTreeMap::<String, (usize, FileChangeType)>::new();
-    for (index, change) in changes.into_iter().enumerate() {
-        latest_by_uri.insert(change.uri.to_string(), (index, change.typ));
-    }
-
-    let mut events = latest_by_uri
-        .into_iter()
-        .map(|(uri, (index, typ))| {
-            (
-                index,
-                lsp_types::FileEvent {
-                    uri: uri.parse().expect("coalesced URI should remain valid"),
-                    typ,
-                },
-            )
-        })
-        .collect::<Vec<_>>();
-    events.sort_by_key(|(index, _)| *index);
-    events.into_iter().map(|(_, event)| event).collect()
 }

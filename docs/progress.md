@@ -673,6 +673,14 @@ boundary, including a native LSP regression for UTF-16 member completion after
 a non-BMP character. Response projection and negotiated position encoding still
 need to move behind this boundary before the checklist item can close.
 
+M20.5 RA-style main-loop update: Phase 2.5 now has a `reload.rs` scheduler
+boundary. Typed watched-file batches are coalesced, classified as
+config/schema/source/other reload work, assigned reload generations, and routed
+through `GlobalState` before the existing config/schema/source mutation paths
+run; workspace-folder changes also enter this scheduler before config
+application. Open-file-priority metadata is recorded, but non-blocking
+open-file-prioritized execution remains the next scheduler gap.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

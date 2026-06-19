@@ -470,8 +470,12 @@ cargo test -p vela_lsp_server lifecycle
     UTF-16, surrogate-pair, CRLF, oversized range, and member-completion
     regression coverage. Response projection, negotiated encoding storage, and
     future `lsp/from_proto.rs` / `lsp/to_proto.rs` ownership remain open.
-- [ ] Introduce `reload.rs` or an equivalent reload scheduler for watched-file,
+- [x] Introduce `reload.rs` or an equivalent reload scheduler for watched-file,
   schema, config, workspace-root, and disk-source changes.
+  - `ReloadScheduler` now coalesces typed watched-file batches, classifies
+    config/schema/source targets, assigns reload generations, records
+    open-document priority metadata, and schedules workspace-root reload work
+    before `GlobalState` applies the existing config/schema/source mutations.
 - [ ] Keep reload work generation-based and open-file-prioritized so watcher
   activity cannot block typing-sensitive notifications.
 - [ ] Introduce tracing/log-file startup and request-span diagnostics that use
