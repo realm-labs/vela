@@ -41,6 +41,7 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
             "queries.rs",
             "legacy query compatibility module compiled only in test builds",
         ),
+        ("profile.rs", "profile JSONL events"),
         ("rpc.rs", "JSON-RPC wire serialization boundary"),
         (
             "stdio.rs",
@@ -51,7 +52,7 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
         ("tracing.rs", "trace JSONL events"),
         (
             "transport.rs",
-            "profile JSONL events and typed harness fixtures",
+            "typed protocol metadata extraction and typed harness fixtures",
         ),
         (
             "transport/config_tests.rs",

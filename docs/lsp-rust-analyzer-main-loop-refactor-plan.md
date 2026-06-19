@@ -1678,8 +1678,12 @@ helper references are allowed only if they describe external JSON fixtures.
 
 ### Phase 8: Main-Loop Profiling And Debugging
 
-- [ ] Move profile support out of the old stdio transport and into a dedicated
+- [x] Move profile support out of the old stdio transport and into a dedicated
   `profile.rs`.
+  - `RequestProfiler` now lives in `profile.rs`, with shared profile metadata
+    and summary traits used by both the typed main loop and the legacy
+    test-only stdio harness. Validated with
+    `cargo test -p vela_lsp_server profile`.
 - [ ] Move trace/log setup into an explicit module that can write to stderr or
   a log file without polluting stdio protocol output.
 - [ ] Keep the VS Code settings `vela.server.profile.enabled`,

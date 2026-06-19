@@ -14,6 +14,7 @@ mod lifecycle;
 mod line_index;
 mod lsp;
 pub mod main_loop;
+mod profile;
 mod protocol;
 #[cfg(test)]
 mod queries;

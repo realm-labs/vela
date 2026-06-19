@@ -1,15 +1,13 @@
-use std::fs::{File, OpenOptions};
 use std::io::{self, BufReader};
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::thread;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message};
 #[cfg(test)]
 use lsp_server::{Notification, Request, RequestId, Response, ResponseError};
 
-use crate::{LaunchConfiguration, rpc};
+use crate::{LaunchConfiguration, profile, rpc};
 
 pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let listener = bind_loopback_tcp_listener(address)?;
@@ -183,98 +181,6 @@ pub(crate) fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<
     anyhow::bail!("unsupported JSON-RPC response id `{value}`")
 }
 
-pub(crate) struct RequestProfiler {
-    writer: Option<File>,
-    slow_ms: u64,
-}
-
-impl RequestProfiler {
-    pub(crate) fn from_configuration(configuration: &LaunchConfiguration) -> anyhow::Result<Self> {
-        let Some(path) = configuration.profile_path() else {
-            return Ok(Self {
-                writer: None,
-                slow_ms: configuration.profile_slow_ms(),
-            });
-        };
-        let writer = OpenOptions::new().create(true).append(true).open(path)?;
-        let mut profiler = Self {
-            writer: Some(writer),
-            slow_ms: configuration.profile_slow_ms(),
-        };
-        profiler.session_start(path)?;
-        Ok(profiler)
-    }
-
-    fn session_start(&mut self, path: &str) -> anyhow::Result<()> {
-        self.write_json(serde_json::json!({
-            "event": "session_start",
-            "timestampMs": timestamp_ms(),
-            "pid": std::process::id(),
-            "profilePath": path,
-            "slowMs": self.slow_ms,
-            "transport": "lsp-server"
-        }))
-    }
-
-    pub(crate) fn begin(
-        &mut self,
-        sequence: u64,
-        metadata: &MessageMetadata,
-        input_bytes: usize,
-    ) -> anyhow::Result<()> {
-        self.write_json(serde_json::json!({
-            "event": "begin",
-            "timestampMs": timestamp_ms(),
-            "seq": sequence,
-            "kind": metadata.kind,
-            "method": metadata.method,
-            "id": metadata.id,
-            "documentUri": metadata.document_uri,
-            "inputBytes": input_bytes
-        }))
-    }
-
-    pub(crate) fn end(
-        &mut self,
-        sequence: u64,
-        metadata: &MessageMetadata,
-        input_bytes: usize,
-        handle_ms: u64,
-        write_ms: u64,
-        summary: &ResultSummary,
-    ) -> anyhow::Result<()> {
-        let total_ms = handle_ms.saturating_add(write_ms);
-        self.write_json(serde_json::json!({
-            "event": "end",
-            "timestampMs": timestamp_ms(),
-            "seq": sequence,
-            "kind": metadata.kind,
-            "method": metadata.method,
-            "id": metadata.id,
-            "documentUri": metadata.document_uri,
-            "inputBytes": input_bytes,
-            "resultKind": summary.kind,
-            "outputMessages": summary.messages,
-            "outputBytes": summary.bytes,
-            "handleMs": handle_ms,
-            "writeMs": write_ms,
-            "totalMs": total_ms,
-            "slow": total_ms >= self.slow_ms
-        }))
-    }
-
-    fn write_json(&mut self, value: serde_json::Value) -> anyhow::Result<()> {
-        let Some(writer) = self.writer.as_mut() else {
-            return Ok(());
-        };
-        serde_json::to_writer(&mut *writer, &value)?;
-        use std::io::Write as _;
-        writer.write_all(b"\n")?;
-        writer.flush()?;
-        Ok(())
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct MessageMetadata {
     kind: &'static str,
@@ -325,6 +231,24 @@ impl MessageMetadata {
 
     pub(crate) fn document_uri(&self) -> Option<&str> {
         self.document_uri.as_deref()
+    }
+}
+
+impl profile::ProfileMetadata for MessageMetadata {
+    fn kind(&self) -> &'static str {
+        self.kind()
+    }
+
+    fn method(&self) -> Option<&str> {
+        self.method()
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.id()
+    }
+
+    fn document_uri(&self) -> Option<&str> {
+        self.document_uri()
     }
 }
 
@@ -385,18 +309,26 @@ impl ResultSummary {
     }
 }
 
+impl profile::ProfileSummary for ResultSummary {
+    fn kind(&self) -> &'static str {
+        self.kind()
+    }
+
+    fn messages(&self) -> usize {
+        self.messages()
+    }
+
+    fn bytes(&self) -> usize {
+        self.bytes()
+    }
+}
+
 fn document_uri(value: &serde_json::Value) -> Option<String> {
     value
         .pointer("/textDocument/uri")
         .or_else(|| value.pointer("/uri"))
         .and_then(serde_json::Value::as_str)
         .map(str::to_owned)
-}
-
-pub(crate) fn timestamp_ms() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_millis())
 }
 
 #[cfg(test)]
@@ -1154,7 +1086,7 @@ mod tests {
         std::env::temp_dir().join(format!(
             "vela_lsp_trace_{name}_{}_{}.jsonl",
             std::process::id(),
-            super::timestamp_ms()
+            crate::profile::timestamp_ms()
         ))
     }
 }

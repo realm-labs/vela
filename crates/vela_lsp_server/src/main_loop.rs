@@ -6,9 +6,10 @@ use lsp_server::{Connection, Message};
 use crate::{
     LaunchConfiguration,
     global_state::GlobalState,
+    profile::RequestProfiler,
     task::TaskResult,
     tracing::TraceSink,
-    transport::{MessageMetadata, RequestProfiler, serialize_json_rpc_message},
+    transport::{MessageMetadata, serialize_json_rpc_message},
 };
 
 const MAIN_LOOP_THREAD_NAME: &str = "VelaLspMainLoop";

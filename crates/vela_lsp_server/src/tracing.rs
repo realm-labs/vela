@@ -3,7 +3,8 @@ use std::io::Write;
 
 use crate::{
     LaunchConfiguration,
-    transport::{MessageMetadata, ResultSummary, timestamp_ms},
+    profile::timestamp_ms,
+    transport::{MessageMetadata, ResultSummary},
 };
 
 pub(crate) struct TraceSink {

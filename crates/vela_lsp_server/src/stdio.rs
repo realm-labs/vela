@@ -1,8 +1,11 @@
-use std::fs::{File, OpenOptions};
 use std::io::{self, BufRead, Write};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer, rpc};
+use crate::{
+    JsonRpcResult, LaunchConfiguration, LspServer,
+    profile::{ProfileMetadata, ProfileSummary, RequestProfiler},
+    rpc,
+};
 
 pub fn run_stdio<R, W>(reader: R, writer: W) -> io::Result<()>
 where
@@ -143,96 +146,6 @@ where
     }
 }
 
-struct RequestProfiler {
-    writer: Option<File>,
-    slow_ms: u64,
-}
-
-impl RequestProfiler {
-    fn from_configuration(configuration: &LaunchConfiguration) -> io::Result<Self> {
-        let Some(path) = configuration.profile_path() else {
-            return Ok(Self {
-                writer: None,
-                slow_ms: configuration.profile_slow_ms(),
-            });
-        };
-        let writer = OpenOptions::new().create(true).append(true).open(path)?;
-        let mut profiler = Self {
-            writer: Some(writer),
-            slow_ms: configuration.profile_slow_ms(),
-        };
-        profiler.session_start(path)?;
-        Ok(profiler)
-    }
-
-    fn session_start(&mut self, path: &str) -> io::Result<()> {
-        self.write_json(serde_json::json!({
-            "event": "session_start",
-            "timestampMs": timestamp_ms(),
-            "pid": std::process::id(),
-            "profilePath": path,
-            "slowMs": self.slow_ms
-        }))
-    }
-
-    fn begin(
-        &mut self,
-        sequence: u64,
-        metadata: &MessageMetadata,
-        input_bytes: usize,
-    ) -> io::Result<()> {
-        self.write_json(serde_json::json!({
-            "event": "begin",
-            "timestampMs": timestamp_ms(),
-            "seq": sequence,
-            "kind": metadata.kind,
-            "method": metadata.method,
-            "id": metadata.id,
-            "documentUri": metadata.document_uri,
-            "inputBytes": input_bytes
-        }))
-    }
-
-    fn end(
-        &mut self,
-        sequence: u64,
-        metadata: &MessageMetadata,
-        input_bytes: usize,
-        handle_ms: u64,
-        write_ms: u64,
-        summary: &ResultSummary,
-    ) -> io::Result<()> {
-        let total_ms = handle_ms.saturating_add(write_ms);
-        self.write_json(serde_json::json!({
-            "event": "end",
-            "timestampMs": timestamp_ms(),
-            "seq": sequence,
-            "kind": metadata.kind,
-            "method": metadata.method,
-            "id": metadata.id,
-            "documentUri": metadata.document_uri,
-            "inputBytes": input_bytes,
-            "resultKind": summary.kind,
-            "outputMessages": summary.messages,
-            "outputBytes": summary.bytes,
-            "handleMs": handle_ms,
-            "writeMs": write_ms,
-            "totalMs": total_ms,
-            "slow": total_ms >= self.slow_ms
-        }))
-    }
-
-    fn write_json(&mut self, value: serde_json::Value) -> io::Result<()> {
-        let Some(writer) = self.writer.as_mut() else {
-            return Ok(());
-        };
-        serde_json::to_writer(&mut *writer, &value).map_err(io::Error::other)?;
-        writer.write_all(b"\n")?;
-        writer.flush()?;
-        Ok(())
-    }
-}
-
 #[derive(Debug)]
 struct MessageMetadata {
     kind: &'static str,
@@ -269,6 +182,24 @@ impl MessageMetadata {
             id,
             document_uri: document_uri(&value),
         }
+    }
+}
+
+impl ProfileMetadata for MessageMetadata {
+    fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    fn method(&self) -> Option<&str> {
+        self.method.as_deref()
+    }
+
+    fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+
+    fn document_uri(&self) -> Option<&str> {
+        self.document_uri.as_deref()
     }
 }
 
@@ -313,6 +244,20 @@ impl ResultSummary {
     }
 }
 
+impl ProfileSummary for ResultSummary {
+    fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    fn messages(&self) -> usize {
+        self.messages
+    }
+
+    fn bytes(&self) -> usize {
+        self.bytes
+    }
+}
+
 fn document_uri(value: &serde_json::Value) -> Option<String> {
     value
         .pointer("/params/textDocument/uri")
@@ -323,12 +268,6 @@ fn document_uri(value: &serde_json::Value) -> Option<String> {
 
 fn elapsed_ms(start: Instant) -> u64 {
     u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
-}
-
-fn timestamp_ms() -> u128 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |duration| duration.as_millis())
 }
 
 #[cfg(test)]

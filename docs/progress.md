@@ -825,6 +825,11 @@ guard for protocol boundaries, extension payloads, completion resolve data,
 configuration payloads, schema/protocol JSON, profiling/tracing JSONL, and
 test-only compatibility fixtures.
 
+M20.5 RA-style main-loop update: Phase 8 profiling cleanup has started.
+`RequestProfiler` now lives in `vela_lsp_server::profile` instead of the typed
+transport or legacy stdio harness, while both call sites share the same profile
+metadata and summary traits.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
