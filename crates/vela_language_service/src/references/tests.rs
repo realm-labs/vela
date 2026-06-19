@@ -178,6 +178,26 @@ fn reference_query_reports_dynamic_any_resolution() {
 }
 
 #[test]
+fn reference_query_reports_source_any_return_receiver_as_dynamic() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().level }"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let use_line = text.lines().nth(3).expect("member use line should exist");
+
+    let result = databases.reference_query(
+        &document,
+        Position::new(3, use_line.find("level").expect("member use")),
+        true,
+    );
+
+    assert_eq!(result.resolution(), ReferenceResolution::DynamicAny);
+    assert!(result.references().is_empty(), "{result:?}");
+}
+
+#[test]
 fn reference_query_reports_unresolved_resolution() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() -> i64 { return missing }";

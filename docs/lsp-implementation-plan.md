@@ -358,7 +358,8 @@ coverage complete based only on the older capability phases.
     schema fields, methods including source/schema function-return receivers,
     trait impl uses, enum variants, record-variant fields, schema-backed source
     spans, active-document-only highlights, shadowed locals, and dynamic or
-    unresolved empty results.
+    unresolved empty results, including source functions returning `Any` as
+    member receivers.
   - Current fixtures cover service and native LSP call hierarchy for source
     functions, imported function aliases, source methods, trait impl methods,
     trait default/interface methods, schema methods including
@@ -1457,8 +1458,10 @@ Tests:
 - [x] `references_find_schema_variant_constructors_and_patterns`
 - [x] `lsp_references_find_schema_variant_constructors_and_patterns`
 - [x] `reference_query_reports_dynamic_any_resolution`
+- [x] `reference_query_reports_source_any_return_receiver_as_dynamic`
 - [x] `reference_query_reports_unresolved_resolution`
 - [x] `lsp_references_return_empty_for_dynamic_and_unresolved_targets`
+- [x] `lsp_references_return_empty_for_source_any_return_receiver_member`
 - [x] `document_highlight_marks_local_declaration_and_reads`
 - [x] `document_highlight_marks_import_and_calls_in_active_document`
 - [x] `document_highlight_imported_symbol_stays_in_active_document`
@@ -1476,7 +1479,9 @@ Tests:
 - [x] `document_highlight_marks_read_write_call`
 - [x] `lsp_document_highlight_marks_read_write_call`
 - [x] `document_highlight_returns_empty_for_dynamic_and_unresolved_targets`
+- [x] `document_highlight_returns_empty_for_source_any_return_receiver_member`
 - [x] `lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets`
+- [x] `lsp_document_highlight_returns_empty_for_source_any_return_receiver_member`
 - [x] `document_highlight_marks_script_method_calls`
 - [x] `lsp_document_highlight_marks_script_method_calls`
 - [x] `document_highlight_marks_source_method_calls_on_source_function_return_receivers`

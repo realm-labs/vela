@@ -592,6 +592,27 @@ pub fn dynamic(value: Any) { return value.level }";
     );
 }
 
+#[test]
+fn document_highlight_returns_empty_for_source_any_return_receiver_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().level }"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let use_line = text.lines().nth(3).expect("member use line should exist");
+
+    let highlights = databases.document_highlights(
+        &document,
+        Position::new(3, use_line.find("level").expect("member use")),
+    );
+
+    assert!(
+        highlights.is_empty(),
+        "source Any return receivers must not invent highlight targets"
+    );
+}
+
 fn assert_reference(
     references: &[Reference],
     document_id: &DocumentId,

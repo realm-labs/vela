@@ -56,6 +56,49 @@ pub fn dynamic(value: Any) { return value.level }";
 }
 
 #[test]
+fn lsp_document_highlight_returns_empty_for_source_any_return_receiver_member() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["documentHighlightProvider"],
+        true
+    );
+
+    let text = "\
+struct Player { level: i64 }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().level }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    assert_empty_highlights(
+        &mut server,
+        2,
+        uri,
+        2,
+        line(text, 2).find("level").expect("member use"),
+    );
+}
+
+#[test]
 fn lsp_document_highlight_imported_symbol_stays_in_active_document() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

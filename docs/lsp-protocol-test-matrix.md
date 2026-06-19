@@ -314,7 +314,7 @@ These were the first places compared against the matrix before acceptance:
    source members, dynamic receiver members, and source functions returning
    `Any` used as receivers where applicable, plus `references` and
    `documentHighlight` empty results for unresolved names and dynamic receiver
-   members, plus
+   members, including source functions returning `Any` used as receivers, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
    calls, and non-callable symbols, plus stale host completion clearing and
    missing-schema diagnostics after schema deletion, plus inlay-hint
