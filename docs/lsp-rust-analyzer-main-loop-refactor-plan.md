@@ -444,10 +444,10 @@ cargo test -p vela_lsp_server lifecycle
   notification projection in dispatch/main-loop code.
 - [x] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and
   `$/cancelRequest` to typed dispatch.
-- [ ] Preserve current lifecycle behavior for repeated initialize, malformed
+- [x] Preserve current lifecycle behavior for repeated initialize, malformed
   initialize, shutdown before initialize, requests after shutdown, exit, and
   unsupported methods.
-- [ ] Preserve `--no-watch-files` and empty host schema behavior.
+- [x] Preserve `--no-watch-files` and empty host schema behavior.
 
 Validation:
 

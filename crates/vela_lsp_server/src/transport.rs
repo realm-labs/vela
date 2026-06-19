@@ -748,6 +748,256 @@ mod tests {
     }
 
     #[test]
+    fn typed_dispatcher_repeated_initialize_keeps_original_watcher_roots() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "rootUri": "file:///workspace",
+                    "initializationOptions": {
+                        "host": {
+                            "schema": "target/vela/schema.json"
+                        }
+                    },
+                    "capabilities": {
+                        "workspace": {
+                            "didChangeWatchedFiles": {
+                                "dynamicRegistration": true
+                            }
+                        }
+                    }
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "rootUri": "file:///other",
+                    "capabilities": {}
+                }
+            })))
+            .expect("repeated initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "initialized",
+                "params": {}
+            })))
+            .expect("initialized should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, LaunchConfiguration::new())
+            .expect("typed connection should run");
+
+        let messages = client_receiver.try_iter().collect::<Vec<_>>();
+        let responses = messages
+            .iter()
+            .filter_map(|message| match message {
+                Message::Response(response) => Some(response),
+                Message::Request(_) | Message::Notification(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(responses.len(), 2, "{responses:?}");
+        assert_eq!(responses[0].id.to_string(), "1");
+        assert!(responses[0].error.is_none());
+        assert_eq!(responses[1].id.to_string(), "2");
+        let repeated_error = responses[1]
+            .error
+            .as_ref()
+            .expect("repeated initialize should error");
+        assert_eq!(repeated_error.code, -32600);
+        assert_eq!(repeated_error.message, "server is already initialized");
+
+        let registration = messages
+            .iter()
+            .find_map(|message| match message {
+                Message::Request(request) if request.method == "client/registerCapability" => {
+                    Some(&request.params)
+                }
+                Message::Notification(notification)
+                    if notification.method == "client/registerCapability" =>
+                {
+                    Some(&notification.params)
+                }
+                Message::Request(_) | Message::Response(_) | Message::Notification(_) => None,
+            })
+            .unwrap_or_else(|| panic!("initialized should register watched files: {messages:?}"));
+        let watchers = registration["registrations"][0]["registerOptions"]["watchers"]
+            .as_array()
+            .expect("watcher registration should include watchers");
+        assert!(watchers.iter().any(|watcher| {
+            watcher["globPattern"]["baseUri"] == "file:///workspace"
+                && watcher["globPattern"]["pattern"] == "**/*.vela"
+        }));
+        assert!(!watchers.iter().any(|watcher| {
+            watcher["globPattern"]["baseUri"] == "file:///other"
+                && watcher["globPattern"]["pattern"] == "**/*.vela"
+        }));
+    }
+
+    #[test]
+    fn typed_dispatcher_skips_watcher_registration_when_disabled() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+        let mut configuration = LaunchConfiguration::new();
+        configuration.set_watch_files_enabled(false);
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "rootUri": "file:///workspace",
+                    "capabilities": {
+                        "workspace": {
+                            "didChangeWatchedFiles": {
+                                "dynamicRegistration": true
+                            }
+                        }
+                    }
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "initialized",
+                "params": {}
+            })))
+            .expect("initialized should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, configuration).expect("typed connection should run");
+
+        let messages = client_receiver.try_iter().collect::<Vec<_>>();
+        assert!(messages.iter().any(|message| matches!(
+            message,
+            Message::Response(response)
+                if response.id.to_string() == "1" && response.error.is_none()
+        )));
+        assert!(!messages.iter().any(|message| matches!(
+            message,
+            Message::Request(request) if request.method == "client/registerCapability"
+        )));
+        assert!(!messages.iter().any(|message| matches!(
+            message,
+            Message::Notification(notification)
+                if notification.method == "client/registerCapability"
+        )));
+    }
+
+    #[test]
+    fn typed_dispatcher_ignores_empty_host_schema_for_watcher_registration() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "rootUri": "file:///workspace",
+                    "initializationOptions": {
+                        "host": {
+                            "schema": ""
+                        }
+                    },
+                    "capabilities": {
+                        "workspace": {
+                            "didChangeWatchedFiles": {
+                                "dynamicRegistration": true
+                            }
+                        }
+                    }
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "initialized",
+                "params": {}
+            })))
+            .expect("initialized should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, LaunchConfiguration::new())
+            .expect("typed connection should run");
+
+        let messages = client_receiver.try_iter().collect::<Vec<_>>();
+        let registration = messages
+            .iter()
+            .find_map(|message| match message {
+                Message::Request(request) if request.method == "client/registerCapability" => {
+                    Some(&request.params)
+                }
+                Message::Notification(notification)
+                    if notification.method == "client/registerCapability" =>
+                {
+                    Some(&notification.params)
+                }
+                Message::Request(_) | Message::Response(_) | Message::Notification(_) => None,
+            })
+            .unwrap_or_else(|| panic!("initialized should register watched files: {messages:?}"));
+        let watchers = registration["registrations"][0]["registerOptions"]["watchers"]
+            .as_array()
+            .expect("watcher registration should include watchers");
+        assert!(watchers.iter().any(|watcher| {
+            watcher["globPattern"]["baseUri"] == "file:///workspace"
+                && watcher["globPattern"]["pattern"] == "**/*.vela"
+        }));
+        assert!(watchers.iter().all(|watcher| {
+            !watcher["globPattern"]
+                .as_str()
+                .is_some_and(|pattern| pattern.ends_with("schema.json"))
+        }));
+    }
+
+    #[test]
     fn tcp_rejects_non_loopback_bind_address() {
         let error = super::bind_loopback_tcp_listener("0.0.0.0:0")
             .expect_err("non-loopback bind should be rejected");

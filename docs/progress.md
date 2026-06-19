@@ -642,6 +642,12 @@ notification misuse still delegates to the legacy bridge for the current
 invalid-request messages until notification migration removes that temporary
 path.
 
+M20.5 RA-style main-loop update: Phase 2 lifecycle preservation is now
+covered on the typed main-loop path for malformed and repeated initialize,
+shutdown-before-initialize, post-shutdown requests, request-shaped exit,
+cancelled request IDs, unsupported requests, `--no-watch-files`, and empty host
+schema watcher behavior.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
