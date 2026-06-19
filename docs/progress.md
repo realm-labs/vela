@@ -152,6 +152,10 @@ The plan checklist is closed with service and native LSP fixtures for local,
 private declaration, public import-aware, source-backed schema, collision,
 hot-reload ABI, schema ABI, and versioned-edit behavior.
 
+M20.5 Phase 3 update: native LSP incremental `didChange` coverage now proves a
+body-only edit in an imported defining file reparses only that document without
+rebuilding project or HIR indexes.
+
 M20.5 Phase 7 update: service and native LSP completion fixtures now suppress
 member and global fallback completions when a schema function returning `Any`
 is used as the receiver, matching the dynamic receiver boundary used by hover,

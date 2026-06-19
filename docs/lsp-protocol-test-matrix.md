@@ -328,7 +328,9 @@ These were the first places compared against the matrix before acceptance:
    service/protocol cross-file references for imported const/global value
    uses, cross-file hover for imported function/const/global use sites, and
    cross-file signature help for an imported source function with a defaulted
-   parameter.
+   parameter, plus protocol incrementality coverage proving a defining-file
+   function-body `didChange` reparses only the edited document without
+   rebuilding project or HIR indexes.
 
 ## Completion Criteria For This Matrix
 

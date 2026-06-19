@@ -86,6 +86,7 @@ mod completion_resolve;
 mod completion_struct;
 mod completion_type;
 mod formatting;
+mod incremental;
 mod inlay;
 mod inlay_suppression;
 mod lifecycle;

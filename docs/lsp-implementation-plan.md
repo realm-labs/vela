@@ -560,6 +560,7 @@ Tests:
 - [x] `cancelled_background_diagnostics_are_not_published`
 - [x] `open_file_recomputation_is_scheduled_before_workspace_work`
 - [x] `lsp_repeated_completion_queries_do_not_reparse_or_rebuild_hir`
+- [x] `lsp_did_change_body_edit_avoids_project_and_hir_rebuild`
 - [x] `scale_fixture_avoids_full_rebuild_per_edit`
 - [x] `larger_synthetic_workspace_reports_indexing_metrics`
 - [x] `million_line_synthetic_workspace_checkpoint_avoids_full_rebuild_per_edit`
@@ -569,6 +570,7 @@ Validation:
 
 ```bash
 cargo test -p vela_language_service incremental
+cargo test -p vela_lsp_server incremental
 cargo test -p vela_language_service million_line_synthetic_workspace_checkpoint -- --ignored
 ```
 
