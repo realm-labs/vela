@@ -1,6 +1,8 @@
 use std::fs;
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_reference, file_uri, line, temp_workspace};
 
@@ -69,7 +71,8 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -77,16 +80,18 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -96,7 +101,7 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn active(count: i64) -> QuestState {
@@ -110,7 +115,8 @@ pub fn main(state: QuestState) -> i64 {
     }
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -120,9 +126,10 @@ pub fn main(state: QuestState) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -133,7 +140,7 @@ pub fn main(state: QuestState) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
