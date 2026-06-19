@@ -283,10 +283,11 @@ These were the first places compared against the matrix before acceptance:
    locals and source fields, imported source function calls whose return type
    is source-owned, imported source method calls whose return type is
    source-owned, imported const/global values whose types are source-owned,
-   member access through imported source types, imported enum variant
-    constructors whose owner type is source-owned, and `definition` for
-   imported const/global value uses; the remaining audit is
-   broader cross-file type-definition coverage across W1.
+   imported source types nested inside builtin container type hints, member
+   access through imported source types, imported enum variant constructors
+   whose owner type is source-owned, and `definition` for imported
+   const/global value uses; the remaining audit is broader cross-file
+   type-definition coverage across W1.
 3. `textDocument/implementation` remains intentionally unadvertised until
    trait/impl implementation semantics are specified; lifecycle coverage now
    pins both the absent capability and direct request rejection.

@@ -21,6 +21,73 @@ fn lsp_type_definition_follows_imported_local_source_type_hint() {
 }
 
 #[test]
+fn lsp_type_definition_follows_imported_nested_container_source_type_hint() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let main_uri = "file:///workspace/scripts/game/main.vela";
+    let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+fn main() {
+    let bags: Array<Bag> = [];
+    return bags;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+    slots: i64,
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": inventory_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": inventory_text
+            }
+        }),
+    )));
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": main_text
+            }
+        }),
+    )));
+    let annotation_line = main_text.lines().nth(3).expect("local annotation line");
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": {
+                "line": 3,
+                "character": annotation_line
+                    .find("Bag")
+                    .expect("nested source type hint")
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"]["uri"], inventory_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(response["result"]["range"]["start"]["character"], 11);
+    assert_eq!(response["result"]["range"]["end"]["character"], 20);
+}
+
+#[test]
 fn lsp_type_definition_follows_imported_parameter_source_type_hint() {
     super::assert_imported_parameter_source_type_hint_definition();
 }
