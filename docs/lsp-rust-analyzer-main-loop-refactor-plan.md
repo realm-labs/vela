@@ -1910,6 +1910,9 @@ node editors/vscode/scripts/validate-package.js
   - Converted the imported type-definition fixture off
     `LspServer::handle_json` and the prohibited multi-level `super` import
     onto the shared typed request/notification helpers.
+  - Converted the top-level type-definition fixture off
+    `LspServer::handle_json` and onto a crate-root test import plus the
+    shared typed request/notification helpers.
   - Converted the cross-file call hierarchy fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
