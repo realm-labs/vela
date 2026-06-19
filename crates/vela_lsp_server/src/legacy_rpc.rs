@@ -41,9 +41,9 @@ impl Eq for JsonRpcResult {}
 
 impl JsonRpcResult {
     #[must_use]
-    pub fn into_response(self) -> Option<String> {
+    pub fn into_response_message(self) -> Option<Response> {
         match self {
-            Self::Response(response) => Some(serialize_message(&Message::Response(response))),
+            Self::Response(response) => Some(response),
             Self::Notification(_) | Self::Notifications(_) | Self::None => None,
         }
     }

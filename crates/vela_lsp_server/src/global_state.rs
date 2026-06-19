@@ -1921,7 +1921,7 @@ mod tests {
             })
             .to_string(),
         );
-        assert!(result.into_response().is_some());
+        assert!(result.into_response_message().is_some());
         assert!(state.is_exited());
     }
 
@@ -2013,10 +2013,9 @@ mod tests {
         let result = state.handle_message_result(&request, "");
 
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed hover should return a response");
-        let response: serde_json::Value =
-            serde_json::from_str(&response).expect("response should be JSON");
+        let response: serde_json::Value = response_json(response);
         assert_eq!(response["id"], 8);
         assert_eq!(response["result"]["contents"]["kind"], "markdown");
         let value = response["result"]["contents"]["value"]
@@ -2070,10 +2069,9 @@ mod tests {
         let result = state.handle_message_result(&request, "");
 
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed signatureHelp should return a response");
-        let response: serde_json::Value =
-            serde_json::from_str(&response).expect("response should be JSON");
+        let response: serde_json::Value = response_json(response);
         assert_eq!(response["id"], 9);
         assert_eq!(response["result"]["activeSignature"], 0);
         assert_eq!(response["result"]["activeParameter"], 1);
@@ -3156,9 +3154,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed navigation should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_prepare_call_hierarchy_response(
@@ -3188,9 +3186,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed prepareCallHierarchy should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_incoming_calls_response(
@@ -3210,9 +3208,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed incomingCalls should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_outgoing_calls_response(
@@ -3232,9 +3230,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed outgoingCalls should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_rename_response(
@@ -3266,9 +3264,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed rename should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_prepare_rename_response(
@@ -3295,9 +3293,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed prepareRename should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_references_response(
@@ -3332,9 +3330,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed references should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_document_highlight_response(
@@ -3365,9 +3363,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed documentHighlight should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_scheduled_response(
@@ -3506,9 +3504,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed selectionRange should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_semantic_tokens_full_response(
@@ -3561,9 +3559,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed semanticTokens/full/delta should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_semantic_tokens_range_response(
@@ -3590,9 +3588,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed semanticTokens/range should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_code_action_response(
@@ -3622,9 +3620,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed codeAction should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn typed_inlay_hint_response(
@@ -3650,9 +3648,9 @@ pub fn main(amount: i64) -> i64 {
         });
         let result = state.handle_message_result(&request, "");
         let response = result
-            .into_response()
+            .into_response_message()
             .expect("typed inlayHint should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_json(response)
     }
 
     fn json_selection_chain(range: &serde_json::Value) -> Vec<&serde_json::Value> {
@@ -3686,7 +3684,7 @@ pub fn main(amount: i64) -> i64 {
         let result = state.handle_message_result(&request, "");
         let response =
             formatting_task_response(state, result, "typed formatting should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_string_json(&response)
     }
 
     fn typed_range_formatting_response(
@@ -3717,7 +3715,7 @@ pub fn main(amount: i64) -> i64 {
             result,
             "typed rangeFormatting should return a response",
         );
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_string_json(&response)
     }
 
     fn typed_on_type_formatting_response(
@@ -3747,7 +3745,7 @@ pub fn main(amount: i64) -> i64 {
             result,
             "typed onTypeFormatting should return a response",
         );
-        serde_json::from_str(&response).expect("response should be JSON")
+        response_string_json(&response)
     }
 
     fn formatting_task_response(
@@ -3755,8 +3753,8 @@ pub fn main(amount: i64) -> i64 {
         result: JsonRpcResult,
         expected: &str,
     ) -> String {
-        if let Some(response) = result.into_response() {
-            return response;
+        if let Some(response) = result.into_response_message() {
+            return crate::rpc::serialize_message(&Message::Response(response));
         }
         let task = state
             .task_scheduler()
@@ -3769,6 +3767,15 @@ pub fn main(amount: i64) -> i64 {
             panic!("{expected}");
         };
         crate::rpc::serialize_message(message)
+    }
+
+    fn response_json(response: Response) -> serde_json::Value {
+        serde_json::from_str(&crate::rpc::serialize_message(&Message::Response(response)))
+            .expect("response should be JSON")
+    }
+
+    fn response_string_json(response: &str) -> serde_json::Value {
+        serde_json::from_str(response).expect("response should be JSON")
     }
 
     fn assert_no_messages(messages: Vec<Message>) {

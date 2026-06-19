@@ -22,10 +22,10 @@ fn notification(method: &str, params: JsonValue) -> String {
 }
 
 fn response_value(result: JsonRpcResult) -> JsonValue {
-    let Some(response) = result.into_response() else {
+    let Some(response) = result.into_response_message() else {
         panic!("request should return a JSON-RPC response");
     };
-    json_value(&response)
+    message_value(&Message::Response(response))
 }
 
 fn notification_value(result: JsonRpcResult) -> JsonValue {

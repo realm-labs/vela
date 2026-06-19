@@ -1792,6 +1792,10 @@ node editors/vscode/scripts/validate-package.js
   - Replaced legacy notification result extractors that returned serialized
     JSON strings with typed `lsp_server::Message` extractors, so remaining
     compatibility tests consume typed notifications before any JSON assertion.
+  - Replaced the legacy response result extractor that returned serialized
+    JSON strings with a typed `lsp_server::Response` extractor, so remaining
+    compatibility tests and typed dispatch tests serialize responses only at
+    JSON assertion boundaries.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.
