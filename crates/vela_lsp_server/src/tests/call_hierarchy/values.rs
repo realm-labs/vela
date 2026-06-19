@@ -1,11 +1,14 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_call_range, line};
 
 #[test]
 fn lsp_call_hierarchy_uses_imported_function_alias_calls() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -13,7 +16,7 @@ fn lsp_call_hierarchy_uses_imported_function_alias_calls() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
@@ -28,7 +31,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -38,10 +42,11 @@ pub fn main(amount: i64) -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let prepare_grant = response_value(server.handle_json(&request(
+    let prepare_grant = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -51,7 +56,7 @@ pub fn main(amount: i64) -> i64 {
                 "character": helper_text.find("grant").expect("grant declaration")
             }
         }),
-    )));
+    ));
     let grant_items = prepare_grant["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -60,7 +65,8 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(grant_items[0]["kind"], 12);
     assert_eq!(grant_items[0]["uri"], helper_uri);
 
-    let prepare_from_import_alias = response_value(server.handle_json(&request(
+    let prepare_from_import_alias = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -72,13 +78,14 @@ pub fn main(amount: i64) -> i64 {
                     .expect("import alias should exist")
             }
         }),
-    )));
+    ));
     let import_alias_items = prepare_from_import_alias["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(import_alias_items, grant_items);
 
-    let prepare_from_import_path = response_value(server.handle_json(&request(
+    let prepare_from_import_path = response_value(handle_request(
+        &mut server,
         4,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -90,13 +97,14 @@ pub fn main(amount: i64) -> i64 {
                     .expect("import path function should exist")
             }
         }),
-    )));
+    ));
     let import_path_items = prepare_from_import_path["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(import_path_items, grant_items);
 
-    let prepare_from_alias_call = response_value(server.handle_json(&request(
+    let prepare_from_alias_call = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -108,17 +116,18 @@ pub fn main(amount: i64) -> i64 {
                     .expect("first alias call")
             }
         }),
-    )));
+    ));
     let alias_items = prepare_from_alias_call["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(alias_items, grant_items);
 
-    let incoming = response_value(server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut server,
         6,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -140,7 +149,8 @@ pub fn main(amount: i64) -> i64 {
         line(main_text, 3).find("award").expect("second alias call"),
     );
 
-    let prepare_main = response_value(server.handle_json(&request(
+    let prepare_main = response_value(handle_request(
+        &mut server,
         7,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -150,17 +160,18 @@ pub fn main(amount: i64) -> i64 {
                 "character": line(main_text, 1).find("main").expect("main declaration")
             }
         }),
-    )));
+    ));
     let main_items = prepare_main["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(server.handle_json(&request(
+    let outgoing = response_value(handle_request(
+        &mut server,
         8,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let outgoing_calls = outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
