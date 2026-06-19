@@ -473,6 +473,10 @@ cargo test -p vela_lsp_server lifecycle
   - Editor configuration now lives in `GlobalState` and `GlobalStateSnapshot`
     after launch, initialize, and typed configuration changes, with temporary
     mirroring from legacy paths.
+  - Workspace configuration and schema-path lookup now live in `GlobalState`
+    and `GlobalStateSnapshot`; typed watcher registration and watched-file
+    scheduling read the `GlobalState` owner while the legacy wrapper remains
+    synchronized for remaining reload application paths.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

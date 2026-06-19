@@ -6,7 +6,8 @@ use lsp_types::{
     DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
 };
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
+    DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
+    WorkspaceSnapshot,
 };
 
 use crate::{
@@ -38,6 +39,7 @@ pub(crate) struct GlobalState {
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
     editor_config: Option<EditorConfiguration>,
+    workspace_config: Option<WorkspaceConfig>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -57,6 +59,7 @@ pub(crate) struct GlobalStateSnapshot {
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
     editor_config: Option<EditorConfiguration>,
+    workspace_config: Option<WorkspaceConfig>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -97,6 +100,10 @@ impl GlobalStateSnapshot {
         self.editor_config.as_ref()
     }
 
+    pub(crate) fn workspace_config(&self) -> Option<&WorkspaceConfig> {
+        self.workspace_config.as_ref()
+    }
+
     pub(crate) const fn client_supports_work_done_progress(&self) -> bool {
         self.client_supports_work_done_progress
     }
@@ -133,6 +140,7 @@ impl GlobalState {
         let workspace_roots = server.workspace_roots.clone();
         let open_documents = server.open_documents.clone();
         let editor_config = server.editor_config.clone();
+        let workspace_config = server.config.clone();
         Self {
             sender,
             launch_configuration,
@@ -142,6 +150,7 @@ impl GlobalState {
             workspace_roots,
             open_documents,
             editor_config,
+            workspace_config,
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
@@ -166,6 +175,7 @@ impl GlobalState {
             workspace_roots: self.workspace_roots.clone(),
             open_documents: self.open_documents.clone(),
             editor_config: self.editor_config.clone(),
+            workspace_config: self.workspace_config.clone(),
             client_supports_work_done_progress: self.client_supports_work_done_progress,
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
@@ -219,6 +229,7 @@ impl GlobalState {
         self.server.apply_config_change(change);
         self.workspace_roots = self.server.workspace_roots.clone();
         self.editor_config = self.server.editor_config.clone();
+        self.workspace_config = self.server.config.clone();
         if let Some(enabled) = watch_files_enabled {
             self.watch_files_enabled = enabled;
         }
@@ -338,7 +349,7 @@ impl GlobalState {
         &mut self,
         params: DidChangeWatchedFilesParams,
     ) -> JsonRpcResult {
-        let schema_path = self.server.schema_path().map(str::to_owned);
+        let schema_path = self.schema_path().map(str::to_owned);
         self.reload_scheduler.schedule_watched_files(
             params.changes,
             schema_path.as_deref(),
@@ -369,6 +380,7 @@ impl GlobalState {
         self.workspace_roots = self.server.workspace_roots.clone();
         self.open_documents = self.server.open_documents.clone();
         self.editor_config = self.server.editor_config.clone();
+        self.workspace_config = self.server.config.clone();
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -382,14 +394,22 @@ impl GlobalState {
         if self.client_supports_watched_file_registration
             && self.watch_files_enabled
             && !self.watched_files_registered
-            && let Some(registration) =
-                watching::registration_request(self.server.config.as_ref(), &self.workspace_roots)
+            && let Some(registration) = watching::registration_request(
+                self.workspace_config.as_ref(),
+                &self.workspace_roots,
+            )
         {
             self.watched_files_registered = true;
             self.server.watched_files_registered = true;
             return JsonRpcResult::Notification(registration);
         }
         JsonRpcResult::None
+    }
+
+    fn schema_path(&self) -> Option<&str> {
+        self.workspace_config
+            .as_ref()
+            .and_then(|config| config.schema().path())
     }
 
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
@@ -454,7 +474,9 @@ impl RequestQueue {
 #[cfg(test)]
 mod tests {
     use crossbeam_channel::unbounded;
-    use vela_language_service::{DocumentId, SourceVersion};
+    use vela_language_service::{
+        DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
+    };
 
     use super::*;
 
@@ -490,6 +512,10 @@ mod tests {
             }))
             .expect("editor config should deserialize"),
         );
+        state.workspace_config = Some(workspace_config_with_schema(
+            "/workspace/scripts",
+            "/workspace/target/vela/schema.json",
+        ));
         state.semantic_token_projection = SemanticTokenProjection::for_client(
             Some(&["type".to_owned(), "function".to_owned()]),
             Some(&["declaration".to_owned()]),
@@ -508,6 +534,7 @@ mod tests {
         state.server.open_documents.clear();
         state.open_documents.clear();
         state.editor_config = None;
+        state.workspace_config = None;
         state.client_supports_work_done_progress = false;
         state.client_supports_watched_file_registration = false;
         state.semantic_token_projection = SemanticTokenProjection::default();
@@ -527,6 +554,12 @@ mod tests {
         assert!(snapshot.workspace_roots().contains("/workspace/scripts"));
         assert!(snapshot.open_documents().contains(&document));
         assert!(snapshot.editor_config().is_some());
+        assert_eq!(
+            snapshot
+                .workspace_config()
+                .and_then(|config| config.schema().path()),
+            Some("/workspace/target/vela/schema.json")
+        );
         assert!(snapshot.client_supports_work_done_progress());
         assert!(snapshot.client_supports_watched_file_registration());
         assert_ne!(
@@ -650,6 +683,33 @@ mod tests {
     }
 
     #[test]
+    fn typed_initialized_uses_global_workspace_config() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.workspace_config = Some(workspace_config_with_schema(
+            "/workspace/scripts",
+            "/workspace/target/vela/schema.json",
+        ));
+        state.server.config = None;
+        state.client_supports_watched_file_registration = true;
+
+        let result = state.initialized(lsp_types::InitializedParams {});
+
+        let JsonRpcResult::Notification(registration) = result else {
+            panic!("expected watched-file registration notification");
+        };
+        let registration: serde_json::Value =
+            serde_json::from_str(&registration).expect("registration should be JSON");
+        let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
+            .as_array()
+            .expect("watchers should be an array");
+        assert!(watchers.iter().any(|watcher| {
+            watcher["globPattern"] == serde_json::json!("/workspace/target/vela/schema.json")
+        }));
+        assert!(state.watched_files_registered);
+    }
+
+    #[test]
     fn typed_workspace_folder_changes_use_global_roots() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -701,9 +761,33 @@ mod tests {
 
         assert_eq!(result, JsonRpcResult::None);
         assert!(state.editor_config.is_some());
+        assert!(state.workspace_config.is_some());
         assert_eq!(
             state.editor_config.is_some(),
             state.server.editor_config.is_some()
+        );
+        assert_eq!(
+            state.workspace_config.as_ref().map(WorkspaceConfig::roots),
+            state.server.config.as_ref().map(WorkspaceConfig::roots)
+        );
+    }
+
+    #[test]
+    fn schema_path_is_owned_by_global_workspace_config() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.workspace_config = Some(workspace_config_with_schema(
+            "/workspace/scripts",
+            "/workspace/target/vela/schema.json",
+        ));
+        state.server.config = Some(workspace_config_with_schema(
+            "/legacy/scripts",
+            "/legacy/target/vela/schema.json",
+        ));
+
+        assert_eq!(
+            state.schema_path(),
+            Some("/workspace/target/vela/schema.json")
         );
     }
 
@@ -818,5 +902,11 @@ mod tests {
             params: serde_json::json!({}),
         });
         assert_eq!(RequestQueue::request_id(&message), Some(string));
+    }
+
+    fn workspace_config_with_schema(root: &str, schema: &str) -> WorkspaceConfig {
+        let mut config = WorkspaceConfig::workspace([WorkspaceRoot::from(root)]);
+        config.set_schema(SchemaConfig::from_path(schema));
+        config
     }
 }
