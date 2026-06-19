@@ -1812,6 +1812,8 @@ node editors/vscode/scripts/validate-package.js
     and onto the shared typed request/notification helpers.
   - Converted the workspace-folder feature fixture off `LspServer::handle_json`
     and onto the shared typed request/notification helpers.
+  - Converted the completion-resolve feature fixture off
+    `LspServer::handle_json` and onto the shared typed request helper.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.

@@ -1,21 +1,23 @@
-use super::{LspServer, request, response_value};
+use super::{LspServer, handle_request, response_value};
 
 fn initialize_server(server: &mut LspServer) {
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        server,
         0,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 }
 
 #[test]
 fn lsp_completion_resolve_rejects_unknown_payload_kind() {
     let mut server = LspServer::new();
     initialize_server(&mut server);
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "completionItem/resolve",
         serde_json::json!({
@@ -27,7 +29,7 @@ fn lsp_completion_resolve_rejects_unknown_payload_kind() {
                 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["id"], 1);
     assert_eq!(response["error"]["code"], -32600);
@@ -43,7 +45,8 @@ fn lsp_completion_resolve_rejects_unknown_payload_kind() {
 fn lsp_completion_resolve_passes_through_items_without_payload() {
     let mut server = LspServer::new();
     initialize_server(&mut server);
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "completionItem/resolve",
         serde_json::json!({
@@ -53,7 +56,7 @@ fn lsp_completion_resolve_passes_through_items_without_payload() {
                 "source": "vela"
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["id"], 2);
     assert_eq!(response["result"]["label"], "plain");
