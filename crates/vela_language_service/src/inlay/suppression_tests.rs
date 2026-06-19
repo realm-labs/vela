@@ -131,6 +131,34 @@ fn inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return_rec
 }
 
 #[test]
+fn inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"pub fn main() {
+    host_any().grant("raw", 1)
+}"#;
+    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let mut schema = vela_analysis::registry::RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_function("host_any", TypeFact::function(Vec::new(), TypeFact::Any));
+    schema.insert_method(
+        "Player",
+        "grant",
+        TypeFact::function(vec![TypeFact::Any, TypeFact::I64], TypeFact::I64),
+    );
+    databases.set_schema_facts(schema);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(3, 0)),
+    );
+
+    assert!(
+        hints.is_empty(),
+        "dynamic Any receivers must not invent method parameter hints: {hints:?}"
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_function_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"pub fn main() {

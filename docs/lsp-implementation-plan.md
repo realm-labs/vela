@@ -410,7 +410,8 @@ coverage complete based only on the older capability phases.
     native LSP parameter-name hints, local type hints, lambda parameter facts,
     host-path type facts, source/schema tuple-variant payload names, requested
     range filtering, missing-schema degradation, unknown-call suppression, and
-    `Any` suppression for source/schema call parameters and variant payloads.
+    `Any` suppression for source/schema call parameters, schema `Any`
+    returned receivers, and variant payloads.
 - [x] Audit workspace, configuration, file watching, schema reload, and launch
   behavior.
   - Cover `workspace/didChangeWatchedFiles`,

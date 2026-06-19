@@ -2,8 +2,11 @@ use super::{LspServer, notification, notification_value, request, response_value
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
@@ -133,6 +136,114 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
             }
         ])
     );
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiver() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+            "formatVersion": 1,
+            "facts": {
+                "types": [
+                    {
+                        "name": "Player",
+                        "fact": { "kind": "host", "name": "Player" }
+                    }
+                ],
+                "functions": [
+                    {
+                        "name": "host_any",
+                        "fact": {
+                            "kind": "function",
+                            "params": [],
+                            "returns": { "kind": "any" }
+                        }
+                    }
+                ],
+                "methods": [
+                    {
+                        "owner": "Player",
+                        "name": "grant",
+                        "fact": {
+                            "kind": "function",
+                            "params": [
+                                { "kind": "any" },
+                                { "kind": "primitive", "name": "i64" }
+                            ],
+                            "returns": { "kind": "primitive", "name": "i64" }
+                        }
+                    }
+                ]
+            }
+        }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+
+    let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = r#"pub fn main() {
+    host_any().grant("raw", 1)
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 3, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(response["result"], serde_json::json!([]));
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
@@ -926,10 +1037,12 @@ fn temp_workspace() -> PathBuf {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_inlay_suppression_{}_{}",
+        "vela_lsp_inlay_suppression_{}_{}_{}",
         std::process::id(),
-        suffix
+        suffix,
+        sequence
     ));
     if let Err(error) = fs::create_dir_all(root.join("scripts").join("game")) {
         panic!("temporary workspace should be creatable: {error}");

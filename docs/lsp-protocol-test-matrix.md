@@ -310,10 +310,11 @@ These were the first places compared against the matrix before acceptance:
    results for unresolved names and dynamic receiver members, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
    calls, and non-callable symbols, plus stale host completion clearing and
-   missing-schema diagnostics after schema deletion; broader `Any`, missing
-   schema, stale schema, unresolved name, and parser recovery cases should
-   degrade by returning null, empty results, diagnostics, or suppressed hints,
-   not guessed semantic facts.
+   missing-schema diagnostics after schema deletion, plus inlay-hint
+   suppression for schema function calls returning `Any` used as receivers;
+   broader `Any`, missing schema, stale schema, unresolved name, and parser
+   recovery cases should degrade by returning null, empty results,
+   diagnostics, or suppressed hints, not guessed semantic facts.
 7. Multi-file and overlay behavior should be present in each cross-file
    feature family: completion, hover, navigation, references, rename, symbols,
    semantic tokens, diagnostics, and call hierarchy. Current focused fixtures
