@@ -1,6 +1,10 @@
 use std::fs;
 
-use super::*;
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
+
+use super::{file_uri, temp_workspace};
 
 #[test]
 fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
@@ -64,7 +68,8 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -72,13 +77,14 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main(player: Player) {
     let slots = player.inventory().slots + 1;
@@ -87,7 +93,8 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
 }"#;
     let first_line = text.lines().nth(1).expect("first slots line");
     let second_line = text.lines().nth(2).expect("second slots line");
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -97,9 +104,10 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -109,7 +117,7 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
                 "end": { "line": 5, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
