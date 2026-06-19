@@ -1,4 +1,4 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {
@@ -12,7 +12,8 @@ struct DecodedToken {
 #[test]
 fn lsp_semantic_tokens_cover_lexical_classes() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -20,7 +21,7 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -32,7 +33,8 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
 
     let text = "pub fn main() { let bytes = b\"ok\" return bytes + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -42,15 +44,16 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -66,7 +69,8 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
 #[test]
 fn lsp_semantic_tokens_mark_resolved_symbols() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -74,7 +78,7 @@ fn lsp_semantic_tokens_mark_resolved_symbols() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -98,7 +102,8 @@ pub fn main(amount: i64) -> i64 {
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -108,8 +113,9 @@ pub fn main(amount: i64) -> i64 {
                 "text": "pub fn grant(amount: i64) -> i64 { return amount }"
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -119,15 +125,16 @@ pub fn main(amount: i64) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -183,7 +190,8 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_semantic_tokens_classify_import_module_path_segments() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -191,7 +199,7 @@ fn lsp_semantic_tokens_classify_import_module_path_segments() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -211,7 +219,8 @@ pub fn main() -> i64 {
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -221,8 +230,9 @@ pub fn main() -> i64 {
                 "text": "pub fn grant() -> i64 { return 1 }"
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -232,15 +242,16 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -276,7 +287,8 @@ pub fn main() -> i64 {
 #[test]
 fn lsp_semantic_tokens_include_comments() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -284,7 +296,7 @@ fn lsp_semantic_tokens_include_comments() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -300,7 +312,8 @@ pub fn main() {
     return text
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -310,15 +323,16 @@ pub fn main() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -354,7 +368,8 @@ pub fn main() {
 #[test]
 fn lsp_semantic_tokens_degrade_under_parse_errors() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -362,7 +377,7 @@ fn lsp_semantic_tokens_degrade_under_parse_errors() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -377,7 +392,8 @@ pub fn main( {
     // keep tokenization alive
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -387,15 +403,16 @@ pub fn main( {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -439,7 +456,8 @@ pub fn main( {
 #[test]
 fn lsp_semantic_tokens_classify_script_members() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -447,7 +465,7 @@ fn lsp_semantic_tokens_classify_script_members() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -483,7 +501,8 @@ impl Reward {
     fn bonus(value: Reward) -> i64 { return 1 }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -493,15 +512,16 @@ impl Reward {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -569,7 +589,8 @@ impl Reward {
 #[test]
 fn lsp_semantic_tokens_classify_script_member_uses() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -577,7 +598,7 @@ fn lsp_semantic_tokens_classify_script_member_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -603,7 +624,8 @@ pub fn main(reward: Reward) -> i64 {
     return reward.amount + reward.bonus()
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -613,15 +635,16 @@ pub fn main(reward: Reward) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -653,7 +676,8 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_semantic_tokens_classify_script_trait_method_uses() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -661,7 +685,7 @@ fn lsp_semantic_tokens_classify_script_trait_method_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -682,7 +706,8 @@ pub fn main(rewardable: Rewardable) -> i64 {
     return rewardable.preview(1)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -692,15 +717,16 @@ pub fn main(rewardable: Rewardable) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -722,7 +748,8 @@ pub fn main(rewardable: Rewardable) -> i64 {
 #[test]
 fn lsp_semantic_tokens_range_filters_tokens() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -730,7 +757,7 @@ fn lsp_semantic_tokens_range_filters_tokens() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["semanticTokensProvider"]["range"],
         true
@@ -754,7 +781,8 @@ pub fn main() {
     return second
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -764,9 +792,10 @@ pub fn main() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/range",
         serde_json::json!({
@@ -776,7 +805,7 @@ pub fn main() {
                 "end": { "line": 3, "character": 0 }
             }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -801,7 +830,8 @@ pub fn main() {
 #[test]
 fn lsp_semantic_tokens_range_returns_empty_for_empty_prefix_range() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -809,14 +839,15 @@ fn lsp_semantic_tokens_range_returns_empty_for_empty_prefix_range() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 pub fn main() {
     let value = 1
     return value
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -826,9 +857,10 @@ pub fn main() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/range",
         serde_json::json!({
@@ -838,7 +870,7 @@ pub fn main() {
                 "end": { "line": 1, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"]["data"],
@@ -850,7 +882,8 @@ pub fn main() {
 #[test]
 fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -893,7 +926,7 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
                 }
             }
         }),
-    )));
+    ));
     let token_types =
         initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
             .as_array()
@@ -926,7 +959,8 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
 
     let text = "pub fn main(flag: bool) { let value = flag == true return value + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -936,15 +970,16 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
@@ -975,7 +1010,8 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
 #[test]
 fn lsp_semantic_token_delta_matches_full_tokens() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -983,7 +1019,7 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["semanticTokensProvider"]["full"]["delta"],
         true
@@ -992,7 +1028,8 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
     let uri = "file:///workspace/scripts/game/main.vela";
     let original = "pub fn main() { let value = 1 return value }";
     let changed = "pub fn main() { let value = 20 return value }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -1002,15 +1039,16 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
                 "text": original
             }
         }),
-    )));
+    ));
 
-    let full = response_value(server.handle_json(&request(
+    let full = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let previous_result_id = full["result"]["resultId"]
         .as_str()
         .expect("full semantic tokens should include resultId")
@@ -1020,17 +1058,19 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
         .expect("full semantic tokens should include data")
         .len();
 
-    let unchanged = response_value(server.handle_json(&request(
+    let unchanged = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/semanticTokens/full/delta",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "previousResultId": previous_result_id.clone()
         }),
-    )));
+    ));
     assert_eq!(unchanged["result"]["edits"], serde_json::json!([]));
 
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
@@ -1041,26 +1081,28 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
                 { "text": changed }
             ]
         }),
-    )));
-    let changed_full = response_value(server.handle_json(&request(
+    ));
+    let changed_full = response_value(handle_request(
+        &mut server,
         4,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let changed_full_data = changed_full["result"]["data"]
         .as_array()
         .expect("changed full semantic tokens should include data");
 
-    let delta = response_value(server.handle_json(&request(
+    let delta = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/semanticTokens/full/delta",
         serde_json::json!({
             "textDocument": { "uri": uri },
             "previousResultId": previous_result_id
         }),
-    )));
+    ));
     let edits = delta["result"]["edits"]
         .as_array()
         .expect("delta semantic tokens should include edits");
