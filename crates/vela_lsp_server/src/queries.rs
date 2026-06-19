@@ -1,15 +1,11 @@
 use serde_json::Value as JsonValue;
-use vela_language_service::{DocumentId, LineIndex as ServiceLineIndex, Position};
+use vela_language_service::{DocumentId, LineIndex as ServiceLineIndex};
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
     completion::service_completion_resolve_payload,
     error_response,
     lsp::{from_proto, to_proto},
-    protocol::PrepareRenameParams,
-    protocol::ReferencesParams,
-    protocol::RenameParams,
-    protocol::TextDocumentPositionParams,
     success_response,
 };
 
@@ -26,23 +22,6 @@ fn document_text(server: &LspServer, document_id: &DocumentId) -> String {
         .records()
         .get(document_id)
         .map_or_else(String::new, |source| source.text().to_owned())
-}
-
-fn service_position_for_request(
-    id: &RequestId,
-    method_name: &str,
-    document_text: &str,
-    position: crate::protocol::LspPosition,
-) -> Result<Position, JsonRpcResult> {
-    crate::line_index::LineIndex::new(document_text)
-        .service_position(position)
-        .map_err(|error| {
-            JsonRpcResult::Response(error_response(
-                Some(id.clone()),
-                ErrorCode::InvalidRequest,
-                format!("invalid {method_name} position: {error}"),
-            ))
-        })
 }
 
 impl LspServer {
@@ -91,7 +70,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::CompletionParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -102,15 +81,22 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position = match service_position_for_request(&id, "completion", &text, params.position)
-        {
-            Ok(position) => position,
-            Err(response) => return response,
+        let input = match from_proto::completion_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completion position: {error}"),
+                ));
+            }
         };
-        let completions = self.databases.completion_items(&document_id, position);
+        let completions = self
+            .databases
+            .completion_items(&input.document_id, input.position);
         let line_index = ServiceLineIndex::new(&text);
 
         JsonRpcResult::Response(success_response(
@@ -165,7 +151,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::SignatureHelpParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -176,15 +162,23 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position =
-            match service_position_for_request(&id, "signatureHelp", &text, params.position) {
-                Ok(position) => position,
-                Err(response) => return response,
-            };
-        let signatures = self.databases.signature_help(&document_id, position);
+        let input = match from_proto::signature_help_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid signatureHelp position: {error}"),
+                ));
+            }
+        };
+        let signatures = self
+            .databases
+            .signature_help(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -199,7 +193,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::HoverParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -210,14 +204,21 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position = match service_position_for_request(&id, "hover", &text, params.position) {
-            Ok(position) => position,
-            Err(response) => return response,
+        let input = match from_proto::hover_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid hover position: {error}"),
+                ));
+            }
         };
-        let hover = self.databases.hover(&document_id, position);
+        let hover = self.databases.hover(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -273,7 +274,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::GotoDefinitionParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -284,24 +285,30 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position = match service_position_for_request(&id, method_name, &text, params.position)
-        {
-            Ok(position) => position,
-            Err(response) => return response,
+        let input = match from_proto::goto_definition_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid {method_name} position: {error}"),
+                ));
+            }
         };
         let definition = match query {
-            NavigationLocationQuery::Definition => {
-                self.databases.definition(&document_id, position)
-            }
-            NavigationLocationQuery::Declaration => {
-                self.databases.declaration(&document_id, position)
-            }
-            NavigationLocationQuery::TypeDefinition => {
-                self.databases.type_definition(&document_id, position)
-            }
+            NavigationLocationQuery::Definition => self
+                .databases
+                .definition(&input.document_id, input.position),
+            NavigationLocationQuery::Declaration => self
+                .databases
+                .declaration(&input.document_id, input.position),
+            NavigationLocationQuery::TypeDefinition => self
+                .databases
+                .type_definition(&input.document_id, input.position),
         };
 
         JsonRpcResult::Response(success_response(
@@ -317,7 +324,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<ReferencesParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::ReferenceParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -328,17 +335,24 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position = match service_position_for_request(&id, "references", &text, params.position)
-        {
-            Ok(position) => position,
-            Err(response) => return response,
+        let input = match from_proto::reference_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid references position: {error}"),
+                ));
+            }
         };
-        let references =
-            self.databases
-                .references(&document_id, position, params.context.include_declaration);
+        let references = self.databases.references(
+            &input.document_id,
+            input.position,
+            params.context.include_declaration,
+        );
 
         JsonRpcResult::Response(success_response(
             id,
@@ -355,7 +369,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<PrepareRenameParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::TextDocumentPositionParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -366,15 +380,22 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position =
-            match service_position_for_request(&id, "prepareRename", &text, params.position) {
-                Ok(position) => position,
-                Err(response) => return response,
-            };
-        let prepare = self.databases.prepare_rename(&document_id, position);
+        let input = match from_proto::prepare_rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareRename position: {error}"),
+                ));
+            }
+        };
+        let prepare = self
+            .databases
+            .prepare_rename(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -387,7 +408,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<RenameParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::RenameParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -398,16 +419,22 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position = match service_position_for_request(&id, "rename", &text, params.position) {
-            Ok(position) => position,
-            Err(response) => return response,
+        let input = match from_proto::rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rename position: {error}"),
+                ));
+            }
         };
         let edit = self
             .databases
-            .rename(&document_id, position, &params.new_name);
+            .rename(&input.document_id, input.position, &params.new_name);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -552,7 +579,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<TextDocumentPositionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::DocumentHighlightParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -563,15 +590,23 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position =
-            match service_position_for_request(&id, "documentHighlight", &text, params.position) {
-                Ok(position) => position,
-                Err(response) => return response,
-            };
-        let highlights = self.databases.document_highlights(&document_id, position);
+        let input = match from_proto::document_highlight_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid documentHighlight position: {error}"),
+                ));
+            }
+        };
+        let highlights = self
+            .databases
+            .document_highlights(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,

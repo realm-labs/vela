@@ -1283,7 +1283,7 @@ cargo test -p vela_lsp_server semantic_tokens
 
 ### Phase 7: Protocol Projection Cleanup
 
-- [ ] Delete or empty production use of custom protocol params in
+- [x] Delete or empty production use of custom protocol params in
   `protocol.rs` once `lsp-types` replacements exist.
   - Legacy call-hierarchy query decoding now uses `lsp_types` params and the
     existing `lsp/from_proto.rs` conversion boundary; the custom
@@ -1305,6 +1305,16 @@ cargo test -p vela_lsp_server semantic_tokens
     `lsp/from_proto.rs`; their custom protocol param structs have been
     removed. Validated with `cargo test -p vela_lsp_server code_action` and
     `cargo test -p vela_lsp_server formatting`.
+  - Legacy completion, signature help, hover, definition/declaration/type
+    definition, references, document highlight, prepare rename, and rename
+    query decoding now use `lsp_types` params and `lsp/from_proto.rs`; the
+    remaining custom request param structs have been removed from
+    `protocol.rs`. Validated with `cargo test -p vela_lsp_server completion`,
+    `cargo test -p vela_lsp_server hover`,
+    `cargo test -p vela_lsp_server signature`,
+    `cargo test -p vela_lsp_server definition`,
+    `cargo test -p vela_lsp_server references`, and
+    `cargo test -p vela_lsp_server rename`.
 - [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
