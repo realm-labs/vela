@@ -1,14 +1,18 @@
-use super::{LspServer, notification, notification_value, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
+
 #[test]
 fn lsp_rename_rejects_module_declaration_collision() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -16,12 +20,13 @@ fn lsp_rename_rejects_module_declaration_collision() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 pub fn grant(amount: i64) -> i64 { return amount }
 pub fn award(amount: i64) -> i64 { return amount + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -31,9 +36,10 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let prepare = response_value(server.handle_json(&request(
+    let prepare = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareRename",
         serde_json::json!({
@@ -43,10 +49,11 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
                 "character": line(text, 0).find("grant").expect("grant declaration")
             }
         }),
-    )));
+    ));
     assert_eq!(prepare["result"]["placeholder"], "grant");
 
-    let rename = response_value(server.handle_json(&request(
+    let rename = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/rename",
         serde_json::json!({
@@ -57,14 +64,15 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
             },
             "newName": "award"
         }),
-    )));
+    ));
     assert_eq!(rename["result"], serde_json::Value::Null);
 }
 
 #[test]
 fn lsp_rename_rejects_import_alias_collision() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -72,7 +80,7 @@ fn lsp_rename_rejects_import_alias_collision() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::reward::grant
 use game::bonus::score as award
@@ -89,7 +97,8 @@ pub fn main() -> i64 {
         (bonus_uri, bonus_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -99,10 +108,11 @@ pub fn main() -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let rename = response_value(server.handle_json(&request(
+    let rename = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/rename",
         serde_json::json!({
@@ -113,14 +123,15 @@ pub fn main() -> i64 {
             },
             "newName": "award"
         }),
-    )));
+    ));
     assert_eq!(rename["result"], serde_json::Value::Null);
 }
 
 #[test]
 fn lsp_private_method_rename_rejects_trait_impl_collision() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -128,7 +139,7 @@ fn lsp_private_method_rename_rejects_trait_impl_collision() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 struct Reward {
     amount: i64
@@ -144,7 +155,8 @@ impl Rewardable for Reward {
     fn award(self) -> i64 { return self.amount + 1 }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -154,9 +166,10 @@ impl Rewardable for Reward {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let rename = response_value(server.handle_json(&request(
+    let rename = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/rename",
         serde_json::json!({
@@ -167,7 +180,7 @@ impl Rewardable for Reward {
             },
             "newName": "award"
         }),
-    )));
+    ));
     assert_eq!(rename["result"], serde_json::Value::Null);
 }
 
@@ -233,7 +246,8 @@ pub fn award() { return 4 }";
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -241,16 +255,18 @@ pub fn award() { return 4 }";
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -260,7 +276,7 @@ pub fn award() { return 4 }";
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main(player: Player) -> i64 {
@@ -268,7 +284,8 @@ pub fn main(player: Player) -> i64 {
     return player.grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -278,9 +295,10 @@ pub fn main(player: Player) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let field_rename = response_value(server.handle_json(&request(
+    let field_rename = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/rename",
         serde_json::json!({
@@ -291,10 +309,11 @@ pub fn main(player: Player) -> i64 {
             },
             "newName": "rank"
         }),
-    )));
+    ));
     assert_eq!(field_rename["result"], serde_json::Value::Null);
 
-    let method_rename = response_value(server.handle_json(&request(
+    let method_rename = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/rename",
         serde_json::json!({
@@ -305,7 +324,7 @@ pub fn main(player: Player) -> i64 {
             },
             "newName": "award"
         }),
-    )));
+    ));
     assert_eq!(method_rename["result"], serde_json::Value::Null);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
