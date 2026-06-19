@@ -190,6 +190,74 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_did_close_restores_disk_snapshot_inlay_hints() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"pub fn disk_grant(amount: i64) -> i64 { return amount }
+pub fn main() -> i64 {
+    return disk_grant(7)
+}"#;
+    let overlay_source = r#"pub fn overlay_grant(reason: String) -> String { return reason }
+pub fn main() -> String {
+    return overlay_grant("quest")
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_hints =
+        response_value(server.handle_json(&inlay_hint_request(2, &source_uri, overlay_source)));
+    assert_inlay_hint_for_target(&overlay_hints, overlay_source, "\"quest\"", "reason:");
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_hints =
+        response_value(server.handle_json(&inlay_hint_request(3, &source_uri, disk_source)));
+    assert_inlay_hint_for_target(&disk_hints, disk_source, "7", "amount:");
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_did_close_restores_disk_snapshot_type_definition_queries() {
     let root = temp_workspace();
     let source_path = root.join("scripts").join("game").join("main.vela");
@@ -594,6 +662,52 @@ fn source_position(source: &str, target: &str) -> (u64, u64) {
         }
     }
     (line, (offset - line_start) as u64)
+}
+
+fn inlay_hint_request(id: i64, uri: &str, source: &str) -> String {
+    let last_line = source
+        .lines()
+        .count()
+        .checked_sub(1)
+        .expect("source should contain at least one line");
+    let end_character = source
+        .lines()
+        .last()
+        .expect("source should contain a final line")
+        .len();
+    request(
+        id,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": last_line, "character": end_character }
+            }
+        }),
+    )
+}
+
+fn assert_inlay_hint_for_target(
+    response: &serde_json::Value,
+    source: &str,
+    target: &str,
+    label: &str,
+) {
+    let (line, character) = source_position(source, target);
+    let hints = response["result"]
+        .as_array()
+        .expect("inlayHint should return an array");
+    assert!(
+        hints.iter().any(|hint| {
+            hint["position"]["line"] == line
+                && hint["position"]["character"] == character
+                && hint["label"] == label
+                && hint["kind"] == 2
+                && hint["paddingRight"] == true
+        }),
+        "missing inlay hint {label:?} at ({line}, {character}) in {hints:?}"
+    );
 }
 
 fn type_definition_request(id: i64, uri: &str, source: &str) -> String {

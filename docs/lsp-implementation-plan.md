@@ -275,8 +275,9 @@ coverage complete based only on the older capability phases.
     cross-feature definition-query coverage in addition to diagnostics.
   - Disk snapshot restoration after `textDocument/didClose` now has
     cross-feature completion-query, hover-query, references-query,
-    document-highlight-query, semantic-token-query, and type-definition-query
-    coverage in addition to diagnostics and definition queries.
+    document-highlight-query, semantic-token-query, inlay-hint-query, and
+    type-definition-query coverage in addition to diagnostics and definition
+    queries.
   - Current fixtures cover full and incremental `didChange`, `didOpen`,
     `didClose`, structured publish diagnostics, syntax/HIR/analysis/schema
     diagnostics, parser-recovery isolation, missing import diagnostics,
