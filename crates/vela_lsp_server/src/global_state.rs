@@ -621,15 +621,15 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: CallHierarchyPrepareParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid prepareCallHierarchy position: {error}"),
                 );
@@ -639,7 +639,7 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_call_hierarchy(&input.document_id, input.position);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::call_hierarchy_items(&items))
                 .expect("typed prepareCallHierarchy response should serialize"),
@@ -650,14 +650,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: CallHierarchyIncomingCallsParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.item.uri);
         let text = snapshot_document_text(&self, &document_id);
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid incomingCalls item range: {error}"),
                 );
@@ -665,7 +665,7 @@ impl GlobalStateSnapshot {
         };
         let calls = self.databases.incoming_calls(&item);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::incoming_calls(&calls))
                 .expect("typed incomingCalls response should serialize"),
@@ -676,14 +676,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: CallHierarchyOutgoingCallsParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.item.uri);
         let text = snapshot_document_text(&self, &document_id);
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid outgoingCalls item range: {error}"),
                 );
@@ -691,7 +691,7 @@ impl GlobalStateSnapshot {
         };
         let calls = self.databases.outgoing_calls(&item);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::outgoing_calls(&calls))
                 .expect("typed outgoingCalls response should serialize"),

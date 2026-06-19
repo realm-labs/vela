@@ -117,11 +117,15 @@ fn dispatch_request(
             GlobalStateSnapshot::prepare_rename,
         )
         .on_worker_snapshot_messages_typed::<Rename>(GlobalStateSnapshot::rename)
-        .on_worker_snapshot_typed::<CallHierarchyPrepare>(
+        .on_worker_snapshot_messages_typed::<CallHierarchyPrepare>(
             GlobalStateSnapshot::prepare_call_hierarchy,
         )
-        .on_worker_snapshot_typed::<CallHierarchyIncomingCalls>(GlobalStateSnapshot::incoming_calls)
-        .on_worker_snapshot_typed::<CallHierarchyOutgoingCalls>(GlobalStateSnapshot::outgoing_calls)
+        .on_worker_snapshot_messages_typed::<CallHierarchyIncomingCalls>(
+            GlobalStateSnapshot::incoming_calls,
+        )
+        .on_worker_snapshot_messages_typed::<CallHierarchyOutgoingCalls>(
+            GlobalStateSnapshot::outgoing_calls,
+        )
         .on_worker_snapshot_typed::<CodeActionRequest>(GlobalStateSnapshot::code_action)
         .on_worker_snapshot_typed::<SemanticTokensRangeRequest>(
             GlobalStateSnapshot::semantic_tokens_range,
