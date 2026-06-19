@@ -8,7 +8,6 @@ use crate::{
         service_call_hierarchy_item,
     },
     completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
-    definition::lsp_definition,
     error_response,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
@@ -549,7 +548,10 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            definition.as_ref().map_or(JsonValue::Null, lsp_definition),
+            definition.as_ref().map_or(JsonValue::Null, |definition| {
+                serde_json::to_value(to_proto::definition_location(definition))
+                    .expect("typed navigation response should serialize")
+            }),
         ))
     }
 

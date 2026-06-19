@@ -6,7 +6,6 @@ mod client;
 mod completion;
 mod config;
 mod config_change;
-mod definition;
 mod global_state;
 mod handlers;
 mod lifecycle;
