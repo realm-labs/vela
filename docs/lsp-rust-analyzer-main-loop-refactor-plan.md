@@ -1606,6 +1606,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_dispatcher`,
     `cargo test -p vela_lsp_server handlers::dispatch`, and
     `cargo test -p vela_lsp_server stdio`.
+  - Typed diagnostic publication now returns `lsp_server::Message` batches
+    directly for `GlobalState` document/config/reload paths, and the old
+    `JsonRpcResult` adapter helpers are test-only. Legacy `LspServer` JSON
+    tests retain wrapper compatibility until that API is removed. Validated
+    with `cargo test -p vela_lsp_server typed_did_open`,
+    `cargo test -p vela_lsp_server typed_did_change`,
+    `cargo test -p vela_lsp_server typed_did_close`,
+    `cargo test -p vela_lsp_server schema_reload`, and
+    `cargo test -p vela_lsp_server close_overlay`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

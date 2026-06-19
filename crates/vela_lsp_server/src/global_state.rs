@@ -33,7 +33,7 @@ use crate::{
     },
     publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
-    rpc::{request_id_from_number_or_string, typed_messages},
+    rpc::request_id_from_number_or_string,
     semantic_tokens::SemanticTokenProjection,
     source_version,
     task::{TaskResult, TaskScheduler},
@@ -1068,9 +1068,9 @@ impl GlobalState {
         };
 
         self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
-        let result = self.server.publish_open_diagnostics();
+        let messages = self.server.publish_open_diagnostics_messages();
         self.sync_workspace_analysis_from_legacy_server();
-        typed_messages(result)
+        messages
     }
 
     pub(crate) fn did_change_workspace_folders(
@@ -1127,9 +1127,11 @@ impl GlobalState {
         self.server.open_documents.insert(document_id.clone());
         self.open_documents.insert(document_id.clone());
 
-        let result = self.server.publish_current_diagnostics(&uri, &document_id);
+        let message = self
+            .server
+            .publish_current_diagnostics_message(&uri, &document_id);
         self.sync_workspace_analysis_from_legacy_server();
-        typed_messages(result)
+        vec![message]
     }
 
     pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> Vec<Message> {
@@ -1167,9 +1169,11 @@ impl GlobalState {
         self.server.open_documents.insert(document_id.clone());
         self.open_documents.insert(document_id.clone());
 
-        let result = self.server.publish_current_diagnostics(&uri, &document_id);
+        let message = self
+            .server
+            .publish_current_diagnostics_message(&uri, &document_id);
         self.sync_workspace_analysis_from_legacy_server();
-        typed_messages(result)
+        vec![message]
     }
 
     pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Vec<Message> {
@@ -1180,7 +1184,10 @@ impl GlobalState {
         self.open_documents.remove(&document_id);
 
         let messages = if self.server.disk_sources.contains_key(&document_id) {
-            typed_messages(self.server.publish_current_diagnostics(&uri, &document_id))
+            vec![
+                self.server
+                    .publish_current_diagnostics_message(&uri, &document_id),
+            ]
         } else {
             vec![publish_diagnostics_notification(&uri, Vec::new(), None)]
         };
@@ -1249,9 +1256,8 @@ impl GlobalState {
 
     fn publish_workspace_diagnostics(&mut self) -> Vec<Message> {
         let has_open_documents = !self.open_documents.is_empty();
-        let result = self.server.publish_open_diagnostics();
+        let messages = self.server.publish_open_diagnostics_messages();
         self.sync_workspace_analysis_from_legacy_server();
-        let messages = typed_messages(result);
         if has_open_documents && self.client_supports_work_done_progress {
             with_work_done_progress_messages(messages, "Vela workspace diagnostics")
         } else {

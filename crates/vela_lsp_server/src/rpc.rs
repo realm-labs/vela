@@ -69,6 +69,7 @@ impl JsonRpcResult {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn into_messages(self) -> anyhow::Result<Vec<Message>> {
         match self {
             Self::Response(response) => Ok(vec![Message::Response(response)]),
@@ -79,6 +80,7 @@ impl JsonRpcResult {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn typed_messages(result: JsonRpcResult) -> Vec<Message> {
     result
         .into_messages()

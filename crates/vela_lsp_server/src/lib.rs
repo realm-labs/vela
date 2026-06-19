@@ -525,7 +525,7 @@ impl LspServer {
             .and_then(|config| config.schema().path())
     }
 
-    pub(crate) fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
+    pub(crate) fn publish_open_diagnostics_messages(&mut self) -> Vec<Message> {
         let mut notifications = Vec::new();
 
         if !self.open_documents.is_empty() {
@@ -553,6 +553,11 @@ impl LspServer {
 
         notifications.extend(self.config_diagnostic_notifications());
         notifications.extend(self.schema_diagnostic_notifications());
+        notifications
+    }
+
+    pub(crate) fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
+        let notifications = self.publish_open_diagnostics_messages();
         if notifications.is_empty() {
             JsonRpcResult::None
         } else {
@@ -560,11 +565,11 @@ impl LspServer {
         }
     }
 
-    pub(crate) fn publish_current_diagnostics(
+    pub(crate) fn publish_current_diagnostics_message(
         &mut self,
         uri: &str,
         document_id: &DocumentId,
-    ) -> JsonRpcResult {
+    ) -> Message {
         let config = self
             .config
             .clone()
@@ -578,7 +583,15 @@ impl LspServer {
             document_id,
         ));
 
-        JsonRpcResult::Notification(publish_diagnostics_notification(uri, diagnostics, None))
+        publish_diagnostics_notification(uri, diagnostics, None)
+    }
+
+    pub(crate) fn publish_current_diagnostics(
+        &mut self,
+        uri: &str,
+        document_id: &DocumentId,
+    ) -> JsonRpcResult {
+        JsonRpcResult::Notification(self.publish_current_diagnostics_message(uri, document_id))
     }
 
     fn refresh_databases_for_query(&mut self, document_id: &DocumentId) {
