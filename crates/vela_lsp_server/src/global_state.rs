@@ -495,11 +495,11 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: DocumentSymbolParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_symbol_params(&params);
         let symbols = self.databases.document_symbols(&document_id);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::document_symbols(&symbols))
                 .expect("typed documentSymbol response should serialize"),

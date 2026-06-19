@@ -98,7 +98,7 @@ fn dispatch_request(
         .on_worker_snapshot_messages_typed::<DocumentHighlightRequest>(
             GlobalStateSnapshot::document_highlight,
         )
-        .on_retryable_worker_snapshot_typed::<DocumentSymbolRequest>(
+        .on_retryable_worker_snapshot_messages_typed::<DocumentSymbolRequest>(
             GlobalStateSnapshot::document_symbol,
             RetryTask::document_symbol,
         )
@@ -232,9 +232,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Worker,
                     method: <DocumentSymbolRequest as lsp_types::request::Request>::METHOD,
                     id,
@@ -315,6 +315,17 @@ struct RetrySchedule<P, C> {
     f: fn(GlobalStateSnapshot, lsp_server::RequestId, P) -> JsonRpcResult,
 }
 
+struct RetryMessagesSchedule<P, C> {
+    lane: TaskLane,
+    method: &'static str,
+    id: lsp_server::RequestId,
+    request_id: RequestId,
+    params: P,
+    attempts: u8,
+    retry: C,
+    f: fn(GlobalStateSnapshot, lsp_server::RequestId, P) -> Vec<Message>,
+}
+
 fn schedule_retry<P, C>(global_state: &mut GlobalState, schedule: RetrySchedule<P, C>)
 where
     P: Clone + Send + 'static,
@@ -342,6 +353,40 @@ where
             f(snapshot, id.clone(), params)
         })) {
             Ok(result) => typed_messages(result),
+            Err(payload) => handler_panic(id, method, payload.as_ref()),
+        },
+    );
+}
+
+fn schedule_messages_retry<P, C>(
+    global_state: &mut GlobalState,
+    schedule: RetryMessagesSchedule<P, C>,
+) where
+    P: Clone + Send + 'static,
+    C: Fn(lsp_server::RequestId, RequestId, P, u8) -> RetryTask + Send + 'static,
+{
+    let RetryMessagesSchedule {
+        lane,
+        method,
+        id,
+        request_id,
+        params,
+        attempts,
+        retry,
+        f,
+    } = schedule;
+    let snapshot = global_state.snapshot();
+    let generation = global_state.register_in_flight_cancellation(request_id.clone());
+    global_state.task_scheduler().spawn_retryable_for_request(
+        lane,
+        method,
+        request_id.clone(),
+        generation,
+        retry(id.clone(), request_id, params.clone(), attempts),
+        move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
+        })) {
+            Ok(messages) => messages,
             Err(payload) => handler_panic(id, method, payload.as_ref()),
         },
     );
@@ -435,6 +480,19 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
     {
         self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Worker, f, retry);
+        self
+    }
+
+    pub(crate) fn on_retryable_worker_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
+    {
+        self.dispatch_retryable_snapshot_messages_task_typed::<R>(TaskLane::Worker, f, retry);
         self
     }
 
@@ -618,6 +676,50 @@ impl<'a> RequestDispatcher<'a> {
                     f(snapshot, id.clone(), params)
                 })) {
                     Ok(result) => typed_messages(result),
+                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                },
+            );
+        self.result.clear();
+    }
+
+    fn dispatch_retryable_snapshot_messages_task_typed<R>(
+        &mut self,
+        lane: TaskLane,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let request_id = id.clone();
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        let generation = self
+            .global_state
+            .register_in_flight_cancellation(request_id.clone());
+        let retry = retry(id.clone(), request_id.clone(), params.clone());
+        self.global_state
+            .task_scheduler()
+            .spawn_retryable_for_request(
+                lane,
+                R::METHOD,
+                request_id,
+                generation,
+                retry,
+                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    f(snapshot, id.clone(), params)
+                })) {
+                    Ok(messages) => messages,
                     Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
                 },
             );
