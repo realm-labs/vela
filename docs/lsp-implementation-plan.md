@@ -292,7 +292,8 @@ coverage complete based only on the older capability phases.
     facts, source/schema function-return member receivers, stdlib and builtin
     facts, defaulted parameters, short labels with separate projection fields,
     repeated-query cache reuse, stale/cancelled completion rejection, and
-    malformed/incomplete contexts without global fallback.
+    malformed/incomplete contexts without global fallback, including member
+    completion suppression for schema functions returning `Any` as receivers.
   - Current fixtures cover `completionItem/resolve` payload projection,
     lazy schema docs for schema types/functions/fields/methods/variants, item
     pass-through without payloads, and invalid payload rejection.

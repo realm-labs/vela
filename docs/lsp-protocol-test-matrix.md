@@ -305,6 +305,8 @@ These were the first places compared against the matrix before acceptance:
    `signatureHelp` null results for unresolved calls and dynamic receiver
    calls, and `hover` null results for unresolved names plus dynamic receiver
    members while preserving parameter hovers under parser recovery, plus
+   `completion` empty results for schema functions returning `Any` used as
+   member receivers without falling back to globals, plus
    `declaration` null results for unknown source members and
    dynamic receiver members, plus `references` and `documentHighlight` empty
    results for unresolved names and dynamic receiver members, plus

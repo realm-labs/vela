@@ -87,6 +87,33 @@ fn member_completion_uses_schema_function_return_receiver_facts() {
 }
 
 #[test]
+fn member_completion_suppresses_schema_any_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "pub fn main() { host_any().gr }";
+    let mut schema = RegistryFacts::default();
+    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_function("host_any", TypeFact::function(Vec::new(), TypeFact::Any));
+    schema.insert_field("Player", "grant", TypeFact::I64);
+    schema.insert_method(
+        "Player",
+        "grant_reward",
+        TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
+    );
+    schema.insert_function(
+        "global_grant",
+        TypeFact::function(Vec::new(), TypeFact::BOOL),
+    );
+
+    let completions = completions_for_with_schema(document, text, "host_any().gr", schema);
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert!(
+        completions.items().is_empty(),
+        "dynamic Any receivers must not invent member or global completions: {completions:?}"
+    );
+}
+
+#[test]
 fn member_completion_uses_schema_method_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.inventory(). }";
