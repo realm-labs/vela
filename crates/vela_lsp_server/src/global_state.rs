@@ -892,6 +892,14 @@ impl GlobalState {
         Ok(summary)
     }
 
+    fn send_messages(&self, messages: Vec<Message>) -> anyhow::Result<ResultSummary> {
+        let summary = ResultSummary::from_messages(&messages);
+        for message in messages {
+            self.sender.send(message)?;
+        }
+        Ok(summary)
+    }
+
     pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         let _method = result.method();
@@ -922,7 +930,7 @@ impl GlobalState {
             }
             return self.send_result(JsonRpcResult::None);
         }
-        self.send_result(result.into_result())
+        self.send_messages(result.into_messages())
     }
 
     pub(crate) const fn task_scheduler(&self) -> &TaskScheduler {
@@ -3689,7 +3697,11 @@ pub fn main(amount: i64) -> i64 {
             .recv_timeout(Duration::from_secs(1))
             .expect(expected);
         assert_eq!(task.lane(), TaskLane::Formatting);
-        task.into_result().into_response().expect(expected)
+        let messages = task.into_messages();
+        let [message] = messages.as_slice() else {
+            panic!("{expected}");
+        };
+        crate::rpc::serialize_message(message)
     }
 
     fn lsp_formatting_options() -> lsp_types::FormattingOptions {

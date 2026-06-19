@@ -1,7 +1,7 @@
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
-use lsp_server::RequestId;
+use lsp_server::{Message, RequestId};
 use lsp_types::{
     CompletionItem, CompletionParams, DocumentSymbolParams, FoldingRangeParams,
     SemanticTokensParams, WorkspaceSymbolParams,
@@ -20,7 +20,7 @@ pub(crate) enum TaskResult {
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
         retry: Option<Box<RetryTask>>,
-        result: JsonRpcResult,
+        messages: Vec<Message>,
     },
 }
 
@@ -383,13 +383,16 @@ impl TaskResult {
         retry: Option<RetryTask>,
         result: JsonRpcResult,
     ) -> Self {
+        let messages = result
+            .into_messages()
+            .expect("task result should contain typed LSP messages");
         Self::Response {
             lane,
             method,
             request_id,
             generation,
             retry: retry.map(Box::new),
-            result,
+            messages,
         }
     }
 
@@ -423,9 +426,9 @@ impl TaskResult {
         }
     }
 
-    pub(crate) fn into_result(self) -> JsonRpcResult {
+    pub(crate) fn into_messages(self) -> Vec<Message> {
         match self {
-            Self::Response { result, .. } => result,
+            Self::Response { messages, .. } => messages,
         }
     }
 }
@@ -454,7 +457,7 @@ mod tests {
     use vela_language_service::LanguageServiceDatabases;
 
     #[test]
-    fn task_result_preserves_json_rpc_result() {
+    fn task_result_stores_typed_messages() {
         let result = JsonRpcResult::Response(test_response("main"));
 
         let task_result = TaskResult::response(result.clone());
@@ -483,7 +486,7 @@ mod tests {
         );
         assert!(task_result.request_id().is_none());
         assert!(task_result.generation_token().is_none());
-        assert_eq!(task_result.into_result(), result);
+        assert_response_messages(task_result.into_messages(), test_response("main"));
     }
 
     #[test]
@@ -516,18 +519,9 @@ mod tests {
         assert_eq!(latency.lane(), TaskLane::Latency);
         assert_eq!(formatting.lane(), TaskLane::Formatting);
         assert_eq!(worker.lane(), TaskLane::Worker);
-        assert_eq!(
-            latency.into_result(),
-            JsonRpcResult::Response(test_response("latency"))
-        );
-        assert_eq!(
-            formatting.into_result(),
-            JsonRpcResult::Response(test_response("formatting"))
-        );
-        assert_eq!(
-            worker.into_result(),
-            JsonRpcResult::Response(test_response("worker"))
-        );
+        assert_response_messages(latency.into_messages(), test_response("latency"));
+        assert_response_messages(formatting.into_messages(), test_response("formatting"));
+        assert_response_messages(worker.into_messages(), test_response("worker"));
     }
 
     #[test]
@@ -550,10 +544,7 @@ mod tests {
 
         assert_eq!(task.lane(), TaskLane::Worker);
         assert_eq!(task.method(), Some("textDocument/references"));
-        assert_eq!(
-            task.into_result(),
-            JsonRpcResult::Response(test_response("references"))
-        );
+        assert_response_messages(task.into_messages(), test_response("references"));
     }
 
     #[test]
@@ -584,10 +575,16 @@ mod tests {
             .expect("request task should carry generation token");
         assert_eq!(generation.generation(), token.generation());
         assert!(!generation.is_cancelled());
-        assert_eq!(
-            task.into_result(),
-            JsonRpcResult::Response(test_response("formatted"))
-        );
+        assert_response_messages(task.into_messages(), test_response("formatted"));
+    }
+
+    fn assert_response_messages(messages: Vec<Message>, response: Response) {
+        let expected = crate::rpc::serialize_message(&Message::Response(response));
+        let actual = messages
+            .iter()
+            .map(crate::rpc::serialize_message)
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![expected]);
     }
 
     fn test_response(value: &str) -> Response {

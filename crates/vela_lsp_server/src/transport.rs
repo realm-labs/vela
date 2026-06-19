@@ -343,6 +343,35 @@ impl ResultSummary {
         }
     }
 
+    pub(crate) fn from_messages(messages: &[Message]) -> Self {
+        match messages {
+            [] => Self::none(),
+            [Message::Response(message)] => Self {
+                kind: "response",
+                messages: 1,
+                bytes: rpc::serialize_message(&Message::Response(message.clone())).len(),
+            },
+            [message @ Message::Notification(_)] => Self {
+                kind: "notification",
+                messages: 1,
+                bytes: rpc::serialize_message(message).len(),
+            },
+            [message @ Message::Request(_)] => Self {
+                kind: "request",
+                messages: 1,
+                bytes: rpc::serialize_message(message).len(),
+            },
+            messages => Self {
+                kind: "messages",
+                messages: messages.len(),
+                bytes: messages
+                    .iter()
+                    .map(|message| rpc::serialize_message(message).len())
+                    .sum(),
+            },
+        }
+    }
+
     pub(crate) fn from_result(result: &JsonRpcResult) -> Self {
         match result {
             JsonRpcResult::Response(message) => Self {

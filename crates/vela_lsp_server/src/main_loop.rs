@@ -147,10 +147,7 @@ mod tests {
             panic!("expected task event");
         };
         assert_eq!(task.lane(), TaskLane::Worker);
-        assert_eq!(
-            task.into_result(),
-            JsonRpcResult::Response(test_response("worker"))
-        );
+        assert_response_messages(task.into_messages(), test_response("worker"));
     }
 
     #[test]
@@ -209,10 +206,7 @@ mod tests {
             .expect("worker task should finish after release");
         assert_eq!(task.lane(), TaskLane::Worker);
         assert_eq!(task.method(), Some("textDocument/references"));
-        assert_eq!(
-            task.into_result(),
-            JsonRpcResult::Response(test_response("worker"))
-        );
+        assert_response_messages(task.into_messages(), test_response("worker"));
     }
 
     #[test]
@@ -241,10 +235,7 @@ mod tests {
         };
         assert_eq!(task.lane(), TaskLane::Formatting);
         assert_eq!(task.method(), Some("textDocument/formatting"));
-        assert_eq!(
-            task.into_result(),
-            JsonRpcResult::Response(test_response("formatting"))
-        );
+        assert_response_messages(task.into_messages(), test_response("formatting"));
 
         let worker = state
             .task_scheduler()
@@ -299,5 +290,14 @@ mod tests {
             result: Some(serde_json::json!(value)),
             error: None,
         }
+    }
+
+    fn assert_response_messages(messages: Vec<Message>, response: Response) {
+        let expected = crate::rpc::serialize_message(&Message::Response(response));
+        let actual = messages
+            .iter()
+            .map(crate::rpc::serialize_message)
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![expected]);
     }
 }
