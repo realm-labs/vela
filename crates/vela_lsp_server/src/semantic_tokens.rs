@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use serde_json::{Value as JsonValue, json};
+use lsp_types::{
+    SemanticTokenModifier, SemanticTokenType as LspSemanticTokenType, SemanticTokensLegend,
+};
 use vela_language_service::{SemanticTokenModifiers, SemanticTokenType};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -57,11 +59,21 @@ impl SemanticTokenProjection {
     }
 }
 
-pub(crate) fn semantic_tokens_legend(projection: &SemanticTokenProjection) -> JsonValue {
-    json!({
-        "tokenTypes": projection.token_types,
-        "tokenModifiers": projection.token_modifiers
-    })
+pub(crate) fn semantic_tokens_legend(projection: &SemanticTokenProjection) -> SemanticTokensLegend {
+    SemanticTokensLegend {
+        token_types: projection
+            .token_types
+            .iter()
+            .copied()
+            .map(LspSemanticTokenType::from)
+            .collect(),
+        token_modifiers: projection
+            .token_modifiers
+            .iter()
+            .copied()
+            .map(SemanticTokenModifier::from)
+            .collect(),
+    }
 }
 
 fn projected_token_types(supported: Option<&BTreeSet<&str>>) -> (Vec<&'static str>, Vec<u32>) {

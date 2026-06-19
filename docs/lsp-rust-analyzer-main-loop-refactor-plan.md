@@ -1633,6 +1633,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
+  - Initialize capabilities and the semantic-token legend are now assembled
+    with typed `lsp_types` structs instead of a hand-written `json!` object.
+    The only remaining JSON operation in that path is the final JSON-RPC
+    response payload serialization plus a narrow compatibility insertion for
+    Vela's existing top-level `capabilities.workDoneProgress` wire field,
+    which `lsp-types` 0.95.1 does not expose on `ServerCapabilities`.
+    Validated with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server semantic_tokens`, and
+    `cargo test -p vela_lsp_server typed_initialized`.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
 - [ ] Add an assertion or package validation where practical that
   `vela_language_service` does not depend on `lsp-types`.
