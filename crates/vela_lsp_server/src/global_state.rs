@@ -233,20 +233,21 @@ impl GlobalState {
         ))
     }
 
-    pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, params: ()) -> JsonRpcResult {
-        let result = self.server.shutdown_lsp(id, params);
+    pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
         self.shutdown_requested = true;
-        result
+        self.server.shutdown_requested = true;
+        JsonRpcResult::Response(success_response(id, serde_json::Value::Null))
     }
 
     pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> JsonRpcResult {
         self.register_watched_files_after_initialized()
     }
 
-    pub(crate) fn exit(&mut self, params: ()) -> JsonRpcResult {
-        let result = self.server.exit_lsp(params);
+    pub(crate) fn exit(&mut self, _params: ()) -> JsonRpcResult {
         self.exited = true;
-        result
+        self.server.exited = true;
+        JsonRpcResult::None
     }
 
     pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
@@ -578,6 +579,11 @@ mod tests {
         assert!(shutdown.into_response().is_some());
         assert!(state.is_shutdown_requested());
         assert!(state.server.shutdown_requested);
+
+        let exit = state.exit(());
+        assert_eq!(exit, JsonRpcResult::None);
+        assert!(state.is_exited());
+        assert!(state.server.exited);
 
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());

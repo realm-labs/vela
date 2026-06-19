@@ -246,6 +246,9 @@ mirrored only for request paths that have not yet moved to typed handlers.
 Typed `initialized` now performs dynamic watched-file registration through
 `GlobalState` capability state, and the obsolete typed legacy bridge has been
 removed.
+Typed `shutdown` and `exit` now update `GlobalState` directly while mirroring
+legacy lifecycle flags, and their obsolete typed legacy bridge methods have
+been removed.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace

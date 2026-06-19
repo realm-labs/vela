@@ -7,7 +7,7 @@ use vela_language_service::WorkspaceRoot;
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, capabilities::initialize_result,
     client::InitializeParams, config_change::ConfigChange, error_response,
-    rpc::CancelRequestParams, rpc::request_id_from_lsp, success_response, watching,
+    rpc::CancelRequestParams, success_response, watching,
 };
 
 impl LspServer {
@@ -80,12 +80,6 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, JsonValue::Null))
     }
 
-    pub(crate) fn shutdown_lsp(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        self.shutdown_requested = true;
-        JsonRpcResult::Response(success_response(id, JsonValue::Null))
-    }
-
     pub(crate) fn exit(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         self.exited = true;
         id.map_or(JsonRpcResult::None, |id| {
@@ -95,11 +89,6 @@ impl LspServer {
                 "`exit` must be sent as a notification",
             ))
         })
-    }
-
-    pub(crate) fn exit_lsp(&mut self, _params: ()) -> JsonRpcResult {
-        self.exited = true;
-        JsonRpcResult::None
     }
 
     pub(crate) fn cancel_request(
