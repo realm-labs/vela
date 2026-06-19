@@ -51,51 +51,6 @@ impl LspServer {
         ))
     }
 
-    pub(crate) fn initialize_lsp(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: LspInitializeParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        if self.initialized {
-            return JsonRpcResult::Response(error_response(
-                Some(id),
-                ErrorCode::InvalidRequest,
-                "server is already initialized",
-            ));
-        }
-
-        let editor_config = match params
-            .initialization_options
-            .clone()
-            .map(serde_json::from_value)
-            .transpose()
-        {
-            Ok(editor_config) => editor_config,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid initialize params: {error}"),
-                ));
-            }
-        };
-
-        self.initialized = true;
-        self.apply_config_change(ConfigChange::from_initialize(
-            workspace_roots_from_lsp_initialize(&params),
-            editor_config,
-        ));
-        self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
-        self.client_supports_watched_file_registration =
-            lsp_supports_watched_file_registration(&params);
-        self.semantic_token_projection = lsp_semantic_token_projection(&params);
-        JsonRpcResult::Response(success_response(
-            id,
-            initialize_result(&self.semantic_token_projection),
-        ))
-    }
-
     pub(crate) fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         if let Some(id) = id {
             return JsonRpcResult::Response(error_response(
@@ -216,7 +171,9 @@ fn request_id_from_lsp_number_or_string(id: NumberOrString) -> RequestId {
     }
 }
 
-fn workspace_roots_from_lsp_initialize(params: &LspInitializeParams) -> BTreeSet<String> {
+pub(crate) fn workspace_roots_from_lsp_initialize(
+    params: &LspInitializeParams,
+) -> BTreeSet<String> {
     params
         .workspace_folders
         .iter()
@@ -234,7 +191,7 @@ fn workspace_roots_from_lsp_initialize(params: &LspInitializeParams) -> BTreeSet
         .collect()
 }
 
-fn lsp_supports_work_done_progress(params: &LspInitializeParams) -> bool {
+pub(crate) fn lsp_supports_work_done_progress(params: &LspInitializeParams) -> bool {
     params
         .capabilities
         .window
@@ -243,7 +200,7 @@ fn lsp_supports_work_done_progress(params: &LspInitializeParams) -> bool {
         .unwrap_or(false)
 }
 
-fn lsp_supports_watched_file_registration(params: &LspInitializeParams) -> bool {
+pub(crate) fn lsp_supports_watched_file_registration(params: &LspInitializeParams) -> bool {
     params
         .capabilities
         .workspace
@@ -253,7 +210,7 @@ fn lsp_supports_watched_file_registration(params: &LspInitializeParams) -> bool 
         .unwrap_or(false)
 }
 
-fn lsp_semantic_token_projection(
+pub(crate) fn lsp_semantic_token_projection(
     params: &LspInitializeParams,
 ) -> crate::semantic_tokens::SemanticTokenProjection {
     let semantic_tokens = params

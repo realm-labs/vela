@@ -376,10 +376,13 @@ impl LspServer {
         };
 
         for change in coalesced_watched_file_changes(params.changes) {
-            if change.kind == FILE_CHANGE_DELETED {
-                self.remove_watched_file(&change.uri);
+            let config_change = if change.kind == FILE_CHANGE_DELETED {
+                self.remove_watched_file(&change.uri)
             } else {
-                self.upsert_watched_file(&change.uri);
+                self.upsert_watched_file(&change.uri)
+            };
+            if let Some(config_change) = config_change {
+                self.apply_config_change(config_change);
             }
         }
 
@@ -436,42 +439,46 @@ impl LspServer {
         }
     }
 
-    fn upsert_watched_file(&mut self, uri: &str) {
+    fn upsert_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
-            let Some(text) = read_document_uri(uri) else {
-                return;
-            };
+            let text = read_document_uri(uri)?;
             let document_id = DocumentId::from(uri.to_owned());
             let result = WorkspaceConfig::from_vela_toml(uri, &text);
             if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
                 self.config_documents.insert(document_id);
             }
             self.config_diagnostics = result.diagnostics;
-            self.apply_config_change(ConfigChange::from_workspace_file(result.config));
+            Some(ConfigChange::from_workspace_file(result.config))
         } else if self.is_schema_uri(uri) {
             self.upsert_schema_artifact(uri);
+            None
         } else if is_source_uri(uri) {
-            let Some(text) = read_document_uri(uri) else {
-                return;
-            };
+            let text = read_document_uri(uri)?;
             let document_id = DocumentId::from(uri.to_owned());
             self.disk_sources.insert(
                 document_id.clone(),
                 SourceFileSnapshot::new(document_id, text),
             );
+            None
+        } else {
+            None
         }
     }
 
-    fn remove_watched_file(&mut self, uri: &str) {
+    fn remove_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
-            self.apply_config_change(ConfigChange::clear_workspace_file());
+            Some(ConfigChange::clear_workspace_file())
         } else if self.is_schema_uri(uri) {
             self.mark_schema_artifact_missing();
+            None
         } else if is_source_uri(uri) {
             self.disk_sources.remove(&DocumentId::from(uri.to_owned()));
+            None
+        } else {
+            None
         }
     }
 
@@ -530,7 +537,7 @@ impl LspServer {
             .and_then(|config| config.schema().path())
     }
 
-    fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
+    pub(crate) fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
         let mut notifications = Vec::new();
 
         if !self.open_documents.is_empty() {
@@ -1015,7 +1022,7 @@ fn publish_diagnostics_notification(
     .to_string()
 }
 
-fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
+pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
     let notifications = match result {
         JsonRpcResult::Notification(notification) => vec![notification],
         JsonRpcResult::Notifications(notifications) => notifications,

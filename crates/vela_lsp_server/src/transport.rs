@@ -376,6 +376,9 @@ fn timestamp_ms() -> u128 {
 }
 
 #[cfg(test)]
+mod config_tests;
+
+#[cfg(test)]
 mod tests {
     use std::thread;
     use std::time::Duration;

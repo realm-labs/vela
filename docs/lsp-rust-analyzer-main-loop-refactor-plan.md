@@ -460,7 +460,7 @@ cargo test -p vela_lsp_server lifecycle
 - [x] Introduce a `ConfigChange`-style pipeline separating immutable launch
   configuration, client/editor configuration, workspace `vela.toml`
   configuration, schema paths, watcher state, and effective config.
-- [ ] Apply configuration changes through `GlobalState`, not directly inside
+- [x] Apply configuration changes through `GlobalState`, not directly inside
   feature request handlers.
 - [ ] Introduce `line_index.rs` as the only LSP `Position`/`Range` conversion
   boundary, preserving UTF-16 client behavior and recording negotiated position

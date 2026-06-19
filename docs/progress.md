@@ -658,9 +658,11 @@ directly into `GlobalState`.
 M20.5 RA-style main-loop update: Phase 2.5 now has a `ConfigChange` pipeline
 for immutable launch flags, editor settings, initialize/workspace roots,
 workspace `vela.toml` config, watcher enablement, and effective workspace
-config recomputation. The application helper currently lives on the temporary
-`LspServer` owner; routing all config changes through `GlobalState` remains the
-next config-boundary task.
+config recomputation. Typed initialize, editor configuration, workspace-folder,
+and watched `vela.toml` changes now apply those config changes through
+`GlobalState`, with typed transport coverage proving schema-backed completion
+after editor settings and watched config updates. The next Phase 2.5 boundary
+is the shared `line_index.rs` position/range conversion layer.
 
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature

@@ -85,13 +85,13 @@ fn dispatch_notification(
         .on_sync_mut_typed::<Initialized>(GlobalState::initialized)
         .on_sync_mut_typed::<Exit>(GlobalState::exit)
         .on_sync_mut_typed::<Cancel>(GlobalState::cancel_request)
+        .on_sync_mut_typed::<DidChangeConfiguration>(GlobalState::did_change_configuration)
+        .on_sync_mut_typed::<DidChangeWorkspaceFolders>(GlobalState::did_change_workspace_folders)
+        .on_sync_mut_typed::<DidChangeWatchedFiles>(GlobalState::did_change_watched_files)
         .on_sync_mut::<DidOpenTextDocument>()
         .on_sync_mut::<DidChangeTextDocument>()
         .on_sync_mut::<DidCloseTextDocument>()
         .on_sync_mut::<DidSaveTextDocument>()
-        .on_sync_mut::<DidChangeConfiguration>()
-        .on_sync_mut::<DidChangeWorkspaceFolders>()
-        .on_sync_mut::<DidChangeWatchedFiles>()
         .finish()
 }
 
