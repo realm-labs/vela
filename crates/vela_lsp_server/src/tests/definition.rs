@@ -3,10 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{
-    LspServer, handle_notification, handle_request, notification, notification_value, request,
-    response_value,
-};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_definition_follows_open_overlay_local_binding() {

@@ -1,4 +1,10 @@
-use super::*;
+use std::fs;
+
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
+
+use super::{assert_schema_source_navigation, file_uri, temp_workspace};
 
 #[test]
 fn lsp_definition_follows_schema_source_span() {
@@ -85,7 +91,8 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -93,16 +100,18 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let main_text = "pub fn main(player: Player) { return 1 }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -112,9 +121,10 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         request_method,
         serde_json::json!({
@@ -124,7 +134,7 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
                 "character": main_text.find("Player").expect("type hint should exist")
             }
         }),
-    )));
+    ));
 
     assert!(response["result"].is_null());
     fs::remove_dir_all(root).expect("temporary workspace should be removable");
@@ -182,7 +192,8 @@ fn assert_schema_field_source_navigation(request_method: &str) {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -190,15 +201,17 @@ fn assert_schema_field_source_navigation(request_method: &str) {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -208,10 +221,11 @@ fn assert_schema_field_source_navigation(request_method: &str) {
                 "text": schema_text
             }
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let main_text = "pub fn main(player: Player) { return player.level }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -221,9 +235,10 @@ fn assert_schema_field_source_navigation(request_method: &str) {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         request_method,
         serde_json::json!({
@@ -233,7 +248,7 @@ fn assert_schema_field_source_navigation(request_method: &str) {
                 "character": main_text.find("level").expect("field use should exist")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], schema_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -674,7 +689,8 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -682,15 +698,17 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -700,10 +718,11 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
                 "text": schema_text
             }
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let main_text = "pub fn main() { return QuestState::Active }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -713,9 +732,10 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         request_method,
         serde_json::json!({
@@ -725,7 +745,7 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
                 "character": main_text.find("Active").expect("variant use should exist")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], schema_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -793,7 +813,8 @@ fn assert_schema_variant_type_definition_null() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -801,15 +822,17 @@ fn assert_schema_variant_type_definition_null() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -819,10 +842,11 @@ fn assert_schema_variant_type_definition_null() {
                 "text": schema_text
             }
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let main_text = "pub fn main() { return QuestState::Active }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -832,9 +856,10 @@ fn assert_schema_variant_type_definition_null() {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -844,7 +869,7 @@ fn assert_schema_variant_type_definition_null() {
                 "character": main_text.find("Active").expect("variant use should exist")
             }
         }),
-    )));
+    ));
 
     assert!(response["result"].is_null());
     fs::remove_dir_all(root).expect("temporary workspace should be removable");
@@ -891,7 +916,8 @@ fn assert_schema_member_source_navigation<F>(
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -899,15 +925,17 @@ fn assert_schema_member_source_navigation<F>(
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -917,9 +945,10 @@ fn assert_schema_member_source_navigation<F>(
                 "text": schema_text
             }
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -929,9 +958,10 @@ fn assert_schema_member_source_navigation<F>(
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         request_method,
         serde_json::json!({
@@ -941,7 +971,7 @@ fn assert_schema_member_source_navigation<F>(
                 "character": main_text.find(usage_needle).expect("member use should exist")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], schema_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -988,7 +1018,8 @@ fn assert_schema_member_source_navigation_null<F>(
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -996,15 +1027,17 @@ fn assert_schema_member_source_navigation_null<F>(
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -1014,9 +1047,10 @@ fn assert_schema_member_source_navigation_null<F>(
                 "text": schema_text
             }
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -1026,9 +1060,10 @@ fn assert_schema_member_source_navigation_null<F>(
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -1038,7 +1073,7 @@ fn assert_schema_member_source_navigation_null<F>(
                 "character": main_text.find(usage_needle).expect("member use should exist")
             }
         }),
-    )));
+    ));
 
     assert!(response["result"].is_null());
     fs::remove_dir_all(root).expect("temporary workspace should be removable");

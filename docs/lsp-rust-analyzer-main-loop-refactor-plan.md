@@ -1926,6 +1926,8 @@ node editors/vscode/scripts/validate-package.js
     the shared typed request/notification helpers.
   - Converted the top-level definition fixture off `LspServer::handle_json`
     and onto the shared typed request/notification helpers.
+  - Converted the schema definition fixture off `LspServer::handle_json` and
+    `use super::*` onto explicit typed request/notification helper imports.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.
