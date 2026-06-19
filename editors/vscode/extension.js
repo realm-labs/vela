@@ -68,11 +68,7 @@ function activate(context) {
     documentSelector: [{ scheme: "file", language: "vela" }],
     initializationOptions: initializationOptions(),
     synchronize: {
-      configurationSection: "vela",
-      fileEvents: [
-        vscode.workspace.createFileSystemWatcher("**/*.vela"),
-        vscode.workspace.createFileSystemWatcher("**/vela.toml")
-      ]
+      configurationSection: "vela"
     }
   };
 

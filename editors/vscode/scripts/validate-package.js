@@ -171,6 +171,14 @@ const extensionSource = fs.readFileSync(path.join(root, "extension.js"), "utf8")
 assert(extensionSource.includes("LanguageClient"), "extension must use vscode-languageclient");
 assert(extensionSource.includes("serverCommand"), "extension must provide server command discovery");
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
+assert(
+  !extensionSource.includes("createFileSystemWatcher"),
+  "extension must not create workspace file watchers; native LSP server owns watcher registration"
+);
+assert(
+  !extensionSource.includes("fileEvents"),
+  "extension must not use client-side fileEvents; native LSP server owns watcher registration"
+);
 assertThinLauncher(extensionSource, "VS Code extension");
 
 const consistency = JSON.parse(fs.readFileSync(sharedHighlightingConsistency, "utf8"));
