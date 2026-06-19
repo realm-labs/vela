@@ -1273,6 +1273,10 @@ cargo test -p vela_lsp_server semantic_tokens
 
 - [ ] Delete or empty production use of custom protocol params in
   `protocol.rs` once `lsp-types` replacements exist.
+  - Legacy call-hierarchy query decoding now uses `lsp_types` params and the
+    existing `lsp/from_proto.rs` conversion boundary; the custom
+    call-hierarchy protocol structs and bridge module have been removed.
+    Validated with `cargo test -p vela_lsp_server call_hierarchy`.
 - [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,

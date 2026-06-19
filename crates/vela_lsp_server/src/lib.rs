@@ -1,6 +1,5 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
-mod call_hierarchy;
 mod capabilities;
 mod client;
 mod completion;

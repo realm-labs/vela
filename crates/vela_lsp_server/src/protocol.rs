@@ -137,29 +137,6 @@ pub(crate) struct RenameParams {
     pub(crate) new_name: String,
 }
 
-pub(crate) type CallHierarchyPrepareParams = TextDocumentPositionParams;
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CallHierarchyIncomingCallsParams {
-    pub(crate) item: CallHierarchyItem,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CallHierarchyOutgoingCallsParams {
-    pub(crate) item: CallHierarchyItem,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CallHierarchyItem {
-    pub(crate) name: String,
-    pub(crate) uri: String,
-    pub(crate) range: LspRange,
-    pub(crate) selection_range: LspRange,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSymbolParams {

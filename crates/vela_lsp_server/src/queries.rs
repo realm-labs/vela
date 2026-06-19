@@ -2,17 +2,27 @@ use serde_json::Value as JsonValue;
 use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLineIndex, Position};
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId, call_hierarchy::service_call_hierarchy_item,
-    completion::service_completion_resolve_payload, error_response, lsp::to_proto,
-    protocol::CallHierarchyIncomingCallsParams, protocol::CallHierarchyOutgoingCallsParams,
-    protocol::CallHierarchyPrepareParams, protocol::CodeActionParams,
-    protocol::DocumentFormattingParams, protocol::DocumentOnTypeFormattingParams,
-    protocol::DocumentRangeFormattingParams, protocol::DocumentSymbolParams,
-    protocol::FoldingRangeParams, protocol::InlayHintParams, protocol::PrepareRenameParams,
-    protocol::ReferencesParams, protocol::RenameParams, protocol::SelectionRangeParams,
-    protocol::SemanticTokensDeltaParams, protocol::SemanticTokensParams,
-    protocol::SemanticTokensRangeParams, protocol::TextDocumentPositionParams,
-    protocol::WorkspaceSymbolParams, success_response,
+    ErrorCode, JsonRpcResult, LspServer, RequestId,
+    completion::service_completion_resolve_payload,
+    error_response,
+    lsp::{from_proto, to_proto},
+    protocol::CodeActionParams,
+    protocol::DocumentFormattingParams,
+    protocol::DocumentOnTypeFormattingParams,
+    protocol::DocumentRangeFormattingParams,
+    protocol::DocumentSymbolParams,
+    protocol::FoldingRangeParams,
+    protocol::InlayHintParams,
+    protocol::PrepareRenameParams,
+    protocol::ReferencesParams,
+    protocol::RenameParams,
+    protocol::SelectionRangeParams,
+    protocol::SemanticTokensDeltaParams,
+    protocol::SemanticTokensParams,
+    protocol::SemanticTokensRangeParams,
+    protocol::TextDocumentPositionParams,
+    protocol::WorkspaceSymbolParams,
+    success_response,
 };
 
 enum NavigationLocationQuery {
@@ -437,7 +447,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<CallHierarchyPrepareParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::CallHierarchyPrepareParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -448,18 +458,23 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let position =
-            match service_position_for_request(&id, "prepareCallHierarchy", &text, params.position)
-            {
-                Ok(position) => position,
-                Err(response) => return response,
-            };
+        let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareCallHierarchy position: {error}"),
+                ));
+            }
+        };
         let items = self
             .databases
-            .prepare_call_hierarchy(&document_id, position);
+            .prepare_call_hierarchy(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -476,21 +491,22 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<CallHierarchyIncomingCallsParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid incomingCalls params: {error}"),
-                ));
-            }
-        };
+        let params =
+            match serde_json::from_value::<lsp_types::CallHierarchyIncomingCallsParams>(params) {
+                Ok(params) => params,
+                Err(error) => {
+                    return JsonRpcResult::Response(error_response(
+                        Some(id),
+                        ErrorCode::InvalidRequest,
+                        format!("invalid incomingCalls params: {error}"),
+                    ));
+                }
+            };
 
-        let document_id = DocumentId::from(params.item.uri.clone());
+        let document_id = from_proto::document_id(&params.item.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let item = match service_call_hierarchy_item(&params.item, &text) {
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -517,21 +533,22 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<CallHierarchyOutgoingCallsParams>(params) {
-            Ok(params) => params,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid outgoingCalls params: {error}"),
-                ));
-            }
-        };
+        let params =
+            match serde_json::from_value::<lsp_types::CallHierarchyOutgoingCallsParams>(params) {
+                Ok(params) => params,
+                Err(error) => {
+                    return JsonRpcResult::Response(error_response(
+                        Some(id),
+                        ErrorCode::InvalidRequest,
+                        format!("invalid outgoingCalls params: {error}"),
+                    ));
+                }
+            };
 
-        let document_id = DocumentId::from(params.item.uri.clone());
+        let document_id = from_proto::document_id(&params.item.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let item = match service_call_hierarchy_item(&params.item, &text) {
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
