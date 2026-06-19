@@ -287,6 +287,10 @@ method-return receivers, plus source trait default methods on source
 method-return receivers. Inherent source-method navigation now anchors on the
 method name instead of the lowered method body span.
 
+M20.5 Phase 8 update: service and native LSP definition, declaration, and
+type-definition fixtures now cover source functions returning `Any` used as
+member receivers, returning null instead of inventing member navigation facts.
+
 M20.5 Phase 8 update: service and native LSP type-definition fixtures now pin
 dynamic receiver-member boundaries, returning null for `Any` member targets
 instead of fabricating a type location.

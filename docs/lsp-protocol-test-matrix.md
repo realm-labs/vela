@@ -310,9 +310,11 @@ These were the first places compared against the matrix before acceptance:
    parameter hovers under parser recovery, plus
    `completion` empty results for source and schema functions returning `Any`
    used as member receivers without falling back to globals, plus
-   `declaration` null results for unknown source members and
-   dynamic receiver members, plus `references` and `documentHighlight` empty
-   results for unresolved names and dynamic receiver members, plus
+   `definition`, `declaration`, and `typeDefinition` null results for unknown
+   source members, dynamic receiver members, and source functions returning
+   `Any` used as receivers where applicable, plus `references` and
+   `documentHighlight` empty results for unresolved names and dynamic receiver
+   members, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
    calls, and non-callable symbols, plus stale host completion clearing and
    missing-schema diagnostics after schema deletion, plus inlay-hint

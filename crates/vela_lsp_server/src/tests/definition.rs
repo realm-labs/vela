@@ -248,6 +248,7 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
     assert!(response["result"].is_null(), "{response:?}");
 }
 
+mod dynamic;
 mod schema;
 mod source_return_receivers;
 mod type_definition;

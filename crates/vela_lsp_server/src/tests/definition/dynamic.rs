@@ -1,7 +1,16 @@
-use super::*;
+use super::{LspServer, notification, notification_value, request, response_value};
 
 #[test]
-fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
+fn lsp_definition_returns_null_for_source_any_return_receiver_member() {
+    assert_source_any_return_receiver_navigation_null("textDocument/definition");
+}
+
+#[test]
+fn lsp_declaration_returns_null_for_source_any_return_receiver_member() {
+    assert_source_any_return_receiver_navigation_null("textDocument/declaration");
+}
+
+pub(super) fn assert_source_any_return_receiver_navigation_null(method: &str) {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
         1,
@@ -13,9 +22,10 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
         }),
     )));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let text = r#"fn main(value: Any) {
-    return value.level;
-}"#;
+    let text = "\
+struct Player { level: i64 }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().level }";
     let _ = notification_value(server.handle_json(&notification(
         "textDocument/didOpen",
         serde_json::json!({
@@ -27,28 +37,19 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
             }
         }),
     )));
-    let member_line = text.lines().nth(1).expect("member use line should exist");
 
+    let use_line = text.lines().nth(2).expect("member use line should exist");
     let response = response_value(server.handle_json(&request(
         2,
-        "textDocument/typeDefinition",
+        method,
         serde_json::json!({
             "textDocument": { "uri": uri },
             "position": {
-                "line": 1,
-                "character": member_line
-                    .find("level")
-                    .expect("dynamic member should contain name")
+                "line": 2,
+                "character": use_line.find("level").expect("member use")
             }
         }),
     )));
 
     assert!(response["result"].is_null(), "{response:?}");
-}
-
-#[test]
-fn lsp_type_definition_returns_null_for_source_any_return_receiver_member() {
-    super::super::dynamic::assert_source_any_return_receiver_navigation_null(
-        "textDocument/typeDefinition",
-    );
 }
