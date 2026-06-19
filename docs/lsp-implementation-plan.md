@@ -313,10 +313,11 @@ coverage complete based only on the older capability phases.
     dynamic facts, and unresolved names.
   - W1 `typeDefinition` now has service and protocol coverage for imported
     local, parameter, trait, struct-field, enum-field, and return type hints
-    plus nested builtin-container type hints, const/global declaration type
-    hints, and local and parameter source type aliases in addition to existing
-    imported field, function return, member, method return, struct
-    constructor, enum variant, const, and global source type paths.
+    plus shallow and deep nested builtin-container type hints, const/global
+    declaration type hints, and local and parameter source type aliases in
+    addition to existing imported field, function return, member, method
+    return, struct constructor, enum variant, const, and global source type
+    paths.
   - Current fixtures cover service and native LSP `definition`,
     `declaration`, and `typeDefinition` for local bindings, globals,
     imported functions, imported const/global declarations, source fields,
@@ -993,6 +994,8 @@ Tests:
 - [x] `type_definition_follows_imported_parameter_source_type_alias`
 - [x] `type_definition_follows_imported_local_source_type_alias`
 - [x] `type_definition_follows_imported_local_source_type_hint`
+- [x] `type_definition_follows_imported_nested_container_source_type_hint`
+- [x] `type_definition_follows_imported_deep_container_source_type_hint`
 - [x] `type_definition_follows_imported_parameter_source_type_hint`
 - [x] `type_definition_follows_imported_trait_source_type_hint`
 - [x] `type_definition_follows_imported_field_source_type_hint`
@@ -1031,6 +1034,8 @@ Tests:
 - [x] `lsp_type_definition_follows_imported_parameter_source_type_alias`
 - [x] `lsp_type_definition_follows_imported_local_source_type_alias`
 - [x] `lsp_type_definition_follows_imported_local_source_type_hint`
+- [x] `lsp_type_definition_follows_imported_nested_container_source_type_hint`
+- [x] `lsp_type_definition_follows_imported_deep_container_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_parameter_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_trait_source_type_hint`
 - [x] `lsp_type_definition_follows_imported_field_source_type_hint`

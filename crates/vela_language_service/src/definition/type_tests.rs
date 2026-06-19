@@ -158,6 +158,46 @@ slots: i64,
 }
 
 #[test]
+fn type_definition_follows_imported_deep_container_source_type_hint() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");
+    let main_text = r#"use game::inventory::Inventory as Bag
+
+fn main() {
+let bags: Result<Map<String, Bag>, String> = Ok({});
+return bags;
+}"#;
+    let inventory_text = r#"pub struct Inventory {
+slots: i64,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(inventory.clone(), inventory_text),
+    ]);
+    let annotation_line = main_text.lines().nth(3).expect("local annotation line");
+
+    let definition = databases
+        .type_definition(
+            &main,
+            Position::new(
+                3,
+                annotation_line
+                    .find("Bag")
+                    .expect("deep nested source type hint"),
+            ),
+        )
+        .expect("type definition should resolve imported deep nested source type hint");
+
+    assert_eq!(definition.document_id(), &inventory);
+    assert_eq!(definition.range().start().line, 0);
+    assert_eq!(definition.range().start().character, 11);
+    assert_eq!(
+        definition.symbol(),
+        Some(&SymbolRef::Source("game::inventory::Inventory".into()))
+    );
+}
+
+#[test]
 fn type_definition_follows_imported_parameter_source_type_hint() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let inventory = DocumentId::from("/workspace/scripts/game/inventory.vela");

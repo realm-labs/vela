@@ -586,6 +586,11 @@ M20.5 Phase 8 update: service and native LSP type-definition fixtures now
 cover imported source trait method return types, extending the W1 cross-file
 navigation audit beyond inherent method return types.
 
+M20.5 Phase 8 update: service and native LSP type-definition fixtures now
+cover imported source types nested inside deep builtin container hints such as
+`Result<Map<String, Inventory>, String>`, extending the W1 type-position audit
+beyond shallow `Array<T>` containers.
+
 M20.5 Phase 5 update: native LSP `didClose` coverage now proves completion
 and hover queries return to disk-snapshot declarations after an open overlay
 is closed, matching the existing diagnostic, definition, and type-definition
