@@ -72,6 +72,7 @@ pub(crate) enum ErrorCode {
     ParseError,
     InvalidRequest,
     MethodNotFound,
+    InternalError,
     ServerNotInitialized,
     RequestCancelled,
 }
@@ -82,6 +83,7 @@ impl ErrorCode {
             Self::ParseError => -32700,
             Self::InvalidRequest => -32600,
             Self::MethodNotFound => -32601,
+            Self::InternalError => -32603,
             Self::ServerNotInitialized => -32002,
             Self::RequestCancelled => -32800,
         }

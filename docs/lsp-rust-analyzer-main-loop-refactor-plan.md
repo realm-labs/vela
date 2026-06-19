@@ -442,6 +442,10 @@ cargo test -p vela_lsp_server lifecycle
 - [~] Centralize invalid params, panic, cancellation, stale generation,
   `ContentModified`, `RequestCancelled`, method-not-found, and unknown
   notification projection in dispatch/main-loop code.
+  - Typed request handler panics are now caught at the dispatcher boundary and
+    projected as JSON-RPC internal errors; typed notification handler panics
+    are caught as no-response notification failures. Legacy feature-handler
+    panic paths remain open until their Phase 4/5 typed migration.
 - [x] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and
   `$/cancelRequest` to typed dispatch.
 - [x] Preserve current lifecycle behavior for repeated initialize, malformed

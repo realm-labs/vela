@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{any::Any, fmt::Debug, panic};
 
 use lsp_server::{Message, Notification, Request};
 use lsp_types::{
@@ -140,7 +140,12 @@ impl<'a> RequestDispatcher<'a> {
                 return self;
             }
         };
-        self.result = f(self.global_state, id, params);
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(self.global_state, id.clone(), params)
+        })) {
+            Ok(result) => result,
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
         self
     }
 
@@ -266,7 +271,11 @@ impl<'a> NotificationDispatcher<'a> {
                 return self;
             }
         };
-        self.result = f(self.global_state, params);
+        self.result =
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self.global_state, params))) {
+                Ok(result) => result,
+                Err(_) => JsonRpcResult::None,
+            };
         self
     }
 
@@ -337,6 +346,26 @@ fn invalid_params(
     ))
 }
 
+fn handler_panic(
+    id: lsp_server::RequestId,
+    method: &str,
+    payload: &(dyn Any + Send),
+) -> JsonRpcResult {
+    let detail = panic_message(payload).unwrap_or("unknown panic payload");
+    JsonRpcResult::Response(error_response(
+        Some(request_id_from_lsp(id)),
+        ErrorCode::InternalError,
+        format!("handler for `{method}` panicked: {detail}"),
+    ))
+}
+
+fn panic_message(payload: &(dyn Any + Send)) -> Option<&str> {
+    payload
+        .downcast_ref::<&'static str>()
+        .copied()
+        .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+}
+
 fn rpc_request_id(id: lsp_server::RequestId) -> RequestId {
     request_id_from_lsp(id)
 }
@@ -362,4 +391,84 @@ fn is_known_notification_method(method: &str) -> bool {
             | "workspace/didChangeWorkspaceFolders"
             | "workspace/didChangeWatchedFiles"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use crossbeam_channel::unbounded;
+    use lsp_server::{Notification, Request};
+    use serde_json::Value as JsonValue;
+
+    use super::*;
+    use crate::LaunchConfiguration;
+
+    fn test_global_state() -> GlobalState {
+        let (sender, _receiver) = unbounded();
+        GlobalState::new(sender, LaunchConfiguration::new())
+    }
+
+    fn panic_request_handler(
+        _state: &mut GlobalState,
+        _id: lsp_server::RequestId,
+        _params: lsp_types::InitializeParams,
+    ) -> JsonRpcResult {
+        panic!("synthetic request panic")
+    }
+
+    fn panic_notification_handler(
+        _state: &mut GlobalState,
+        _params: lsp_types::InitializedParams,
+    ) -> JsonRpcResult {
+        panic!("synthetic notification panic")
+    }
+
+    #[test]
+    fn typed_request_dispatcher_projects_handler_panics_as_internal_error() {
+        let mut global_state = test_global_state();
+        let request = Request {
+            id: lsp_server::RequestId::from(7),
+            method: <lsp_types::request::Initialize as lsp_types::request::Request>::METHOD
+                .to_owned(),
+            params: serde_json::json!({
+                "processId": null,
+                "capabilities": {}
+            }),
+        };
+
+        let mut dispatcher = RequestDispatcher::new(&mut global_state, request, "");
+        let result = dispatcher
+            .on_sync_mut_typed::<lsp_types::request::Initialize>(panic_request_handler)
+            .finish();
+        let response = result
+            .into_response()
+            .expect("panic should be projected as response");
+        let response =
+            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["error"]["code"], -32603);
+        assert!(
+            response["error"]["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("handler for `initialize` panicked"))
+        );
+    }
+
+    #[test]
+    fn typed_notification_dispatcher_swallows_handler_panics() {
+        let mut global_state = test_global_state();
+        let notification = Notification {
+            method:
+                <lsp_types::notification::Initialized as lsp_types::notification::Notification>::METHOD
+                    .to_owned(),
+            params: serde_json::json!({}),
+        };
+
+        let mut dispatcher = NotificationDispatcher::new(&mut global_state, notification, "");
+        let result = dispatcher
+            .on_sync_mut_typed::<lsp_types::notification::Initialized>(panic_notification_handler)
+            .finish();
+
+        assert_eq!(result, JsonRpcResult::None);
+    }
 }

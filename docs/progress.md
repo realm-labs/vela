@@ -233,6 +233,12 @@ M20.5 lifecycle update: request-shaped `exit` messages now have explicit
 coverage: they return invalid-request while still ending the in-memory
 dispatcher so later input is ignored.
 
+M20.5 RA main-loop update: typed request and notification dispatch now catches
+handler panics at the dispatcher boundary, projecting request failures as
+JSON-RPC internal errors and notification failures as no-response events while
+keeping the main loop alive. Legacy feature-handler panic coverage remains
+part of the pending typed request migration.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,
