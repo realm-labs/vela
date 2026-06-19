@@ -4,7 +4,8 @@ use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
-    DidChangeWorkspaceFoldersParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -430,6 +431,22 @@ impl GlobalState {
         self.open_documents.insert(document_id.clone());
 
         let result = self.server.publish_current_diagnostics(&uri, &document_id);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> JsonRpcResult {
+        let uri = params.text_document.uri.to_string();
+        let document_id = DocumentId::from(uri.clone());
+        self.server.workspace.close_document(&document_id);
+        self.server.open_documents.remove(&document_id);
+        self.open_documents.remove(&document_id);
+
+        let result = if self.server.disk_sources.contains_key(&document_id) {
+            self.server.publish_current_diagnostics(&uri, &document_id)
+        } else {
+            JsonRpcResult::Notification(publish_diagnostics_notification(&uri, Vec::new(), None))
+        };
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1001,6 +1018,35 @@ mod tests {
         );
         assert!(state.open_documents.contains(&document));
         assert_eq!(state.open_documents, state.server.open_documents);
+    }
+
+    #[test]
+    fn typed_did_close_removes_open_overlay_and_clears_scratch_diagnostics() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "fn main() {}",
+            SourceVersion::new(1),
+        );
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let result = state.did_close(lsp_types::DidCloseTextDocumentParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse(document.as_str())
+                    .expect("document URI should parse as URL"),
+            },
+        });
+
+        assert!(matches!(
+            result,
+            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
+        ));
+        assert!(!state.open_documents.contains(&document));
+        assert_eq!(state.open_documents, state.server.open_documents);
+        assert_eq!(state.snapshot().workspace().document_text(&document), None);
     }
 
     #[test]

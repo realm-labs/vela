@@ -561,16 +561,17 @@ cargo test -p vela_lsp_server profile
 
 ### Phase 3: Typed Mutable Notifications
 
-- [ ] Migrate `textDocument/didOpen`, `textDocument/didChange`,
+- [x] Migrate `textDocument/didOpen`, `textDocument/didChange`,
   `textDocument/didClose`, and `textDocument/didSave` to `lsp-types`.
   - `textDocument/didOpen` now uses typed `lsp-types` params through
     `GlobalState`, updates the open-document mirror, and preserves existing
     diagnostics publication.
   - `textDocument/didChange` now uses typed `lsp-types` params through
     `GlobalState`, including full-text and ranged edit application through the
-    existing line-index conversion boundary. `didClose` remains on the
-    temporary legacy path until its close-restore behavior moves behind typed
-    helpers.
+    existing line-index conversion boundary.
+  - `textDocument/didClose` now uses typed `lsp-types` params through
+    `GlobalState`, removes open overlays from the global mirror, and preserves
+    disk-snapshot restoration or scratch diagnostic clearing.
   - `textDocument/didSave` now uses typed `lsp-types` params through
     `GlobalState`; it remains a no-response no-op because save events are not
     advertised or required for correctness.

@@ -78,9 +78,9 @@ fn dispatch_request(
 fn dispatch_notification(
     global_state: &mut GlobalState,
     notification: Notification,
-    legacy_input: &str,
+    _legacy_input: &str,
 ) -> JsonRpcResult {
-    let mut dispatcher = NotificationDispatcher::new(global_state, notification, legacy_input);
+    let mut dispatcher = NotificationDispatcher::new(global_state, notification);
     dispatcher
         .on_sync_mut_typed::<Initialized>(GlobalState::initialized)
         .on_sync_mut_typed::<Exit>(GlobalState::exit)
@@ -91,7 +91,7 @@ fn dispatch_notification(
         .on_sync_mut_typed::<DidSaveTextDocument>(GlobalState::did_save)
         .on_sync_mut_typed::<DidOpenTextDocument>(GlobalState::did_open)
         .on_sync_mut_typed::<DidChangeTextDocument>(GlobalState::did_change)
-        .on_sync_mut::<DidCloseTextDocument>()
+        .on_sync_mut_typed::<DidCloseTextDocument>(GlobalState::did_close)
         .finish()
 }
 
@@ -220,37 +220,16 @@ impl<'a> RequestDispatcher<'a> {
 pub(crate) struct NotificationDispatcher<'a> {
     global_state: &'a mut GlobalState,
     notification: Option<Notification>,
-    legacy_input: &'a str,
     result: JsonRpcResult,
 }
 
 impl<'a> NotificationDispatcher<'a> {
-    fn new(
-        global_state: &'a mut GlobalState,
-        notification: Notification,
-        legacy_input: &'a str,
-    ) -> Self {
+    fn new(global_state: &'a mut GlobalState, notification: Notification) -> Self {
         Self {
             global_state,
             notification: Some(notification),
-            legacy_input,
             result: JsonRpcResult::None,
         }
-    }
-
-    pub(crate) fn on_sync_mut<N>(&mut self) -> &mut Self
-    where
-        N: lsp_types::notification::Notification,
-    {
-        if self
-            .notification
-            .as_ref()
-            .is_some_and(|notification| notification.method == N::METHOD)
-        {
-            self.result = self.global_state.handle_legacy_json(self.legacy_input);
-            self.notification = None;
-        }
-        self
     }
 
     pub(crate) fn on_sync_mut_typed<N>(
@@ -509,7 +488,7 @@ mod tests {
             params: serde_json::json!({}),
         };
 
-        let mut dispatcher = NotificationDispatcher::new(&mut global_state, notification, "");
+        let mut dispatcher = NotificationDispatcher::new(&mut global_state, notification);
         let result = dispatcher
             .on_sync_mut_typed::<lsp_types::notification::Initialized>(panic_notification_handler)
             .finish();
