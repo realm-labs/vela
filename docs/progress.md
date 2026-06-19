@@ -600,6 +600,12 @@ The old manual stdio runner remains only as a temporary Phase 1 compatibility
 wrapper until the remaining main-loop phases delete custom JSON-RPC and
 Content-Length handling.
 
+M20.5 RA-style main-loop update: `vela_lsp_server --listen <host:port>` now
+provides an explicit TCP debug transport that binds only loopback addresses,
+accepts one client connection, and routes it through the same typed
+`lsp_server::Message` bridge as stdio. Focused TCP, stdio, and lifecycle
+fixtures cover initialize/exit behavior and non-loopback rejection.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

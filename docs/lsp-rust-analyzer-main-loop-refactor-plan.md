@@ -402,16 +402,16 @@ document or `docs/decisions.md`.
 - [x] Keep the existing CLI flags: `--stdio`, `--root`, `--schema`,
   `--profile`, `--profile-slow-ms`, `--no-watch-files`, `--version`, and
   `--help`.
-- [ ] Add explicit TCP debug flags, for example `--listen <host:port>`, while
+- [x] Add explicit TCP debug flags, for example `--listen <host:port>`, while
   keeping stdio as the default editor path.
-- [ ] Reject non-loopback TCP bind addresses by default or require a separate
+- [x] Reject non-loopback TCP bind addresses by default or require a separate
   explicit unsafe opt-in flag before accepting them.
 - [ ] Introduce `transport.rs` so stdio and TCP setup produce the same typed
   message-loop input and share response writing, IO thread ownership, shutdown
   joining, profiling, and tracing behavior.
 - [x] Make `main.rs` start `lsp_server::Connection::stdio()` for real stdio
   server mode.
-- [ ] Add a TCP listener smoke path that accepts one client connection and then
+- [x] Add a TCP listener smoke path that accepts one client connection and then
   enters the same typed main loop used by stdio.
 - [x] Add a typed in-memory test harness for LSP messages so tests no longer
   need custom Content-Length frame parsing.

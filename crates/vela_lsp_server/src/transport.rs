@@ -1,9 +1,127 @@
 use std::fs::{File, OpenOptions};
+use std::io::{self, BufReader};
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::thread;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message, Notification, RequestId, Response, ResponseError};
 
 use crate::{JsonRpcResult, LaunchConfiguration, LspServer};
+
+pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
+    let listener = bind_loopback_tcp_listener(address)?;
+    eprintln!("vela_lsp_server listening on {}", listener.local_addr()?);
+    run_tcp_listener(listener, configuration)
+}
+
+pub fn bind_loopback_tcp_listener(address: &str) -> io::Result<TcpListener> {
+    let addrs = address.to_socket_addrs()?.collect::<Vec<_>>();
+    if addrs.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("`{address}` did not resolve to a socket address"),
+        ));
+    }
+    if let Some(addr) = addrs.iter().find(|addr| !addr.ip().is_loopback()) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("TCP LSP debug transport only accepts loopback bind addresses, got `{addr}`"),
+        ));
+    }
+    TcpListener::bind(addrs.as_slice())
+}
+
+pub fn run_tcp_listener(
+    listener: TcpListener,
+    configuration: LaunchConfiguration,
+) -> anyhow::Result<()> {
+    let (stream, peer_addr) = listener.accept()?;
+    eprintln!("vela_lsp_server accepted TCP LSP client {peer_addr}");
+    let (connection, io_threads) = tcp_connection(stream)?;
+    let result = run_connection(connection, configuration);
+    io_threads.join()?;
+    result
+}
+
+fn tcp_connection(stream: TcpStream) -> io::Result<(Connection, TcpIoThreads)> {
+    let (reader_sender, reader_receiver) = bounded::<Message>(0);
+    let (writer_sender, writer_receiver) = bounded::<Message>(0);
+    let (drop_sender, drop_receiver) = bounded::<Message>(0);
+
+    let reader_stream = stream.try_clone()?;
+    let reader = thread::Builder::new()
+        .name("VelaLspTcpReader".to_owned())
+        .spawn(move || tcp_reader(reader_stream, reader_sender))?;
+    let writer = thread::Builder::new()
+        .name("VelaLspTcpWriter".to_owned())
+        .spawn(move || tcp_writer(stream, writer_receiver, drop_sender))?;
+    let dropper = thread::Builder::new()
+        .name("VelaLspTcpDropper".to_owned())
+        .spawn(move || drop_receiver.into_iter().for_each(drop))?;
+
+    Ok((
+        Connection {
+            sender: writer_sender,
+            receiver: reader_receiver,
+        },
+        TcpIoThreads {
+            reader,
+            writer,
+            dropper,
+        },
+    ))
+}
+
+fn tcp_reader(stream: TcpStream, sender: Sender<Message>) -> io::Result<()> {
+    let mut reader = BufReader::new(stream);
+    while let Some(message) = Message::read(&mut reader)? {
+        let is_exit = matches!(&message, Message::Notification(notification) if notification.method == "exit");
+        if sender.send(message).is_err() {
+            break;
+        }
+        if is_exit {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn tcp_writer(
+    mut stream: TcpStream,
+    receiver: Receiver<Message>,
+    drop_sender: Sender<Message>,
+) -> io::Result<()> {
+    for message in receiver {
+        let result = message.write(&mut stream);
+        let _ = drop_sender.send(message);
+        result?;
+    }
+    Ok(())
+}
+
+struct TcpIoThreads {
+    reader: thread::JoinHandle<io::Result<()>>,
+    writer: thread::JoinHandle<io::Result<()>>,
+    dropper: thread::JoinHandle<()>,
+}
+
+impl TcpIoThreads {
+    fn join(self) -> io::Result<()> {
+        match self.reader.join() {
+            Ok(result) => result?,
+            Err(error) => std::panic::panic_any(error),
+        }
+        match self.writer.join() {
+            Ok(result) => result?,
+            Err(error) => std::panic::panic_any(error),
+        }
+        match self.dropper.join() {
+            Ok(()) => Ok(()),
+            Err(error) => std::panic::panic_any(error),
+        }
+    }
+}
 
 pub fn run_connection(
     connection: Connection,
@@ -298,8 +416,11 @@ fn timestamp_ms() -> u128 {
 
 #[cfg(test)]
 mod tests {
+    use std::thread;
+    use std::time::Duration;
+
     use crossbeam_channel::unbounded;
-    use lsp_server::{Connection, Message};
+    use lsp_server::{Connection, Message, Notification, Request, RequestId};
 
     use crate::LaunchConfiguration;
 
@@ -347,6 +468,69 @@ mod tests {
             .expect("initialize response should have a result");
         assert_eq!(result["serverInfo"]["name"], "vela_lsp_server");
         assert_eq!(result["serverInfo"]["version"], env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn tcp_rejects_non_loopback_bind_address() {
+        let error = super::bind_loopback_tcp_listener("0.0.0.0:0")
+            .expect_err("non-loopback bind should be rejected");
+
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(error.to_string().contains("loopback"));
+    }
+
+    #[test]
+    fn tcp_loopback_connection_handles_initialize_and_exit() {
+        let listener = super::bind_loopback_tcp_listener("127.0.0.1:0")
+            .expect("loopback listener should bind");
+        let address = listener
+            .local_addr()
+            .expect("listener should report local address");
+        let server = thread::spawn(move || {
+            super::run_tcp_listener(listener, LaunchConfiguration::new())
+                .expect("TCP listener should run");
+        });
+        let (client, client_io) =
+            Connection::connect(address).expect("client should connect to loopback listener");
+
+        client
+            .sender
+            .send(Message::Request(Request {
+                id: RequestId::from(1),
+                method: "initialize".to_owned(),
+                params: serde_json::json!({
+                    "processId": null,
+                    "capabilities": {}
+                }),
+            }))
+            .expect("initialize should send over TCP");
+        let response = client
+            .receiver
+            .recv_timeout(Duration::from_secs(5))
+            .expect("initialize should receive a TCP response");
+        let Message::Response(response) = response else {
+            panic!("initialize should receive a response");
+        };
+        assert_eq!(response.id.to_string(), "1");
+        assert!(response.error.is_none());
+        assert_eq!(
+            response
+                .result
+                .as_ref()
+                .expect("initialize should return result")["serverInfo"]["name"],
+            "vela_lsp_server"
+        );
+
+        client
+            .sender
+            .send(Message::Notification(Notification {
+                method: "exit".to_owned(),
+                params: serde_json::Value::Null,
+            }))
+            .expect("exit should send over TCP");
+        drop(client.sender);
+        client_io.join().expect("client IO threads should join");
+        server.join().expect("server thread should join");
     }
 
     fn message(value: serde_json::Value) -> Message {

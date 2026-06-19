@@ -20,6 +20,10 @@ fn run() -> anyhow::Result<()> {
             io_threads.join()?;
             result
         }
+        Command::Tcp {
+            address,
+            configuration,
+        } => vela_lsp_server::transport::listen_tcp_once(&address, configuration),
         Command::Version => {
             println!("vela_lsp_server {}", env!("CARGO_PKG_VERSION"));
             Ok(())
@@ -34,6 +38,10 @@ fn run() -> anyhow::Result<()> {
 #[derive(Debug, PartialEq, Eq)]
 enum Command {
     Stdio(LaunchConfiguration),
+    Tcp {
+        address: String,
+        configuration: LaunchConfiguration,
+    },
     Version,
     Help,
 }
@@ -57,6 +65,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
     let mut saw_profile = false;
     let mut saw_profile_slow_ms = false;
     let mut saw_no_watch_files = false;
+    let mut listen_address = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -66,6 +75,14 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
                 }
                 saw_stdio = true;
                 index += 1;
+            }
+            "--listen" => {
+                if listen_address.is_some() {
+                    return invalid_input("duplicate `--listen` flag");
+                }
+                let address = required_value(&args, index, "--listen")?;
+                listen_address = Some(address.to_owned());
+                index += 2;
             }
             "--root" => {
                 let root = required_value(&args, index, "--root")?;
@@ -123,7 +140,18 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
         }
     }
 
-    Ok(Command::Stdio(configuration))
+    if saw_stdio && listen_address.is_some() {
+        return invalid_input("`--stdio` cannot be combined with `--listen`");
+    }
+
+    Ok(
+        listen_address.map_or(Command::Stdio(configuration.clone()), |address| {
+            Command::Tcp {
+                address,
+                configuration,
+            }
+        }),
+    )
 }
 
 fn required_value<'a>(args: &'a [String], index: usize, flag: &str) -> io::Result<&'a str> {
@@ -154,7 +182,7 @@ fn invalid_input<T>(message: impl Into<String>) -> io::Result<T> {
 }
 
 fn help_text() -> &'static str {
-    "Usage: vela_lsp_server [--stdio] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--no-watch-files]\n       vela_lsp_server --version"
+    "Usage: vela_lsp_server [--stdio | --listen <host:port>] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--no-watch-files]\n       vela_lsp_server --version"
 }
 
 #[cfg(test)]
@@ -199,6 +227,43 @@ mod tests {
         );
         assert_eq!(configuration.profile_slow_ms(), 25);
         assert!(!configuration.watch_files_enabled());
+    }
+
+    #[test]
+    fn cli_listen_flag_selects_tcp_debug_transport() {
+        let command = parse_args(vec![
+            "--listen".to_owned(),
+            "127.0.0.1:0".to_owned(),
+            "--root".to_owned(),
+            "file:///workspace/scripts".to_owned(),
+        ])
+        .expect("listen config should parse");
+
+        let Command::Tcp {
+            address,
+            configuration,
+        } = command
+        else {
+            panic!("listen flag should select TCP transport");
+        };
+        assert_eq!(address, "127.0.0.1:0");
+        assert_eq!(
+            configuration.workspace_roots(),
+            &["file:///workspace/scripts".to_owned()]
+        );
+    }
+
+    #[test]
+    fn cli_stdio_and_listen_flags_conflict() {
+        let error = parse_args(vec![
+            "--stdio".to_owned(),
+            "--listen".to_owned(),
+            "127.0.0.1:0".to_owned(),
+        ])
+        .expect_err("stdio and listen should be mutually exclusive");
+
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(error.to_string().contains("cannot be combined"));
     }
 
     #[test]

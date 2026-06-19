@@ -165,6 +165,11 @@ refactor, the old manual stdio runner and custom JSON-RPC envelope types may
 remain only as temporary compatibility wrappers for tests and phased handler
 migration; they are not durable production architecture.
 
+The optional native LSP TCP transport is a debug/remote-integration extension,
+not the default editor transport. It must be selected explicitly with
+`--listen <host:port>`, bind only loopback addresses unless a future unsafe
+opt-in is designed separately, and feed the same typed message loop as stdio.
+
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
 `vela_syntax::formatting`, while range formatting only trims trailing
