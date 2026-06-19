@@ -430,7 +430,7 @@ cargo test -p vela_lsp_server lifecycle
 
 ### Phase 2: GlobalState And Typed Lifecycle Dispatch
 
-- [ ] Introduce `global_state.rs` with `GlobalState`, request queue, launch
+- [~] Introduce `global_state.rs` with `GlobalState`, request queue, launch
   configuration, workspace state, language-service databases, shutdown/exited
   flags, and send/respond helpers.
 - [ ] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.

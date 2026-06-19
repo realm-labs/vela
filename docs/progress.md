@@ -607,6 +607,12 @@ accepts one client connection, and routes it through the same typed
 fixtures cover binary stdio initialize/exit, typed in-memory initialize/exit,
 loopback TCP initialize/exit, and non-loopback rejection.
 
+M20.5 RA-style main-loop update: `global_state.rs` now owns the typed
+transport path's launch configuration, request queue, and current legacy
+server state wrapper. This is an in-progress Phase 2 boundary; lifecycle
+requests still need migration to typed dispatch before the checklist item can
+close.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

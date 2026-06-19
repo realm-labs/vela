@@ -7,7 +7,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message, Notification, RequestId, Response, ResponseError};
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer};
+use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState};
 
 pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let listener = bind_loopback_tcp_listener(address)?;
@@ -127,8 +127,8 @@ pub fn run_connection(
     connection: Connection,
     configuration: LaunchConfiguration,
 ) -> anyhow::Result<()> {
-    let mut server = LspServer::with_launch_configuration(configuration.clone());
-    let mut profiler = RequestProfiler::from_configuration(&configuration)?;
+    let mut state = GlobalState::new(configuration);
+    let mut profiler = RequestProfiler::from_configuration(state.launch_configuration())?;
     let mut sequence = 0_u64;
 
     while let Ok(message) = connection.receiver.recv() {
@@ -139,7 +139,7 @@ pub fn run_connection(
         profiler.begin(sequence, &metadata, input_bytes)?;
 
         let handle_start = Instant::now();
-        let result = server.handle_json(&input);
+        let result = state.handle_message(&message, &input);
         let handle_ms = elapsed_ms(handle_start);
         let summary = ResultSummary::from_result(&result);
 
@@ -157,7 +157,7 @@ pub fn run_connection(
             &summary,
         )?;
 
-        if server.is_exited() {
+        if state.is_exited() {
             break;
         }
     }

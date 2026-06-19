@@ -9,6 +9,7 @@ mod config;
 mod definition;
 mod folding;
 mod formatting;
+mod global_state;
 mod hover;
 mod inlay;
 mod lifecycle;
