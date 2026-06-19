@@ -1054,15 +1054,18 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Add latency, formatting, and worker execution lanes.
-  - `TaskLane::{Main, Latency, Formatting, Worker}` now exists on
-    `TaskResult`, with the current synchronous main loop marked as `Main`.
-    This establishes lane metadata for future pool routing; the checklist item
-    remains open until latency, formatting, and worker lanes actually execute
-    through separate scheduling paths. Validated so far with
-    `cargo test -p vela_lsp_server task_result`,
-    `cargo fmt --all -- --check`, and
-    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+- [x] Add latency, formatting, and worker execution lanes.
+  - `TaskScheduler` now owns separate latency, formatting, and worker lane
+    workers. `GlobalState` owns the scheduler, and the typed main loop selects
+    between client messages and lane `TaskResult` receivers, with a ready
+    formatting task checked before blocking. Feature-handler routing onto
+    snapshots and lane categories remains tracked by the next Phase 5
+    checklist items. Validated with `cargo test -p vela_lsp_server task`,
+    `cargo test -p vela_lsp_server next_event`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server formatting`,
+    `cargo test -p vela_lsp_server completion`, `cargo fmt --all -- --check`,
+    and `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Run main-thread mutable handlers synchronously with `&mut GlobalState`.
 - [ ] Run read-only handlers from `GlobalStateSnapshot`.
 - [ ] Name task threads or task spans by lane and request method so profile and

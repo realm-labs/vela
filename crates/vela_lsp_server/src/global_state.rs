@@ -35,7 +35,7 @@ use crate::{
     rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
     semantic_tokens::SemanticTokenProjection,
     source_version, success_response,
-    task::TaskResult,
+    task::{TaskResult, TaskScheduler},
     transport::{ResultSummary, messages_from_result},
     watching, with_work_done_progress,
 };
@@ -45,6 +45,7 @@ pub(crate) struct GlobalState {
     launch_configuration: LaunchConfiguration,
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
+    task_scheduler: TaskScheduler,
     server: LspServer,
     workspace_snapshot: WorkspaceSnapshot,
     databases: LanguageServiceDatabases,
@@ -160,6 +161,7 @@ impl GlobalState {
             launch_configuration,
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
+            task_scheduler: TaskScheduler::default(),
             server,
             workspace_snapshot,
             databases,
@@ -227,6 +229,10 @@ impl GlobalState {
     pub(crate) fn send_task_result(&self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         self.send_result(result.into_result())
+    }
+
+    pub(crate) const fn task_scheduler(&self) -> &TaskScheduler {
+        &self.task_scheduler
     }
 
     pub(crate) const fn is_exited(&self) -> bool {

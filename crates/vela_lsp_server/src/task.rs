@@ -1,4 +1,10 @@
+use std::thread;
+
+use crossbeam_channel::{Receiver, Sender, unbounded};
+
 use crate::JsonRpcResult;
+
+type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TaskResult {
@@ -15,6 +21,65 @@ pub(crate) enum TaskLane {
     Latency,
     Formatting,
     Worker,
+}
+
+pub(crate) struct TaskScheduler {
+    latency_jobs: Sender<TaskJob>,
+    formatting_jobs: Sender<TaskJob>,
+    worker_jobs: Sender<TaskJob>,
+    latency_results: Receiver<TaskResult>,
+    formatting_results: Receiver<TaskResult>,
+    worker_results: Receiver<TaskResult>,
+}
+
+impl TaskScheduler {
+    pub(crate) fn new() -> Self {
+        let (latency_jobs, latency_results) = spawn_lane_worker(TaskLane::Latency);
+        let (formatting_jobs, formatting_results) = spawn_lane_worker(TaskLane::Formatting);
+        let (worker_jobs, worker_results) = spawn_lane_worker(TaskLane::Worker);
+        Self {
+            latency_jobs,
+            formatting_jobs,
+            worker_jobs,
+            latency_results,
+            formatting_results,
+            worker_results,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn spawn(
+        &self,
+        lane: TaskLane,
+        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+    ) {
+        let task = Box::new(move || TaskResult::lane_response(lane, job()));
+        match lane {
+            TaskLane::Latency => self.latency_jobs.send(task),
+            TaskLane::Formatting => self.formatting_jobs.send(task),
+            TaskLane::Worker => self.worker_jobs.send(task),
+            TaskLane::Main => unreachable!("main-thread work should not be scheduled as a task"),
+        }
+        .expect("task lane worker should be alive");
+    }
+
+    pub(crate) const fn latency_results(&self) -> &Receiver<TaskResult> {
+        &self.latency_results
+    }
+
+    pub(crate) const fn formatting_results(&self) -> &Receiver<TaskResult> {
+        &self.formatting_results
+    }
+
+    pub(crate) const fn worker_results(&self) -> &Receiver<TaskResult> {
+        &self.worker_results
+    }
+}
+
+impl Default for TaskScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TaskResult {
@@ -39,9 +104,26 @@ impl TaskResult {
     }
 }
 
+fn spawn_lane_worker(lane: TaskLane) -> (Sender<TaskJob>, Receiver<TaskResult>) {
+    let (job_sender, job_receiver) = unbounded::<TaskJob>();
+    let (result_sender, result_receiver) = unbounded::<TaskResult>();
+    thread::Builder::new()
+        .name(format!("VelaLsp{lane:?}Task"))
+        .spawn(move || {
+            while let Ok(job) = job_receiver.recv() {
+                if result_sender.send(job()).is_err() {
+                    break;
+                }
+            }
+        })
+        .expect("task lane worker should spawn");
+    (job_sender, result_receiver)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn task_result_preserves_json_rpc_result() {
@@ -63,5 +145,49 @@ mod tests {
             TaskLane::Worker
         );
         assert_eq!(task_result.into_result(), result);
+    }
+
+    #[test]
+    fn task_scheduler_executes_lane_jobs_on_background_workers() {
+        let scheduler = TaskScheduler::new();
+
+        scheduler.spawn(TaskLane::Latency, || {
+            JsonRpcResult::Response("latency".to_owned())
+        });
+        scheduler.spawn(TaskLane::Formatting, || {
+            JsonRpcResult::Response("formatting".to_owned())
+        });
+        scheduler.spawn(TaskLane::Worker, || {
+            JsonRpcResult::Response("worker".to_owned())
+        });
+
+        let latency = scheduler
+            .latency_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("latency lane should respond");
+        let formatting = scheduler
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("formatting lane should respond");
+        let worker = scheduler
+            .worker_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker lane should respond");
+
+        assert_eq!(latency.lane(), TaskLane::Latency);
+        assert_eq!(formatting.lane(), TaskLane::Formatting);
+        assert_eq!(worker.lane(), TaskLane::Worker);
+        assert_eq!(
+            latency.into_result(),
+            JsonRpcResult::Response("latency".to_owned())
+        );
+        assert_eq!(
+            formatting.into_result(),
+            JsonRpcResult::Response("formatting".to_owned())
+        );
+        assert_eq!(
+            worker.into_result(),
+            JsonRpcResult::Response("worker".to_owned())
+        );
     }
 }
