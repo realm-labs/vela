@@ -1,4 +1,6 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_definition_returns_null_for_source_any_return_receiver_member() {
@@ -12,7 +14,8 @@ fn lsp_declaration_returns_null_for_source_any_return_receiver_member() {
 
 pub(super) fn assert_source_any_return_receiver_navigation_null(method: &str) {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -20,13 +23,14 @@ pub(super) fn assert_source_any_return_receiver_navigation_null(method: &str) {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "\
 struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -36,10 +40,11 @@ pub fn main() { return source_any().level }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     let use_line = text.lines().nth(2).expect("member use line should exist");
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         method,
         serde_json::json!({
@@ -49,7 +54,7 @@ pub fn main() { return source_any().level }";
                 "character": use_line.find("level").expect("member use")
             }
         }),
-    )));
+    ));
 
     assert!(response["result"].is_null(), "{response:?}");
 }
