@@ -21,8 +21,38 @@ pub(crate) enum TaskResult {
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
         retry: Option<Box<RetryTask>>,
+        timing: Option<TaskTiming>,
         messages: Vec<Message>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TaskTiming {
+    queued_ms: u128,
+    started_ms: u128,
+    ended_ms: u128,
+}
+
+impl TaskTiming {
+    pub(crate) const fn new(queued_ms: u128, started_ms: u128, ended_ms: u128) -> Self {
+        Self {
+            queued_ms,
+            started_ms,
+            ended_ms,
+        }
+    }
+
+    pub(crate) const fn queued_ms(self) -> u128 {
+        self.queued_ms
+    }
+
+    pub(crate) const fn started_ms(self) -> u128 {
+        self.started_ms
+    }
+
+    pub(crate) const fn ended_ms(self) -> u128 {
+        self.ended_ms
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -231,6 +261,17 @@ pub(crate) enum TaskLane {
     Worker,
 }
 
+impl TaskLane {
+    pub(crate) const fn as_trace_str(self) -> &'static str {
+        match self {
+            Self::Main => "main",
+            Self::Latency => "latency",
+            Self::Formatting => "formatting",
+            Self::Worker => "worker",
+        }
+    }
+}
+
 pub(crate) struct TaskScheduler {
     latency_jobs: Sender<TaskJob>,
     formatting_jobs: Sender<TaskJob>,
@@ -321,14 +362,19 @@ impl TaskScheduler {
         retry: Option<RetryTask>,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
+        let queued_ms = crate::profile::timestamp_ms();
         let task = Box::new(move || {
-            TaskResult::lane_method_request_generation_messages(
+            let started_ms = crate::profile::timestamp_ms();
+            let messages = job();
+            let ended_ms = crate::profile::timestamp_ms();
+            TaskResult::lane_method_request_generation_timed_messages(
                 lane,
                 method,
                 request_id,
                 generation,
                 retry,
-                job(),
+                TaskTiming::new(queued_ms, started_ms, ended_ms),
+                messages,
             )
         });
         match lane {
@@ -386,6 +432,7 @@ impl TaskResult {
         )
     }
 
+    #[cfg(test)]
     pub(crate) fn lane_method_request_generation_messages(
         lane: TaskLane,
         method: Option<String>,
@@ -400,6 +447,27 @@ impl TaskResult {
             request_id,
             generation,
             retry: retry.map(Box::new),
+            timing: None,
+            messages,
+        }
+    }
+
+    pub(crate) fn lane_method_request_generation_timed_messages(
+        lane: TaskLane,
+        method: Option<String>,
+        request_id: Option<RequestId>,
+        generation: Option<GenerationToken>,
+        retry: Option<RetryTask>,
+        timing: TaskTiming,
+        messages: Vec<Message>,
+    ) -> Self {
+        Self::Response {
+            lane,
+            method,
+            request_id,
+            generation,
+            retry: retry.map(Box::new),
+            timing: Some(timing),
             messages,
         }
     }
@@ -431,6 +499,12 @@ impl TaskResult {
     pub(crate) fn retry(&self) -> Option<&RetryTask> {
         match self {
             Self::Response { retry, .. } => retry.as_deref(),
+        }
+    }
+
+    pub(crate) const fn timing(&self) -> Option<TaskTiming> {
+        match self {
+            Self::Response { timing, .. } => *timing,
         }
     }
 
@@ -521,6 +595,9 @@ mod tests {
         assert_eq!(latency.lane(), TaskLane::Latency);
         assert_eq!(formatting.lane(), TaskLane::Formatting);
         assert_eq!(worker.lane(), TaskLane::Worker);
+        assert_task_timing(latency.timing());
+        assert_task_timing(formatting.timing());
+        assert_task_timing(worker.timing());
         assert_response_messages(latency.into_messages(), test_response("latency"));
         assert_response_messages(formatting.into_messages(), test_response("formatting"));
         assert_response_messages(worker.into_messages(), test_response("worker"));
@@ -546,6 +623,7 @@ mod tests {
 
         assert_eq!(task.lane(), TaskLane::Worker);
         assert_eq!(task.method(), Some("textDocument/references"));
+        assert_task_timing(task.timing());
         assert_response_messages(task.into_messages(), test_response("references"));
     }
 
@@ -577,7 +655,14 @@ mod tests {
             .expect("request task should carry generation token");
         assert_eq!(generation.generation(), token.generation());
         assert!(!generation.is_cancelled());
+        assert_task_timing(task.timing());
         assert_response_messages(task.into_messages(), test_response("formatted"));
+    }
+
+    fn assert_task_timing(timing: Option<TaskTiming>) {
+        let timing = timing.expect("scheduled task should carry timing metadata");
+        assert!(timing.queued_ms() <= timing.started_ms());
+        assert!(timing.started_ms() <= timing.ended_ms());
     }
 
     fn assert_response_messages(messages: Vec<Message>, response: Response) {

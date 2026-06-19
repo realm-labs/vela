@@ -238,6 +238,12 @@ handler panics at the dispatcher boundary, projecting request failures as
 JSON-RPC internal errors and notification failures as no-response events while
 keeping the main loop alive. Legacy feature-handler panic coverage remains
 part of the pending typed request migration.
+M20.5 RA main-loop update: task scheduling now records queued, started, and
+ended timestamps on background task results, and the typed main loop writes
+`request_queued`, `task_started`, and `task_ended` trace JSONL events with
+request method, ID, generation, lane, queue time, and handler time. Stale,
+retry, and cancellation trace status events remain open at the
+`GlobalState::send_task_result` boundary.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

@@ -58,6 +58,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                 )?;
             }
             MainLoopEvent::Task(task) => {
+                trace.task_lifecycle(&task)?;
                 let _summary = state.send_task_result(task)?;
             }
         }

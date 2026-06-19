@@ -1708,6 +1708,18 @@ helper references are allowed only if they describe external JSON fixtures.
 - [ ] Write JSONL events for session start, request received, queued,
   task started, task ended, response sent, stale discarded, retried, and
   cancelled.
+  - Task scheduling now records queued/start/end timestamps on `TaskResult`,
+    and `TraceSink` writes `request_queued`, `task_started`, and
+    `task_ended` events with method, request ID, generation, lane, `queueMs`,
+    and `handleMs` metadata when background task results return to the main
+    loop. Stale discarded, retried, and cancelled status events remain open
+    for the `GlobalState::send_task_result` decision boundary. Validated with
+    `cargo test -p vela_lsp_server task`,
+    `cargo test -p vela_lsp_server trace`,
+    `cargo test -p vela_lsp_server profile`,
+    `cargo test -p vela_lsp_server`, `cargo fmt --all -- --check`,
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`, and
+    `node editors/vscode/scripts/validate-package.js`.
 - [ ] Include method, request ID, document URI when available, generation,
   queueMs, handleMs, writeMs, totalMs, outputBytes, lane, and status.
 - [ ] Preserve the ability to identify a stuck handler from an unmatched or
