@@ -404,6 +404,10 @@ cover imported source function-return receivers, preserving source modifiers
 on both the imported function call and the returned source method call across
 module boundaries.
 
+M20.5 Phase 10 update: service and native LSP semantic-token fixtures now
+cover imported source enum variant constructors and match patterns, preserving
+source enum-member modifiers across module boundaries.
+
 M20.5 Phase 7/19 update: service and native LSP member completion now cover
 source-owned fields and methods where the receiver is produced by another
 source method return, preserving member-context suppression of unrelated

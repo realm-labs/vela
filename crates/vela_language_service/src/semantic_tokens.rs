@@ -1180,3 +1180,5 @@ mod showcase_tests;
 mod source_call_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod variant_use_tests;

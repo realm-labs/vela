@@ -325,15 +325,15 @@ These were the first places compared against the matrix before acceptance:
    source-only degradation when the configured host schema is missing, plus
    semantic-token fallback for schema type hints under a missing schema and
    service/protocol range filtering for requested semantic-token spans plus
-   semantic tokens for imported source function-return member calls, plus
-   service/protocol cross-file references for imported const/global value
-   uses, cross-file hover for imported function/const/global use sites, and
-   cross-file signature help and inlay parameter-name hints for imported
-   source functions plus inlay local type hints from imported const/global
-   value facts plus imported enum variant payload-name hints, plus protocol
-   incrementality coverage proving a defining-file function-body `didChange`
-   reparses only the edited document without rebuilding project or HIR
-   indexes.
+   semantic tokens for imported source function-return member calls and
+   imported source enum variant constructors/patterns, plus service/protocol
+   cross-file references for imported const/global value uses, cross-file
+   hover for imported function/const/global use sites, and cross-file
+   signature help and inlay parameter-name hints for imported source functions
+   plus inlay local type hints from imported const/global value facts plus
+   imported enum variant payload-name hints, plus protocol incrementality
+   coverage proving a defining-file function-body `didChange` reparses only
+   the edited document without rebuilding project or HIR indexes.
 
 ## Completion Criteria For This Matrix
 

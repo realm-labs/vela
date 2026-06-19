@@ -401,10 +401,10 @@ coverage complete based only on the older capability phases.
     classes, cross-file imports and imported module path segments,
     source/schema/stdlib/builtin provenance modifiers, source/schema method
     calls on function-return receivers, imported source function-return member
-    calls, unresolved import and general
-    unresolved-reference tokens, parser-recovery degradation with retained
-    HIR-backed classifications, missing-schema degradation, and client legend
-    fallback projection.
+    calls, imported source enum variant constructors and patterns, unresolved
+    import and general unresolved-reference tokens, parser-recovery
+    degradation with retained HIR-backed classifications, missing-schema
+    degradation, and client legend fallback projection.
 - [x] Audit formatting and inlay hints.
   - Cover full/range/on-type formatting, comments, blank lines, nested member
     selections, malformed source, parameter hints, local type hints, lambda
@@ -1198,6 +1198,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_source_trait_method_on_source_function_return`
 - [x] `semantic_tokens_classify_source_trait_method_on_source_method_return`
 - [x] `lsp_semantic_tokens_classify_source_trait_method_on_source_method_return`
+- [x] `semantic_tokens_classify_imported_source_enum_variant_uses`
+- [x] `lsp_semantic_tokens_classify_imported_source_enum_variant_uses`
 - [x] `semantic_tokens_classify_schema_and_stdlib_member_uses`
 - [x] `lsp_semantic_tokens_classify_host_and_builtin_member_uses`
 - [x] `infers_schema_function_and_method_return_facts`

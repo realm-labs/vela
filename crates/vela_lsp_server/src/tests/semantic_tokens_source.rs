@@ -177,6 +177,96 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_semantic_tokens_classify_imported_source_enum_variant_uses() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let enum_member = token_type_index(token_types, "enumMember");
+    let source = token_modifier_bit(token_modifiers, "source");
+
+    let quest_uri = "file:///workspace/scripts/game/quest.vela";
+    let quest_text = "\
+pub enum Progress {
+    Started
+    Done(result: String)
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": quest_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": quest_text
+            }
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+use game::quest::Progress
+pub fn main(progress: Progress) -> Progress {
+    let started = Progress::Started
+    let done = Progress::Done(\"ok\")
+    match progress {
+        Progress::Started => started
+        Progress::Done(value) => done
+    }
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    for (line_index, variant) in [(2, "Started"), (3, "Done"), (5, "Started"), (6, "Done")] {
+        assert_token_at(
+            &tokens,
+            line_index,
+            line(text, line_index)
+                .find(variant)
+                .unwrap_or_else(|| panic!("{variant} should exist")),
+            variant.len(),
+            enum_member,
+            source,
+        );
+    }
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_source_method_on_source_method_return() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
