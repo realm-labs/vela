@@ -1,15 +1,11 @@
 use serde_json::Value as JsonValue;
-use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLineIndex, Position};
+use vela_language_service::{DocumentId, LineIndex as ServiceLineIndex, Position};
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
     completion::service_completion_resolve_payload,
     error_response,
     lsp::{from_proto, to_proto},
-    protocol::CodeActionParams,
-    protocol::DocumentFormattingParams,
-    protocol::DocumentOnTypeFormattingParams,
-    protocol::DocumentRangeFormattingParams,
     protocol::PrepareRenameParams,
     protocol::ReferencesParams,
     protocol::RenameParams,
@@ -49,23 +45,6 @@ fn service_position_for_request(
         })
 }
 
-fn service_range_for_request(
-    id: &RequestId,
-    method_name: &str,
-    document_text: &str,
-    range: crate::protocol::LspRange,
-) -> Result<DiagnosticRange, JsonRpcResult> {
-    crate::line_index::LineIndex::new(document_text)
-        .service_range(range)
-        .map_err(|error| {
-            JsonRpcResult::Response(error_response(
-                Some(id.clone()),
-                ErrorCode::InvalidRequest,
-                format!("invalid {method_name} range: {error}"),
-            ))
-        })
-}
-
 impl LspServer {
     pub(crate) fn code_action(
         &mut self,
@@ -75,7 +54,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<CodeActionParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::CodeActionParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -86,14 +65,20 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let range = match service_range_for_request(&id, "codeAction", &text, params.range) {
-            Ok(range) => range,
-            Err(response) => return response,
+        let input = match from_proto::code_action_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid codeAction range: {error}"),
+                ));
+            }
         };
-        let actions = self.databases.code_actions(&document_id, range);
+        let actions = self.databases.code_actions(&input.document_id, input.range);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -659,7 +644,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<DocumentFormattingParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::DocumentFormattingParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -670,7 +655,7 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_formatting_params(&params);
         self.refresh_databases_for_query(&document_id);
         let edits = self.databases.document_formatting(&document_id);
 
@@ -689,25 +674,34 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<DocumentRangeFormattingParams>(params) {
-            Ok(params) => params,
+        let params =
+            match serde_json::from_value::<lsp_types::DocumentRangeFormattingParams>(params) {
+                Ok(params) => params,
+                Err(error) => {
+                    return JsonRpcResult::Response(error_response(
+                        Some(id),
+                        ErrorCode::InvalidRequest,
+                        format!("invalid rangeFormatting params: {error}"),
+                    ));
+                }
+            };
+
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::range_formatting_params(&text, &params) {
+            Ok(input) => input,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
                     Some(id),
                     ErrorCode::InvalidRequest,
-                    format!("invalid rangeFormatting params: {error}"),
+                    format!("invalid rangeFormatting range: {error}"),
                 ));
             }
         };
-
-        let document_id = DocumentId::from(params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let range = match service_range_for_request(&id, "rangeFormatting", &text, params.range) {
-            Ok(range) => range,
-            Err(response) => return response,
-        };
-        let edits = self.databases.range_formatting(&document_id, range);
+        let edits = self
+            .databases
+            .range_formatting(&input.document_id, input.range);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -724,28 +718,34 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<DocumentOnTypeFormattingParams>(params) {
-            Ok(params) => params,
+        let params =
+            match serde_json::from_value::<lsp_types::DocumentOnTypeFormattingParams>(params) {
+                Ok(params) => params,
+                Err(error) => {
+                    return JsonRpcResult::Response(error_response(
+                        Some(id),
+                        ErrorCode::InvalidRequest,
+                        format!("invalid onTypeFormatting params: {error}"),
+                    ));
+                }
+            };
+
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::on_type_formatting_params(&text, &params) {
+            Ok(input) => input,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
                     Some(id),
                     ErrorCode::InvalidRequest,
-                    format!("invalid onTypeFormatting params: {error}"),
+                    format!("invalid onTypeFormatting position: {error}"),
                 ));
             }
         };
-
-        let document_id = DocumentId::from(params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let position =
-            match service_position_for_request(&id, "onTypeFormatting", &text, params.position) {
-                Ok(position) => position,
-                Err(response) => return response,
-            };
-        let edits = self
-            .databases
-            .on_type_formatting(&document_id, position, &params.ch);
+        let edits =
+            self.databases
+                .on_type_formatting(&input.document_id, input.position, &input.trigger);
 
         JsonRpcResult::Response(success_response(
             id,
