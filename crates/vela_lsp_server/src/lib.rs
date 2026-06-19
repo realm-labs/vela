@@ -25,6 +25,7 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+use lsp_server::RequestId;
 use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -39,7 +40,7 @@ use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
 use crate::lsp::to_proto;
 pub use crate::rpc::JsonRpcResult;
-pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId};
+pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION, JsonRpcMessage};
 use crate::semantic_tokens::SemanticTokenProjection;
 
 pub use crate::config::LaunchConfiguration;

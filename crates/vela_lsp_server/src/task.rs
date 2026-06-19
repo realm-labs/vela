@@ -1,13 +1,14 @@
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
+use lsp_server::RequestId;
 use lsp_types::{
     CompletionItem, CompletionParams, DocumentSymbolParams, FoldingRangeParams,
     SemanticTokensParams, WorkspaceSymbolParams,
 };
 use vela_language_service::GenerationToken;
 
-use crate::{JsonRpcResult, RequestId};
+use crate::JsonRpcResult;
 
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 

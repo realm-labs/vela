@@ -1,6 +1,6 @@
 use std::{any::Any, fmt::Debug, panic};
 
-use lsp_server::{Message, Notification, Request};
+use lsp_server::{Message, Notification, Request, RequestId};
 use lsp_types::{
     notification::{
         Cancel, DidChangeConfiguration, DidChangeTextDocument, DidChangeWatchedFiles,
@@ -20,10 +20,9 @@ use lsp_types::{
 use serde::de::DeserializeOwned;
 
 use crate::{
-    ErrorCode, JsonRpcResult, RequestId,
+    ErrorCode, JsonRpcResult,
     global_state::GlobalState,
     global_state::GlobalStateSnapshot,
-    rpc::request_id_from_lsp,
     task::{RetryTask, TaskLane},
 };
 
@@ -46,7 +45,7 @@ fn dispatch_request(
     request: Request,
     legacy_input: &str,
 ) -> JsonRpcResult {
-    let request_id = rpc_request_id(request.id.clone());
+    let request_id = request.id.clone();
     if global_state.take_cancelled_request(&request_id) {
         return request_cancelled(request_id);
     }
@@ -503,7 +502,7 @@ impl<'a> RequestDispatcher<'a> {
             return;
         };
         let id = request.id;
-        let request_id = request_id_from_lsp(id.clone());
+        let request_id = id.clone();
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
@@ -543,7 +542,7 @@ impl<'a> RequestDispatcher<'a> {
             return;
         };
         let id = request.id;
-        let request_id = request_id_from_lsp(id.clone());
+        let request_id = id.clone();
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
@@ -656,7 +655,7 @@ impl<'a> NotificationDispatcher<'a> {
 
 fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
     JsonRpcResult::error(
-        Some(request_id_from_lsp(id)),
+        Some(id),
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
     )
@@ -664,18 +663,14 @@ fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
 
 fn server_not_initialized(id: lsp_server::RequestId) -> JsonRpcResult {
     JsonRpcResult::error(
-        Some(request_id_from_lsp(id)),
+        Some(id),
         ErrorCode::ServerNotInitialized,
         "server has not been initialized",
     )
 }
 
 fn server_shut_down(id: lsp_server::RequestId) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(request_id_from_lsp(id)),
-        ErrorCode::InvalidRequest,
-        "server has shut down",
-    )
+    JsonRpcResult::error(Some(id), ErrorCode::InvalidRequest, "server has shut down")
 }
 
 pub(crate) fn request_cancelled(id: RequestId) -> JsonRpcResult {
@@ -700,7 +695,7 @@ fn invalid_params(
     error: serde_json::Error,
 ) -> JsonRpcResult {
     JsonRpcResult::error(
-        Some(request_id_from_lsp(id)),
+        Some(id),
         ErrorCode::InvalidParams,
         format!("invalid {method} params: {error}"),
     )
@@ -713,7 +708,7 @@ fn handler_panic(
 ) -> JsonRpcResult {
     let detail = panic_message(payload).unwrap_or("unknown panic payload");
     JsonRpcResult::error(
-        Some(request_id_from_lsp(id)),
+        Some(id),
         ErrorCode::InternalError,
         format!("handler for `{method}` panicked: {detail}"),
     )
@@ -724,10 +719,6 @@ fn panic_message(payload: &(dyn Any + Send)) -> Option<&str> {
         .downcast_ref::<&'static str>()
         .copied()
         .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
-}
-
-fn rpc_request_id(id: lsp_server::RequestId) -> RequestId {
-    request_id_from_lsp(id)
 }
 
 fn is_pre_initialize_method(method: &str) -> bool {

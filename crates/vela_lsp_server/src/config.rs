@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+use lsp_server::RequestId;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId,
+    ErrorCode, JsonRpcResult, LspServer,
     config_change::{ConfigChange, WorkspaceConfigChange},
     document_uri_path, normalized_path, publish_diagnostics_notification,
 };

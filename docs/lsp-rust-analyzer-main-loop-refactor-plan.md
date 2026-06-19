@@ -1383,6 +1383,18 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - The local `RequestId` alias and identity conversion helper have been
+    deleted; request queues, retry metadata, cancellation paths, typed
+    dispatch, legacy lifecycle/query handlers, and the legacy JSON
+    compatibility parser now use `lsp_server::RequestId` directly. Validated
+    with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
+    `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`,
+    `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

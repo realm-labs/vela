@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crossbeam_channel::Sender;
-use lsp_server::Message;
+use lsp_server::{Message, RequestId};
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
@@ -21,8 +21,7 @@ use vela_language_service::{
 
 use crate::lsp::{from_proto, to_proto};
 use crate::{
-    ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
-    apply_lsp_document_changes,
+    ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, apply_lsp_document_changes,
     capabilities::initialize_result,
     completion::service_completion_resolve_payload,
     config::EditorConfiguration,
@@ -34,7 +33,7 @@ use crate::{
     },
     publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
-    rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
+    rpc::request_id_from_number_or_string,
     semantic_tokens::SemanticTokenProjection,
     source_version,
     task::{TaskResult, TaskScheduler},
@@ -152,7 +151,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: CompletionParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::completion_params(&text, &params) {
@@ -182,7 +180,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: lsp_types::CompletionItem,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let params_value =
             serde_json::to_value(&params).expect("typed completion item should serialize");
         let payload = match service_completion_resolve_payload(&params_value) {
@@ -205,7 +202,6 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn hover(self, id: lsp_server::RequestId, params: HoverParams) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
@@ -233,7 +229,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: SignatureHelpParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
@@ -263,7 +258,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: SemanticTokensParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::semantic_tokens_params(&params);
         let tokens = self.databases.semantic_tokens(&document_id);
 
@@ -282,7 +276,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: SemanticTokensDeltaParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let input = from_proto::semantic_tokens_delta_params(&params);
         let delta = self
             .databases
@@ -303,7 +296,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: SemanticTokensRangeParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::semantic_tokens_range_params(&text, &params) {
@@ -335,7 +327,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: DocumentFormattingParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_formatting_params(&params);
         let edits = self.databases.document_formatting(&document_id);
 
@@ -351,7 +342,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: DocumentRangeFormattingParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::range_formatting_params(&text, &params) {
@@ -380,7 +370,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: DocumentOnTypeFormattingParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::on_type_formatting_params(&text, &params) {
@@ -448,7 +437,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: ReferenceParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::reference_params(&text, &params) {
@@ -479,7 +467,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: DocumentHighlightParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
@@ -509,7 +496,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: DocumentSymbolParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_symbol_params(&params);
         let symbols = self.databases.document_symbols(&document_id);
 
@@ -525,7 +511,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: WorkspaceSymbolParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let symbols = self
             .databases
             .workspace_symbols(from_proto::workspace_symbol_params(&params));
@@ -542,7 +527,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: FoldingRangeParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::folding_range_params(&params);
         let ranges = self.databases.folding_ranges(&document_id);
 
@@ -558,7 +542,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: SelectionRangeParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::selection_range_params(&text, &params) {
@@ -587,7 +570,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: TextDocumentPositionParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::prepare_rename_params(&text, &params) {
@@ -612,7 +594,6 @@ impl GlobalStateSnapshot {
     }
 
     pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::rename_params(&text, &params) {
@@ -641,7 +622,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: CallHierarchyPrepareParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
@@ -671,7 +651,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: CallHierarchyIncomingCallsParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.item.uri);
         let text = snapshot_document_text(&self, &document_id);
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
@@ -698,7 +677,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: CallHierarchyOutgoingCallsParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.item.uri);
         let text = snapshot_document_text(&self, &document_id);
         let item = match from_proto::call_hierarchy_item(&text, &params.item) {
@@ -725,7 +703,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: CodeActionParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::code_action_params(&text, &params) {
@@ -752,7 +729,6 @@ impl GlobalStateSnapshot {
         id: lsp_server::RequestId,
         params: InlayHintParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::inlay_hint_params(&text, &params) {
@@ -781,7 +757,6 @@ impl GlobalStateSnapshot {
         method_name: &'static str,
         query: SnapshotNavigationLocationQuery,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
@@ -993,7 +968,6 @@ impl GlobalState {
         id: lsp_server::RequestId,
         params: lsp_types::InitializeParams,
     ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         if self.initialized {
             return JsonRpcResult::error(
                 Some(id),
@@ -1033,7 +1007,6 @@ impl GlobalState {
     }
 
     pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
         self.shutdown_requested = true;
         self.server.shutdown_requested = true;
         JsonRpcResult::ok(id, serde_json::Value::Null)
@@ -1051,7 +1024,7 @@ impl GlobalState {
 
     pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
         self.request_queue
-            .cancel(request_id_from_lsp_number_or_string(params.id));
+            .cancel(request_id_from_number_or_string(params.id));
         JsonRpcResult::None
     }
 
@@ -1287,7 +1260,7 @@ struct RequestQueue {
 impl RequestQueue {
     fn request_id(message: &Message) -> Option<RequestId> {
         match message {
-            Message::Request(request) => Some(request_id_from_lsp(request.id.clone())),
+            Message::Request(request) => Some(request.id.clone()),
             Message::Response(_) | Message::Notification(_) => None,
         }
     }

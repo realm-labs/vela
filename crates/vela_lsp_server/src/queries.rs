@@ -1,8 +1,9 @@
+use lsp_server::RequestId;
 use serde_json::Value as JsonValue;
 use vela_language_service::{DocumentId, LineIndex as ServiceLineIndex};
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId,
+    ErrorCode, JsonRpcResult, LspServer,
     completion::service_completion_resolve_payload,
     lsp::{from_proto, to_proto},
 };

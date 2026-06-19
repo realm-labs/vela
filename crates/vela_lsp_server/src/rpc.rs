@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use lsp_server::{Message, Response, ResponseError};
+use lsp_server::{Message, RequestId, Response, ResponseError};
 use lsp_types::NumberOrString;
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -61,8 +61,6 @@ pub(crate) struct JsonRpcMessage {
 pub(crate) struct CancelRequestParams {
     pub(crate) id: RequestId,
 }
-
-pub(crate) type RequestId = lsp_server::RequestId;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ErrorCode {
@@ -145,11 +143,7 @@ fn serialize_response(response: Response) -> String {
     value.to_string()
 }
 
-pub(crate) fn request_id_from_lsp(id: lsp_server::RequestId) -> RequestId {
-    id
-}
-
-pub(crate) fn request_id_from_lsp_number_or_string(id: NumberOrString) -> RequestId {
+pub(crate) fn request_id_from_number_or_string(id: NumberOrString) -> RequestId {
     match id {
         NumberOrString::Number(id) => RequestId::from(id),
         NumberOrString::String(id) => RequestId::from(id),
