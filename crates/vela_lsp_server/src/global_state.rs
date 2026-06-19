@@ -329,6 +329,80 @@ impl GlobalStateSnapshot {
             .expect("typed semanticTokens/range response should serialize"),
         ))
     }
+
+    pub(crate) fn formatting(
+        self,
+        id: lsp_server::RequestId,
+        params: DocumentFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_formatting_params(&params);
+        let edits = self.databases.document_formatting(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed formatting response should serialize"),
+        ))
+    }
+
+    pub(crate) fn range_formatting(
+        self,
+        id: lsp_server::RequestId,
+        params: DocumentRangeFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::range_formatting_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rangeFormatting params: {error}"),
+                ));
+            }
+        };
+        let edits = self
+            .databases
+            .range_formatting(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed rangeFormatting response should serialize"),
+        ))
+    }
+
+    pub(crate) fn on_type_formatting(
+        self,
+        id: lsp_server::RequestId,
+        params: DocumentOnTypeFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::on_type_formatting_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid onTypeFormatting params: {error}"),
+                ));
+            }
+        };
+        let edits =
+            self.databases
+                .on_type_formatting(&input.document_id, input.position, &input.trigger);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed onTypeFormatting response should serialize"),
+        ))
+    }
 }
 
 fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
@@ -651,39 +725,6 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.inlay_hint_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn formatting(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: DocumentFormattingParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.formatting_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn range_formatting(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: DocumentRangeFormattingParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.range_formatting_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn on_type_formatting(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: DocumentOnTypeFormattingParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.on_type_formatting_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1722,6 +1763,9 @@ fn main(player: Player) { grant(); return player.inventory }";
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         for (id, method) in [
@@ -1781,6 +1825,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let line = text.lines().nth(2).expect("return line should exist");
         let character = line
@@ -2112,6 +2159,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let document_response = typed_formatting_response(&mut state, 20, &document);

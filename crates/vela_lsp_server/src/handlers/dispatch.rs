@@ -91,9 +91,9 @@ fn dispatch_request(
             GlobalStateSnapshot::semantic_tokens_range,
         )
         .on_worker_typed::<InlayHintRequest>(GlobalState::inlay_hint)
-        .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)
-        .on_fmt_thread_typed::<RangeFormatting>(GlobalState::range_formatting)
-        .on_fmt_thread_typed::<OnTypeFormatting>(GlobalState::on_type_formatting)
+        .on_fmt_thread_snapshot_typed::<Formatting>(GlobalStateSnapshot::formatting)
+        .on_fmt_thread_snapshot_typed::<RangeFormatting>(GlobalStateSnapshot::range_formatting)
+        .on_fmt_thread_snapshot_typed::<OnTypeFormatting>(GlobalStateSnapshot::on_type_formatting)
         .finish()
 }
 
@@ -182,15 +182,15 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn on_fmt_thread_typed<R>(
+    pub(crate) fn on_fmt_thread_snapshot_typed<R>(
         &mut self,
-        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug,
     {
-        self.dispatch_typed::<R>(f);
+        self.dispatch_snapshot_typed::<R>(f);
         self
     }
 
