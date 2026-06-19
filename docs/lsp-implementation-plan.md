@@ -204,6 +204,9 @@ coverage complete based only on the older capability phases.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
+  - Unsupported provider requests now return method-not-found while
+    unsupported notifications stay no-response no-ops and do not poison later
+    supported requests.
   - Repeated `initialize` requests now return a stable invalid-request error
     without resetting workspace roots, editor configuration, or capabilities.
   - Requests before a successful `initialize` now return a stable

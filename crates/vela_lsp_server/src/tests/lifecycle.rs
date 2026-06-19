@@ -447,8 +447,12 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
         initialize["result"]["capabilities"]["implementationProvider"].is_null(),
         "{initialize:?}"
     );
+    assert!(
+        initialize["result"]["capabilities"]["documentLinkProvider"].is_null(),
+        "{initialize:?}"
+    );
 
-    let response = response_value(server.handle_json(&request(
+    let implementation = response_value(server.handle_json(&request(
         2,
         "textDocument/implementation",
         serde_json::json!({
@@ -456,9 +460,35 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
             "position": { "line": 0, "character": 0 }
         }),
     )));
+    let document_link = response_value(server.handle_json(&request(
+        3,
+        "textDocument/documentLink",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
+        }),
+    )));
+    let unsupported_notification = server.handle_json(&notification(
+        "textDocument/documentLink",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
+        }),
+    ));
+    let hover = response_value(server.handle_json(&request(
+        4,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
 
-    assert_eq!(response["id"], 2);
-    assert_eq!(response["error"]["code"], -32601);
+    assert_eq!(implementation["id"], 2);
+    assert_eq!(implementation["error"]["code"], -32601);
+    assert_eq!(document_link["id"], 3);
+    assert_eq!(document_link["error"]["code"], -32601);
+    assert_eq!(unsupported_notification, JsonRpcResult::None);
+    assert_eq!(hover["id"], 4);
+    assert!(hover["result"].is_null());
 }
 
 #[test]
