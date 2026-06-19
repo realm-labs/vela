@@ -443,6 +443,67 @@ impl GlobalStateSnapshot {
         )
     }
 
+    pub(crate) fn references(
+        self,
+        id: lsp_server::RequestId,
+        params: ReferenceParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::reference_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid references position: {error}"),
+                ));
+            }
+        };
+        let references = self.databases.references(
+            &input.document_id,
+            input.position,
+            params.context.include_declaration,
+        );
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::reference_locations(&references))
+                .expect("typed references response should serialize"),
+        ))
+    }
+
+    pub(crate) fn document_highlight(
+        self,
+        id: lsp_server::RequestId,
+        params: DocumentHighlightParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::document_highlight_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid documentHighlight params: {error}"),
+                ));
+            }
+        };
+        let highlights = self
+            .databases
+            .document_highlights(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::document_highlights(&highlights))
+                .expect("typed documentHighlight response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         self,
         id: lsp_server::RequestId,
@@ -691,28 +752,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn references(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: ReferenceParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.references_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn document_highlight(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: DocumentHighlightParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.document_highlight_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
     }
 
     pub(crate) fn document_symbol(
@@ -1926,6 +1965,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let line = text.lines().nth(2).expect("return line should exist");
         let character = line

@@ -304,7 +304,10 @@ formatting, and worker work, and a `TaskScheduler` owned by `GlobalState` with
 separate lane workers. The typed main loop now selects between client messages
 and lane task-result receivers, including a ready-formatting check before
 blocking; routing individual feature handlers through snapshots and lane
-categories remains the next architectural step.
+categories remains the next architectural step. Snapshot-backed worker routing
+now covers navigation, references, and document highlights in addition to the
+earlier completion, hover, signature-help, semantic-token, and formatting
+families.
 Main-thread mutable request and notification routing is audited closed for
 this RA main-loop phase: lifecycle requests plus initialized, exit,
 cancellation, document sync, configuration, workspace-folder, watched-file,

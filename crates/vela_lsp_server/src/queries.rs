@@ -401,37 +401,6 @@ impl LspServer {
         ))
     }
 
-    pub(crate) fn references_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::ReferenceParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::reference_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid references position: {error}"),
-                ));
-            }
-        };
-        let references = self.databases.references(
-            &input.document_id,
-            input.position,
-            params.context.include_declaration,
-        );
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::reference_locations(&references))
-                .expect("typed references response should serialize"),
-        ))
-    }
-
     pub(crate) fn prepare_rename(
         &mut self,
         id: Option<RequestId>,
@@ -792,36 +761,6 @@ impl LspServer {
                 Err(response) => return response,
             };
         let highlights = self.databases.document_highlights(&document_id, position);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::document_highlights(&highlights))
-                .expect("typed documentHighlight response should serialize"),
-        ))
-    }
-
-    pub(crate) fn document_highlight_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::DocumentHighlightParams,
-    ) -> JsonRpcResult {
-        let document_id =
-            from_proto::document_id(&params.text_document_position_params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::document_highlight_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid documentHighlight params: {error}"),
-                ));
-            }
-        };
-        let highlights = self
-            .databases
-            .document_highlights(&input.document_id, input.position);
 
         JsonRpcResult::Response(success_response(
             id,

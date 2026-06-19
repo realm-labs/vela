@@ -75,8 +75,10 @@ fn dispatch_request(
         .on_worker_snapshot_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
         .on_worker_snapshot_typed::<GotoDeclaration>(GlobalStateSnapshot::declaration)
         .on_worker_snapshot_typed::<GotoTypeDefinition>(GlobalStateSnapshot::type_definition)
-        .on_worker_typed::<References>(GlobalState::references)
-        .on_worker_typed::<DocumentHighlightRequest>(GlobalState::document_highlight)
+        .on_worker_snapshot_typed::<References>(GlobalStateSnapshot::references)
+        .on_worker_snapshot_typed::<DocumentHighlightRequest>(
+            GlobalStateSnapshot::document_highlight,
+        )
         .on_worker_typed::<DocumentSymbolRequest>(GlobalState::document_symbol)
         .on_worker_typed::<WorkspaceSymbolRequest>(GlobalState::workspace_symbol)
         .on_worker_typed::<FoldingRangeRequest>(GlobalState::folding_range)
