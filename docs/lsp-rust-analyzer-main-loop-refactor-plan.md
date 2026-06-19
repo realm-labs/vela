@@ -1066,7 +1066,18 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server formatting`,
     `cargo test -p vela_lsp_server completion`, `cargo fmt --all -- --check`,
     and `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Run main-thread mutable handlers synchronously with `&mut GlobalState`.
+- [x] Run main-thread mutable handlers synchronously with `&mut GlobalState`.
+  - `RequestDispatcher::on_sync_mut_typed` routes lifecycle requests such as
+    `initialize` and `shutdown` on the main loop with `&mut GlobalState`, and
+    `NotificationDispatcher::on_sync_mut_typed` routes initialized, exit,
+    cancellation, document sync, configuration, workspace-folder, watched-file,
+    and save notifications through the same synchronous mutable boundary.
+    Latency, formatting, and worker request categories remain separate from
+    this mutable-main-thread checklist item and are tracked by the following
+    snapshot/lane items. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Run read-only handlers from `GlobalStateSnapshot`.
 - [ ] Name task threads or task spans by lane and request method so profile and
   trace output can identify where work is running.

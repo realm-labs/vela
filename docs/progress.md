@@ -305,6 +305,11 @@ separate lane workers. The typed main loop now selects between client messages
 and lane task-result receivers, including a ready-formatting check before
 blocking; routing individual feature handlers through snapshots and lane
 categories remains the next architectural step.
+Main-thread mutable request and notification routing is audited closed for
+this RA main-loop phase: lifecycle requests plus initialized, exit,
+cancellation, document sync, configuration, workspace-folder, watched-file,
+and save notifications stay synchronous on the main loop through
+`&mut GlobalState`.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and
