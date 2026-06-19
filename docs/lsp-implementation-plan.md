@@ -204,6 +204,9 @@ coverage complete based only on the older capability phases.
   - Include `initialize`, `initialized`, `shutdown`, `exit`,
     `$/cancelRequest`, advertised provider options, unsupported provider
     behavior, and the `textDocument/didClose` versus `openClose` contract.
+  - Requests before a successful `initialize` now return a stable
+    server-not-initialized error, and `initialized` alone does not unlock
+    feature requests.
   - `textDocumentSync.save` is now pinned false, and
     `textDocument/didSave` notifications are no-response no-ops so editor
     correctness does not depend on save events.

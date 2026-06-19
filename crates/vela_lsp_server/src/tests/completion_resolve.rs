@@ -1,8 +1,20 @@
 use super::{LspServer, request, response_value};
 
+fn initialize_server(server: &mut LspServer) {
+    let _ = response_value(server.handle_json(&request(
+        0,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+}
+
 #[test]
 fn lsp_completion_resolve_rejects_unknown_payload_kind() {
     let mut server = LspServer::new();
+    initialize_server(&mut server);
     let response = response_value(server.handle_json(&request(
         1,
         "completionItem/resolve",
@@ -30,6 +42,7 @@ fn lsp_completion_resolve_rejects_unknown_payload_kind() {
 #[test]
 fn lsp_completion_resolve_passes_through_items_without_payload() {
     let mut server = LspServer::new();
+    initialize_server(&mut server);
     let response = response_value(server.handle_json(&request(
         2,
         "completionItem/resolve",

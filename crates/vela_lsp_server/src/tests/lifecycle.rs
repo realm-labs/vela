@@ -200,10 +200,63 @@ fn server_info_reports_version() {
 #[test]
 fn lsp_initialized_notification_has_no_response() {
     let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
     let result = server.handle_json(&notification("initialized", serde_json::json!({})));
 
     assert!(server.is_initialized());
     assert_eq!(result, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_rejects_requests_before_initialize() {
+    let mut server = LspServer::new();
+
+    let response = response_value(server.handle_json(&request(
+        1,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+
+    assert!(!server.is_initialized());
+    assert_eq!(response["id"], 1);
+    assert_eq!(response["error"]["code"], -32002);
+    assert_eq!(
+        response["error"]["message"],
+        "server has not been initialized"
+    );
+}
+
+#[test]
+fn lsp_initialized_notification_before_initialize_does_not_unlock_requests() {
+    let mut server = LspServer::new();
+    let initialized = server.handle_json(&notification("initialized", serde_json::json!({})));
+    let response = response_value(server.handle_json(&request(
+        1,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+
+    assert_eq!(initialized, JsonRpcResult::None);
+    assert!(!server.is_initialized());
+    assert_eq!(response["id"], 1);
+    assert_eq!(response["error"]["code"], -32002);
+    assert_eq!(
+        response["error"]["message"],
+        "server has not been initialized"
+    );
 }
 
 #[test]

@@ -168,6 +168,10 @@ M20.5 lifecycle update: native LSP shutdown handling now rejects subsequent
 requests with a stable invalid-request error while still allowing the final
 `exit` notification.
 
+M20.5 lifecycle update: native LSP feature requests before `initialize` now
+return a stable server-not-initialized error, and an early `initialized`
+notification alone does not unlock request handling.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

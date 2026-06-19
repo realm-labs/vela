@@ -155,6 +155,16 @@ impl LspServer {
             });
         }
 
+        if !self.initialized && !is_pre_initialize_method(method) {
+            return message.id.map_or(JsonRpcResult::None, |id| {
+                JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::ServerNotInitialized,
+                    "server has not been initialized",
+                ))
+            });
+        }
+
         match method {
             "$/cancelRequest" => self.cancel_request(message.id, message.params),
             "initialize" => self.initialize(message.id, message.params),
@@ -237,7 +247,6 @@ impl LspServer {
     }
 
     fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
-        self.initialized = true;
         if let Some(id) = id {
             return JsonRpcResult::Response(error_response(
                 Some(id),
@@ -729,6 +738,13 @@ impl LspServer {
             ))
         })
     }
+}
+
+fn is_pre_initialize_method(method: &str) -> bool {
+    matches!(
+        method,
+        "initialize" | "initialized" | "shutdown" | "exit" | "$/cancelRequest"
+    )
 }
 
 #[derive(Debug, Clone, Deserialize)]

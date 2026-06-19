@@ -186,7 +186,7 @@ in `vela_lsp_server`.
 
 | Protocol method or behavior | Capability or provider | Syntax dimensions | Required positive coverage | Required negative/degraded coverage |
 |---|---|---:|---|---|
-| `initialize` | Server lifecycle and capability object | S0, S11 | Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support. | Unsupported providers are absent or null; client capability variations do not change service semantics. |
+| `initialize` | Server lifecycle and capability object | S0, S11 | Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support. | Unsupported providers are absent or null; client capability variations do not change service semantics; feature requests before `initialize` return server-not-initialized. |
 | `initialized` | Lifecycle notification | S0 | Notification has no response and may trigger watcher/config setup. | Repeated or minimal initialization stays stable. |
 | `shutdown`, `exit` | Lifecycle termination | S0, S11 | Shutdown response, clean exit behavior, no pending background publication after shutdown; `exit` remains allowed after shutdown. | Requests after shutdown are rejected consistently with invalid-request errors. |
 | `$/cancelRequest` | Cancellation | S11 | Stale queued or expensive requests are discarded by generation/cancellation tokens. | Unknown or already-completed request IDs do not panic. |

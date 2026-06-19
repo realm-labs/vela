@@ -123,9 +123,21 @@ mod document_sync {
         }
     }
 
+    fn initialize_server(server: &mut LspServer) {
+        let _ = response_value(server.handle_json(&request(
+            0,
+            "initialize",
+            serde_json::json!({
+                "processId": null,
+                "capabilities": {}
+            }),
+        )));
+    }
+
     #[test]
     fn lsp_did_open_publishes_diagnostics() {
         let mut server = LspServer::new();
+        initialize_server(&mut server);
         let notification = notification_value(server.handle_json(&notification(
             "textDocument/didOpen",
             serde_json::json!({
@@ -171,6 +183,7 @@ mod document_sync {
     #[test]
     fn lsp_did_change_replaces_document_text() {
         let mut server = LspServer::new();
+        initialize_server(&mut server);
         let open = notification_value(server.handle_json(&notification(
             "textDocument/didOpen",
             serde_json::json!({
@@ -213,6 +226,7 @@ mod document_sync {
     #[test]
     fn lsp_did_change_applies_incremental_text_edit() {
         let mut server = LspServer::new();
+        initialize_server(&mut server);
         let source = "pub fn main(scores: Array<i64>) { return scores.frist() }";
         let start = source
             .find("frist")
@@ -264,6 +278,7 @@ mod document_sync {
     #[test]
     fn lsp_did_close_clears_scratch_diagnostics() {
         let mut server = LspServer::new();
+        initialize_server(&mut server);
         let uri = "file:///workspace/main.vela";
         let open = notification_value(server.handle_json(&notification(
             "textDocument/didOpen",
