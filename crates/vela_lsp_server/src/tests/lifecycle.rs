@@ -198,6 +198,61 @@ fn server_info_reports_version() {
 }
 
 #[test]
+fn lsp_rejects_repeated_initialize_without_resetting_state() {
+    let mut server = LspServer::new();
+    let first = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace",
+            "initializationOptions": {
+                "host": {
+                    "schema": "target/vela/schema.json"
+                }
+            },
+            "capabilities": {
+                "workspace": {
+                    "didChangeWatchedFiles": {
+                        "dynamicRegistration": true
+                    }
+                }
+            }
+        }),
+    )));
+    let repeated = response_value(server.handle_json(&request(
+        2,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///other",
+            "capabilities": {}
+        }),
+    )));
+    let registration =
+        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+    let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
+        .as_array()
+        .expect("watcher registration should include watchers");
+
+    assert_eq!(first["id"], 1);
+    assert_eq!(repeated["id"], 2);
+    assert_eq!(repeated["error"]["code"], -32600);
+    assert_eq!(
+        repeated["error"]["message"],
+        "server is already initialized"
+    );
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///workspace"
+            && watcher["globPattern"]["pattern"] == "**/*.vela"
+    }));
+    assert!(!watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///other"
+            && watcher["globPattern"]["pattern"] == "**/*.vela"
+    }));
+}
+
+#[test]
 fn lsp_initialized_notification_has_no_response() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

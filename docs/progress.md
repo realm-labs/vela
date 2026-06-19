@@ -160,6 +160,10 @@ M20.5 Phase 17 update: native LSP workspace-folder coverage now includes
 removed-root degradation, proving stale disk module facts are cleared while
 open overlays remain authoritative for republished diagnostics.
 
+M20.5 lifecycle update: repeated `initialize` requests now return a stable
+invalid-request error before any workspace roots, editor configuration, or
+capability state can be reset.
+
 M20.5 lifecycle update: native LSP capability fixtures now pin
 `textDocumentSync.save = false`, and `textDocument/didSave` notifications are
 no-response no-ops so editor correctness does not depend on save events.

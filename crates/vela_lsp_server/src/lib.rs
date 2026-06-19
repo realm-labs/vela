@@ -230,6 +230,14 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
+        if self.initialized {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "server is already initialized",
+            ));
+        }
+
         self.initialized = true;
         let params = serde_json::from_value::<InitializeParams>(params).unwrap_or_default();
         self.workspace_roots = workspace_roots_from_initialize(&params);
