@@ -433,6 +433,54 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
 }
 
 #[test]
+fn lsp_code_action_rejects_source_any_return_receiver_typo_fix() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let text = "\
+fn source_any() -> Any { return 1 }
+pub fn main() {
+    return source_any().levle
+}";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let typo_line = text.lines().nth(2).expect("typo line");
+    let typo_start = typo_line.find("levle").expect("source Any receiver typo");
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/codeAction",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 2, "character": typo_start },
+                "end": { "line": 2, "character": typo_start + "levle".len() }
+            },
+            "context": { "diagnostics": [] }
+        }),
+    )));
+
+    assert_eq!(response["result"], serde_json::json!([]));
+}
+
+#[test]
 fn lsp_code_action_ranges_follow_open_overlay_text() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

@@ -166,8 +166,8 @@ schema-backed call facts.
 M20.5 Phase 7 update: service and native LSP completion fixtures now suppress
 member and global fallback completions when source or schema functions
 returning `Any` are used as receivers, matching the dynamic receiver boundary
-used by hover, signature help, navigation, references, call hierarchy, and
-inlay hints.
+used by hover, signature help, navigation, references, call hierarchy, rename,
+code actions, and inlay hints.
 
 M20.5 Phase 12 update: service and native LSP rename now cover source-owned
 trait default method calls where the receiver is produced by a source function

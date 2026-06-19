@@ -765,6 +765,35 @@ pub fn main() {
     }
 
     #[test]
+    fn code_action_rejects_source_any_return_receiver_typo_fix() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = "\
+fn source_any() -> Any { return 1 }
+pub fn main() {
+    return source_any().levle
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let index = LineIndex::new(text);
+        let typo_start = text.find("levle").expect("source Any receiver typo");
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                index.position(typo_start),
+                index.position(typo_start + "levle".len()),
+            ),
+        );
+        assert!(
+            actions.is_empty(),
+            "source Any receiver typos must not invent type facts: {actions:?}"
+        );
+    }
+
+    #[test]
     fn semantic_rewrite_helpers_require_local_syntax_patterns() {
         let record_text = "pub fn reward() { return Reward }";
         let record_index = LineIndex::new(record_text);

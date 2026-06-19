@@ -383,8 +383,9 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover service and native LSP `textDocument/codeAction`
     quick fixes for unknown-field typo candidates, missing imports, unused
     imports, non-exhaustive match arms, and missing record constructor fields,
-    plus ambiguous import rejection, dynamic receiver rejection, local syntax
-    pattern requirements, and open-overlay range stability.
+    plus ambiguous import rejection, dynamic receiver rejection including
+    source functions returning `Any` used as receivers, local syntax pattern
+    requirements, and open-overlay range stability.
 - [x] Audit symbols, folding ranges, and selection ranges.
   - Cover document and workspace symbols, module-qualified source/schema
     facts, nested type/impl/trait members, imports, blocks, match arms,
@@ -1710,6 +1711,8 @@ Tests:
 - [x] `code_action_rejects_ambiguous_dynamic_fix`
 - [x] `lsp_code_action_rejects_ambiguous_import_fix`
 - [x] `lsp_code_action_rejects_dynamic_receiver_typo_fix`
+- [x] `code_action_rejects_source_any_return_receiver_typo_fix`
+- [x] `lsp_code_action_rejects_source_any_return_receiver_typo_fix`
 
 Validation:
 
