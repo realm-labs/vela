@@ -264,6 +264,9 @@ between handler completion and response send.
 M20.5 RA main-loop update: VS Code profiling docs now explain how to enable
 profile and trace JSONL together, correlate requests by ID/method/lane, and
 separate fast native server responses from VS Code-side stalls.
+M20.5 RA main-loop update: the obsolete test-only manual stdio transport and
+custom Content-Length harness were removed; stdio validation now uses the
+typed `lsp-server` binary smoke path.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

@@ -21,8 +21,6 @@ mod queries;
 mod reload;
 mod rpc;
 mod semantic_tokens;
-#[cfg(test)]
-mod stdio;
 mod task;
 mod tracing;
 pub mod transport;

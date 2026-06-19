@@ -428,7 +428,7 @@ document or `docs/decisions.md`.
 - [x] Add a typed in-memory test harness for LSP messages so tests no longer
   need custom Content-Length frame parsing.
 - [x] Keep the old `stdio::run_stdio_with_configuration` only as a temporary
-  compatibility wrapper during this phase. Mark it for deletion in Phase 9.
+  compatibility wrapper during this phase. The wrapper was deleted in Phase 9.
 - [x] Add tests proving the typed transport shell responds to initialize and
   exits cleanly over stdio, in-memory channels, and loopback TCP.
 
@@ -1775,7 +1775,11 @@ node editors/vscode/scripts/validate-package.js
 
 ### Phase 9: Close-Out Cleanup, Docs, And Packaging
 
-- [ ] Delete obsolete manual stdio transport code.
+- [x] Delete obsolete manual stdio transport code.
+  - Removed the test-only `stdio.rs` custom Content-Length framing transport
+    and its legacy tests. The remaining stdio coverage runs the binary through
+    the typed `lsp-server` transport in `tests/stdio_transport.rs`. Validated
+    with `cargo test -p vela_lsp_server stdio_binary_uses_typed_transport_for_initialize_and_exit`.
 - [ ] Delete obsolete custom JSON-RPC code.
 - [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.

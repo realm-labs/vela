@@ -91,7 +91,6 @@ mod inlay;
 mod inlay_suppression;
 mod lifecycle;
 mod rename_source_return;
-mod stdio;
 mod document_sync {
     use std::fs;
     use std::path::{Path, PathBuf};
