@@ -2541,7 +2541,7 @@ pub fn main(player: Player) -> i64 {
             .server
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
-        let request_id = RequestId::Number(30);
+        let request_id = RequestId::from(30);
 
         let result = state.handle_message(
             &Message::Request(lsp_server::Request {
@@ -2597,7 +2597,7 @@ pub fn main(player: Player) -> i64 {
             .server
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
-        let request_id = RequestId::Number(31);
+        let request_id = RequestId::from(31);
 
         let result = state.handle_message(
             &Message::Request(lsp_server::Request {
@@ -2664,7 +2664,7 @@ pub fn main(player: Player) -> i64 {
             .server
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
-        let request_id = RequestId::Number(33);
+        let request_id = RequestId::from(33);
 
         let result = state.handle_message(
             &Message::Request(lsp_server::Request {
@@ -2740,7 +2740,7 @@ pub fn main(player: Player) -> i64 {
             .server
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
-        let request_id = RequestId::Number(32);
+        let request_id = RequestId::from(32);
 
         let result = state.handle_message(
             &Message::Request(lsp_server::Request {
@@ -3016,7 +3016,7 @@ pub fn main(amount: i64) -> i64 {
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let request_id = RequestId::Number(7);
+        let request_id = RequestId::from(7);
         state.request_queue.start(request_id.clone());
 
         let result = state.cancel_request(lsp_types::CancelParams {
@@ -3031,8 +3031,8 @@ pub fn main(amount: i64) -> i64 {
     #[test]
     fn request_queue_tracks_typed_request_ids() {
         let mut queue = RequestQueue::default();
-        let numeric = RequestId::Number(7);
-        let string = RequestId::String("hover-1".to_owned());
+        let numeric = RequestId::from(7);
+        let string = RequestId::from("hover-1".to_owned());
 
         queue.start(numeric.clone());
         queue.start(string.clone());
@@ -3054,7 +3054,7 @@ pub fn main(amount: i64) -> i64 {
     #[test]
     fn request_queue_stores_in_flight_cancellation_handles() {
         let mut queue = RequestQueue::default();
-        let id = RequestId::Number(9);
+        let id = RequestId::from(9);
         let databases = LanguageServiceDatabases::new();
         let (token, handle) = databases.begin_cancellable_background_request();
 
@@ -3070,8 +3070,8 @@ pub fn main(amount: i64) -> i64 {
     #[test]
     fn request_queue_ignores_unknown_and_completed_cancels() {
         let mut queue = RequestQueue::default();
-        let unknown = RequestId::Number(404);
-        let completed = RequestId::String("done".to_owned());
+        let unknown = RequestId::from(404);
+        let completed = RequestId::from("done".to_owned());
 
         queue.cancel(unknown.clone());
         assert!(!queue.take_cancelled(&unknown));

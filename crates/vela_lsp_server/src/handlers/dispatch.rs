@@ -816,7 +816,7 @@ mod tests {
 
     #[test]
     fn dispatcher_projects_content_modified_as_lsp_error() {
-        let result = content_modified(RequestId::String("hover-1".to_owned()));
+        let result = content_modified(RequestId::from("hover-1".to_owned()));
         let response = result
             .into_response()
             .expect("content-modified should be projected as response");
@@ -834,7 +834,7 @@ mod tests {
 
     #[test]
     fn dispatcher_projects_request_cancelled_as_lsp_error() {
-        let result = request_cancelled(RequestId::Number(7));
+        let result = request_cancelled(RequestId::from(7));
         let response = result
             .into_response()
             .expect("request-cancelled should be projected as response");

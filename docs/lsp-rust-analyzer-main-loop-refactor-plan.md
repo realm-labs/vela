@@ -1317,6 +1317,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server rename`.
 - [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
+  - Custom `RequestId` storage has been replaced by `lsp_server::RequestId`;
+    the remaining `RequestId` name is a local alias for the upstream typed ID
+    while the legacy JSON response envelope is removed in follow-up slices.
+    Validated with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
+    and
+    `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lsp_types::NumberOrString;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 
 pub(crate) const JSONRPC_VERSION: &str = "2.0";
@@ -61,12 +61,7 @@ pub(crate) struct CancelRequestParams {
     pub(crate) id: RequestId,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(untagged)]
-pub(crate) enum RequestId {
-    Number(i64),
-    String(String),
-}
+pub(crate) type RequestId = lsp_server::RequestId;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ErrorCode {
@@ -121,13 +116,12 @@ pub(crate) fn error_response(
 }
 
 pub(crate) fn request_id_from_lsp(id: lsp_server::RequestId) -> RequestId {
-    let value = serde_json::to_value(id).expect("lsp-server request id should serialize");
-    serde_json::from_value(value).expect("lsp-server request id should match JSON-RPC id shape")
+    id
 }
 
 pub(crate) fn request_id_from_lsp_number_or_string(id: NumberOrString) -> RequestId {
     match id {
-        NumberOrString::Number(id) => RequestId::Number(i64::from(id)),
-        NumberOrString::String(id) => RequestId::String(id),
+        NumberOrString::Number(id) => RequestId::from(id),
+        NumberOrString::String(id) => RequestId::from(id),
     }
 }

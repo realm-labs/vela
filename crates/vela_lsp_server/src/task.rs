@@ -559,7 +559,7 @@ mod tests {
         let scheduler = TaskScheduler::new();
         let databases = LanguageServiceDatabases::new();
         let (token, _handle) = databases.begin_cancellable_background_request();
-        let request_id = RequestId::String("fmt-1".to_owned());
+        let request_id = RequestId::from("fmt-1".to_owned());
 
         scheduler.spawn_for_request(
             TaskLane::Formatting,
