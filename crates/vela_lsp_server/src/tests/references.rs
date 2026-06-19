@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 mod cross_file;
 mod degradation;
@@ -19,34 +19,17 @@ mod values;
 #[test]
 fn lsp_references_find_local_binding_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub fn main(amount: i64) -> i64 {
     let next = amount + 1
     return next + amount
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -57,7 +40,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -86,15 +69,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_references_find_imported_function_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let main_text = "\
 use game::reward::grant
 pub fn main(amount: i64) -> i64 {
@@ -104,30 +79,11 @@ pub fn main(amount: i64) -> i64 {
     let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": helper_uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": helper_text
-            }
-        }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": main_uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": main_text
-            }
-        }),
-    )));
+    open_document(&mut server, helper_uri, helper_text);
+    open_document(&mut server, main_uri, main_text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -138,7 +94,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -173,15 +129,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_references_find_field_reads_and_writes() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
     amount: i64
@@ -193,19 +141,10 @@ pub fn main(reward: Reward) -> i64 {
     return reward.amount + first
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -216,7 +155,7 @@ pub fn main(reward: Reward) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -251,15 +190,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_references_find_record_constructor_field_labels() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
     amount: i64
@@ -273,19 +204,10 @@ pub fn main(reward: Reward) -> i64 {
     return reward.amount
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -296,7 +218,7 @@ pub fn main(reward: Reward) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -327,15 +249,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_references_find_record_constructor_shorthand_field_labels() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
     amount: i64
@@ -349,19 +263,10 @@ pub fn main(reward: Reward) -> i64 {
     return reward.amount
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -372,7 +277,7 @@ pub fn main(reward: Reward) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -403,15 +308,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_references_find_enum_variant_constructors_and_patterns() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub enum QuestState {
     Active { count: i64 },
@@ -429,19 +326,10 @@ pub fn main(state: QuestState) -> i64 {
     }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -452,7 +340,7 @@ pub fn main(state: QuestState) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -483,15 +371,7 @@ pub fn main(state: QuestState) -> i64 {
 #[test]
 fn lsp_references_find_enum_record_variant_field_labels_and_patterns() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub enum QuestState {
     Active { count: i64 },
@@ -509,19 +389,10 @@ pub fn main(state: QuestState) -> i64 {
     }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -532,7 +403,7 @@ pub fn main(state: QuestState) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -563,15 +434,7 @@ pub fn main(state: QuestState) -> i64 {
 #[test]
 fn lsp_references_find_script_method_calls() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
     amount: i64
@@ -586,19 +449,10 @@ pub fn main(reward: Reward) -> i64 {
     return reward.grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -609,7 +463,7 @@ pub fn main(reward: Reward) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -638,15 +492,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_references_find_trait_impl_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub trait Rewardable {
     fn grant(self, amount: i64) -> i64;
@@ -668,19 +514,10 @@ impl Rewardable for Chest {
     fn grant(self, amount: i64) -> i64 { return amount }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -691,7 +528,7 @@ impl Rewardable for Chest {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -720,15 +557,7 @@ impl Rewardable for Chest {
 #[test]
 fn lsp_document_highlight_marks_local_declaration_and_reads() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let initialize = initialize(&mut server);
     assert_eq!(
         initialize["result"]["capabilities"]["documentHighlightProvider"],
         true
@@ -739,19 +568,10 @@ pub fn main(amount: i64) -> i64 {
     return next + amount
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -761,7 +581,7 @@ pub fn main(amount: i64) -> i64 {
                 "character": line(text, 2).find("amount").expect("amount use")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -790,15 +610,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_document_highlight_marks_import_and_calls_in_active_document() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let main_text = "\
 use game::reward::grant
 pub fn main(amount: i64) -> i64 {
@@ -808,30 +620,11 @@ pub fn main(amount: i64) -> i64 {
     let helper_text = "pub fn grant(amount: i64) -> i64 { return amount }";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": helper_uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": helper_text
-            }
-        }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": main_uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": main_text
-            }
-        }),
-    )));
+    open_document(&mut server, helper_uri, helper_text);
+    open_document(&mut server, main_uri, main_text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -841,7 +634,7 @@ pub fn main(amount: i64) -> i64 {
                 "character": line(main_text, 2).find("grant").expect("grant call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -870,15 +663,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_document_highlight_marks_read_write_call() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub fn grant(amount: i64) -> i64 { return amount }
 pub fn main(amount: i64) -> i64 {
@@ -887,19 +672,10 @@ pub fn main(amount: i64) -> i64 {
     return score + grant(score)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let score_response = response_value(server.handle_json(&request(
+    let score_response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -909,7 +685,7 @@ pub fn main(amount: i64) -> i64 {
                 "character": line(text, 3).find("score").expect("score write")
             }
         }),
-    )));
+    ));
     let score_highlights = score_response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -934,7 +710,8 @@ pub fn main(amount: i64) -> i64 {
         2,
     );
 
-    let grant_response = response_value(server.handle_json(&request(
+    let grant_response = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -944,7 +721,7 @@ pub fn main(amount: i64) -> i64 {
                 "character": line(text, 3).find("grant").expect("grant call")
             }
         }),
-    )));
+    ));
     let grant_highlights = grant_response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -973,15 +750,7 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_document_highlight_marks_script_method_calls() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub struct Reward {
     amount: i64
@@ -996,19 +765,10 @@ pub fn main(reward: Reward) -> i64 {
     return reward.grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -1018,7 +778,7 @@ pub fn main(reward: Reward) -> i64 {
                 "character": line(text, 9).find("grant").expect("first method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -1047,15 +807,7 @@ pub fn main(reward: Reward) -> i64 {
 #[test]
 fn lsp_document_highlight_marks_trait_impl_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server);
     let text = "\
 pub trait Rewardable {
     fn grant(self, amount: i64) -> i64;
@@ -1067,19 +819,10 @@ impl Rewardable for Player {
     fn grant(self, amount: i64) -> i64 { return amount }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -1089,7 +832,7 @@ impl Rewardable for Player {
                 "character": line(text, 6).find("Rewardable").expect("impl use")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -1107,6 +850,34 @@ impl Rewardable for Player {
         line(text, 6).find("Rewardable").expect("impl use"),
         2,
     );
+}
+
+fn initialize(server: &mut LspServer) -> serde_json::Value {
+    response_value(handle_request(
+        server,
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    ))
+}
+
+fn open_document(server: &mut LspServer, uri: &str, text: &str) {
+    let _ = notification_value(handle_notification(
+        server,
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    ));
 }
 
 fn assert_reference(references: &[serde_json::Value], uri: &str, line: usize, character: usize) {
