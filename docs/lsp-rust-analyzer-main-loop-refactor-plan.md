@@ -1731,6 +1731,13 @@ helper references are allowed only if they describe external JSON fixtures.
     `cargo test -p vela_lsp_server trace`.
 - [ ] Include method, request ID, document URI when available, generation,
   queueMs, handleMs, writeMs, totalMs, outputBytes, lane, and status.
+  - Sync `response_sent` trace events now include `handleMs`, `writeMs`, and
+    `totalMs`. Task status and task `response_sent` trace events now include
+    `queueMs`, `handleMs`, `writeMs`, and `totalMs` from scheduler timing and
+    main-loop send timing. Background task document URI propagation remains
+    open. Validated with `cargo test -p vela_lsp_server trace`,
+    `cargo test -p vela_lsp_server task`, and
+    `cargo fmt --all -- --check`.
 - [ ] Preserve the ability to identify a stuck handler from an unmatched or
   incomplete event sequence.
 - [ ] Document how to compare server handler time with VS Code-side stalls.

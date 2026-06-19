@@ -249,6 +249,11 @@ completed, cancelled, stale-discarded, and retried task outcomes. The typed
 main loop writes task `response_sent` trace JSONL plus `request_cancelled`,
 `request_stale`, and `request_retried` status events after the task result
 decision is made.
+M20.5 RA main-loop update: sync `response_sent` trace JSONL now includes
+handler, write, and total timing. Task status and task `response_sent` events
+now include queue, handler, write, and total timing from scheduler and
+main-loop send measurements; background task document URI propagation remains
+open.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

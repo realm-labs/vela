@@ -23,6 +23,7 @@ pub(crate) struct TaskTraceMetadata {
     id: Option<String>,
     generation: Option<u64>,
     lane: &'static str,
+    timing: Option<TaskTiming>,
 }
 
 impl TaskTraceMetadata {
@@ -34,6 +35,7 @@ impl TaskTraceMetadata {
                 .generation_token()
                 .map(|token| token.generation().get()),
             lane: task.lane().as_trace_str(),
+            timing: task.timing(),
         }
     }
 }
@@ -78,6 +80,8 @@ impl TraceSink {
         &mut self,
         sequence: u64,
         metadata: &MessageMetadata,
+        handle_ms: u64,
+        write_ms: u64,
         summary: &ResultSummary,
     ) -> anyhow::Result<()> {
         self.write_json(serde_json::json!({
@@ -91,7 +95,10 @@ impl TraceSink {
             "resultKind": summary.kind(),
             "outputMessages": summary.messages(),
             "outputBytes": summary.bytes(),
-            "lane": "main"
+            "lane": "main",
+            "handleMs": handle_ms,
+            "writeMs": write_ms,
+            "totalMs": handle_ms.saturating_add(write_ms)
         }))
     }
 
@@ -109,10 +116,11 @@ impl TraceSink {
         &mut self,
         metadata: &TaskTraceMetadata,
         outcome: TaskOutcome,
+        write_ms: u64,
         summary: &ResultSummary,
     ) -> anyhow::Result<()> {
         if let Some(event) = task_outcome_event(outcome) {
-            self.task_status_event(event, metadata, outcome, summary)?;
+            self.task_status_event(event, metadata, outcome, write_ms, summary)?;
         }
         self.write_json(serde_json::json!({
             "event": "response_sent",
@@ -125,7 +133,11 @@ impl TraceSink {
             "resultKind": summary.kind(),
             "outputMessages": summary.messages(),
             "outputBytes": summary.bytes(),
-            "status": task_outcome_status(outcome)
+            "status": task_outcome_status(outcome),
+            "queueMs": task_queue_ms(metadata),
+            "handleMs": task_handle_ms(metadata),
+            "writeMs": write_ms,
+            "totalMs": task_total_ms(metadata, write_ms)
         }))
     }
 
@@ -172,6 +184,7 @@ impl TraceSink {
         event: &str,
         metadata: &TaskTraceMetadata,
         outcome: TaskOutcome,
+        write_ms: u64,
         summary: &ResultSummary,
     ) -> anyhow::Result<()> {
         self.write_json(serde_json::json!({
@@ -182,6 +195,10 @@ impl TraceSink {
             "generation": metadata.generation,
             "lane": metadata.lane,
             "status": task_outcome_status(outcome),
+            "queueMs": task_queue_ms(metadata),
+            "handleMs": task_handle_ms(metadata),
+            "writeMs": write_ms,
+            "totalMs": task_total_ms(metadata, write_ms),
             "outputMessages": summary.messages(),
             "outputBytes": summary.bytes()
         }))
@@ -235,6 +252,27 @@ fn task_outcome_status(outcome: TaskOutcome) -> &'static str {
     }
 }
 
+fn task_queue_ms(metadata: &TaskTraceMetadata) -> Option<u128> {
+    metadata
+        .timing
+        .map(|timing| timing.started_ms().saturating_sub(timing.queued_ms()))
+}
+
+fn task_handle_ms(metadata: &TaskTraceMetadata) -> Option<u128> {
+    metadata
+        .timing
+        .map(|timing| timing.ended_ms().saturating_sub(timing.started_ms()))
+}
+
+fn task_total_ms(metadata: &TaskTraceMetadata, write_ms: u64) -> Option<u128> {
+    metadata.timing.map(|timing| {
+        timing
+            .ended_ms()
+            .saturating_sub(timing.queued_ms())
+            .saturating_add(u128::from(write_ms))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use lsp_server::{Message, Request, RequestId};
@@ -264,7 +302,7 @@ mod tests {
             .message_received(1, &metadata, 64)
             .expect("stderr trace should write message receipt");
         trace
-            .response_sent(1, &metadata, &ResultSummary::from_messages(&[]))
+            .response_sent(1, &metadata, 5, 2, &ResultSummary::from_messages(&[]))
             .expect("stderr trace should write response summary");
     }
 
@@ -336,13 +374,13 @@ mod tests {
         let summary = ResultSummary::from_messages(&[]);
 
         trace
-            .task_result(&metadata, TaskOutcome::Cancelled, &summary)
+            .task_result(&metadata, TaskOutcome::Cancelled, 4, &summary)
             .expect("cancelled task status should write");
         trace
-            .task_result(&metadata, TaskOutcome::StaleDiscarded, &summary)
+            .task_result(&metadata, TaskOutcome::StaleDiscarded, 4, &summary)
             .expect("stale task status should write");
         trace
-            .task_result(&metadata, TaskOutcome::Retried, &summary)
+            .task_result(&metadata, TaskOutcome::Retried, 4, &summary)
             .expect("retried task status should write");
 
         let output = fs::read_to_string(&path).expect("trace file should be readable");
@@ -372,7 +410,11 @@ mod tests {
         assert!(events.iter().any(|event| event["event"] == "response_sent"
             && event["kind"] == "task"
             && event["lane"] == "formatting"
-            && event["id"] == "fmt-1"));
+            && event["id"] == "fmt-1"
+            && event["queueMs"] == 1
+            && event["handleMs"] == 1
+            && event["writeMs"] == 4
+            && event["totalMs"] == 6));
 
         let _ = fs::remove_file(path);
     }

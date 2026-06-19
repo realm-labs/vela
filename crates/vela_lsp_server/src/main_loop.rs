@@ -47,7 +47,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                 let write_start = Instant::now();
                 let summary = state.send_messages(messages)?;
                 let write_ms = elapsed_ms(write_start);
-                trace.response_sent(sequence, &metadata, &summary)?;
+                trace.response_sent(sequence, &metadata, handle_ms, write_ms, &summary)?;
                 profiler.end(
                     sequence,
                     &metadata,
@@ -60,10 +60,13 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
             MainLoopEvent::Task(task) => {
                 let task_metadata = crate::tracing::TaskTraceMetadata::from_task(&task);
                 trace.task_lifecycle(&task)?;
+                let write_start = Instant::now();
                 let task_summary = state.send_task_result(task)?;
+                let write_ms = elapsed_ms(write_start);
                 trace.task_result(
                     &task_metadata,
                     task_summary.outcome(),
+                    write_ms,
                     task_summary.summary(),
                 )?;
             }
