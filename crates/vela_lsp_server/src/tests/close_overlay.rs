@@ -1,4 +1,7 @@
-use super::{JsonRpcResult, LspServer, notification, notification_value, request, response_value};
+use super::{
+    JsonRpcResult, LspServer, handle_notification, handle_request, notification_value,
+    response_value,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -24,7 +27,8 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -32,17 +36,19 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -52,9 +58,10 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_completion = completion_labels(&response_value(server.handle_json(&request(
+    let overlay_completion = completion_labels(&response_value(handle_request(
+        &mut server,
         2,
         "textDocument/completion",
         serde_json::json!({
@@ -64,7 +71,7 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
                 "character": completion_character(overlay_source, "ov")
             }
         }),
-    ))));
+    )));
     assert!(
         overlay_completion
             .iter()
@@ -76,18 +83,20 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
         "{overlay_completion:?}"
     );
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_completion = completion_labels(&response_value(server.handle_json(&request(
+    let disk_completion = completion_labels(&response_value(handle_request(
+        &mut server,
         3,
         "textDocument/completion",
         serde_json::json!({
@@ -97,7 +106,7 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
                 "character": completion_character(disk_source, "di")
             }
         }),
-    ))));
+    )));
     assert!(
         disk_completion.iter().any(|label| label == "disk_only"),
         "{disk_completion:?}"
@@ -126,7 +135,8 @@ pub fn main() -> i64 {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -134,18 +144,20 @@ pub fn main() -> i64 {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     let function = semantic_token_type_index(&initialize, "function");
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -155,35 +167,38 @@ pub fn main() -> i64 {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_tokens = semantic_tokens(&response_value(server.handle_json(&request(
+    let overlay_tokens = semantic_tokens(&response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": source_uri }
         }),
-    ))));
+    )));
     assert_semantic_token_for_target(&overlay_tokens, overlay_source, "overlay_only", function);
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_tokens = semantic_tokens(&response_value(server.handle_json(&request(
+    let disk_tokens = semantic_tokens(&response_value(handle_request(
+        &mut server,
         3,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": source_uri }
         }),
-    ))));
+    )));
     assert_semantic_token_for_target(&disk_tokens, disk_source, "disk_only", function);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
@@ -205,7 +220,8 @@ pub fn main() -> String {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -213,17 +229,19 @@ pub fn main() -> String {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -233,25 +251,34 @@ pub fn main() -> String {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_hints =
-        response_value(server.handle_json(&inlay_hint_request(2, &source_uri, overlay_source)));
+    let overlay_hints = response_value(handle_request(
+        &mut server,
+        2,
+        "textDocument/inlayHint",
+        inlay_hint_params(&source_uri, overlay_source),
+    ));
     assert_inlay_hint_for_target(&overlay_hints, overlay_source, "\"quest\"", "reason:");
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_hints =
-        response_value(server.handle_json(&inlay_hint_request(3, &source_uri, disk_source)));
+    let disk_hints = response_value(handle_request(
+        &mut server,
+        3,
+        "textDocument/inlayHint",
+        inlay_hint_params(&source_uri, disk_source),
+    ));
     assert_inlay_hint_for_target(&disk_hints, disk_source, "7", "amount:");
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
@@ -287,7 +314,8 @@ fn main(player: Player) {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -295,17 +323,19 @@ fn main(player: Player) {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -315,28 +345,34 @@ fn main(player: Player) {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_definition = response_value(server.handle_json(&type_definition_request(
+    let overlay_definition = response_value(handle_request(
+        &mut server,
         2,
-        &source_uri,
-        overlay_source,
-    )));
+        "textDocument/typeDefinition",
+        type_definition_params(&source_uri, overlay_source),
+    ));
     assert_type_definition_range(&overlay_definition, &source_uri, 7, 23);
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_definition =
-        response_value(server.handle_json(&type_definition_request(3, &source_uri, disk_source)));
+    let disk_definition = response_value(handle_request(
+        &mut server,
+        3,
+        "textDocument/typeDefinition",
+        type_definition_params(&source_uri, disk_source),
+    ));
     assert_type_definition_range(&disk_definition, &source_uri, 7, 20);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
@@ -360,7 +396,8 @@ pub fn main() -> i64 {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -368,17 +405,19 @@ pub fn main() -> i64 {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -388,14 +427,14 @@ pub fn main() -> i64 {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_hover = hover_value(&response_value(server.handle_json(&hover_request(
+    let overlay_hover = hover_value(&response_value(handle_request(
+        &mut server,
         2,
-        &source_uri,
-        overlay_source,
-        "overlay_only",
-    ))));
+        "textDocument/hover",
+        hover_params(&source_uri, overlay_source, "overlay_only"),
+    )));
     assert!(
         overlay_hover.contains("game::main::overlay_only"),
         "{overlay_hover}"
@@ -406,23 +445,24 @@ pub fn main() -> i64 {
     );
     assert!(!overlay_hover.contains("disk_only"), "{overlay_hover}");
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_hover = hover_value(&response_value(server.handle_json(&hover_request(
+    let disk_hover = hover_value(&response_value(handle_request(
+        &mut server,
         3,
-        &source_uri,
-        disk_source,
-        "disk_only",
-    ))));
+        "textDocument/hover",
+        hover_params(&source_uri, disk_source, "disk_only"),
+    )));
     assert!(disk_hover.contains("game::main::disk_only"), "{disk_hover}");
     assert!(disk_hover.contains("Disk function"), "{disk_hover}");
     assert!(!disk_hover.contains("overlay_only"), "{disk_hover}");
@@ -446,7 +486,8 @@ pub fn main() -> i64 {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -454,17 +495,19 @@ pub fn main() -> i64 {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -474,33 +517,34 @@ pub fn main() -> i64 {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_references = response_value(server.handle_json(&references_request(
+    let overlay_references = response_value(handle_request(
+        &mut server,
         2,
-        &source_uri,
-        overlay_source,
-        "overlay_only",
-    )));
+        "textDocument/references",
+        references_params(&source_uri, overlay_source, "overlay_only"),
+    ));
     assert_reference_ranges(&overlay_references, &source_uri, &[(0, 7, 19), (2, 11, 23)]);
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_references = response_value(server.handle_json(&references_request(
+    let disk_references = response_value(handle_request(
+        &mut server,
         3,
-        &source_uri,
-        disk_source,
-        "disk_only",
-    )));
+        "textDocument/references",
+        references_params(&source_uri, disk_source, "disk_only"),
+    ));
     assert_reference_ranges(&disk_references, &source_uri, &[(0, 7, 16), (2, 11, 20)]);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
@@ -522,7 +566,8 @@ pub fn main() -> i64 {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -530,17 +575,19 @@ pub fn main() -> i64 {
             "rootUri": file_uri(&root.join("scripts")),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
-        server.handle_json(&notification(
+        handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": source_uri, "type": 1 }]
             }),
-        )),
+        ),
         JsonRpcResult::None
     );
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -550,33 +597,34 @@ pub fn main() -> i64 {
                 "text": overlay_source
             }
         }),
-    )));
+    ));
 
-    let overlay_highlights = response_value(server.handle_json(&document_highlight_request(
+    let overlay_highlights = response_value(handle_request(
+        &mut server,
         2,
-        &source_uri,
-        overlay_source,
-        "overlay_only",
-    )));
+        "textDocument/documentHighlight",
+        document_highlight_params(&source_uri, overlay_source, "overlay_only"),
+    ));
     assert_document_highlight_ranges(&overlay_highlights, &[(0, 7, 19), (2, 11, 23)]);
 
-    let close = notification_value(server.handle_json(&notification(
+    let close = notification_value(handle_notification(
+        &mut server,
         "textDocument/didClose",
         serde_json::json!({
             "textDocument": {
                 "uri": source_uri
             }
         }),
-    )));
+    ));
     assert_eq!(close["method"], "textDocument/publishDiagnostics");
     assert_eq!(close["params"]["uri"], source_uri);
 
-    let disk_highlights = response_value(server.handle_json(&document_highlight_request(
+    let disk_highlights = response_value(handle_request(
+        &mut server,
         3,
-        &source_uri,
-        disk_source,
-        "disk_only",
-    )));
+        "textDocument/documentHighlight",
+        document_highlight_params(&source_uri, disk_source, "disk_only"),
+    ));
     assert_document_highlight_ranges(&disk_highlights, &[(0, 7, 16), (2, 11, 20)]);
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
@@ -664,7 +712,7 @@ fn source_position(source: &str, target: &str) -> (u64, u64) {
     (line, (offset - line_start) as u64)
 }
 
-fn inlay_hint_request(id: i64, uri: &str, source: &str) -> String {
+fn inlay_hint_params(uri: &str, source: &str) -> serde_json::Value {
     let last_line = source
         .lines()
         .count()
@@ -675,17 +723,13 @@ fn inlay_hint_request(id: i64, uri: &str, source: &str) -> String {
         .last()
         .expect("source should contain a final line")
         .len();
-    request(
-        id,
-        "textDocument/inlayHint",
-        serde_json::json!({
-            "textDocument": { "uri": uri },
-            "range": {
-                "start": { "line": 0, "character": 0 },
-                "end": { "line": last_line, "character": end_character }
-            }
-        }),
-    )
+    serde_json::json!({
+        "textDocument": { "uri": uri },
+        "range": {
+            "start": { "line": 0, "character": 0 },
+            "end": { "line": last_line, "character": end_character }
+        }
+    })
 }
 
 fn assert_inlay_hint_for_target(
@@ -710,18 +754,14 @@ fn assert_inlay_hint_for_target(
     );
 }
 
-fn type_definition_request(id: i64, uri: &str, source: &str) -> String {
-    request(
-        id,
-        "textDocument/typeDefinition",
-        serde_json::json!({
-            "textDocument": { "uri": uri },
-            "position": {
-                "line": 9,
-                "character": type_definition_character(source)
-            }
-        }),
-    )
+fn type_definition_params(uri: &str, source: &str) -> serde_json::Value {
+    serde_json::json!({
+        "textDocument": { "uri": uri },
+        "position": {
+            "line": 9,
+            "character": type_definition_character(source)
+        }
+    })
 }
 
 fn type_definition_character(source: &str) -> usize {
@@ -733,18 +773,14 @@ fn type_definition_character(source: &str) -> usize {
         .expect("type-definition target should exist")
 }
 
-fn hover_request(id: i64, uri: &str, source: &str, target: &str) -> String {
-    request(
-        id,
-        "textDocument/hover",
-        serde_json::json!({
-            "textDocument": { "uri": uri },
-            "position": {
-                "line": 3,
-                "character": hover_character(source, target)
-            }
-        }),
-    )
+fn hover_params(uri: &str, source: &str, target: &str) -> serde_json::Value {
+    serde_json::json!({
+        "textDocument": { "uri": uri },
+        "position": {
+            "line": 3,
+            "character": hover_character(source, target)
+        }
+    })
 }
 
 fn hover_character(source: &str, target: &str) -> usize {
@@ -759,19 +795,15 @@ fn hover_value(response: &serde_json::Value) -> String {
         .to_owned()
 }
 
-fn references_request(id: i64, uri: &str, source: &str, target: &str) -> String {
-    request(
-        id,
-        "textDocument/references",
-        serde_json::json!({
-            "textDocument": { "uri": uri },
-            "position": {
-                "line": 2,
-                "character": references_character(source, target)
-            },
-            "context": { "includeDeclaration": true }
-        }),
-    )
+fn references_params(uri: &str, source: &str, target: &str) -> serde_json::Value {
+    serde_json::json!({
+        "textDocument": { "uri": uri },
+        "position": {
+            "line": 2,
+            "character": references_character(source, target)
+        },
+        "context": { "includeDeclaration": true }
+    })
 }
 
 fn references_character(source: &str, target: &str) -> usize {
@@ -779,18 +811,14 @@ fn references_character(source: &str, target: &str) -> usize {
     line.find(target).expect("references target should exist")
 }
 
-fn document_highlight_request(id: i64, uri: &str, source: &str, target: &str) -> String {
-    request(
-        id,
-        "textDocument/documentHighlight",
-        serde_json::json!({
-            "textDocument": { "uri": uri },
-            "position": {
-                "line": 2,
-                "character": references_character(source, target)
-            }
-        }),
-    )
+fn document_highlight_params(uri: &str, source: &str, target: &str) -> serde_json::Value {
+    serde_json::json!({
+        "textDocument": { "uri": uri },
+        "position": {
+            "line": 2,
+            "character": references_character(source, target)
+        }
+    })
 }
 
 fn assert_reference_ranges(
