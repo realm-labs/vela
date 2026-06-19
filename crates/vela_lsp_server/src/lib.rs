@@ -29,8 +29,7 @@ use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    DocumentDiagnostics, DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources,
-    SchemaDiagnostic, ServiceDiagnostic, ServiceDiagnosticSeverity, SourceFileSnapshot,
+    DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources, SourceFileSnapshot,
     SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
     missing_import_diagnostics,
 };
@@ -38,6 +37,7 @@ use vela_language_service::{
 use crate::client::WorkspaceFolder;
 use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
+use crate::lsp::to_proto;
 pub use crate::rpc::JsonRpcResult;
 pub(crate) use crate::rpc::{
     ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response, success_response,
@@ -543,8 +543,11 @@ impl LspServer {
 
             notifications.extend(self.open_documents.iter().map(|document_id| {
                 let diagnostics = self.databases.diagnostics_for_document(document_id);
-                let mut diagnostics = lsp_diagnostics(&diagnostics);
-                diagnostics.extend(lsp_project_diagnostics(&project_diagnostics, document_id));
+                let mut diagnostics = to_proto::diagnostics(&diagnostics);
+                diagnostics.extend(to_proto::project_diagnostics(
+                    &project_diagnostics,
+                    document_id,
+                ));
                 publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
             }));
         }
@@ -570,8 +573,8 @@ impl LspServer {
         let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
         let project = self.update_databases(&config, &files);
         let diagnostics = self.databases.diagnostics_for_document(document_id);
-        let mut diagnostics = lsp_diagnostics(&diagnostics);
-        diagnostics.extend(lsp_project_diagnostics(
+        let mut diagnostics = to_proto::diagnostics(&diagnostics);
+        diagnostics.extend(to_proto::project_diagnostics(
             &self.current_project_diagnostics(&project),
             document_id,
         ));
@@ -623,7 +626,7 @@ impl LspServer {
             .map(|document_id| {
                 publish_diagnostics_notification(
                     document_id.as_str(),
-                    lsp_project_diagnostics(&self.config_diagnostics, document_id),
+                    to_proto::project_diagnostics(&self.config_diagnostics, document_id),
                     None,
                 )
             })
@@ -631,7 +634,7 @@ impl LspServer {
     }
 
     fn schema_diagnostic_notifications(&self) -> Vec<String> {
-        let diagnostics = lsp_schema_diagnostics(self.databases.schema_db().diagnostics());
+        let diagnostics = to_proto::schema_diagnostics(self.databases.schema_db().diagnostics());
         let active_document = self
             .schema_path()
             .map(document_path_uri)
@@ -848,132 +851,25 @@ fn apply_range_edit(text: &mut String, range: LspRange, replacement: &str) -> Re
     Ok(())
 }
 
-fn lsp_diagnostics(diagnostics: &DocumentDiagnostics) -> Vec<JsonValue> {
-    diagnostics
-        .diagnostics()
-        .iter()
-        .map(lsp_diagnostic)
-        .collect()
-}
-
-fn lsp_diagnostic(diagnostic: &ServiceDiagnostic) -> JsonValue {
-    json!({
-        "range": diagnostic.range().map_or_else(zero_range, lsp_range),
-        "severity": lsp_severity(diagnostic.severity()),
-        "code": diagnostic.code(),
-        "source": "vela",
-        "message": diagnostic.message(),
-        "data": {
-            "labels": diagnostic.labels().iter().map(|label| {
-                json!({
-                    "uri": label.document_id().as_str(),
-                    "range": lsp_range(label.range()),
-                    "message": label.message()
-                })
-            }).collect::<Vec<_>>(),
-            "candidates": diagnostic.candidates().iter().map(|candidate| {
-                json!({ "replacement": candidate.replacement() })
-            }).collect::<Vec<_>>(),
-            "repairHints": diagnostic.repair_hints().iter().map(|hint| {
-                json!({
-                    "uri": hint.document_id().as_str(),
-                    "range": lsp_range(hint.range()),
-                    "title": hint.title(),
-                    "replacement": hint.replacement()
-                })
-            }).collect::<Vec<_>>()
-        }
-    })
-}
-
 fn project_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
     let mut diagnostics = project.diagnostics().to_vec();
     diagnostics.extend(missing_import_diagnostics(project));
     diagnostics
 }
 
-fn lsp_project_diagnostics(
-    diagnostics: &[ProjectDiagnostic],
-    document_id: &DocumentId,
-) -> Vec<JsonValue> {
-    diagnostics
-        .iter()
-        .filter(|diagnostic| diagnostic.document_id() == Some(document_id))
-        .map(|diagnostic| {
-            json!({
-                "range": zero_range(),
-                "severity": 1,
-                "code": "project::diagnostic",
-                "source": "vela",
-                "message": diagnostic.message(),
-                "data": {
-                    "labels": [],
-                    "candidates": [],
-                    "repairHints": []
-                }
-            })
-        })
-        .collect()
-}
-
-fn lsp_schema_diagnostics(diagnostics: &[SchemaDiagnostic]) -> Vec<JsonValue> {
-    diagnostics
-        .iter()
-        .map(|diagnostic| {
-            json!({
-                "range": zero_range(),
-                "severity": 1,
-                "code": "schema::diagnostic",
-                "source": "vela",
-                "message": diagnostic.message(),
-                "data": {
-                    "labels": [],
-                    "candidates": [],
-                    "repairHints": []
-                }
-            })
-        })
-        .collect()
-}
-
-fn lsp_range(range: vela_language_service::DiagnosticRange) -> JsonValue {
-    json!({
-        "start": {
-            "line": range.start().line,
-            "character": range.start().character
-        },
-        "end": {
-            "line": range.end().line,
-            "character": range.end().character
-        }
-    })
-}
-
-fn zero_range() -> JsonValue {
-    json!({
-        "start": { "line": 0, "character": 0 },
-        "end": { "line": 0, "character": 0 }
-    })
-}
-
-fn lsp_severity(severity: ServiceDiagnosticSeverity) -> u8 {
-    match severity {
-        ServiceDiagnosticSeverity::Error => 1,
-        ServiceDiagnosticSeverity::Warning => 2,
-        ServiceDiagnosticSeverity::Note => 3,
-        ServiceDiagnosticSeverity::Help => 4,
-    }
-}
-
 fn publish_diagnostics_notification(
     uri: &str,
-    diagnostics: Vec<JsonValue>,
+    diagnostics: Vec<lsp_types::Diagnostic>,
     error: Option<String>,
 ) -> String {
-    let mut params = json!({
-        "uri": uri,
-        "diagnostics": diagnostics
-    });
+    let uri = lsp_types::Url::parse(uri).expect("diagnostic document URI should parse");
+    let params = lsp_types::PublishDiagnosticsParams {
+        uri,
+        diagnostics,
+        version: None,
+    };
+    let mut params =
+        serde_json::to_value(params).expect("typed publishDiagnostics params should serialize");
     if let Some(error) = error
         && let Some(object) = params.as_object_mut()
     {

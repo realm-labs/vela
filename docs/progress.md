@@ -302,10 +302,13 @@ Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and
 workspace-symbol compatibility paths now serialize typed `lsp/to_proto.rs`
-projections instead of keeping duplicate raw response encoders. Call hierarchy
-compatibility responses also serialize typed `lsp/to_proto.rs` projections;
-its remaining helper only decodes legacy custom call-hierarchy item params
-until custom protocol params are retired.
+projections instead of keeping duplicate raw response encoders. Diagnostic
+publication also projects typed `lsp_types::Diagnostic` and
+`lsp_types::PublishDiagnosticsParams` through `lsp/to_proto.rs`, retaining only
+Vela extension payloads at the JSON boundary. Call hierarchy compatibility
+responses also serialize typed `lsp/to_proto.rs` projections; its remaining
+helper only decodes legacy custom call-hierarchy item params until custom
+protocol params are retired.
 
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native

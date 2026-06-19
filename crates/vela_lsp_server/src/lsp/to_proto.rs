@@ -5,14 +5,15 @@ use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CodeAction as ServiceCodeAction,
     CodeActionKind as ServiceCodeActionKind, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
-    DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
-    DocumentTextEdit, FoldingRange as ServiceFoldingRange,
+    DiagnosticRange, DocumentDiagnostics, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
+    DocumentSymbolKind, DocumentTextEdit, FoldingRange as ServiceFoldingRange,
     FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall,
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
-    PrepareRename, Reference, RenameRiskKind, SelectionRange as ServiceSelectionRange,
-    SemanticToken as ServiceSemanticToken, SemanticTokenDelta as ServiceSemanticTokenDelta,
-    SemanticTokens as ServiceSemanticTokens, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
-    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
+    PrepareRename, ProjectDiagnostic, Reference, RenameRiskKind, SchemaDiagnostic,
+    SelectionRange as ServiceSelectionRange, SemanticToken as ServiceSemanticToken,
+    SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
+    ServiceDiagnostic, ServiceDiagnosticSeverity, SignatureHelp, TextEdit as ServiceTextEdit,
+    TextRange, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
 };
 
 use crate::semantic_tokens::SemanticTokenProjection;
@@ -71,6 +72,56 @@ pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {
             u32::try_from(help.active_parameter()).expect("active parameter should fit in u32"),
         ),
     }
+}
+
+pub(crate) fn diagnostics(diagnostics: &DocumentDiagnostics) -> Vec<lsp_types::Diagnostic> {
+    diagnostics
+        .diagnostics()
+        .iter()
+        .map(service_diagnostic)
+        .collect()
+}
+
+pub(crate) fn project_diagnostics(
+    diagnostics: &[ProjectDiagnostic],
+    document_id: &vela_language_service::DocumentId,
+) -> Vec<lsp_types::Diagnostic> {
+    diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.document_id() == Some(document_id))
+        .map(|diagnostic| lsp_types::Diagnostic {
+            range: zero_range(),
+            severity: Some(lsp_types::DiagnosticSeverity::ERROR),
+            code: Some(lsp_types::NumberOrString::String(
+                "project::diagnostic".to_owned(),
+            )),
+            code_description: None,
+            source: Some("vela".to_owned()),
+            message: diagnostic.message().to_owned(),
+            related_information: None,
+            tags: None,
+            data: Some(empty_diagnostic_data()),
+        })
+        .collect()
+}
+
+pub(crate) fn schema_diagnostics(diagnostics: &[SchemaDiagnostic]) -> Vec<lsp_types::Diagnostic> {
+    diagnostics
+        .iter()
+        .map(|diagnostic| lsp_types::Diagnostic {
+            range: zero_range(),
+            severity: Some(lsp_types::DiagnosticSeverity::ERROR),
+            code: Some(lsp_types::NumberOrString::String(
+                "schema::diagnostic".to_owned(),
+            )),
+            code_description: None,
+            source: Some("vela".to_owned()),
+            message: diagnostic.message().to_owned(),
+            related_information: None,
+            tags: None,
+            data: Some(empty_diagnostic_data()),
+        })
+        .collect()
 }
 
 pub(crate) fn definition_location(definition: &Definition) -> lsp_types::Location {
@@ -232,6 +283,63 @@ fn location(
         uri: lsp_types::Url::parse(document_id.as_str())
             .expect("location document id should be a valid LSP URI"),
         range: diagnostic_range(range),
+    }
+}
+
+fn service_diagnostic(diagnostic: &ServiceDiagnostic) -> lsp_types::Diagnostic {
+    lsp_types::Diagnostic {
+        range: diagnostic.range().map_or_else(zero_range, diagnostic_range),
+        severity: Some(diagnostic_severity(diagnostic.severity())),
+        code: diagnostic
+            .code()
+            .map(str::to_owned)
+            .map(lsp_types::NumberOrString::String),
+        code_description: None,
+        source: Some("vela".to_owned()),
+        message: diagnostic.message().to_owned(),
+        related_information: None,
+        tags: None,
+        data: Some(diagnostic_data(diagnostic)),
+    }
+}
+
+fn diagnostic_data(diagnostic: &ServiceDiagnostic) -> JsonValue {
+    json!({
+        "labels": diagnostic.labels().iter().map(|label| {
+            json!({
+                "uri": label.document_id().as_str(),
+                "range": diagnostic_range(label.range()),
+                "message": label.message()
+            })
+        }).collect::<Vec<_>>(),
+        "candidates": diagnostic.candidates().iter().map(|candidate| {
+            json!({ "replacement": candidate.replacement() })
+        }).collect::<Vec<_>>(),
+        "repairHints": diagnostic.repair_hints().iter().map(|hint| {
+            json!({
+                "uri": hint.document_id().as_str(),
+                "range": diagnostic_range(hint.range()),
+                "title": hint.title(),
+                "replacement": hint.replacement()
+            })
+        }).collect::<Vec<_>>()
+    })
+}
+
+fn empty_diagnostic_data() -> JsonValue {
+    json!({
+        "labels": [],
+        "candidates": [],
+        "repairHints": []
+    })
+}
+
+const fn diagnostic_severity(severity: ServiceDiagnosticSeverity) -> lsp_types::DiagnosticSeverity {
+    match severity {
+        ServiceDiagnosticSeverity::Error => lsp_types::DiagnosticSeverity::ERROR,
+        ServiceDiagnosticSeverity::Warning => lsp_types::DiagnosticSeverity::WARNING,
+        ServiceDiagnosticSeverity::Note => lsp_types::DiagnosticSeverity::INFORMATION,
+        ServiceDiagnosticSeverity::Help => lsp_types::DiagnosticSeverity::HINT,
     }
 }
 
@@ -642,6 +750,19 @@ fn diagnostic_range(range: DiagnosticRange) -> lsp_types::Range {
     }
 }
 
+fn zero_range() -> lsp_types::Range {
+    lsp_types::Range {
+        start: lsp_types::Position {
+            line: 0,
+            character: 0,
+        },
+        end: lsp_types::Position {
+            line: 0,
+            character: 0,
+        },
+    }
+}
+
 fn service_position(position: vela_language_service::Position) -> lsp_types::Position {
     lsp_types::Position {
         line: u32::try_from(position.line).expect("line should fit in LSP u32"),
@@ -765,6 +886,59 @@ mod tests {
         };
         assert_eq!(documentation.kind, lsp_types::MarkupKind::Markdown);
         assert_eq!(documentation.value, "Player docs.");
+    }
+
+    #[test]
+    fn diagnostics_project_typed_lsp_shape_and_extension_data() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn main( {";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let diagnostics = diagnostics(&databases.diagnostics_for_document(&document));
+
+        let diagnostic = diagnostics
+            .first()
+            .expect("invalid source should produce a diagnostic");
+        assert_eq!(diagnostic.source.as_deref(), Some("vela"));
+        assert_eq!(
+            diagnostic.severity,
+            Some(lsp_types::DiagnosticSeverity::ERROR)
+        );
+        let data = diagnostic
+            .data
+            .as_ref()
+            .expect("diagnostic should preserve structured extension data");
+        assert!(data.get("labels").is_some());
+        assert!(data.get("candidates").is_some());
+        assert!(data.get("repairHints").is_some());
+
+        let project = project_diagnostics(
+            &[ProjectDiagnostic::new(
+                Some(document.clone()),
+                "project issue",
+            )],
+            &document,
+        );
+        assert_eq!(project[0].message, "project issue");
+        assert_eq!(
+            project[0].code,
+            Some(lsp_types::NumberOrString::String(
+                "project::diagnostic".to_owned()
+            ))
+        );
+
+        let schema = schema_diagnostics(&[SchemaDiagnostic::new("schema issue")]);
+        assert_eq!(schema[0].message, "schema issue");
+        assert_eq!(
+            schema[0].code,
+            Some(lsp_types::NumberOrString::String(
+                "schema::diagnostic".to_owned()
+            ))
+        );
     }
 
     #[test]
