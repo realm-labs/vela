@@ -1802,6 +1802,10 @@ node editors/vscode/scripts/validate-package.js
   - Converted the shared file-watching setup helpers off `LspServer::handle_json`
     so the file-watching fixture paths used by reload/root-change tests enter
     the test server through typed `lsp_server::Message` values.
+  - Converted the remaining inline `tests.rs` file-watching config, schema,
+    workspace-folder, and file-change fixtures off `LspServer::handle_json`,
+    so the root LSP test module now uses typed message helpers instead of the
+    legacy JSON-RPC harness.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.

@@ -631,8 +631,8 @@ mod file_watching {
 
     use super::{
         JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, handle_notification,
-        handle_request, notification, notification_value, notification_values,
-        publish_diagnostics_notifications, request, response_value,
+        handle_request, notification_value, notification_values, publish_diagnostics_notifications,
+        response_value,
     };
 
     static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
@@ -780,7 +780,8 @@ mod file_watching {
         fs::write(&config_path, "[workspace]\nroots = \"scripts\"\n")
             .expect("invalid vela.toml should be writable");
         let mut server = LspServer::new();
-        let _ = server.handle_json(&request(
+        let _ = handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -788,13 +789,14 @@ mod file_watching {
                 "rootUri": file_uri(&root),
                 "capabilities": {}
             }),
-        ));
-        let notifications = notification_values(server.handle_json(&notification(
+        );
+        let notifications = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
             }),
-        )));
+        ));
         assert_eq!(notifications.len(), 1);
         assert_eq!(notifications[0]["params"]["uri"], file_uri(&config_path));
         let diagnostics = notifications[0]["params"]["diagnostics"]
@@ -808,12 +810,13 @@ mod file_watching {
         }));
         fs::write(&config_path, "[workspace]\nroots = [\"scripts\"]\n")
             .expect("valid vela.toml should be writable");
-        let cleared = notification_values(server.handle_json(&notification(
+        let cleared = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 2 }]
             }),
-        )));
+        ));
         assert_eq!(cleared.len(), 1);
         assert!(
             cleared[0]["params"]["diagnostics"]
@@ -831,7 +834,8 @@ mod file_watching {
         fs::write(&config_path, "[workspace]\nroots = \"scripts\"\n")
             .expect("invalid vela.toml should be writable");
         let mut server = LspServer::new();
-        let _ = server.handle_json(&request(
+        let _ = handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -839,13 +843,14 @@ mod file_watching {
                 "rootUri": file_uri(&root),
                 "capabilities": {}
             }),
-        ));
-        let invalid = notification_values(server.handle_json(&notification(
+        );
+        let invalid = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
             }),
-        )));
+        ));
         assert_eq!(invalid.len(), 1);
         assert_eq!(invalid[0]["params"]["uri"], file_uri(&config_path));
         let diagnostics = invalid[0]["params"]["diagnostics"]
@@ -859,12 +864,13 @@ mod file_watching {
         );
 
         fs::remove_file(&config_path).expect("invalid vela.toml should be removable");
-        let cleared = notification_values(server.handle_json(&notification(
+        let cleared = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 3 }]
             }),
-        )));
+        ));
 
         assert_eq!(cleared.len(), 1);
         assert_eq!(cleared[0]["params"]["uri"], file_uri(&config_path));
@@ -898,7 +904,8 @@ mod file_watching {
         fs::write(&schema_path, "{").expect("invalid schema should be writable");
 
         let mut server = LspServer::new();
-        let _ = server.handle_json(&request(
+        let _ = handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -906,13 +913,14 @@ mod file_watching {
                 "rootUri": file_uri(&root),
                 "capabilities": {}
             }),
-        ));
-        let notifications = notification_values(server.handle_json(&notification(
+        );
+        let notifications = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
             }),
-        )));
+        ));
 
         assert_eq!(notifications.len(), 1, "{notifications:?}");
         assert_eq!(notifications[0]["params"]["uri"], file_uri(&schema_path));
@@ -949,7 +957,8 @@ mod file_watching {
         fs::write(&schema_path, "{").expect("invalid schema should be writable");
 
         let mut server = LspServer::new();
-        let _ = server.handle_json(&request(
+        let _ = handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -957,22 +966,24 @@ mod file_watching {
                 "rootUri": file_uri(&root),
                 "capabilities": {}
             }),
-        ));
-        let invalid = notification_values(server.handle_json(&notification(
+        );
+        let invalid = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
             }),
-        )));
+        ));
         assert_eq!(invalid.len(), 1, "{invalid:?}");
         fs::write(&schema_path, valid_schema_artifact()).expect("valid schema should be writable");
 
-        let cleared = notification_values(server.handle_json(&notification(
+        let cleared = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&schema_path), "type": 2 }]
             }),
-        )));
+        ));
 
         assert_eq!(cleared.len(), 1, "{cleared:?}");
         assert_eq!(cleared[0]["params"]["uri"], file_uri(&schema_path));
@@ -1006,7 +1017,8 @@ mod file_watching {
         fs::write(&schema_path, valid_schema_artifact()).expect("schema should be writable");
 
         let mut server = LspServer::new();
-        let _ = server.handle_json(&request(
+        let _ = handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -1014,13 +1026,14 @@ mod file_watching {
                 "rootUri": file_uri(&root),
                 "capabilities": {}
             }),
-        ));
-        let loaded = notification_values(server.handle_json(&notification(
+        );
+        let loaded = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
             }),
-        )));
+        ));
         assert_eq!(loaded.len(), 1, "{loaded:?}");
         assert!(
             loaded[0]["params"]["diagnostics"]
@@ -1030,12 +1043,13 @@ mod file_watching {
         );
 
         fs::remove_file(&schema_path).expect("schema should be removable");
-        let missing = notification_values(server.handle_json(&notification(
+        let missing = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&schema_path), "type": 3 }]
             }),
-        )));
+        ));
 
         assert_eq!(missing.len(), 1, "{missing:?}");
         assert_eq!(missing[0]["params"]["uri"], file_uri(&schema_path));
@@ -1073,7 +1087,8 @@ mod file_watching {
         let game_root = root.join("scripts").join("game");
         let scripts_root = root.join("scripts");
         let mut server = LspServer::new();
-        let response = response_value(server.handle_json(&request(
+        let response = response_value(handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -1085,19 +1100,21 @@ mod file_watching {
                     }
                 }
             }),
-        )));
+        ));
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-        let watched = server.handle_json(&notification(
+        let watched = handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [{ "uri": file_uri(&helper_path), "type": 1 }]
             }),
-        ));
+        );
         assert_eq!(watched, JsonRpcResult::None);
         let main = open_main(&mut server, &root, "game::helper");
         assert_has_unresolved_import(&main);
 
-        let notifications = notification_values(server.handle_json(&notification(
+        let notifications = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWorkspaceFolders",
             serde_json::json!({
                 "event": {
@@ -1105,7 +1122,7 @@ mod file_watching {
                     "removed": [{ "uri": file_uri(&game_root), "name": "game" }]
                 }
             }),
-        )));
+        ));
         assert_workspace_progress(&notifications);
         let published = publish_diagnostics_notifications(&notifications);
         assert_eq!(published.len(), 1);
@@ -1123,14 +1140,15 @@ mod file_watching {
         if let Err(error) = fs::remove_file(&helper_path) {
             panic!("helper source should be removable: {error}");
         }
-        let notifications = notification_values(server.handle_json(&notification(
+        let notifications = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [
                     { "uri": file_uri(&helper_path), "type": 3 }
                 ]
             }),
-        )));
+        ));
 
         assert_workspace_progress(&notifications);
         let published = publish_diagnostics_notifications(&notifications);
@@ -1162,14 +1180,15 @@ mod file_watching {
             panic!("helper source should be removable: {error}");
         }
 
-        let notifications = notification_values(server.handle_json(&notification(
+        let notifications = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [
                     { "uri": file_uri(&helper_path), "type": 3 }
                 ]
             }),
-        )));
+        ));
 
         assert_eq!(notifications.len(), 3);
         assert_workspace_progress(&notifications);
@@ -1195,7 +1214,8 @@ mod file_watching {
         if let Err(error) = fs::rename(&helper_path, &reward_path) {
             panic!("helper source should be renameable: {error}");
         }
-        let _ = notification_values(server.handle_json(&notification(
+        let _ = notification_values(handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [
@@ -1203,10 +1223,11 @@ mod file_watching {
                     { "uri": file_uri(&reward_path), "type": 1 }
                 ]
             }),
-        )));
+        ));
 
         let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-        let main = notification_value(server.handle_json(&notification(
+        let main = notification_value(handle_notification(
+            &mut server,
             "textDocument/didChange",
             serde_json::json!({
                 "textDocument": {
@@ -1219,7 +1240,7 @@ mod file_watching {
                     }
                 ]
             }),
-        )));
+        ));
         assert_no_unresolved_imports(&main);
         if let Err(error) = fs::remove_dir_all(&root) {
             panic!("temporary workspace should be removable: {error}");
