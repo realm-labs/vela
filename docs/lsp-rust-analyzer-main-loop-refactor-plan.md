@@ -1216,7 +1216,14 @@ cargo test -p vela_lsp_server completion
     `cargo test -p vela_lsp_server task_scheduler_preserves_request_id_and_generation_token`,
     `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
     and `cargo test -p vela_lsp_server formatting`.
-- [ ] Discard stale results when the current generation differs.
+- [x] Discard stale results when the current generation differs.
+  - `GlobalState::send_task_result` now compares a task result's
+    `GenerationToken` against the current language-service database
+    generation and sends no response when the task result is stale, while
+    still retiring its in-flight cancellation handle. Validated with
+    `cargo test -p vela_lsp_server send_task_result_discards_stale_generation_response`,
+    `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
+    and `cargo test -p vela_lsp_server formatting`.
 - [ ] Retry retryable stale requests once using a fresh snapshot.
 - [ ] Return LSP `ContentModified` for non-retryable stale requests.
 - [ ] Return LSP `RequestCancelled` for cancelled in-flight requests.

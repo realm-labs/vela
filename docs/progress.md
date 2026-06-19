@@ -336,6 +336,9 @@ future request using the same ID.
 Background task results now carry the request's language-service
 `GenerationToken` to the main-loop response boundary, preparing stale-result
 handling to compare task generation against current workspace generation.
+Stale background task responses are now discarded when their carried
+generation differs from the current language-service database generation, while
+still retiring the in-flight cancellation handle.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,

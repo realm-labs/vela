@@ -921,10 +921,15 @@ impl GlobalState {
     pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         let _method = result.method();
-        let _generation = result.generation_token().map(GenerationToken::generation);
+        let is_stale = result
+            .generation_token()
+            .is_some_and(|generation| generation.generation() != self.databases.generation());
         let request_id = result.request_id().cloned();
         if let Some(request_id) = request_id.as_ref() {
             self.request_queue.finish_in_flight(request_id);
+        }
+        if is_stale {
+            return self.send_result(JsonRpcResult::None);
         }
         self.send_result(result.into_result())
     }
@@ -1307,7 +1312,7 @@ impl RequestQueue {
 mod tests {
     use std::time::Duration;
 
-    use crossbeam_channel::unbounded;
+    use crossbeam_channel::{TryRecvError, unbounded};
     use vela_language_service::{
         DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
     };
@@ -2539,6 +2544,59 @@ pub fn main(player: Player) -> i64 {
             .send_task_result(task)
             .expect("formatting task response should send");
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
+    }
+
+    #[test]
+    fn send_task_result_discards_stale_generation_response() {
+        let (sender, receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "pub fn main(){return 1}",
+            SourceVersion::new(1),
+        );
+        state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
+        state.sync_from_legacy_server();
+        let request_id = RequestId::Number(31);
+
+        let result = state.handle_message(
+            &Message::Request(lsp_server::Request {
+                id: lsp_server::RequestId::from(31),
+                method: "textDocument/formatting".to_owned(),
+                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    options: lsp_formatting_options(),
+                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                })
+                .expect("formatting params should serialize"),
+            }),
+            "",
+        );
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.request_queue.in_flight.contains_key(&request_id));
+        let task = state
+            .task_scheduler()
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("formatting task should complete");
+        state.databases.invalidate_project_config();
+
+        state
+            .send_task_result(task)
+            .expect("stale formatting task response should be handled");
+
+        assert!(!state.request_queue.in_flight.contains_key(&request_id));
+        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
     }
 
     #[test]
