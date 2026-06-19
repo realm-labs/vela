@@ -207,6 +207,8 @@ coverage complete based only on the older capability phases.
   - `textDocumentSync.save` is now pinned false, and
     `textDocument/didSave` notifications are no-response no-ops so editor
     correctness does not depend on save events.
+  - Requests after `shutdown` now return a stable invalid-request error until
+    the client sends the allowed `exit` notification.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
   - Cover the authoring-core model itself: structured completion analysis

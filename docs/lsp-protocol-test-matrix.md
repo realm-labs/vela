@@ -188,7 +188,7 @@ in `vela_lsp_server`.
 |---|---|---:|---|---|
 | `initialize` | Server lifecycle and capability object | S0, S11 | Exact advertised capability keys, provider options, trigger characters, semantic-token legend, server info, workspace folder support. | Unsupported providers are absent or null; client capability variations do not change service semantics. |
 | `initialized` | Lifecycle notification | S0 | Notification has no response and may trigger watcher/config setup. | Repeated or minimal initialization stays stable. |
-| `shutdown`, `exit` | Lifecycle termination | S0, S11 | Shutdown response, clean exit behavior, no pending background publication after shutdown. | Requests after shutdown are rejected consistently. |
+| `shutdown`, `exit` | Lifecycle termination | S0, S11 | Shutdown response, clean exit behavior, no pending background publication after shutdown; `exit` remains allowed after shutdown. | Requests after shutdown are rejected consistently with invalid-request errors. |
 | `$/cancelRequest` | Cancellation | S11 | Stale queued or expensive requests are discarded by generation/cancellation tokens. | Unknown or already-completed request IDs do not panic. |
 | `textDocument/didOpen` | Text document sync | S0, S1, S9, S11 | Open overlay wins over disk and publishes diagnostics for syntax/HIR/analysis/schema facts. | Missing workspace config, scratch file mode, malformed source, missing schema. |
 | `textDocument/didChange` | Incremental text sync | S0, S1, S2, S9, S11 | Full and incremental edits update overlays, versions, line indexes, diagnostics, completions, hovers, semantic tokens. | Out-of-order or stale versions do not publish stale facts; malformed incremental edits reject cleanly. |

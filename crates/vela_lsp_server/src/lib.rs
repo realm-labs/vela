@@ -145,6 +145,16 @@ impl LspServer {
             });
         };
 
+        if self.shutdown_requested && method != "exit" {
+            return message.id.map_or(JsonRpcResult::None, |id| {
+                JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    "server has shut down",
+                ))
+            });
+        }
+
         match method {
             "$/cancelRequest" => self.cancel_request(message.id, message.params),
             "initialize" => self.initialize(message.id, message.params),

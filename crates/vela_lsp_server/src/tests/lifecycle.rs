@@ -389,3 +389,28 @@ fn lsp_shutdown_exits_without_background_tasks() {
     assert!(server.is_exited());
     assert_eq!(exit, JsonRpcResult::None);
 }
+
+#[test]
+fn lsp_rejects_requests_after_shutdown_until_exit() {
+    let mut server = LspServer::new();
+    let shutdown = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
+
+    assert_eq!(shutdown["result"], JsonValue::Null);
+    assert!(server.is_shutdown_requested());
+
+    let completion = response_value(server.handle_json(&request(
+        3,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+    assert_eq!(completion["id"], 3);
+    assert_eq!(completion["error"]["code"], -32600);
+    assert_eq!(completion["error"]["message"], "server has shut down");
+
+    let exit = server.handle_json(&notification("exit", JsonValue::Null));
+    assert!(server.is_exited());
+    assert_eq!(exit, JsonRpcResult::None);
+}
