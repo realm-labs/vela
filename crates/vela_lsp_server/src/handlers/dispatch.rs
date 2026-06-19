@@ -271,12 +271,14 @@ impl<'a> RequestDispatcher<'a> {
             }
         };
         let snapshot = self.global_state.snapshot();
-        self.global_state
+        let generation = self
+            .global_state
             .register_in_flight_cancellation(request_id.clone());
         self.global_state.task_scheduler().spawn_for_request(
             lane,
             R::METHOD,
             request_id,
+            generation,
             move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 f(snapshot, id.clone(), params)
             })) {

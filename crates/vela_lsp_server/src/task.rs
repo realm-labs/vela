@@ -1,17 +1,19 @@
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
+use vela_language_service::GenerationToken;
 
 use crate::{JsonRpcResult, RequestId};
 
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(crate) enum TaskResult {
     Response {
         lane: TaskLane,
         method: Option<String>,
         request_id: Option<RequestId>,
+        generation: Option<GenerationToken>,
         result: JsonRpcResult,
     },
 }
@@ -55,7 +57,7 @@ impl TaskScheduler {
         lane: TaskLane,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, None, None, job);
+        self.spawn_labeled(lane, None, None, None, job);
     }
 
     #[allow(dead_code)]
@@ -65,7 +67,7 @@ impl TaskScheduler {
         method: impl Into<String>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, Some(method.into()), None, job);
+        self.spawn_labeled(lane, Some(method.into()), None, None, job);
     }
 
     #[allow(dead_code)]
@@ -74,9 +76,16 @@ impl TaskScheduler {
         lane: TaskLane,
         method: impl Into<String>,
         request_id: RequestId,
+        generation: GenerationToken,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, Some(method.into()), Some(request_id), job);
+        self.spawn_labeled(
+            lane,
+            Some(method.into()),
+            Some(request_id),
+            Some(generation),
+            job,
+        );
     }
 
     fn spawn_labeled(
@@ -84,10 +93,17 @@ impl TaskScheduler {
         lane: TaskLane,
         method: Option<String>,
         request_id: Option<RequestId>,
+        generation: Option<GenerationToken>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
         let task = Box::new(move || {
-            TaskResult::lane_method_request_response(lane, method, request_id, job())
+            TaskResult::lane_method_request_generation_response(
+                lane,
+                method,
+                request_id,
+                generation,
+                job(),
+            )
         });
         match lane {
             TaskLane::Latency => self.latency_jobs.send(task),
@@ -118,32 +134,34 @@ impl Default for TaskScheduler {
 }
 
 impl TaskResult {
-    pub(crate) const fn response(result: JsonRpcResult) -> Self {
+    pub(crate) fn response(result: JsonRpcResult) -> Self {
         Self::lane_response(TaskLane::Main, result)
     }
 
-    pub(crate) const fn lane_response(lane: TaskLane, result: JsonRpcResult) -> Self {
+    pub(crate) fn lane_response(lane: TaskLane, result: JsonRpcResult) -> Self {
         Self::lane_method_response(lane, None, result)
     }
 
-    pub(crate) const fn lane_method_response(
+    pub(crate) fn lane_method_response(
         lane: TaskLane,
         method: Option<String>,
         result: JsonRpcResult,
     ) -> Self {
-        Self::lane_method_request_response(lane, method, None, result)
+        Self::lane_method_request_generation_response(lane, method, None, None, result)
     }
 
-    pub(crate) const fn lane_method_request_response(
+    pub(crate) fn lane_method_request_generation_response(
         lane: TaskLane,
         method: Option<String>,
         request_id: Option<RequestId>,
+        generation: Option<GenerationToken>,
         result: JsonRpcResult,
     ) -> Self {
         Self::Response {
             lane,
             method,
             request_id,
+            generation,
             result,
         }
     }
@@ -163,6 +181,12 @@ impl TaskResult {
     pub(crate) fn request_id(&self) -> Option<&RequestId> {
         match self {
             Self::Response { request_id, .. } => request_id.as_ref(),
+        }
+    }
+
+    pub(crate) fn generation_token(&self) -> Option<&GenerationToken> {
+        match self {
+            Self::Response { generation, .. } => generation.as_ref(),
         }
     }
 
@@ -193,6 +217,7 @@ fn spawn_lane_worker(lane: TaskLane) -> (Sender<TaskJob>, Receiver<TaskResult>) 
 mod tests {
     use super::*;
     use std::time::Duration;
+    use vela_language_service::LanguageServiceDatabases;
 
     #[test]
     fn task_result_preserves_json_rpc_result() {
@@ -222,6 +247,8 @@ mod tests {
             .method(),
             Some("textDocument/hover")
         );
+        assert!(task_result.request_id().is_none());
+        assert!(task_result.generation_token().is_none());
         assert_eq!(task_result.into_result(), result);
     }
 
@@ -292,6 +319,40 @@ mod tests {
         assert_eq!(
             task.into_result(),
             JsonRpcResult::Response("references".to_owned())
+        );
+    }
+
+    #[test]
+    fn task_scheduler_preserves_request_id_and_generation_token() {
+        let scheduler = TaskScheduler::new();
+        let databases = LanguageServiceDatabases::new();
+        let (token, _handle) = databases.begin_cancellable_background_request();
+        let request_id = RequestId::String("fmt-1".to_owned());
+
+        scheduler.spawn_for_request(
+            TaskLane::Formatting,
+            "textDocument/formatting",
+            request_id.clone(),
+            token.clone(),
+            || JsonRpcResult::Response("formatted".to_owned()),
+        );
+
+        let task = scheduler
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("formatting lane should respond");
+
+        assert_eq!(task.lane(), TaskLane::Formatting);
+        assert_eq!(task.method(), Some("textDocument/formatting"));
+        assert_eq!(task.request_id(), Some(&request_id));
+        let generation = task
+            .generation_token()
+            .expect("request task should carry generation token");
+        assert_eq!(generation.generation(), token.generation());
+        assert!(!generation.is_cancelled());
+        assert_eq!(
+            task.into_result(),
+            JsonRpcResult::Response("formatted".to_owned())
         );
     }
 }

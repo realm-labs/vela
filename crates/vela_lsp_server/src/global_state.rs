@@ -14,8 +14,9 @@ use lsp_types::{
     WorkspaceSymbolParams,
 };
 use vela_language_service::{
-    CancellationHandle, DocumentId, LanguageServiceDatabases, LineIndex as ServiceLineIndex,
-    WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
+    CancellationHandle, DocumentId, GenerationToken, LanguageServiceDatabases,
+    LineIndex as ServiceLineIndex, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
+    WorkspaceSnapshot,
 };
 
 use crate::lsp::{from_proto, to_proto};
@@ -920,6 +921,7 @@ impl GlobalState {
     pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         let _method = result.method();
+        let _generation = result.generation_token().map(GenerationToken::generation);
         let request_id = result.request_id().cloned();
         if let Some(request_id) = request_id.as_ref() {
             self.request_queue.finish_in_flight(request_id);
@@ -931,9 +933,10 @@ impl GlobalState {
         &self.task_scheduler
     }
 
-    pub(crate) fn register_in_flight_cancellation(&mut self, id: RequestId) {
-        let (_token, handle) = self.databases.begin_cancellable_background_request();
+    pub(crate) fn register_in_flight_cancellation(&mut self, id: RequestId) -> GenerationToken {
+        let (token, handle) = self.databases.begin_cancellable_background_request();
         self.request_queue.start_in_flight(id, handle);
+        token
     }
 
     pub(crate) const fn is_exited(&self) -> bool {
@@ -2526,6 +2529,11 @@ pub fn main(player: Player) -> i64 {
             .recv_timeout(Duration::from_secs(1))
             .expect("formatting task should complete");
         assert_eq!(task.request_id(), Some(&request_id));
+        let generation = task
+            .generation_token()
+            .expect("formatting task should carry generation token");
+        assert_eq!(generation.generation(), state.databases.generation());
+        assert!(!generation.is_cancelled());
 
         state
             .send_task_result(task)

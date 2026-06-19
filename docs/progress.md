@@ -333,6 +333,9 @@ handle.
 Cancellation notifications for unknown or already completed request IDs are
 now no-response no-ops instead of stale queued cancellations that affect a
 future request using the same ID.
+Background task results now carry the request's language-service
+`GenerationToken` to the main-loop response boundary, preparing stale-result
+handling to compare task generation against current workspace generation.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,
