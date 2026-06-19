@@ -130,22 +130,62 @@ mod tests {
 
     #[test]
     fn parser_parse_source_structures_function_signature_and_body_nodes() {
-        let source = "fn award(ctx: Context, amount = bonus(1, 2)) -> Result { return amount; }\n";
+        let source = "fn award(ctx: Context, items: Array<String>, amount = bonus(1, 2)) -> Result<Map<String, i64>, String> { return amount; }\n";
         let parse = parse_source_with_id(SourceId::new(12), source);
         let tree = parse.tree();
         let function = tree.functions().next().expect("function item");
         let params = function.param_list().expect("param list");
         let body = function.body().expect("body");
+        let params_vec = params.params().collect::<Vec<_>>();
 
         assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
         assert_eq!(function.syntax().text().to_string(), source.trim_end());
         assert_eq!(params.syntax().kind(), SyntaxKind::ParamList);
         assert_eq!(
-            params
-                .params()
+            params_vec
+                .iter()
                 .map(|param| param.syntax().text().to_string())
                 .collect::<Vec<_>>(),
-            vec!["ctx: Context", " amount = bonus(1, 2)"]
+            vec![
+                "ctx: Context",
+                " items: Array<String>",
+                " amount = bonus(1, 2)",
+            ]
+        );
+        assert_eq!(
+            params_vec[0]
+                .type_hint()
+                .expect("ctx type")
+                .syntax()
+                .text()
+                .to_string(),
+            "Context"
+        );
+        let items_hint = params_vec[1].type_hint().expect("items type");
+        assert_eq!(items_hint.syntax().text().to_string(), "Array<String>");
+        assert_eq!(
+            items_hint
+                .type_arg_list()
+                .expect("items type args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String>"
+        );
+        assert!(params_vec[2].type_hint().is_none());
+        let return_type = function.return_type().expect("return type");
+        assert_eq!(
+            return_type.syntax().text().to_string(),
+            "Result<Map<String, i64>, String>"
+        );
+        assert_eq!(
+            return_type
+                .type_arg_list()
+                .expect("return type args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<Map<String, i64>, String>"
         );
         assert_eq!(body.syntax().kind(), SyntaxKind::Block);
         assert_eq!(body.syntax().text().to_string(), "{ return amount; }");

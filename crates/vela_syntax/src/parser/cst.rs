@@ -74,6 +74,10 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         }
 
         if let Some(body_start) = body {
+            self.return_type(param_list_end, body_start);
+        }
+
+        if let Some(body_start) = body {
             self.emit_until(body_start);
             let body_end = self.find_matching_brace_end(body_start).min(end);
             self.node_range(SyntaxKind::Block, body_start, body_end);
@@ -83,6 +87,20 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             self.emit_current_token();
         }
         self.builder.finish_node();
+    }
+
+    fn return_type(&mut self, start: usize, end: usize) {
+        let Some(arrow) = self.find_root_kind_before(SyntaxKind::Arrow, start, end) else {
+            return;
+        };
+        let type_start = self.skip_trivia(arrow + 1);
+        let type_end = self.trim_trailing_trivia(type_start, end);
+        if type_start >= type_end {
+            return;
+        }
+
+        self.emit_until(type_start);
+        self.type_hint_range(type_start, type_end);
     }
 
     fn param_list(&mut self, start: usize) {
@@ -114,15 +132,63 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     }
 
     fn param_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
         if !self.has_significant_tokens(start, end) {
             self.emit_tokens(start, end);
             return;
         }
-        self.node_range(SyntaxKind::Param, start, end);
+        self.builder.start_node(SyntaxKind::Param);
+
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            let value_end = self
+                .find_root_kind_before(SyntaxKind::Equal, colon + 1, end)
+                .unwrap_or(end);
+            let type_start = self.skip_trivia(colon + 1);
+            let type_end = self.trim_trailing_trivia(type_start, value_end);
+            if type_start < type_end {
+                self.emit_until(type_start);
+                self.type_hint_range(type_start, type_end);
+            }
+        }
+
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn type_hint_range(&mut self, start: usize, end: usize) {
+        self.builder.start_node(SyntaxKind::TypeHint);
+        if let Some(args_start) = self.find_root_kind_before(SyntaxKind::Less, start, end) {
+            self.emit_until(args_start);
+            self.type_arg_list(args_start, end);
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn type_arg_list(&mut self, start: usize, end: usize) {
+        let args_end = self
+            .find_matching_delimiter_end(start, SyntaxKind::Less, SyntaxKind::Greater)
+            .filter(|candidate| *candidate <= end)
+            .unwrap_or(end);
+        self.node_range(SyntaxKind::TypeArgList, start, args_end);
     }
 
     fn find_first_kind_before(&self, kind: SyntaxKind, start: usize, end: usize) -> Option<usize> {
         (start..end).find(|cursor| self.kind_at(*cursor) == Some(kind))
+    }
+
+    fn find_root_kind_before(&self, kind: SyntaxKind, start: usize, end: usize) -> Option<usize> {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() && current == kind {
+                return Some(cursor);
+            }
+            depth.bump(current);
+        }
+        None
     }
 
     fn find_matching_delimiter_end(
@@ -364,6 +430,17 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             cursor += 1;
         }
         cursor
+    }
+
+    fn trim_trailing_trivia(&self, start: usize, mut end: usize) -> usize {
+        while end > start
+            && self
+                .kind_at(end.saturating_sub(1))
+                .is_some_and(SyntaxKind::is_trivia)
+        {
+            end = end.saturating_sub(1);
+        }
+        end
     }
 
     fn emit_current_token(&mut self) {

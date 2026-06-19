@@ -123,6 +123,11 @@ impl SyntaxFunctionItem {
     }
 
     #[must_use]
+    pub fn return_type(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
     pub fn body(&self) -> Option<SyntaxBlock> {
         child(&self.syntax)
     }
@@ -173,9 +178,61 @@ pub struct SyntaxParam {
     syntax: SyntaxNode,
 }
 
+impl SyntaxParam {
+    #[must_use]
+    pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+}
+
 impl AstNode for SyntaxParam {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::Param
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTypeHint {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxTypeHint {
+    #[must_use]
+    pub fn type_arg_list(&self) -> Option<SyntaxTypeArgList> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxTypeHint {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TypeHint
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTypeArgList {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxTypeArgList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TypeArgList
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -301,6 +358,65 @@ mod tests {
         assert_eq!(
             function.body().expect("body").syntax().text().to_string(),
             "{}"
+        );
+    }
+
+    #[test]
+    fn ast_function_signature_exposes_type_hint_children() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.start_node(SyntaxKind::FunctionItem);
+        builder.start_node(SyntaxKind::ParamList);
+        builder.token(SyntaxKind::LParen, "(");
+        builder.start_node(SyntaxKind::Param);
+        builder.token(SyntaxKind::Ident, "items");
+        builder.token(SyntaxKind::Colon, ":");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "Array");
+        builder.start_node(SyntaxKind::TypeArgList);
+        builder.token(SyntaxKind::Less, "<");
+        builder.token(SyntaxKind::Ident, "String");
+        builder.token(SyntaxKind::Greater, ">");
+        builder.finish_node();
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RParen, ")");
+        builder.finish_node();
+        builder.token(SyntaxKind::Arrow, "->");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "Result");
+        builder.finish_node();
+        builder.finish_node();
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+        let function = source.functions().next().expect("function item");
+        let param = function
+            .param_list()
+            .expect("param list")
+            .params()
+            .next()
+            .expect("param");
+
+        let hint = param.type_hint().expect("param type hint");
+        assert_eq!(hint.syntax().text().to_string(), "Array<String>");
+        assert_eq!(
+            hint.type_arg_list()
+                .expect("type arg list")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String>"
+        );
+        assert_eq!(
+            function
+                .return_type()
+                .expect("return type")
+                .syntax()
+                .text()
+                .to_string(),
+            "Result"
         );
     }
 }
