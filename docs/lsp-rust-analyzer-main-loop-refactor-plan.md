@@ -1926,6 +1926,8 @@ node editors/vscode/scripts/validate-package.js
     helpers.
   - Converted the code-action fixture off `LspServer::handle_json` and onto
     the shared typed request/notification helpers.
+  - Converted the completion fixture off `LspServer::handle_json` and onto
+    the shared typed request/notification helpers.
   - Converted the top-level definition fixture off `LspServer::handle_json`
     and onto the shared typed request/notification helpers.
   - Converted the schema definition fixture off `LspServer::handle_json` and
