@@ -1986,9 +1986,9 @@ node editors/vscode/scripts/validate-package.js
   boundary, stdio default, and optional loopback TCP debug transport.
 - [x] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs
   to reference this execution document.
-- [ ] Update `docs/progress.md` only when current milestone status or durable
+- [x] Update `docs/progress.md` only when current milestone status or durable
   LSP architecture status changes.
-- [ ] Update `docs/decisions.md` if the dependency, request scheduling, stale
+- [x] Update `docs/decisions.md` if the dependency, request scheduling, stale
   retry, or profiling model is accepted as durable architecture.
 - [ ] Build a release VSIX after all focused and full validations pass.
 

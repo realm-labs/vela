@@ -160,10 +160,15 @@ defaults, while `vela.toml` discovery still wins once project configuration is
 loaded.
 
 The native LSP server's stdio transport uses `lsp-server` as the production
-framing and typed message boundary. During the rust-analyzer-style main-loop
-refactor, the old manual stdio runner and custom JSON-RPC envelope types may
-remain only as temporary compatibility wrappers for tests and phased handler
-migration; they are not durable production architecture.
+framing and typed message boundary. Normal stdio and optional TCP traffic enter
+the same rust-analyzer-style main loop as typed `lsp_server::Message` values;
+`GlobalState` owns lifecycle, request queue state, cancellation, workspace
+generations, configuration, task scheduling, and response emission. The old
+manual stdio runner, custom request/notification string builders, raw
+`LspServer::handle_json` compatibility harness, and raw JSON-RPC parser helpers
+are not durable architecture and have been removed. Remaining JSON handling is
+limited to protocol serialization/projection boundaries, tracing/profiling byte
+counts, and tests that inspect final protocol shapes.
 
 Workspace symbol detail metadata is a Vela protocol extension carried in
 `WorkspaceSymbol.data.detail`. Upstream `lsp_types::WorkspaceSymbol` has no
@@ -173,7 +178,9 @@ must keep module/type detail there while preserving ordinary LSP symbol fields.
 The optional native LSP TCP transport is a debug/remote-integration extension,
 not the default editor transport. It must be selected explicitly with
 `--listen <host:port>`, bind only loopback addresses unless a future unsafe
-opt-in is designed separately, and feed the same typed message loop as stdio.
+opt-in is designed separately, and feed the same typed message loop, request
+queue, `GlobalState`, handler dispatch, cancellation, profiling, and protocol
+projection path as stdio.
 
 Native LSP trace diagnostics are opt-in and stdout-safe. `--log <jsonl-path>`
 writes typed main-loop startup, message receipt, and response-send events to an
