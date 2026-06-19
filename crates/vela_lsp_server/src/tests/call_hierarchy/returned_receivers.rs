@@ -1,6 +1,8 @@
 use std::fs;
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_call_range, assert_outgoing_call, file_uri, line, temp_workspace};
 
@@ -69,7 +71,8 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -77,20 +80,22 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -100,7 +105,7 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -108,7 +113,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -118,9 +124,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let prepare_grant = response_value(server.handle_json(&request(
+    let prepare_grant = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -130,7 +137,7 @@ pub fn main() -> i64 {
                 "character": line(schema_text, 0).find("grant").expect("grant declaration")
             }
         }),
-    )));
+    ));
     let grant_items = prepare_grant["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -138,7 +145,8 @@ pub fn main() -> i64 {
     assert_eq!(grant_items[0]["name"], "grant");
     assert_eq!(grant_items[0]["uri"], schema_uri);
 
-    let prepare_grant_call = response_value(server.handle_json(&request(
+    let prepare_grant_call = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -148,7 +156,7 @@ pub fn main() -> i64 {
                 "character": line(text, 1).find("grant").expect("grant call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_grant_call["result"]
             .as_array()
@@ -156,11 +164,12 @@ pub fn main() -> i64 {
         grant_items
     );
 
-    let incoming = response_value(server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut server,
         4,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -180,7 +189,8 @@ pub fn main() -> i64 {
         line(text, 2).find("grant").expect("second grant call"),
     );
 
-    let prepare_main = response_value(server.handle_json(&request(
+    let prepare_main = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -190,17 +200,18 @@ pub fn main() -> i64 {
                 "character": line(text, 0).find("main").expect("main declaration")
             }
         }),
-    )));
+    ));
     let main_items = prepare_main["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(server.handle_json(&request(
+    let outgoing = response_value(handle_request(
+        &mut server,
         6,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let outgoing_calls = outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -288,7 +299,8 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -296,20 +308,22 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
     );
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -319,7 +333,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -327,7 +341,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -337,9 +352,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let prepare_preview = response_value(server.handle_json(&request(
+    let prepare_preview = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -351,7 +367,7 @@ pub fn main() -> i64 {
                     .expect("preview declaration")
             }
         }),
-    )));
+    ));
     let preview_items = prepare_preview["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -359,7 +375,8 @@ pub fn main() -> i64 {
     assert_eq!(preview_items[0]["name"], "preview");
     assert_eq!(preview_items[0]["uri"], schema_uri);
 
-    let prepare_preview_call = response_value(server.handle_json(&request(
+    let prepare_preview_call = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -369,7 +386,7 @@ pub fn main() -> i64 {
                 "character": line(text, 1).find("preview").expect("preview call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_preview_call["result"]
             .as_array()
@@ -377,11 +394,12 @@ pub fn main() -> i64 {
         preview_items
     );
 
-    let incoming = response_value(server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut server,
         4,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -401,7 +419,8 @@ pub fn main() -> i64 {
         line(text, 2).find("preview").expect("second preview call"),
     );
 
-    let prepare_main = response_value(server.handle_json(&request(
+    let prepare_main = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -411,17 +430,18 @@ pub fn main() -> i64 {
                 "character": line(text, 0).find("main").expect("main declaration")
             }
         }),
-    )));
+    ));
     let main_items = prepare_main["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let outgoing = response_value(server.handle_json(&request(
+    let outgoing = response_value(handle_request(
+        &mut server,
         6,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let outgoing_calls = outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
