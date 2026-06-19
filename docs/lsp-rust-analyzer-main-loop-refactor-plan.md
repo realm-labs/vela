@@ -1455,6 +1455,14 @@ cargo test -p vela_lsp_server semantic_tokens
     dispatch points. Validated with
     `cargo test -p vela_lsp_server handlers::dispatch` and
     `cargo test -p vela_lsp_server lifecycle`.
+  - Typed notification handlers in `GlobalState` now return
+    `lsp_server::Message` batches directly, and work-done progress wrapping
+    has a typed message helper for the typed notification path. Legacy
+    `LspServer` compatibility continues to use the temporary wrapper until
+    that path is removed. Validated with
+    `cargo test -p vela_lsp_server handlers::dispatch`,
+    `cargo test -p vela_lsp_server lifecycle`, and
+    `cargo test -p vela_lsp_server typed_cancellation_is_tracked_by_global_request_queue`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

@@ -630,7 +630,7 @@ impl<'a> NotificationDispatcher<'a> {
 
     pub(crate) fn on_sync_mut_typed<N>(
         &mut self,
-        f: fn(&mut GlobalState, N::Params) -> JsonRpcResult,
+        f: fn(&mut GlobalState, N::Params) -> Vec<Message>,
     ) -> &mut Self
     where
         N: lsp_types::notification::Notification,
@@ -646,12 +646,8 @@ impl<'a> NotificationDispatcher<'a> {
                 return self;
             }
         };
-        self.result = typed_messages(
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self.global_state, params))) {
-                Ok(result) => result,
-                Err(_) => JsonRpcResult::None,
-            },
-        );
+        self.result = panic::catch_unwind(panic::AssertUnwindSafe(|| f(self.global_state, params)))
+            .unwrap_or_default();
         self
     }
 
@@ -794,7 +790,7 @@ mod tests {
     fn panic_notification_handler(
         _state: &mut GlobalState,
         _params: lsp_types::InitializedParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         panic!("synthetic notification panic")
     }
 

@@ -38,7 +38,7 @@ use crate::{
     source_version,
     task::{TaskResult, TaskScheduler},
     transport::ResultSummary,
-    watching, with_work_done_progress,
+    watching, with_work_done_progress_messages,
 };
 
 pub(crate) struct GlobalState {
@@ -1033,47 +1033,47 @@ impl GlobalState {
         JsonRpcResult::ok(id, serde_json::Value::Null)
     }
 
-    pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> JsonRpcResult {
+    pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> Vec<Message> {
         self.register_watched_files_after_initialized()
     }
 
-    pub(crate) fn exit(&mut self, _params: ()) -> JsonRpcResult {
+    pub(crate) fn exit(&mut self, _params: ()) -> Vec<Message> {
         self.exited = true;
         self.server.exited = true;
-        JsonRpcResult::None
+        Vec::new()
     }
 
-    pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
+    pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> Vec<Message> {
         self.request_queue
             .cancel(request_id_from_number_or_string(params.id));
-        JsonRpcResult::None
+        Vec::new()
     }
 
     pub(crate) fn did_change_configuration(
         &mut self,
         params: DidChangeConfigurationParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let editor_config = match EditorConfiguration::from_settings(params.settings) {
             Ok(config) => config,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     "",
                     Vec::new(),
                     Some(format!("invalid didChangeConfiguration settings: {error}")),
-                ));
+                )];
             }
         };
 
         self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
         let result = self.server.publish_open_diagnostics();
         self.sync_workspace_analysis_from_legacy_server();
-        result
+        typed_messages(result)
     }
 
     pub(crate) fn did_change_workspace_folders(
         &mut self,
         params: DidChangeWorkspaceFoldersParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let mut workspace_roots = self.workspace_roots.clone();
         for folder in params.event.removed {
             let root = WorkspaceRoot::from(folder.uri.to_string());
@@ -1095,7 +1095,7 @@ impl GlobalState {
     pub(crate) fn did_change_watched_files(
         &mut self,
         params: DidChangeWatchedFilesParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let schema_path = self.schema_path().map(str::to_owned);
         self.reload_scheduler.schedule_watched_files(
             params.changes,
@@ -1108,11 +1108,11 @@ impl GlobalState {
         self.publish_workspace_diagnostics()
     }
 
-    pub(crate) fn did_save(&mut self, _params: DidSaveTextDocumentParams) -> JsonRpcResult {
-        JsonRpcResult::None
+    pub(crate) fn did_save(&mut self, _params: DidSaveTextDocumentParams) -> Vec<Message> {
+        Vec::new()
     }
 
-    pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> JsonRpcResult {
+    pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
         let version = source_version(params.text_document.version);
@@ -1126,16 +1126,16 @@ impl GlobalState {
 
         let result = self.server.publish_current_diagnostics(&uri, &document_id);
         self.sync_workspace_analysis_from_legacy_server();
-        result
+        typed_messages(result)
     }
 
-    pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> JsonRpcResult {
+    pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> Vec<Message> {
         if params.content_changes.is_empty() {
-            return JsonRpcResult::Notification(publish_diagnostics_notification(
+            return vec![publish_diagnostics_notification(
                 params.text_document.uri.as_str(),
                 Vec::new(),
                 Some("didChange requires at least one content change".to_owned()),
-            ));
+            )];
         }
 
         let uri = params.text_document.uri.to_string();
@@ -1150,11 +1150,11 @@ impl GlobalState {
         let text = match apply_lsp_document_changes(current_text.as_deref(), changes) {
             Ok(text) => text,
             Err(error) => {
-                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                return vec![publish_diagnostics_notification(
                     &uri,
                     Vec::new(),
                     Some(error),
-                ));
+                )];
             }
         };
 
@@ -1166,10 +1166,10 @@ impl GlobalState {
 
         let result = self.server.publish_current_diagnostics(&uri, &document_id);
         self.sync_workspace_analysis_from_legacy_server();
-        result
+        typed_messages(result)
     }
 
-    pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> JsonRpcResult {
+    pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
         self.server.workspace.close_document(&document_id);
@@ -1182,7 +1182,7 @@ impl GlobalState {
             JsonRpcResult::Notification(publish_diagnostics_notification(&uri, Vec::new(), None))
         };
         self.sync_workspace_analysis_from_legacy_server();
-        result
+        typed_messages(result)
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
@@ -1220,7 +1220,7 @@ impl GlobalState {
         self.databases = self.server.databases.clone();
     }
 
-    fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
+    fn register_watched_files_after_initialized(&mut self) -> Vec<Message> {
         if self.client_supports_watched_file_registration
             && self.watch_files_enabled
             && !self.watched_files_registered
@@ -1231,9 +1231,9 @@ impl GlobalState {
         {
             self.watched_files_registered = true;
             self.server.watched_files_registered = true;
-            return JsonRpcResult::Notification(registration);
+            return vec![registration];
         }
-        JsonRpcResult::None
+        Vec::new()
     }
 
     fn schema_path(&self) -> Option<&str> {
@@ -1242,14 +1242,15 @@ impl GlobalState {
             .and_then(|config| config.schema().path())
     }
 
-    fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
+    fn publish_workspace_diagnostics(&mut self) -> Vec<Message> {
         let has_open_documents = !self.open_documents.is_empty();
         let result = self.server.publish_open_diagnostics();
         self.sync_workspace_analysis_from_legacy_server();
+        let messages = typed_messages(result);
         if has_open_documents && self.client_supports_work_done_progress {
-            with_work_done_progress(result, "Vela workspace diagnostics")
+            with_work_done_progress_messages(messages, "Vela workspace diagnostics")
         } else {
-            result
+            messages
         }
     }
 
@@ -1525,19 +1526,14 @@ mod tests {
         let first = state.initialized(lsp_types::InitializedParams {});
         let second = state.initialized(lsp_types::InitializedParams {});
 
-        let JsonRpcResult::Notification(registration) = first else {
-            panic!("expected watched-file registration notification");
-        };
-        let registration: serde_json::Value =
-            serde_json::from_str(&crate::rpc::serialize_message(&registration))
-                .expect("registration should be JSON");
+        let registration = single_message_value(first);
         assert_eq!(
             registration["method"],
             serde_json::json!("client/registerCapability")
         );
         assert!(state.watched_files_registered);
         assert!(state.server.watched_files_registered);
-        assert_eq!(second, JsonRpcResult::None);
+        assert_no_messages(second);
     }
 
     #[test]
@@ -1558,7 +1554,7 @@ mod tests {
 
         let result = state.initialized(lsp_types::InitializedParams {});
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(!state.watch_files_enabled);
         assert!(!state.watched_files_registered);
         assert!(!state.server.watched_files_registered);
@@ -1577,12 +1573,7 @@ mod tests {
 
         let result = state.initialized(lsp_types::InitializedParams {});
 
-        let JsonRpcResult::Notification(registration) = result else {
-            panic!("expected watched-file registration notification");
-        };
-        let registration: serde_json::Value =
-            serde_json::from_str(&crate::rpc::serialize_message(&registration))
-                .expect("registration should be JSON");
+        let registration = single_message_value(result);
         let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
             .as_array()
             .expect("watchers should be an array");
@@ -1620,7 +1611,7 @@ mod tests {
                 },
             });
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(!state.workspace_roots.contains("/workspace/scripts"));
         assert!(state.workspace_roots.contains("/workspace/tools"));
         assert!(!state.server.workspace_roots.contains("/legacy/only"));
@@ -1642,7 +1633,7 @@ mod tests {
             }),
         });
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.editor_config.is_some());
         assert!(state.workspace_config.is_some());
         assert_eq!(
@@ -1690,7 +1681,7 @@ mod tests {
             text: Some("fn main() {}".to_owned()),
         });
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.open_documents.contains(&document));
         assert!(state.server.open_documents.is_empty());
     }
@@ -1711,10 +1702,7 @@ mod tests {
             },
         });
 
-        assert!(matches!(
-            result,
-            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
-        ));
+        assert_has_messages(&result);
         assert!(state.open_documents.contains(&document));
         assert_eq!(state.open_documents, state.server.open_documents);
         assert_eq!(
@@ -1761,10 +1749,7 @@ mod tests {
             }],
         });
 
-        assert!(matches!(
-            result,
-            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
-        ));
+        assert_has_messages(&result);
         assert_eq!(
             state.snapshot().workspace().document_text(&document),
             Some("one\nthree")
@@ -1793,10 +1778,7 @@ mod tests {
             },
         });
 
-        assert!(matches!(
-            result,
-            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
-        ));
+        assert_has_messages(&result);
         assert!(!state.open_documents.contains(&document));
         assert_eq!(state.open_documents, state.server.open_documents);
         assert_eq!(state.snapshot().workspace().document_text(&document), None);
@@ -1857,7 +1839,7 @@ mod tests {
         assert!(state.server.shutdown_requested);
 
         let exit = state.exit(());
-        assert_eq!(exit, JsonRpcResult::None);
+        assert_no_messages(exit);
         assert!(state.is_exited());
         assert!(state.server.exited);
 
@@ -2688,12 +2670,9 @@ pub fn main(player: Player) -> i64 {
             .clone();
         assert!(!generation.is_cancelled());
 
-        assert_eq!(
-            state.cancel_request(lsp_types::CancelParams {
-                id: lsp_types::NumberOrString::Number(33),
-            }),
-            JsonRpcResult::None
-        );
+        assert_no_messages(state.cancel_request(lsp_types::CancelParams {
+            id: lsp_types::NumberOrString::Number(33),
+        }));
         assert!(generation.is_cancelled());
 
         state
@@ -3015,7 +2994,7 @@ pub fn main(amount: i64) -> i64 {
             id: lsp_types::NumberOrString::Number(7),
         });
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert_no_messages(result);
         assert!(state.take_cancelled_request(&request_id));
         assert!(!state.take_cancelled_request(&request_id));
     }
@@ -3715,6 +3694,25 @@ pub fn main(amount: i64) -> i64 {
             panic!("{expected}");
         };
         crate::rpc::serialize_message(message)
+    }
+
+    fn assert_no_messages(messages: Vec<Message>) {
+        assert!(
+            messages.is_empty(),
+            "expected no messages, got {messages:?}"
+        );
+    }
+
+    fn assert_has_messages(messages: &[Message]) {
+        assert!(!messages.is_empty(), "expected at least one message");
+    }
+
+    fn single_message_value(messages: Vec<Message>) -> serde_json::Value {
+        let [message] = messages.as_slice() else {
+            panic!("expected exactly one message, got {messages:?}");
+        };
+        serde_json::from_str(&crate::rpc::serialize_message(message))
+            .expect("message should serialize as JSON")
     }
 
     fn lsp_formatting_options() -> lsp_types::FormattingOptions {

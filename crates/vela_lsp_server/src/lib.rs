@@ -886,6 +886,32 @@ fn publish_diagnostics_notification(
     })
 }
 
+pub(crate) fn with_work_done_progress_messages(
+    mut messages: Vec<Message>,
+    title: &str,
+) -> Vec<Message> {
+    if messages.is_empty()
+        || messages
+            .iter()
+            .any(|message| !matches!(message, Message::Notification(_)))
+    {
+        return messages;
+    }
+
+    let mut wrapped = Vec::with_capacity(messages.len() + 2);
+    wrapped.push(work_done_progress_notification(json!({
+        "kind": "begin",
+        "title": title,
+        "message": "updating open-file diagnostics"
+    })));
+    wrapped.append(&mut messages);
+    wrapped.push(work_done_progress_notification(json!({
+        "kind": "end",
+        "message": "workspace diagnostics updated"
+    })));
+    wrapped
+}
+
 pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
     let notifications = match result {
         JsonRpcResult::Notification(notification) => vec![notification],
@@ -894,22 +920,12 @@ pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> Jso
             return other;
         }
     };
-    if notifications.is_empty() {
-        return JsonRpcResult::None;
+    let messages = with_work_done_progress_messages(notifications, title);
+    if messages.is_empty() {
+        JsonRpcResult::None
+    } else {
+        JsonRpcResult::Notifications(messages)
     }
-
-    let mut wrapped = Vec::with_capacity(notifications.len() + 2);
-    wrapped.push(work_done_progress_notification(json!({
-        "kind": "begin",
-        "title": title,
-        "message": "updating open-file diagnostics"
-    })));
-    wrapped.extend(notifications);
-    wrapped.push(work_done_progress_notification(json!({
-        "kind": "end",
-        "message": "workspace diagnostics updated"
-    })));
-    JsonRpcResult::Notifications(wrapped)
 }
 
 fn work_done_progress_notification(value: JsonValue) -> Message {
