@@ -1691,8 +1691,12 @@ helper references are allowed only if they describe external JSON fixtures.
     never stdout. Validated with `cargo test -p vela_lsp_server trace`,
     `cargo test -p vela_lsp_server cli_log_dash_uses_stderr_destination`, and
     `node editors/vscode/scripts/validate-package.js`.
-- [ ] Keep the VS Code settings `vela.server.profile.enabled`,
+- [x] Keep the VS Code settings `vela.server.profile.enabled`,
   `vela.server.profile.path`, and `vela.server.profile.slowMs`.
+  - Strengthened the VS Code package validator to pin the profile setting
+    names, types, defaults, slow-threshold minimum, and launcher flags
+    `--profile`/`--profile-slow-ms`. Validated with
+    `node editors/vscode/scripts/validate-package.js`.
 - [ ] Preserve or add a VS Code-accessible way to see trace/log output for
   startup args, transport kind, request routing, queue events, and task lane.
 - [ ] Write JSONL events for session start, request received, queued,

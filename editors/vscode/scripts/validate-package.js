@@ -33,6 +33,13 @@ function assert(condition, message) {
   }
 }
 
+function assertSetting(name, type, defaultValue) {
+  const setting = configuration[name];
+  assert(setting, `${name} setting is missing`);
+  assert(setting.type === type, `${name} type changed`);
+  assert(setting.default === defaultValue, `${name} default changed`);
+}
+
 function assertThinLauncher(source, label) {
   const forbiddenProtocolHandlers = [
     "textDocument/",
@@ -134,9 +141,10 @@ const languageConfiguration = readJson(language.configuration);
 assert(languageConfiguration.comments.lineComment === "//", "line comment configuration is missing");
 const configuration = manifest.contributes.configuration.properties;
 assert(configuration["vela.server.enabled"], "server enabled debug setting is missing");
-assert(configuration["vela.server.profile.enabled"], "server profile enabled setting is missing");
-assert(configuration["vela.server.profile.path"], "server profile path setting is missing");
-assert(configuration["vela.server.profile.slowMs"], "server profile slow threshold setting is missing");
+assertSetting("vela.server.profile.enabled", "boolean", false);
+assertSetting("vela.server.profile.path", "string", "");
+assertSetting("vela.server.profile.slowMs", "number", 50);
+assert(configuration["vela.server.profile.slowMs"].minimum === 0, "server profile slow threshold minimum changed");
 assert(configuration["vela.server.watchFiles.enabled"], "server watched-file debug setting is missing");
 assert(configuration["vela.trace.server"], "LSP trace setting is missing");
 
@@ -185,7 +193,11 @@ assert(extensionSource.includes("serverCommand"), "extension must provide server
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
 assert(extensionSource.includes("createOutputChannel"), "extension must create debug output channels");
 assert(extensionSource.includes("initializationFailedHandler"), "extension must log initialization failures");
+assert(extensionSource.includes("profileEnabled()"), "extension must read server profile enabled setting");
+assert(extensionSource.includes("profilePath(cwd)"), "extension must read server profile path setting");
+assert(extensionSource.includes("profileSlowMs()"), "extension must read server profile slow threshold setting");
 assert(extensionSource.includes("--profile"), "extension must wire server profile flags");
+assert(extensionSource.includes("--profile-slow-ms"), "extension must wire server profile slow threshold flag");
 assert(extensionSource.includes("--no-watch-files"), "extension must wire watched-file debug flag");
 assert(
   !extensionSource.includes("context.subscriptions.push(client.start())"),
