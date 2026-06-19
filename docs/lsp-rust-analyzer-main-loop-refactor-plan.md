@@ -900,7 +900,7 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_language_service inlay`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Remove feature-handler construction of raw `serde_json::Value` responses
+- [x] Remove feature-handler construction of raw `serde_json::Value` responses
   as each feature migrates.
   - `textDocument/codeAction` and `textDocument/inlayHint` compatibility
     handlers now serialize typed `lsp/to_proto.rs` projections, and their
@@ -1017,6 +1017,11 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - A production helper audit now finds no remaining raw feature response
+    builders; remaining `lsp_*` production helpers are lifecycle/capability
+    support or document-change conversion utilities. Custom protocol params,
+    JSON-RPC envelopes, and extension payload cleanup remain tracked by
+    Phase 7 rather than this feature-response item.
 - [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
   - Phase 4 request migration preserved existing advertised capabilities; no

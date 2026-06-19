@@ -295,9 +295,10 @@ hover, signature help, navigation, references, document highlights, symbols,
 folding, selection ranges, formatting, rename, call hierarchy, semantic
 tokens, code actions, and inlay hints now enter through typed
 `lsp_types` request params, `GlobalState` methods, and `lsp/to_proto.rs`
-projection. Legacy request-dispatch helper methods were removed; remaining
-Phase 4 cleanup is raw JSON/protocol helper retirement, while Phase 5 task
-pool scheduling is the next architectural milestone.
+projection. Legacy request-dispatch helper methods were removed, and Phase 4
+feature-response raw JSON cleanup is closed; remaining custom protocol params,
+JSON-RPC envelopes, and extension payload cleanup are tracked by Phase 7. Phase
+5 task pool scheduling is the next architectural milestone.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and
