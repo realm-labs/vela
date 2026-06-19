@@ -42,6 +42,55 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn semantic_tokens_suppress_source_any_return_receiver_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = "\
+struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() -> i64 {
+    source_any().grant(1)
+    return source_any().level
+}";
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let tokens = databases.semantic_tokens(&document);
+
+    assert_token_at(
+        &tokens,
+        6,
+        line(text, 6)
+            .find("source_any")
+            .expect("source function call should exist"),
+        "source_any".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_no_token_at(
+        &tokens,
+        6,
+        line(text, 6)
+            .find("grant")
+            .expect("dynamic receiver method name should exist"),
+        "grant".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_no_token_at(
+        &tokens,
+        7,
+        line(text, 7)
+            .find("level")
+            .expect("dynamic receiver field name should exist"),
+        "level".len(),
+        SemanticTokenType::Property,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_imported_source_method_on_source_function_return() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let player = DocumentId::from("/workspace/scripts/game/player.vela");
@@ -204,6 +253,26 @@ pub fn main(player: Player) -> i64 {
         "preview".len(),
         SemanticTokenType::Method,
         SemanticTokenModifiers::SOURCE,
+    );
+}
+
+fn assert_no_token_at(
+    tokens: &SemanticTokens,
+    line: usize,
+    character: usize,
+    length: usize,
+    token_type: SemanticTokenType,
+    modifiers: SemanticTokenModifiers,
+) {
+    assert!(
+        tokens.tokens().iter().all(|token| {
+            token.start() != Position::new(line, character)
+                || token.length() != length
+                || token.token_type() != token_type
+                || token.modifiers() != modifiers
+        }),
+        "unexpected token at {line}:{character} len {length} as {token_type:?} with {modifiers:?}; tokens: {:?}",
+        tokens.tokens()
     );
 }
 

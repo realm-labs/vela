@@ -82,6 +82,99 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_semantic_tokens_suppress_source_any_return_receiver_member() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let function = token_type_index(token_types, "function");
+    let method = token_type_index(token_types, "method");
+    let property = token_type_index(token_types, "property");
+    let source = token_modifier_bit(token_modifiers, "source");
+
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() -> i64 {
+    source_any().grant(1)
+    return source_any().level
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        6,
+        line(text, 6)
+            .find("source_any")
+            .expect("source function call should exist"),
+        "source_any".len(),
+        function,
+        source,
+    );
+    assert_no_token_at(
+        &tokens,
+        6,
+        line(text, 6)
+            .find("grant")
+            .expect("dynamic receiver method name should exist"),
+        "grant".len(),
+        method,
+        source,
+    );
+    assert_no_token_at(
+        &tokens,
+        7,
+        line(text, 7)
+            .find("level")
+            .expect("dynamic receiver field name should exist"),
+        "level".len(),
+        property,
+        source,
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_imported_source_method_on_source_function_return() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
@@ -570,6 +663,26 @@ fn number(value: &serde_json::Value) -> u64 {
     value
         .as_u64()
         .expect("semantic token data should be numeric")
+}
+
+fn assert_no_token_at(
+    tokens: &[DecodedToken],
+    line: usize,
+    character: usize,
+    length: usize,
+    token_type: u64,
+    modifiers: u64,
+) {
+    assert!(
+        tokens.iter().all(|token| {
+            token.line != line as u64
+                || token.character != character as u64
+                || token.length != length as u64
+                || token.token_type != token_type
+                || token.modifiers != modifiers
+        }),
+        "{tokens:?}"
+    );
 }
 
 fn assert_token_at(

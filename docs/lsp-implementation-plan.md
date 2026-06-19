@@ -406,7 +406,8 @@ coverage complete based only on the older capability phases.
     classes, cross-file imports and imported module path segments,
     source/schema/stdlib/builtin provenance modifiers, source/schema method
     calls on function-return receivers, imported source function-return member
-    calls, imported source enum variant constructors and patterns, unresolved
+    calls, source functions returning `Any` used as dynamic member receivers,
+    imported source enum variant constructors and patterns, unresolved
     import and general unresolved-reference tokens, parser-recovery
     degradation with retained HIR-backed classifications, missing-schema
     degradation, and client legend fallback projection.
@@ -1206,6 +1207,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
 - [x] `semantic_tokens_classify_source_method_on_source_function_return`
 - [x] `lsp_semantic_tokens_classify_source_method_on_source_function_return`
+- [x] `semantic_tokens_suppress_source_any_return_receiver_member`
+- [x] `lsp_semantic_tokens_suppress_source_any_return_receiver_member`
 - [x] `semantic_tokens_classify_imported_source_method_on_source_function_return`
 - [x] `lsp_semantic_tokens_classify_imported_source_method_on_source_function_return`
 - [x] `semantic_tokens_classify_source_method_on_source_method_return`
