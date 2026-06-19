@@ -1,9 +1,12 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_hover_reports_imported_function_const_and_global_facts() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,7 +14,7 @@ fn lsp_hover_reports_imported_function_const_and_global_facts() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::rewards::BASE_REWARD
 use game::rewards::reward_scale
@@ -32,7 +35,8 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -42,7 +46,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
     let const_hover = hover_at(
@@ -103,8 +107,9 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     );
 }
 
-fn hover_at(server: &mut LspServer, uri: &str, id: i64, line: usize, character: usize) -> String {
-    let response = response_value(server.handle_json(&request(
+fn hover_at(server: &mut LspServer, uri: &str, id: i32, line: usize, character: usize) -> String {
+    let response = response_value(handle_request(
+        server,
         id,
         "textDocument/hover",
         serde_json::json!({
@@ -114,7 +119,7 @@ fn hover_at(server: &mut LspServer, uri: &str, id: i64, line: usize, character: 
                 "character": character
             }
         }),
-    )));
+    ));
 
     response["result"]["contents"]["value"]
         .as_str()
