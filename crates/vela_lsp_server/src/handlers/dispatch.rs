@@ -82,7 +82,7 @@ fn dispatch_request(
         .on_worker_typed::<CallHierarchyOutgoingCalls>(GlobalState::outgoing_calls)
         .on_worker_typed::<CodeActionRequest>(GlobalState::code_action)
         .on_worker_typed::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_range)
-        .on_worker::<InlayHintRequest>()
+        .on_worker_typed::<InlayHintRequest>(GlobalState::inlay_hint)
         .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)
         .on_fmt_thread_typed::<RangeFormatting>(GlobalState::range_formatting)
         .on_fmt_thread_typed::<OnTypeFormatting>(GlobalState::on_type_formatting)
@@ -126,15 +126,6 @@ impl<'a> RequestDispatcher<'a> {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn on_sync_mut<R>(&mut self) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-    {
-        self.dispatch_legacy::<R>();
-        self
-    }
-
     pub(crate) fn on_sync_mut_typed<R>(
         &mut self,
         f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
@@ -156,14 +147,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_worker<R>(&mut self) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-    {
-        self.dispatch_legacy::<R>();
         self
     }
 
@@ -200,15 +183,6 @@ impl<'a> RequestDispatcher<'a> {
             };
         }
         std::mem::replace(&mut self.result, JsonRpcResult::None)
-    }
-
-    fn dispatch_legacy<R>(&mut self)
-    where
-        R: lsp_types::request::Request,
-    {
-        if self.take_matching::<R>().is_some() {
-            self.result = self.global_state.handle_legacy_json(self.legacy_input);
-        }
     }
 
     fn dispatch_typed<R>(

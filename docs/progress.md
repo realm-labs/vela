@@ -289,6 +289,16 @@ M20.5 RA main-loop update: `RequestQueue` now tracks incoming request IDs as
 typed `RequestId` values instead of stringified IDs, preparing the queue for
 later in-flight cancellation and stale-result bookkeeping.
 
+M20.5 RA main-loop update: Phase 4 typed read-only request migration is
+complete for the request families listed in the execution plan. Completion,
+hover, signature help, navigation, references, document highlights, symbols,
+folding, selection ranges, formatting, rename, call hierarchy, semantic
+tokens, code actions, and inlay hints now enter through typed
+`lsp_types` request params, `GlobalState` methods, and `lsp/to_proto.rs`
+projection. Legacy request-dispatch helper methods were removed; remaining
+Phase 4 cleanup is raw JSON/protocol helper retirement, while Phase 5 task
+pool scheduling is the next architectural milestone.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

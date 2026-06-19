@@ -654,6 +654,8 @@ cargo test -p vela_lsp_server workspace_folders
     params through `lsp/from_proto.rs`.
   - `textDocument/codeAction` now converts typed `CodeActionParams` through
     `lsp/from_proto.rs`.
+  - `textDocument/inlayHint` now converts typed `InlayHintParams` through
+    `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -694,6 +696,8 @@ cargo test -p vela_lsp_server workspace_folders
     existing Vela semantic token projection/cache behavior.
   - Code actions now project through typed `lsp_types::CodeActionResponse`
     values and reuse the existing typed workspace-edit projection.
+  - Inlay hints now project through typed `lsp_types::InlayHint` values with
+    typed label, kind, position, and padding fields.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -709,7 +713,7 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_language_service completion`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Migrate hover, signature help, definition, declaration, type definition,
+- [x] Migrate hover, signature help, definition, declaration, type definition,
   references, prepare rename, rename, call hierarchy, document highlight,
   document symbols, workspace symbols, folding, formatting, range formatting,
   on-type formatting, selection range, semantic tokens full/delta/range, code
@@ -884,10 +888,25 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_language_service code_action`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/inlayHint` now uses typed `InlayHintParams` through
+    `GlobalState` and typed `lsp_types::InlayHint` projection through
+    `lsp/to_proto.rs`; the now-unused legacy request-dispatch helpers were
+    removed after all Phase 4 request registrations became typed. Validated
+    with `cargo test -p vela_lsp_server inlay`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server typed_inlay_hint_dispatch_projects_parameter_hints`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service inlay`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses
   as each feature migrates.
-- [ ] Preserve current advertised capabilities unless a test proves an
+- [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
+  - Phase 4 request migration preserved existing advertised capabilities; no
+    initialize capability shape changed during the typed read-only request
+    migration.
 
 Validation:
 

@@ -8,8 +8,8 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
     DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams,
-    DocumentSymbolParams, FoldingRangeParams, HoverParams, ReferenceParams, RenameParams,
-    SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
+    DocumentSymbolParams, FoldingRangeParams, HoverParams, InlayHintParams, ReferenceParams,
+    RenameParams, SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
     SemanticTokensRangeParams, SignatureHelpParams, TextDocumentPositionParams,
     WorkspaceSymbolParams,
 };
@@ -502,6 +502,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.code_action_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn inlay_hint(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: InlayHintParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.inlay_hint_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1918,6 +1929,33 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_inlay_hint_dispatch_projects_parameter_hints() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let response = typed_inlay_hint_response(&mut state, 24, &document);
+        let hints = response["result"]
+            .as_array()
+            .expect("inlayHint response should be an array");
+
+        assert_eq!(hints.len(), 2);
+        assert_eq!(hints[0]["label"], "amount:");
+        assert_eq!(hints[0]["kind"], 2);
+        assert_eq!(hints[0]["paddingRight"], true);
+        assert_eq!(hints[1]["label"], "reason:");
+    }
+
+    #[test]
     fn typed_formatting_dispatch_projects_text_edits() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2630,6 +2668,34 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed codeAction should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_inlay_hint_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/inlayHint".to_owned(),
+            params: serde_json::to_value(lsp_types::InlayHintParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(1, 0),
+                    lsp_types::Position::new(1, 80),
+                ),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("inlayHint params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed inlayHint should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

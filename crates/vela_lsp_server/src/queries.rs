@@ -1498,6 +1498,33 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_inlay_hints(&hints)))
     }
 
+    pub(crate) fn inlay_hint_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::InlayHintParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::inlay_hint_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid inlayHint params: {error}"),
+                ));
+            }
+        };
+        let hints = self.databases.inlay_hints(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::inlay_hints(&hints))
+                .expect("typed inlayHint response should serialize"),
+        ))
+    }
+
     pub(crate) fn workspace_symbol(
         &mut self,
         id: Option<RequestId>,

@@ -177,6 +177,13 @@ pub(crate) fn code_action_params(
     text_document_range(text, &params.text_document, params.range)
 }
 
+pub(crate) fn inlay_hint_params(
+    text: &str,
+    params: &lsp_types::InlayHintParams,
+) -> Result<TextDocumentRangeInput, String> {
+    text_document_range(text, &params.text_document, params.range)
+}
+
 pub(crate) fn semantic_tokens_params(params: &lsp_types::SemanticTokensParams) -> DocumentId {
     document_id(&params.text_document.uri)
 }
@@ -546,6 +553,31 @@ mod tests {
 
         let input =
             code_action_params("main\n  value", &params).expect("code action range should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.range.start(), Position::new(0, 4));
+        assert_eq!(input.range.end(), Position::new(1, 2));
+    }
+
+    #[test]
+    fn inlay_hint_params_convert_range() {
+        let params = lsp_types::InlayHintParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            range: lsp_types::Range::new(
+                lsp_types::Position::new(0, 4),
+                lsp_types::Position::new(1, 2),
+            ),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        };
+
+        let input =
+            inlay_hint_params("main\n  value", &params).expect("inlay hint range should convert");
 
         assert_eq!(
             input.document_id,

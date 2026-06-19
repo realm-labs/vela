@@ -7,12 +7,12 @@ use vela_language_service::{
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
     DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
     DocumentTextEdit, FoldingRange as ServiceFoldingRange,
-    FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall, LineIndex,
-    OutgoingCall, PrepareRename, Reference, RenameRiskKind,
-    SelectionRange as ServiceSelectionRange, SemanticToken as ServiceSemanticToken,
-    SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
-    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
-    WorkspaceSymbolLocation,
+    FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall,
+    InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
+    PrepareRename, Reference, RenameRiskKind, SelectionRange as ServiceSelectionRange,
+    SemanticToken as ServiceSemanticToken, SemanticTokenDelta as ServiceSemanticTokenDelta,
+    SemanticTokens as ServiceSemanticTokens, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
+    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
 };
 
 use crate::semantic_tokens::SemanticTokenProjection;
@@ -122,6 +122,10 @@ pub(crate) fn code_actions(actions: &[ServiceCodeAction]) -> lsp_types::CodeActi
         .map(code_action)
         .map(lsp_types::CodeActionOrCommand::CodeAction)
         .collect()
+}
+
+pub(crate) fn inlay_hints(hints: &[ServiceInlayHint]) -> Vec<lsp_types::InlayHint> {
+    hints.iter().map(inlay_hint).collect()
 }
 
 pub(crate) fn semantic_tokens(
@@ -370,6 +374,26 @@ const fn code_action_kind(kind: ServiceCodeActionKind) -> lsp_types::CodeActionK
     }
 }
 
+fn inlay_hint(hint: &ServiceInlayHint) -> lsp_types::InlayHint {
+    lsp_types::InlayHint {
+        position: service_position(hint.position()),
+        label: lsp_types::InlayHintLabel::String(hint.label()),
+        kind: Some(inlay_hint_kind(hint.kind())),
+        text_edits: None,
+        tooltip: None,
+        padding_left: None,
+        padding_right: Some(true),
+        data: None,
+    }
+}
+
+const fn inlay_hint_kind(kind: ServiceInlayHintKind) -> lsp_types::InlayHintKind {
+    match kind {
+        ServiceInlayHintKind::Type => lsp_types::InlayHintKind::TYPE,
+        ServiceInlayHintKind::Parameter => lsp_types::InlayHintKind::PARAMETER,
+    }
+}
+
 fn semantic_token_data(
     tokens: &[ServiceSemanticToken],
     projection: &SemanticTokenProjection,
@@ -613,14 +637,15 @@ fn diagnostic_range(range: DiagnosticRange) -> lsp_types::Range {
     let start = range.start();
     let end = range.end();
     lsp_types::Range {
-        start: lsp_types::Position {
-            line: u32::try_from(start.line).expect("line should fit in LSP u32"),
-            character: u32::try_from(start.character).expect("character should fit in LSP u32"),
-        },
-        end: lsp_types::Position {
-            line: u32::try_from(end.line).expect("line should fit in LSP u32"),
-            character: u32::try_from(end.character).expect("character should fit in LSP u32"),
-        },
+        start: service_position(start),
+        end: service_position(end),
+    }
+}
+
+fn service_position(position: vela_language_service::Position) -> lsp_types::Position {
+    lsp_types::Position {
+        line: u32::try_from(position.line).expect("line should fit in LSP u32"),
+        character: u32::try_from(position.character).expect("character should fit in LSP u32"),
     }
 }
 
@@ -1145,6 +1170,36 @@ pub fn main(player: Player) -> i64 {
             .get(&uri)
             .expect("document edit should be keyed by URI");
         assert_eq!(edits[0].new_text, "first");
+    }
+
+    #[test]
+    fn inlay_hints_project_typed_labels_and_kinds() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let hints = databases.inlay_hints(
+            &document,
+            DiagnosticRange::new(Position::new(1, 0), Position::new(1, 80)),
+        );
+
+        let hints = inlay_hints(&hints);
+
+        assert_eq!(hints.len(), 2);
+        assert_eq!(hints[0].position, lsp_types::Position::new(1, 29));
+        let lsp_types::InlayHintLabel::String(label) = &hints[0].label else {
+            panic!("first hint should use a string label");
+        };
+        assert_eq!(label, "amount:");
+        assert_eq!(hints[0].kind, Some(lsp_types::InlayHintKind::PARAMETER));
+        assert_eq!(hints[0].padding_right, Some(true));
+        let lsp_types::InlayHintLabel::String(label) = &hints[1].label else {
+            panic!("second hint should use a string label");
+        };
+        assert_eq!(label, "reason:");
     }
 
     #[test]
