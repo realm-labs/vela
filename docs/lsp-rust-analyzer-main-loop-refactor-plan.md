@@ -1150,12 +1150,22 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Ensure document changes and cancellation notifications can be processed
+- [x] Ensure document changes and cancellation notifications can be processed
   while long read-only requests are pending.
+  - The main-loop event selector now has focused coverage proving a
+    lane-scheduled long worker request does not prevent a following
+    `$/cancelRequest` notification from being selected before the worker task
+    completes. Validated with
+    `cargo test -p vela_lsp_server next_event`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server formatting`, and
+    `cargo test -p vela_lsp_server completion`.
 - [ ] Ensure formatting uses the formatting lane and cannot starve behind
   normal worker requests.
-- [ ] Add tests that simulate a queued long request and a following document
+- [x] Add tests that simulate a queued long request and a following document
   change or cancel notification.
+  - `next_event_receives_client_message_while_worker_task_is_pending` pins the
+    pending-worker plus follow-up cancellation-notification case.
 
 Validation:
 

@@ -320,6 +320,9 @@ execution uses the scheduler.
 Stdio and TCP connection execution now enter the server through a named
 `VelaLspMainLoop` thread with default stack sizing; no broader stack expansion
 is used until parser/analysis workloads demonstrate a need.
+The main-loop event selector now has focused coverage proving a pending
+worker-lane request does not block a following cancellation notification from
+being selected before the long task completes.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,

@@ -119,7 +119,10 @@ fn panic_message(payload: &Box<dyn Any + Send>) -> &str {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crossbeam_channel::unbounded;
+    use lsp_server::{Message, Notification};
 
     use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState, task::TaskLane};
 
@@ -141,6 +144,68 @@ mod tests {
             panic!("expected task event");
         };
         assert_eq!(task.lane(), TaskLane::Worker);
+        assert_eq!(
+            task.into_result(),
+            JsonRpcResult::Response("worker".to_owned())
+        );
+    }
+
+    #[test]
+    fn next_event_receives_client_message_while_worker_task_is_pending() {
+        let (response_sender, _response_receiver) = unbounded();
+        let (message_sender, message_receiver) = unbounded();
+        let state = GlobalState::new(response_sender, LaunchConfiguration::default());
+        let (task_started_sender, task_started_receiver) = unbounded();
+        let (release_task_sender, release_task_receiver) = unbounded::<()>();
+
+        state.task_scheduler().spawn_for_method(
+            TaskLane::Worker,
+            "textDocument/references",
+            move || {
+                task_started_sender
+                    .send(())
+                    .expect("task start signal should send");
+                release_task_receiver
+                    .recv()
+                    .expect("task release signal should be received");
+                JsonRpcResult::Response("worker".to_owned())
+            },
+        );
+
+        task_started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker task should start");
+
+        let cancel_method =
+            <lsp_types::notification::Cancel as lsp_types::notification::Notification>::METHOD;
+        let cancel_params = serde_json::json!({ "id": 7 });
+        let cancel = Message::Notification(Notification {
+            method: cancel_method.to_owned(),
+            params: cancel_params.clone(),
+        });
+        message_sender
+            .send(cancel.clone())
+            .expect("cancel notification should send");
+
+        let event =
+            next_event(&message_receiver, &state).expect("message event should be selected");
+
+        let MainLoopEvent::Message(Message::Notification(notification)) = event else {
+            panic!("expected message event while worker task is pending");
+        };
+        assert_eq!(notification.method, cancel_method);
+        assert_eq!(notification.params, cancel_params);
+
+        release_task_sender
+            .send(())
+            .expect("task release signal should send");
+        let task = state
+            .task_scheduler()
+            .worker_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker task should finish after release");
+        assert_eq!(task.lane(), TaskLane::Worker);
+        assert_eq!(task.method(), Some("textDocument/references"));
         assert_eq!(
             task.into_result(),
             JsonRpcResult::Response("worker".to_owned())
