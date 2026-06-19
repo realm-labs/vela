@@ -40,11 +40,11 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                 trace.message_received(sequence, &metadata, input_bytes)?;
 
                 let handle_start = Instant::now();
-                let result = state.handle_message(&message, &input);
+                let messages = state.handle_message(&message, &input)?;
                 let handle_ms = elapsed_ms(handle_start);
 
                 let write_start = Instant::now();
-                let summary = state.send_task_result(TaskResult::response(result))?;
+                let summary = state.send_messages(messages)?;
                 let write_ms = elapsed_ms(write_start);
                 trace.response_sent(sequence, &metadata, &summary)?;
                 profiler.end(

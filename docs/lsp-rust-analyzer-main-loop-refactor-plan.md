@@ -1426,6 +1426,10 @@ cargo test -p vela_lsp_server semantic_tokens
     normalize handler output into typed `lsp_server::Message` batches before
     crossing task-lane boundaries, and `GlobalState` sends those messages
     directly. Validated with `cargo test -p vela_lsp_server task`.
+  - Typed `GlobalState::handle_message` now returns typed
+    `lsp_server::Message` batches, and the main loop sends those batches
+    directly instead of wrapping immediate dispatch output as task results.
+    Validated with `cargo test -p vela_lsp_server task`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

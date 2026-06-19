@@ -872,7 +872,19 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn handle_message(&mut self, message: &Message, input: &str) -> JsonRpcResult {
+    pub(crate) fn handle_message(
+        &mut self,
+        message: &Message,
+        input: &str,
+    ) -> anyhow::Result<Vec<Message>> {
+        self.handle_message_result(message, input).into_messages()
+    }
+
+    pub(crate) fn handle_message_result(
+        &mut self,
+        message: &Message,
+        input: &str,
+    ) -> JsonRpcResult {
         let request_id = RequestQueue::request_id(message);
         if let Some(id) = request_id.as_ref() {
             self.request_queue.start(id.clone());
@@ -892,7 +904,7 @@ impl GlobalState {
         Ok(summary)
     }
 
-    fn send_messages(&self, messages: Vec<Message>) -> anyhow::Result<ResultSummary> {
+    pub(crate) fn send_messages(&self, messages: Vec<Message>) -> anyhow::Result<ResultSummary> {
         let summary = ResultSummary::from_messages(&messages);
         for message in messages {
             self.sender.send(message)?;
@@ -1881,7 +1893,7 @@ mod tests {
             .expect("completion item should serialize"),
         });
 
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
 
         assert_eq!(result, JsonRpcResult::None);
         let task = state
@@ -1947,7 +1959,7 @@ mod tests {
             .expect("hover params should serialize"),
         });
 
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
 
         let response = result
             .into_response()
@@ -2004,7 +2016,7 @@ mod tests {
             .expect("signatureHelp params should serialize"),
         });
 
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
 
         let response = result
             .into_response()
@@ -2522,7 +2534,7 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(30);
 
-        let result = state.handle_message(
+        let result = state.handle_message_result(
             &Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(30),
                 method: "textDocument/formatting".to_owned(),
@@ -2578,7 +2590,7 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(31);
 
-        let result = state.handle_message(
+        let result = state.handle_message_result(
             &Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(31),
                 method: "textDocument/formatting".to_owned(),
@@ -2645,7 +2657,7 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(33);
 
-        let result = state.handle_message(
+        let result = state.handle_message_result(
             &Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(33),
                 method: "textDocument/formatting".to_owned(),
@@ -2721,7 +2733,7 @@ pub fn main(player: Player) -> i64 {
         state.sync_from_legacy_server();
         let request_id = RequestId::from(32);
 
-        let result = state.handle_message(
+        let result = state.handle_message_result(
             &Message::Request(lsp_server::Request {
                 id: lsp_server::RequestId::from(32),
                 method: "textDocument/completion".to_owned(),
@@ -3088,7 +3100,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("goto params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed navigation should return a response");
@@ -3120,7 +3132,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("prepareCallHierarchy params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed prepareCallHierarchy should return a response");
@@ -3142,7 +3154,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("incomingCalls params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed incomingCalls should return a response");
@@ -3164,7 +3176,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("outgoingCalls params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed outgoingCalls should return a response");
@@ -3198,7 +3210,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("rename params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed rename should return a response");
@@ -3227,7 +3239,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("prepareRename params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed prepareRename should return a response");
@@ -3264,7 +3276,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("reference params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed references should return a response");
@@ -3297,7 +3309,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("documentHighlight params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed documentHighlight should return a response");
@@ -3311,7 +3323,7 @@ pub fn main(amount: i64) -> i64 {
         lane: TaskLane,
         label: &str,
     ) -> serde_json::Value {
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         assert_eq!(result, JsonRpcResult::None);
         let task = match lane {
             TaskLane::Latency => state.task_scheduler().latency_results(),
@@ -3437,7 +3449,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("selectionRange params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed selectionRange should return a response");
@@ -3492,7 +3504,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("semanticTokens/full/delta params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed semanticTokens/full/delta should return a response");
@@ -3521,7 +3533,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("semanticTokens/range params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed semanticTokens/range should return a response");
@@ -3553,7 +3565,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("codeAction params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed codeAction should return a response");
@@ -3581,7 +3593,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("inlayHint params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = result
             .into_response()
             .expect("typed inlayHint should return a response");
@@ -3616,7 +3628,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("formatting params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response =
             formatting_task_response(state, result, "typed formatting should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
@@ -3644,7 +3656,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("rangeFormatting params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = formatting_task_response(
             state,
             result,
@@ -3674,7 +3686,7 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("onTypeFormatting params should serialize"),
         });
-        let result = state.handle_message(&request, "");
+        let result = state.handle_message_result(&request, "");
         let response = formatting_task_response(
             state,
             result,

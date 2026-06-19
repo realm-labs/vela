@@ -359,14 +359,17 @@ impl Default for TaskScheduler {
 }
 
 impl TaskResult {
+    #[cfg(test)]
     pub(crate) fn response(result: JsonRpcResult) -> Self {
         Self::lane_response(TaskLane::Main, result)
     }
 
+    #[cfg(test)]
     pub(crate) fn lane_response(lane: TaskLane, result: JsonRpcResult) -> Self {
         Self::lane_method_response(lane, None, result)
     }
 
+    #[cfg(test)]
     pub(crate) fn lane_method_response(
         lane: TaskLane,
         method: Option<String>,
