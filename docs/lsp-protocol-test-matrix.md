@@ -316,8 +316,9 @@ These were the first places compared against the matrix before acceptance:
    `documentHighlight` empty results for unresolved names and dynamic receiver
    members, including source functions returning `Any` used as receivers, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
-   calls, and non-callable symbols, plus stale host completion clearing and
-   missing-schema diagnostics after schema deletion, plus inlay-hint
+   calls including source functions returning `Any` used as receivers, and
+   non-callable symbols, plus stale host completion clearing and missing-schema
+   diagnostics after schema deletion, plus inlay-hint
    suppression for source and schema function calls returning `Any` used as
    receivers; broader `Any`, missing schema, stale schema, unresolved name,
    and parser recovery cases should degrade by returning null, empty results,

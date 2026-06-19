@@ -221,6 +221,28 @@ pub fn main(player) {
 }
 
 #[test]
+fn call_hierarchy_returns_empty_for_source_any_return_receiver_call() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+impl Player { fn grant(self, amount: i64) -> i64 { return amount } }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().grant(1) }"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let call_line = text.lines().nth(4).expect("call line should exist");
+
+    let prepared = databases.prepare_call_hierarchy(
+        &document,
+        Position::new(4, call_line.find("grant").expect("method call")),
+    );
+
+    assert!(
+        prepared.is_empty(),
+        "source Any return receiver calls must not invent method call hierarchy items"
+    );
+}
+
+#[test]
 fn call_hierarchy_uses_resolved_script_method_calls() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

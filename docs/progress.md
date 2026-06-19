@@ -241,6 +241,10 @@ M20.5 Phase 11 update: service and native LSP references plus document
 highlights now cover source functions returning `Any` used as member
 receivers, returning empty results instead of inventing member reference facts.
 
+M20.5 Phase 11 update: service and native LSP prepare-call-hierarchy fixtures
+now cover source functions returning `Any` used as method receivers, returning
+empty results instead of inventing method call hierarchy items.
+
 M20.5 Phase 10 update: semantic tokens are complete enough for the current LSP
 track. The plan checklist is closed with service and native LSP fixtures for
 resolved modifiers, script/schema/builtin token classes, full tokens, range

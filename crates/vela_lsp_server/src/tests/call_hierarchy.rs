@@ -207,6 +207,49 @@ pub fn main(player) {
 }
 
 #[test]
+fn lsp_prepare_call_hierarchy_returns_empty_for_source_any_return_receiver_call() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        initialize["result"]["capabilities"]["callHierarchyProvider"],
+        true
+    );
+    let text = "\
+struct Player { level: i64 }
+impl Player { fn grant(self, amount: i64) -> i64 { return amount } }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().grant(1) }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    assert_empty_prepare_call_hierarchy(
+        &mut server,
+        2,
+        uri,
+        3,
+        line(text, 3).find("grant").expect("method call"),
+    );
+}
+
+#[test]
 fn lsp_call_hierarchy_uses_resolved_script_method_calls() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

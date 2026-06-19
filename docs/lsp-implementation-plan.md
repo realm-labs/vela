@@ -365,7 +365,8 @@ coverage complete based only on the older capability phases.
     trait default/interface methods, schema methods including
     schema-function-return and schema-method-return receivers, schema trait
     methods, cross-file method calls, and empty prepare results for
-    unresolved, dynamic, and non-callable targets.
+    unresolved, dynamic, and non-callable targets, including source functions
+    returning `Any` used as receivers.
 - [x] Audit rename and code actions.
   - Cover cross-file workspace edits, source-owned edit plans, stale versions,
     public ABI risk metadata, collisions, schema-only rejection, typo fixes,
@@ -1514,6 +1515,8 @@ Tests:
 - [x] `lsp_call_hierarchy_uses_imported_function_alias_calls`
 - [x] `call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
 - [x] `lsp_prepare_call_hierarchy_returns_empty_for_unresolved_dynamic_and_non_callable_targets`
+- [x] `call_hierarchy_returns_empty_for_source_any_return_receiver_call`
+- [x] `lsp_prepare_call_hierarchy_returns_empty_for_source_any_return_receiver_call`
 - [x] `call_hierarchy_uses_resolved_script_method_calls`
 - [x] `lsp_call_hierarchy_uses_resolved_script_method_calls`
 - [x] `call_hierarchy_cross_file_source_method_calls`
