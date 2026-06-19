@@ -816,6 +816,15 @@ writing to stdout. Focused Phase 2.5 coverage now includes config application
 order, UTF-16 position conversion edge cases, reload scheduling, trace logging,
 and profile opt-in behavior.
 
+M20.5 RA-style main-loop update: Phase 7 protocol-boundary cleanup is now
+closed. Legacy raw JSON wrappers are test-only, initialize capabilities and
+snapshot request responses project typed `lsp_types` values through shared
+JSON-RPC boundary helpers, `vela_language_service` has a manifest guard against
+`lsp-types`, and `vela_lsp_server` now has a source-level `serde_json` allowlist
+guard for protocol boundaries, extension payloads, completion resolve data,
+configuration payloads, schema/protocol JSON, profiling/tracing JSONL, and
+test-only compatibility fixtures.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

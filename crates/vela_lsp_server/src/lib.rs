@@ -1,5 +1,7 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
+#[cfg(test)]
+mod architecture_tests;
 mod capabilities;
 #[cfg(test)]
 mod client;

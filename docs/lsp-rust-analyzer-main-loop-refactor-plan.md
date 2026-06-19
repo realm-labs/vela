@@ -1631,7 +1631,7 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_did_change`,
     `cargo test -p vela_lsp_server typed_did_close`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Keep `serde_json` only for extension payloads, completion resolve data,
+- [x] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
   - Initialize capabilities and the semantic-token legend are now assembled
     with typed `lsp_types` structs instead of a hand-written `json!` object.
@@ -1650,6 +1650,11 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server handlers::dispatch`,
     `cargo test -p vela_lsp_server typed_completion`, and
     `cargo test -p vela_lsp_server typed_semantic_token_dispatch`.
+  - Added a source-level architecture guard that fails if `serde_json` spreads
+    outside typed protocol boundaries, extension payloads, completion resolve
+    data, configuration payloads, schema/protocol JSON, profiling/tracing JSONL,
+    and test-only compatibility fixtures. Validated with
+    `cargo test -p vela_lsp_server serde_json_usage_stays_at_protocol_boundaries`.
 - [x] Ensure no LSP protocol types leak into `vela_language_service`.
   - `rg -n "use lsp_types|lsp_types::|lsp-types\\s*=" crates/vela_language_service -g '*.rs' -g 'Cargo.toml'`
     returns no matches, keeping LSP protocol imports and manifest dependency
