@@ -35,6 +35,7 @@ pub(crate) struct GlobalState {
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
     server: LspServer,
+    workspace_roots: BTreeSet<String>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -122,12 +123,14 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
         let watch_files_enabled = launch_configuration.watch_files_enabled();
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
+        let workspace_roots = server.workspace_roots.clone();
         Self {
             sender,
             launch_configuration,
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
             server,
+            workspace_roots,
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
@@ -149,7 +152,7 @@ impl GlobalState {
             launch_configuration: self.launch_configuration.clone(),
             workspace: self.server.workspace.snapshot(),
             databases: self.server.databases.clone(),
-            workspace_roots: self.server.workspace_roots.clone(),
+            workspace_roots: self.workspace_roots.clone(),
             open_documents: self.server.open_documents.clone(),
             client_supports_work_done_progress: self.client_supports_work_done_progress,
             client_supports_watched_file_registration: self
@@ -202,6 +205,7 @@ impl GlobalState {
     pub(crate) fn apply_config_change(&mut self, change: ConfigChange) {
         let watch_files_enabled = change.watch_files_enabled();
         self.server.apply_config_change(change);
+        self.workspace_roots = self.server.workspace_roots.clone();
         if let Some(enabled) = watch_files_enabled {
             self.watch_files_enabled = enabled;
         }
@@ -300,7 +304,7 @@ impl GlobalState {
         &mut self,
         params: DidChangeWorkspaceFoldersParams,
     ) -> JsonRpcResult {
-        let mut workspace_roots = self.server.workspace_roots.clone();
+        let mut workspace_roots = self.workspace_roots.clone();
         for folder in params.event.removed {
             let root = WorkspaceRoot::from(folder.uri.to_string());
             workspace_roots.remove(root.path());
@@ -349,6 +353,7 @@ impl GlobalState {
         self.semantic_token_projection = self.server.semantic_token_projection.clone();
         self.watched_files_registered |= self.server.watched_files_registered;
         self.watch_files_enabled = !self.server.file_watching_disabled;
+        self.workspace_roots = self.server.workspace_roots.clone();
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -362,10 +367,8 @@ impl GlobalState {
         if self.client_supports_watched_file_registration
             && self.watch_files_enabled
             && !self.watched_files_registered
-            && let Some(registration) = watching::registration_request(
-                self.server.config.as_ref(),
-                &self.server.workspace_roots,
-            )
+            && let Some(registration) =
+                watching::registration_request(self.server.config.as_ref(), &self.workspace_roots)
         {
             self.watched_files_registered = true;
             self.server.watched_files_registered = true;
@@ -450,6 +453,9 @@ mod tests {
 
         state
             .server
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
+        state
             .workspace_roots
             .insert("/workspace/scripts".to_owned());
         state.server.open_documents.insert(document.clone());
@@ -569,6 +575,9 @@ mod tests {
             .server
             .workspace_roots
             .insert("/workspace/scripts".to_owned());
+        state
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
         state.client_supports_watched_file_registration = true;
         state.server.client_supports_watched_file_registration = false;
 
@@ -599,6 +608,9 @@ mod tests {
             .server
             .workspace_roots
             .insert("/workspace/scripts".to_owned());
+        state
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
         state.client_supports_watched_file_registration = true;
         state.server.file_watching_disabled = false;
 
@@ -608,6 +620,41 @@ mod tests {
         assert!(!state.watch_files_enabled);
         assert!(!state.watched_files_registered);
         assert!(!state.server.watched_files_registered);
+    }
+
+    #[test]
+    fn typed_workspace_folder_changes_use_global_roots() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
+        state
+            .server
+            .workspace_roots
+            .insert("/legacy/only".to_owned());
+
+        let result =
+            state.did_change_workspace_folders(lsp_types::DidChangeWorkspaceFoldersParams {
+                event: lsp_types::WorkspaceFoldersChangeEvent {
+                    added: vec![lsp_types::WorkspaceFolder {
+                        uri: lsp_types::Url::parse("file:///workspace/tools")
+                            .expect("workspace folder URI should parse"),
+                        name: "tools".to_owned(),
+                    }],
+                    removed: vec![lsp_types::WorkspaceFolder {
+                        uri: lsp_types::Url::parse("file:///workspace/scripts")
+                            .expect("workspace folder URI should parse"),
+                        name: "scripts".to_owned(),
+                    }],
+                },
+            });
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(!state.workspace_roots.contains("/workspace/scripts"));
+        assert!(state.workspace_roots.contains("/workspace/tools"));
+        assert!(!state.server.workspace_roots.contains("/legacy/only"));
+        assert_eq!(state.server.workspace_roots, state.workspace_roots);
     }
 
     #[test]

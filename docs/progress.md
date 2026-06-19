@@ -255,6 +255,9 @@ legacy notification paths.
 The launch/config watcher-enabled setting now lives in `GlobalState` and
 `GlobalStateSnapshot`; typed watcher registration reads that owner while the
 legacy wrapper is kept synchronized for remaining legacy paths.
+Workspace roots now live in `GlobalState`, drive typed workspace-folder
+changes and watcher registration, and are mirrored back to the legacy wrapper
+for remaining non-typed handlers.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace
