@@ -1,11 +1,14 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::line;
 
 #[test]
 fn lsp_references_return_empty_for_dynamic_and_unresolved_targets() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -13,7 +16,7 @@ fn lsp_references_return_empty_for_dynamic_and_unresolved_targets() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["referencesProvider"],
         true
@@ -23,7 +26,8 @@ fn lsp_references_return_empty_for_dynamic_and_unresolved_targets() {
 pub fn unresolved() { return missing }
 pub fn dynamic(value: Any) { return value.level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -33,7 +37,7 @@ pub fn dynamic(value: Any) { return value.level }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     assert_empty_references(
         &mut server,
@@ -58,7 +62,8 @@ pub fn dynamic(value: Any) { return value.level }";
 #[test]
 fn lsp_references_return_empty_for_source_any_return_receiver_member() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -66,7 +71,7 @@ fn lsp_references_return_empty_for_source_any_return_receiver_member() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["referencesProvider"],
         true
@@ -77,7 +82,8 @@ struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -87,7 +93,7 @@ pub fn main() { return source_any().level }";
                 "text": text
             }
         }),
-    )));
+    ));
 
     assert_empty_references(
         &mut server,
@@ -100,12 +106,13 @@ pub fn main() { return source_any().level }";
 
 fn assert_empty_references(
     server: &mut LspServer,
-    id: i64,
+    id: i32,
     uri: &str,
     line: usize,
     character: usize,
 ) {
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        server,
         id,
         "textDocument/references",
         serde_json::json!({
@@ -116,7 +123,7 @@ fn assert_empty_references(
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
