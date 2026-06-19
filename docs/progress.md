@@ -582,8 +582,9 @@ cover imported source trait method return types, extending the W1 cross-file
 navigation audit beyond inherent method return types.
 
 M20.5 Phase 5 update: native LSP `didClose` coverage now proves completion
-queries return to disk-snapshot declarations after an open overlay is closed,
-matching the existing diagnostic and definition restoration fixtures.
+and hover queries return to disk-snapshot declarations after an open overlay
+is closed, matching the existing diagnostic, definition, and type-definition
+restoration fixtures.
 
 M20.5 Phase 8 update: native LSP declaration fixtures now cover schema-backed
 type and host-method source spans, proving clients that separate declaration

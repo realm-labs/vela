@@ -187,6 +187,94 @@ fn main(player: Player) {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_did_close_restores_disk_snapshot_hover_queries() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"#[doc("Disk function")]
+pub fn disk_only() -> i64 { return 1 }
+pub fn main() -> i64 {
+    return disk_only()
+}"#;
+    let overlay_source = r#"#[doc("Overlay function")]
+pub fn overlay_only() -> i64 { return 2 }
+pub fn main() -> i64 {
+    return overlay_only()
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_hover = hover_value(&response_value(server.handle_json(&hover_request(
+        2,
+        &source_uri,
+        overlay_source,
+        "overlay_only",
+    ))));
+    assert!(
+        overlay_hover.contains("game::main::overlay_only"),
+        "{overlay_hover}"
+    );
+    assert!(
+        overlay_hover.contains("Overlay function"),
+        "{overlay_hover}"
+    );
+    assert!(!overlay_hover.contains("disk_only"), "{overlay_hover}");
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_hover = hover_value(&response_value(server.handle_json(&hover_request(
+        3,
+        &source_uri,
+        disk_source,
+        "disk_only",
+    ))));
+    assert!(disk_hover.contains("game::main::disk_only"), "{disk_hover}");
+    assert!(disk_hover.contains("Disk function"), "{disk_hover}");
+    assert!(!disk_hover.contains("overlay_only"), "{disk_hover}");
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn completion_labels(response: &serde_json::Value) -> Vec<String> {
     response["result"]["items"]
         .as_array()
@@ -223,6 +311,32 @@ fn type_definition_character(source: &str) -> usize {
         .expect("type-definition line should exist");
     line.find("inventory")
         .expect("type-definition target should exist")
+}
+
+fn hover_request(id: i64, uri: &str, source: &str, target: &str) -> String {
+    request(
+        id,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 3,
+                "character": hover_character(source, target)
+            }
+        }),
+    )
+}
+
+fn hover_character(source: &str, target: &str) -> usize {
+    let line = source.lines().nth(3).expect("hover line should exist");
+    line.find(target).expect("hover target should exist")
+}
+
+fn hover_value(response: &serde_json::Value) -> String {
+    response["result"]["contents"]["value"]
+        .as_str()
+        .expect("hover response should contain markdown")
+        .to_owned()
 }
 
 fn assert_type_definition_range(
