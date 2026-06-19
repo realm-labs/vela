@@ -1,4 +1,6 @@
-use super::super::super::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_type_definition_follows_imported_source_struct_field_type_alias() {
@@ -23,7 +25,8 @@ fn lsp_type_definition_follows_imported_local_source_type_hint() {
 #[test]
 fn lsp_type_definition_follows_imported_nested_container_source_type_hint() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -31,7 +34,7 @@ fn lsp_type_definition_follows_imported_nested_container_source_type_hint() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
     let main_text = r#"use game::inventory::Inventory as Bag
@@ -43,7 +46,8 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -53,8 +57,9 @@ fn main() {
                 "text": inventory_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -64,10 +69,11 @@ fn main() {
                 "text": main_text
             }
         }),
-    )));
+    ));
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -79,7 +85,7 @@ fn main() {
                     .expect("nested source type hint")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], inventory_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -90,7 +96,8 @@ fn main() {
 #[test]
 fn lsp_type_definition_follows_imported_deep_container_source_type_hint() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -98,7 +105,7 @@ fn lsp_type_definition_follows_imported_deep_container_source_type_hint() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
     let main_text = r#"use game::inventory::Inventory as Bag
@@ -110,7 +117,8 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -120,8 +128,9 @@ fn main() {
                 "text": inventory_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -131,10 +140,11 @@ fn main() {
                 "text": main_text
             }
         }),
-    )));
+    ));
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -146,7 +156,7 @@ fn main() {
                     .expect("deep nested source type hint")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], inventory_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -162,7 +172,8 @@ fn lsp_type_definition_follows_imported_parameter_source_type_hint() {
 #[test]
 fn lsp_type_definition_follows_imported_trait_source_type_hint() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -170,7 +181,7 @@ fn lsp_type_definition_follows_imported_trait_source_type_hint() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let traits_uri = "file:///workspace/scripts/game/traits.vela";
     let main_text = r#"use game::traits::Describable as Named
@@ -181,7 +192,8 @@ fn describe(value: Named) {
     let traits_text = r#"pub trait Describable {
     fn describe(self) -> String
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -191,8 +203,9 @@ fn describe(value: Named) {
                 "text": traits_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -202,13 +215,14 @@ fn describe(value: Named) {
                 "text": main_text
             }
         }),
-    )));
+    ));
     let parameter_line = main_text
         .lines()
         .nth(2)
         .expect("parameter line should exist");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -220,7 +234,7 @@ fn describe(value: Named) {
                     .expect("type hint should contain alias")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], traits_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -236,7 +250,8 @@ fn lsp_type_definition_follows_imported_field_source_type_hint() {
 #[test]
 fn lsp_type_definition_follows_imported_enum_field_source_type_hint() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -244,7 +259,7 @@ fn lsp_type_definition_follows_imported_enum_field_source_type_hint() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
     let main_text = r#"use game::inventory::Inventory as Bag
@@ -256,7 +271,8 @@ enum Reward {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -266,8 +282,9 @@ enum Reward {
                 "text": inventory_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -277,10 +294,11 @@ enum Reward {
                 "text": main_text
             }
         }),
-    )));
+    ));
     let field_line = main_text.lines().nth(3).expect("enum field line");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -292,7 +310,7 @@ enum Reward {
                     .expect("type hint should contain alias")
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], inventory_uri);
     assert_eq!(response["result"]["range"]["start"]["line"], 0);
@@ -343,7 +361,8 @@ fn lsp_type_definition_follows_imported_const_and_global_source_types() {
 #[test]
 fn lsp_type_definition_follows_imported_const_and_global_source_type_hints() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -351,7 +370,7 @@ fn lsp_type_definition_follows_imported_const_and_global_source_type_hints() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let inventory_uri = "file:///workspace/scripts/game/inventory.vela";
     let main_text = r#"use game::inventory::Inventory as Bag
@@ -361,7 +380,8 @@ pub global active_bag: Bag"#;
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -371,8 +391,9 @@ pub global active_bag: Bag"#;
                 "text": inventory_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -382,11 +403,12 @@ pub global active_bag: Bag"#;
                 "text": main_text
             }
         }),
-    )));
+    ));
     let const_line = main_text.lines().nth(2).expect("const line should exist");
     let global_line = main_text.lines().nth(3).expect("global line should exist");
 
-    let const_response = response_value(server.handle_json(&request(
+    let const_response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -398,13 +420,14 @@ pub global active_bag: Bag"#;
                     .expect("const type hint should exist")
             }
         }),
-    )));
+    ));
     assert_eq!(const_response["result"]["uri"], inventory_uri);
     assert_eq!(const_response["result"]["range"]["start"]["line"], 0);
     assert_eq!(const_response["result"]["range"]["start"]["character"], 11);
     assert_eq!(const_response["result"]["range"]["end"]["character"], 20);
 
-    let global_response = response_value(server.handle_json(&request(
+    let global_response = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -416,7 +439,7 @@ pub global active_bag: Bag"#;
                     .expect("global type hint should exist")
             }
         }),
-    )));
+    ));
     assert_eq!(global_response["result"]["uri"], inventory_uri);
     assert_eq!(global_response["result"]["range"]["start"]["line"], 0);
     assert_eq!(global_response["result"]["range"]["start"]["character"], 11);
