@@ -1919,6 +1919,8 @@ node editors/vscode/scripts/validate-package.js
   - Converted the schema trait semantic-token fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
+  - Converted the schema semantic-token fixture off `LspServer::handle_json`
+    and onto the shared typed request/notification helpers.
   - Converted the document/workspace symbols fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
