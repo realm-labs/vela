@@ -1984,7 +1984,7 @@ node editors/vscode/scripts/validate-package.js
     custom request/notification builders and onto the shared typed helpers.
 - [x] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.
-- [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs
+- [x] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs
   to reference this execution document.
 - [ ] Update `docs/progress.md` only when current milestone status or durable
   LSP architecture status changes.

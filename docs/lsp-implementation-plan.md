@@ -20,7 +20,9 @@
 docs/lsp-implementation-plan.md and docs/architecture/lsp.md. Treat
 docs/goal.md as the product roadmap, docs/architecture.md and
 docs/architecture/*.md as the architecture contract, and docs/progress.md as
-the current milestone state. Build a cleanly layered editor tooling system:
+the current milestone state. For the rust-analyzer-style typed main-loop
+refactor, use docs/lsp-rust-analyzer-main-loop-refactor-plan.md as the active
+execution tracker. Build a cleanly layered editor tooling system:
 native `vela_lsp_server` owns LSP transport, file watching, cancellation,
 progress, configuration, and editor lifecycle; reusable
 `vela_language_service` owns virtual workspace state, source overlays, module
@@ -53,7 +55,7 @@ and adding explicit source/parse/HIR/analysis indexes. The LSP track may
 progress in parallel with M19/M20 optimization work because it is analysis-only
 and must not change VM semantics. WASM is optional for browser tooling and must
 not constrain the native server architecture. Validate each checkpoint with
-focused language-service tests, LSP JSON-RPC fixtures, scale-oriented tests,
+focused language-service tests, typed LSP fixtures, scale-oriented tests,
 docs, and relevant workspace checks. Commit small Conventional Commit
 checkpoints.
 ```
