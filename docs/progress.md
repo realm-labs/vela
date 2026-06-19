@@ -678,8 +678,9 @@ boundary. Typed watched-file batches are coalesced, classified as
 config/schema/source/other reload work, assigned reload generations, and routed
 through `GlobalState` before the existing config/schema/source mutation paths
 run; workspace-folder changes also enter this scheduler before config
-application. Open-file-priority metadata is recorded, but non-blocking
-open-file-prioritized execution remains the next scheduler gap.
+application. The scheduler now drains open-document watched-file work before
+other reload work with stable ordering inside priority groups, but non-blocking
+watcher execution remains the next scheduler gap.
 
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature

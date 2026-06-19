@@ -476,8 +476,12 @@ cargo test -p vela_lsp_server lifecycle
     config/schema/source targets, assigns reload generations, records
     open-document priority metadata, and schedules workspace-root reload work
     before `GlobalState` applies the existing config/schema/source mutations.
-- [ ] Keep reload work generation-based and open-file-prioritized so watcher
+- [~] Keep reload work generation-based and open-file-prioritized so watcher
   activity cannot block typing-sensitive notifications.
+  - Scheduler drain now processes open-document watched-file work before other
+    reload work while preserving stable order inside priority groups. It still
+    applies reload work synchronously on the main loop, so non-blocking watcher
+    activity remains open.
 - [ ] Introduce tracing/log-file startup and request-span diagnostics that use
   stderr or explicit log files, never stdout.
 - [ ] Add tests for config application order, position conversion edge cases,

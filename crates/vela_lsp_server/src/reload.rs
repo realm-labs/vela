@@ -66,12 +66,25 @@ impl ReloadScheduler {
     }
 
     pub(crate) fn drain(&mut self) -> Vec<ReloadWork> {
-        std::mem::take(&mut self.pending)
+        let mut pending = std::mem::take(&mut self.pending);
+        pending.sort_by_key(|work| !work.open_file_priority());
+        pending
     }
 
     fn bump_generation(&mut self) -> u64 {
         self.generation = self.generation.saturating_add(1);
         self.generation
+    }
+}
+
+impl ReloadWork {
+    const fn open_file_priority(&self) -> bool {
+        match self {
+            Self::WatchedFile {
+                open_file_priority, ..
+            } => *open_file_priority,
+            Self::WorkspaceRoots { .. } => false,
+        }
     }
 }
 
@@ -172,6 +185,13 @@ mod tests {
             vec![
                 ReloadWork::WatchedFile {
                     generation: 1,
+                    uri: "file:///workspace/scripts/open.vela".to_owned(),
+                    operation: ReloadOperation::Remove,
+                    target: ReloadTarget::Source,
+                    open_file_priority: true,
+                },
+                ReloadWork::WatchedFile {
+                    generation: 1,
                     uri: "file:///workspace/vela.toml".to_owned(),
                     operation: ReloadOperation::Upsert,
                     target: ReloadTarget::Config,
@@ -184,13 +204,45 @@ mod tests {
                     target: ReloadTarget::Schema,
                     open_file_priority: false,
                 },
-                ReloadWork::WatchedFile {
-                    generation: 1,
-                    uri: "file:///workspace/scripts/open.vela".to_owned(),
-                    operation: ReloadOperation::Remove,
-                    target: ReloadTarget::Source,
-                    open_file_priority: true,
-                },
+            ]
+        );
+    }
+
+    #[test]
+    fn reload_drain_keeps_stable_order_within_priority_groups() {
+        let mut scheduler = ReloadScheduler::default();
+        let open_documents = BTreeSet::from([
+            DocumentId::from("file:///workspace/scripts/a.vela".to_owned()),
+            DocumentId::from("file:///workspace/scripts/b.vela".to_owned()),
+        ]);
+
+        scheduler.schedule_watched_files(
+            vec![
+                file_event("file:///workspace/scripts/c.vela", FileChangeType::CHANGED),
+                file_event("file:///workspace/scripts/a.vela", FileChangeType::CHANGED),
+                file_event("file:///workspace/scripts/b.vela", FileChangeType::CHANGED),
+                file_event("file:///workspace/scripts/d.vela", FileChangeType::CHANGED),
+            ],
+            None,
+            &open_documents,
+        );
+
+        let uris = scheduler
+            .drain()
+            .into_iter()
+            .map(|work| match work {
+                ReloadWork::WatchedFile { uri, .. } => uri,
+                ReloadWork::WorkspaceRoots { .. } => unreachable!(),
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            uris,
+            vec![
+                "file:///workspace/scripts/a.vela",
+                "file:///workspace/scripts/b.vela",
+                "file:///workspace/scripts/c.vela",
+                "file:///workspace/scripts/d.vela",
             ]
         );
     }
