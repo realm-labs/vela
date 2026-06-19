@@ -125,6 +125,33 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_code_actions(&actions)))
     }
 
+    pub(crate) fn code_action_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CodeActionParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::code_action_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid codeAction params: {error}"),
+                ));
+            }
+        };
+        let actions = self.databases.code_actions(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::code_actions(&actions))
+                .expect("typed codeAction response should serialize"),
+        ))
+    }
+
     pub(crate) fn completion(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;

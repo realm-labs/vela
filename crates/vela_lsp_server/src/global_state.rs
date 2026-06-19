@@ -4,7 +4,7 @@ use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
+    CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
     DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams,
@@ -491,6 +491,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.semantic_tokens_range_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn code_action(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: CodeActionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.code_action_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1869,6 +1880,44 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_code_action_dispatch_projects_quickfix_edits() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn main(scores: Array<i64>) { return scores.frist() }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let typo_start = text.find("frist").expect("fixture should contain typo");
+
+        let response = typed_code_action_response(
+            &mut state,
+            23,
+            &document,
+            u32::try_from(typo_start).expect("position should fit in u32"),
+            u32::try_from(typo_start + "frist".len()).expect("position should fit in u32"),
+        );
+        let actions = response["result"]
+            .as_array()
+            .expect("codeAction response should be an array");
+        let action = actions
+            .iter()
+            .find(|action| action["title"] == "Replace with `first`")
+            .expect("quickfix should project");
+
+        assert_eq!(action["kind"], "quickfix");
+        assert_eq!(
+            action["edit"]["changes"][document.as_str()][0]["newText"],
+            "first"
+        );
+    }
+
+    #[test]
     fn typed_formatting_dispatch_projects_text_edits() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2549,6 +2598,38 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed semanticTokens/range should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_code_action_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        start_character: u32,
+        end_character: u32,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/codeAction".to_owned(),
+            params: serde_json::to_value(lsp_types::CodeActionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(0, start_character),
+                    lsp_types::Position::new(0, end_character),
+                ),
+                context: lsp_types::CodeActionContext::default(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("codeAction params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed codeAction should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

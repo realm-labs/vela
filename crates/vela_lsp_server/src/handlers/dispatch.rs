@@ -80,7 +80,7 @@ fn dispatch_request(
         .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)
         .on_worker_typed::<CallHierarchyIncomingCalls>(GlobalState::incoming_calls)
         .on_worker_typed::<CallHierarchyOutgoingCalls>(GlobalState::outgoing_calls)
-        .on_worker::<CodeActionRequest>()
+        .on_worker_typed::<CodeActionRequest>(GlobalState::code_action)
         .on_worker_typed::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_range)
         .on_worker::<InlayHintRequest>()
         .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)

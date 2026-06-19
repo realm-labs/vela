@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
+    CallHierarchyItem as ServiceCallHierarchyItem, CodeAction as ServiceCodeAction,
+    CodeActionKind as ServiceCodeActionKind, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
     DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
     DocumentTextEdit, FoldingRange as ServiceFoldingRange,
@@ -113,6 +114,14 @@ pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_type
 
 pub(crate) fn text_edits(edits: &[ServiceTextEdit]) -> Vec<lsp_types::TextEdit> {
     edits.iter().map(text_edit).collect()
+}
+
+pub(crate) fn code_actions(actions: &[ServiceCodeAction]) -> lsp_types::CodeActionResponse {
+    actions
+        .iter()
+        .map(code_action)
+        .map(lsp_types::CodeActionOrCommand::CodeAction)
+        .collect()
 }
 
 pub(crate) fn semantic_tokens(
@@ -339,6 +348,25 @@ fn selection_range(range: &ServiceSelectionRange) -> lsp_types::SelectionRange {
     lsp_types::SelectionRange {
         range: diagnostic_range(range.range()),
         parent: range.parent().map(selection_range).map(Box::new),
+    }
+}
+
+fn code_action(action: &ServiceCodeAction) -> lsp_types::CodeAction {
+    lsp_types::CodeAction {
+        title: action.title().to_owned(),
+        kind: Some(code_action_kind(action.kind())),
+        diagnostics: None,
+        edit: Some(workspace_edit(action.edit())),
+        command: None,
+        is_preferred: None,
+        disabled: None,
+        data: None,
+    }
+}
+
+const fn code_action_kind(kind: ServiceCodeActionKind) -> lsp_types::CodeActionKind {
+    match kind {
+        ServiceCodeActionKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
     }
 }
 
@@ -1076,6 +1104,47 @@ pub fn main(player: Player) -> i64 {
             )
         );
         assert!(edits[0].new_text.contains("pub fn main() {"));
+    }
+
+    #[test]
+    fn code_actions_project_typed_quickfix_edits() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn main(scores: Array<i64>) { return scores.frist() }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let typo_start = source.find("frist").expect("fixture should contain typo");
+        let actions = databases.code_actions(
+            &document,
+            DiagnosticRange::new(
+                Position::new(0, typo_start),
+                Position::new(0, typo_start + "frist".len()),
+            ),
+        );
+
+        let actions = code_actions(&actions);
+
+        let action = actions
+            .iter()
+            .find_map(|action| match action {
+                lsp_types::CodeActionOrCommand::CodeAction(action)
+                    if action.title == "Replace with `first`" =>
+                {
+                    Some(action)
+                }
+                _ => None,
+            })
+            .expect("quickfix should project");
+        assert_eq!(action.kind, Some(lsp_types::CodeActionKind::QUICKFIX));
+        let edit = action.edit.as_ref().expect("quickfix should include edit");
+        let changes = edit.changes.as_ref().expect("edit should include changes");
+        let uri = lsp_types::Url::parse(document.as_str()).expect("document URI should parse");
+        let edits = changes
+            .get(&uri)
+            .expect("document edit should be keyed by URI");
+        assert_eq!(edits[0].new_text, "first");
     }
 
     #[test]

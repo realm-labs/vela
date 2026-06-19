@@ -652,6 +652,8 @@ cargo test -p vela_lsp_server workspace_folders
     `textDocument/semanticTokens/full/delta`, and
     `textDocument/semanticTokens/range` now convert typed semantic token
     params through `lsp/from_proto.rs`.
+  - `textDocument/codeAction` now converts typed `CodeActionParams` through
+    `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -690,6 +692,8 @@ cargo test -p vela_lsp_server workspace_folders
     `lsp_types::SemanticTokensFullDeltaResult`, and
     `lsp_types::SemanticTokensRangeResult` values while preserving the
     existing Vela semantic token projection/cache behavior.
+  - Code actions now project through typed `lsp_types::CodeActionResponse`
+    values and reuse the existing typed workspace-edit projection.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -867,6 +871,17 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server typed_semantic_token_dispatch_projects_full_delta_and_range`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service semantic_tokens`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/codeAction` now uses typed `CodeActionParams` through
+    `GlobalState` and typed `lsp_types::CodeActionResponse` projection
+    through `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server code_action`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server typed_code_action_dispatch_projects_quickfix_edits`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service code_action`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses
