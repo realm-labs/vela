@@ -565,9 +565,12 @@ cargo test -p vela_lsp_server profile
   `textDocument/didClose`, and `textDocument/didSave` to `lsp-types`.
   - `textDocument/didOpen` now uses typed `lsp-types` params through
     `GlobalState`, updates the open-document mirror, and preserves existing
-    diagnostics publication. `didChange` and `didClose` remain on the
-    temporary legacy path until their overlay and close-restore behavior moves
-    behind typed helpers.
+    diagnostics publication.
+  - `textDocument/didChange` now uses typed `lsp-types` params through
+    `GlobalState`, including full-text and ranged edit application through the
+    existing line-index conversion boundary. `didClose` remains on the
+    temporary legacy path until its close-restore behavior moves behind typed
+    helpers.
   - `textDocument/didSave` now uses typed `lsp-types` params through
     `GlobalState`; it remains a no-response no-op because save events are not
     advertised or required for correctness.

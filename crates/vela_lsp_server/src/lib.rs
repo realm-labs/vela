@@ -35,7 +35,7 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use protocol::LspRange;
+use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
@@ -814,6 +814,37 @@ fn apply_document_changes(
         }
     }
     text.ok_or_else(|| "didChange requires at least one content change".to_owned())
+}
+
+pub(crate) fn apply_lsp_document_changes(
+    current_text: Option<&str>,
+    changes: Vec<lsp_types::TextDocumentContentChangeEvent>,
+) -> Result<String, String> {
+    apply_document_changes(
+        current_text,
+        changes
+            .into_iter()
+            .map(|change| TextDocumentContentChangeEvent {
+                range: change.range.map(typed_range_to_local),
+                range_length: change.range_length,
+                text: change.text,
+            })
+            .collect(),
+    )
+}
+
+fn typed_range_to_local(range: lsp_types::Range) -> LspRange {
+    LspRange {
+        start: typed_position_to_local(range.start),
+        end: typed_position_to_local(range.end),
+    }
+}
+
+fn typed_position_to_local(position: lsp_types::Position) -> LspPosition {
+    LspPosition {
+        line: position.line,
+        character: position.character,
+    }
 }
 
 fn apply_range_edit(text: &mut String, range: LspRange, replacement: &str) -> Result<(), String> {

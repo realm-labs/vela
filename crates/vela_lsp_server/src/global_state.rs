@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
+    DidChangeWorkspaceFoldersParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -13,6 +13,7 @@ use vela_language_service::{
 
 use crate::{
     ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
+    apply_lsp_document_changes,
     capabilities::initialize_result,
     config::EditorConfiguration,
     config_change::ConfigChange,
@@ -385,6 +386,46 @@ impl GlobalState {
             params.text_document.text,
             version,
         );
+        self.server.open_documents.insert(document_id.clone());
+        self.open_documents.insert(document_id.clone());
+
+        let result = self.server.publish_current_diagnostics(&uri, &document_id);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> JsonRpcResult {
+        if params.content_changes.is_empty() {
+            return JsonRpcResult::Notification(publish_diagnostics_notification(
+                params.text_document.uri.as_str(),
+                Vec::new(),
+                Some("didChange requires at least one content change".to_owned()),
+            ));
+        }
+
+        let uri = params.text_document.uri.to_string();
+        let document_id = DocumentId::from(uri.clone());
+        let version = source_version(params.text_document.version);
+        let current_text = self
+            .server
+            .workspace
+            .document_text(&document_id)
+            .map(std::borrow::ToOwned::to_owned);
+        let changes = params.content_changes;
+        let text = match apply_lsp_document_changes(current_text.as_deref(), changes) {
+            Ok(text) => text,
+            Err(error) => {
+                return JsonRpcResult::Notification(publish_diagnostics_notification(
+                    &uri,
+                    Vec::new(),
+                    Some(error),
+                ));
+            }
+        };
+
+        self.server
+            .workspace
+            .change_document(document_id.clone(), text, version);
         self.server.open_documents.insert(document_id.clone());
         self.open_documents.insert(document_id.clone());
 
@@ -914,6 +955,52 @@ mod tests {
             state.snapshot().generation(),
             state.snapshot().databases().generation()
         );
+    }
+
+    #[test]
+    fn typed_did_change_applies_incremental_edit_and_syncs_snapshot() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), "one\ntwo", SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let result = state.did_change(lsp_types::DidChangeTextDocumentParams {
+            text_document: lsp_types::VersionedTextDocumentIdentifier {
+                uri: lsp_types::Url::parse(document.as_str())
+                    .expect("document URI should parse as URL"),
+                version: 2,
+            },
+            content_changes: vec![lsp_types::TextDocumentContentChangeEvent {
+                range: Some(lsp_types::Range {
+                    start: lsp_types::Position {
+                        line: 1,
+                        character: 0,
+                    },
+                    end: lsp_types::Position {
+                        line: 1,
+                        character: 3,
+                    },
+                }),
+                range_length: None,
+                text: "three".to_owned(),
+            }],
+        });
+
+        assert!(matches!(
+            result,
+            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
+        ));
+        assert_eq!(
+            state.snapshot().workspace().document_text(&document),
+            Some("one\nthree")
+        );
+        assert!(state.open_documents.contains(&document));
+        assert_eq!(state.open_documents, state.server.open_documents);
     }
 
     #[test]
