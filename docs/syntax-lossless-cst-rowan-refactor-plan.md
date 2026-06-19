@@ -224,7 +224,7 @@ Downstream ownership should become:
 
 ### Phase 1: Add rowan syntax foundation
 
-Task: Add the syntax tree primitives without changing production parsing yet.
+- [ ] Task: Add the syntax tree primitives without changing production parsing yet.
 
 Expected behavior:
 
@@ -248,7 +248,7 @@ cargo test -p vela_syntax parser
 
 ### Phase 2: Replace lexer with lossless tokenization
 
-Task: Make lexical output preserve all source text.
+- [ ] Task: Make lexical output preserve all source text.
 
 Expected behavior:
 
@@ -274,7 +274,7 @@ cargo test -p vela_syntax parser
 
 ### Phase 3: Build rowan parser and typed AST wrappers
 
-Task: Replace the parser output with a lossless CST and rowan-backed AST views.
+- [ ] Task: Replace the parser output with a lossless CST and rowan-backed AST views.
 
 Expected behavior:
 
@@ -304,7 +304,7 @@ cargo test -p vela_syntax ast
 
 ### Phase 4: Migrate HIR and module graph lowering
 
-Task: Move HIR/module graph construction from owned AST to typed CST wrappers.
+- [ ] Task: Move HIR/module graph construction from owned AST to typed CST wrappers.
 
 Expected behavior:
 
@@ -329,7 +329,7 @@ cargo test -p vela_language_service module
 
 ### Phase 5: Migrate compiler and analysis callers
 
-Task: Update bytecode compilation and analysis to consume the new syntax/HIR
+- [ ] Task: Update bytecode compilation and analysis to consume the new syntax/HIR
 shape.
 
 Expected behavior:
@@ -355,7 +355,7 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
 
 ### Phase 6: Migrate language service features
 
-Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
+- [ ] Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
 
 Expected behavior:
 
@@ -382,7 +382,7 @@ cargo test -p vela_lsp_server completion semantic_tokens lifecycle
 
 ### Phase 7: Replace formatter with CST layout rules
 
-Task: Delete the token-gap formatter and build formatting from the CST/typed AST
+- [ ] Task: Delete the token-gap formatter and build formatting from the CST/typed AST
 layout model.
 
 Expected behavior:
@@ -413,7 +413,7 @@ cargo test -p vela_lsp_server formatting
 
 ### Phase 8: Remove obsolete APIs and close out docs
 
-Task: Finish the breaking cleanup and document the new syntax architecture.
+- [ ] Task: Finish the breaking cleanup and document the new syntax architecture.
 
 Expected behavior:
 
@@ -497,7 +497,7 @@ LSP/editor package behavior or needs a VSIX verification pass.
 
 ## 9. First Execution Tasks
 
-Task 1: Add rowan syntax primitives.
+- [ ] Task 1: Add rowan syntax primitives.
 
 Context: This establishes `SyntaxKind`, `VelaLanguage`, aliases, and `Parse<T>`
 without migrating callers.
@@ -508,7 +508,7 @@ Tests:
 cargo test -p vela_syntax syntax
 ```
 
-Task 2: Make lexer output lossless.
+- [ ] Task 2: Make lexer output lossless.
 
 Context: The parser cannot become lossless until trivia and unknown text survive
 lexing.
@@ -520,7 +520,7 @@ cargo test -p vela_syntax lexer
 cargo test -p vela_syntax parser
 ```
 
-Task 3: Build source-file CST parsing and typed AST wrappers.
+- [ ] Task 3: Build source-file CST parsing and typed AST wrappers.
 
 Context: Replace the parser output for the root source file first, then migrate
 item/expression/type/pattern wrappers by call-site pressure.
@@ -532,7 +532,7 @@ cargo test -p vela_syntax parser
 cargo test -p vela_syntax ast
 ```
 
-Task 4: Migrate parse summaries and HIR top-level discovery.
+- [ ] Task 4: Migrate parse summaries and HIR top-level discovery.
 
 Context: Downstream crates should move through stable typed AST accessors rather
 than direct CST walking at every call site.
@@ -544,7 +544,7 @@ cargo test -p vela_hir
 cargo test -p vela_language_service module
 ```
 
-Task 5: Replace formatter with CST layout.
+- [ ] Task 5: Replace formatter with CST layout.
 
 Context: The concrete UX bug that motivated this track is formatting drift for
 container type hints and multiline collections.
