@@ -116,7 +116,6 @@ where
             JsonRpcResult::Response(response) => self.write_message(&rpc::serialize_message(
                 &lsp_server::Message::Response(response),
             )),
-            JsonRpcResult::RawResponse(message) => self.write_message(&message),
             JsonRpcResult::Notification(message) => {
                 self.write_message(&rpc::serialize_message(&message))
             }
@@ -295,11 +294,6 @@ impl ResultSummary {
                 messages: 1,
                 bytes: rpc::serialize_message(&lsp_server::Message::Response(message.clone()))
                     .len(),
-            },
-            JsonRpcResult::RawResponse(message) => Self {
-                kind: "response",
-                messages: 1,
-                bytes: message.len(),
             },
             JsonRpcResult::Notification(message) => Self {
                 kind: "notification",

@@ -889,9 +889,7 @@ pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> Jso
     let notifications = match result {
         JsonRpcResult::Notification(notification) => vec![notification],
         JsonRpcResult::Notifications(notifications) => notifications,
-        other @ (JsonRpcResult::Response(_)
-        | JsonRpcResult::RawResponse(_)
-        | JsonRpcResult::None) => {
+        other @ (JsonRpcResult::Response(_) | JsonRpcResult::None) => {
             return other;
         }
     };

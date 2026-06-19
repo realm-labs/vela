@@ -1,14 +1,13 @@
 use lsp_server::{Message, RequestId, Response, ResponseError};
 use lsp_types::NumberOrString;
 use serde::Deserialize;
-use serde_json::{Value as JsonValue, json};
+use serde_json::Value as JsonValue;
 
 pub(crate) const JSONRPC_VERSION: &str = "2.0";
 
 #[derive(Debug, Clone)]
 pub enum JsonRpcResult {
     Response(Response),
-    RawResponse(String),
     Notification(Message),
     Notifications(Vec<Message>),
     None,
@@ -21,7 +20,6 @@ impl PartialEq for JsonRpcResult {
                 serialize_message(&Message::Response(left.clone()))
                     == serialize_message(&Message::Response(right.clone()))
             }
-            (Self::RawResponse(left), Self::RawResponse(right)) => left == right,
             (Self::Notification(left), Self::Notification(right)) => {
                 serialize_message(left) == serialize_message(right)
             }
@@ -45,7 +43,6 @@ impl JsonRpcResult {
     pub fn into_response(self) -> Option<String> {
         match self {
             Self::Response(response) => Some(serialize_message(&Message::Response(response))),
-            Self::RawResponse(response) => Some(response),
             Self::Notification(_) | Self::Notifications(_) | Self::None => None,
         }
     }
@@ -57,7 +54,7 @@ impl JsonRpcResult {
             Self::Notifications(mut notifications) if notifications.len() == 1 => notifications
                 .pop()
                 .map(|message| serialize_message(&message)),
-            Self::Response(_) | Self::RawResponse(_) | Self::Notifications(_) | Self::None => None,
+            Self::Response(_) | Self::Notifications(_) | Self::None => None,
         }
     }
 
@@ -68,17 +65,13 @@ impl JsonRpcResult {
             Self::Notifications(notifications) => {
                 Some(notifications.iter().map(serialize_message).collect())
             }
-            Self::Response(_) | Self::RawResponse(_) | Self::None => None,
+            Self::Response(_) | Self::None => None,
         }
     }
 
     pub(crate) fn into_messages(self) -> anyhow::Result<Vec<Message>> {
         match self {
             Self::Response(response) => Ok(vec![Message::Response(response)]),
-            Self::RawResponse(response) => {
-                let value = serde_json::from_str::<JsonValue>(&response)?;
-                Ok(vec![crate::transport::message_from_json_rpc(value)?])
-            }
             Self::Notification(message) => Ok(vec![message]),
             Self::Notifications(messages) => Ok(messages),
             Self::None => Ok(Vec::new()),
@@ -132,8 +125,8 @@ impl JsonRpcResult {
         code: ErrorCode,
         message: impl Into<String>,
     ) -> Self {
-        let message = message.into();
         if let Some(id) = id {
+            let message = message.into();
             return Self::Response(Response {
                 id,
                 result: None,
@@ -145,17 +138,7 @@ impl JsonRpcResult {
             });
         }
 
-        Self::RawResponse(
-            json!({
-                "jsonrpc": JSONRPC_VERSION,
-                "id": null,
-                "error": {
-                    "code": code.value(),
-                    "message": message
-                }
-            })
-            .to_string(),
-        )
+        Self::None
     }
 }
 

@@ -350,11 +350,6 @@ impl ResultSummary {
                 messages: 1,
                 bytes: rpc::serialize_message(&Message::Response(message.clone())).len(),
             },
-            JsonRpcResult::RawResponse(message) => Self {
-                kind: "response",
-                messages: 1,
-                bytes: message.len(),
-            },
             JsonRpcResult::Notification(message) => Self {
                 kind: "notification",
                 messages: 1,
