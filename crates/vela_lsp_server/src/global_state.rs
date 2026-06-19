@@ -257,6 +257,78 @@ impl GlobalStateSnapshot {
                 .expect("typed signatureHelp response should serialize"),
         ))
     }
+
+    pub(crate) fn semantic_tokens_full(
+        self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::semantic_tokens_params(&params);
+        let tokens = self.databases.semantic_tokens(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/full response should serialize"),
+        ))
+    }
+
+    pub(crate) fn semantic_tokens_full_delta(
+        self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensDeltaParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let input = from_proto::semantic_tokens_delta_params(&params);
+        let delta = self
+            .databases
+            .semantic_token_delta(&input.document_id, &input.previous_result_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens_delta(
+                &delta,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/full/delta response should serialize"),
+        ))
+    }
+
+    pub(crate) fn semantic_tokens_range(
+        self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensRangeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::semantic_tokens_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/range params: {error}"),
+                ));
+            }
+        };
+        let tokens = self
+            .databases
+            .semantic_tokens_in_range(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens_range(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/range response should serialize"),
+        ))
+    }
 }
 
 fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
@@ -557,39 +629,6 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.selection_range_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn semantic_tokens_full(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: SemanticTokensParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.semantic_tokens_full_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn semantic_tokens_full_delta(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: SemanticTokensDeltaParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.semantic_tokens_full_delta_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn semantic_tokens_range(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: SemanticTokensRangeParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.semantic_tokens_range_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }

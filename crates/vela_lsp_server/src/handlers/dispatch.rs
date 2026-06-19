@@ -66,9 +66,11 @@ fn dispatch_request(
         .on_latency_sensitive_snapshot_typed::<SignatureHelpRequest>(
             GlobalStateSnapshot::signature_help,
         )
-        .on_latency_sensitive_typed::<SemanticTokensFullRequest>(GlobalState::semantic_tokens_full)
-        .on_latency_sensitive_typed::<SemanticTokensFullDeltaRequest>(
-            GlobalState::semantic_tokens_full_delta,
+        .on_latency_sensitive_snapshot_typed::<SemanticTokensFullRequest>(
+            GlobalStateSnapshot::semantic_tokens_full,
+        )
+        .on_latency_sensitive_snapshot_typed::<SemanticTokensFullDeltaRequest>(
+            GlobalStateSnapshot::semantic_tokens_full_delta,
         )
         .on_worker_typed::<GotoDefinition>(GlobalState::definition)
         .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
@@ -85,7 +87,9 @@ fn dispatch_request(
         .on_worker_typed::<CallHierarchyIncomingCalls>(GlobalState::incoming_calls)
         .on_worker_typed::<CallHierarchyOutgoingCalls>(GlobalState::outgoing_calls)
         .on_worker_typed::<CodeActionRequest>(GlobalState::code_action)
-        .on_worker_typed::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_range)
+        .on_worker_snapshot_typed::<SemanticTokensRangeRequest>(
+            GlobalStateSnapshot::semantic_tokens_range,
+        )
         .on_worker_typed::<InlayHintRequest>(GlobalState::inlay_hint)
         .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)
         .on_fmt_thread_typed::<RangeFormatting>(GlobalState::range_formatting)
@@ -142,18 +146,6 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn on_latency_sensitive_typed<R>(
-        &mut self,
-        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-    ) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug,
-    {
-        self.dispatch_typed::<R>(f);
-        self
-    }
-
     pub(crate) fn on_latency_sensitive_snapshot_typed<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
@@ -175,6 +167,18 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_worker_snapshot_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_snapshot_typed::<R>(f);
         self
     }
 

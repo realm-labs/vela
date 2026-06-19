@@ -311,10 +311,10 @@ cancellation, document sync, configuration, workspace-folder, watched-file,
 and save notifications stay synchronous on the main loop through
 `&mut GlobalState`.
 Snapshot-backed read-only routing has started: completion, completion resolve,
-hover, and signature help now clone `GlobalStateSnapshot` at dispatch and
-query snapshot-owned language-service state instead of mutating the legacy
-server wrapper. Other read-only request families still need the same
-migration.
+hover, signature help, and semantic tokens now clone `GlobalStateSnapshot` at
+dispatch and query snapshot-owned language-service state instead of mutating
+the legacy server wrapper. Other read-only request families still need the
+same migration.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and
