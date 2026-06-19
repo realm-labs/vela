@@ -477,6 +477,10 @@ cargo test -p vela_lsp_server lifecycle
     and `GlobalStateSnapshot`; typed watcher registration and watched-file
     scheduling read the `GlobalState` owner while the legacy wrapper remains
     synchronized for remaining reload application paths.
+  - `GlobalState` now keeps synchronized workspace snapshot and
+    `LanguageServiceDatabases` mirrors for `GlobalStateSnapshot`; the legacy
+    wrapper remains the temporary mutation backend for document sync and
+    reload application until their typed migrations land.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

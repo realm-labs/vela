@@ -36,6 +36,8 @@ pub(crate) struct GlobalState {
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
     server: LspServer,
+    workspace_snapshot: WorkspaceSnapshot,
+    databases: LanguageServiceDatabases,
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
     editor_config: Option<EditorConfiguration>,
@@ -137,6 +139,8 @@ impl GlobalState {
     pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
         let watch_files_enabled = launch_configuration.watch_files_enabled();
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
+        let workspace_snapshot = server.workspace.snapshot();
+        let databases = server.databases.clone();
         let workspace_roots = server.workspace_roots.clone();
         let open_documents = server.open_documents.clone();
         let editor_config = server.editor_config.clone();
@@ -147,6 +151,8 @@ impl GlobalState {
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
             server,
+            workspace_snapshot,
+            databases,
             workspace_roots,
             open_documents,
             editor_config,
@@ -170,8 +176,8 @@ impl GlobalState {
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
         GlobalStateSnapshot {
             launch_configuration: self.launch_configuration.clone(),
-            workspace: self.server.workspace.snapshot(),
-            databases: self.server.databases.clone(),
+            workspace: self.workspace_snapshot.clone(),
+            databases: self.databases.clone(),
             workspace_roots: self.workspace_roots.clone(),
             open_documents: self.open_documents.clone(),
             editor_config: self.editor_config.clone(),
@@ -182,7 +188,7 @@ impl GlobalState {
             semantic_token_projection: self.semantic_token_projection.clone(),
             watched_files_registered: self.watched_files_registered,
             watch_files_enabled: self.watch_files_enabled,
-            generation: self.server.databases.generation(),
+            generation: self.databases.generation(),
             initialized: self.initialized,
             shutdown_requested: self.shutdown_requested,
         }
@@ -227,6 +233,7 @@ impl GlobalState {
     pub(crate) fn apply_config_change(&mut self, change: ConfigChange) {
         let watch_files_enabled = change.watch_files_enabled();
         self.server.apply_config_change(change);
+        self.sync_workspace_analysis_from_legacy_server();
         self.workspace_roots = self.server.workspace_roots.clone();
         self.editor_config = self.server.editor_config.clone();
         self.workspace_config = self.server.config.clone();
@@ -321,7 +328,9 @@ impl GlobalState {
         };
 
         self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
-        self.server.publish_open_diagnostics()
+        let result = self.server.publish_open_diagnostics();
+        self.sync_workspace_analysis_from_legacy_server();
+        result
     }
 
     pub(crate) fn did_change_workspace_folders(
@@ -342,6 +351,7 @@ impl GlobalState {
         for work in self.reload_scheduler.drain() {
             self.apply_reload_work(work);
         }
+        self.sync_workspace_analysis_from_legacy_server();
         self.publish_workspace_diagnostics()
     }
 
@@ -377,6 +387,7 @@ impl GlobalState {
         self.semantic_token_projection = self.server.semantic_token_projection.clone();
         self.watched_files_registered |= self.server.watched_files_registered;
         self.watch_files_enabled = !self.server.file_watching_disabled;
+        self.sync_workspace_analysis_from_legacy_server();
         self.workspace_roots = self.server.workspace_roots.clone();
         self.open_documents = self.server.open_documents.clone();
         self.editor_config = self.server.editor_config.clone();
@@ -388,6 +399,11 @@ impl GlobalState {
         self.server.client_supports_watched_file_registration =
             self.client_supports_watched_file_registration;
         self.server.semantic_token_projection = self.semantic_token_projection.clone();
+    }
+
+    fn sync_workspace_analysis_from_legacy_server(&mut self) {
+        self.workspace_snapshot = self.server.workspace.snapshot();
+        self.databases = self.server.databases.clone();
     }
 
     fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
@@ -415,6 +431,7 @@ impl GlobalState {
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
         let has_open_documents = !self.open_documents.is_empty();
         let result = self.server.publish_open_diagnostics();
+        self.sync_workspace_analysis_from_legacy_server();
         if has_open_documents && self.client_supports_work_done_progress {
             with_work_done_progress(result, "Vela workspace diagnostics")
         } else {
@@ -502,6 +519,7 @@ mod tests {
             "fn main() { 1 }",
             SourceVersion::new(3),
         );
+        state.sync_from_legacy_server();
         state.client_supports_work_done_progress = true;
         state.client_supports_watched_file_registration = true;
         state.editor_config = Some(
@@ -570,6 +588,38 @@ mod tests {
         assert!(!snapshot.watch_files_enabled());
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
+    }
+
+    #[test]
+    fn snapshot_uses_global_workspace_and_database_mirrors() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "fn main() { 1 }",
+            SourceVersion::new(1),
+        );
+        state
+            .server
+            .databases
+            .mark_schema_missing("/schema/one.json");
+        state.sync_from_legacy_server();
+
+        state.server.workspace.change_document(
+            document.clone(),
+            "fn main() { 2 }",
+            SourceVersion::new(2),
+        );
+        state.server.databases.clear_schema();
+
+        let snapshot = state.snapshot();
+
+        assert_eq!(
+            snapshot.workspace().document_text(&document),
+            Some("fn main() { 1 }")
+        );
+        assert!(!snapshot.databases().schema_db().diagnostics().is_empty());
     }
 
     #[test]
