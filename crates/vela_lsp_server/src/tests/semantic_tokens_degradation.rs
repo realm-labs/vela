@@ -1,10 +1,12 @@
-use super::{
-    LspServer, notification, notification_value, notification_values, request, response_value,
-};
 use std::{
     fs,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
+};
+
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, notification_values,
+    response_value,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -34,7 +36,8 @@ fn lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing() {
     .expect("vela.toml should be writable");
 
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -42,13 +45,14 @@ fn lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let notifications = notification_values(server.handle_json(&notification(
+    ));
+    let notifications = notification_values(handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    )));
+    ));
     assert!(
         notifications.iter().any(|notification| {
             notification["method"] == "textDocument/publishDiagnostics"
@@ -87,7 +91,8 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     return level
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -97,15 +102,16 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/semanticTokens/full",
         serde_json::json!({
             "textDocument": { "uri": uri }
         }),
-    )));
+    ));
     let tokens = decode_tokens(
         response["result"]["data"]
             .as_array()
