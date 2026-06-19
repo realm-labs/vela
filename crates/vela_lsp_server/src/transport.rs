@@ -5,7 +5,7 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
-use lsp_server::{Connection, Message, Notification, RequestId, Response, ResponseError};
+use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
 
 use crate::{JsonRpcResult, LaunchConfiguration};
 
@@ -162,12 +162,19 @@ fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
         let method = value
             .get("method")
             .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| anyhow::anyhow!("JSON-RPC notification is missing method"))?
+            .ok_or_else(|| anyhow::anyhow!("JSON-RPC message is missing method"))?
             .to_owned();
         let params = value
             .get("params")
             .cloned()
             .unwrap_or(serde_json::Value::Null);
+        if let Some(id) = value.get("id") {
+            return Ok(Message::Request(Request {
+                id: request_id_from_json(id)?,
+                method,
+                params,
+            }));
+        }
         return Ok(Message::Notification(Notification { method, params }));
     }
 

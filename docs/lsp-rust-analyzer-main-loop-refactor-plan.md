@@ -575,16 +575,31 @@ cargo test -p vela_lsp_server profile
   - `textDocument/didSave` now uses typed `lsp-types` params through
     `GlobalState`; it remains a no-response no-op because save events are not
     advertised or required for correctness.
-- [ ] Migrate `workspace/didChangeConfiguration` to typed settings extraction
+- [x] Migrate `workspace/didChangeConfiguration` to typed settings extraction
   through the `ConfigChange` pipeline while preserving nested `vela` settings
   support.
-- [ ] Migrate `workspace/didChangeWorkspaceFolders`.
-- [ ] Migrate `workspace/didChangeWatchedFiles` with existing final-state
+  - `workspace/didChangeConfiguration` uses typed
+    `DidChangeConfigurationParams` through `GlobalState` and the
+    `ConfigChange` pipeline.
+- [x] Migrate `workspace/didChangeWorkspaceFolders`.
+  - `workspace/didChangeWorkspaceFolders` uses typed
+    `DidChangeWorkspaceFoldersParams` through `GlobalState` and the reload
+    scheduler.
+- [x] Migrate `workspace/didChangeWatchedFiles` with existing final-state
   coalescing semantics and reload scheduler ingestion.
-- [ ] Move watcher registration to typed `RegisterCapability` and
+  - `workspace/didChangeWatchedFiles` uses typed
+    `DidChangeWatchedFilesParams` through `GlobalState` and preserves reload
+    scheduler ingestion.
+- [x] Move watcher registration to typed `RegisterCapability` and
   `DidChangeWatchedFilesRegistrationOptions`.
-- [ ] Preserve diagnostics publication for open documents, config documents,
+  - Dynamic watched-file registration is built from typed
+    `RegisterCapability`, `RegistrationParams`,
+    `DidChangeWatchedFilesRegistrationOptions`, and `FileSystemWatcher`
+    values before JSON-RPC serialization.
+- [x] Preserve diagnostics publication for open documents, config documents,
   and schema documents.
+  - Existing open-document, config, schema, and close-overlay diagnostic
+    publication fixtures remain the Phase 3 compatibility guard.
 
 Validation:
 

@@ -1,13 +1,14 @@
 use std::collections::BTreeSet;
 
-use serde_json::{Value as JsonValue, json};
+use lsp_types::{
+    DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern, OneOf, Registration,
+    RegistrationParams, RelativePattern, Url, WatchKind,
+    request::{RegisterCapability, Request as LspRequest},
+};
 use vela_language_service::WorkspaceConfig;
 
-use crate::{
-    CONFIG_FILE, JSONRPC_VERSION, RequestId, SOURCE_EXTENSION, document_path_uri, normalized_path,
-};
+use crate::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_path, transport};
 
-const FILE_WATCHER_KIND_ALL: u8 = 7;
 const WATCHED_FILES_REGISTRATION_ID: &str = "vela/watched-files";
 
 pub(crate) fn registration_request(
@@ -19,31 +20,32 @@ pub(crate) fn registration_request(
         return None;
     }
 
+    let register_options = DidChangeWatchedFilesRegistrationOptions { watchers };
+    let params = RegistrationParams {
+        registrations: vec![Registration {
+            id: WATCHED_FILES_REGISTRATION_ID.to_owned(),
+            method: "workspace/didChangeWatchedFiles".to_owned(),
+            register_options: Some(
+                serde_json::to_value(register_options)
+                    .expect("watched-files registration options should serialize"),
+            ),
+        }],
+    };
+    let request = lsp_server::Request {
+        id: lsp_server::RequestId::from(WATCHED_FILES_REGISTRATION_ID.to_owned()),
+        method: RegisterCapability::METHOD.to_owned(),
+        params: serde_json::to_value(params).expect("registration params should serialize"),
+    };
     Some(
-        json!({
-            "jsonrpc": JSONRPC_VERSION,
-            "id": RequestId::String(WATCHED_FILES_REGISTRATION_ID.to_owned()),
-            "method": "client/registerCapability",
-            "params": {
-                "registrations": [
-                    {
-                        "id": WATCHED_FILES_REGISTRATION_ID,
-                        "method": "workspace/didChangeWatchedFiles",
-                        "registerOptions": {
-                            "watchers": watchers
-                        }
-                    }
-                ]
-            }
-        })
-        .to_string(),
+        transport::serialize_json_rpc_message(&lsp_server::Message::Request(request))
+            .expect("registration request should serialize"),
     )
 }
 
 fn watched_file_watchers(
     config: Option<&WorkspaceConfig>,
     workspace_roots: &BTreeSet<String>,
-) -> Vec<JsonValue> {
+) -> Vec<FileSystemWatcher> {
     let mut watchers = Vec::new();
 
     for root in source_roots(config, workspace_roots) {
@@ -93,19 +95,23 @@ fn config_roots_from_workspace(config: &WorkspaceConfig) -> BTreeSet<String> {
         .collect()
 }
 
-fn relative_file_watcher(base_uri: String, pattern: impl Into<String>) -> JsonValue {
-    json!({
-        "globPattern": {
-            "baseUri": base_uri,
-            "pattern": pattern.into()
-        },
-        "kind": FILE_WATCHER_KIND_ALL
-    })
+fn relative_file_watcher(base_uri: String, pattern: impl Into<String>) -> FileSystemWatcher {
+    FileSystemWatcher {
+        glob_pattern: GlobPattern::Relative(RelativePattern {
+            base_uri: OneOf::Right(Url::parse(&base_uri).expect("base URI should parse")),
+            pattern: pattern.into(),
+        }),
+        kind: Some(watch_all_kinds()),
+    }
 }
 
-fn exact_file_watcher(path: &str) -> JsonValue {
-    json!({
-        "globPattern": normalized_path(path),
-        "kind": FILE_WATCHER_KIND_ALL
-    })
+fn exact_file_watcher(path: &str) -> FileSystemWatcher {
+    FileSystemWatcher {
+        glob_pattern: GlobPattern::String(normalized_path(path)),
+        kind: Some(watch_all_kinds()),
+    }
+}
+
+fn watch_all_kinds() -> WatchKind {
+    WatchKind::Create | WatchKind::Change | WatchKind::Delete
 }
