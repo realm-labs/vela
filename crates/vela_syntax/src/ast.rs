@@ -31,6 +31,11 @@ impl SyntaxSourceFile {
     pub fn items(&self) -> AstChildren<SyntaxItem> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn functions(&self) -> AstChildren<SyntaxFunctionItem> {
+        AstChildren::new(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxSourceFile {
@@ -106,6 +111,105 @@ impl AstNode for SyntaxItem {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxFunctionItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxFunctionItem {
+    #[must_use]
+    pub fn param_list(&self) -> Option<SyntaxParamList> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body(&self) -> Option<SyntaxBlock> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxFunctionItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::FunctionItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxParamList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxParamList {
+    #[must_use]
+    pub fn params(&self) -> AstChildren<SyntaxParam> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxParamList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ParamList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxParam {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxParam {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::Param
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxBlock {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxBlock {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::Block
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
+    parent.children().find_map(N::cast)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast::{AstNode, SyntaxSourceFile};
@@ -158,6 +262,45 @@ mod tests {
                 .map(|item| item.syntax().kind())
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::FunctionItem, SyntaxKind::StructItem]
+        );
+    }
+
+    #[test]
+    fn ast_function_item_exposes_signature_and_body_children() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.start_node(SyntaxKind::FunctionItem);
+        builder.token(SyntaxKind::FnKw, "fn");
+        builder.start_node(SyntaxKind::ParamList);
+        builder.token(SyntaxKind::LParen, "(");
+        builder.start_node(SyntaxKind::Param);
+        builder.token(SyntaxKind::Ident, "ctx");
+        builder.finish_node();
+        builder.token(SyntaxKind::RParen, ")");
+        builder.finish_node();
+        builder.start_node(SyntaxKind::Block);
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.finish_node();
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+        let function = source.functions().next().expect("function item");
+
+        assert_eq!(
+            function
+                .param_list()
+                .expect("param list")
+                .params()
+                .map(|param| param.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["ctx"]
+        );
+        assert_eq!(
+            function.body().expect("body").syntax().text().to_string(),
+            "{}"
         );
     }
 }

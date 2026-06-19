@@ -42,11 +42,150 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     }
 
     fn item(&mut self, item: ItemBoundary) {
-        self.builder.start_node(item.kind);
-        while self.pos < item.end {
+        if item.kind == SyntaxKind::FunctionItem {
+            self.function_item(item.end);
+            return;
+        }
+
+        self.raw_item(item.kind, item.end);
+    }
+
+    fn raw_item(&mut self, kind: SyntaxKind, end: usize) {
+        self.builder.start_node(kind);
+        while self.pos < end {
             self.emit_current_token();
         }
         self.builder.finish_node();
+    }
+
+    fn function_item(&mut self, end: usize) {
+        self.builder.start_node(SyntaxKind::FunctionItem);
+        let param_list = self.find_first_kind_before(SyntaxKind::LParen, self.pos, end);
+        let param_list_end = param_list
+            .and_then(|start| {
+                self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+            })
+            .unwrap_or(self.pos);
+        let body = self.find_first_kind_before(SyntaxKind::LBrace, param_list_end, end);
+
+        if let Some(param_list_start) = param_list {
+            self.emit_until(param_list_start);
+            self.param_list(param_list_start);
+        }
+
+        if let Some(body_start) = body {
+            self.emit_until(body_start);
+            let body_end = self.find_matching_brace_end(body_start).min(end);
+            self.node_range(SyntaxKind::Block, body_start, body_end);
+        }
+
+        while self.pos < end {
+            self.emit_current_token();
+        }
+        self.builder.finish_node();
+    }
+
+    fn param_list(&mut self, start: usize) {
+        let Some(end) =
+            self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+        else {
+            self.node_range(SyntaxKind::ParamList, start, self.pos.saturating_add(1));
+            return;
+        };
+
+        self.builder.start_node(SyntaxKind::ParamList);
+        self.emit_current_token();
+        let close = end.saturating_sub(1);
+        let mut param_start = self.pos;
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(param_start, self.pos)
+            {
+                self.param_range(param_start, self.pos);
+                self.emit_current_token();
+                param_start = self.pos;
+            } else {
+                self.pos += 1;
+            }
+        }
+        self.param_range(param_start, close);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn param_range(&mut self, start: usize, end: usize) {
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+        self.node_range(SyntaxKind::Param, start, end);
+    }
+
+    fn find_first_kind_before(&self, kind: SyntaxKind, start: usize, end: usize) -> Option<usize> {
+        (start..end).find(|cursor| self.kind_at(*cursor) == Some(kind))
+    }
+
+    fn find_matching_delimiter_end(
+        &self,
+        open: usize,
+        open_kind: SyntaxKind,
+        close_kind: SyntaxKind,
+    ) -> Option<usize> {
+        if self.kind_at(open) != Some(open_kind) {
+            return None;
+        }
+
+        let mut cursor = open;
+        let mut depth = 0_u32;
+        while let Some(kind) = self.kind_at(cursor) {
+            if kind == open_kind {
+                depth = depth.saturating_add(1);
+            } else if kind == close_kind {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(cursor + 1);
+                }
+            } else if kind == SyntaxKind::Eof {
+                return None;
+            }
+            cursor += 1;
+        }
+        None
+    }
+
+    fn emit_until(&mut self, end: usize) {
+        while self.pos < end {
+            self.emit_current_token();
+        }
+    }
+
+    fn emit_tokens(&mut self, start: usize, end: usize) {
+        for token in &self.tokens[start..end] {
+            if token.kind != SyntaxKind::Eof {
+                self.builder.token(token.kind, &token.text);
+            }
+        }
+        self.pos = end;
+    }
+
+    fn node_range(&mut self, kind: SyntaxKind, start: usize, end: usize) {
+        self.builder.start_node(kind);
+        self.emit_tokens(start, end);
+        self.builder.finish_node();
+    }
+
+    fn has_significant_tokens(&self, start: usize, end: usize) -> bool {
+        self.tokens[start..end]
+            .iter()
+            .any(|token| !token.kind.is_trivia() && token.kind != SyntaxKind::Eof)
+    }
+
+    fn range_is_at_delimiter_root(&self, start: usize, end: usize) -> bool {
+        let mut depth = DelimiterDepth::default();
+        for token in &self.tokens[start..end] {
+            depth.bump(token.kind);
+        }
+        depth.is_root()
     }
 
     fn error_run(&mut self) {

@@ -134,9 +134,10 @@ diagnostics for later CST construction. Phase 3 has started with a rowan
 `parse_source` path that builds a lossless source-file root from the lossless
 lexer stream, preserves lexical diagnostics, and exposes the first typed
 source-file syntax wrapper. The rowan parse path now wraps top-level
-declarations in item CST nodes and exposes source-file item iteration; deeper
-item, expression, type, pattern, and statement grammar nodes plus downstream
-migration remain open.
+declarations in item CST nodes, exposes source-file item iteration, and gives
+function declarations typed parameter-list, parameter, and body block CST
+wrappers; deeper expression, type, pattern, statement, and non-function item
+grammar nodes plus downstream migration remain open.
 
 ## Milestone Snapshot
 

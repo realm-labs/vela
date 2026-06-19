@@ -129,6 +129,29 @@ mod tests {
     }
 
     #[test]
+    fn parser_parse_source_structures_function_signature_and_body_nodes() {
+        let source = "fn award(ctx: Context, amount = bonus(1, 2)) -> Result { return amount; }\n";
+        let parse = parse_source_with_id(SourceId::new(12), source);
+        let tree = parse.tree();
+        let function = tree.functions().next().expect("function item");
+        let params = function.param_list().expect("param list");
+        let body = function.body().expect("body");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(function.syntax().text().to_string(), source.trim_end());
+        assert_eq!(params.syntax().kind(), SyntaxKind::ParamList);
+        assert_eq!(
+            params
+                .params()
+                .map(|param| param.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["ctx: Context", " amount = bonus(1, 2)"]
+        );
+        assert_eq!(body.syntax().kind(), SyntaxKind::Block);
+        assert_eq!(body.syntax().text().to_string(), "{ return amount; }");
+    }
+
+    #[test]
     fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         let source = "fn main() { @ \"unterminated";
         let parse = parse_source_with_id(SourceId::new(9), source);
