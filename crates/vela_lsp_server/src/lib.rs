@@ -15,6 +15,7 @@ mod handlers;
 mod hover;
 mod inlay;
 mod lifecycle;
+mod line_index;
 pub mod main_loop;
 mod protocol;
 mod queries;
@@ -32,7 +33,7 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use protocol::{LspPosition, LspRange};
+use protocol::LspRange;
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
@@ -818,69 +819,14 @@ fn apply_document_changes(
 }
 
 fn apply_range_edit(text: &mut String, range: LspRange, replacement: &str) -> Result<(), String> {
-    let start = lsp_position_offset(text, range.start)?;
-    let end = lsp_position_offset(text, range.end)?;
+    let line_index = line_index::LineIndex::new(text);
+    let start = line_index.offset(range.start)?;
+    let end = line_index.offset(range.end)?;
     if start > end {
         return Err("didChange range start must not be after the end".to_owned());
     }
     text.replace_range(start..end, replacement);
     Ok(())
-}
-
-fn lsp_position_offset(text: &str, position: LspPosition) -> Result<usize, String> {
-    let line = usize::try_from(position.line)
-        .map_err(|_| "didChange range line is too large".to_owned())?;
-    let character = usize::try_from(position.character)
-        .map_err(|_| "didChange range character is too large".to_owned())?;
-    let (line_start, line_end) = line_bounds(text, line)?;
-    utf16_character_offset(&text[line_start..line_end], character).map(|offset| line_start + offset)
-}
-
-fn line_bounds(text: &str, target_line: usize) -> Result<(usize, usize), String> {
-    let mut line = 0usize;
-    let mut line_start = 0usize;
-    for (offset, byte) in text.bytes().enumerate() {
-        if byte != b'\n' {
-            continue;
-        }
-        if line == target_line {
-            return Ok((line_start, trim_carriage_return(text, line_start, offset)));
-        }
-        line = line.saturating_add(1);
-        line_start = offset + 1;
-    }
-    if line == target_line {
-        Ok((line_start, text.len()))
-    } else {
-        Err("didChange range line is outside the document".to_owned())
-    }
-}
-
-fn trim_carriage_return(text: &str, line_start: usize, line_end: usize) -> usize {
-    if line_end > line_start && text.as_bytes()[line_end - 1] == b'\r' {
-        line_end - 1
-    } else {
-        line_end
-    }
-}
-
-fn utf16_character_offset(line_text: &str, character: usize) -> Result<usize, String> {
-    let mut utf16_units = 0usize;
-    for (offset, ch) in line_text.char_indices() {
-        if utf16_units == character {
-            return Ok(offset);
-        }
-        let next_units = utf16_units + ch.len_utf16();
-        if character < next_units {
-            return Err("didChange range splits a UTF-16 character".to_owned());
-        }
-        utf16_units = next_units;
-    }
-    if utf16_units == character {
-        Ok(line_text.len())
-    } else {
-        Err("didChange range character is outside the line".to_owned())
-    }
 }
 
 fn lsp_diagnostics(diagnostics: &DocumentDiagnostics) -> Vec<JsonValue> {

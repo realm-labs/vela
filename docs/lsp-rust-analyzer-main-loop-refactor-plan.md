@@ -462,7 +462,7 @@ cargo test -p vela_lsp_server lifecycle
   configuration, schema paths, watcher state, and effective config.
 - [x] Apply configuration changes through `GlobalState`, not directly inside
   feature request handlers.
-- [ ] Introduce `line_index.rs` as the only LSP `Position`/`Range` conversion
+- [~] Introduce `line_index.rs` as the only LSP `Position`/`Range` conversion
   boundary, preserving UTF-16 client behavior and recording negotiated position
   encoding when available.
 - [ ] Introduce `reload.rs` or an equivalent reload scheduler for watched-file,
