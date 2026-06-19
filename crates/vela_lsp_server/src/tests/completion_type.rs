@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_completion_uses_short_type_labels_with_owner_details() {
@@ -39,7 +39,8 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -55,15 +56,17 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
                 }
             }
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -73,9 +76,10 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
                 "text": "pub fn main() { Re }"
             }
         }),
-    )));
+    ));
     let reward_uri = file_uri(&root.join("scripts").join("game").join("reward.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -85,16 +89,17 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
                 "text": "pub struct Reward { amount: i64 }"
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": main_uri },
             "position": { "line": 0, "character": "pub fn main() { Re".len() }
         }),
-    )));
+    ));
 
     assert_type_completion(
         &response,
