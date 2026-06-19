@@ -627,6 +627,8 @@ cargo test -p vela_lsp_server workspace_folders
     and its protocol aliases through `lsp/from_proto.rs`.
   - `textDocument/references` now converts typed `ReferenceParams` through
     `lsp/from_proto.rs`.
+  - `textDocument/prepareRename` now converts typed
+    `TextDocumentPositionParams` through `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -637,6 +639,8 @@ cargo test -p vela_lsp_server workspace_folders
   - Navigation definitions now project through typed `lsp_types::Location`
     values for definition, declaration, and type-definition responses.
   - References now project through typed `lsp_types::Location` arrays.
+  - Prepare rename now projects through typed
+    `lsp_types::PrepareRenameResponse` values.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -694,6 +698,16 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service references`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/prepareRename` now uses typed
+    `TextDocumentPositionParams` through `GlobalState` and typed
+    `lsp_types::PrepareRenameResponse` projection through `lsp/to_proto.rs`.
+    Validated with `cargo test -p vela_lsp_server prepare_rename`,
+    `cargo test -p vela_lsp_server rename`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_language_service rename`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

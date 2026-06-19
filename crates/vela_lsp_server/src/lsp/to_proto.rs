@@ -2,7 +2,7 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
     CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, Hover, HoverKind,
-    LineIndex, Reference, SignatureHelp, TextRange,
+    LineIndex, PrepareRename, Reference, SignatureHelp, TextRange,
 };
 
 pub(crate) fn completion_response(
@@ -70,6 +70,13 @@ pub(crate) fn reference_locations(references: &[Reference]) -> Vec<lsp_types::Lo
         .iter()
         .map(|reference| location(reference.document_id(), reference.range()))
         .collect()
+}
+
+pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
+    lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
+        range: diagnostic_range(rename.range()),
+        placeholder: rename.placeholder().to_owned(),
+    }
 }
 
 fn location(
@@ -509,6 +516,45 @@ pub fn main(amount: i64) -> i64 {
                 lsp_types::Position::new(2, 18),
                 lsp_types::Position::new(2, 24)
             )
+        );
+    }
+
+    #[test]
+    fn prepare_rename_projects_typed_response() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+pub fn main(amount: i64) -> i64 {
+    return amount
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("return line should exist")
+                .find("amount")
+                .expect("line should contain amount"),
+        );
+        let prepare = databases
+            .prepare_rename(&document, position)
+            .expect("local binding should prepare rename");
+
+        let response = prepare_rename(&prepare);
+
+        assert_eq!(
+            response,
+            lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(1, 11),
+                    lsp_types::Position::new(1, 17)
+                ),
+                placeholder: "amount".to_owned(),
+            }
         );
     }
 }

@@ -10,7 +10,7 @@ use lsp_types::{
     request::{
         CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
         GotoDeclaration, GotoDefinition, GotoTypeDefinition, HoverRequest, InlayHintRequest,
-        References, Rename, ResolveCompletionItem, SelectionRangeRequest,
+        PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
         SemanticTokensFullDeltaRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
         SignatureHelpRequest,
     },
@@ -67,6 +67,7 @@ fn dispatch_request(
         .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
         .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
         .on_worker_typed::<References>(GlobalState::references)
+        .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker::<Rename>()
         .on_worker::<CodeActionRequest>()
         .on_worker::<FoldingRangeRequest>()

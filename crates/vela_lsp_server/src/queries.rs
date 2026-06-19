@@ -622,6 +622,35 @@ impl LspServer {
         ))
     }
 
+    pub(crate) fn prepare_rename_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::TextDocumentPositionParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::prepare_rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareRename position: {error}"),
+                ));
+            }
+        };
+        let prepare = self
+            .databases
+            .prepare_rename(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
+                .expect("typed prepareRename response should serialize"),
+        ))
+    }
+
     pub(crate) fn rename(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;
