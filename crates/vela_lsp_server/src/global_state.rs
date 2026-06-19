@@ -541,14 +541,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: SelectionRangeParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::selection_range_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid selectionRange params: {error}"),
                 );
@@ -558,7 +558,7 @@ impl GlobalStateSnapshot {
             .databases
             .selection_ranges(&input.document_id, &input.positions);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::selection_ranges(&ranges))
                 .expect("typed selectionRange response should serialize"),

@@ -110,7 +110,9 @@ fn dispatch_request(
             GlobalStateSnapshot::folding_range,
             RetryTask::folding_range,
         )
-        .on_worker_snapshot_typed::<SelectionRangeRequest>(GlobalStateSnapshot::selection_range)
+        .on_worker_snapshot_messages_typed::<SelectionRangeRequest>(
+            GlobalStateSnapshot::selection_range,
+        )
         .on_worker_snapshot_typed::<PrepareRenameRequest>(GlobalStateSnapshot::prepare_rename)
         .on_worker_snapshot_typed::<Rename>(GlobalStateSnapshot::rename)
         .on_worker_snapshot_typed::<CallHierarchyPrepare>(
