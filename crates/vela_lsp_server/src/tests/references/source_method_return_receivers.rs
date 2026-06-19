@@ -1,4 +1,6 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_highlight, assert_reference, line};
 
@@ -6,7 +8,8 @@ use super::{assert_highlight, assert_reference, line};
 fn lsp_references_find_source_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_method_fixture();
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -17,7 +20,7 @@ fn lsp_references_find_source_method_calls_on_source_method_return_receivers() {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -47,7 +50,8 @@ fn lsp_references_find_source_method_calls_on_source_method_return_receivers() {
 fn lsp_references_find_source_trait_default_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_trait_fixture();
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -58,7 +62,7 @@ fn lsp_references_find_source_trait_default_method_calls_on_source_method_return
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -94,7 +98,8 @@ fn lsp_references_find_source_trait_default_method_calls_on_source_method_return
 fn lsp_document_highlight_marks_source_method_calls_on_source_method_return_receivers() {
     let (mut server, uri, text) = open_source_method_return_method_fixture();
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -104,7 +109,7 @@ fn lsp_document_highlight_marks_source_method_calls_on_source_method_return_rece
                 "character": line(text, 17).find("grant").expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -135,7 +140,8 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_meth
  {
     let (mut server, uri, text) = open_source_method_return_trait_fixture();
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -145,7 +151,7 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_meth
                 "character": line(text, 19).find("preview").expect("trait method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -231,7 +237,8 @@ pub fn main(player: Player) -> i64 {
 
 fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -239,9 +246,10 @@ fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -251,6 +259,6 @@ fn open_fixture(text: &'static str) -> (LspServer, &'static str, &'static str) {
                 "text": text
             }
         }),
-    )));
+    ));
     (server, uri, text)
 }
