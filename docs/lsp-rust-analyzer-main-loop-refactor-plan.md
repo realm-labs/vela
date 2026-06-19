@@ -1199,7 +1199,14 @@ cargo test -p vela_lsp_server completion
     `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
     `cargo test -p vela_lsp_server formatting`, and representative worker
     routing checks.
-- [ ] Cancel unknown or completed IDs as no-response no-ops.
+- [x] Cancel unknown or completed IDs as no-response no-ops.
+  - Typed cancellation now marks only currently incoming requests or cancels
+    stored in-flight handles; unknown and completed IDs do not populate the
+    queued-cancellation set. The legacy wrapper also no longer stores stale
+    cancellation IDs that can poison a later request. Validated with
+    `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
+    `cargo test -p vela_lsp_server lsp_cancellation`, and
+    `cargo test -p vela_lsp_server typed_dispatcher_ignores_unknown_cancel_before_later_request`.
 - [ ] Carry `GenerationToken` through background tasks.
 - [ ] Discard stale results when the current generation differs.
 - [ ] Retry retryable stale requests once using a fresh snapshot.

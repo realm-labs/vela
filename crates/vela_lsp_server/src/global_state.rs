@@ -1290,7 +1290,7 @@ impl RequestQueue {
     fn cancel(&mut self, id: RequestId) {
         if let Some(handle) = self.in_flight.get(&id) {
             handle.cancel();
-        } else {
+        } else if self.incoming.contains(&id) {
             self.cancelled.insert(id);
         }
     }
@@ -2726,6 +2726,7 @@ pub fn main(amount: i64) -> i64 {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         let request_id = RequestId::Number(7);
+        state.request_queue.start(request_id.clone());
 
         let result = state.cancel_request(lsp_types::CancelParams {
             id: lsp_types::NumberOrString::Number(7),
@@ -2734,7 +2735,6 @@ pub fn main(amount: i64) -> i64 {
         assert_eq!(result, JsonRpcResult::None);
         assert!(state.take_cancelled_request(&request_id));
         assert!(!state.take_cancelled_request(&request_id));
-        assert!(state.server.cancelled_requests.is_empty());
     }
 
     #[test]
@@ -2774,6 +2774,21 @@ pub fn main(amount: i64) -> i64 {
         assert!(token.is_cancelled());
         assert!(queue.finish_in_flight(&id).is_some());
         assert!(!queue.in_flight.contains_key(&id));
+    }
+
+    #[test]
+    fn request_queue_ignores_unknown_and_completed_cancels() {
+        let mut queue = RequestQueue::default();
+        let unknown = RequestId::Number(404);
+        let completed = RequestId::String("done".to_owned());
+
+        queue.cancel(unknown.clone());
+        assert!(!queue.take_cancelled(&unknown));
+
+        queue.start(completed.clone());
+        queue.finish(&completed);
+        queue.cancel(completed.clone());
+        assert!(!queue.take_cancelled(&completed));
     }
 
     fn typed_navigation_response(

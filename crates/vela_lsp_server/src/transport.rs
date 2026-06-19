@@ -594,7 +594,7 @@ mod tests {
     }
 
     #[test]
-    fn typed_dispatcher_honors_cancelled_request_ids_before_dispatch() {
+    fn typed_dispatcher_ignores_unknown_cancel_before_later_request() {
         let (client_sender, server_receiver) = unbounded::<Message>();
         let (server_sender, client_receiver) = unbounded::<Message>();
         let connection = Connection {
@@ -630,7 +630,7 @@ mod tests {
                     "position": { "line": 0, "character": 0 }
                 }
             })))
-            .expect("cancelled request should be sent");
+            .expect("later request should be sent");
         client_sender
             .send(message(serde_json::json!({
                 "jsonrpc": "2.0",
@@ -656,12 +656,11 @@ mod tests {
         let error = responses[1]
             .error
             .as_ref()
-            .expect("cancelled request should produce an error");
-        assert_eq!(error.code, -32800);
-        assert!(
-            error.message.contains("cancelled"),
-            "unexpected message: {}",
-            error.message
+            .expect("unsupported request should produce an error");
+        assert_eq!(error.code, -32601);
+        assert_eq!(
+            error.message,
+            "method `textDocument/implementation` is not implemented"
         );
     }
 

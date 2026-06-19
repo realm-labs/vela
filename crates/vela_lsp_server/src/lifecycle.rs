@@ -107,7 +107,7 @@ impl LspServer {
         let Ok(params) = serde_json::from_value::<CancelRequestParams>(params) else {
             return JsonRpcResult::None;
         };
-        self.cancelled_requests.insert(params.id);
+        let _ = params.id;
         JsonRpcResult::None
     }
 

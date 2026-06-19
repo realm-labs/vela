@@ -685,7 +685,7 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
 }
 
 #[test]
-fn lsp_cancellation_discards_stale_request() {
+fn lsp_cancellation_before_request_does_not_poison_request_id() {
     let mut server = LspServer::new();
     let cancel = server.handle_json(&notification(
         "$/cancelRequest",
@@ -702,14 +702,9 @@ fn lsp_cancellation_discards_stale_request() {
         }),
     )));
 
-    assert!(!server.is_initialized());
+    assert!(server.is_initialized());
     assert_eq!(response["id"], 7);
-    assert_eq!(response["error"]["code"], -32800);
-    assert!(
-        response["error"]["message"]
-            .as_str()
-            .is_some_and(|message| message.contains("cancelled"))
-    );
+    assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
 }
 
 #[test]

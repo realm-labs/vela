@@ -330,6 +330,9 @@ Phase 6 cancellation plumbing has started: in-flight background task
 cancellation handles are stored by typed request ID, formatting task results
 carry their request ID, and completed task responses retire their in-flight
 handle.
+Cancellation notifications for unknown or already completed request IDs are
+now no-response no-ops instead of stale queued cancellations that affect a
+future request using the same ID.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,

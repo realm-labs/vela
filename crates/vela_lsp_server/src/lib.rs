@@ -63,7 +63,6 @@ pub struct LspServer {
     schema_documents: BTreeSet<DocumentId>,
     workspace_roots: BTreeSet<String>,
     editor_config: Option<EditorConfiguration>,
-    cancelled_requests: BTreeSet<RequestId>,
     disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     open_documents: BTreeSet<DocumentId>,
     client_supports_work_done_progress: bool,
@@ -125,16 +124,6 @@ impl LspServer {
                     "unsupported JSON-RPC version",
                 ))
             });
-        }
-
-        if let Some(id) = message.id.as_ref()
-            && self.cancelled_requests.remove(id)
-        {
-            return JsonRpcResult::Response(error_response(
-                message.id,
-                ErrorCode::RequestCancelled,
-                "request was cancelled before processing",
-            ));
         }
 
         let Some(method) = message.method.as_deref() else {
