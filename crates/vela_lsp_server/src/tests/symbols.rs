@@ -1,5 +1,6 @@
 use super::{
-    LspServer, notification, notification_value, notification_values, request, response_value,
+    LspServer, handle_notification, handle_request, notification_value, notification_values,
+    response_value,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -8,7 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn lsp_document_symbols_include_nested_script_members() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -16,7 +18,7 @@ fn lsp_document_symbols_include_nested_script_members() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 pub struct Player {
     level: i64
@@ -25,7 +27,8 @@ pub enum Reward {
     Coins(amount: i64)
 }
 pub fn main(amount: i64) -> i64 { return amount }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -35,15 +38,16 @@ pub fn main(amount: i64) -> i64 { return amount }";
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentSymbol",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/game/main.vela" }
         }),
-    )));
+    ));
 
     let symbols = response["result"]
         .as_array()
@@ -112,7 +116,8 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -120,15 +125,17 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let main_uri = file_uri(&root.join("scripts").join("game").join("reward.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -138,13 +145,14 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
                 "text": "pub fn grant() -> i64 { return 1 }"
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "workspace/symbol",
         serde_json::json!({ "query": "grant" }),
-    )));
+    ));
     let symbols = response["result"]
         .as_array()
         .expect("workspace/symbol should return an array");
@@ -158,11 +166,12 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         "{symbols:?}"
     );
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         3,
         "workspace/symbol",
         serde_json::json!({ "query": "Player" }),
-    )));
+    ));
     let symbols = response["result"]
         .as_array()
         .expect("workspace/symbol should return an array");
@@ -183,11 +192,12 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
         }),
         "{symbols:?}"
     );
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         4,
         "workspace/symbol",
         serde_json::json!({ "query": "QuestState" }),
-    )));
+    ));
     let symbols = response["result"]
         .as_array()
         .expect("workspace/symbol should return an array");
@@ -205,7 +215,8 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
 #[test]
 fn lsp_workspace_symbols_include_module_symbols() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -213,9 +224,10 @@ fn lsp_workspace_symbols_include_module_symbols() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -225,13 +237,14 @@ fn lsp_workspace_symbols_include_module_symbols() {
                 "text": "pub fn grant() -> i64 { return 1 }"
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "workspace/symbol",
         serde_json::json!({ "query": "game::reward" }),
-    )));
+    ));
     let symbols = response["result"]
         .as_array()
         .expect("workspace/symbol should return an array");
@@ -249,7 +262,8 @@ fn lsp_workspace_symbols_include_module_symbols() {
 #[test]
 fn lsp_workspace_symbols_include_file_symbols() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -257,9 +271,10 @@ fn lsp_workspace_symbols_include_file_symbols() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -269,13 +284,14 @@ fn lsp_workspace_symbols_include_file_symbols() {
                 "text": "pub fn grant() -> i64 { return 1 }"
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "workspace/symbol",
         serde_json::json!({ "query": "reward.vela" }),
-    )));
+    ));
     let symbols = response["result"]
         .as_array()
         .expect("workspace/symbol should return an array");
@@ -309,7 +325,8 @@ fn lsp_workspace_symbols_drop_deleted_files() {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -317,8 +334,9 @@ fn lsp_workspace_symbols_drop_deleted_files() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -326,7 +344,7 @@ fn lsp_workspace_symbols_drop_deleted_files() {
                 { "uri": source_uri.clone(), "type": 1 }
             ]
         }),
-    ));
+    );
 
     let before = workspace_symbols(&mut server, 2, "grant");
     assert!(
@@ -338,12 +356,13 @@ fn lsp_workspace_symbols_drop_deleted_files() {
     );
 
     fs::remove_file(&source_path).expect("source should be removable");
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": source_uri.clone(), "type": 3 }]
         }),
-    ));
+    );
 
     let after = workspace_symbols(&mut server, 3, "grant");
     assert!(
@@ -378,7 +397,8 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
     let source_uri = file_uri(&source_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -386,8 +406,9 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let notifications = notification_values(server.handle_json(&notification(
+    ));
+    let notifications = notification_values(handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -395,7 +416,7 @@ fn lsp_workspace_symbols_degrade_to_source_only_when_schema_is_missing() {
                 { "uri": source_uri.clone(), "type": 1 }
             ]
         }),
-    )));
+    ));
     assert!(
         notifications.iter().any(|notification| {
             notification["method"] == "textDocument/publishDiagnostics"
@@ -447,7 +468,8 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
     let helper_uri = file_uri(&helper_path);
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -455,13 +477,14 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
             "rootUri": file_uri(&game_root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": helper_uri.clone(), "type": 1 }]
         }),
-    ));
+    );
 
     let before = workspace_symbols(&mut server, 2, "game::helper::grant");
     assert!(
@@ -471,7 +494,8 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
         "{before:?}"
     );
 
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWorkspaceFolders",
         serde_json::json!({
             "event": {
@@ -479,7 +503,7 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
                 "removed": [{ "uri": file_uri(&game_root), "name": "game" }]
             }
         }),
-    ));
+    );
 
     let after = workspace_symbols(&mut server, 3, "game::helper::grant");
     assert!(
@@ -494,12 +518,13 @@ fn lsp_workspace_symbols_reindex_after_workspace_root_change() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
-fn workspace_symbols(server: &mut LspServer, id: i64, query: &str) -> Vec<serde_json::Value> {
-    response_value(server.handle_json(&request(
+fn workspace_symbols(server: &mut LspServer, id: i32, query: &str) -> Vec<serde_json::Value> {
+    response_value(handle_request(
+        server,
         id,
         "workspace/symbol",
         serde_json::json!({ "query": query }),
-    )))["result"]
+    ))["result"]
         .as_array()
         .expect("workspace/symbol should return an array")
         .clone()
