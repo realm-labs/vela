@@ -509,36 +509,6 @@ impl LspServer {
         ))
     }
 
-    pub(crate) fn prepare_call_hierarchy_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::CallHierarchyPrepareParams,
-    ) -> JsonRpcResult {
-        let document_id =
-            from_proto::document_id(&params.text_document_position_params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid prepareCallHierarchy position: {error}"),
-                ));
-            }
-        };
-        let items = self
-            .databases
-            .prepare_call_hierarchy(&input.document_id, input.position);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::call_hierarchy_items(&items))
-                .expect("typed prepareCallHierarchy response should serialize"),
-        ))
-    }
-
     pub(crate) fn incoming_calls(
         &mut self,
         id: Option<RequestId>,
@@ -580,33 +550,6 @@ impl LspServer {
         ))
     }
 
-    pub(crate) fn incoming_calls_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::CallHierarchyIncomingCallsParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.item.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
-            Ok(item) => item,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid incomingCalls item range: {error}"),
-                ));
-            }
-        };
-        let calls = self.databases.incoming_calls(&item);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::incoming_calls(&calls))
-                .expect("typed incomingCalls response should serialize"),
-        ))
-    }
-
     pub(crate) fn outgoing_calls(
         &mut self,
         id: Option<RequestId>,
@@ -630,33 +573,6 @@ impl LspServer {
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
         let item = match service_call_hierarchy_item(&params.item, &text) {
-            Ok(item) => item,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid outgoingCalls item range: {error}"),
-                ));
-            }
-        };
-        let calls = self.databases.outgoing_calls(&item);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::outgoing_calls(&calls))
-                .expect("typed outgoingCalls response should serialize"),
-        ))
-    }
-
-    pub(crate) fn outgoing_calls_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::CallHierarchyOutgoingCallsParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.item.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
             Ok(item) => item,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(

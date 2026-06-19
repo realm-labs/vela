@@ -636,6 +636,90 @@ impl GlobalStateSnapshot {
         ))
     }
 
+    pub(crate) fn prepare_call_hierarchy(
+        self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyPrepareParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareCallHierarchy position: {error}"),
+                ));
+            }
+        };
+        let items = self
+            .databases
+            .prepare_call_hierarchy(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::call_hierarchy_items(&items))
+                .expect("typed prepareCallHierarchy response should serialize"),
+        ))
+    }
+
+    pub(crate) fn incoming_calls(
+        self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyIncomingCallsParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.item.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid incomingCalls item range: {error}"),
+                ));
+            }
+        };
+        let calls = self.databases.incoming_calls(&item);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::incoming_calls(&calls))
+                .expect("typed incomingCalls response should serialize"),
+        ))
+    }
+
+    pub(crate) fn outgoing_calls(
+        self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyOutgoingCallsParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.item.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let item = match from_proto::call_hierarchy_item(&text, &params.item) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid outgoingCalls item range: {error}"),
+                ));
+            }
+        };
+        let calls = self.databases.outgoing_calls(&item);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::outgoing_calls(&calls))
+                .expect("typed outgoingCalls response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         self,
         id: lsp_server::RequestId,
@@ -904,39 +988,6 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.inlay_hint_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn prepare_call_hierarchy(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: CallHierarchyPrepareParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.prepare_call_hierarchy_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn incoming_calls(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: CallHierarchyIncomingCallsParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.incoming_calls_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn outgoing_calls(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: CallHierarchyOutgoingCallsParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.outgoing_calls_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -2458,6 +2509,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let line = text.lines().nth(1).expect("main line should exist");
         let character = line.find("grant").expect("main line should contain grant");
@@ -2490,6 +2544,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let main_line = text.lines().nth(1).expect("main line should exist");
         let grant_character = main_line

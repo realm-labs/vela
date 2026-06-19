@@ -85,9 +85,11 @@ fn dispatch_request(
         .on_worker_snapshot_typed::<SelectionRangeRequest>(GlobalStateSnapshot::selection_range)
         .on_worker_snapshot_typed::<PrepareRenameRequest>(GlobalStateSnapshot::prepare_rename)
         .on_worker_snapshot_typed::<Rename>(GlobalStateSnapshot::rename)
-        .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)
-        .on_worker_typed::<CallHierarchyIncomingCalls>(GlobalState::incoming_calls)
-        .on_worker_typed::<CallHierarchyOutgoingCalls>(GlobalState::outgoing_calls)
+        .on_worker_snapshot_typed::<CallHierarchyPrepare>(
+            GlobalStateSnapshot::prepare_call_hierarchy,
+        )
+        .on_worker_snapshot_typed::<CallHierarchyIncomingCalls>(GlobalStateSnapshot::incoming_calls)
+        .on_worker_snapshot_typed::<CallHierarchyOutgoingCalls>(GlobalStateSnapshot::outgoing_calls)
         .on_worker_typed::<CodeActionRequest>(GlobalState::code_action)
         .on_worker_snapshot_typed::<SemanticTokensRangeRequest>(
             GlobalStateSnapshot::semantic_tokens_range,
