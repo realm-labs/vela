@@ -5,7 +5,7 @@ use lsp_server::Message;
 use lsp_types::{
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -333,6 +333,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         self.server
             .completion_resolve_typed(request_id_from_lsp(id), params)
+    }
+
+    pub(crate) fn hover(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: HoverParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.hover_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
     }
 
     pub(crate) fn did_change_configuration(
@@ -1172,6 +1183,59 @@ mod tests {
         assert_eq!(response["result"]["label"], "plain");
         assert_eq!(response["result"]["kind"], 6);
         assert!(response["result"].get("documentation").is_none());
+    }
+
+    #[test]
+    fn typed_hover_dispatch_projects_hover_response() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn main(amount: i64) -> i64 { return amount }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(8),
+            method: "textDocument/hover".to_owned(),
+            params: serde_json::to_value(lsp_types::HoverParams {
+                text_document_position_params: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        0,
+                        u32::try_from(
+                            text.rfind("amount")
+                                .expect("hover fixture should contain amount use"),
+                        )
+                        .expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("hover params should serialize"),
+        });
+
+        let result = state.handle_message(&request, "");
+
+        let response = result
+            .into_response()
+            .expect("typed hover should return a response");
+        let response: serde_json::Value =
+            serde_json::from_str(&response).expect("response should be JSON");
+        assert_eq!(response["id"], 8);
+        assert_eq!(response["result"]["contents"]["kind"], "markdown");
+        let value = response["result"]["contents"]["value"]
+            .as_str()
+            .expect("hover contents should be markdown");
+        assert!(value.contains("amount"), "{value}");
+        assert!(value.contains("_parameter_: i64"), "{value}");
     }
 
     #[test]

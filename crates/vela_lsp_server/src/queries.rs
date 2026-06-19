@@ -307,6 +307,34 @@ impl LspServer {
         ))
     }
 
+    pub(crate) fn hover_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::HoverParams,
+    ) -> JsonRpcResult {
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::hover_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid hover position: {error}"),
+                ));
+            }
+        };
+        let hover = self.databases.hover(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(hover.as_ref().map(to_proto::hover))
+                .expect("typed hover response should serialize"),
+        ))
+    }
+
     pub(crate) fn definition(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         self.navigation_location(
             id,

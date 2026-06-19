@@ -1,7 +1,8 @@
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionResolvePayload, CompletionSymbol, LineIndex, TextRange,
+    CompletionResolvePayload, CompletionSymbol, DiagnosticRange, Hover, HoverKind, LineIndex,
+    TextRange,
 };
 
 pub(crate) fn completion_response(
@@ -32,6 +33,16 @@ pub(crate) fn completion_item_resolved(
         ));
     }
     item
+}
+
+pub(crate) fn hover(hover: &Hover) -> lsp_types::Hover {
+    lsp_types::Hover {
+        contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
+            kind: lsp_types::MarkupKind::Markdown,
+            value: hover_markdown(hover),
+        }),
+        range: Some(diagnostic_range(hover.range())),
+    }
 }
 
 fn completion_item(
@@ -116,6 +127,51 @@ fn completion_symbol(symbol: &CompletionSymbol) -> JsonValue {
             }
             value
         }
+    }
+}
+
+fn hover_markdown(hover: &Hover) -> String {
+    let mut sections = vec![format!(
+        "```vela\n{}\n```\n\n_{}_: {}",
+        hover.label(),
+        hover_kind(hover.kind()),
+        hover.detail()
+    )];
+    if let Some(docs) = hover.docs() {
+        sections.push(docs.to_owned());
+    }
+    sections.join("\n\n")
+}
+
+fn hover_kind(kind: HoverKind) -> &'static str {
+    match kind {
+        HoverKind::Local => "local",
+        HoverKind::Parameter => "parameter",
+        HoverKind::Global => "global",
+        HoverKind::Const => "const",
+        HoverKind::Function => "function",
+        HoverKind::Type => "type",
+        HoverKind::Trait => "trait",
+        HoverKind::Field => "field",
+        HoverKind::Method => "method",
+        HoverKind::Variant => "variant",
+        HoverKind::Module => "module",
+        HoverKind::Unknown => "unknown",
+    }
+}
+
+fn diagnostic_range(range: DiagnosticRange) -> lsp_types::Range {
+    let start = range.start();
+    let end = range.end();
+    lsp_types::Range {
+        start: lsp_types::Position {
+            line: u32::try_from(start.line).expect("line should fit in LSP u32"),
+            character: u32::try_from(start.character).expect("character should fit in LSP u32"),
+        },
+        end: lsp_types::Position {
+            line: u32::try_from(end.line).expect("line should fit in LSP u32"),
+            character: u32::try_from(end.character).expect("character should fit in LSP u32"),
+        },
     }
 }
 
@@ -235,5 +291,41 @@ mod tests {
         };
         assert_eq!(documentation.kind, lsp_types::MarkupKind::Markdown);
         assert_eq!(documentation.value, "Player docs.");
+    }
+
+    #[test]
+    fn hover_projects_markdown_and_range() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn main(amount: i64) -> i64 { return amount }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            0,
+            source
+                .rfind("amount")
+                .expect("hover fixture should contain amount use"),
+        );
+        let hover = databases
+            .hover(&document, position)
+            .expect("parameter use should have hover");
+
+        let hover = super::hover(&hover);
+
+        let lsp_types::HoverContents::Markup(contents) = hover.contents else {
+            panic!("hover should project markdown contents");
+        };
+        assert_eq!(contents.kind, lsp_types::MarkupKind::Markdown);
+        assert!(contents.value.contains("amount"));
+        assert!(contents.value.contains("_parameter_: i64"));
+        assert_eq!(
+            hover.range,
+            Some(lsp_types::Range::new(
+                lsp_types::Position::new(0, 41),
+                lsp_types::Position::new(0, 47)
+            ))
+        );
     }
 }
