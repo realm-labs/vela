@@ -1,6 +1,9 @@
 use std::fs;
 
-use super::*;
+use super::{file_uri, temp_workspace};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
@@ -12,7 +15,8 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -28,10 +32,11 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.inventory().grant(1) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -41,9 +46,10 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
@@ -55,7 +61,7 @@ fn lsp_hover_reports_schema_method_on_schema_method_return_receiver() {
                 })
             }
         }),
-    )));
+    ));
 
     let value = response["result"]["contents"]["value"]
         .as_str()
@@ -76,7 +82,8 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -92,10 +99,11 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.rewardable().preview(1) }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -105,9 +113,10 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
@@ -119,7 +128,7 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
                 })
             }
         }),
-    )));
+    ));
 
     let value = response["result"]["contents"]["value"]
         .as_str()
