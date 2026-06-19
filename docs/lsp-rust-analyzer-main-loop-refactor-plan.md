@@ -6,7 +6,10 @@
 > **Compatibility policy:** breaking pre-release `vela_lsp_server`
 > internals are allowed. Do not preserve the current hand-written JSON-RPC,
 > stdio framing, protocol params/results, or synchronous `match method`
-> dispatcher as compatibility shims. Preserve product contracts:
+> dispatcher as compatibility shims. Stdio remains the default editor transport.
+> A TCP listener may be added only as an explicit debug/remote-integration
+> transport that enters the same typed main loop, defaults to loopback-only
+> binding, and never creates a second protocol stack. Preserve product contracts:
 > analysis-only editor tooling, no runtime script execution for LSP queries,
 > no live host-state reads, no `TypeRegistry` mutation, no Rust `&mut`
 > exposure, no script-language generics, no monkey patching, HostAccess
@@ -43,16 +46,25 @@ crates/rust-analyzer/src/global_state.rs,
 crates/rust-analyzer/src/handlers/dispatch.rs,
 crates/rust-analyzer/src/handlers/request.rs,
 crates/rust-analyzer/src/handlers/notification.rs,
+crates/rust-analyzer/src/config.rs,
+crates/rust-analyzer/src/reload.rs,
+crates/rust-analyzer/src/line_index.rs,
 crates/rust-analyzer/src/lsp/to_proto.rs, and
 crates/rust-analyzer/src/lsp/from_proto.rs. Borrow the protocol and editor
 server architecture model, not Rust-only semantics: do not add macro
 expansion, borrow checking, Rust trait solving, proc macros, Cargo project
 modeling, flycheck, or script-language generics to Vela. Preserve the existing
 `vela_language_service` boundary as the editor-neutral analysis surface and
-keep editor packages thin launchers. If a real external decision blocks
-progress, update docs/blocked.md and leave the goal active or blocked
-explicitly; otherwise keep advancing the next unchecked task until the entire
-plan is complete.
+keep editor packages thin launchers. rust-analyzer's production LSP entry is
+stdio-only in this local checkout, so Vela's optional TCP listener is a Vela
+debug/remote-integration extension, not an RA compatibility requirement. When
+implemented, TCP must feed the same typed message loop, request queue,
+GlobalState, handlers, cancellation, profiling, and protocol conversion modules
+as stdio; it must default to loopback-only binding and must not expose an
+unauthenticated non-loopback listener unless a separate explicit opt-in flag is
+added. If a real external decision blocks progress, update docs/blocked.md and
+leave the goal active or blocked explicitly; otherwise keep advancing the next
+unchecked task until the entire plan is complete.
 ```
 
 ---
@@ -74,6 +86,13 @@ request queues, cancellation, task scheduling lanes, and protocol conversion
 modules. After that, profiling and user-facing LSP behavior can be evaluated
 against a cleaner server model.
 
+Stdio remains the editor default because that is the common LSP deployment
+shape and the shape used by rust-analyzer's local production entrypoint. Vela
+may additionally provide a loopback TCP listener for debugging, attach-first
+workflows, external LSP harnesses, or remote editor integration. That TCP mode
+is only acceptable if it is a transport wrapper over the same typed server
+architecture rather than a parallel implementation.
+
 This plan is an LSP-server architecture cleanup track, not a language-service
 semantic rewrite. Existing `vela_language_service` query APIs remain the
 semantic source for completion, diagnostics, hover, definitions, symbols,
@@ -85,21 +104,37 @@ references, rename, code actions, formatting, semantic tokens, and inlay hints.
 
 - [ ] Replace production hand-written JSON-RPC and stdio framing with
   `lsp-server`.
+- [ ] Keep stdio as the default editor transport.
+- [ ] Add an optional loopback TCP debug transport that reuses the same typed
+  main loop and cannot diverge from stdio behavior.
 - [ ] Replace production hand-written protocol params/results with
   `lsp-types` where the upstream protocol type exists.
 - [ ] Introduce a rust-analyzer-style `GlobalState` as the only owner of
   mutable server state.
 - [ ] Introduce `GlobalStateSnapshot` for read-only request handlers.
 - [ ] Introduce typed `RequestDispatcher` and `NotificationDispatcher`.
+- [ ] Model dispatcher entry points after RA's `on_sync_mut`, `on_sync`,
+  worker, latency-sensitive, and formatting-thread request categories.
 - [ ] Split request execution into main-thread mutable handlers, latency
   handlers, formatting handlers, and worker handlers.
 - [ ] Track incoming request state in a request queue.
 - [ ] Implement cancellation through request IDs and service generation tokens.
 - [ ] Implement stale-result handling with retry for retryable requests and
   `ContentModified` for non-retryable requests.
+- [ ] Add a single `line_index`/position-encoding boundary for LSP
+  `Position`/`Range` conversion and service byte/span offsets.
+- [ ] Add a `ConfigChange`-style configuration pipeline that separates launch
+  config, editor config, and workspace config application.
+- [ ] Add an explicit reload/diagnostics scheduler boundary for watched files,
+  schema/config changes, workspace roots, generation bumps, and open-file
+  diagnostic priority.
 - [ ] Rebuild request profiling at the main-loop/task boundary so logs show
   received, queued, task-started, task-ended, responded, stale, retried, and
   cancelled states.
+- [ ] Add RA-style tracing/log-file diagnostics that do not write to stdout and
+  can be correlated with profile JSONL request events.
+- [ ] Add a typed in-memory message harness for lifecycle, cancellation, stale
+  result, task result, stdio smoke, and TCP smoke coverage.
 - [ ] Preserve current VS Code and Zed packages as thin launchers around the
   native server.
 - [ ] Keep `vela_language_service` free of LSP, editor, filesystem watcher,
@@ -117,6 +152,8 @@ references, rename, code actions, formatting, semantic tokens, and inlay hints.
   reload, or runtime semantics.
 - [ ] Do not add a custom full IDE product.
 - [ ] Do not make browser/WASM tooling shape the native server architecture.
+- [ ] Do not make TCP the default editor transport.
+- [ ] Do not expose an unauthenticated non-loopback TCP listener by default.
 - [ ] Do not keep legacy protocol structs or response envelopes in production
   paths once their typed replacements are verified.
 
@@ -148,6 +185,16 @@ Borrow these architecture ideas:
   either mutable global state or immutable snapshots.
 - `crates/rust-analyzer/src/handlers/notification.rs`: mutable notification
   handlers for document, config, workspace, and watched-file changes.
+- `crates/rust-analyzer/src/config.rs`: central configuration shape and
+  change-application model. Borrow the separation of durable config state from
+  change payloads, not Cargo-specific settings.
+- `crates/rust-analyzer/src/reload.rs`: explicit reload orchestration for file
+  system changes, project changes, diagnostics scheduling, and generation
+  changes. Borrow the boundary, not Cargo/flycheck behavior.
+- `crates/rust-analyzer/src/line_index.rs`: one protocol-position boundary for
+  converting between LSP positions/ranges and internal offsets.
+- `crates/rust-analyzer/src/lsp/capabilities.rs`: capability construction and
+  client-capability gating separated from request handlers.
 - `crates/rust-analyzer/src/lsp/to_proto.rs` and
   `crates/rust-analyzer/src/lsp/from_proto.rs`: clear protocol conversion
   boundary instead of feature handlers constructing protocol JSON directly.
@@ -169,13 +216,27 @@ The target production layout for `vela_lsp_server` is:
 
 ```text
 main.rs
-  CLI flags, version/help, lsp_server::Connection::stdio(), main_loop entry
+  CLI flags, version/help, stdio/tcp transport selection, main_loop entry
+
+transport.rs
+  stdio and optional loopback TCP LSP transport setup, IO thread ownership,
+  and conversion into the shared lsp_server::Message channel shape
 
 main_loop.rs
   event loop, LSP message dispatch, task result collection, shutdown/exit loop
 
 global_state.rs
   mutable server state, request queue, task pools, snapshots, sending helpers
+
+config_change.rs
+  launch/editor/workspace config change payloads and application order
+
+reload.rs
+  watched-file/config/schema/workspace-root reload orchestration,
+  generation bumps, diagnostics scheduling, open-file priority
+
+line_index.rs
+  LSP position-encoding and range conversion boundary
 
 handlers/dispatch.rs
   typed RequestDispatcher and NotificationDispatcher
@@ -194,6 +255,9 @@ lsp/to_proto.rs
 
 profile.rs
   debug-only JSONL profiler for main-loop and task boundary events
+
+tracing.rs
+  stderr/log-file diagnostics, startup environment summaries, request spans
 ```
 
 `GlobalState` owns:
@@ -202,16 +266,19 @@ profile.rs
 sender to the LSP client
 incoming request queue
 server launch configuration
+active transport kind and transport metadata
 workspace roots and editor configuration
 Workspace overlays and disk snapshots
 LanguageServiceDatabases
 open document set
 config/schema diagnostics and watched schema/config documents
+line-index and position-encoding cache
+reload queue and diagnostic publication scheduler
 semantic token projection/cache
 task pools for latency, formatting, and worker requests
 cancellation handles keyed by request ID
 shutdown/exited flags
-profile sink
+profile sink and tracing sink
 ```
 
 `GlobalStateSnapshot` carries read-only request state:
@@ -223,6 +290,8 @@ workspace config
 open document set
 semantic token projection/cache view when needed
 generation token
+position encoding
+line-index view for open and disk-backed files
 ```
 
 Until a deeper service snapshot model is needed, use the existing
@@ -249,6 +318,61 @@ worker lane:
   folding, selection ranges, inlay hints, workspace symbols
 ```
 
+Dispatcher API requirements:
+
+```text
+on_sync_mut:
+  mutable main-thread lifecycle, document, config, workspace, watcher, reload
+
+on_sync:
+  cheap read-only handlers that should finish immediately from a snapshot
+
+on_latency_sensitive:
+  typing-critical read-only handlers such as completion and signature help
+
+on_fmt_thread:
+  formatting-only lane with no starvation behind normal worker requests
+
+on_worker:
+  non-latency read-only feature handlers
+```
+
+Panic, cancellation, invalid params, stale generations, and unknown methods
+must be projected by the dispatcher/main loop instead of each feature handler
+constructing ad hoc JSON errors. Read-only background handlers should be wrapped
+in a panic boundary and converted into LSP errors without poisoning the main
+loop.
+
+Transport policy:
+
+```text
+stdio:
+  default editor and package transport, RA-aligned production path
+
+tcp:
+  optional debug/remote-integration transport, explicit --listen <addr>,
+  loopback-only by default, same message loop as stdio, no second dispatcher
+```
+
+The TCP listener must reject or require an explicit unsafe opt-in for
+non-loopback addresses. It must not add authentication-sensitive semantics to
+the language server itself; production editor packages should keep launching
+stdio unless a later packaging decision explicitly changes that contract.
+
+Position and encoding policy:
+
+```text
+line_index.rs:
+  owns LSP Position/Range <-> internal offset/span conversion
+
+encoding:
+  preserve UTF-16 behavior for default LSP clients and record negotiated
+  position encoding when client capabilities provide it
+```
+
+No feature handler should manually derive byte offsets from LSP line/character
+pairs after this boundary exists.
+
 Retry policy:
 
 ```text
@@ -270,7 +394,7 @@ document or `docs/decisions.md`.
 
 ## 6. Phased Execution Plan
 
-### Phase 1: Protocol Dependencies And Typed Transport Shell
+### Phase 1: Protocol Dependencies, Typed Stdio, And TCP Debug Transport
 
 - [ ] Add workspace dependencies for `lsp-server`, `lsp-types`, `anyhow`, and
   `crossbeam-channel`. Add `tracing` only if it is used in the same
@@ -278,19 +402,29 @@ document or `docs/decisions.md`.
 - [ ] Keep the existing CLI flags: `--stdio`, `--root`, `--schema`,
   `--profile`, `--profile-slow-ms`, `--no-watch-files`, `--version`, and
   `--help`.
+- [ ] Add explicit TCP debug flags, for example `--listen <host:port>`, while
+  keeping stdio as the default editor path.
+- [ ] Reject non-loopback TCP bind addresses by default or require a separate
+  explicit unsafe opt-in flag before accepting them.
+- [ ] Introduce `transport.rs` so stdio and TCP setup produce the same typed
+  message-loop input and share response writing, IO thread ownership, shutdown
+  joining, profiling, and tracing behavior.
 - [ ] Make `main.rs` start `lsp_server::Connection::stdio()` for real stdio
   server mode.
+- [ ] Add a TCP listener smoke path that accepts one client connection and then
+  enters the same typed main loop used by stdio.
 - [ ] Add a typed in-memory test harness for LSP messages so tests no longer
   need custom Content-Length frame parsing.
 - [ ] Keep the old `stdio::run_stdio_with_configuration` only as a temporary
   compatibility wrapper during this phase. Mark it for deletion in Phase 9.
 - [ ] Add tests proving the typed transport shell responds to initialize and
-  exits cleanly.
+  exits cleanly over stdio, in-memory channels, and loopback TCP.
 
 Validation:
 
 ```bash
 cargo test -p vela_lsp_server stdio
+cargo test -p vela_lsp_server tcp
 cargo test -p vela_lsp_server lifecycle
 ```
 
@@ -302,6 +436,12 @@ cargo test -p vela_lsp_server lifecycle
 - [ ] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [ ] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.
+- [ ] Implement explicit dispatcher APIs for `on_sync_mut`, `on_sync`,
+  latency-sensitive background requests, formatting-lane requests, and worker
+  requests.
+- [ ] Centralize invalid params, panic, cancellation, stale generation,
+  `ContentModified`, `RequestCancelled`, method-not-found, and unknown
+  notification projection in dispatch/main-loop code.
 - [ ] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and
   `$/cancelRequest` to typed dispatch.
 - [ ] Preserve current lifecycle behavior for repeated initialize, malformed
@@ -315,15 +455,44 @@ Validation:
 cargo test -p vela_lsp_server lifecycle
 ```
 
+### Phase 2.5: Config, Position, Reload, And Trace Boundaries
+
+- [ ] Introduce a `ConfigChange`-style pipeline separating immutable launch
+  configuration, client/editor configuration, workspace `vela.toml`
+  configuration, schema paths, watcher state, and effective config.
+- [ ] Apply configuration changes through `GlobalState`, not directly inside
+  feature request handlers.
+- [ ] Introduce `line_index.rs` as the only LSP `Position`/`Range` conversion
+  boundary, preserving UTF-16 client behavior and recording negotiated position
+  encoding when available.
+- [ ] Introduce `reload.rs` or an equivalent reload scheduler for watched-file,
+  schema, config, workspace-root, and disk-source changes.
+- [ ] Keep reload work generation-based and open-file-prioritized so watcher
+  activity cannot block typing-sensitive notifications.
+- [ ] Introduce tracing/log-file startup and request-span diagnostics that use
+  stderr or explicit log files, never stdout.
+- [ ] Add tests for config application order, position conversion edge cases,
+  watched-file reload scheduling, and trace/profile opt-in behavior.
+
+Validation:
+
+```bash
+cargo test -p vela_lsp_server lifecycle
+cargo test -p vela_lsp_server workspace_folders
+cargo test -p vela_lsp_server schema_reload
+cargo test -p vela_lsp_server profile
+```
+
 ### Phase 3: Typed Mutable Notifications
 
 - [ ] Migrate `textDocument/didOpen`, `textDocument/didChange`,
   `textDocument/didClose`, and `textDocument/didSave` to `lsp-types`.
 - [ ] Migrate `workspace/didChangeConfiguration` to typed settings extraction
-  while preserving nested `vela` settings support.
+  through the `ConfigChange` pipeline while preserving nested `vela` settings
+  support.
 - [ ] Migrate `workspace/didChangeWorkspaceFolders`.
 - [ ] Migrate `workspace/didChangeWatchedFiles` with existing final-state
-  coalescing semantics.
+  coalescing semantics and reload scheduler ingestion.
 - [ ] Move watcher registration to typed `RegisterCapability` and
   `DidChangeWatchedFilesRegistrationOptions`.
 - [ ] Preserve diagnostics publication for open documents, config documents,
@@ -341,7 +510,8 @@ cargo test -p vela_lsp_server workspace_folders
 ### Phase 4: Typed Read-Only Request Migration
 
 - [ ] Create `lsp/from_proto.rs` for `Url`, `Position`, `Range`, formatting
-  options, and request-specific params conversion into service inputs.
+  options, and request-specific params conversion into service inputs using
+  the shared `line_index.rs` conversion boundary.
 - [ ] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -377,6 +547,11 @@ cargo test -p vela_lsp_server inlay
 - [ ] Add latency, formatting, and worker execution lanes.
 - [ ] Run main-thread mutable handlers synchronously with `&mut GlobalState`.
 - [ ] Run read-only handlers from `GlobalStateSnapshot`.
+- [ ] Name task threads or task spans by lane and request method so profile and
+  trace output can identify where work is running.
+- [ ] Use a latency-sensitive main-loop thread and adequate stack sizing when
+  needed by parser/analysis workloads; measure before expanding stack sizes
+  globally.
 - [ ] Ensure document changes and cancellation notifications can be processed
   while long read-only requests are pending.
 - [ ] Ensure formatting uses the formatting lane and cannot starve behind
@@ -440,8 +615,12 @@ helper references are allowed only if they describe external JSON fixtures.
 
 - [ ] Move profile support out of the old stdio transport and into a dedicated
   `profile.rs`.
+- [ ] Move trace/log setup into an explicit module that can write to stderr or
+  a log file without polluting stdio protocol output.
 - [ ] Keep the VS Code settings `vela.server.profile.enabled`,
   `vela.server.profile.path`, and `vela.server.profile.slowMs`.
+- [ ] Preserve or add a VS Code-accessible way to see trace/log output for
+  startup args, transport kind, request routing, queue events, and task lane.
 - [ ] Write JSONL events for session start, request received, queued,
   task started, task ended, response sent, stale discarded, retried, and
   cancelled.
@@ -463,7 +642,7 @@ node editors/vscode/scripts/validate-package.js
 - [ ] Delete obsolete manual stdio transport code.
 - [ ] Delete obsolete custom JSON-RPC code.
 - [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
-  boundary.
+  boundary, stdio default, and optional loopback TCP debug transport.
 - [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs
   to reference this execution document.
 - [ ] Update `docs/progress.md` only when current milestone status or durable
@@ -489,9 +668,26 @@ cd editors/vscode && npm run package:release
 - [ ] Production `vela_lsp_server` no longer uses hand-written
   `JsonRpcMessage`, `JsonRpcResult`, custom `RequestId`, custom
   `success_response`, custom `error_response`, or custom Content-Length parser
-  for normal stdio server operation.
+  for normal stdio or TCP server operation.
+- [ ] Stdio remains the default editor transport and uses the same main loop as
+  any optional TCP debug transport.
+- [ ] TCP mode is explicit, loopback-only by default, covered by smoke and
+  lifecycle tests, and cannot route through a separate dispatcher.
 - [ ] Production request and notification handlers use `lsp-types` typed
   params and typed result projection where upstream protocol types exist.
+- [ ] Request dispatch exposes RA-style mutable, read-only, latency-sensitive,
+  formatting, and worker categories rather than feature handlers branching on
+  raw method strings.
+- [ ] Invalid params, panics, cancellations, stale generations, retry,
+  method-not-found, and notification errors are projected through shared
+  dispatch/main-loop code.
+- [ ] LSP position/range conversion goes through one `line_index` boundary and
+  preserves default UTF-16 behavior.
+- [ ] Launch config, editor config, workspace config, schema paths, and watcher
+  settings flow through a `ConfigChange`-style application pipeline.
+- [ ] Watched-file, schema, config, workspace-root, and disk-source changes go
+  through an explicit reload/diagnostics scheduler with generation bumps and
+  open-file priority.
 - [ ] Lifecycle behavior remains covered for initialize, initialized,
   shutdown, exit, repeated initialize, malformed initialize, pre-initialize
   requests, requests after shutdown, unsupported methods, and unsupported
@@ -509,6 +705,11 @@ cd editors/vscode && npm run package:release
 - [ ] Cancellation and stale-generation behavior are observable in tests.
 - [ ] Profile JSONL distinguishes queue time, handler time, response write
   time, stale, cancelled, retried, and completed request states.
+- [ ] Tracing/logging never writes to stdout in stdio mode and can be
+  correlated with profile JSONL request IDs, methods, lanes, and generations.
+- [ ] Typed in-memory harnesses cover lifecycle, cancellation, stale result,
+  task result, stdio smoke, and TCP smoke paths without relying on manual
+  Content-Length fixture parsing for core behavior.
 - [ ] `vela_language_service` remains editor-neutral and has no dependency on
   `lsp-server` or `lsp-types`.
 - [ ] VS Code and Zed packages remain thin launchers or fallback syntax
@@ -519,6 +720,7 @@ Acceptance must be validated with:
 ```bash
 cargo test -p vela_lsp_server lifecycle
 cargo test -p vela_lsp_server stdio
+cargo test -p vela_lsp_server tcp
 cargo test -p vela_lsp_server completion formatting semantic_tokens inlay
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
@@ -536,6 +738,7 @@ Focused checks while migrating individual phases:
 ```bash
 cargo test -p vela_lsp_server lifecycle
 cargo test -p vela_lsp_server stdio
+cargo test -p vela_lsp_server tcp
 cargo test -p vela_lsp_server completion formatting semantic_tokens inlay
 node editors/vscode/scripts/validate-package.js
 ```
@@ -601,6 +804,32 @@ Validation:
 ```
 
 ```text
+Task: Add optional loopback TCP debug transport.
+Context: rust-analyzer's current production LSP entry is stdio-only, but Vela
+needs a debug/remote-integration transport for attach-first debugging and
+external LSP harnesses. TCP must be a transport wrapper over the same typed
+main loop, not a second protocol implementation.
+Expected behavior:
+  - `vela_lsp_server --listen 127.0.0.1:0` binds a loopback TCP listener and
+    reports the selected address through trace/log output.
+  - one connected TCP client can send initialize/shutdown/exit through the same
+    typed main loop used by stdio.
+  - non-loopback bind addresses are rejected unless a later explicit unsafe
+    opt-in flag is implemented and tested.
+  - VS Code and Zed continue to launch stdio by default.
+Tests:
+  - tcp initialize/shutdown smoke test
+  - lifecycle initialize fixtures through the shared typed harness
+Do not change:
+  - Do not fork request dispatch, profiling, cancellation, or protocol
+    conversion for TCP.
+  - Do not make TCP the default editor package transport.
+Validation:
+  cargo test -p vela_lsp_server tcp
+  cargo test -p vela_lsp_server lifecycle
+```
+
+```text
 Task: Introduce `GlobalState` and typed lifecycle dispatch.
 Context: The current server owns mutable state directly on `LspServer` and
 dispatches through hand-written `match method`. The refactor needs a
@@ -608,6 +837,12 @@ rust-analyzer-style state owner and typed dispatcher before feature migration.
 Expected behavior:
   - lifecycle requests and notifications dispatch through typed request and
     notification dispatchers.
+  - dispatcher entry points distinguish mutable main-thread handlers,
+    read-only snapshot handlers, latency-sensitive tasks, formatting tasks,
+    and worker tasks.
+  - invalid params, panics, cancellation, stale generations, unsupported
+    methods, and unsupported notifications are projected by dispatch/main-loop
+    code, not individual feature handlers.
   - repeated initialize, malformed initialize, shutdown, exit, unsupported
     methods, and cancellation preserve current fixture behavior.
   - dynamic watched-file registration still runs after `initialized`.
@@ -619,6 +854,37 @@ Do not change:
   - Do not preserve the old dispatcher as a production compatibility path.
 Validation:
   cargo test -p vela_lsp_server lifecycle
+```
+
+```text
+Task: Add config, line-index, reload, and tracing boundaries.
+Context: Before feature handlers are migrated, protocol conversion and mutable
+workspace updates need the same shared boundaries RA uses: a configuration
+change pipeline, a position conversion module, a reload scheduler, and
+stdout-safe tracing.
+Expected behavior:
+  - launch flags, editor settings, workspace config, schema paths, and watcher
+    options apply through one `ConfigChange`-style path.
+  - LSP `Position`/`Range` conversion is centralized in `line_index.rs` and
+    preserves default UTF-16 behavior.
+  - watched-file, schema, config, workspace-root, and disk-source changes enter
+    a reload scheduler that bumps generations and prioritizes open-file
+    diagnostics.
+  - trace/log output goes to stderr or an explicit file and can identify
+    startup args, transport kind, request method/id, generation, and task lane.
+Tests:
+  - cargo test -p vela_lsp_server lifecycle
+  - cargo test -p vela_lsp_server workspace_folders
+  - cargo test -p vela_lsp_server schema_reload
+  - cargo test -p vela_lsp_server profile
+Do not change:
+  - Do not change language-service query semantics.
+  - Do not log to stdout in stdio mode.
+Validation:
+  cargo test -p vela_lsp_server lifecycle
+  cargo test -p vela_lsp_server workspace_folders
+  cargo test -p vela_lsp_server schema_reload
+  cargo test -p vela_lsp_server profile
 ```
 
 ```text
