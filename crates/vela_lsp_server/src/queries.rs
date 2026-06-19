@@ -10,8 +10,6 @@ use crate::{
     protocol::DocumentFormattingParams,
     protocol::DocumentOnTypeFormattingParams,
     protocol::DocumentRangeFormattingParams,
-    protocol::DocumentSymbolParams,
-    protocol::FoldingRangeParams,
     protocol::InlayHintParams,
     protocol::PrepareRenameParams,
     protocol::ReferencesParams,
@@ -21,7 +19,6 @@ use crate::{
     protocol::SemanticTokensParams,
     protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
-    protocol::WorkspaceSymbolParams,
     success_response,
 };
 
@@ -611,7 +608,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<DocumentSymbolParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::DocumentSymbolParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -622,7 +619,7 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_symbol_params(&params);
         self.refresh_databases_for_query(&document_id);
         let symbols = self.databases.document_symbols(&document_id);
 
@@ -641,7 +638,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<FoldingRangeParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::FoldingRangeParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -652,7 +649,7 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::folding_range_params(&params);
         self.refresh_databases_for_query(&document_id);
         let ranges = self.databases.folding_ranges(&document_id);
 
@@ -948,7 +945,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<WorkspaceSymbolParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::WorkspaceSymbolParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -960,7 +957,9 @@ impl LspServer {
         };
 
         self.refresh_databases_for_workspace_query();
-        let symbols = self.databases.workspace_symbols(&params.query);
+        let symbols = self
+            .databases
+            .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
         JsonRpcResult::Response(success_response(
             id,

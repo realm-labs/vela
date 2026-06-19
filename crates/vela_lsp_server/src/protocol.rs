@@ -33,18 +33,6 @@ pub(crate) struct CodeActionContext {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DocumentSymbolParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct FoldingRangeParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct DocumentFormattingParams {
     pub(crate) text_document: TextDocumentIdentifier,
     #[allow(dead_code)]
@@ -135,12 +123,6 @@ pub(crate) struct RenameParams {
     pub(crate) text_document: TextDocumentIdentifier,
     pub(crate) position: LspPosition,
     pub(crate) new_name: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WorkspaceSymbolParams {
-    pub(crate) query: String,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

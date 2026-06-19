@@ -1277,6 +1277,11 @@ cargo test -p vela_lsp_server semantic_tokens
     existing `lsp/from_proto.rs` conversion boundary; the custom
     call-hierarchy protocol structs and bridge module have been removed.
     Validated with `cargo test -p vela_lsp_server call_hierarchy`.
+  - Legacy document symbol, folding range, and workspace symbol query decoding
+    now use `lsp_types` params and `lsp/from_proto.rs`; their custom protocol
+    param structs have been removed. Validated with
+    `cargo test -p vela_lsp_server symbols` and
+    `cargo test -p vela_lsp_server folding`.
 - [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
