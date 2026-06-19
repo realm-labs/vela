@@ -36,7 +36,6 @@ use crate::{
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
-    semantic_tokens::{lsp_semantic_token_delta, lsp_semantic_tokens},
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -1331,7 +1330,11 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_semantic_tokens(&tokens, &self.semantic_token_projection),
+            serde_json::to_value(to_proto::semantic_tokens(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("semanticTokens/full response should serialize"),
         ))
     }
 
@@ -1381,7 +1384,11 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_semantic_token_delta(&delta, &self.semantic_token_projection),
+            serde_json::to_value(to_proto::semantic_tokens_delta(
+                &delta,
+                &self.semantic_token_projection,
+            ))
+            .expect("semanticTokens/full/delta response should serialize"),
         ))
     }
 
@@ -1437,7 +1444,11 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_semantic_tokens(&tokens, &self.semantic_token_projection),
+            serde_json::to_value(to_proto::semantic_tokens_range(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("semanticTokens/range response should serialize"),
         ))
     }
 

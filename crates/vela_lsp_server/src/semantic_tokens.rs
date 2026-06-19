@@ -1,9 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Value as JsonValue, json};
-use vela_language_service::{
-    SemanticToken, SemanticTokenDelta, SemanticTokenModifiers, SemanticTokenType, SemanticTokens,
-};
+use vela_language_service::{SemanticTokenModifiers, SemanticTokenType};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct SemanticTokenProjection {
@@ -57,60 +55,6 @@ impl SemanticTokenProjection {
             })
             .fold(0, |bits, projected| bits | projected)
     }
-}
-
-pub(crate) fn lsp_semantic_tokens(
-    tokens: &SemanticTokens,
-    projection: &SemanticTokenProjection,
-) -> JsonValue {
-    json!({
-        "resultId": tokens.result_id(),
-        "data": semantic_token_data(tokens.tokens(), projection)
-    })
-}
-
-pub(crate) fn lsp_semantic_token_delta(
-    delta: &SemanticTokenDelta,
-    projection: &SemanticTokenProjection,
-) -> JsonValue {
-    json!({
-        "resultId": delta.result_id(),
-        "edits": delta.edits()
-            .iter()
-            .map(|edit| {
-                json!({
-                    "start": edit.start() * 5,
-                    "deleteCount": edit.delete_count() * 5,
-                    "data": semantic_token_data(edit.tokens(), projection)
-                })
-            })
-            .collect::<Vec<_>>()
-    })
-}
-
-fn semantic_token_data(tokens: &[SemanticToken], projection: &SemanticTokenProjection) -> Vec<u32> {
-    let mut data = Vec::with_capacity(tokens.len() * 5);
-    let mut previous_line = 0usize;
-    let mut previous_start = 0usize;
-
-    for token in tokens {
-        let start = token.start();
-        let delta_line = start.line.saturating_sub(previous_line);
-        let delta_start = if delta_line == 0 {
-            start.character.saturating_sub(previous_start)
-        } else {
-            start.character
-        };
-        data.push(u32::try_from(delta_line).expect("semantic token line delta should fit u32"));
-        data.push(u32::try_from(delta_start).expect("semantic token start delta should fit u32"));
-        data.push(u32::try_from(token.length()).expect("semantic token length should fit u32"));
-        data.push(projection.token_type_index(token.token_type()));
-        data.push(projection.modifier_bits(token.modifiers()));
-        previous_line = start.line;
-        previous_start = start.character;
-    }
-
-    data
 }
 
 pub(crate) fn semantic_tokens_legend(projection: &SemanticTokenProjection) -> JsonValue {
