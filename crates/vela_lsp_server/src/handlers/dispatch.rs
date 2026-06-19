@@ -50,7 +50,7 @@ pub(crate) fn dispatch_message_result(
     message: &Message,
     legacy_input: &str,
 ) -> JsonRpcResult {
-    crate::rpc::result_from_messages(dispatch_message(global_state, message, legacy_input))
+    crate::legacy_rpc::result_from_messages(dispatch_message(global_state, message, legacy_input))
 }
 
 fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Message> {

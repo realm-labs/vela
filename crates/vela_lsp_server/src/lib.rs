@@ -10,6 +10,8 @@ mod config;
 mod config_change;
 mod global_state;
 mod handlers;
+#[cfg(test)]
+mod legacy_rpc;
 mod lifecycle;
 mod line_index;
 mod lsp;
@@ -45,12 +47,12 @@ use vela_language_service::{
 use crate::client::WorkspaceFolder;
 use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
+#[cfg(test)]
+pub use crate::legacy_rpc::JsonRpcResult;
 use crate::lsp::to_proto;
 pub(crate) use crate::rpc::ErrorCode;
 #[cfg(test)]
 pub(crate) use crate::rpc::JSONRPC_VERSION;
-#[cfg(test)]
-pub use crate::rpc::JsonRpcResult;
 use crate::semantic_tokens::SemanticTokenProjection;
 #[cfg(test)]
 use vela_language_service::WorkspaceRoot;

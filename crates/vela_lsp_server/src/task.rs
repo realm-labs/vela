@@ -644,7 +644,7 @@ impl TaskResult {
             None,
             None,
             None,
-            crate::rpc::typed_messages(result),
+            crate::legacy_rpc::typed_messages(result),
         )
     }
 

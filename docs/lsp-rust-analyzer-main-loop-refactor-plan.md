@@ -1780,7 +1780,14 @@ node editors/vscode/scripts/validate-package.js
     and its legacy tests. The remaining stdio coverage runs the binary through
     the typed `lsp-server` transport in `tests/stdio_transport.rs`. Validated
     with `cargo test -p vela_lsp_server stdio_binary_uses_typed_transport_for_initialize_and_exit`.
-- [ ] Delete obsolete custom JSON-RPC code.
+- [~] Delete obsolete custom JSON-RPC code.
+  - Moved the legacy `JsonRpcResult` envelope and cancel-request params out of
+    the production `rpc` module into a test-only legacy helper module. The
+    production RPC boundary now keeps typed `lsp_server::Message` serialization
+    and protocol error codes only. Remaining work: delete the legacy
+    `LspServer::handle_json` compatibility harness and its custom JSON-RPC
+    test helpers after converting the remaining feature tests to typed
+    messages.
 - [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.
 - [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs

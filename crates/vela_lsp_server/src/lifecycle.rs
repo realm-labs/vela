@@ -10,7 +10,7 @@ use vela_language_service::WorkspaceRoot;
 #[cfg(test)]
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, capabilities::initialize_result, client::InitializeParams,
-    config_change::ConfigChange, rpc::CancelRequestParams, watching,
+    config_change::ConfigChange, legacy_rpc::CancelRequestParams, watching,
 };
 
 #[cfg(test)]

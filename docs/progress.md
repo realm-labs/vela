@@ -1404,7 +1404,11 @@ diagnostics.
 - Keep the clean LSP architecture refactor as the validated M20.5 editor
   tooling baseline; future LSP work should start from the shared
   query/context/result/projection boundary instead of restoring old
-  completion or protocol-coupled paths.
+  completion or protocol-coupled paths. Phase 9 cleanup has removed the
+  custom stdio transport and isolated the legacy `JsonRpcResult` response
+  envelope behind test-only compatibility helpers; production RPC code now
+  keeps typed `lsp_server::Message` serialization and protocol error codes
+  only.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
   contracts.
