@@ -1684,8 +1684,13 @@ helper references are allowed only if they describe external JSON fixtures.
     and summary traits used by both the typed main loop and the legacy
     test-only stdio harness. Validated with
     `cargo test -p vela_lsp_server profile`.
-- [ ] Move trace/log setup into an explicit module that can write to stderr or
+- [x] Move trace/log setup into an explicit module that can write to stderr or
   a log file without polluting stdio protocol output.
+  - `TraceSink` remains isolated in `tracing.rs` and now supports file JSONL
+    output plus explicit stderr destinations through `--log -`/`--log stderr`,
+    never stdout. Validated with `cargo test -p vela_lsp_server trace`,
+    `cargo test -p vela_lsp_server cli_log_dash_uses_stderr_destination`, and
+    `node editors/vscode/scripts/validate-package.js`.
 - [ ] Keep the VS Code settings `vela.server.profile.enabled`,
   `vela.server.profile.path`, and `vela.server.profile.slowMs`.
 - [ ] Preserve or add a VS Code-accessible way to see trace/log output for

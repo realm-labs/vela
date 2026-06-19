@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::Write;
+use std::io::{self, Write};
 
 use crate::{
     LaunchConfiguration,
@@ -8,7 +8,12 @@ use crate::{
 };
 
 pub(crate) struct TraceSink {
-    writer: Option<File>,
+    writer: Option<TraceWriter>,
+}
+
+enum TraceWriter {
+    File(File),
+    Stderr(io::Stderr),
 }
 
 impl TraceSink {
@@ -16,7 +21,11 @@ impl TraceSink {
         let Some(path) = configuration.trace_log_path() else {
             return Ok(Self { writer: None });
         };
-        let writer = OpenOptions::new().create(true).append(true).open(path)?;
+        let writer = if path == "-" || path.eq_ignore_ascii_case("stderr") {
+            TraceWriter::Stderr(io::stderr())
+        } else {
+            TraceWriter::File(OpenOptions::new().create(true).append(true).open(path)?)
+        };
         let mut sink = Self {
             writer: Some(writer),
         };
@@ -87,9 +96,49 @@ impl TraceSink {
         let Some(writer) = self.writer.as_mut() else {
             return Ok(());
         };
-        serde_json::to_writer(&mut *writer, &value)?;
-        writer.write_all(b"\n")?;
-        writer.flush()?;
+        match writer {
+            TraceWriter::File(writer) => write_json_line(writer, &value)?,
+            TraceWriter::Stderr(writer) => write_json_line(writer, &value)?,
+        }
         Ok(())
+    }
+}
+
+fn write_json_line(writer: &mut impl Write, value: &serde_json::Value) -> anyhow::Result<()> {
+    serde_json::to_writer(&mut *writer, value)?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use lsp_server::{Message, Request, RequestId};
+
+    use crate::{
+        LaunchConfiguration,
+        transport::{MessageMetadata, ResultSummary},
+    };
+
+    use super::TraceSink;
+
+    #[test]
+    fn trace_sink_accepts_stderr_destination() {
+        let mut configuration = LaunchConfiguration::new();
+        configuration.set_trace_log_path("-");
+        let mut trace =
+            TraceSink::from_configuration(&configuration).expect("stderr trace should open");
+        let message = Message::Request(Request {
+            id: RequestId::from(1),
+            method: "initialize".to_owned(),
+            params: serde_json::Value::Null,
+        });
+        let metadata = MessageMetadata::from_message(&message);
+        trace
+            .message_received(1, &metadata, 64)
+            .expect("stderr trace should write message receipt");
+        trace
+            .response_sent(1, &metadata, &ResultSummary::from_messages(&[]))
+            .expect("stderr trace should write response summary");
     }
 }

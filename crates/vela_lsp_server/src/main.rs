@@ -128,8 +128,8 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
                 if saw_log {
                     return invalid_input("duplicate `--log` flag");
                 }
-                let log = required_value(&args, index, "--log")?;
-                configuration.set_trace_log_path(normalize_cli_path(log)?);
+                let log = required_log_value(&args, index)?;
+                configuration.set_trace_log_path(normalize_log_path(log)?);
                 saw_log = true;
                 index += 2;
             }
@@ -175,6 +175,16 @@ fn required_value<'a>(args: &'a [String], index: usize, flag: &str) -> io::Resul
     Ok(value)
 }
 
+fn required_log_value(args: &[String], index: usize) -> io::Result<&str> {
+    let Some(value) = args.get(index + 1) else {
+        return invalid_input("missing value for `--log`");
+    };
+    if value == "-" {
+        return Ok(value);
+    }
+    required_value(args, index, "--log")
+}
+
 fn normalize_cli_path(value: &str) -> io::Result<String> {
     if value.starts_with("file://") {
         return Ok(value.to_owned());
@@ -188,12 +198,19 @@ fn normalize_cli_path(value: &str) -> io::Result<String> {
     Ok(path.display().to_string())
 }
 
+fn normalize_log_path(value: &str) -> io::Result<String> {
+    if value == "-" || value.eq_ignore_ascii_case("stderr") {
+        return Ok(value.to_owned());
+    }
+    normalize_cli_path(value)
+}
+
 fn invalid_input<T>(message: impl Into<String>) -> io::Result<T> {
     Err(io::Error::new(io::ErrorKind::InvalidInput, message.into()))
 }
 
 fn help_text() -> &'static str {
-    "Usage: vela_lsp_server [--stdio | --listen <host:port>] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--log <jsonl-path>] [--no-watch-files]\n       vela_lsp_server --version"
+    "Usage: vela_lsp_server [--stdio | --listen <host:port>] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--log <jsonl-path|stderr|->] [--no-watch-files]\n       vela_lsp_server --version"
 }
 
 #[cfg(test)]
@@ -317,5 +334,16 @@ mod tests {
 
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
         assert!(error.to_string().contains("invalid `--profile-slow-ms`"));
+    }
+
+    #[test]
+    fn cli_log_dash_uses_stderr_destination() {
+        let command = parse_args(vec!["--log".to_owned(), "-".to_owned()])
+            .expect("stderr log destination should parse");
+
+        let Command::Stdio(configuration) = command else {
+            panic!("log-only flags should run stdio");
+        };
+        assert_eq!(configuration.trace_log_path(), Some("-"));
     }
 }

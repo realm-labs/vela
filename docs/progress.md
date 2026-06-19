@@ -830,6 +830,10 @@ M20.5 RA-style main-loop update: Phase 8 profiling cleanup has started.
 transport or legacy stdio harness, while both call sites share the same profile
 metadata and summary traits.
 
+M20.5 RA-style main-loop update: Phase 8 trace/log setup now stays in the
+explicit `tracing.rs` sink and can write JSONL to a file or to stderr through
+`--log -`/`--log stderr`, preserving stdio stdout for protocol traffic only.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
