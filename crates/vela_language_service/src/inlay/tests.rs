@@ -47,6 +47,47 @@ fn inlay_hints_show_parameter_names() {
 }
 
 #[test]
+fn inlay_hints_show_imported_function_parameter_names() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let main_text = "use game::reward::grant\npub fn main() { return grant(10, \"quest\") }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(
+            helper,
+            "pub fn grant(amount: i64, reason: String) -> i64 { return amount }",
+        ),
+    ]);
+    let main_line = main_text.lines().nth(1).expect("main line should exist");
+
+    let hints = databases.inlay_hints(
+        &main,
+        DiagnosticRange::new(Position::new(1, 0), Position::new(1, 80)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(1, main_line.find("10").expect("first argument")),
+                "amount:".to_owned()
+            ),
+            (
+                Position::new(1, main_line.find("\"quest\"").expect("second argument")),
+                "reason:".to_owned()
+            )
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::Source("game::reward::grant.amount".to_owned())),
+            Some(SymbolRef::Source("game::reward::grant.reason".to_owned()))
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_skip_named_arguments_and_unknown_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn grant(amount: i64) -> i64 { return amount }\npub fn main() { return grant(amount = 10) + missing(1) }";

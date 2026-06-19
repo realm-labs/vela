@@ -5,6 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod imported;
 mod schema_method_return_receivers;
 
 #[test]

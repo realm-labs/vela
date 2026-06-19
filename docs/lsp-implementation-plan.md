@@ -414,11 +414,12 @@ coverage complete based only on the older capability phases.
     type arguments, nested member and field-group selections, malformed-source
     formatting degradation, idempotence, unsupported trigger fallback, and
     syntax-only formatting under HIR errors. Inlay fixtures cover service and
-    native LSP parameter-name hints, local type hints, lambda parameter facts,
-    host-path type facts, source/schema tuple-variant payload names, requested
-    range filtering, missing-schema degradation, unknown-call suppression, and
-    `Any` suppression for source/schema call parameters, schema `Any`
-    returned receivers, and variant payloads.
+    native LSP parameter-name hints including cross-file imported source
+    functions, local type hints, lambda parameter facts, host-path type facts,
+    source/schema tuple-variant payload names, requested range filtering,
+    missing-schema degradation, unknown-call suppression, and `Any`
+    suppression for source/schema call parameters, schema `Any` returned
+    receivers, and variant payloads.
 - [x] Audit workspace, configuration, file watching, schema reload, and launch
   behavior.
   - Cover `workspace/didChangeWatchedFiles`,
@@ -1851,6 +1852,7 @@ Tests:
 
 - [x] `inlay_hints_show_parameter_names` checks rendered labels and structured
   label parts
+- [x] `inlay_hints_show_imported_function_parameter_names`
 - [x] `inlay_hints_skip_named_arguments_and_unknown_calls`
 - [x] `inlay_hints_use_schema_function_names`
 - [x] `inlay_hints_show_source_method_parameter_names`
@@ -1874,6 +1876,7 @@ Tests:
 - [x] `inlay_hints_suppress_any_schema_enum_variant_payloads`
 - [x] `inlay_hints_suppress_any_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_parameter_names`
+- [x] `lsp_inlay_hints_show_imported_function_parameter_names`
 - [x] `lsp_inlay_hints_show_source_method_parameter_names`
 - [x] `lsp_inlay_hints_show_local_typefacts`
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
