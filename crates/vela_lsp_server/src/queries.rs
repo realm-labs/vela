@@ -799,22 +799,6 @@ impl LspServer {
         ))
     }
 
-    pub(crate) fn document_symbol_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::DocumentSymbolParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_symbol_params(&params);
-        self.refresh_databases_for_query(&document_id);
-        let symbols = self.databases.document_symbols(&document_id);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::document_symbols(&symbols))
-                .expect("typed documentSymbol response should serialize"),
-        ))
-    }
-
     pub(crate) fn folding_range(
         &mut self,
         id: Option<RequestId>,
@@ -835,22 +819,6 @@ impl LspServer {
         };
 
         let document_id = DocumentId::from(params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let ranges = self.databases.folding_ranges(&document_id);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::folding_ranges(&ranges))
-                .expect("typed foldingRange response should serialize"),
-        ))
-    }
-
-    pub(crate) fn folding_range_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::FoldingRangeParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::folding_range_params(&params);
         self.refresh_databases_for_query(&document_id);
         let ranges = self.databases.folding_ranges(&document_id);
 
@@ -992,35 +960,6 @@ impl LspServer {
             Err(response) => return response,
         };
         let ranges = self.databases.selection_ranges(&document_id, &positions);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::selection_ranges(&ranges))
-                .expect("typed selectionRange response should serialize"),
-        ))
-    }
-
-    pub(crate) fn selection_range_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::SelectionRangeParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::selection_range_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid selectionRange params: {error}"),
-                ));
-            }
-        };
-        let ranges = self
-            .databases
-            .selection_ranges(&input.document_id, &input.positions);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -1215,23 +1154,6 @@ impl LspServer {
 
         self.refresh_databases_for_workspace_query();
         let symbols = self.databases.workspace_symbols(&params.query);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::workspace_symbols(&symbols))
-                .expect("typed workspace/symbol response should serialize"),
-        ))
-    }
-
-    pub(crate) fn workspace_symbol_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::WorkspaceSymbolParams,
-    ) -> JsonRpcResult {
-        self.refresh_databases_for_workspace_query();
-        let symbols = self
-            .databases
-            .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
         JsonRpcResult::Response(success_response(
             id,

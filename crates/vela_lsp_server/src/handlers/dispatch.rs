@@ -79,10 +79,10 @@ fn dispatch_request(
         .on_worker_snapshot_typed::<DocumentHighlightRequest>(
             GlobalStateSnapshot::document_highlight,
         )
-        .on_worker_typed::<DocumentSymbolRequest>(GlobalState::document_symbol)
-        .on_worker_typed::<WorkspaceSymbolRequest>(GlobalState::workspace_symbol)
-        .on_worker_typed::<FoldingRangeRequest>(GlobalState::folding_range)
-        .on_worker_typed::<SelectionRangeRequest>(GlobalState::selection_range)
+        .on_worker_snapshot_typed::<DocumentSymbolRequest>(GlobalStateSnapshot::document_symbol)
+        .on_worker_snapshot_typed::<WorkspaceSymbolRequest>(GlobalStateSnapshot::workspace_symbol)
+        .on_worker_snapshot_typed::<FoldingRangeRequest>(GlobalStateSnapshot::folding_range)
+        .on_worker_snapshot_typed::<SelectionRangeRequest>(GlobalStateSnapshot::selection_range)
         .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker_typed::<Rename>(GlobalState::rename)
         .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)

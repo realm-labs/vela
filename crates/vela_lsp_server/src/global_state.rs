@@ -504,6 +504,84 @@ impl GlobalStateSnapshot {
         ))
     }
 
+    pub(crate) fn document_symbol(
+        self,
+        id: lsp_server::RequestId,
+        params: DocumentSymbolParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_symbol_params(&params);
+        let symbols = self.databases.document_symbols(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::document_symbols(&symbols))
+                .expect("typed documentSymbol response should serialize"),
+        ))
+    }
+
+    pub(crate) fn workspace_symbol(
+        self,
+        id: lsp_server::RequestId,
+        params: WorkspaceSymbolParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let symbols = self
+            .databases
+            .workspace_symbols(from_proto::workspace_symbol_params(&params));
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::workspace_symbols(&symbols))
+                .expect("typed workspace/symbol response should serialize"),
+        ))
+    }
+
+    pub(crate) fn folding_range(
+        self,
+        id: lsp_server::RequestId,
+        params: FoldingRangeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::folding_range_params(&params);
+        let ranges = self.databases.folding_ranges(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::folding_ranges(&ranges))
+                .expect("typed foldingRange response should serialize"),
+        ))
+    }
+
+    pub(crate) fn selection_range(
+        self,
+        id: lsp_server::RequestId,
+        params: SelectionRangeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::selection_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid selectionRange params: {error}"),
+                ));
+            }
+        };
+        let ranges = self
+            .databases
+            .selection_ranges(&input.document_id, &input.positions);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::selection_ranges(&ranges))
+                .expect("typed selectionRange response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         self,
         id: lsp_server::RequestId,
@@ -752,50 +830,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn document_symbol(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: DocumentSymbolParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.document_symbol_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn workspace_symbol(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: WorkspaceSymbolParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.workspace_symbol_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn folding_range(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: FoldingRangeParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.folding_range_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn selection_range(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: SelectionRangeParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.selection_range_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
     }
 
     pub(crate) fn code_action(
@@ -2008,6 +2042,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let response = typed_document_symbol_response(&mut state, 16, &document);
@@ -2049,6 +2086,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let response = typed_workspace_symbol_response(&mut state, 17, "reward.vela");
@@ -2086,6 +2126,9 @@ pub fn main() {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let response = typed_folding_range_response(&mut state, 18, &document);
@@ -2118,6 +2161,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let response = typed_selection_range_response(&mut state, 19, &document, 1, 22);
