@@ -324,7 +324,8 @@ These were the first places compared against the matrix before acceptance:
    pin `workspace/symbol` removal after deleted disk source files and
    source-only degradation when the configured host schema is missing, plus
    semantic-token fallback for schema type hints under a missing schema and
-   service/protocol range filtering for requested semantic-token spans, plus
+   service/protocol range filtering for requested semantic-token spans plus
+   semantic tokens for imported source function-return member calls, plus
    service/protocol cross-file references for imported const/global value
    uses, cross-file hover for imported function/const/global use sites, and
    cross-file signature help and inlay parameter-name hints for imported

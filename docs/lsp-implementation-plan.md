@@ -400,7 +400,8 @@ coverage complete based only on the older capability phases.
     tokens, lexical and trivia classes, resolved local/declaration/member
     classes, cross-file imports and imported module path segments,
     source/schema/stdlib/builtin provenance modifiers, source/schema method
-    calls on function-return receivers, unresolved import and general
+    calls on function-return receivers, imported source function-return member
+    calls, unresolved import and general
     unresolved-reference tokens, parser-recovery degradation with retained
     HIR-backed classifications, missing-schema degradation, and client legend
     fallback projection.
@@ -1189,6 +1190,8 @@ Tests:
 - [x] `lsp_semantic_tokens_classify_script_trait_method_uses`
 - [x] `semantic_tokens_classify_source_method_on_source_function_return`
 - [x] `lsp_semantic_tokens_classify_source_method_on_source_function_return`
+- [x] `semantic_tokens_classify_imported_source_method_on_source_function_return`
+- [x] `lsp_semantic_tokens_classify_imported_source_method_on_source_function_return`
 - [x] `semantic_tokens_classify_source_method_on_source_method_return`
 - [x] `lsp_semantic_tokens_classify_source_method_on_source_method_return`
 - [x] `semantic_tokens_classify_source_trait_method_on_source_function_return`

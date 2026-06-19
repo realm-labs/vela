@@ -42,6 +42,50 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn semantic_tokens_classify_imported_source_method_on_source_function_return() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let player = DocumentId::from("/workspace/scripts/game/player.vela");
+    let main_text = "\
+use game::player::current_player
+pub fn main() -> i64 {
+    return current_player().grant(1)
+}";
+    let player_text = "\
+pub struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+pub fn current_player() -> Player { return Player { level: 1 } }";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(player, player_text),
+    ]);
+
+    let tokens = databases.semantic_tokens(&main);
+
+    assert_token_at(
+        &tokens,
+        2,
+        line(main_text, 2)
+            .find("current_player")
+            .expect("imported source function call should exist"),
+        "current_player".len(),
+        SemanticTokenType::Function,
+        SemanticTokenModifiers::SOURCE,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(main_text, 2)
+            .find("grant")
+            .expect("imported source method call should exist"),
+        "grant".len(),
+        SemanticTokenType::Method,
+        SemanticTokenModifiers::SOURCE,
+    );
+}
+
+#[test]
 fn semantic_tokens_classify_source_method_on_source_method_return() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "\

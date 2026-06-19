@@ -82,6 +82,101 @@ pub fn main() -> i64 {
 }
 
 #[test]
+fn lsp_semantic_tokens_classify_imported_source_method_on_source_function_return() {
+    let mut server = LspServer::new();
+    let initialize = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let token_types =
+        initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]["tokenTypes"]
+            .as_array()
+            .expect("semantic token legend should list token types");
+    let token_modifiers = initialize["result"]["capabilities"]["semanticTokensProvider"]["legend"]
+        ["tokenModifiers"]
+        .as_array()
+        .expect("semantic token legend should list token modifiers");
+    let function = token_type_index(token_types, "function");
+    let method = token_type_index(token_types, "method");
+    let source = token_modifier_bit(token_modifiers, "source");
+
+    let player_uri = "file:///workspace/scripts/game/player.vela";
+    let player_text = "\
+pub struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64) -> i64 { return amount }
+}
+pub fn current_player() -> Player { return Player { level: 1 } }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": player_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": player_text
+            }
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = "\
+use game::player::current_player
+pub fn main() -> i64 {
+    return current_player().grant(1)
+}";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/semanticTokens/full",
+        serde_json::json!({
+            "textDocument": { "uri": uri }
+        }),
+    )));
+    let tokens = decode_tokens(
+        response["result"]["data"]
+            .as_array()
+            .expect("semantic token response should include data"),
+    );
+
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2)
+            .find("current_player")
+            .expect("imported source function call should exist"),
+        "current_player".len(),
+        function,
+        source,
+    );
+    assert_token_at(
+        &tokens,
+        2,
+        line(text, 2)
+            .find("grant")
+            .expect("imported source method call should exist"),
+        "grant".len(),
+        method,
+        source,
+    );
+}
+
+#[test]
 fn lsp_semantic_tokens_classify_source_method_on_source_method_return() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(
