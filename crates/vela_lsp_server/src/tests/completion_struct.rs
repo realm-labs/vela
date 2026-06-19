@@ -1,9 +1,10 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_struct_body_completion_enters_field_declaration_context() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,10 +12,11 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn spawn_player() { return 1 }\npub struct Player {  }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -24,10 +26,11 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
                 "text": text
             }
         }),
-    )));
+    ));
     let struct_line = text.lines().nth(1).expect("struct line should exist");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/completion",
         serde_json::json!({
@@ -40,7 +43,7 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
                 "triggerKind": 1
             }
         }),
-    )));
+    ));
 
     assert_completion_snippet(&response, "field", "struct field", "${1:name}: ${2:Type}");
     assert_completion_snippet(
@@ -53,7 +56,8 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
     assert_no_completion(&response, "fn");
 
     let type_text = "pub struct Player { level: i }";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
@@ -62,8 +66,9 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
             },
             "contentChanges": [{ "text": type_text }]
         }),
-    )));
-    let type_response = response_value(server.handle_json(&request(
+    ));
+    let type_response = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/completion",
         serde_json::json!({
@@ -77,7 +82,7 @@ fn lsp_struct_body_completion_enters_field_declaration_context() {
                 "triggerCharacter": ":"
             }
         }),
-    )));
+    ));
 
     assert_completion(&type_response, "i64", 22, "i64");
     assert_no_completion(&type_response, "field");
