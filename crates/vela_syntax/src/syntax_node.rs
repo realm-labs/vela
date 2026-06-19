@@ -1,4 +1,5 @@
 use rowan::{GreenNodeBuilder, Language};
+use vela_common::Diagnostic;
 
 use crate::SyntaxKind;
 use crate::parse::Parse;
@@ -31,6 +32,11 @@ impl SyntaxTreeBuilder {
     #[must_use]
     pub fn finish<T>(self) -> Parse<T> {
         Parse::new(self.inner.finish(), Vec::new())
+    }
+
+    #[must_use]
+    pub fn finish_with_diagnostics<T>(self, diagnostics: Vec<Diagnostic>) -> Parse<T> {
+        Parse::new(self.inner.finish(), diagnostics)
     }
 }
 

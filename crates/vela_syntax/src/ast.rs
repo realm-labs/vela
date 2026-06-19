@@ -1,5 +1,76 @@
 use vela_common::Span;
 
+use crate::{SyntaxKind, SyntaxNode, TextRange};
+
+pub trait AstNode {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized;
+
+    fn cast(syntax: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized;
+
+    fn syntax(&self) -> &SyntaxNode;
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxSourceFile {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxSourceFile {
+    #[must_use]
+    pub fn text_range(&self) -> TextRange {
+        self.syntax.text_range()
+    }
+}
+
+impl AstNode for SyntaxSourceFile {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::SourceFile
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{AstNode, SyntaxSourceFile};
+    use crate::{SyntaxKind, SyntaxTreeBuilder};
+
+    #[test]
+    fn ast_source_file_casts_from_source_file_root() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.token(SyntaxKind::Whitespace, "\n");
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+
+        assert_eq!(source.syntax().kind(), SyntaxKind::SourceFile);
+        assert_eq!(source.syntax().text().to_string(), "\n");
+    }
+
+    #[test]
+    fn ast_source_file_rejects_non_source_file_root() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::Block);
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+
+        assert!(SyntaxSourceFile::cast(parse.syntax_node()).is_none());
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SourceFile {
     pub items: Vec<Item>,

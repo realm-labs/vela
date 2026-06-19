@@ -130,7 +130,11 @@ remains unchanged for follow-on lexer/parser migration. Phase 2 is complete:
 the lexer now carries a parser-facing significant token stream plus a
 lossless token stream that preserves whitespace, comments, shebangs, unknown
 characters, malformed token fragments, exact source text, and existing lexical
-diagnostics for later CST construction.
+diagnostics for later CST construction. Phase 3 has started with a rowan
+`parse_source` path that builds a lossless source-file root from the lossless
+lexer stream, preserves lexical diagnostics, and exposes the first typed
+source-file syntax wrapper; grammar-structured parser events and broader typed
+AST wrappers remain open.
 
 ## Milestone Snapshot
 
