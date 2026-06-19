@@ -635,6 +635,8 @@ cargo test -p vela_lsp_server workspace_folders
     through `lsp/from_proto.rs`.
   - `textDocument/foldingRange` now converts typed `FoldingRangeParams`
     through `lsp/from_proto.rs`.
+  - `textDocument/selectionRange` now converts typed `SelectionRangeParams`
+    through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -663,6 +665,8 @@ cargo test -p vela_lsp_server workspace_folders
     no top-level `detail` field.
   - Folding ranges now project through typed `lsp_types::FoldingRange`
     values with typed `FoldingRangeKind` categories.
+  - Selection ranges now project recursive parent chains through typed
+    `lsp_types::SelectionRange` values.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -815,6 +819,16 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service folding`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/selectionRange` now uses typed `SelectionRangeParams`
+    through `GlobalState` and typed `lsp_types::SelectionRange` projection
+    through `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server selection`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service selection`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

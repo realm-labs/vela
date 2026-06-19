@@ -7,9 +7,9 @@ use vela_language_service::{
     DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
     DocumentTextEdit, FoldingRange as ServiceFoldingRange,
     FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall, LineIndex,
-    OutgoingCall, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
-    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
-    WorkspaceSymbolLocation,
+    OutgoingCall, PrepareRename, Reference, RenameRiskKind,
+    SelectionRange as ServiceSelectionRange, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
+    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
 };
 
 pub(crate) fn completion_response(
@@ -101,6 +101,10 @@ pub(crate) fn workspace_symbols(symbols: &[WorkspaceSymbol]) -> lsp_types::Works
 
 pub(crate) fn folding_ranges(ranges: &[ServiceFoldingRange]) -> Vec<lsp_types::FoldingRange> {
     ranges.iter().map(folding_range).collect()
+}
+
+pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_types::SelectionRange> {
+    ranges.iter().map(selection_range).collect()
 }
 
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
@@ -280,6 +284,13 @@ const fn folding_range_kind(kind: ServiceFoldingRangeKind) -> lsp_types::Folding
     match kind {
         ServiceFoldingRangeKind::Imports => lsp_types::FoldingRangeKind::Imports,
         ServiceFoldingRangeKind::Region => lsp_types::FoldingRangeKind::Region,
+    }
+}
+
+fn selection_range(range: &ServiceSelectionRange) -> lsp_types::SelectionRange {
+    lsp_types::SelectionRange {
+        range: diagnostic_range(range.range()),
+        parent: range.parent().map(selection_range).map(Box::new),
     }
 }
 
@@ -927,6 +938,40 @@ pub fn main() {
                 && range.end_line == 7
                 && range.start_character == Some(14)
         }));
+    }
+
+    #[test]
+    fn selection_ranges_project_typed_parent_chains() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+pub fn main(player: Player) -> i64 {
+    let next = player.level + 1
+    return next
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let ranges = databases.selection_ranges(&document, &[Position::new(1, 22)]);
+
+        let ranges = selection_ranges(&ranges);
+
+        assert_eq!(ranges.len(), 1);
+        let mut chain = Vec::new();
+        let mut current = Some(&ranges[0]);
+        while let Some(range) = current {
+            chain.push(range.range);
+            current = range.parent.as_deref();
+        }
+        assert!(chain.contains(&lsp_types::Range::new(
+            lsp_types::Position::new(1, 22),
+            lsp_types::Position::new(1, 27)
+        )));
+        assert!(chain.contains(&lsp_types::Range::new(
+            lsp_types::Position::new(1, 15),
+            lsp_types::Position::new(1, 27)
+        )));
     }
 
     #[test]

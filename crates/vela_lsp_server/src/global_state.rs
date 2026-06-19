@@ -8,7 +8,7 @@ use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams,
     DocumentSymbolParams, FoldingRangeParams, HoverParams, ReferenceParams, RenameParams,
-    SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
+    SelectionRangeParams, SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -444,6 +444,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.folding_range_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn selection_range(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: SelectionRangeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.selection_range_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1715,6 +1726,44 @@ pub fn main() {
     }
 
     #[test]
+    fn typed_selection_range_dispatch_projects_parent_chain() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+pub fn main(player: Player) -> i64 {
+    let next = player.level + 1
+    return next
+}";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let response = typed_selection_range_response(&mut state, 19, &document, 1, 22);
+        let ranges = response["result"]
+            .as_array()
+            .expect("selectionRange response should be an array");
+        assert_eq!(ranges.len(), 1);
+        let chain = json_selection_chain(&ranges[0]);
+
+        assert!(chain.iter().any(|range| {
+            range["start"]["line"] == 1
+                && range["start"]["character"] == 22
+                && range["end"]["character"] == 27
+        }));
+        assert!(chain.iter().any(|range| {
+            range["start"]["line"] == 1
+                && range["start"]["character"] == 15
+                && range["end"]["character"] == 27
+        }));
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2242,6 +2291,44 @@ pub fn main(amount: i64) -> i64 {
             .into_response()
             .expect("typed foldingRange should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_selection_range_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        line: u32,
+        character: u32,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/selectionRange".to_owned(),
+            params: serde_json::to_value(lsp_types::SelectionRangeParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                positions: vec![lsp_types::Position::new(line, character)],
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("selectionRange params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed selectionRange should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn json_selection_chain(range: &serde_json::Value) -> Vec<&serde_json::Value> {
+        let mut ranges = Vec::new();
+        let mut current = Some(range);
+        while let Some(selection) = current {
+            ranges.push(&selection["range"]);
+            current = selection.get("parent");
+        }
+        ranges
     }
 
     fn workspace_config_with_schema(root: &str, schema: &str) -> WorkspaceConfig {

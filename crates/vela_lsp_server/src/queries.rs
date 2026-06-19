@@ -1174,6 +1174,35 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_selection_ranges(&ranges)))
     }
 
+    pub(crate) fn selection_range_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::SelectionRangeParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::selection_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid selectionRange params: {error}"),
+                ));
+            }
+        };
+        let ranges = self
+            .databases
+            .selection_ranges(&input.document_id, &input.positions);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::selection_ranges(&ranges))
+                .expect("typed selectionRange response should serialize"),
+        ))
+    }
+
     pub(crate) fn semantic_tokens_full(
         &mut self,
         id: Option<RequestId>,

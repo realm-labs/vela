@@ -27,6 +27,12 @@ pub(crate) struct TextDocumentRangeInput {
     pub(crate) range: DiagnosticRange,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SelectionRangeInput {
+    pub(crate) document_id: DocumentId,
+    pub(crate) positions: Vec<Position>,
+}
+
 pub(crate) fn document_id(uri: &lsp_types::Url) -> DocumentId {
     DocumentId::from(uri.to_string())
 }
@@ -104,6 +110,21 @@ pub(crate) fn document_symbol_params(params: &lsp_types::DocumentSymbolParams) -
 
 pub(crate) fn folding_range_params(params: &lsp_types::FoldingRangeParams) -> DocumentId {
     document_id(&params.text_document.uri)
+}
+
+pub(crate) fn selection_range_params(
+    text: &str,
+    params: &lsp_types::SelectionRangeParams,
+) -> Result<SelectionRangeInput, String> {
+    Ok(SelectionRangeInput {
+        document_id: document_id(&params.text_document.uri),
+        positions: params
+            .positions
+            .iter()
+            .copied()
+            .map(|position| self::position(text, position))
+            .collect::<Result<Vec<_>, _>>()?,
+    })
 }
 
 pub(crate) fn workspace_symbol_params(params: &lsp_types::WorkspaceSymbolParams) -> &str {
@@ -406,6 +427,34 @@ mod tests {
         assert_eq!(
             folding_range_params(&params),
             DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+    }
+
+    #[test]
+    fn selection_range_params_convert_positions() {
+        let params = lsp_types::SelectionRangeParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            positions: vec![
+                lsp_types::Position::new(0, 4),
+                lsp_types::Position::new(1, 2),
+            ],
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        let input = selection_range_params("main\n  value", &params)
+            .expect("selection range positions should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(
+            input.positions,
+            vec![Position::new(0, 4), Position::new(1, 2)]
         );
     }
 
