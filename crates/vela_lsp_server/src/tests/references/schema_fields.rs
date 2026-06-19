@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_highlight, assert_reference, file_uri, line, temp_workspace};
 
@@ -20,7 +22,8 @@ pub fn main(player: Player) -> i64 {
     let mut server = LspServer::new();
     let (root, schema_uri, uri) = open_schema_field_workspace(&mut server, schema_text, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -31,7 +34,7 @@ pub fn main(player: Player) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -73,7 +76,8 @@ pub fn main(player: Player) -> i64 {
     let mut server = LspServer::new();
     let (root, _, uri) = open_schema_field_workspace(&mut server, schema_text, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -83,7 +87,7 @@ pub fn main(player: Player) -> i64 {
                 "character": line(text, 1).find("level").expect("first field read")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -166,7 +170,8 @@ fn open_schema_field_workspace(
     )
     .expect("schema should be writable");
 
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        server,
         1,
         "initialize",
         serde_json::json!({
@@ -174,16 +179,18 @@ fn open_schema_field_workspace(
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -193,10 +200,11 @@ fn open_schema_field_workspace(
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -206,7 +214,7 @@ fn open_schema_field_workspace(
                 "text": text
             }
         }),
-    )));
+    ));
 
     (root, schema_uri, uri)
 }
