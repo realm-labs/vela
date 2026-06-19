@@ -188,6 +188,7 @@ for (const scope of [
 }
 
 const extensionSource = fs.readFileSync(path.join(root, "extension.js"), "utf8");
+const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
 assert(extensionSource.includes("LanguageClient"), "extension must use vscode-languageclient");
 assert(extensionSource.includes("serverCommand"), "extension must provide server command discovery");
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
@@ -215,6 +216,21 @@ assert(
   "extension must not use client-side fileEvents; native LSP server owns watcher registration"
 );
 assertThinLauncher(extensionSource, "VS Code extension");
+for (const marker of [
+  "vela.server.profile.enabled",
+  "vela.trace.server",
+  ".vela-lsp-profile.jsonl",
+  ".vela-lsp-trace.jsonl",
+  "message_received",
+  "request_queued",
+  "task_started",
+  "task_ended",
+  "response_sent",
+  "handleMs",
+  "writeMs"
+]) {
+  assert(readme.includes(marker), `README profiling guidance must mention ${marker}`);
+}
 
 const consistency = JSON.parse(fs.readFileSync(sharedHighlightingConsistency, "utf8"));
 const grammarText = JSON.stringify(grammarJson);

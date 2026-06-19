@@ -261,6 +261,9 @@ M20.5 RA main-loop update: task lifecycle trace events are now emitted through
 the main loop at queue, start, and end time, so an incomplete JSONL sequence
 identifies whether work is still queued, running inside a handler, or stuck
 between handler completion and response send.
+M20.5 RA main-loop update: VS Code profiling docs now explain how to enable
+profile and trace JSONL together, correlate requests by ID/method/lane, and
+separate fast native server responses from VS Code-side stalls.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

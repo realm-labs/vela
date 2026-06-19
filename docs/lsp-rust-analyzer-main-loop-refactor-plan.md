@@ -1757,7 +1757,14 @@ helper references are allowed only if they describe external JSON fixtures.
     `cargo test -p vela_lsp_server next_event_reports_task_lifecycle_before_blocked_task_finishes`,
     `cargo test -p vela_lsp_server trace_sink_writes_task_lifecycle_events`,
     and `cargo test -p vela_lsp_server task`.
-- [ ] Document how to compare server handler time with VS Code-side stalls.
+- [x] Document how to compare server handler time with VS Code-side stalls.
+  - `editors/vscode/README.md` now documents enabling profile plus trace JSONL,
+    finding the emitted paths from the Vela output channel, correlating
+    requests by `id`, `method`, and `lane`, and interpreting incomplete
+    `message_received`/`request_queued`/`task_started`/`task_ended`/
+    `response_sent` sequences. The VS Code package validator pins the key
+    profiling, trace, and lifecycle-event terms. Validated with
+    `node editors/vscode/scripts/validate-package.js`.
 
 Validation:
 
