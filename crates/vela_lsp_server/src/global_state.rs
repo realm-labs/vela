@@ -34,6 +34,9 @@ pub(crate) struct GlobalState {
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
     server: LspServer,
+    initialized: bool,
+    shutdown_requested: bool,
+    exited: bool,
 }
 
 #[allow(dead_code)]
@@ -93,6 +96,9 @@ impl GlobalState {
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
             server,
+            initialized: false,
+            shutdown_requested: false,
+            exited: false,
         }
     }
 
@@ -109,8 +115,8 @@ impl GlobalState {
             workspace_roots: self.server.workspace_roots.clone(),
             open_documents: self.server.open_documents.clone(),
             generation: self.server.databases.generation(),
-            initialized: self.server.initialized,
-            shutdown_requested: self.server.shutdown_requested,
+            initialized: self.initialized,
+            shutdown_requested: self.shutdown_requested,
         }
     }
 
@@ -135,15 +141,15 @@ impl GlobalState {
     }
 
     pub(crate) const fn is_exited(&self) -> bool {
-        self.server.is_exited()
+        self.exited
     }
 
     pub(crate) const fn is_initialized(&self) -> bool {
-        self.server.is_initialized()
+        self.initialized
     }
 
     pub(crate) const fn is_shutdown_requested(&self) -> bool {
-        self.server.is_shutdown_requested()
+        self.shutdown_requested
     }
 
     pub(crate) fn take_cancelled_request(&mut self, id: &RequestId) -> bool {
@@ -160,7 +166,7 @@ impl GlobalState {
         params: lsp_types::InitializeParams,
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
-        if self.server.initialized {
+        if self.initialized {
             return JsonRpcResult::Response(error_response(
                 Some(id),
                 ErrorCode::InvalidRequest,
@@ -184,6 +190,7 @@ impl GlobalState {
             }
         };
 
+        self.initialized = true;
         self.server.initialized = true;
         self.apply_config_change(ConfigChange::from_initialize(
             workspace_roots_from_lsp_initialize(&params),
@@ -200,7 +207,9 @@ impl GlobalState {
     }
 
     pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, params: ()) -> JsonRpcResult {
-        self.server.shutdown_lsp(id, params)
+        let result = self.server.shutdown_lsp(id, params);
+        self.shutdown_requested = true;
+        result
     }
 
     pub(crate) fn initialized(&mut self, params: lsp_types::InitializedParams) -> JsonRpcResult {
@@ -208,7 +217,9 @@ impl GlobalState {
     }
 
     pub(crate) fn exit(&mut self, params: ()) -> JsonRpcResult {
-        self.server.exit_lsp(params)
+        let result = self.server.exit_lsp(params);
+        self.exited = true;
+        result
     }
 
     pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
@@ -274,7 +285,15 @@ impl GlobalState {
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
-        self.server.handle_json(input)
+        let result = self.server.handle_json(input);
+        self.sync_lifecycle_from_legacy_server();
+        result
+    }
+
+    fn sync_lifecycle_from_legacy_server(&mut self) {
+        self.initialized |= self.server.initialized;
+        self.shutdown_requested |= self.server.shutdown_requested;
+        self.exited |= self.server.exited;
     }
 
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
@@ -361,6 +380,7 @@ mod tests {
             "fn main() { 1 }",
             SourceVersion::new(3),
         );
+        state.initialized = true;
         state.server.initialized = true;
 
         let snapshot = state.snapshot();
@@ -385,6 +405,43 @@ mod tests {
         assert!(snapshot.open_documents().contains(&document));
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
+    }
+
+    #[test]
+    fn lifecycle_flags_are_owned_by_global_state() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+
+        let initialize = state.initialize(
+            lsp_server::RequestId::from(1),
+            lsp_types::InitializeParams {
+                process_id: None,
+                capabilities: lsp_types::ClientCapabilities::default(),
+                ..lsp_types::InitializeParams::default()
+            },
+        );
+        assert!(initialize.into_response().is_some());
+        assert!(state.is_initialized());
+        assert!(state.server.initialized);
+
+        let shutdown = state.shutdown(lsp_server::RequestId::from(2), ());
+        assert!(shutdown.into_response().is_some());
+        assert!(state.is_shutdown_requested());
+        assert!(state.server.shutdown_requested);
+
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let result = state.handle_legacy_json(
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "exit",
+                "params": null
+            })
+            .to_string(),
+        );
+        assert!(result.into_response().is_some());
+        assert!(state.is_exited());
     }
 
     #[test]

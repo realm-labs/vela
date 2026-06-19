@@ -441,6 +441,9 @@ cargo test -p vela_lsp_server lifecycle
   - Typed queued-cancellation state now lives in `GlobalState`'s
     `RequestQueue` instead of the legacy server wrapper. In-flight task
     cancellation handles remain open for Phase 6.
+  - Typed initialized, shutdown, and exited lifecycle flags now live in
+    `GlobalState`, with temporary legacy-wrapper synchronization for paths
+    still routed through `handle_legacy_json`.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.
