@@ -89,9 +89,11 @@ fn dispatch_request(
         .on_latency_sensitive_snapshot_messages_typed::<SemanticTokensFullDeltaRequest>(
             GlobalStateSnapshot::semantic_tokens_full_delta,
         )
-        .on_worker_snapshot_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
-        .on_worker_snapshot_typed::<GotoDeclaration>(GlobalStateSnapshot::declaration)
-        .on_worker_snapshot_typed::<GotoTypeDefinition>(GlobalStateSnapshot::type_definition)
+        .on_worker_snapshot_messages_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
+        .on_worker_snapshot_messages_typed::<GotoDeclaration>(GlobalStateSnapshot::declaration)
+        .on_worker_snapshot_messages_typed::<GotoTypeDefinition>(
+            GlobalStateSnapshot::type_definition,
+        )
         .on_worker_snapshot_typed::<References>(GlobalStateSnapshot::references)
         .on_worker_snapshot_typed::<DocumentHighlightRequest>(
             GlobalStateSnapshot::document_highlight,
@@ -408,6 +410,18 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_worker_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_snapshot_messages_typed::<R>(f);
         self
     }
 

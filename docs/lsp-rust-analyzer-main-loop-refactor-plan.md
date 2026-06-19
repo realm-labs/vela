@@ -1497,6 +1497,12 @@ cargo test -p vela_lsp_server semantic_tokens
     method has been removed. Validated with
     `cargo test -p vela_lsp_server semantic_tokens` and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed definition, declaration, and type-definition snapshot request
+    handlers now return `lsp_server::Message` batches directly through a typed
+    worker snapshot dispatcher branch. Validated with
+    `cargo test -p vela_lsp_server definition`,
+    `cargo test -p vela_lsp_server typed_navigation`, and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

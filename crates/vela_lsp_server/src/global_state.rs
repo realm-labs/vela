@@ -397,7 +397,7 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: lsp_types::GotoDefinitionParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         self.navigation_location(
             id,
             params,
@@ -410,7 +410,7 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: lsp_types::request::GotoDeclarationParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         self.navigation_location(
             id,
             params,
@@ -423,7 +423,7 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: lsp_types::request::GotoTypeDefinitionParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         self.navigation_location(
             id,
             params,
@@ -756,15 +756,15 @@ impl GlobalStateSnapshot {
         params: lsp_types::GotoDefinitionParams,
         method_name: &'static str,
         query: SnapshotNavigationLocationQuery,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::goto_definition_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid {method_name} position: {error}"),
                 );
@@ -782,7 +782,7 @@ impl GlobalStateSnapshot {
                 .type_definition(&input.document_id, input.position),
         };
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(definition.as_ref().map(to_proto::definition_location))
                 .expect("typed navigation response should serialize"),
