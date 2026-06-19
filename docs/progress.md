@@ -613,6 +613,11 @@ server state wrapper. This is an in-progress Phase 2 boundary; lifecycle
 requests still need migration to typed dispatch before the checklist item can
 close.
 
+M20.5 RA-style main-loop update: `main_loop.rs` now owns the typed
+`lsp_server::Message` receive/dispatch/respond loop for stdio, TCP, and
+in-memory tests. Transport setup remains in `transport.rs`, while typed
+lifecycle dispatch is the next Phase 2 migration step.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

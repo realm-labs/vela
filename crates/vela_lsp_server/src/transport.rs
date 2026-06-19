@@ -2,12 +2,12 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufReader};
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 use std::thread;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message, Notification, RequestId, Response, ResponseError};
 
-use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState};
+use crate::{JsonRpcResult, LaunchConfiguration};
 
 pub fn listen_tcp_once(address: &str, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let listener = bind_loopback_tcp_listener(address)?;
@@ -127,45 +127,10 @@ pub fn run_connection(
     connection: Connection,
     configuration: LaunchConfiguration,
 ) -> anyhow::Result<()> {
-    let mut state = GlobalState::new(configuration);
-    let mut profiler = RequestProfiler::from_configuration(state.launch_configuration())?;
-    let mut sequence = 0_u64;
-
-    while let Ok(message) = connection.receiver.recv() {
-        sequence = sequence.saturating_add(1);
-        let metadata = MessageMetadata::from_message(&message);
-        let input = serialize_json_rpc_message(&message)?;
-        let input_bytes = input.len();
-        profiler.begin(sequence, &metadata, input_bytes)?;
-
-        let handle_start = Instant::now();
-        let result = state.handle_message(&message, &input);
-        let handle_ms = elapsed_ms(handle_start);
-        let summary = ResultSummary::from_result(&result);
-
-        let write_start = Instant::now();
-        for message in messages_from_result(result)? {
-            connection.sender.send(message)?;
-        }
-        let write_ms = elapsed_ms(write_start);
-        profiler.end(
-            sequence,
-            &metadata,
-            input_bytes,
-            handle_ms,
-            write_ms,
-            &summary,
-        )?;
-
-        if state.is_exited() {
-            break;
-        }
-    }
-
-    Ok(())
+    crate::main_loop::run(connection, configuration)
 }
 
-fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {
+pub(crate) fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {
     let strings = match result {
         JsonRpcResult::Response(message) | JsonRpcResult::Notification(message) => vec![message],
         JsonRpcResult::Notifications(messages) => messages,
@@ -180,7 +145,7 @@ fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {
         .collect()
 }
 
-fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<String> {
+pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<String> {
     let mut value = serde_json::to_value(message)?;
     let object = value
         .as_object_mut()
@@ -230,13 +195,13 @@ fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<RequestId> 
     anyhow::bail!("unsupported JSON-RPC response id `{value}`")
 }
 
-struct RequestProfiler {
+pub(crate) struct RequestProfiler {
     writer: Option<File>,
     slow_ms: u64,
 }
 
 impl RequestProfiler {
-    fn from_configuration(configuration: &LaunchConfiguration) -> anyhow::Result<Self> {
+    pub(crate) fn from_configuration(configuration: &LaunchConfiguration) -> anyhow::Result<Self> {
         let Some(path) = configuration.profile_path() else {
             return Ok(Self {
                 writer: None,
@@ -263,7 +228,7 @@ impl RequestProfiler {
         }))
     }
 
-    fn begin(
+    pub(crate) fn begin(
         &mut self,
         sequence: u64,
         metadata: &MessageMetadata,
@@ -281,7 +246,7 @@ impl RequestProfiler {
         }))
     }
 
-    fn end(
+    pub(crate) fn end(
         &mut self,
         sequence: u64,
         metadata: &MessageMetadata,
@@ -323,7 +288,7 @@ impl RequestProfiler {
 }
 
 #[derive(Debug)]
-struct MessageMetadata {
+pub(crate) struct MessageMetadata {
     kind: &'static str,
     method: Option<String>,
     id: Option<String>,
@@ -331,7 +296,7 @@ struct MessageMetadata {
 }
 
 impl MessageMetadata {
-    fn from_message(message: &Message) -> Self {
+    pub(crate) fn from_message(message: &Message) -> Self {
         match message {
             Message::Request(request) => Self {
                 kind: "request",
@@ -359,7 +324,7 @@ impl MessageMetadata {
     }
 }
 
-struct ResultSummary {
+pub(crate) struct ResultSummary {
     kind: &'static str,
     messages: usize,
     bytes: usize,
@@ -374,7 +339,7 @@ impl ResultSummary {
         }
     }
 
-    fn from_result(result: &JsonRpcResult) -> Self {
+    pub(crate) fn from_result(result: &JsonRpcResult) -> Self {
         match result {
             JsonRpcResult::Response(message) => Self {
                 kind: "response",
@@ -402,10 +367,6 @@ fn document_uri(value: &serde_json::Value) -> Option<String> {
         .or_else(|| value.pointer("/uri"))
         .and_then(serde_json::Value::as_str)
         .map(str::to_owned)
-}
-
-fn elapsed_ms(start: Instant) -> u64 {
-    u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
 fn timestamp_ms() -> u128 {

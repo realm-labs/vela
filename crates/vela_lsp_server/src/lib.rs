@@ -13,6 +13,7 @@ mod global_state;
 mod hover;
 mod inlay;
 mod lifecycle;
+pub mod main_loop;
 mod protocol;
 mod queries;
 mod references;

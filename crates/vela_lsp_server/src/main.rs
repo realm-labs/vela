@@ -16,7 +16,7 @@ fn run() -> anyhow::Result<()> {
     match parse_args(env::args().skip(1))? {
         Command::Stdio(configuration) => {
             let (connection, io_threads) = Connection::stdio();
-            let result = vela_lsp_server::transport::run_connection(connection, configuration);
+            let result = vela_lsp_server::main_loop::run(connection, configuration);
             io_threads.join()?;
             result
         }
