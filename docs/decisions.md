@@ -159,6 +159,12 @@ transport starts. Client-provided initialization options override those launch
 defaults, while `vela.toml` discovery still wins once project configuration is
 loaded.
 
+The native LSP server's stdio transport uses `lsp-server` as the production
+framing and typed message boundary. During the rust-analyzer-style main-loop
+refactor, the old manual stdio runner and custom JSON-RPC envelope types may
+remain only as temporary compatibility wrappers for tests and phased handler
+migration; they are not durable production architecture.
+
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
 `vela_syntax::formatting`, while range formatting only trims trailing

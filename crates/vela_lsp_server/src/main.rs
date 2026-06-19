@@ -1,7 +1,8 @@
 use std::env;
-use std::io::{self, BufReader, BufWriter};
+use std::io;
 use std::path::PathBuf;
 
+use lsp_server::Connection;
 use vela_lsp_server::LaunchConfiguration;
 
 fn main() {
@@ -11,16 +12,13 @@ fn main() {
     }
 }
 
-fn run() -> io::Result<()> {
+fn run() -> anyhow::Result<()> {
     match parse_args(env::args().skip(1))? {
         Command::Stdio(configuration) => {
-            let stdin = io::stdin();
-            let stdout = io::stdout();
-            vela_lsp_server::stdio::run_stdio_with_configuration(
-                BufReader::new(stdin.lock()),
-                BufWriter::new(stdout.lock()),
-                configuration,
-            )
+            let (connection, io_threads) = Connection::stdio();
+            let result = vela_lsp_server::transport::run_connection(connection, configuration);
+            io_threads.join()?;
+            result
         }
         Command::Version => {
             println!("vela_lsp_server {}", env!("CARGO_PKG_VERSION"));

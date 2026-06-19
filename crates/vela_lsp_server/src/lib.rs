@@ -22,6 +22,7 @@ mod semantic_tokens;
 mod signature;
 pub mod stdio;
 mod symbols;
+pub mod transport;
 mod watching;
 
 use std::collections::{BTreeMap, BTreeSet};

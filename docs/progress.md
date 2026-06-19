@@ -592,6 +592,14 @@ surface; separated completion display, insertion, and projection fields;
 native LSP JSON-RPC fixtures for the correction set; statement snippets; and
 syntax-owned compact type-hint formatting.
 
+M20.5 RA-style main-loop update: the native LSP server now depends on
+`lsp-server`, `lsp-types`, `anyhow`, and `crossbeam-channel`; the production
+stdio binary path starts through `lsp_server::Connection::stdio()` and enters a
+typed message bridge backed by an in-memory `lsp_server::Message` harness.
+The old manual stdio runner remains only as a temporary Phase 1 compatibility
+wrapper until the remaining main-loop phases delete custom JSON-RPC and
+Content-Length handling.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
