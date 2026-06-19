@@ -326,23 +326,23 @@ impl GlobalState {
 
 #[derive(Debug, Default)]
 struct RequestQueue {
-    incoming: BTreeSet<String>,
+    incoming: BTreeSet<RequestId>,
     cancelled: BTreeSet<RequestId>,
 }
 
 impl RequestQueue {
-    fn request_id(message: &Message) -> Option<String> {
+    fn request_id(message: &Message) -> Option<RequestId> {
         match message {
-            Message::Request(request) => Some(request.id.to_string()),
+            Message::Request(request) => Some(request_id_from_lsp(request.id.clone())),
             Message::Response(_) | Message::Notification(_) => None,
         }
     }
 
-    fn start(&mut self, id: String) {
+    fn start(&mut self, id: RequestId) {
         self.incoming.insert(id);
     }
 
-    fn finish(&mut self, id: &str) {
+    fn finish(&mut self, id: &RequestId) {
         self.incoming.remove(id);
     }
 
@@ -458,5 +458,28 @@ mod tests {
         assert!(state.take_cancelled_request(&request_id));
         assert!(!state.take_cancelled_request(&request_id));
         assert!(state.server.cancelled_requests.is_empty());
+    }
+
+    #[test]
+    fn request_queue_tracks_typed_request_ids() {
+        let mut queue = RequestQueue::default();
+        let numeric = RequestId::Number(7);
+        let string = RequestId::String("hover-1".to_owned());
+
+        queue.start(numeric.clone());
+        queue.start(string.clone());
+        assert!(queue.incoming.contains(&numeric));
+        assert!(queue.incoming.contains(&string));
+
+        queue.finish(&numeric);
+        assert!(!queue.incoming.contains(&numeric));
+        assert!(queue.incoming.contains(&string));
+
+        let message = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from("hover-1".to_owned()),
+            method: "textDocument/hover".to_owned(),
+            params: serde_json::json!({}),
+        });
+        assert_eq!(RequestQueue::request_id(&message), Some(string));
     }
 }

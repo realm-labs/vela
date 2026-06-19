@@ -258,6 +258,10 @@ M20.5 RA main-loop update: typed initialized, shutdown, and exited lifecycle
 flags now live in `GlobalState`, with temporary legacy-wrapper synchronization
 for paths still routed through `handle_legacy_json`.
 
+M20.5 RA main-loop update: `RequestQueue` now tracks incoming request IDs as
+typed `RequestId` values instead of stringified IDs, preparing the queue for
+later in-flight cancellation and stale-result bookkeeping.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,
