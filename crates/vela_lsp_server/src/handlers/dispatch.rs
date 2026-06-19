@@ -106,7 +106,7 @@ fn dispatch_request(
             GlobalStateSnapshot::workspace_symbol,
             RetryTask::workspace_symbol,
         )
-        .on_retryable_worker_snapshot_typed::<FoldingRangeRequest>(
+        .on_retryable_worker_snapshot_messages_typed::<FoldingRangeRequest>(
             GlobalStateSnapshot::folding_range,
             RetryTask::folding_range,
         )
@@ -257,9 +257,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Worker,
                     method: <FoldingRangeRequest as lsp_types::request::Request>::METHOD,
                     id,
@@ -467,19 +467,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_messages_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_retryable_worker_snapshot_typed<R>(
-        &mut self,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
-    ) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
-    {
-        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Worker, f, retry);
         self
     }
 

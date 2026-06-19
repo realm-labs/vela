@@ -526,11 +526,11 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: FoldingRangeParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::folding_range_params(&params);
         let ranges = self.databases.folding_ranges(&document_id);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::folding_ranges(&ranges))
                 .expect("typed foldingRange response should serialize"),
