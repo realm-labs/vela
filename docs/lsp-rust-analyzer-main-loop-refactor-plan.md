@@ -1697,8 +1697,14 @@ helper references are allowed only if they describe external JSON fixtures.
     names, types, defaults, slow-threshold minimum, and launcher flags
     `--profile`/`--profile-slow-ms`. Validated with
     `node editors/vscode/scripts/validate-package.js`.
-- [ ] Preserve or add a VS Code-accessible way to see trace/log output for
+- [x] Preserve or add a VS Code-accessible way to see trace/log output for
   startup args, transport kind, request routing, queue events, and task lane.
+  - VS Code now maps `vela.trace.server != "off"` to the native server
+    `--log` JSONL path (`.vela-lsp-trace.jsonl` in the workspace or temp dir)
+    and reports that path in the Vela output channel alongside startup args.
+    The package validator pins `serverTraceEnabled()`, `serverLogPath(cwd)`,
+    and `--log` launcher wiring. Validated with
+    `node editors/vscode/scripts/validate-package.js`.
 - [ ] Write JSONL events for session start, request received, queued,
   task started, task ended, response sent, stale discarded, retried, and
   cancelled.

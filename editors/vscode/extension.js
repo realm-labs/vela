@@ -48,6 +48,21 @@ function profilePath(cwd) {
   return path.join(os.tmpdir(), "vela-lsp-profile.jsonl");
 }
 
+function traceServer() {
+  return config().get("trace.server", "off");
+}
+
+function serverTraceEnabled() {
+  return traceServer() !== "off";
+}
+
+function serverLogPath(cwd) {
+  if (cwd) {
+    return path.join(cwd, ".vela-lsp-trace.jsonl");
+  }
+  return path.join(os.tmpdir(), "vela-lsp-trace.jsonl");
+}
+
 function watchFilesEnabled() {
   return config().get("server.watchFiles.enabled", true);
 }
@@ -73,6 +88,9 @@ function serverArgs(cwd) {
   if (profileEnabled()) {
     args.push("--profile", profilePath(cwd));
     args.push("--profile-slow-ms", String(profileSlowMs()));
+  }
+  if (serverTraceEnabled()) {
+    args.push("--log", serverLogPath(cwd));
   }
   if (!watchFilesEnabled()) {
     args.push("--no-watch-files");
@@ -126,6 +144,9 @@ function activate(context) {
   log(`Language server cwd: ${cwd ?? "<none>"}`);
   if (profileEnabled()) {
     log(`Language server profile: ${profilePath(cwd)}`);
+  }
+  if (serverTraceEnabled()) {
+    log(`Language server trace log: ${serverLogPath(cwd)}`);
   }
   if (!watchFilesEnabled()) {
     log("Language server watched-file registration is disabled.");

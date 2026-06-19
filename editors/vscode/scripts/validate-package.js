@@ -196,8 +196,11 @@ assert(extensionSource.includes("initializationFailedHandler"), "extension must 
 assert(extensionSource.includes("profileEnabled()"), "extension must read server profile enabled setting");
 assert(extensionSource.includes("profilePath(cwd)"), "extension must read server profile path setting");
 assert(extensionSource.includes("profileSlowMs()"), "extension must read server profile slow threshold setting");
+assert(extensionSource.includes("serverTraceEnabled()"), "extension must read server trace setting");
+assert(extensionSource.includes("serverLogPath(cwd)"), "extension must expose the server trace log path");
 assert(extensionSource.includes("--profile"), "extension must wire server profile flags");
 assert(extensionSource.includes("--profile-slow-ms"), "extension must wire server profile slow threshold flag");
+assert(extensionSource.includes("--log"), "extension must wire server trace log flag");
 assert(extensionSource.includes("--no-watch-files"), "extension must wire watched-file debug flag");
 assert(
   !extensionSource.includes("context.subscriptions.push(client.start())"),

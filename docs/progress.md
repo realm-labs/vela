@@ -834,6 +834,12 @@ M20.5 RA-style main-loop update: Phase 8 trace/log setup now stays in the
 explicit `tracing.rs` sink and can write JSONL to a file or to stderr through
 `--log -`/`--log stderr`, preserving stdio stdout for protocol traffic only.
 
+M20.5 RA-style main-loop update: VS Code now wires `vela.trace.server` to the
+native server `--log` JSONL path and reports that path in the Vela output
+channel, so startup args, transport metadata, request routing, and lane fields
+from the server trace are reachable from editor launches without adding
+semantic logic to the extension.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
