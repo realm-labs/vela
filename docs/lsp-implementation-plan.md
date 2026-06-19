@@ -421,7 +421,8 @@ coverage complete based only on the older capability phases.
   - Current fixtures cover native watcher registration, `.vela`
     create/delete/rename module graph updates, `vela.toml` invalid/valid/delete
     diagnostics, schema invalid/valid/delete/reload diagnostics, schema-backed
-    completion updates after reload, workspace-folder reindexing,
+    completion updates after reload, stale host completion clearing after schema
+    deletion, workspace-folder reindexing,
     `didChangeConfiguration` projection into workspace roots and host schema,
     initialization-option configuration, stdio transport, native `--stdio`,
     `--root`, `--schema`, and `--version` parsing, launch-configuration

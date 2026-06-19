@@ -1,10 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{
     LspServer, notification, notification_value, notification_values, request, response_value,
 };
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn schema_reload_updates_host_member_completion() {
@@ -87,6 +90,89 @@ fn schema_reload_updates_host_member_completion() {
         }),
     )));
     assert_completion(&after, "rank", 5, "String");
+    assert_no_completion(&after, "level");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
+fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+            [workspace]
+            roots = ["scripts"]
+
+            [host]
+            schema = "target/vela/schema.json"
+        "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(&schema_path, schema_with_player_field("level", "i64"))
+        .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main(player: Player) { player. }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let position = text.find(". }").expect("member dot should exist") + 1;
+
+    let before = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": { "line": 0, "character": position }
+        }),
+    )));
+    assert_completion(&before, "level", 5, "i64");
+
+    fs::remove_file(&schema_path).expect("schema should be removable");
+    let notifications = notification_values(server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&schema_path), "type": 3 }]
+        }),
+    )));
+    assert_document_has_diagnostic_code(&notifications, &main_uri, "schema::unavailable");
+
+    let after = response_value(server.handle_json(&request(
+        3,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": { "line": 0, "character": position }
+        }),
+    )));
     assert_no_completion(&after, "level");
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
@@ -274,6 +360,28 @@ fn assert_document_diagnostics(
     assert_eq!(notification["params"]["diagnostics"], expected);
 }
 
+fn assert_document_has_diagnostic_code(
+    notifications: &[serde_json::Value],
+    uri: &str,
+    expected_code: &str,
+) {
+    let Some(notification) = notifications
+        .iter()
+        .find(|notification| notification["params"]["uri"] == uri)
+    else {
+        panic!("expected diagnostics for {uri}");
+    };
+    let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
+        panic!("publishDiagnostics should contain diagnostics");
+    };
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == expected_code),
+        "{diagnostics:?}"
+    );
+}
+
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {
     assert_eq!(response["result"]["isIncomplete"], false);
     let Some(items) = response["result"]["items"].as_array() else {
@@ -300,10 +408,12 @@ fn temp_workspace() -> PathBuf {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_server_schema_reload_{}_{}",
+        "vela_lsp_server_schema_reload_{}_{}_{}",
         std::process::id(),
-        suffix
+        suffix,
+        sequence
     ));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
