@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_map_key_completion_suggests_schema_enum_variants() {
@@ -66,7 +66,8 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
 }"#;
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -74,14 +75,16 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -91,9 +94,10 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/completion",
         serde_json::json!({
@@ -108,7 +112,7 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
                     .expect("map key prefix") + "Co".len()
             }
         }),
-    )));
+    ));
 
     let items = response["result"]["items"]
         .as_array()
