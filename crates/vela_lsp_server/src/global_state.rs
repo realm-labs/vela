@@ -5,7 +5,8 @@ use lsp_server::Message;
 use lsp_types::{
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, SignatureHelpParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, ReferenceParams,
+    SignatureHelpParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -386,6 +387,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.type_definition_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn references(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: ReferenceParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.references_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1406,6 +1418,52 @@ fn main(player: Player) { grant(); return player.inventory }";
     }
 
     #[test]
+    fn typed_references_dispatch_projects_location_array() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let line = text.lines().nth(2).expect("return line should exist");
+        let character = line
+            .find("amount")
+            .expect("return line should contain amount");
+
+        let response = typed_references_response(&mut state, 13, &document, 2, character, true);
+        let references = response["result"]
+            .as_array()
+            .expect("references response should be an array");
+        assert_eq!(references.len(), 3, "{references:?}");
+        assert_eq!(references[0]["uri"], document.as_str());
+        assert_eq!(references[0]["range"]["start"]["line"], 0);
+        assert_eq!(references[0]["range"]["start"]["character"], 12);
+        assert_eq!(references[2]["range"]["start"]["line"], 2);
+        assert_eq!(references[2]["range"]["start"]["character"], 18);
+
+        let response = typed_references_response(&mut state, 14, &document, 2, character, false);
+        let references = response["result"]
+            .as_array()
+            .expect("references response should be an array");
+        assert_eq!(references.len(), 2, "{references:?}");
+        assert!(
+            references
+                .iter()
+                .all(|reference| reference["range"]["start"]["line"] != 0)
+        );
+    }
+
+    #[test]
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1475,6 +1533,43 @@ fn main(player: Player) { grant(); return player.inventory }";
         let response = result
             .into_response()
             .expect("typed navigation should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_references_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        line: u32,
+        character: usize,
+        include_declaration: bool,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/references".to_owned(),
+            params: serde_json::to_value(lsp_types::ReferenceParams {
+                text_document_position: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        line,
+                        u32::try_from(character).expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+                context: lsp_types::ReferenceContext {
+                    include_declaration,
+                },
+            })
+            .expect("reference params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed references should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

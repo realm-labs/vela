@@ -66,7 +66,7 @@ fn dispatch_request(
         .on_worker_typed::<GotoDefinition>(GlobalState::definition)
         .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
         .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
-        .on_worker::<References>()
+        .on_worker_typed::<References>(GlobalState::references)
         .on_worker::<Rename>()
         .on_worker::<CodeActionRequest>()
         .on_worker::<FoldingRangeRequest>()

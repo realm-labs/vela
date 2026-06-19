@@ -82,6 +82,13 @@ pub(crate) fn goto_definition_params(
     text_document_position(text, &params.text_document_position_params)
 }
 
+pub(crate) fn reference_params(
+    text: &str,
+    params: &lsp_types::ReferenceParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -257,6 +264,32 @@ mod tests {
         };
 
         let input = goto_definition_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn reference_params_convert_nested_position_input() {
+        let params = lsp_types::ReferenceParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+            context: lsp_types::ReferenceContext {
+                include_declaration: true,
+            },
+        };
+
+        let input = reference_params("main", &params).expect("position should convert");
 
         assert_eq!(
             input.document_id,

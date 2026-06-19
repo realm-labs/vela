@@ -2,7 +2,7 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
     CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, Hover, HoverKind,
-    LineIndex, SignatureHelp, TextRange,
+    LineIndex, Reference, SignatureHelp, TextRange,
 };
 
 pub(crate) fn completion_response(
@@ -62,10 +62,24 @@ pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {
 }
 
 pub(crate) fn definition_location(definition: &Definition) -> lsp_types::Location {
+    location(definition.document_id(), definition.range())
+}
+
+pub(crate) fn reference_locations(references: &[Reference]) -> Vec<lsp_types::Location> {
+    references
+        .iter()
+        .map(|reference| location(reference.document_id(), reference.range()))
+        .collect()
+}
+
+fn location(
+    document_id: &vela_language_service::DocumentId,
+    range: DiagnosticRange,
+) -> lsp_types::Location {
     lsp_types::Location {
-        uri: lsp_types::Url::parse(definition.document_id().as_str())
-            .expect("definition document id should be a valid LSP URI"),
-        range: diagnostic_range(definition.range()),
+        uri: lsp_types::Url::parse(document_id.as_str())
+            .expect("location document id should be a valid LSP URI"),
+        range: diagnostic_range(range),
     }
 }
 
@@ -446,6 +460,54 @@ mod tests {
             lsp_types::Range::new(
                 lsp_types::Position::new(0, 7),
                 lsp_types::Position::new(0, 12)
+            )
+        );
+    }
+
+    #[test]
+    fn reference_locations_project_typed_locations() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            2,
+            source
+                .lines()
+                .nth(2)
+                .expect("return line should exist")
+                .find("amount")
+                .expect("line should contain amount"),
+        );
+        let references = databases.references(&document, position, true);
+
+        let locations = reference_locations(&references);
+
+        assert_eq!(locations.len(), 3);
+        assert!(
+            locations
+                .iter()
+                .all(|location| location.uri.as_str() == document.as_str())
+        );
+        assert_eq!(
+            locations[0].range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 12),
+                lsp_types::Position::new(0, 18)
+            )
+        );
+        assert_eq!(
+            locations[2].range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(2, 18),
+                lsp_types::Position::new(2, 24)
             )
         );
     }
