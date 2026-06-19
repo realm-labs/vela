@@ -1185,7 +1185,11 @@ cargo test -p vela_lsp_server completion
 
 ### Phase 6: Cancellation, Stale Results, And Retry Policy
 
-- [ ] Track incoming request IDs in the request queue.
+- [x] Track incoming request IDs in the request queue.
+  - `RequestQueue` tracks typed numeric and string request IDs in its
+    incoming set and removes them on finish; `RequestQueue::request_id`
+    extracts typed IDs from `lsp_server::Message::Request`. Validated with
+    `cargo test -p vela_lsp_server request_queue_tracks_typed_request_ids`.
 - [ ] Store cancellation handles by request ID for in-flight background tasks.
 - [ ] Cancel unknown or completed IDs as no-response no-ops.
 - [ ] Carry `GenerationToken` through background tasks.
