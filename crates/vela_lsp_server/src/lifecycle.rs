@@ -61,6 +61,7 @@ impl LspServer {
             ));
         }
         if self.client_supports_watched_file_registration
+            && !self.file_watching_disabled
             && !self.watched_files_registered
             && let Some(registration) =
                 watching::registration_request(self.config.as_ref(), &self.workspace_roots)

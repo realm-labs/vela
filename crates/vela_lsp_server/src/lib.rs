@@ -69,6 +69,7 @@ pub struct LspServer {
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     watched_files_registered: bool,
+    file_watching_disabled: bool,
     semantic_token_projection: SemanticTokenProjection,
     initialized: bool,
     shutdown_requested: bool,

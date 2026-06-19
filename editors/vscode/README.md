@@ -36,10 +36,26 @@ profiling in VS Code settings:
 ```
 
 By default the server writes JSONL events to `.vela-lsp-profile.jsonl` in the
-workspace root. Each LSP message has a `begin` event and an `end` event. If the
-server hangs inside a handler, the last unmatched `begin` entry identifies the
-stuck method; otherwise inspect `end.totalMs`, `end.handleMs`, `end.writeMs`,
-and `end.outputBytes`.
+workspace root. The leading dot makes it a hidden file on macOS. Set
+`vela.server.profile.path` to an absolute path such as
+`/path/to/workspace/vela-lsp-profile.jsonl` when a visible file is easier to
+inspect. Each LSP message has a `begin` event and an `end` event. If the server
+hangs inside a handler, the last unmatched `begin` entry identifies the stuck
+method; otherwise inspect `end.totalMs`, `end.handleMs`, `end.writeMs`, and
+`end.outputBytes`.
+
+If the profile shows fast server handlers but VS Code still stalls, temporarily
+disable server-registered file watchers:
+
+```json
+{
+  "vela.server.watchFiles.enabled": false
+}
+```
+
+This keeps open-document language features available, but disk changes to
+closed `.vela` files, `vela.toml`, or schema artifacts will not be pushed to
+the server until file watching is enabled again.
 
 ## Validation
 

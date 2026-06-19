@@ -347,6 +347,11 @@
           "minimum": 0,
           "description": "Request duration threshold, in milliseconds, used to mark language-server profile events as slow."
         },
+        "vela.server.watchFiles.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Register native language-server file watchers for .vela sources, vela.toml, and host schema artifacts. Disable temporarily to isolate VS Code file-watcher stalls."
+        },
         "vela.workspace.roots": {
           "type": "array",
           "default": [],

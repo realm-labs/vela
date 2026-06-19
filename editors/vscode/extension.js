@@ -48,6 +48,10 @@ function profilePath(cwd) {
   return path.join(os.tmpdir(), "vela-lsp-profile.jsonl");
 }
 
+function watchFilesEnabled() {
+  return config().get("server.watchFiles.enabled", true);
+}
+
 function serverCommand(context) {
   const configured = config().get("server.path", "");
   if (configured.trim().length > 0) {
@@ -69,6 +73,9 @@ function serverArgs(cwd) {
   if (profileEnabled()) {
     args.push("--profile", profilePath(cwd));
     args.push("--profile-slow-ms", String(profileSlowMs()));
+  }
+  if (!watchFilesEnabled()) {
+    args.push("--no-watch-files");
   }
   return args;
 }
@@ -119,6 +126,9 @@ function activate(context) {
   log(`Language server cwd: ${cwd ?? "<none>"}`);
   if (profileEnabled()) {
     log(`Language server profile: ${profilePath(cwd)}`);
+  }
+  if (!watchFilesEnabled()) {
+    log("Language server watched-file registration is disabled.");
   }
 
   const serverOptions = {

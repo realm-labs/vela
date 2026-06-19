@@ -137,6 +137,7 @@ assert(configuration["vela.server.enabled"], "server enabled debug setting is mi
 assert(configuration["vela.server.profile.enabled"], "server profile enabled setting is missing");
 assert(configuration["vela.server.profile.path"], "server profile path setting is missing");
 assert(configuration["vela.server.profile.slowMs"], "server profile slow threshold setting is missing");
+assert(configuration["vela.server.watchFiles.enabled"], "server watched-file debug setting is missing");
 assert(configuration["vela.trace.server"], "LSP trace setting is missing");
 
 const grammarJson = readJson(grammar.path);
@@ -185,6 +186,7 @@ assert(extensionSource.includes("initializationOptions"), "extension must pass i
 assert(extensionSource.includes("createOutputChannel"), "extension must create debug output channels");
 assert(extensionSource.includes("initializationFailedHandler"), "extension must log initialization failures");
 assert(extensionSource.includes("--profile"), "extension must wire server profile flags");
+assert(extensionSource.includes("--no-watch-files"), "extension must wire watched-file debug flag");
 assert(
   !extensionSource.includes("context.subscriptions.push(client.start())"),
   "extension must not store the client.start() Promise as a disposable"

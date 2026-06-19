@@ -58,6 +58,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
     let mut saw_schema = false;
     let mut saw_profile = false;
     let mut saw_profile_slow_ms = false;
+    let mut saw_no_watch_files = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -106,6 +107,14 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
                 saw_profile_slow_ms = true;
                 index += 2;
             }
+            "--no-watch-files" => {
+                if saw_no_watch_files {
+                    return invalid_input("duplicate `--no-watch-files` flag");
+                }
+                configuration.set_watch_files_enabled(false);
+                saw_no_watch_files = true;
+                index += 1;
+            }
             "--version" | "-V" => {
                 return invalid_input("`--version` cannot be combined with stdio configuration");
             }
@@ -147,7 +156,7 @@ fn invalid_input<T>(message: impl Into<String>) -> io::Result<T> {
 }
 
 fn help_text() -> &'static str {
-    "Usage: vela_lsp_server [--stdio] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>]\n       vela_lsp_server --version"
+    "Usage: vela_lsp_server [--stdio] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--no-watch-files]\n       vela_lsp_server --version"
 }
 
 #[cfg(test)]
@@ -168,6 +177,7 @@ mod tests {
             "/tmp/vela-lsp-profile.jsonl".to_owned(),
             "--profile-slow-ms".to_owned(),
             "25".to_owned(),
+            "--no-watch-files".to_owned(),
         ])
         .expect("config flags should parse");
 
@@ -190,6 +200,7 @@ mod tests {
             Some("/tmp/vela-lsp-profile.jsonl")
         );
         assert_eq!(configuration.profile_slow_ms(), 25);
+        assert!(!configuration.watch_files_enabled());
     }
 
     #[test]

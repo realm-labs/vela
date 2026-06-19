@@ -16,6 +16,7 @@ pub struct LaunchConfiguration {
     host_schema: Option<String>,
     profile_path: Option<String>,
     profile_slow_ms: u64,
+    watch_files_enabled: bool,
 }
 
 impl Default for LaunchConfiguration {
@@ -34,6 +35,7 @@ impl LaunchConfiguration {
             host_schema: None,
             profile_path: None,
             profile_slow_ms: Self::DEFAULT_PROFILE_SLOW_MS,
+            watch_files_enabled: true,
         }
     }
 
@@ -60,6 +62,10 @@ impl LaunchConfiguration {
         self.profile_slow_ms = slow_ms;
     }
 
+    pub const fn set_watch_files_enabled(&mut self, enabled: bool) {
+        self.watch_files_enabled = enabled;
+    }
+
     #[must_use]
     pub fn workspace_roots(&self) -> &[String] {
         &self.workspace_roots
@@ -78,6 +84,11 @@ impl LaunchConfiguration {
     #[must_use]
     pub const fn profile_slow_ms(&self) -> u64 {
         self.profile_slow_ms
+    }
+
+    #[must_use]
+    pub const fn watch_files_enabled(&self) -> bool {
+        self.watch_files_enabled
     }
 
     fn into_editor_configuration(self) -> Option<EditorConfiguration> {
@@ -172,6 +183,7 @@ impl LspServer {
     #[must_use]
     pub fn with_launch_configuration(configuration: LaunchConfiguration) -> Self {
         let mut server = Self::new();
+        server.file_watching_disabled = !configuration.watch_files_enabled();
         server.editor_config = configuration.into_editor_configuration();
         server.config = workspace_config_from_roots_and_editor_config(
             &server.workspace_roots,

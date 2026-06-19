@@ -11,3 +11,5 @@
 /editors/vscode/*.vsix
 __pycache__/
 *.trace
+/.vela-lsp-profile*.jsonl
+/vela-lsp-profile*.jsonl

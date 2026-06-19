@@ -1,3 +1,5 @@
+use crate::LaunchConfiguration;
+
 use super::{
     JsonRpcResult, JsonValue, LspServer, notification, notification_value, request, response_value,
 };
@@ -470,6 +472,32 @@ fn lsp_initialized_registers_watched_files_when_supported() {
 
     let repeated = server.handle_json(&notification("initialized", serde_json::json!({})));
     assert_eq!(repeated, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_initialized_skips_watched_files_when_disabled() {
+    let mut configuration = LaunchConfiguration::new();
+    configuration.set_watch_files_enabled(false);
+    let mut server = LspServer::with_launch_configuration(configuration);
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace",
+            "capabilities": {
+                "workspace": {
+                    "didChangeWatchedFiles": {
+                        "dynamicRegistration": true
+                    }
+                }
+            }
+        }),
+    )));
+
+    let result = server.handle_json(&notification("initialized", serde_json::json!({})));
+
+    assert_eq!(result, JsonRpcResult::None);
 }
 
 #[test]
