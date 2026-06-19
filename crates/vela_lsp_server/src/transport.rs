@@ -322,6 +322,22 @@ impl MessageMetadata {
             },
         }
     }
+
+    pub(crate) const fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    pub(crate) fn method(&self) -> Option<&str> {
+        self.method.as_deref()
+    }
+
+    pub(crate) fn id(&self) -> Option<&str> {
+        self.id.as_deref()
+    }
+
+    pub(crate) fn document_uri(&self) -> Option<&str> {
+        self.document_uri.as_deref()
+    }
 }
 
 pub(crate) struct ResultSummary {
@@ -359,6 +375,18 @@ impl ResultSummary {
             JsonRpcResult::None => Self::none(),
         }
     }
+
+    pub(crate) const fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    pub(crate) const fn messages(&self) -> usize {
+        self.messages
+    }
+
+    pub(crate) const fn bytes(&self) -> usize {
+        self.bytes
+    }
 }
 
 fn document_uri(value: &serde_json::Value) -> Option<String> {
@@ -369,7 +397,7 @@ fn document_uri(value: &serde_json::Value) -> Option<String> {
         .map(str::to_owned)
 }
 
-fn timestamp_ms() -> u128 {
+pub(crate) fn timestamp_ms() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |duration| duration.as_millis())
@@ -380,8 +408,8 @@ mod config_tests;
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
     use std::time::Duration;
+    use std::{fs, path::PathBuf, thread};
 
     use crossbeam_channel::unbounded;
     use lsp_server::{Connection, Message, Notification, Request, RequestId};
@@ -432,6 +460,66 @@ mod tests {
             .expect("initialize response should have a result");
         assert_eq!(result["serverInfo"]["name"], "vela_lsp_server");
         assert_eq!(result["serverInfo"]["version"], env!("CARGO_PKG_VERSION"));
+    }
+
+    #[test]
+    fn typed_main_loop_writes_trace_log_when_configured() {
+        let trace_path = temp_trace_path("typed_main_loop");
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, _client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+        let mut configuration = LaunchConfiguration::new();
+        configuration.set_trace_log_path(trace_path.display().to_string());
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "capabilities": {}
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, configuration).expect("typed connection should run");
+
+        let trace = fs::read_to_string(&trace_path).expect("trace log should be readable");
+        let events = trace
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).expect("valid JSONL"))
+            .collect::<Vec<_>>();
+        assert_eq!(events[0]["event"], "session_start");
+        assert!(
+            events.iter().any(|event| {
+                event["event"] == "message_received"
+                    && event["method"] == "initialize"
+                    && event["id"] == "1"
+                    && event["lane"] == "main"
+            }),
+            "{events:?}"
+        );
+        assert!(
+            events.iter().any(|event| {
+                event["event"] == "response_sent"
+                    && event["method"] == "initialize"
+                    && event["resultKind"] == "response"
+                    && event["outputMessages"] == 1
+            }),
+            "{events:?}"
+        );
+        fs::remove_file(&trace_path).expect("trace log should be removable");
     }
 
     #[test]
@@ -1065,5 +1153,13 @@ mod tests {
 
     fn message(value: serde_json::Value) -> Message {
         serde_json::from_value(value).expect("test message should be typed LSP")
+    }
+
+    fn temp_trace_path(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "vela_lsp_trace_{name}_{}_{}.jsonl",
+            std::process::id(),
+            super::timestamp_ms()
+        ))
     }
 }

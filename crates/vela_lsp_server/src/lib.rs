@@ -28,6 +28,7 @@ mod semantic_tokens;
 mod signature;
 pub mod stdio;
 mod symbols;
+mod tracing;
 pub mod transport;
 mod watching;
 

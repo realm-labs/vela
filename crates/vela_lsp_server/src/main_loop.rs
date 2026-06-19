@@ -5,6 +5,7 @@ use lsp_server::Connection;
 use crate::{
     LaunchConfiguration,
     global_state::GlobalState,
+    tracing::TraceSink,
     transport::{MessageMetadata, RequestProfiler, serialize_json_rpc_message},
 };
 
@@ -12,6 +13,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
     let Connection { sender, receiver } = connection;
     let mut state = GlobalState::new(sender, configuration);
     let mut profiler = RequestProfiler::from_configuration(state.launch_configuration())?;
+    let mut trace = TraceSink::from_configuration(state.launch_configuration())?;
     let mut sequence = 0_u64;
 
     while let Ok(message) = receiver.recv() {
@@ -20,6 +22,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
         let input = serialize_json_rpc_message(&message)?;
         let input_bytes = input.len();
         profiler.begin(sequence, &metadata, input_bytes)?;
+        trace.message_received(sequence, &metadata, input_bytes)?;
 
         let handle_start = Instant::now();
         let result = state.handle_message(&message, &input);
@@ -28,6 +31,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
         let write_start = Instant::now();
         let summary = state.send_result(result)?;
         let write_ms = elapsed_ms(write_start);
+        trace.response_sent(sequence, &metadata, &summary)?;
         profiler.end(
             sequence,
             &metadata,

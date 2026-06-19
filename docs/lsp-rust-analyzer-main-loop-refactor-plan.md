@@ -482,9 +482,13 @@ cargo test -p vela_lsp_server lifecycle
     reload work while preserving stable order inside priority groups. It still
     applies reload work synchronously on the main loop, so non-blocking watcher
     activity remains open.
-- [ ] Introduce tracing/log-file startup and request-span diagnostics that use
+- [x] Introduce tracing/log-file startup and request-span diagnostics that use
   stderr or explicit log files, never stdout.
-- [ ] Add tests for config application order, position conversion edge cases,
+  - `--log <jsonl-path>` now enables typed main-loop trace JSONL with
+    `session_start`, `message_received`, and `response_sent` events carrying
+    method, request ID, document URI, lane, output counts, launch settings, and
+    transport metadata. The trace sink writes only to the configured file.
+- [x] Add tests for config application order, position conversion edge cases,
   watched-file reload scheduling, and trace/profile opt-in behavior.
 
 Validation:

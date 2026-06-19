@@ -682,6 +682,14 @@ application. The scheduler now drains open-document watched-file work before
 other reload work with stable ordering inside priority groups, but non-blocking
 watcher execution remains the next scheduler gap.
 
+M20.5 RA-style main-loop update: Phase 2.5 now has explicit typed-main-loop
+trace logging through `--log <jsonl-path>`. Trace JSONL records session start,
+message receipt, and response-send spans with method, request ID, document URI,
+main-loop lane, output counts, launch settings, and transport metadata without
+writing to stdout. Focused Phase 2.5 coverage now includes config application
+order, UTF-16 position conversion edge cases, reload scheduling, trace logging,
+and profile opt-in behavior.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

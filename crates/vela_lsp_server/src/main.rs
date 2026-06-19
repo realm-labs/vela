@@ -64,6 +64,7 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
     let mut saw_schema = false;
     let mut saw_profile = false;
     let mut saw_profile_slow_ms = false;
+    let mut saw_log = false;
     let mut saw_no_watch_files = false;
     let mut listen_address = None;
     let mut index = 0;
@@ -120,6 +121,15 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
                 })?;
                 configuration.set_profile_slow_ms(slow_ms);
                 saw_profile_slow_ms = true;
+                index += 2;
+            }
+            "--log" => {
+                if saw_log {
+                    return invalid_input("duplicate `--log` flag");
+                }
+                let log = required_value(&args, index, "--log")?;
+                configuration.set_trace_log_path(normalize_cli_path(log)?);
+                saw_log = true;
                 index += 2;
             }
             "--no-watch-files" => {
@@ -182,7 +192,7 @@ fn invalid_input<T>(message: impl Into<String>) -> io::Result<T> {
 }
 
 fn help_text() -> &'static str {
-    "Usage: vela_lsp_server [--stdio | --listen <host:port>] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--no-watch-files]\n       vela_lsp_server --version"
+    "Usage: vela_lsp_server [--stdio | --listen <host:port>] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>] [--log <jsonl-path>] [--no-watch-files]\n       vela_lsp_server --version"
 }
 
 #[cfg(test)]
@@ -203,6 +213,8 @@ mod tests {
             "/tmp/vela-lsp-profile.jsonl".to_owned(),
             "--profile-slow-ms".to_owned(),
             "25".to_owned(),
+            "--log".to_owned(),
+            "/tmp/vela-lsp-trace.jsonl".to_owned(),
             "--no-watch-files".to_owned(),
         ])
         .expect("config flags should parse");
@@ -226,6 +238,10 @@ mod tests {
             Some("/tmp/vela-lsp-profile.jsonl")
         );
         assert_eq!(configuration.profile_slow_ms(), 25);
+        assert_eq!(
+            configuration.trace_log_path(),
+            Some("/tmp/vela-lsp-trace.jsonl")
+        );
         assert!(!configuration.watch_files_enabled());
     }
 

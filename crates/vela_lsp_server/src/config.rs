@@ -17,6 +17,7 @@ pub struct LaunchConfiguration {
     host_schema: Option<String>,
     profile_path: Option<String>,
     profile_slow_ms: u64,
+    trace_log_path: Option<String>,
     watch_files_enabled: bool,
 }
 
@@ -36,6 +37,7 @@ impl LaunchConfiguration {
             host_schema: None,
             profile_path: None,
             profile_slow_ms: Self::DEFAULT_PROFILE_SLOW_MS,
+            trace_log_path: None,
             watch_files_enabled: true,
         }
     }
@@ -59,6 +61,11 @@ impl LaunchConfiguration {
         self.profile_path = (!path.trim().is_empty()).then_some(path);
     }
 
+    pub fn set_trace_log_path(&mut self, path: impl Into<String>) {
+        let path = path.into();
+        self.trace_log_path = (!path.trim().is_empty()).then_some(path);
+    }
+
     pub const fn set_profile_slow_ms(&mut self, slow_ms: u64) {
         self.profile_slow_ms = slow_ms;
     }
@@ -80,6 +87,11 @@ impl LaunchConfiguration {
     #[must_use]
     pub fn profile_path(&self) -> Option<&str> {
         self.profile_path.as_deref()
+    }
+
+    #[must_use]
+    pub fn trace_log_path(&self) -> Option<&str> {
+        self.trace_log_path.as_deref()
     }
 
     #[must_use]

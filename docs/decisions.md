@@ -170,6 +170,12 @@ not the default editor transport. It must be selected explicitly with
 `--listen <host:port>`, bind only loopback addresses unless a future unsafe
 opt-in is designed separately, and feed the same typed message loop as stdio.
 
+Native LSP trace diagnostics are opt-in and stdout-safe. `--log <jsonl-path>`
+writes typed main-loop startup, message receipt, and response-send events to an
+explicit JSONL file with request IDs, methods, document URIs, lane, transport,
+and launch metadata. Stdio stdout remains reserved for LSP protocol framing;
+human-readable transport notices use stderr only where needed.
+
 Initial LSP formatting uses source-preserving text edits in
 `vela_language_service`: full-document formatting is driven by
 `vela_syntax::formatting`, while range formatting only trims trailing
