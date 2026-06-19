@@ -1,11 +1,14 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_highlight, assert_reference, line};
 
 #[test]
 fn lsp_references_find_imported_module_segments() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -13,7 +16,7 @@ fn lsp_references_find_imported_module_segments() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::reward::grant
 pub fn main() -> i64 { return grant() }";
@@ -29,7 +32,8 @@ pub fn other() -> i64 { return bonus() }";
         (other_uri, other_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -39,10 +43,11 @@ pub fn other() -> i64 { return bonus() }";
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -53,7 +58,7 @@ pub fn other() -> i64 { return bonus() }";
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -80,7 +85,8 @@ pub fn other() -> i64 { return bonus() }";
 #[test]
 fn lsp_document_highlight_marks_imported_module_segments() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -88,7 +94,7 @@ fn lsp_document_highlight_marks_imported_module_segments() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let text = "\
 use game::reward::grant
 use game::reward::bonus
@@ -99,7 +105,8 @@ pub fn main() -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (uri, text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -109,10 +116,11 @@ pub fn main() -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -122,7 +130,7 @@ pub fn main() -> i64 {
                 "character": line(text, 0).find("reward").expect("module segment")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
