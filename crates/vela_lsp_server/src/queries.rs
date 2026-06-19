@@ -29,7 +29,6 @@ use crate::{
     protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
-    rename::{lsp_prepare_rename, lsp_workspace_edit},
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
 };
@@ -650,7 +649,8 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            prepare.as_ref().map_or(JsonValue::Null, lsp_prepare_rename),
+            serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
+                .expect("typed prepareRename response should serialize"),
         ))
     }
 
@@ -711,7 +711,8 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            edit.as_ref().map_or(JsonValue::Null, lsp_workspace_edit),
+            serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
+                .expect("typed rename response should serialize"),
         ))
     }
 

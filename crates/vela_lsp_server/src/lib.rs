@@ -15,7 +15,6 @@ pub mod main_loop;
 mod protocol;
 mod queries;
 mod reload;
-mod rename;
 mod rpc;
 mod semantic_tokens;
 pub mod stdio;
