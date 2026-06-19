@@ -929,7 +929,7 @@ impl GlobalState {
         }
         if is_cancelled {
             if let Some(request_id) = request_id {
-                return self.send_messages(typed_messages(dispatch::request_cancelled(request_id)));
+                return self.send_messages(dispatch::request_cancelled(request_id));
             }
             return self.send_messages(Vec::new());
         }
@@ -939,7 +939,7 @@ impl GlobalState {
                 return self.send_messages(Vec::new());
             }
             if let Some(request_id) = request_id {
-                return self.send_messages(typed_messages(dispatch::content_modified(request_id)));
+                return self.send_messages(dispatch::content_modified(request_id));
             }
             return self.send_messages(Vec::new());
         }

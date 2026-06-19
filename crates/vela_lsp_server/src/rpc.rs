@@ -115,7 +115,7 @@ pub(crate) enum ErrorCode {
 }
 
 impl ErrorCode {
-    const fn value(self) -> i32 {
+    pub(crate) const fn value(self) -> i32 {
         match self {
             Self::ParseError => -32700,
             Self::InvalidRequest => -32600,

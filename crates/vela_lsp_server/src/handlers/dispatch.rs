@@ -1,6 +1,6 @@
 use std::{any::Any, fmt::Debug, panic};
 
-use lsp_server::{Message, Notification, Request, RequestId};
+use lsp_server::{Message, Notification, Request, RequestId, Response, ResponseError};
 use lsp_types::{
     notification::{
         Cancel, DidChangeConfiguration, DidChangeTextDocument, DidChangeWatchedFiles,
@@ -57,13 +57,13 @@ fn dispatch_request(
 ) -> Vec<Message> {
     let request_id = request.id.clone();
     if global_state.take_cancelled_request(&request_id) {
-        return typed_messages(request_cancelled(request_id));
+        return request_cancelled(request_id);
     }
     if global_state.is_shutdown_requested() && request.method != "exit" {
-        return typed_messages(server_shut_down(request.id));
+        return server_shut_down(request.id);
     }
     if !global_state.is_initialized() && !is_pre_initialize_method(&request.method) {
-        return typed_messages(server_not_initialized(request.id));
+        return server_not_initialized(request.id);
     }
 
     let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
@@ -336,15 +336,11 @@ where
         request_id.clone(),
         generation,
         retry(id.clone(), request_id, params.clone(), attempts),
-        move || {
-            typed_messages(
-                match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    f(snapshot, id.clone(), params)
-                })) {
-                    Ok(result) => result,
-                    Err(payload) => handler_panic(id, method, payload.as_ref()),
-                },
-            )
+        move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
+        })) {
+            Ok(result) => typed_messages(result),
+            Err(payload) => handler_panic(id, method, payload.as_ref()),
         },
     );
 }
@@ -445,7 +441,7 @@ impl<'a> RequestDispatcher<'a> {
             self.result = if is_known_notification_method(&request.method) {
                 typed_messages(self.global_state.handle_legacy_json(self.legacy_input))
             } else {
-                typed_messages(method_not_found(request.id, &request.method))
+                method_not_found(request.id, &request.method)
             };
         }
         std::mem::take(&mut self.result)
@@ -465,18 +461,16 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = typed_messages(invalid_params(id, R::METHOD, error));
+                self.result = invalid_params(id, R::METHOD, error);
                 return;
             }
         };
-        self.result = typed_messages(
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                f(self.global_state, id.clone(), params)
-            })) {
-                Ok(result) => result,
-                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-            },
-        );
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(self.global_state, id.clone(), params)
+        })) {
+            Ok(result) => typed_messages(result),
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
     }
 
     fn dispatch_snapshot_typed<R>(
@@ -493,17 +487,17 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = typed_messages(invalid_params(id, R::METHOD, error));
+                self.result = invalid_params(id, R::METHOD, error);
                 return;
             }
         };
         let snapshot = self.global_state.snapshot();
-        self.result = typed_messages(
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(snapshot, id.clone(), params))) {
-                Ok(result) => result,
-                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-            },
-        );
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
+        })) {
+            Ok(result) => typed_messages(result),
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
     }
 
     fn dispatch_snapshot_task_typed<R>(
@@ -522,7 +516,7 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = typed_messages(invalid_params(id, R::METHOD, error));
+                self.result = invalid_params(id, R::METHOD, error);
                 return;
             }
         };
@@ -535,15 +529,11 @@ impl<'a> RequestDispatcher<'a> {
             R::METHOD,
             request_id,
             generation,
-            move || {
-                typed_messages(
-                    match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                        f(snapshot, id.clone(), params)
-                    })) {
-                        Ok(result) => result,
-                        Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-                    },
-                )
+            move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                f(snapshot, id.clone(), params)
+            })) {
+                Ok(result) => typed_messages(result),
+                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
             },
         );
         self.result.clear();
@@ -566,7 +556,7 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = typed_messages(invalid_params(id, R::METHOD, error));
+                self.result = invalid_params(id, R::METHOD, error);
                 return;
             }
         };
@@ -583,15 +573,11 @@ impl<'a> RequestDispatcher<'a> {
                 request_id,
                 generation,
                 retry,
-                move || {
-                    typed_messages(
-                        match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                            f(snapshot, id.clone(), params)
-                        })) {
-                            Ok(result) => result,
-                            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-                        },
-                    )
+                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    f(snapshot, id.clone(), params)
+                })) {
+                    Ok(result) => typed_messages(result),
+                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
                 },
             );
         self.result.clear();
@@ -674,37 +660,37 @@ impl<'a> NotificationDispatcher<'a> {
     }
 }
 
-fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(id),
+fn method_not_found(id: lsp_server::RequestId, method: &str) -> Vec<Message> {
+    error_message(
+        id,
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
     )
 }
 
-fn server_not_initialized(id: lsp_server::RequestId) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(id),
+fn server_not_initialized(id: lsp_server::RequestId) -> Vec<Message> {
+    error_message(
+        id,
         ErrorCode::ServerNotInitialized,
         "server has not been initialized",
     )
 }
 
-fn server_shut_down(id: lsp_server::RequestId) -> JsonRpcResult {
-    JsonRpcResult::error(Some(id), ErrorCode::InvalidRequest, "server has shut down")
+fn server_shut_down(id: lsp_server::RequestId) -> Vec<Message> {
+    error_message(id, ErrorCode::InvalidRequest, "server has shut down")
 }
 
-pub(crate) fn request_cancelled(id: RequestId) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(id),
+pub(crate) fn request_cancelled(id: RequestId) -> Vec<Message> {
+    error_message(
+        id,
         ErrorCode::RequestCancelled,
         "request was cancelled before processing",
     )
 }
 
-pub(crate) fn content_modified(id: RequestId) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(id),
+pub(crate) fn content_modified(id: RequestId) -> Vec<Message> {
+    error_message(
+        id,
         ErrorCode::ContentModified,
         "request result is stale because the document was modified",
     )
@@ -714,9 +700,9 @@ fn invalid_params(
     id: lsp_server::RequestId,
     method: &str,
     error: serde_json::Error,
-) -> JsonRpcResult {
-    JsonRpcResult::error(
-        Some(id),
+) -> Vec<Message> {
+    error_message(
+        id,
         ErrorCode::InvalidParams,
         format!("invalid {method} params: {error}"),
     )
@@ -726,13 +712,29 @@ fn handler_panic(
     id: lsp_server::RequestId,
     method: &str,
     payload: &(dyn Any + Send),
-) -> JsonRpcResult {
+) -> Vec<Message> {
     let detail = panic_message(payload).unwrap_or("unknown panic payload");
-    JsonRpcResult::error(
-        Some(id),
+    error_message(
+        id,
         ErrorCode::InternalError,
         format!("handler for `{method}` panicked: {detail}"),
     )
+}
+
+fn error_message(
+    id: lsp_server::RequestId,
+    code: ErrorCode,
+    message: impl Into<String>,
+) -> Vec<Message> {
+    vec![Message::Response(Response {
+        id,
+        result: None,
+        error: Some(ResponseError {
+            code: code.value(),
+            message: message.into(),
+            data: None,
+        }),
+    })]
 }
 
 fn panic_message(payload: &(dyn Any + Send)) -> Option<&str> {
@@ -824,12 +826,7 @@ mod tests {
 
     #[test]
     fn dispatcher_projects_content_modified_as_lsp_error() {
-        let result = content_modified(RequestId::from("hover-1".to_owned()));
-        let response = result
-            .into_response()
-            .expect("content-modified should be projected as response");
-        let response =
-            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+        let response = response_value(content_modified(RequestId::from("hover-1".to_owned())));
 
         assert_eq!(response["id"], "hover-1");
         assert_eq!(response["error"]["code"], -32801);
@@ -842,12 +839,7 @@ mod tests {
 
     #[test]
     fn dispatcher_projects_request_cancelled_as_lsp_error() {
-        let result = request_cancelled(RequestId::from(7));
-        let response = result
-            .into_response()
-            .expect("request-cancelled should be projected as response");
-        let response =
-            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+        let response = response_value(request_cancelled(RequestId::from(7)));
 
         assert_eq!(response["id"], 7);
         assert_eq!(response["error"]["code"], -32800);

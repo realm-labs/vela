@@ -1463,6 +1463,14 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server handlers::dispatch`,
     `cargo test -p vela_lsp_server lifecycle`, and
     `cargo test -p vela_lsp_server typed_cancellation_is_tracked_by_global_request_queue`.
+  - Dispatcher-generated error paths for cancellation, stale content,
+    initialization gates, shutdown gates, unknown methods, invalid params, and
+    handler panics now construct typed `lsp_server::Response` messages
+    directly. Remaining dispatcher `JsonRpcResult` use is limited to
+    converting request handler output and legacy compatibility paths.
+    Validated with `cargo test -p vela_lsp_server handlers::dispatch`,
+    `cargo test -p vela_lsp_server task`, and
+    `cargo test -p vela_lsp_server lifecycle`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
