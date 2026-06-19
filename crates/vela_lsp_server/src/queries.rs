@@ -1035,6 +1035,22 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_folding_ranges(&ranges)))
     }
 
+    pub(crate) fn folding_range_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::FoldingRangeParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::folding_range_params(&params);
+        self.refresh_databases_for_query(&document_id);
+        let ranges = self.databases.folding_ranges(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::folding_ranges(&ranges))
+                .expect("typed foldingRange response should serialize"),
+        ))
+    }
+
     pub(crate) fn formatting(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
             return JsonRpcResult::None;

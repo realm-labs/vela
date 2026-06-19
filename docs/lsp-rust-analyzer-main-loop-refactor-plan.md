@@ -633,6 +633,8 @@ cargo test -p vela_lsp_server workspace_folders
     `DocumentSymbolParams` through `lsp/from_proto.rs`.
   - `workspace/symbol` now converts typed `WorkspaceSymbolParams` query text
     through `lsp/from_proto.rs`.
+  - `textDocument/foldingRange` now converts typed `FoldingRangeParams`
+    through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -659,6 +661,8 @@ cargo test -p vela_lsp_server workspace_folders
     `lsp_types::WorkspaceSymbolResponse::Nested` values, preserving Vela
     detail metadata in `data.detail` because upstream `WorkspaceSymbol` has
     no top-level `detail` field.
+  - Folding ranges now project through typed `lsp_types::FoldingRange`
+    values with typed `FoldingRangeKind` categories.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -801,6 +805,16 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service workspace_symbols`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/foldingRange` now uses typed `FoldingRangeParams` through
+    `GlobalState` and typed `lsp_types::FoldingRange` projection through
+    `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server folding`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service folding`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

@@ -5,9 +5,11 @@ use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
     DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
-    DocumentTextEdit, Hover, HoverKind, IncomingCall, LineIndex, OutgoingCall, PrepareRename,
-    Reference, RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
-    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
+    DocumentTextEdit, FoldingRange as ServiceFoldingRange,
+    FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall, LineIndex,
+    OutgoingCall, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
+    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
+    WorkspaceSymbolLocation,
 };
 
 pub(crate) fn completion_response(
@@ -95,6 +97,10 @@ pub(crate) fn document_symbols(symbols: &[DocumentSymbol]) -> lsp_types::Documen
 
 pub(crate) fn workspace_symbols(symbols: &[WorkspaceSymbol]) -> lsp_types::WorkspaceSymbolResponse {
     lsp_types::WorkspaceSymbolResponse::Nested(symbols.iter().map(workspace_symbol).collect())
+}
+
+pub(crate) fn folding_ranges(ranges: &[ServiceFoldingRange]) -> Vec<lsp_types::FoldingRange> {
+    ranges.iter().map(folding_range).collect()
 }
 
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
@@ -253,6 +259,28 @@ fn workspace_symbol_location(
 
 fn workspace_symbol_data(symbol: &WorkspaceSymbol) -> Option<JsonValue> {
     symbol.detail().map(|detail| json!({ "detail": detail }))
+}
+
+fn folding_range(range: &ServiceFoldingRange) -> lsp_types::FoldingRange {
+    lsp_types::FoldingRange {
+        start_line: u32::try_from(range.start().line).expect("line should fit in LSP u32"),
+        start_character: Some(
+            u32::try_from(range.start().character).expect("character should fit in LSP u32"),
+        ),
+        end_line: u32::try_from(range.end().line).expect("line should fit in LSP u32"),
+        end_character: Some(
+            u32::try_from(range.end().character).expect("character should fit in LSP u32"),
+        ),
+        kind: Some(folding_range_kind(range.kind())),
+        collapsed_text: None,
+    }
+}
+
+const fn folding_range_kind(kind: ServiceFoldingRangeKind) -> lsp_types::FoldingRangeKind {
+    match kind {
+        ServiceFoldingRangeKind::Imports => lsp_types::FoldingRangeKind::Imports,
+        ServiceFoldingRangeKind::Region => lsp_types::FoldingRangeKind::Region,
+    }
 }
 
 const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {
@@ -865,6 +893,40 @@ pub fn main(player: Player) -> i64 {
             panic!("source workspace symbol should use source location");
         };
         assert_eq!(location.uri.as_str(), document.as_str());
+    }
+
+    #[test]
+    fn folding_ranges_project_typed_ranges() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+use game::reward
+use game::player
+
+pub fn main() {
+    if true {
+        return
+    }
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let ranges = databases.folding_ranges(&document);
+
+        let ranges = folding_ranges(&ranges);
+
+        assert!(ranges.iter().any(|range| {
+            range.kind == Some(lsp_types::FoldingRangeKind::Imports)
+                && range.start_line == 0
+                && range.end_line == 1
+        }));
+        assert!(ranges.iter().any(|range| {
+            range.kind == Some(lsp_types::FoldingRangeKind::Region)
+                && range.start_line == 3
+                && range.end_line == 7
+                && range.start_character == Some(14)
+        }));
     }
 
     #[test]

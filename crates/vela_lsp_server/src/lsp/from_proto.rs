@@ -102,6 +102,10 @@ pub(crate) fn document_symbol_params(params: &lsp_types::DocumentSymbolParams) -
     document_id(&params.text_document.uri)
 }
 
+pub(crate) fn folding_range_params(params: &lsp_types::FoldingRangeParams) -> DocumentId {
+    document_id(&params.text_document.uri)
+}
+
 pub(crate) fn workspace_symbol_params(params: &lsp_types::WorkspaceSymbolParams) -> &str {
     &params.query
 }
@@ -384,6 +388,23 @@ mod tests {
 
         assert_eq!(
             document_symbol_params(&params),
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+    }
+
+    #[test]
+    fn folding_range_params_convert_document_id() {
+        let params = lsp_types::FoldingRangeParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        assert_eq!(
+            folding_range_params(&params),
             DocumentId::from("file:///workspace/scripts/main.vela")
         );
     }
