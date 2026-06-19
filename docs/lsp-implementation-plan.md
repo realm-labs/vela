@@ -420,8 +420,8 @@ coverage complete based only on the older capability phases.
     lambda parameter facts, host-path type facts, source/schema tuple-variant
     payload names including imported source enum variants, requested range
     filtering, missing-schema degradation, unknown-call suppression, and `Any`
-    suppression for source/schema call parameters, schema `Any` returned
-    receivers, and variant payloads.
+    suppression for source/schema call parameters, source/schema `Any`
+    returned receivers, and variant payloads.
 - [x] Audit workspace, configuration, file watching, schema reload, and launch
   behavior.
   - Cover `workspace/didChangeWatchedFiles`,
@@ -1877,6 +1877,7 @@ Tests:
 - [x] `inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_return_receiver`
 - [x] `inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
+- [x] `inlay_hints_suppress_source_any_return_receiver`
 - [x] `inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
 - [x] `inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver`
 - [x] `inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_method_return_receiver`
@@ -1901,6 +1902,7 @@ Tests:
 - [x] `lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_function_and_method_parameters`
 - [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver`
+- [x] `lsp_inlay_hints_suppress_source_any_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_function_return_receiver`
 - [x] `lsp_inlay_hints_suppress_any_source_trait_default_method_parameters_on_source_method_return_receiver`

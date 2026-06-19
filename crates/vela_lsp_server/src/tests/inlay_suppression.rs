@@ -879,6 +879,72 @@ pub fn main() {
 }
 
 #[test]
+fn lsp_inlay_hints_suppress_source_any_return_receiver() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+fn source_any() -> Any { return current_player() }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    source_any().grant("raw", 1)
+    let dynamic = source_any()
+    dynamic.grant("again", 2)
+    current_player().grant("stable", 3)
+}"#;
+    let stable_call = text.lines().nth(10).expect("stable call line");
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 12, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": {
+                    "line": 10,
+                    "character": stable_call.find(", 3").expect("stable count arg") + 2
+                },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
+#[test]
 fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(

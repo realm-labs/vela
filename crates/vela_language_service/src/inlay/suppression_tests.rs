@@ -315,6 +315,38 @@ pub fn main() {
 }
 
 #[test]
+fn inlay_hints_suppress_source_any_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"struct Player { level: i64 }
+fn current_player() -> Player { return Player { level: 1 } }
+fn source_any() -> Any { return current_player() }
+impl Player {
+    fn grant(self, raw: Any, count: i64) -> i64 { return count }
+}
+pub fn main() {
+    source_any().grant("raw", 1)
+    let dynamic = source_any()
+    dynamic.grant("again", 2)
+    current_player().grant("stable", 3)
+}"#;
+    let stable_call = line(text, 10);
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+
+    let hints = databases.inlay_hints(
+        &document,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(12, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![(
+            Position::new(10, stable_call.find(", 3").expect("stable count arg") + 2),
+            "count:".to_owned()
+        )]
+    );
+}
+
+#[test]
 fn inlay_hints_suppress_any_source_method_parameters_on_source_method_return_receiver() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"struct Player { level: i64 }
