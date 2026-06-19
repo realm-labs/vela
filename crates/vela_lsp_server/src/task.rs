@@ -1,7 +1,10 @@
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
-use lsp_types::CompletionParams;
+use lsp_types::{
+    CompletionItem, CompletionParams, DocumentSymbolParams, FoldingRangeParams,
+    SemanticTokensParams, WorkspaceSymbolParams,
+};
 use vela_language_service::GenerationToken;
 
 use crate::{JsonRpcResult, RequestId};
@@ -25,7 +28,37 @@ pub(crate) enum RetryTask {
     Completion {
         id: lsp_server::RequestId,
         request_id: RequestId,
-        params: CompletionParams,
+        params: Box<CompletionParams>,
+        attempts: u8,
+    },
+    CompletionResolve {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: Box<CompletionItem>,
+        attempts: u8,
+    },
+    SemanticTokensFull {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: Box<SemanticTokensParams>,
+        attempts: u8,
+    },
+    DocumentSymbol {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: Box<DocumentSymbolParams>,
+        attempts: u8,
+    },
+    FoldingRange {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: Box<FoldingRangeParams>,
+        attempts: u8,
+    },
+    WorkspaceSymbol {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: Box<WorkspaceSymbolParams>,
         attempts: u8,
     },
 }
@@ -39,7 +72,72 @@ impl RetryTask {
         Self::Completion {
             id,
             request_id,
-            params,
+            params: Box::new(params),
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn completion_resolve(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: CompletionItem,
+    ) -> Self {
+        Self::CompletionResolve {
+            id,
+            request_id,
+            params: Box::new(params),
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn semantic_tokens_full(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: SemanticTokensParams,
+    ) -> Self {
+        Self::SemanticTokensFull {
+            id,
+            request_id,
+            params: Box::new(params),
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn document_symbol(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: DocumentSymbolParams,
+    ) -> Self {
+        Self::DocumentSymbol {
+            id,
+            request_id,
+            params: Box::new(params),
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn folding_range(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: FoldingRangeParams,
+    ) -> Self {
+        Self::FoldingRange {
+            id,
+            request_id,
+            params: Box::new(params),
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn workspace_symbol(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: WorkspaceSymbolParams,
+    ) -> Self {
+        Self::WorkspaceSymbol {
+            id,
+            request_id,
+            params: Box::new(params),
             attempts: 0,
         }
     }
@@ -57,7 +155,67 @@ impl RetryTask {
                 params,
                 attempts: attempts + 1,
             }),
-            Self::Completion { .. } => None,
+            Self::CompletionResolve {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::CompletionResolve {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::SemanticTokensFull {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::SemanticTokensFull {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::DocumentSymbol {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::DocumentSymbol {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::FoldingRange {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::FoldingRange {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::WorkspaceSymbol {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::WorkspaceSymbol {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::Completion { .. }
+            | Self::CompletionResolve { .. }
+            | Self::SemanticTokensFull { .. }
+            | Self::DocumentSymbol { .. }
+            | Self::FoldingRange { .. }
+            | Self::WorkspaceSymbol { .. } => None,
         }
     }
 }

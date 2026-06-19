@@ -1,10 +1,11 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crossbeam_channel::unbounded;
-use lsp_server::{Connection, Message};
+use crossbeam_channel::{Receiver, unbounded};
+use lsp_server::{Connection, Message, Response};
 
 use crate::LaunchConfiguration;
 
@@ -28,6 +29,8 @@ fn typed_dispatcher_routes_configuration_changes_through_global_state() {
         sender: server_sender,
         receiver: server_receiver,
     };
+    let server =
+        thread::spawn(move || super::run_connection(connection, LaunchConfiguration::new()));
 
     client_sender
         .send(message(serde_json::json!({
@@ -84,28 +87,8 @@ fn typed_dispatcher_routes_configuration_changes_through_global_state() {
             }
         })))
         .expect("completion should be sent");
-    client_sender
-        .send(message(serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "exit"
-        })))
-        .expect("exit should be sent");
-    drop(client_sender);
 
-    super::run_connection(connection, LaunchConfiguration::new())
-        .expect("typed connection should run");
-
-    let responses = client_receiver
-        .try_iter()
-        .filter_map(|message| match message {
-            Message::Response(response) => Some(response),
-            Message::Request(_) | Message::Notification(_) => None,
-        })
-        .collect::<Vec<_>>();
-    let completion = responses
-        .iter()
-        .find(|response| response.id.to_string() == "2")
-        .unwrap_or_else(|| panic!("completion response should be present: {responses:?}"));
+    let completion = recv_response(&client_receiver, "2");
     assert!(completion.error.is_none(), "{completion:?}");
     assert_completion(
         completion
@@ -116,6 +99,17 @@ fn typed_dispatcher_routes_configuration_changes_through_global_state() {
         5,
         "String",
     );
+    client_sender
+        .send(message(serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "exit"
+        })))
+        .expect("exit should be sent");
+    drop(client_sender);
+    server
+        .join()
+        .expect("server thread should join")
+        .expect("typed connection should run");
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
@@ -150,6 +144,8 @@ fn typed_dispatcher_routes_watched_config_changes_through_global_state() {
         sender: server_sender,
         receiver: server_receiver,
     };
+    let server =
+        thread::spawn(move || super::run_connection(connection, LaunchConfiguration::new()));
 
     client_sender
         .send(message(serde_json::json!({
@@ -197,28 +193,8 @@ fn typed_dispatcher_routes_watched_config_changes_through_global_state() {
             }
         })))
         .expect("completion should be sent");
-    client_sender
-        .send(message(serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "exit"
-        })))
-        .expect("exit should be sent");
-    drop(client_sender);
 
-    super::run_connection(connection, LaunchConfiguration::new())
-        .expect("typed connection should run");
-
-    let responses = client_receiver
-        .try_iter()
-        .filter_map(|message| match message {
-            Message::Response(response) => Some(response),
-            Message::Request(_) | Message::Notification(_) => None,
-        })
-        .collect::<Vec<_>>();
-    let completion = responses
-        .iter()
-        .find(|response| response.id.to_string() == "2")
-        .unwrap_or_else(|| panic!("completion response should be present: {responses:?}"));
+    let completion = recv_response(&client_receiver, "2");
     assert!(completion.error.is_none(), "{completion:?}");
     assert_completion(
         completion
@@ -229,8 +205,33 @@ fn typed_dispatcher_routes_watched_config_changes_through_global_state() {
         5,
         "i64",
     );
+    client_sender
+        .send(message(serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "exit"
+        })))
+        .expect("exit should be sent");
+    drop(client_sender);
+    server
+        .join()
+        .expect("server thread should join")
+        .expect("typed connection should run");
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn recv_response(receiver: &Receiver<Message>, id: &str) -> Response {
+    let mut seen = Vec::new();
+    loop {
+        let message = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap_or_else(|_| panic!("response {id} should be received; seen {seen:?}"));
+        match message {
+            Message::Response(response) if response.id.to_string() == id => return response,
+            Message::Response(response) => seen.push(response),
+            Message::Request(_) | Message::Notification(_) => {}
+        }
+    }
 }
 
 fn message(value: serde_json::Value) -> Message {

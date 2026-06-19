@@ -1316,7 +1316,7 @@ impl RequestQueue {
 mod tests {
     use std::time::Duration;
 
-    use crossbeam_channel::{TryRecvError, unbounded};
+    use crossbeam_channel::{Receiver, TryRecvError, unbounded};
     use vela_language_service::{
         DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
     };
@@ -1873,7 +1873,7 @@ mod tests {
 
     #[test]
     fn typed_completion_resolve_dispatch_projects_completion_item() {
-        let (sender, _receiver) = unbounded();
+        let (sender, receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
         state.server.initialized = true;
@@ -1891,11 +1891,24 @@ mod tests {
 
         let result = state.handle_message(&request, "");
 
-        let response = result
-            .into_response()
-            .expect("typed completion resolve should return a response");
-        let response: serde_json::Value =
-            serde_json::from_str(&response).expect("response should be JSON");
+        assert_eq!(result, JsonRpcResult::None);
+        let task = state
+            .task_scheduler()
+            .latency_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("completion resolve task should complete");
+        assert!(task.retry().is_some());
+        state
+            .send_task_result(task)
+            .expect("completion resolve task response should send");
+        let response = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("completion resolve should send response");
+        let Message::Response(response) = response else {
+            panic!("completion resolve should send response");
+        };
+        assert!(response.error.is_none(), "{response:?}");
+        let response = serde_json::to_value(response).expect("response should serialize");
         assert_eq!(response["id"], 7);
         assert_eq!(response["result"]["label"], "plain");
         assert_eq!(response["result"]["kind"], 6);
@@ -2178,7 +2191,7 @@ pub fn main(amount: i64) -> i64 {
 
     #[test]
     fn typed_document_symbol_dispatch_projects_nested_symbols() {
-        let (sender, _receiver) = unbounded();
+        let (sender, receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
         state.server.initialized = true;
@@ -2201,7 +2214,7 @@ pub fn main(player: Player) -> i64 {
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
-        let response = typed_document_symbol_response(&mut state, 16, &document);
+        let response = typed_document_symbol_response(&mut state, &receiver, 16, &document);
         let symbols = response["result"]
             .as_array()
             .expect("documentSymbol response should be an array");
@@ -2227,7 +2240,7 @@ pub fn main(player: Player) -> i64 {
 
     #[test]
     fn typed_workspace_symbol_dispatch_projects_symbols() {
-        let (sender, _receiver) = unbounded();
+        let (sender, receiver) = unbounded();
         let mut launch_configuration = LaunchConfiguration::new();
         launch_configuration.add_workspace_root("/workspace/scripts");
         let mut state = GlobalState::new(sender, launch_configuration);
@@ -2245,7 +2258,7 @@ pub fn main(player: Player) -> i64 {
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
-        let response = typed_workspace_symbol_response(&mut state, 17, "reward.vela");
+        let response = typed_workspace_symbol_response(&mut state, &receiver, 17, "reward.vela");
         let symbols = response["result"]
             .as_array()
             .expect("workspaceSymbol response should be an array");
@@ -2261,7 +2274,7 @@ pub fn main(player: Player) -> i64 {
 
     #[test]
     fn typed_folding_range_dispatch_projects_ranges() {
-        let (sender, _receiver) = unbounded();
+        let (sender, receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
         state.server.initialized = true;
@@ -2285,7 +2298,7 @@ pub fn main() {
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
-        let response = typed_folding_range_response(&mut state, 18, &document);
+        let response = typed_folding_range_response(&mut state, &receiver, 18, &document);
         let ranges = response["result"]
             .as_array()
             .expect("foldingRange response should be an array");
@@ -2341,7 +2354,7 @@ pub fn main(player: Player) -> i64 {
 
     #[test]
     fn typed_semantic_token_dispatch_projects_full_delta_and_range() {
-        let (sender, _receiver) = unbounded();
+        let (sender, receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
         state.server.initialized = true;
@@ -2352,9 +2365,13 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
-        let full_response = typed_semantic_tokens_full_response(&mut state, 20, &document);
+        let full_response =
+            typed_semantic_tokens_full_response(&mut state, &receiver, 20, &document);
         let full_data = full_response["result"]["data"]
             .as_array()
             .expect("semanticTokens/full response should include data");
@@ -3205,8 +3222,40 @@ pub fn main(amount: i64) -> i64 {
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
+    fn typed_scheduled_response(
+        state: &mut GlobalState,
+        receiver: &Receiver<Message>,
+        request: Message,
+        lane: TaskLane,
+        label: &str,
+    ) -> serde_json::Value {
+        let result = state.handle_message(&request, "");
+        assert_eq!(result, JsonRpcResult::None);
+        let task = match lane {
+            TaskLane::Latency => state.task_scheduler().latency_results(),
+            TaskLane::Worker => state.task_scheduler().worker_results(),
+            TaskLane::Formatting => state.task_scheduler().formatting_results(),
+            TaskLane::Main => unreachable!("main-thread requests are not scheduled"),
+        }
+        .recv_timeout(Duration::from_secs(1))
+        .unwrap_or_else(|_| panic!("{label} task should complete"));
+        assert!(task.retry().is_some());
+        state
+            .send_task_result(task)
+            .unwrap_or_else(|error| panic!("{label} task response should send: {error}"));
+        let response = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap_or_else(|_| panic!("{label} should send a response"));
+        let Message::Response(response) = response else {
+            panic!("{label} should send response");
+        };
+        assert!(response.error.is_none(), "{response:?}");
+        serde_json::to_value(response).expect("response should serialize")
+    }
+
     fn typed_document_symbol_response(
         state: &mut GlobalState,
+        receiver: &Receiver<Message>,
         id: i32,
         document: &DocumentId,
     ) -> serde_json::Value {
@@ -3223,15 +3272,18 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("documentSymbol params should serialize"),
         });
-        let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed documentSymbol should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        typed_scheduled_response(
+            state,
+            receiver,
+            request,
+            TaskLane::Worker,
+            "typed documentSymbol",
+        )
     }
 
     fn typed_workspace_symbol_response(
         state: &mut GlobalState,
+        receiver: &Receiver<Message>,
         id: i32,
         query: &str,
     ) -> serde_json::Value {
@@ -3245,15 +3297,18 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("workspaceSymbol params should serialize"),
         });
-        let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed workspaceSymbol should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        typed_scheduled_response(
+            state,
+            receiver,
+            request,
+            TaskLane::Worker,
+            "typed workspaceSymbol",
+        )
     }
 
     fn typed_folding_range_response(
         state: &mut GlobalState,
+        receiver: &Receiver<Message>,
         id: i32,
         document: &DocumentId,
     ) -> serde_json::Value {
@@ -3270,11 +3325,13 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("foldingRange params should serialize"),
         });
-        let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed foldingRange should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        typed_scheduled_response(
+            state,
+            receiver,
+            request,
+            TaskLane::Worker,
+            "typed foldingRange",
+        )
     }
 
     fn typed_selection_range_response(
@@ -3307,6 +3364,7 @@ pub fn main(amount: i64) -> i64 {
 
     fn typed_semantic_tokens_full_response(
         state: &mut GlobalState,
+        receiver: &Receiver<Message>,
         id: i32,
         document: &DocumentId,
     ) -> serde_json::Value {
@@ -3323,11 +3381,13 @@ pub fn main(amount: i64) -> i64 {
             })
             .expect("semanticTokens/full params should serialize"),
         });
-        let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed semanticTokens/full should return a response");
-        serde_json::from_str(&response).expect("response should be JSON")
+        typed_scheduled_response(
+            state,
+            receiver,
+            request,
+            TaskLane::Latency,
+            "typed semanticTokens/full",
+        )
     }
 
     fn typed_semantic_tokens_delta_response(

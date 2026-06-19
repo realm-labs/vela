@@ -61,16 +61,21 @@ fn dispatch_request(
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
-        .on_retryable_latency_snapshot_typed::<Completion>(GlobalStateSnapshot::completion)
-        .on_latency_sensitive_snapshot_typed::<ResolveCompletionItem>(
+        .on_retryable_latency_snapshot_typed::<Completion>(
+            GlobalStateSnapshot::completion,
+            RetryTask::completion,
+        )
+        .on_retryable_latency_snapshot_typed::<ResolveCompletionItem>(
             GlobalStateSnapshot::completion_resolve,
+            RetryTask::completion_resolve,
         )
         .on_latency_sensitive_snapshot_typed::<HoverRequest>(GlobalStateSnapshot::hover)
         .on_latency_sensitive_snapshot_typed::<SignatureHelpRequest>(
             GlobalStateSnapshot::signature_help,
         )
-        .on_latency_sensitive_snapshot_typed::<SemanticTokensFullRequest>(
+        .on_retryable_latency_snapshot_typed::<SemanticTokensFullRequest>(
             GlobalStateSnapshot::semantic_tokens_full,
+            RetryTask::semantic_tokens_full,
         )
         .on_latency_sensitive_snapshot_typed::<SemanticTokensFullDeltaRequest>(
             GlobalStateSnapshot::semantic_tokens_full_delta,
@@ -82,9 +87,18 @@ fn dispatch_request(
         .on_worker_snapshot_typed::<DocumentHighlightRequest>(
             GlobalStateSnapshot::document_highlight,
         )
-        .on_worker_snapshot_typed::<DocumentSymbolRequest>(GlobalStateSnapshot::document_symbol)
-        .on_worker_snapshot_typed::<WorkspaceSymbolRequest>(GlobalStateSnapshot::workspace_symbol)
-        .on_worker_snapshot_typed::<FoldingRangeRequest>(GlobalStateSnapshot::folding_range)
+        .on_retryable_worker_snapshot_typed::<DocumentSymbolRequest>(
+            GlobalStateSnapshot::document_symbol,
+            RetryTask::document_symbol,
+        )
+        .on_retryable_worker_snapshot_typed::<WorkspaceSymbolRequest>(
+            GlobalStateSnapshot::workspace_symbol,
+            RetryTask::workspace_symbol,
+        )
+        .on_retryable_worker_snapshot_typed::<FoldingRangeRequest>(
+            GlobalStateSnapshot::folding_range,
+            RetryTask::folding_range,
+        )
         .on_worker_snapshot_typed::<SelectionRangeRequest>(GlobalStateSnapshot::selection_range)
         .on_worker_snapshot_typed::<PrepareRenameRequest>(GlobalStateSnapshot::prepare_rename)
         .on_worker_snapshot_typed::<Rename>(GlobalStateSnapshot::rename)
@@ -130,35 +144,196 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             id,
             request_id,
             params,
-            attempts: _,
+            attempts,
         } => {
-            let snapshot = global_state.snapshot();
-            let generation = global_state.register_in_flight_cancellation(request_id.clone());
-            let retry = RetryTask::Completion {
-                id: id.clone(),
-                request_id: request_id.clone(),
-                params: params.clone(),
-                attempts: 1,
-            };
-            global_state.task_scheduler().spawn_retryable_for_request(
-                TaskLane::Latency,
-                <Completion as lsp_types::request::Request>::METHOD,
-                request_id,
-                generation,
-                retry,
-                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    GlobalStateSnapshot::completion(snapshot, id.clone(), params)
-                })) {
-                    Ok(result) => result,
-                    Err(payload) => handler_panic(
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Latency,
+                    method: <Completion as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::Completion {
                         id,
-                        <Completion as lsp_types::request::Request>::METHOD,
-                        payload.as_ref(),
-                    ),
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::completion,
+                },
+            );
+        }
+        RetryTask::CompletionResolve {
+            id,
+            request_id,
+            params,
+            attempts,
+        } => {
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Latency,
+                    method: <ResolveCompletionItem as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::CompletionResolve {
+                        id,
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::completion_resolve,
+                },
+            );
+        }
+        RetryTask::SemanticTokensFull {
+            id,
+            request_id,
+            params,
+            attempts,
+        } => {
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Latency,
+                    method: <SemanticTokensFullRequest as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::SemanticTokensFull {
+                        id,
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::semantic_tokens_full,
+                },
+            );
+        }
+        RetryTask::DocumentSymbol {
+            id,
+            request_id,
+            params,
+            attempts,
+        } => {
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Worker,
+                    method: <DocumentSymbolRequest as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::DocumentSymbol {
+                        id,
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::document_symbol,
+                },
+            );
+        }
+        RetryTask::FoldingRange {
+            id,
+            request_id,
+            params,
+            attempts,
+        } => {
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Worker,
+                    method: <FoldingRangeRequest as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::FoldingRange {
+                        id,
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::folding_range,
+                },
+            );
+        }
+        RetryTask::WorkspaceSymbol {
+            id,
+            request_id,
+            params,
+            attempts,
+        } => {
+            schedule_retry(
+                global_state,
+                RetrySchedule {
+                    lane: TaskLane::Worker,
+                    method: <WorkspaceSymbolRequest as lsp_types::request::Request>::METHOD,
+                    id,
+                    request_id,
+                    params: *params,
+                    attempts,
+                    retry: |id, request_id, params, attempts| RetryTask::WorkspaceSymbol {
+                        id,
+                        request_id,
+                        params: Box::new(params),
+                        attempts,
+                    },
+                    f: GlobalStateSnapshot::workspace_symbol,
                 },
             );
         }
     }
+}
+
+struct RetrySchedule<P, C> {
+    lane: TaskLane,
+    method: &'static str,
+    id: lsp_server::RequestId,
+    request_id: RequestId,
+    params: P,
+    attempts: u8,
+    retry: C,
+    f: fn(GlobalStateSnapshot, lsp_server::RequestId, P) -> JsonRpcResult,
+}
+
+fn schedule_retry<P, C>(global_state: &mut GlobalState, schedule: RetrySchedule<P, C>)
+where
+    P: Clone + Send + 'static,
+    C: Fn(lsp_server::RequestId, RequestId, P, u8) -> RetryTask + Send + 'static,
+{
+    let RetrySchedule {
+        lane,
+        method,
+        id,
+        request_id,
+        params,
+        attempts,
+        retry,
+        f,
+    } = schedule;
+    let snapshot = global_state.snapshot();
+    let generation = global_state.register_in_flight_cancellation(request_id.clone());
+    global_state.task_scheduler().spawn_retryable_for_request(
+        lane,
+        method,
+        request_id.clone(),
+        generation,
+        retry(id.clone(), request_id, params.clone(), attempts),
+        move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(snapshot, id.clone(), params)
+        })) {
+            Ok(result) => result,
+            Err(payload) => handler_panic(id, method, payload.as_ref()),
+        },
+    );
 }
 
 pub(crate) struct RequestDispatcher<'a> {
@@ -205,12 +380,13 @@ impl<'a> RequestDispatcher<'a> {
     pub(crate) fn on_retryable_latency_snapshot_typed<R>(
         &mut self,
         f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
     ) -> &mut Self
     where
-        R: lsp_types::request::Request<Params = lsp_types::CompletionParams>,
+        R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
     {
-        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Latency, f);
+        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Latency, f, retry);
         self
     }
 
@@ -223,6 +399,19 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_retryable_worker_snapshot_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
+    {
+        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Worker, f, retry);
         self
     }
 
@@ -345,8 +534,9 @@ impl<'a> RequestDispatcher<'a> {
         &mut self,
         lane: TaskLane,
         f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
     ) where
-        R: lsp_types::request::Request<Params = lsp_types::CompletionParams>,
+        R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
     {
         let Some(request) = self.take_matching::<R>() else {
@@ -365,7 +555,7 @@ impl<'a> RequestDispatcher<'a> {
         let generation = self
             .global_state
             .register_in_flight_cancellation(request_id.clone());
-        let retry = RetryTask::completion(id.clone(), request_id.clone(), params.clone());
+        let retry = retry(id.clone(), request_id.clone(), params.clone());
         self.global_state
             .task_scheduler()
             .spawn_retryable_for_request(
