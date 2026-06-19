@@ -1073,6 +1073,22 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
     }
 
+    pub(crate) fn formatting_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::DocumentFormattingParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_formatting_params(&params);
+        self.refresh_databases_for_query(&document_id);
+        let edits = self.databases.document_formatting(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed formatting response should serialize"),
+        ))
+    }
+
     pub(crate) fn range_formatting(
         &mut self,
         id: Option<RequestId>,
@@ -1102,6 +1118,35 @@ impl LspServer {
         let edits = self.databases.range_formatting(&document_id, range);
 
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+    }
+
+    pub(crate) fn range_formatting_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::DocumentRangeFormattingParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::range_formatting_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rangeFormatting params: {error}"),
+                ));
+            }
+        };
+        let edits = self
+            .databases
+            .range_formatting(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed rangeFormatting response should serialize"),
+        ))
     }
 
     pub(crate) fn on_type_formatting(
@@ -1136,6 +1181,35 @@ impl LspServer {
             .on_type_formatting(&document_id, position, &params.ch);
 
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
+    }
+
+    pub(crate) fn on_type_formatting_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::DocumentOnTypeFormattingParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::on_type_formatting_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid onTypeFormatting params: {error}"),
+                ));
+            }
+        };
+        let edits =
+            self.databases
+                .on_type_formatting(&input.document_id, input.position, &input.trigger);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::text_edits(&edits))
+                .expect("typed onTypeFormatting response should serialize"),
+        ))
     }
 
     pub(crate) fn selection_range(

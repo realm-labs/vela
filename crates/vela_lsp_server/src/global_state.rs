@@ -6,7 +6,8 @@ use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
+    DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams,
     DocumentSymbolParams, FoldingRangeParams, HoverParams, ReferenceParams, RenameParams,
     SelectionRangeParams, SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
 };
@@ -455,6 +456,39 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.selection_range_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn formatting(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: DocumentFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.formatting_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn range_formatting(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: DocumentRangeFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.range_formatting_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn on_type_formatting(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: DocumentOnTypeFormattingParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.on_type_formatting_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1764,6 +1798,51 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_formatting_dispatch_projects_text_edits() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn main() {   \n    return 1   \n}\n";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let document_response = typed_formatting_response(&mut state, 20, &document);
+        let document_edits = document_response["result"]
+            .as_array()
+            .expect("formatting response should be an array");
+        assert_eq!(document_edits.len(), 1);
+        assert_eq!(
+            document_edits[0]["newText"],
+            "pub fn main() {\n    return 1\n}\n"
+        );
+
+        let range_response = typed_range_formatting_response(&mut state, 21, &document);
+        let range_edits = range_response["result"]
+            .as_array()
+            .expect("rangeFormatting response should be an array");
+        assert_eq!(range_edits.len(), 1);
+        assert_eq!(range_edits[0]["range"]["start"]["line"], 1);
+        assert_eq!(range_edits[0]["newText"], "");
+
+        let on_type_response = typed_on_type_formatting_response(&mut state, 22, &document);
+        let on_type_edits = on_type_response["result"]
+            .as_array()
+            .expect("onTypeFormatting response should be an array");
+        assert_eq!(on_type_edits.len(), 1);
+        assert_eq!(on_type_edits[0]["range"]["start"]["line"], 0);
+        assert_eq!(
+            on_type_edits[0]["newText"],
+            "pub fn main() {\n    return 1\n}\n"
+        );
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2329,6 +2408,99 @@ pub fn main(amount: i64) -> i64 {
             current = selection.get("parent");
         }
         ranges
+    }
+
+    fn typed_formatting_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/formatting".to_owned(),
+            params: serde_json::to_value(lsp_types::DocumentFormattingParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                options: lsp_formatting_options(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("formatting params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed formatting should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_range_formatting_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/rangeFormatting".to_owned(),
+            params: serde_json::to_value(lsp_types::DocumentRangeFormattingParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(1, 0),
+                    lsp_types::Position::new(2, 0),
+                ),
+                options: lsp_formatting_options(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("rangeFormatting params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed rangeFormatting should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_on_type_formatting_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/onTypeFormatting".to_owned(),
+            params: serde_json::to_value(lsp_types::DocumentOnTypeFormattingParams {
+                text_document_position: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(2, 1),
+                },
+                ch: "}".to_owned(),
+                options: lsp_formatting_options(),
+            })
+            .expect("onTypeFormatting params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed onTypeFormatting should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn lsp_formatting_options() -> lsp_types::FormattingOptions {
+        lsp_types::FormattingOptions {
+            tab_size: 4,
+            insert_spaces: true,
+            properties: Default::default(),
+            trim_trailing_whitespace: None,
+            insert_final_newline: None,
+            trim_final_newlines: None,
+        }
     }
 
     fn workspace_config_with_schema(root: &str, schema: &str) -> WorkspaceConfig {

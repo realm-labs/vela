@@ -107,6 +107,10 @@ pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_type
     ranges.iter().map(selection_range).collect()
 }
 
+pub(crate) fn text_edits(edits: &[ServiceTextEdit]) -> Vec<lsp_types::TextEdit> {
+    edits.iter().map(text_edit).collect()
+}
+
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
     lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
         range: diagnostic_range(rename.range()),
@@ -972,6 +976,30 @@ pub fn main(player: Player) -> i64 {
             lsp_types::Position::new(1, 15),
             lsp_types::Position::new(1, 27)
         )));
+    }
+
+    #[test]
+    fn text_edits_project_typed_formatting_edits() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn main(){return 1}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let edits = databases.document_formatting(&document);
+
+        let edits = text_edits(&edits);
+
+        assert_eq!(edits.len(), 1);
+        assert_eq!(
+            edits[0].range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 0),
+                lsp_types::Position::new(0, 23)
+            )
+        );
+        assert!(edits[0].new_text.contains("pub fn main() {"));
     }
 
     #[test]

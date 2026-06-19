@@ -637,6 +637,9 @@ cargo test -p vela_lsp_server workspace_folders
     through `lsp/from_proto.rs`.
   - `textDocument/selectionRange` now converts typed `SelectionRangeParams`
     through `lsp/from_proto.rs`.
+  - `textDocument/formatting`, `textDocument/rangeFormatting`, and
+    `textDocument/onTypeFormatting` now convert typed formatting params
+    through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -667,6 +670,8 @@ cargo test -p vela_lsp_server workspace_folders
     values with typed `FoldingRangeKind` categories.
   - Selection ranges now project recursive parent chains through typed
     `lsp_types::SelectionRange` values.
+  - Formatting responses now project service text edits through typed
+    `lsp_types::TextEdit` values.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -829,6 +834,17 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service selection`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/formatting`, `textDocument/rangeFormatting`, and
+    `textDocument/onTypeFormatting` now use typed formatting params through
+    `GlobalState` and typed `lsp_types::TextEdit` projection through
+    `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server formatting`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service formatting`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

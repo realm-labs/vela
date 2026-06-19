@@ -33,6 +33,13 @@ pub(crate) struct SelectionRangeInput {
     pub(crate) positions: Vec<Position>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OnTypeFormattingInput {
+    pub(crate) document_id: DocumentId,
+    pub(crate) position: Position,
+    pub(crate) trigger: String,
+}
+
 pub(crate) fn document_id(uri: &lsp_types::Url) -> DocumentId {
     DocumentId::from(uri.to_string())
 }
@@ -50,6 +57,36 @@ pub(crate) fn formatting_options(options: &lsp_types::FormattingOptions) -> Form
         tab_size: options.tab_size,
         insert_spaces: options.insert_spaces,
     }
+}
+
+pub(crate) fn document_formatting_params(
+    params: &lsp_types::DocumentFormattingParams,
+) -> DocumentId {
+    let _options = formatting_options(&params.options);
+    document_id(&params.text_document.uri)
+}
+
+pub(crate) fn range_formatting_params(
+    text: &str,
+    params: &lsp_types::DocumentRangeFormattingParams,
+) -> Result<TextDocumentRangeInput, String> {
+    let _options = formatting_options(&params.options);
+    Ok(TextDocumentRangeInput {
+        document_id: document_id(&params.text_document.uri),
+        range: range(text, params.range)?,
+    })
+}
+
+pub(crate) fn on_type_formatting_params(
+    text: &str,
+    params: &lsp_types::DocumentOnTypeFormattingParams,
+) -> Result<OnTypeFormattingInput, String> {
+    let _options = formatting_options(&params.options);
+    Ok(OnTypeFormattingInput {
+        document_id: document_id(&params.text_document_position.text_document.uri),
+        position: position(text, params.text_document_position.position)?,
+        trigger: params.ch.clone(),
+    })
 }
 
 pub(crate) fn text_document_position(
@@ -582,5 +619,84 @@ mod tests {
                 insert_spaces: true,
             }
         );
+    }
+
+    #[test]
+    fn document_formatting_params_convert_document_id() {
+        let params = lsp_types::DocumentFormattingParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            options: lsp_formatting_options(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        };
+
+        assert_eq!(
+            document_formatting_params(&params),
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+    }
+
+    #[test]
+    fn range_formatting_params_convert_range() {
+        let params = lsp_types::DocumentRangeFormattingParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            range: lsp_types::Range::new(
+                lsp_types::Position::new(0, 0),
+                lsp_types::Position::new(0, 4),
+            ),
+            options: lsp_formatting_options(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        };
+
+        let input = range_formatting_params("main", &params).expect("range should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(
+            input.range,
+            DiagnosticRange::new(Position::new(0, 0), Position::new(0, 4))
+        );
+    }
+
+    #[test]
+    fn on_type_formatting_params_convert_position_and_trigger() {
+        let params = lsp_types::DocumentOnTypeFormattingParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            ch: "}".to_owned(),
+            options: lsp_formatting_options(),
+        };
+
+        let input = on_type_formatting_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+        assert_eq!(input.trigger, "}");
+    }
+
+    fn lsp_formatting_options() -> lsp_types::FormattingOptions {
+        lsp_types::FormattingOptions {
+            tab_size: 2,
+            insert_spaces: true,
+            properties: Default::default(),
+            trim_trailing_whitespace: None,
+            insert_final_newline: None,
+            trim_final_newlines: None,
+        }
     }
 }

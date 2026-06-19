@@ -11,10 +11,10 @@ use lsp_types::{
         CallHierarchyIncomingCalls, CallHierarchyOutgoingCalls, CallHierarchyPrepare,
         CodeActionRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest,
         FoldingRangeRequest, Formatting, GotoDeclaration, GotoDefinition, GotoTypeDefinition,
-        HoverRequest, InlayHintRequest, PrepareRenameRequest, References, Rename,
-        ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullDeltaRequest,
-        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
-        WorkspaceSymbolRequest,
+        HoverRequest, InlayHintRequest, OnTypeFormatting, PrepareRenameRequest, RangeFormatting,
+        References, Rename, ResolveCompletionItem, SelectionRangeRequest,
+        SemanticTokensFullDeltaRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+        SignatureHelpRequest, WorkspaceSymbolRequest,
     },
 };
 use serde::de::DeserializeOwned;
@@ -81,7 +81,9 @@ fn dispatch_request(
         .on_worker::<CodeActionRequest>()
         .on_worker::<SemanticTokensRangeRequest>()
         .on_worker::<InlayHintRequest>()
-        .on_fmt_thread::<Formatting>()
+        .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)
+        .on_fmt_thread_typed::<RangeFormatting>(GlobalState::range_formatting)
+        .on_fmt_thread_typed::<OnTypeFormatting>(GlobalState::on_type_formatting)
         .finish()
 }
 
@@ -183,11 +185,15 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn on_fmt_thread<R>(&mut self) -> &mut Self
+    pub(crate) fn on_fmt_thread_typed<R>(
+        &mut self,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
     where
         R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
     {
-        self.dispatch_legacy::<R>();
+        self.dispatch_typed::<R>(f);
         self
     }
 
