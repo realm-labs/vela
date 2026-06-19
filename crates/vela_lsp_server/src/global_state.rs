@@ -171,10 +171,10 @@ impl GlobalStateSnapshot {
             .completion_items(&input.document_id, input.position);
         let line_index = ServiceLineIndex::new(&text);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::completion_response(&completions, &line_index))
-                .expect("typed completion response should serialize"),
+            to_proto::completion_response(&completions, &line_index),
+            "typed completion response",
         )
     }
 
@@ -197,10 +197,10 @@ impl GlobalStateSnapshot {
         };
         let documentation =
             payload.and_then(|payload| self.databases.completion_documentation(&payload));
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
-                .expect("typed completion item should serialize"),
+            to_proto::completion_item_resolved(params, documentation),
+            "typed completion item",
         )
     }
 
@@ -220,10 +220,10 @@ impl GlobalStateSnapshot {
         };
         let hover = self.databases.hover(&input.document_id, input.position);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(hover.as_ref().map(to_proto::hover))
-                .expect("typed hover response should serialize"),
+            hover.as_ref().map(to_proto::hover),
+            "typed hover response",
         )
     }
 
@@ -249,10 +249,10 @@ impl GlobalStateSnapshot {
             .databases
             .signature_help(&input.document_id, input.position);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(signatures.as_ref().map(to_proto::signature_help))
-                .expect("typed signatureHelp response should serialize"),
+            signatures.as_ref().map(to_proto::signature_help),
+            "typed signatureHelp response",
         )
     }
 
@@ -264,13 +264,10 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::semantic_tokens_params(&params);
         let tokens = self.databases.semantic_tokens(&document_id);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::semantic_tokens(
-                &tokens,
-                &self.semantic_token_projection,
-            ))
-            .expect("typed semanticTokens/full response should serialize"),
+            to_proto::semantic_tokens(&tokens, &self.semantic_token_projection),
+            "typed semanticTokens/full response",
         )
     }
 
@@ -284,13 +281,10 @@ impl GlobalStateSnapshot {
             .databases
             .semantic_token_delta(&input.document_id, &input.previous_result_id);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::semantic_tokens_delta(
-                &delta,
-                &self.semantic_token_projection,
-            ))
-            .expect("typed semanticTokens/full/delta response should serialize"),
+            to_proto::semantic_tokens_delta(&delta, &self.semantic_token_projection),
+            "typed semanticTokens/full/delta response",
         )
     }
 
@@ -315,13 +309,10 @@ impl GlobalStateSnapshot {
             .databases
             .semantic_tokens_in_range(&input.document_id, input.range);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::semantic_tokens_range(
-                &tokens,
-                &self.semantic_token_projection,
-            ))
-            .expect("typed semanticTokens/range response should serialize"),
+            to_proto::semantic_tokens_range(&tokens, &self.semantic_token_projection),
+            "typed semanticTokens/range response",
         )
     }
 
@@ -333,10 +324,10 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::document_formatting_params(&params);
         let edits = self.databases.document_formatting(&document_id);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::text_edits(&edits))
-                .expect("typed formatting response should serialize"),
+            to_proto::text_edits(&edits),
+            "typed formatting response",
         )
     }
 
@@ -361,10 +352,10 @@ impl GlobalStateSnapshot {
             .databases
             .range_formatting(&input.document_id, input.range);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::text_edits(&edits))
-                .expect("typed rangeFormatting response should serialize"),
+            to_proto::text_edits(&edits),
+            "typed rangeFormatting response",
         )
     }
 
@@ -389,10 +380,10 @@ impl GlobalStateSnapshot {
             self.databases
                 .on_type_formatting(&input.document_id, input.position, &input.trigger);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::text_edits(&edits))
-                .expect("typed onTypeFormatting response should serialize"),
+            to_proto::text_edits(&edits),
+            "typed onTypeFormatting response",
         )
     }
 
@@ -458,10 +449,10 @@ impl GlobalStateSnapshot {
             params.context.include_declaration,
         );
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::reference_locations(&references))
-                .expect("typed references response should serialize"),
+            to_proto::reference_locations(&references),
+            "typed references response",
         )
     }
 
@@ -487,10 +478,10 @@ impl GlobalStateSnapshot {
             .databases
             .document_highlights(&input.document_id, input.position);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::document_highlights(&highlights))
-                .expect("typed documentHighlight response should serialize"),
+            to_proto::document_highlights(&highlights),
+            "typed documentHighlight response",
         )
     }
 
@@ -502,10 +493,10 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::document_symbol_params(&params);
         let symbols = self.databases.document_symbols(&document_id);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::document_symbols(&symbols))
-                .expect("typed documentSymbol response should serialize"),
+            to_proto::document_symbols(&symbols),
+            "typed documentSymbol response",
         )
     }
 
@@ -518,10 +509,10 @@ impl GlobalStateSnapshot {
             .databases
             .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::workspace_symbols(&symbols))
-                .expect("typed workspace/symbol response should serialize"),
+            to_proto::workspace_symbols(&symbols),
+            "typed workspace/symbol response",
         )
     }
 
@@ -533,10 +524,10 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::folding_range_params(&params);
         let ranges = self.databases.folding_ranges(&document_id);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::folding_ranges(&ranges))
-                .expect("typed foldingRange response should serialize"),
+            to_proto::folding_ranges(&ranges),
+            "typed foldingRange response",
         )
     }
 
@@ -561,10 +552,10 @@ impl GlobalStateSnapshot {
             .databases
             .selection_ranges(&input.document_id, &input.positions);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::selection_ranges(&ranges))
-                .expect("typed selectionRange response should serialize"),
+            to_proto::selection_ranges(&ranges),
+            "typed selectionRange response",
         )
     }
 
@@ -589,10 +580,10 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_rename(&input.document_id, input.position);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
-                .expect("typed prepareRename response should serialize"),
+            prepare.as_ref().map(to_proto::prepare_rename),
+            "typed prepareRename response",
         )
     }
 
@@ -613,10 +604,10 @@ impl GlobalStateSnapshot {
             .databases
             .rename(&input.document_id, input.position, &params.new_name);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
-                .expect("typed rename response should serialize"),
+            edit.as_ref().map(to_proto::workspace_edit),
+            "typed rename response",
         )
     }
 
@@ -642,10 +633,10 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_call_hierarchy(&input.document_id, input.position);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::call_hierarchy_items(&items))
-                .expect("typed prepareCallHierarchy response should serialize"),
+            to_proto::call_hierarchy_items(&items),
+            "typed prepareCallHierarchy response",
         )
     }
 
@@ -668,10 +659,10 @@ impl GlobalStateSnapshot {
         };
         let calls = self.databases.incoming_calls(&item);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::incoming_calls(&calls))
-                .expect("typed incomingCalls response should serialize"),
+            to_proto::incoming_calls(&calls),
+            "typed incomingCalls response",
         )
     }
 
@@ -694,10 +685,10 @@ impl GlobalStateSnapshot {
         };
         let calls = self.databases.outgoing_calls(&item);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::outgoing_calls(&calls))
-                .expect("typed outgoingCalls response should serialize"),
+            to_proto::outgoing_calls(&calls),
+            "typed outgoingCalls response",
         )
     }
 
@@ -720,10 +711,10 @@ impl GlobalStateSnapshot {
         };
         let actions = self.databases.code_actions(&input.document_id, input.range);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::code_actions(&actions))
-                .expect("typed codeAction response should serialize"),
+            to_proto::code_actions(&actions),
+            "typed codeAction response",
         )
     }
 
@@ -746,10 +737,10 @@ impl GlobalStateSnapshot {
         };
         let hints = self.databases.inlay_hints(&input.document_id, input.range);
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(to_proto::inlay_hints(&hints))
-                .expect("typed inlayHint response should serialize"),
+            to_proto::inlay_hints(&hints),
+            "typed inlayHint response",
         )
     }
 
@@ -785,10 +776,10 @@ impl GlobalStateSnapshot {
                 .type_definition(&input.document_id, input.position),
         };
 
-        response_ok_messages(
+        response_ok_typed_messages(
             id,
-            serde_json::to_value(definition.as_ref().map(to_proto::definition_location))
-                .expect("typed navigation response should serialize"),
+            definition.as_ref().map(to_proto::definition_location),
+            "typed navigation response",
         )
     }
 }
@@ -1289,6 +1280,19 @@ fn response_ok_messages(id: lsp_server::RequestId, result: serde_json::Value) ->
         result: Some(result),
         error: None,
     })]
+}
+
+fn response_ok_typed_messages<T>(
+    id: lsp_server::RequestId,
+    result: T,
+    context: &'static str,
+) -> Vec<Message>
+where
+    T: serde::Serialize,
+{
+    let result = serde_json::to_value(result)
+        .unwrap_or_else(|error| panic!("{context} should serialize: {error}"));
+    response_ok_messages(id, result)
 }
 
 fn response_error_messages(

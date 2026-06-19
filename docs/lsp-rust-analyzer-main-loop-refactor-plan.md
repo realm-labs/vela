@@ -1642,6 +1642,14 @@ cargo test -p vela_lsp_server semantic_tokens
     Validated with `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_lsp_server semantic_tokens`, and
     `cargo test -p vela_lsp_server typed_initialized`.
+  - Snapshot request handlers now send typed `lsp_types` response values
+    through a single `response_ok_typed_messages` JSON-RPC boundary helper
+    instead of serializing each handler result inline. The remaining
+    production `serde_json::to_value` use in `GlobalStateSnapshot` is the
+    completion-resolve compatibility payload extraction. Validated with
+    `cargo test -p vela_lsp_server handlers::dispatch`,
+    `cargo test -p vela_lsp_server typed_completion`, and
+    `cargo test -p vela_lsp_server typed_semantic_token_dispatch`.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
 - [ ] Add an assertion or package validation where practical that
   `vela_language_service` does not depend on `lsp-types`.
