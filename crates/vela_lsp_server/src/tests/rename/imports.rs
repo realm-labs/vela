@@ -1,9 +1,12 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_private_function_rename_updates_aliased_import_path() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,7 +14,7 @@ fn lsp_private_function_rename_updates_aliased_import_path() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_text = "\
 use game::reward::grant as award
 pub fn main(amount: i64) -> i64 {
@@ -21,7 +24,8 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -31,10 +35,11 @@ pub fn main(amount: i64) -> i64 {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let rename = response_value(server.handle_json(&request(
+    let rename = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/rename",
         serde_json::json!({
@@ -45,7 +50,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "newName": "grant_reward"
         }),
-    )));
+    ));
     let main_edits = rename["result"]["changes"][main_uri]
         .as_array()
         .expect("rename should return main edits");
