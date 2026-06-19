@@ -1,9 +1,10 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 
 #[test]
 fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,7 +12,7 @@ fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
 
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
@@ -28,7 +29,8 @@ fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
     let before_project_rebuild_count = server.databases.project_db().rebuild_count();
     let before_hir_rebuild_count = server.databases.hir_db().rebuild_count();
 
-    let change = notification_value(server.handle_json(&notification(
+    let change = notification_value(handle_notification(
+        &mut server,
         "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
@@ -39,7 +41,7 @@ fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
                 { "text": "pub fn grant() { return 2 }" }
             ]
         }),
-    )));
+    ));
 
     assert_eq!(change["method"], "textDocument/publishDiagnostics");
     assert_eq!(change["params"]["uri"], reward_uri);
@@ -62,7 +64,8 @@ fn lsp_did_change_body_edit_avoids_project_and_hir_rebuild() {
 }
 
 fn open_document(server: &mut LspServer, uri: &str, text: &str) {
-    let diagnostics = notification_value(server.handle_json(&notification(
+    let diagnostics = notification_value(handle_notification(
+        server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -72,7 +75,7 @@ fn open_document(server: &mut LspServer, uri: &str, text: &str) {
                 "text": text
             }
         }),
-    )));
+    ));
     assert_eq!(diagnostics["method"], "textDocument/publishDiagnostics");
     assert_eq!(diagnostics["params"]["uri"], uri);
     assert_eq!(diagnostics["params"]["diagnostics"], serde_json::json!([]));
