@@ -226,6 +226,11 @@ the remaining test-only `LspServer::handle_json` compatibility harness plus
 raw JSON-RPC parser helpers; feature and lifecycle fixtures now enter through
 typed `lsp_server::Message` helpers.
 
+M20.5 main-loop close-out: the rust-analyzer-style LSP main-loop refactor
+execution plan is fully checked off, including Section 7 acceptance. Focused
+LSP acceptance tests, full workspace format/clippy/test validation, VS Code
+package validation, and a release VSIX build all pass.
+
 M20.5 lifecycle update: native LSP cancellation fixtures now also cover
 request-shaped `$/cancelRequest` rejection and malformed cancel params as
 no-response no-ops that do not cancel later valid requests.
@@ -1406,16 +1411,14 @@ diagnostics.
 - Keep the completed primitive scalar, bytes, type-hint contract, and guard-plan
   refactor as the baseline; do not reintroduce old `int`/`float` compatibility
   paths or string fallback dispatch.
-- Keep the clean LSP architecture refactor as the validated M20.5 editor
-  tooling baseline; future LSP work should start from the shared
-  query/context/result/projection boundary instead of restoring old
-  completion or protocol-coupled paths. Phase 9 cleanup has removed the
-  custom stdio transport and isolated the legacy `JsonRpcResult` response
-  envelope behind test-only compatibility helpers; production RPC code now
-  keeps typed `lsp_server::Message` serialization and protocol error codes
-  only. The legacy JSON-RPC value parser and `LspServer::handle_json`
-  compatibility harness have been removed, leaving the transport module
-  focused on typed connection I/O, message serialization for
+- Keep the clean LSP architecture and rust-analyzer-style main-loop refactor
+  as the validated M20.5 editor tooling baseline; future LSP work should start
+  from the shared query/context/result/projection boundary and typed
+  `lsp_server::Message` main loop instead of restoring old completion,
+  protocol-coupled, or raw JSON-RPC paths. The custom stdio transport, legacy
+  JSON-RPC value parser, `JsonRpcResult` response envelope, and
+  `LspServer::handle_json` compatibility harness have been removed, leaving the
+  transport module focused on typed connection I/O, message serialization for
   profiling/tracing, and typed metadata.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance

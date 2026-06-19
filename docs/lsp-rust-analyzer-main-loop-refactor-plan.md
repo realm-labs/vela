@@ -114,59 +114,59 @@ references, rename, code actions, formatting, semantic tokens, and inlay hints.
 
 ## 2. Goals
 
-- [ ] Replace production hand-written JSON-RPC and stdio framing with
+- [x] Replace production hand-written JSON-RPC and stdio framing with
   `lsp-server`.
-- [ ] Keep stdio as the default editor transport.
-- [ ] Add an optional loopback TCP debug transport that reuses the same typed
+- [x] Keep stdio as the default editor transport.
+- [x] Add an optional loopback TCP debug transport that reuses the same typed
   main loop and cannot diverge from stdio behavior.
-- [ ] Replace production hand-written protocol params/results with
+- [x] Replace production hand-written protocol params/results with
   `lsp-types` where the upstream protocol type exists.
-- [ ] Introduce a rust-analyzer-style `GlobalState` as the only owner of
+- [x] Introduce a rust-analyzer-style `GlobalState` as the only owner of
   mutable server state.
-- [ ] Introduce `GlobalStateSnapshot` for read-only request handlers.
-- [ ] Introduce typed `RequestDispatcher` and `NotificationDispatcher`.
-- [ ] Model dispatcher entry points after RA's `on_sync_mut`, `on_sync`,
+- [x] Introduce `GlobalStateSnapshot` for read-only request handlers.
+- [x] Introduce typed `RequestDispatcher` and `NotificationDispatcher`.
+- [x] Model dispatcher entry points after RA's `on_sync_mut`, `on_sync`,
   worker, latency-sensitive, and formatting-thread request categories.
-- [ ] Split request execution into main-thread mutable handlers, latency
+- [x] Split request execution into main-thread mutable handlers, latency
   handlers, formatting handlers, and worker handlers.
-- [ ] Track incoming request state in a request queue.
-- [ ] Implement cancellation through request IDs and service generation tokens.
-- [ ] Implement stale-result handling with retry for retryable requests and
+- [x] Track incoming request state in a request queue.
+- [x] Implement cancellation through request IDs and service generation tokens.
+- [x] Implement stale-result handling with retry for retryable requests and
   `ContentModified` for non-retryable requests.
-- [ ] Add a single `line_index`/position-encoding boundary for LSP
+- [x] Add a single `line_index`/position-encoding boundary for LSP
   `Position`/`Range` conversion and service byte/span offsets.
-- [ ] Add a `ConfigChange`-style configuration pipeline that separates launch
+- [x] Add a `ConfigChange`-style configuration pipeline that separates launch
   config, editor config, and workspace config application.
-- [ ] Add an explicit reload/diagnostics scheduler boundary for watched files,
+- [x] Add an explicit reload/diagnostics scheduler boundary for watched files,
   schema/config changes, workspace roots, generation bumps, and open-file
   diagnostic priority.
-- [ ] Rebuild request profiling at the main-loop/task boundary so logs show
+- [x] Rebuild request profiling at the main-loop/task boundary so logs show
   received, queued, task-started, task-ended, responded, stale, retried, and
   cancelled states.
-- [ ] Add RA-style tracing/log-file diagnostics that do not write to stdout and
+- [x] Add RA-style tracing/log-file diagnostics that do not write to stdout and
   can be correlated with profile JSONL request events.
-- [ ] Add a typed in-memory message harness for lifecycle, cancellation, stale
+- [x] Add a typed in-memory message harness for lifecycle, cancellation, stale
   result, task result, stdio smoke, and TCP smoke coverage.
-- [ ] Preserve current VS Code and Zed packages as thin launchers around the
+- [x] Preserve current VS Code and Zed packages as thin launchers around the
   native server.
-- [ ] Keep `vela_language_service` free of LSP, editor, filesystem watcher,
+- [x] Keep `vela_language_service` free of LSP, editor, filesystem watcher,
   and process transport types.
 
 ---
 
 ## 3. Non-Goals
 
-- [ ] Do not rewrite `vela_language_service` semantics as part of this track.
-- [ ] Do not introduce Salsa as a requirement for this refactor.
-- [ ] Do not add Rust macro expansion, borrow checking, Rust trait solving,
+- [x] Do not rewrite `vela_language_service` semantics as part of this track.
+- [x] Do not introduce Salsa as a requirement for this refactor.
+- [x] Do not add Rust macro expansion, borrow checking, Rust trait solving,
   proc macros, Cargo project discovery, or flycheck.
-- [ ] Do not change parser, HIR, compiler, VM, HostAccess, reflection, hot
+- [x] Do not change parser, HIR, compiler, VM, HostAccess, reflection, hot
   reload, or runtime semantics.
-- [ ] Do not add a custom full IDE product.
-- [ ] Do not make browser/WASM tooling shape the native server architecture.
-- [ ] Do not make TCP the default editor transport.
-- [ ] Do not expose an unauthenticated non-loopback TCP listener by default.
-- [ ] Do not keep legacy protocol structs or response envelopes in production
+- [x] Do not add a custom full IDE product.
+- [x] Do not make browser/WASM tooling shape the native server architecture.
+- [x] Do not make TCP the default editor transport.
+- [x] Do not expose an unauthenticated non-loopback TCP listener by default.
+- [x] Do not keep legacy protocol structs or response envelopes in production
   paths once their typed replacements are verified.
 
 ---
@@ -1315,7 +1315,7 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server definition`,
     `cargo test -p vela_lsp_server references`, and
     `cargo test -p vela_lsp_server rename`.
-- [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
+- [x] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
   - Custom `RequestId` storage has been replaced by `lsp_server::RequestId`;
     the remaining `RequestId` name is a local alias for the upstream typed ID
@@ -1631,6 +1631,14 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_did_change`,
     `cargo test -p vela_lsp_server typed_did_close`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - The remaining test-only raw JSON entrypoints, `LspServer::handle_json`
+    compatibility harness, and raw JSON-RPC parser helpers have been removed.
+    Production and in-memory tests now enter through typed
+    `lsp_server::Message` values. Validated with the focused Section 7
+    checks, `cargo test -p vela_lsp_server -- --test-threads=1`,
+    `cargo fmt --all -- --check`,
+    `cargo clippy --workspace --all-targets -- -D warnings`, and
+    `cargo test --workspace`.
 - [x] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
   - Initialize capabilities and the semantic-token legend are now assembled
@@ -1990,7 +1998,7 @@ node editors/vscode/scripts/validate-package.js
   LSP architecture status changes.
 - [x] Update `docs/decisions.md` if the dependency, request scheduling, stale
   retry, or profiling model is accepted as durable architecture.
-- [ ] Build a release VSIX after all focused and full validations pass.
+- [x] Build a release VSIX after all focused and full validations pass.
 
 Validation:
 
@@ -2006,54 +2014,54 @@ cd editors/vscode && npm run package:release
 
 ## 7. Acceptance Criteria
 
-- [ ] Production `vela_lsp_server` no longer uses hand-written
+- [x] Production `vela_lsp_server` no longer uses hand-written
   `JsonRpcMessage`, `JsonRpcResult`, custom `RequestId`, custom
   `success_response`, custom `error_response`, or custom Content-Length parser
   for normal stdio or TCP server operation.
-- [ ] Stdio remains the default editor transport and uses the same main loop as
+- [x] Stdio remains the default editor transport and uses the same main loop as
   any optional TCP debug transport.
-- [ ] TCP mode is explicit, loopback-only by default, covered by smoke and
+- [x] TCP mode is explicit, loopback-only by default, covered by smoke and
   lifecycle tests, and cannot route through a separate dispatcher.
-- [ ] Production request and notification handlers use `lsp-types` typed
+- [x] Production request and notification handlers use `lsp-types` typed
   params and typed result projection where upstream protocol types exist.
-- [ ] Request dispatch exposes RA-style mutable, read-only, latency-sensitive,
+- [x] Request dispatch exposes RA-style mutable, read-only, latency-sensitive,
   formatting, and worker categories rather than feature handlers branching on
   raw method strings.
-- [ ] Invalid params, panics, cancellations, stale generations, retry,
+- [x] Invalid params, panics, cancellations, stale generations, retry,
   method-not-found, and notification errors are projected through shared
   dispatch/main-loop code.
-- [ ] LSP position/range conversion goes through one `line_index` boundary and
+- [x] LSP position/range conversion goes through one `line_index` boundary and
   preserves default UTF-16 behavior.
-- [ ] Launch config, editor config, workspace config, schema paths, and watcher
+- [x] Launch config, editor config, workspace config, schema paths, and watcher
   settings flow through a `ConfigChange`-style application pipeline.
-- [ ] Watched-file, schema, config, workspace-root, and disk-source changes go
+- [x] Watched-file, schema, config, workspace-root, and disk-source changes go
   through an explicit reload/diagnostics scheduler with generation bumps and
   open-file priority.
-- [ ] Lifecycle behavior remains covered for initialize, initialized,
+- [x] Lifecycle behavior remains covered for initialize, initialized,
   shutdown, exit, repeated initialize, malformed initialize, pre-initialize
   requests, requests after shutdown, unsupported methods, and unsupported
   notifications.
-- [ ] Watcher registration remains dynamic and typed, respects client
+- [x] Watcher registration remains dynamic and typed, respects client
   capability support, ignores empty host schema, and respects
   `--no-watch-files`.
-- [ ] Diagnostics, completion, hover, signature help, definitions, symbols,
+- [x] Diagnostics, completion, hover, signature help, definitions, symbols,
   semantic tokens, references, rename, code actions, call hierarchy,
   formatting, selection ranges, folding, and inlay hints remain
   behavior-compatible with current fixtures.
-- [ ] Latency-sensitive read-only requests do not block document-change or
+- [x] Latency-sensitive read-only requests do not block document-change or
   cancel notifications in the main loop.
-- [ ] Formatting requests use a dedicated execution lane.
-- [ ] Cancellation and stale-generation behavior are observable in tests.
-- [ ] Profile JSONL distinguishes queue time, handler time, response write
+- [x] Formatting requests use a dedicated execution lane.
+- [x] Cancellation and stale-generation behavior are observable in tests.
+- [x] Profile JSONL distinguishes queue time, handler time, response write
   time, stale, cancelled, retried, and completed request states.
-- [ ] Tracing/logging never writes to stdout in stdio mode and can be
+- [x] Tracing/logging never writes to stdout in stdio mode and can be
   correlated with profile JSONL request IDs, methods, lanes, and generations.
-- [ ] Typed in-memory harnesses cover lifecycle, cancellation, stale result,
+- [x] Typed in-memory harnesses cover lifecycle, cancellation, stale result,
   task result, stdio smoke, and TCP smoke paths without relying on manual
   Content-Length fixture parsing for core behavior.
-- [ ] `vela_language_service` remains editor-neutral and has no dependency on
+- [x] `vela_language_service` remains editor-neutral and has no dependency on
   `lsp-server` or `lsp-types`.
-- [ ] VS Code and Zed packages remain thin launchers or fallback syntax
+- [x] VS Code and Zed packages remain thin launchers or fallback syntax
   packages, not semantic analysis implementations.
 
 Acceptance must be validated with:
@@ -2101,24 +2109,24 @@ until the full close-out checks pass or a real external blocker is recorded in
 
 ## 9. Checkpoint Rules
 
-- [ ] Work from the earliest incomplete phase.
-- [ ] Keep checkpoints small and conventional-commit each verified slice.
-- [ ] Prefer replacing obsolete internals over supporting parallel legacy and
+- [x] Work from the earliest incomplete phase.
+- [x] Keep checkpoints small and conventional-commit each verified slice.
+- [x] Prefer replacing obsolete internals over supporting parallel legacy and
   new protocol paths.
-- [ ] Preserve current user-facing LSP behavior unless a fixture shows it is
+- [x] Preserve current user-facing LSP behavior unless a fixture shows it is
   wrong and the change is part of an explicit task.
-- [ ] Do not touch unrelated user work. In particular, if
+- [x] Do not touch unrelated user work. In particular, if
   `examples/src/bin/modules/game/reward.vela` is dirty, treat it as user work
   unless explicitly instructed otherwise.
-- [ ] Before committing implementation checkpoints, check that new Rust imports
+- [x] Before committing implementation checkpoints, check that new Rust imports
   do not use more than one `super` segment, active source/test files remain
   under 1200 lines unless a concrete exception is documented, and new files are
   grouped by ownership scope instead of flattened into unrelated siblings.
   Avoid new re-exports unless they form a deliberate scoped API; do not use
   re-exports just to shorten paths or obscure ownership.
-- [ ] Update this document's checklist only after the relevant focused tests
+- [x] Update this document's checklist only after the relevant focused tests
   pass.
-- [ ] Update durable docs only for durable status or architecture changes, not
+- [x] Update durable docs only for durable status or architecture changes, not
   routine per-commit notes.
 
 ---
