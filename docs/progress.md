@@ -592,9 +592,9 @@ cover imported source types nested inside deep builtin container hints such as
 beyond shallow `Array<T>` containers.
 
 M20.5 Phase 5 update: native LSP `didClose` coverage now proves completion,
-hover, and references queries return to disk-snapshot declarations after an
-open overlay is closed, matching the existing diagnostic, definition, and
-type-definition restoration fixtures.
+hover, references, and document-highlight queries return to disk-snapshot
+declarations after an open overlay is closed, matching the existing
+diagnostic, definition, and type-definition restoration fixtures.
 
 M20.5 Phase 8 update: native LSP declaration fixtures now cover schema-backed
 type and host-method source spans, proving clients that separate declaration

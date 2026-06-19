@@ -274,9 +274,9 @@ coverage complete based only on the older capability phases.
   - Disk snapshot restoration after `textDocument/didClose` now has
     cross-feature definition-query coverage in addition to diagnostics.
   - Disk snapshot restoration after `textDocument/didClose` now has
-    cross-feature completion-query, hover-query, references-query, and
-    type-definition-query coverage in addition to diagnostics and definition
-    queries.
+    cross-feature completion-query, hover-query, references-query,
+    document-highlight-query, and type-definition-query coverage in addition
+    to diagnostics and definition queries.
   - Current fixtures cover full and incremental `didChange`, `didOpen`,
     `didClose`, structured publish diagnostics, syntax/HIR/analysis/schema
     diagnostics, parser-recovery isolation, missing import diagnostics,
@@ -349,6 +349,8 @@ coverage complete based only on the older capability phases.
     the importing file wins over a stale disk snapshot.
   - W3/W0 references now have protocol coverage proving `didClose` restores
     disk-snapshot reference ranges after an open overlay is removed.
+  - W3/W0 document highlights now have protocol coverage proving `didClose`
+    restores disk-snapshot highlight ranges after an open overlay is removed.
   - Current fixtures cover service and native LSP `textDocument/references`
     and `textDocument/documentHighlight` for locals, imports, function aliases,
     const/global symbols, source type uses, module path segments, source and

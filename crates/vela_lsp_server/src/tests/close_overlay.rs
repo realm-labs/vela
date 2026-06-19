@@ -351,6 +351,82 @@ pub fn main() -> i64 {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_did_close_restores_disk_snapshot_document_highlight_queries() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"pub fn disk_only() -> i64 { return 1 }
+pub fn main() -> i64 {
+    return disk_only()
+}"#;
+    let overlay_source = r#"pub fn overlay_only() -> i64 { return 2 }
+pub fn main() -> i64 {
+    return overlay_only()
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_highlights = response_value(server.handle_json(&document_highlight_request(
+        2,
+        &source_uri,
+        overlay_source,
+        "overlay_only",
+    )));
+    assert_document_highlight_ranges(&overlay_highlights, &[(0, 7, 19), (2, 11, 23)]);
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_highlights = response_value(server.handle_json(&document_highlight_request(
+        3,
+        &source_uri,
+        disk_source,
+        "disk_only",
+    )));
+    assert_document_highlight_ranges(&disk_highlights, &[(0, 7, 16), (2, 11, 20)]);
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn completion_labels(response: &serde_json::Value) -> Vec<String> {
     response["result"]["items"]
         .as_array()
@@ -435,6 +511,20 @@ fn references_character(source: &str, target: &str) -> usize {
     line.find(target).expect("references target should exist")
 }
 
+fn document_highlight_request(id: i64, uri: &str, source: &str, target: &str) -> String {
+    request(
+        id,
+        "textDocument/documentHighlight",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 2,
+                "character": references_character(source, target)
+            }
+        }),
+    )
+}
+
 fn assert_reference_ranges(
     response: &serde_json::Value,
     expected_uri: &str,
@@ -454,6 +544,28 @@ fn assert_reference_ranges(
                     && reference["range"]["end"]["character"] == *end
             }),
             "missing reference range ({line}, {start}, {end}) in {references:?}"
+        );
+    }
+}
+
+fn assert_document_highlight_ranges(
+    response: &serde_json::Value,
+    expected_ranges: &[(usize, usize, usize)],
+) {
+    let highlights = response["result"]
+        .as_array()
+        .expect("documentHighlight response should contain an array");
+    assert_eq!(highlights.len(), expected_ranges.len(), "{highlights:?}");
+    for (line, start, end) in expected_ranges {
+        assert!(
+            highlights.iter().any(|highlight| {
+                highlight["range"]["start"]["line"] == *line
+                    && highlight["range"]["start"]["character"] == *start
+                    && highlight["range"]["end"]["line"] == *line
+                    && highlight["range"]["end"]["character"] == *end
+                    && highlight["kind"] == 1
+            }),
+            "missing document highlight range ({line}, {start}, {end}) in {highlights:?}"
         );
     }
 }
