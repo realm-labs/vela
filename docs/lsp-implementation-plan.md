@@ -224,8 +224,13 @@ coverage complete based only on the older capability phases.
     dynamic watched-file registration.
   - Requests after `shutdown` now return a stable invalid-request error until
     the client sends the allowed `exit` notification.
+  - Notification-shaped `shutdown` messages are no-response no-ops that do
+    not mark the server shut down or block a later valid `shutdown` request.
   - After `exit`, the in-memory dispatcher ignores later input, matching the
     process-termination lifecycle even when tests call the server directly.
+  - Request-shaped `exit` messages return invalid-request while still ending
+    the in-memory dispatcher, matching the method's notification-only
+    process-termination intent.
   - `$/cancelRequest` now has protocol fixtures for stale queued requests,
     unknown request IDs, and already-completed request IDs.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP

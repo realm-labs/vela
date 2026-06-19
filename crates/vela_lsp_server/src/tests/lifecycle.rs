@@ -702,6 +702,38 @@ fn lsp_rejects_requests_after_shutdown_until_exit() {
 }
 
 #[test]
+fn lsp_shutdown_notification_does_not_shutdown() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+    let notification_result = server.handle_json(&notification("shutdown", JsonValue::Null));
+    assert_eq!(notification_result, JsonRpcResult::None);
+    assert!(!server.is_shutdown_requested());
+
+    let hover = response_value(server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    )));
+    let shutdown = response_value(server.handle_json(&request(3, "shutdown", JsonValue::Null)));
+
+    assert_eq!(hover["id"], 2);
+    assert!(hover["result"].is_null());
+    assert_eq!(shutdown["id"], 3);
+    assert_eq!(shutdown["result"], JsonValue::Null);
+    assert!(server.is_shutdown_requested());
+}
+
+#[test]
 fn lsp_rejects_shutdown_before_initialize_without_closing() {
     let mut server = LspServer::new();
     let shutdown = response_value(server.handle_json(&request(1, "shutdown", JsonValue::Null)));
@@ -727,6 +759,37 @@ fn lsp_rejects_shutdown_before_initialize_without_closing() {
         "vela_lsp_server"
     );
     assert!(server.is_initialized());
+}
+
+#[test]
+fn lsp_exit_request_reports_invalid_request_and_exits() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+    let exit = response_value(server.handle_json(&request(2, "exit", JsonValue::Null)));
+    let hover = server.handle_json(&request(
+        3,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    ));
+
+    assert_eq!(exit["id"], 2);
+    assert_eq!(exit["error"]["code"], -32600);
+    assert_eq!(
+        exit["error"]["message"],
+        "`exit` must be sent as a notification"
+    );
+    assert!(server.is_exited());
+    assert_eq!(hover, JsonRpcResult::None);
 }
 
 #[test]

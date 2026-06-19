@@ -192,6 +192,10 @@ M20.5 lifecycle update: native LSP shutdown handling now rejects subsequent
 requests with a stable invalid-request error while still allowing the final
 `exit` notification.
 
+M20.5 lifecycle update: notification-shaped `shutdown` messages are now
+covered as no-response no-ops that do not close the server or block a later
+valid `shutdown` request.
+
 M20.5 lifecycle update: native LSP feature requests before `initialize` now
 return a stable server-not-initialized error, and an early `initialized`
 notification alone does not unlock request handling.
@@ -203,6 +207,10 @@ no-ops that do not poison later requests.
 M20.5 lifecycle update: native LSP `exit` now terminates the in-memory
 dispatcher contract as well as process intent; later requests, notifications,
 and malformed input are ignored with no responses.
+
+M20.5 lifecycle update: request-shaped `exit` messages now have explicit
+coverage: they return invalid-request while still ending the in-memory
+dispatcher so later input is ignored.
 
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
