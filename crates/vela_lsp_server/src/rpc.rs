@@ -92,6 +92,10 @@ impl ErrorCode {
 }
 
 impl JsonRpcResult {
+    pub(crate) fn ok(id: RequestId, result: JsonValue) -> Self {
+        Self::Response(success_response(id, result))
+    }
+
     pub(crate) fn error(
         id: Option<RequestId>,
         code: ErrorCode,

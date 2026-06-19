@@ -8,7 +8,7 @@ use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
     config_change::{ConfigChange, WorkspaceConfigChange},
-    document_uri_path, error_response, normalized_path, publish_diagnostics_notification,
+    document_uri_path, normalized_path, publish_diagnostics_notification,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -247,11 +247,11 @@ impl LspServer {
         params: JsonValue,
     ) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeConfiguration` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidChangeConfigurationParams>(params) {

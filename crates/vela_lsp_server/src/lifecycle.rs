@@ -6,8 +6,7 @@ use vela_language_service::WorkspaceRoot;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, capabilities::initialize_result,
-    client::InitializeParams, config_change::ConfigChange, error_response,
-    rpc::CancelRequestParams, success_response, watching,
+    client::InitializeParams, config_change::ConfigChange, rpc::CancelRequestParams, watching,
 };
 
 impl LspServer {
@@ -16,21 +15,21 @@ impl LspServer {
             return JsonRpcResult::None;
         };
         if self.initialized {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "server is already initialized",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<InitializeParams>(params) {
             Ok(params) => params,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidParams,
                     format!("invalid initialize params: {error}"),
-                ));
+                );
             }
         };
         self.initialized = true;
@@ -42,19 +41,16 @@ impl LspServer {
         self.client_supports_watched_file_registration =
             params.capabilities.supports_watched_file_registration();
         self.semantic_token_projection = params.capabilities.semantic_token_projection();
-        JsonRpcResult::Response(success_response(
-            id,
-            initialize_result(&self.semantic_token_projection),
-        ))
+        JsonRpcResult::ok(id, initialize_result(&self.semantic_token_projection))
     }
 
     pub(crate) fn initialized(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`initialized` must be sent as a notification",
-            ));
+            );
         }
         self.register_watched_files_after_initialized()
     }
@@ -77,17 +73,17 @@ impl LspServer {
             return JsonRpcResult::None;
         };
         self.shutdown_requested = true;
-        JsonRpcResult::Response(success_response(id, JsonValue::Null))
+        JsonRpcResult::ok(id, JsonValue::Null)
     }
 
     pub(crate) fn exit(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         self.exited = true;
         id.map_or(JsonRpcResult::None, |id| {
-            JsonRpcResult::Response(error_response(
+            JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`exit` must be sent as a notification",
-            ))
+            )
         })
     }
 
@@ -97,11 +93,11 @@ impl LspServer {
         params: JsonValue,
     ) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`$/cancelRequest` must be sent as a notification",
-            ));
+            );
         }
 
         let Ok(params) = serde_json::from_value::<CancelRequestParams>(params) else {
@@ -113,11 +109,11 @@ impl LspServer {
 
     pub(crate) fn method_not_found(&self, id: Option<RequestId>, method: &str) -> JsonRpcResult {
         id.map_or(JsonRpcResult::None, |id| {
-            JsonRpcResult::Response(error_response(
+            JsonRpcResult::error(
                 Some(id),
                 ErrorCode::MethodNotFound,
                 format!("method `{method}` is not implemented"),
-            ))
+            )
         })
     }
 }

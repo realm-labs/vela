@@ -1347,6 +1347,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - Legacy lifecycle and configuration notification-request rejection paths
+    now use `JsonRpcResult` constructors instead of importing standalone
+    `success_response` or `error_response`; initialize and shutdown success
+    responses also route through the same constructor. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server workspace_folders`,
+    `cargo test -p vela_lsp_server schema_reload`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
