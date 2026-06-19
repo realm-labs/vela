@@ -4,6 +4,7 @@ use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
+    DidSaveTextDocumentParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -369,6 +370,10 @@ impl GlobalState {
             self.apply_reload_work(work);
         }
         self.publish_workspace_diagnostics()
+    }
+
+    pub(crate) fn did_save(&mut self, _params: DidSaveTextDocumentParams) -> JsonRpcResult {
+        JsonRpcResult::None
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
@@ -839,6 +844,27 @@ mod tests {
             state.schema_path(),
             Some("/workspace/target/vela/schema.json")
         );
+    }
+
+    #[test]
+    fn typed_did_save_is_no_response_no_op() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.open_documents.insert(document.clone());
+        state.server.open_documents.clear();
+
+        let result = state.did_save(lsp_types::DidSaveTextDocumentParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse(document.as_str())
+                    .expect("document URI should parse as URL"),
+            },
+            text: Some("fn main() {}".to_owned()),
+        });
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.open_documents.contains(&document));
+        assert!(state.server.open_documents.is_empty());
     }
 
     #[test]
