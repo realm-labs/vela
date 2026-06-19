@@ -1,5 +1,5 @@
 use crate::{JsonRpcResult, LspServer};
-use lsp_server::Message;
+use lsp_server::{Message, Notification, Request, RequestId};
 use serde_json::Value as JsonValue;
 
 fn request(id: i64, method: &str, params: JsonValue) -> String {
@@ -19,6 +19,26 @@ fn notification(method: &str, params: JsonValue) -> String {
         "params": params
     })
     .to_string()
+}
+
+fn handle_request(
+    server: &mut LspServer,
+    id: i32,
+    method: &str,
+    params: JsonValue,
+) -> JsonRpcResult {
+    server.handle_message(Message::Request(Request {
+        id: RequestId::from(id),
+        method: method.to_owned(),
+        params,
+    }))
+}
+
+fn handle_notification(server: &mut LspServer, method: &str, params: JsonValue) -> JsonRpcResult {
+    server.handle_message(Message::Notification(Notification {
+        method: method.to_owned(),
+        params,
+    }))
 }
 
 fn response_value(result: JsonRpcResult) -> JsonValue {
@@ -98,7 +118,9 @@ mod document_sync {
     use std::path::{Path, PathBuf};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{LspServer, notification, notification_value, request, response_value};
+    use super::{
+        LspServer, handle_notification, handle_request, notification_value, response_value,
+    };
 
     fn temp_workspace() -> PathBuf {
         let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
@@ -126,21 +148,23 @@ mod document_sync {
     }
 
     fn initialize_server(server: &mut LspServer) {
-        let _ = response_value(server.handle_json(&request(
+        let _ = response_value(handle_request(
+            server,
             0,
             "initialize",
             serde_json::json!({
                 "processId": null,
                 "capabilities": {}
             }),
-        )));
+        ));
     }
 
     #[test]
     fn lsp_did_open_publishes_diagnostics() {
         let mut server = LspServer::new();
         initialize_server(&mut server);
-        let notification = notification_value(server.handle_json(&notification(
+        let notification = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -150,7 +174,7 @@ mod document_sync {
                     "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
                 }
             }),
-        )));
+        ));
 
         assert_eq!(notification["jsonrpc"], "2.0");
         assert_eq!(notification["method"], "textDocument/publishDiagnostics");
@@ -186,7 +210,8 @@ mod document_sync {
     fn lsp_did_change_replaces_document_text() {
         let mut server = LspServer::new();
         initialize_server(&mut server);
-        let open = notification_value(server.handle_json(&notification(
+        let open = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -196,12 +221,13 @@ mod document_sync {
                     "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
                 }
             }),
-        )));
+        ));
         let Some(open_diagnostics) = open["params"]["diagnostics"].as_array() else {
             panic!("didOpen should publish diagnostics");
         };
         assert_eq!(open_diagnostics.len(), 1);
-        let change = notification_value(server.handle_json(&notification(
+        let change = notification_value(handle_notification(
+            &mut server,
             "textDocument/didChange",
             serde_json::json!({
                 "textDocument": {
@@ -214,7 +240,7 @@ mod document_sync {
                     }
                 ]
             }),
-        )));
+        ));
 
         assert_eq!(change["jsonrpc"], "2.0");
         assert_eq!(change["method"], "textDocument/publishDiagnostics");
@@ -234,7 +260,8 @@ mod document_sync {
             .find("frist")
             .expect("test source should contain typo");
         let end = start + "frist".len();
-        let open = notification_value(server.handle_json(&notification(
+        let open = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -244,13 +271,14 @@ mod document_sync {
                     "text": source
                 }
             }),
-        )));
+        ));
         let Some(open_diagnostics) = open["params"]["diagnostics"].as_array() else {
             panic!("didOpen should publish diagnostics");
         };
         assert_eq!(open_diagnostics.len(), 1);
 
-        let change = notification_value(server.handle_json(&notification(
+        let change = notification_value(handle_notification(
+            &mut server,
             "textDocument/didChange",
             serde_json::json!({
                 "textDocument": {
@@ -267,7 +295,7 @@ mod document_sync {
                     }
                 ]
             }),
-        )));
+        ));
 
         assert_eq!(change["method"], "textDocument/publishDiagnostics");
         assert_eq!(change["params"]["uri"], "file:///workspace/main.vela");
@@ -282,7 +310,8 @@ mod document_sync {
         let mut server = LspServer::new();
         initialize_server(&mut server);
         let uri = "file:///workspace/main.vela";
-        let open = notification_value(server.handle_json(&notification(
+        let open = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -292,20 +321,21 @@ mod document_sync {
                     "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
                 }
             }),
-        )));
+        ));
         let open_diagnostics = open["params"]["diagnostics"]
             .as_array()
             .expect("didOpen should publish diagnostics");
         assert_eq!(open_diagnostics.len(), 1);
 
-        let close = notification_value(server.handle_json(&notification(
+        let close = notification_value(handle_notification(
+            &mut server,
             "textDocument/didClose",
             serde_json::json!({
                 "textDocument": {
                     "uri": uri
                 }
             }),
-        )));
+        ));
 
         assert_eq!(close["method"], "textDocument/publishDiagnostics");
         assert_eq!(close["params"]["uri"], uri);
@@ -327,7 +357,8 @@ mod document_sync {
         let source_uri = file_uri(&source_path);
 
         let mut server = LspServer::new();
-        let _ = response_value(server.handle_json(&request(
+        let _ = response_value(handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -335,17 +366,19 @@ mod document_sync {
                 "rootUri": file_uri(&root.join("scripts")),
                 "capabilities": {}
             }),
-        )));
+        ));
         assert_eq!(
-            server.handle_json(&notification(
+            handle_notification(
+                &mut server,
                 "workspace/didChangeWatchedFiles",
                 serde_json::json!({
                     "changes": [{ "uri": source_uri, "type": 1 }]
                 }),
-            )),
+            ),
             super::JsonRpcResult::None
         );
-        let open = notification_value(server.handle_json(&notification(
+        let open = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -355,20 +388,21 @@ mod document_sync {
                     "text": "pub fn main(scores: Array<i64>) { return scores.frist() }"
                 }
             }),
-        )));
+        ));
         let open_diagnostics = open["params"]["diagnostics"]
             .as_array()
             .expect("didOpen should publish diagnostics");
         assert_eq!(open_diagnostics.len(), 1);
 
-        let close = notification_value(server.handle_json(&notification(
+        let close = notification_value(handle_notification(
+            &mut server,
             "textDocument/didClose",
             serde_json::json!({
                 "textDocument": {
                     "uri": source_uri
                 }
             }),
-        )));
+        ));
 
         let close_diagnostics = close["params"]["diagnostics"]
             .as_array()
@@ -399,7 +433,8 @@ fn main(cell: OverlayCell) {
         let source_uri = file_uri(&source_path);
 
         let mut server = LspServer::new();
-        let _ = response_value(server.handle_json(&request(
+        let _ = response_value(handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -407,17 +442,19 @@ fn main(cell: OverlayCell) {
                 "rootUri": file_uri(&root.join("scripts")),
                 "capabilities": {}
             }),
-        )));
+        ));
         assert_eq!(
-            server.handle_json(&notification(
+            handle_notification(
+                &mut server,
                 "workspace/didChangeWatchedFiles",
                 serde_json::json!({
                     "changes": [{ "uri": source_uri, "type": 1 }]
                 }),
-            )),
+            ),
             super::JsonRpcResult::None
         );
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -427,13 +464,14 @@ fn main(cell: OverlayCell) {
                     "text": overlay_source
                 }
             }),
-        )));
+        ));
 
         let overlay_use_line = overlay_source
             .lines()
             .nth(5)
             .expect("overlay field use line should exist");
-        let overlay_definition = response_value(server.handle_json(&request(
+        let overlay_definition = response_value(handle_request(
+            &mut server,
             2,
             "textDocument/definition",
             serde_json::json!({
@@ -445,7 +483,7 @@ fn main(cell: OverlayCell) {
                         .expect("overlay field use should exist")
                 }
             }),
-        )));
+        ));
 
         assert_eq!(overlay_definition["result"]["uri"], source_uri);
         assert_eq!(overlay_definition["result"]["range"]["start"]["line"], 1);
@@ -460,14 +498,15 @@ fn main(cell: OverlayCell) {
                 + "overlay_value".len()
         );
 
-        let close = notification_value(server.handle_json(&notification(
+        let close = notification_value(handle_notification(
+            &mut server,
             "textDocument/didClose",
             serde_json::json!({
                 "textDocument": {
                     "uri": source_uri
                 }
             }),
-        )));
+        ));
         assert_eq!(close["method"], "textDocument/publishDiagnostics");
         assert_eq!(close["params"]["uri"], source_uri);
 
@@ -475,7 +514,8 @@ fn main(cell: OverlayCell) {
             .lines()
             .nth(5)
             .expect("disk field use line should exist");
-        let disk_definition = response_value(server.handle_json(&request(
+        let disk_definition = response_value(handle_request(
+            &mut server,
             3,
             "textDocument/definition",
             serde_json::json!({
@@ -487,7 +527,7 @@ fn main(cell: OverlayCell) {
                         .expect("disk field use should exist")
                 }
             }),
-        )));
+        ));
 
         assert_eq!(disk_definition["result"]["uri"], source_uri);
         assert_eq!(disk_definition["result"]["range"]["start"]["line"], 1);
@@ -508,7 +548,8 @@ fn main(cell: OverlayCell) {
     #[test]
     fn lsp_initialize_uses_workspace_root_for_document_sync() {
         let mut server = LspServer::new();
-        let response = response_value(server.handle_json(&request(
+        let response = response_value(handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -516,9 +557,10 @@ fn main(cell: OverlayCell) {
                 "rootUri": "file:///workspace/scripts",
                 "capabilities": {}
             }),
-        )));
+        ));
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
-        let helper = notification_value(server.handle_json(&notification(
+        let helper = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -528,12 +570,13 @@ fn main(cell: OverlayCell) {
                     "text": "pub fn grant() { return 1 }"
                 }
             }),
-        )));
+        ));
         let Some(helper_diagnostics) = helper["params"]["diagnostics"].as_array() else {
             panic!("helper didOpen should publish diagnostics");
         };
         assert!(helper_diagnostics.is_empty(), "{helper_diagnostics:?}");
-        let main = notification_value(server.handle_json(&notification(
+        let main = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -543,7 +586,7 @@ fn main(cell: OverlayCell) {
                     "text": "use game::helper::grant\npub fn main() { return grant() }"
                 }
             }),
-        )));
+        ));
 
         let Some(main_diagnostics) = main["params"]["diagnostics"].as_array() else {
             panic!("main didOpen should publish diagnostics");

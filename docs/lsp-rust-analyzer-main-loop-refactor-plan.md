@@ -1796,6 +1796,9 @@ node editors/vscode/scripts/validate-package.js
     JSON strings with a typed `lsp_server::Response` extractor, so remaining
     compatibility tests and typed dispatch tests serialize responses only at
     JSON assertion boundaries.
+  - Added shared typed request/notification helpers for LSP feature tests and
+    converted the document sync fixture group off `LspServer::handle_json`,
+    leaving raw JSON-RPC construction out of that focused test surface.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.
