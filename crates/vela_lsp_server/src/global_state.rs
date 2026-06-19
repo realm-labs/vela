@@ -466,15 +466,15 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: DocumentHighlightParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::document_highlight_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid documentHighlight params: {error}"),
                 );
@@ -484,7 +484,7 @@ impl GlobalStateSnapshot {
             .databases
             .document_highlights(&input.document_id, input.position);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::document_highlights(&highlights))
                 .expect("typed documentHighlight response should serialize"),

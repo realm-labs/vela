@@ -95,7 +95,7 @@ fn dispatch_request(
             GlobalStateSnapshot::type_definition,
         )
         .on_worker_snapshot_messages_typed::<References>(GlobalStateSnapshot::references)
-        .on_worker_snapshot_typed::<DocumentHighlightRequest>(
+        .on_worker_snapshot_messages_typed::<DocumentHighlightRequest>(
             GlobalStateSnapshot::document_highlight,
         )
         .on_retryable_worker_snapshot_typed::<DocumentSymbolRequest>(
