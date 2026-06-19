@@ -7,14 +7,12 @@ use crate::{
         lsp_call_hierarchy_items, lsp_incoming_calls, lsp_outgoing_calls,
         service_call_hierarchy_item,
     },
-    code_action::lsp_code_actions,
     completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
     formatting::lsp_text_edits,
     hover::lsp_hover,
-    inlay::lsp_inlay_hints,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
@@ -122,7 +120,11 @@ impl LspServer {
         };
         let actions = self.databases.code_actions(&document_id, range);
 
-        JsonRpcResult::Response(success_response(id, lsp_code_actions(&actions)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::code_actions(&actions))
+                .expect("codeAction response should serialize"),
+        ))
     }
 
     pub(crate) fn code_action_typed(
@@ -1495,7 +1497,11 @@ impl LspServer {
         };
         let hints = self.databases.inlay_hints(&document_id, range);
 
-        JsonRpcResult::Response(success_response(id, lsp_inlay_hints(&hints)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::inlay_hints(&hints))
+                .expect("inlayHint response should serialize"),
+        ))
     }
 
     pub(crate) fn inlay_hint_typed(

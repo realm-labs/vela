@@ -902,6 +902,14 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses
   as each feature migrates.
+  - `textDocument/codeAction` and `textDocument/inlayHint` compatibility
+    handlers now serialize typed `lsp/to_proto.rs` projections, and their
+    obsolete raw JSON adapter modules were removed. Validated with
+    `cargo test -p vela_lsp_server code_action`,
+    `cargo test -p vela_lsp_server inlay`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
   - Phase 4 request migration preserved existing advertised capabilities; no

@@ -3,7 +3,6 @@
 mod call_hierarchy;
 mod capabilities;
 mod client;
-mod code_action;
 mod completion;
 mod config;
 mod config_change;
@@ -13,7 +12,6 @@ mod formatting;
 mod global_state;
 mod handlers;
 mod hover;
-mod inlay;
 mod lifecycle;
 mod line_index;
 mod lsp;
