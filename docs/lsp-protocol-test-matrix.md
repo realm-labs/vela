@@ -315,6 +315,8 @@ These were the first places compared against the matrix before acceptance:
    `Any` used as receivers where applicable, plus `references` and
    `documentHighlight` empty results for unresolved names and dynamic receiver
    members, including source functions returning `Any` used as receivers, plus
+   `prepareRename`/`rename` null results for dynamic receiver members,
+   including source functions returning `Any` used as receivers, plus
    `prepareCallHierarchy` empty results for unresolved calls, dynamic receiver
    calls including source functions returning `Any` used as receivers, and
    non-callable symbols, plus stale host completion clearing and missing-schema

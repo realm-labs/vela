@@ -4,6 +4,26 @@ use crate::{
 };
 
 #[test]
+fn rename_rejects_source_any_return_receiver_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"fn source_any() -> Any { return 1 }
+pub fn main() -> i64 {
+    return source_any().level
+}"#;
+    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let member = line(text, 2);
+    let position = Position::new(
+        2,
+        member
+            .find("level")
+            .expect("source Any receiver member should exist"),
+    );
+
+    assert_eq!(databases.prepare_rename(&document, position), None);
+    assert_eq!(databases.rename(&document, position, "rank"), None);
+}
+
+#[test]
 fn source_trait_default_method_rename_updates_source_function_return_receiver_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"trait Rewardable {

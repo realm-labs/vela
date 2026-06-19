@@ -377,7 +377,8 @@ coverage complete based only on the older capability phases.
     schema types/functions/fields/methods/variants, versioned
     `documentChanges`, source-owned edit-plan overlap rejection,
     hot-reload/schema ABI risk change annotations, schema-only host rejection,
-    keyword/literal and non-source target rejection, module/import/scope/
+    keyword/literal and non-source target rejection, source functions
+    returning `Any` used as member receivers, module/import/scope/
     trait-method/schema-member collisions, and cross-file workspace edits.
   - Current fixtures cover service and native LSP `textDocument/codeAction`
     quick fixes for unknown-field typo candidates, missing imports, unused
@@ -1644,6 +1645,8 @@ Tests:
 - [x] `lsp_private_struct_field_rename_updates_member_uses`
 - [x] `private_method_rename_updates_typed_receiver_calls`
 - [x] `lsp_private_method_rename_updates_typed_receiver_calls`
+- [x] `rename_rejects_source_any_return_receiver_member`
+- [x] `lsp_rename_rejects_source_any_return_receiver_member`
 - [x] `source_trait_default_method_rename_updates_source_function_return_receiver_calls`
 - [x] `lsp_source_trait_default_method_rename_updates_source_function_return_receiver_calls`
 - [x] `private_enum_variant_rename_updates_constructors_and_patterns`

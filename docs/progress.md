@@ -150,7 +150,8 @@ JIT remain separate roadmap tracks.
 M20.5 Phase 12 update: rename is complete enough for the current LSP track.
 The plan checklist is closed with service and native LSP fixtures for local,
 private declaration, public import-aware, source-backed schema, collision,
-hot-reload ABI, schema ABI, and versioned-edit behavior.
+hot-reload ABI, schema ABI, versioned-edit behavior, and source functions
+returning `Any` used as dynamic member receivers.
 
 M20.5 Phase 3 update: native LSP incremental `didChange` coverage now proves a
 body-only edit in an imported defining file reparses only that document without

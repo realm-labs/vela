@@ -1,6 +1,64 @@
 use super::{LspServer, notification, notification_value, request, response_value};
 
 #[test]
+fn lsp_rename_rejects_source_any_return_receiver_member() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"fn source_any() -> Any { return 1 }
+pub fn main() -> i64 {
+    return source_any().level
+}"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+    let member = line(text, 2);
+    let position = serde_json::json!({
+        "line": 2,
+        "character": member
+            .find("level")
+            .expect("source Any receiver member should exist")
+    });
+
+    let prepare = response_value(server.handle_json(&request(
+        2,
+        "textDocument/prepareRename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": position
+        }),
+    )));
+    assert_eq!(prepare["result"], serde_json::Value::Null);
+
+    let rename = response_value(server.handle_json(&request(
+        3,
+        "textDocument/rename",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": position,
+            "newName": "rank"
+        }),
+    )));
+    assert_eq!(rename["result"], serde_json::Value::Null);
+}
+
+#[test]
 fn lsp_source_trait_default_method_rename_updates_source_function_return_receiver_calls() {
     let mut server = LspServer::new();
     let _ = response_value(server.handle_json(&request(
