@@ -582,6 +582,60 @@ impl GlobalStateSnapshot {
         ))
     }
 
+    pub(crate) fn prepare_rename(
+        self,
+        id: lsp_server::RequestId,
+        params: TextDocumentPositionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::prepare_rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareRename position: {error}"),
+                ));
+            }
+        };
+        let prepare = self
+            .databases
+            .prepare_rename(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
+                .expect("typed prepareRename response should serialize"),
+        ))
+    }
+
+    pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rename position: {error}"),
+                ));
+            }
+        };
+        let edit = self
+            .databases
+            .rename(&input.document_id, input.position, &params.new_name);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
+                .expect("typed rename response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         self,
         id: lsp_server::RequestId,
@@ -850,28 +904,6 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.inlay_hint_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn prepare_rename(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: TextDocumentPositionParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.prepare_rename_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn rename(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: RenameParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.rename_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -2350,6 +2382,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let line = text.lines().nth(1).expect("return line should exist");
         let character = line
@@ -2380,6 +2415,9 @@ pub fn main(amount: i64) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(2));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let line = text.lines().nth(1).expect("return line should exist");
         let character = line

@@ -1089,15 +1089,16 @@ cargo test -p vela_lsp_server inlay
     `textDocument/typeDefinition`, `textDocument/references`,
     `textDocument/documentHighlight`, `textDocument/documentSymbol`,
     `workspace/symbol`, `textDocument/foldingRange`, and
-    `textDocument/selectionRange` now dispatch through snapshot-specific
-    dispatcher branches, clone a `GlobalStateSnapshot`, and query the
-    snapshot-owned `LanguageServiceDatabases`, `WorkspaceSnapshot`, and
-    semantic-token projection state without mutating `GlobalState` or the
-    legacy `LspServer`. The obsolete mutable typed completion, hover,
-    signature-help, semantic-token, formatting, navigation, reference,
-    highlight, symbol, folding, and selection-range wrappers were removed.
-    Rename, call hierarchy, code actions, and inlay hints still need the same
-    snapshot migration before this checklist item can close. Validated with
+    `textDocument/selectionRange`, `textDocument/prepareRename`, and
+    `textDocument/rename` now dispatch through snapshot-specific dispatcher
+    branches, clone a `GlobalStateSnapshot`, and query the snapshot-owned
+    `LanguageServiceDatabases`, `WorkspaceSnapshot`, and semantic-token
+    projection state without mutating `GlobalState` or the legacy `LspServer`.
+    The obsolete mutable typed completion, hover, signature-help,
+    semantic-token, formatting, navigation, reference, highlight, symbol,
+    folding, selection-range, and rename wrappers were removed. Call
+    hierarchy, code actions, and inlay hints still need the same snapshot
+    migration before this checklist item can close. Validated with
     `cargo test -p vela_lsp_server completion`,
     `cargo test -p vela_lsp_server hover`,
     `cargo test -p vela_lsp_server signature`,
@@ -1110,6 +1111,8 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server workspace_symbol`,
     `cargo test -p vela_lsp_server folding_range`,
     `cargo test -p vela_lsp_server selection_range`,
+    `cargo test -p vela_lsp_server prepare_rename`,
+    `cargo test -p vela_lsp_server rename`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
