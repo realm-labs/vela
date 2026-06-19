@@ -1176,13 +1176,13 @@ impl GlobalState {
         self.server.open_documents.remove(&document_id);
         self.open_documents.remove(&document_id);
 
-        let result = if self.server.disk_sources.contains_key(&document_id) {
-            self.server.publish_current_diagnostics(&uri, &document_id)
+        let messages = if self.server.disk_sources.contains_key(&document_id) {
+            typed_messages(self.server.publish_current_diagnostics(&uri, &document_id))
         } else {
-            JsonRpcResult::Notification(publish_diagnostics_notification(&uri, Vec::new(), None))
+            vec![publish_diagnostics_notification(&uri, Vec::new(), None)]
         };
         self.sync_workspace_analysis_from_legacy_server();
-        typed_messages(result)
+        messages
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {

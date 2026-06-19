@@ -1477,6 +1477,10 @@ cargo test -p vela_lsp_server semantic_tokens
     Validated with `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_lsp_server handlers::dispatch`, and
     `cargo test -p vela_lsp_server typed_initialized`.
+  - The typed `didClose` fallback diagnostic clear now emits a typed
+    `lsp_server::Message` directly instead of creating a temporary
+    `JsonRpcResult` notification wrapper. Validated with
+    `cargo test -p vela_lsp_server typed_did_close`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
