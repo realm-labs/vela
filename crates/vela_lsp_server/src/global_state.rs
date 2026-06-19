@@ -436,14 +436,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: ReferenceParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::reference_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid references position: {error}"),
                 );
@@ -455,7 +455,7 @@ impl GlobalStateSnapshot {
             params.context.include_declaration,
         );
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::reference_locations(&references))
                 .expect("typed references response should serialize"),
