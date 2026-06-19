@@ -8,9 +8,13 @@ use vela_language_service::{
     DocumentTextEdit, FoldingRange as ServiceFoldingRange,
     FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall, LineIndex,
     OutgoingCall, PrepareRename, Reference, RenameRiskKind,
-    SelectionRange as ServiceSelectionRange, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
-    WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
+    SelectionRange as ServiceSelectionRange, SemanticToken as ServiceSemanticToken,
+    SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
+    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
+    WorkspaceSymbolLocation,
 };
+
+use crate::semantic_tokens::SemanticTokenProjection;
 
 pub(crate) fn completion_response(
     completions: &CompletionList,
@@ -109,6 +113,46 @@ pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_type
 
 pub(crate) fn text_edits(edits: &[ServiceTextEdit]) -> Vec<lsp_types::TextEdit> {
     edits.iter().map(text_edit).collect()
+}
+
+pub(crate) fn semantic_tokens(
+    tokens: &ServiceSemanticTokens,
+    projection: &SemanticTokenProjection,
+) -> lsp_types::SemanticTokensResult {
+    lsp_types::SemanticTokensResult::Tokens(lsp_types::SemanticTokens {
+        result_id: Some(tokens.result_id().to_owned()),
+        data: semantic_token_data(tokens.tokens(), projection),
+    })
+}
+
+pub(crate) fn semantic_tokens_range(
+    tokens: &ServiceSemanticTokens,
+    projection: &SemanticTokenProjection,
+) -> lsp_types::SemanticTokensRangeResult {
+    lsp_types::SemanticTokensRangeResult::Tokens(lsp_types::SemanticTokens {
+        result_id: Some(tokens.result_id().to_owned()),
+        data: semantic_token_data(tokens.tokens(), projection),
+    })
+}
+
+pub(crate) fn semantic_tokens_delta(
+    delta: &ServiceSemanticTokenDelta,
+    projection: &SemanticTokenProjection,
+) -> lsp_types::SemanticTokensFullDeltaResult {
+    lsp_types::SemanticTokensFullDeltaResult::TokensDelta(lsp_types::SemanticTokensDelta {
+        result_id: Some(delta.result_id().to_owned()),
+        edits: delta
+            .edits()
+            .iter()
+            .map(|edit| lsp_types::SemanticTokensEdit {
+                start: u32::try_from(edit.start() * 5)
+                    .expect("semantic token edit start should fit u32"),
+                delete_count: u32::try_from(edit.delete_count() * 5)
+                    .expect("semantic token edit delete count should fit u32"),
+                data: Some(semantic_token_data(edit.tokens(), projection)),
+            })
+            .collect(),
+    })
 }
 
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
@@ -296,6 +340,38 @@ fn selection_range(range: &ServiceSelectionRange) -> lsp_types::SelectionRange {
         range: diagnostic_range(range.range()),
         parent: range.parent().map(selection_range).map(Box::new),
     }
+}
+
+fn semantic_token_data(
+    tokens: &[ServiceSemanticToken],
+    projection: &SemanticTokenProjection,
+) -> Vec<lsp_types::SemanticToken> {
+    let mut data = Vec::with_capacity(tokens.len());
+    let mut previous_line = 0usize;
+    let mut previous_start = 0usize;
+
+    for token in tokens {
+        let start = token.start();
+        let delta_line = start.line.saturating_sub(previous_line);
+        let delta_start = if delta_line == 0 {
+            start.character.saturating_sub(previous_start)
+        } else {
+            start.character
+        };
+        data.push(lsp_types::SemanticToken {
+            delta_line: u32::try_from(delta_line)
+                .expect("semantic token line delta should fit u32"),
+            delta_start: u32::try_from(delta_start)
+                .expect("semantic token start delta should fit u32"),
+            length: u32::try_from(token.length()).expect("semantic token length should fit u32"),
+            token_type: projection.token_type_index(token.token_type()),
+            token_modifiers_bitset: projection.modifier_bits(token.modifiers()),
+        });
+        previous_line = start.line;
+        previous_start = start.character;
+    }
+
+    data
 }
 
 const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {
@@ -1000,6 +1076,73 @@ pub fn main(player: Player) -> i64 {
             )
         );
         assert!(edits[0].new_text.contains("pub fn main() {"));
+    }
+
+    #[test]
+    fn semantic_tokens_project_relative_data_and_result_id() {
+        let projection = SemanticTokenProjection::default();
+        let tokens = ServiceSemanticTokens::new(vec![
+            ServiceSemanticToken::new(
+                Position::new(0, 4),
+                3,
+                vela_language_service::SemanticTokenType::Function,
+                vela_language_service::SemanticTokenModifiers::DECLARATION,
+            ),
+            ServiceSemanticToken::new(
+                Position::new(1, 2),
+                5,
+                vela_language_service::SemanticTokenType::Variable,
+                vela_language_service::SemanticTokenModifiers::NONE,
+            ),
+        ]);
+
+        let lsp_types::SemanticTokensResult::Tokens(result) = semantic_tokens(&tokens, &projection)
+        else {
+            panic!("semantic tokens should project a full token result");
+        };
+
+        assert_eq!(result.result_id.as_deref(), Some(tokens.result_id()));
+        assert_eq!(result.data.len(), 2);
+        assert_eq!(result.data[0].delta_line, 0);
+        assert_eq!(result.data[0].delta_start, 4);
+        assert_eq!(result.data[0].length, 3);
+        assert_eq!(result.data[1].delta_line, 1);
+        assert_eq!(result.data[1].delta_start, 2);
+        assert_eq!(result.data[1].length, 5);
+    }
+
+    #[test]
+    fn semantic_tokens_delta_projects_edit_units_as_encoded_u32s() {
+        let projection = SemanticTokenProjection::default();
+        let tokens = vec![ServiceSemanticToken::new(
+            Position::new(0, 4),
+            3,
+            vela_language_service::SemanticTokenType::Function,
+            vela_language_service::SemanticTokenModifiers::NONE,
+        )];
+        let delta = ServiceSemanticTokenDelta::new(
+            "next".to_owned(),
+            vec![vela_language_service::SemanticTokenEdit::new(1, 2, tokens)],
+        );
+
+        let lsp_types::SemanticTokensFullDeltaResult::TokensDelta(result) =
+            semantic_tokens_delta(&delta, &projection)
+        else {
+            panic!("semantic token delta should project a delta result");
+        };
+
+        assert_eq!(result.result_id.as_deref(), Some("next"));
+        assert_eq!(result.edits.len(), 1);
+        assert_eq!(result.edits[0].start, 5);
+        assert_eq!(result.edits[0].delete_count, 10);
+        assert_eq!(
+            result.edits[0]
+                .data
+                .as_ref()
+                .expect("delta edit should include replacement tokens")
+                .len(),
+            1
+        );
     }
 
     #[test]

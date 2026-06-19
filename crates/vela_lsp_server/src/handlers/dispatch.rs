@@ -62,8 +62,10 @@ fn dispatch_request(
         .on_latency_sensitive_typed::<ResolveCompletionItem>(GlobalState::completion_resolve)
         .on_latency_sensitive_typed::<HoverRequest>(GlobalState::hover)
         .on_latency_sensitive_typed::<SignatureHelpRequest>(GlobalState::signature_help)
-        .on_latency_sensitive::<SemanticTokensFullRequest>()
-        .on_latency_sensitive::<SemanticTokensFullDeltaRequest>()
+        .on_latency_sensitive_typed::<SemanticTokensFullRequest>(GlobalState::semantic_tokens_full)
+        .on_latency_sensitive_typed::<SemanticTokensFullDeltaRequest>(
+            GlobalState::semantic_tokens_full_delta,
+        )
         .on_worker_typed::<GotoDefinition>(GlobalState::definition)
         .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
         .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
@@ -79,7 +81,7 @@ fn dispatch_request(
         .on_worker_typed::<CallHierarchyIncomingCalls>(GlobalState::incoming_calls)
         .on_worker_typed::<CallHierarchyOutgoingCalls>(GlobalState::outgoing_calls)
         .on_worker::<CodeActionRequest>()
-        .on_worker::<SemanticTokensRangeRequest>()
+        .on_worker_typed::<SemanticTokensRangeRequest>(GlobalState::semantic_tokens_range)
         .on_worker::<InlayHintRequest>()
         .on_fmt_thread_typed::<Formatting>(GlobalState::formatting)
         .on_fmt_thread_typed::<RangeFormatting>(GlobalState::range_formatting)
@@ -142,14 +144,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_latency_sensitive<R>(&mut self) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-    {
-        self.dispatch_legacy::<R>();
         self
     }
 

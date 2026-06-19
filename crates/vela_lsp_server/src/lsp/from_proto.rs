@@ -34,6 +34,12 @@ pub(crate) struct SelectionRangeInput {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SemanticTokensDeltaInput {
+    pub(crate) document_id: DocumentId,
+    pub(crate) previous_result_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OnTypeFormattingInput {
     pub(crate) document_id: DocumentId,
     pub(crate) position: Position,
@@ -162,6 +168,26 @@ pub(crate) fn selection_range_params(
             .map(|position| self::position(text, position))
             .collect::<Result<Vec<_>, _>>()?,
     })
+}
+
+pub(crate) fn semantic_tokens_params(params: &lsp_types::SemanticTokensParams) -> DocumentId {
+    document_id(&params.text_document.uri)
+}
+
+pub(crate) fn semantic_tokens_delta_params(
+    params: &lsp_types::SemanticTokensDeltaParams,
+) -> SemanticTokensDeltaInput {
+    SemanticTokensDeltaInput {
+        document_id: document_id(&params.text_document.uri),
+        previous_result_id: params.previous_result_id.clone(),
+    }
+}
+
+pub(crate) fn semantic_tokens_range_params(
+    text: &str,
+    params: &lsp_types::SemanticTokensRangeParams,
+) -> Result<TextDocumentRangeInput, String> {
+    text_document_range(text, &params.text_document, params.range)
 }
 
 pub(crate) fn workspace_symbol_params(params: &lsp_types::WorkspaceSymbolParams) -> &str {
@@ -493,6 +519,62 @@ mod tests {
             input.positions,
             vec![Position::new(0, 4), Position::new(1, 2)]
         );
+    }
+
+    #[test]
+    fn semantic_tokens_params_convert_document_id_and_delta_id() {
+        let document_uri =
+            lsp_types::Url::parse("file:///workspace/scripts/main.vela").expect("valid URI");
+        let full = lsp_types::SemanticTokensParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: document_uri.clone(),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+        let delta = lsp_types::SemanticTokensDeltaParams {
+            text_document: lsp_types::TextDocumentIdentifier { uri: document_uri },
+            previous_result_id: "tokens-1".to_owned(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        assert_eq!(
+            semantic_tokens_params(&full),
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        let input = semantic_tokens_delta_params(&delta);
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.previous_result_id, "tokens-1");
+    }
+
+    #[test]
+    fn semantic_tokens_range_params_convert_range() {
+        let params = lsp_types::SemanticTokensRangeParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            range: lsp_types::Range::new(
+                lsp_types::Position::new(0, 4),
+                lsp_types::Position::new(1, 2),
+            ),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        let input = semantic_tokens_range_params("main\n  value", &params)
+            .expect("semantic token range should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.range.start(), Position::new(0, 4));
+        assert_eq!(input.range.end(), Position::new(1, 2));
     }
 
     #[test]

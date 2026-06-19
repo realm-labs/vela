@@ -648,6 +648,10 @@ cargo test -p vela_lsp_server workspace_folders
     `CallHierarchyPrepareParams` through `lsp/from_proto.rs`.
   - `callHierarchy/incomingCalls` and `callHierarchy/outgoingCalls` now
     decode typed `CallHierarchyItem` params through `lsp/from_proto.rs`.
+  - `textDocument/semanticTokens/full`,
+    `textDocument/semanticTokens/full/delta`, and
+    `textDocument/semanticTokens/range` now convert typed semantic token
+    params through `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -681,6 +685,11 @@ cargo test -p vela_lsp_server workspace_folders
   - Incoming and outgoing call hierarchy now project through typed
     `lsp_types::CallHierarchyIncomingCall` and
     `lsp_types::CallHierarchyOutgoingCall` values.
+  - Semantic token full, delta, and range responses now project through typed
+    `lsp_types::SemanticTokensResult`,
+    `lsp_types::SemanticTokensFullDeltaResult`, and
+    `lsp_types::SemanticTokensRangeResult` values while preserving the
+    existing Vela semantic token projection/cache behavior.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -845,6 +854,19 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service formatting`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/semanticTokens/full`,
+    `textDocument/semanticTokens/full/delta`, and
+    `textDocument/semanticTokens/range` now use typed params through
+    `GlobalState` and typed semantic-token result projection through
+    `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server semantic_tokens`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server typed_semantic_token_dispatch_projects_full_delta_and_range`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service semantic_tokens`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

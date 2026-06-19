@@ -1306,6 +1306,25 @@ impl LspServer {
         ))
     }
 
+    pub(crate) fn semantic_tokens_full_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::SemanticTokensParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::semantic_tokens_params(&params);
+        self.refresh_databases_for_query(&document_id);
+        let tokens = self.databases.semantic_tokens(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/full response should serialize"),
+        ))
+    }
+
     pub(crate) fn semantic_tokens_full_delta(
         &mut self,
         id: Option<RequestId>,
@@ -1334,6 +1353,27 @@ impl LspServer {
         JsonRpcResult::Response(success_response(
             id,
             lsp_semantic_token_delta(&delta, &self.semantic_token_projection),
+        ))
+    }
+
+    pub(crate) fn semantic_tokens_full_delta_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::SemanticTokensDeltaParams,
+    ) -> JsonRpcResult {
+        let input = from_proto::semantic_tokens_delta_params(&params);
+        self.refresh_databases_for_query(&input.document_id);
+        let delta = self
+            .databases
+            .semantic_token_delta(&input.document_id, &input.previous_result_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens_delta(
+                &delta,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/full/delta response should serialize"),
         ))
     }
 
@@ -1369,6 +1409,38 @@ impl LspServer {
         JsonRpcResult::Response(success_response(
             id,
             lsp_semantic_tokens(&tokens, &self.semantic_token_projection),
+        ))
+    }
+
+    pub(crate) fn semantic_tokens_range_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::SemanticTokensRangeParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::semantic_tokens_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/range params: {error}"),
+                ));
+            }
+        };
+        let tokens = self
+            .databases
+            .semantic_tokens_in_range(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::semantic_tokens_range(
+                &tokens,
+                &self.semantic_token_projection,
+            ))
+            .expect("typed semanticTokens/range response should serialize"),
         ))
     }
 

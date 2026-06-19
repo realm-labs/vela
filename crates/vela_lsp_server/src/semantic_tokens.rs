@@ -38,13 +38,13 @@ impl SemanticTokenProjection {
         }
     }
 
-    fn token_type_index(&self, token_type: SemanticTokenType) -> u32 {
+    pub(crate) fn token_type_index(&self, token_type: SemanticTokenType) -> u32 {
         let service_index = usize::try_from(token_type.legend_index())
             .expect("semantic token legend index should fit usize");
         self.token_type_indices[service_index]
     }
 
-    fn modifier_bits(&self, modifiers: SemanticTokenModifiers) -> u32 {
+    pub(crate) fn modifier_bits(&self, modifiers: SemanticTokenModifiers) -> u32 {
         let service_bits = modifiers.bits();
         self.modifier_bits
             .iter()

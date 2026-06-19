@@ -9,7 +9,9 @@ use lsp_types::{
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
     DocumentHighlightParams, DocumentOnTypeFormattingParams, DocumentRangeFormattingParams,
     DocumentSymbolParams, FoldingRangeParams, HoverParams, ReferenceParams, RenameParams,
-    SelectionRangeParams, SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
+    SelectionRangeParams, SemanticTokensDeltaParams, SemanticTokensParams,
+    SemanticTokensRangeParams, SignatureHelpParams, TextDocumentPositionParams,
+    WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -456,6 +458,39 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.selection_range_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn semantic_tokens_full(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.semantic_tokens_full_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn semantic_tokens_full_delta(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensDeltaParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.semantic_tokens_full_delta_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn semantic_tokens_range(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: SemanticTokensRangeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.semantic_tokens_range_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1798,6 +1833,42 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_semantic_token_dispatch_projects_full_delta_and_range() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn main() { let value = 1 return value }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let full_response = typed_semantic_tokens_full_response(&mut state, 20, &document);
+        let full_data = full_response["result"]["data"]
+            .as_array()
+            .expect("semanticTokens/full response should include data");
+        assert!(!full_data.is_empty());
+        let result_id = full_response["result"]["resultId"]
+            .as_str()
+            .expect("semanticTokens/full response should include resultId")
+            .to_owned();
+
+        let delta_response =
+            typed_semantic_tokens_delta_response(&mut state, 21, &document, &result_id);
+        assert_eq!(delta_response["result"]["edits"], serde_json::json!([]));
+
+        let range_response = typed_semantic_tokens_range_response(&mut state, 22, &document);
+        let range_data = range_response["result"]["data"]
+            .as_array()
+            .expect("semanticTokens/range response should include data");
+        assert!(!range_data.is_empty());
+    }
+
+    #[test]
     fn typed_formatting_dispatch_projects_text_edits() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2397,6 +2468,87 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed selectionRange should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_semantic_tokens_full_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/semanticTokens/full".to_owned(),
+            params: serde_json::to_value(lsp_types::SemanticTokensParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("semanticTokens/full params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed semanticTokens/full should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_semantic_tokens_delta_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        previous_result_id: &str,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/semanticTokens/full/delta".to_owned(),
+            params: serde_json::to_value(lsp_types::SemanticTokensDeltaParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                previous_result_id: previous_result_id.to_owned(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("semanticTokens/full/delta params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed semanticTokens/full/delta should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_semantic_tokens_range_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/semanticTokens/range".to_owned(),
+            params: serde_json::to_value(lsp_types::SemanticTokensRangeParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                range: lsp_types::Range::new(
+                    lsp_types::Position::new(0, 0),
+                    lsp_types::Position::new(0, 42),
+                ),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("semanticTokens/range params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed semanticTokens/range should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
