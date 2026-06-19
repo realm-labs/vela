@@ -38,6 +38,7 @@ pub(crate) struct GlobalState {
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
+    watched_files_registered: bool,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -54,6 +55,7 @@ pub(crate) struct GlobalStateSnapshot {
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
+    watched_files_registered: bool,
     generation: WorkspaceGeneration,
     initialized: bool,
     shutdown_requested: bool,
@@ -97,6 +99,10 @@ impl GlobalStateSnapshot {
         &self.semantic_token_projection
     }
 
+    pub(crate) const fn watched_files_registered(&self) -> bool {
+        self.watched_files_registered
+    }
+
     pub(crate) const fn is_initialized(&self) -> bool {
         self.initialized
     }
@@ -118,6 +124,7 @@ impl GlobalState {
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
+            watched_files_registered: false,
             initialized: false,
             shutdown_requested: false,
             exited: false,
@@ -140,6 +147,7 @@ impl GlobalState {
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
             semantic_token_projection: self.semantic_token_projection.clone(),
+            watched_files_registered: self.watched_files_registered,
             generation: self.server.databases.generation(),
             initialized: self.initialized,
             shutdown_requested: self.shutdown_requested,
@@ -326,6 +334,7 @@ impl GlobalState {
         self.client_supports_watched_file_registration |=
             self.server.client_supports_watched_file_registration;
         self.semantic_token_projection = self.server.semantic_token_projection.clone();
+        self.watched_files_registered |= self.server.watched_files_registered;
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -338,12 +347,13 @@ impl GlobalState {
     fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
         if self.client_supports_watched_file_registration
             && !self.server.file_watching_disabled
-            && !self.server.watched_files_registered
+            && !self.watched_files_registered
             && let Some(registration) = watching::registration_request(
                 self.server.config.as_ref(),
                 &self.server.workspace_roots,
             )
         {
+            self.watched_files_registered = true;
             self.server.watched_files_registered = true;
             return JsonRpcResult::Notification(registration);
         }
@@ -440,6 +450,7 @@ mod tests {
             Some(&["type".to_owned(), "function".to_owned()]),
             Some(&["declaration".to_owned()]),
         );
+        state.watched_files_registered = true;
         state.initialized = true;
         state.server.initialized = true;
 
@@ -453,6 +464,7 @@ mod tests {
         state.client_supports_work_done_progress = false;
         state.client_supports_watched_file_registration = false;
         state.semantic_token_projection = SemanticTokenProjection::default();
+        state.watched_files_registered = false;
         state.server.shutdown_requested = true;
 
         assert_eq!(
@@ -472,6 +484,7 @@ mod tests {
             snapshot.semantic_token_projection(),
             &SemanticTokenProjection::default()
         );
+        assert!(snapshot.watched_files_registered());
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
     }
@@ -554,6 +567,7 @@ mod tests {
             registration["method"],
             serde_json::json!("client/registerCapability")
         );
+        assert!(state.watched_files_registered);
         assert!(state.server.watched_files_registered);
         assert_eq!(second, JsonRpcResult::None);
     }

@@ -457,6 +457,9 @@ cargo test -p vela_lsp_server lifecycle
   - Typed `shutdown` and `exit` now update `GlobalState` directly while
     mirroring legacy lifecycle flags, and their obsolete typed legacy bridge
     methods have been removed.
+  - Dynamic watched-file registration state now lives in `GlobalState` and
+    `GlobalStateSnapshot`, with mirroring to the legacy wrapper only for
+    remaining legacy notification paths.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

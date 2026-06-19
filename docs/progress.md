@@ -249,6 +249,9 @@ removed.
 Typed `shutdown` and `exit` now update `GlobalState` directly while mirroring
 legacy lifecycle flags, and their obsolete typed legacy bridge methods have
 been removed.
+Dynamic watched-file registration state now lives in `GlobalState` and
+`GlobalStateSnapshot`, with mirroring to the legacy wrapper only for remaining
+legacy notification paths.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace
