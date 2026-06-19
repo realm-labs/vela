@@ -326,6 +326,10 @@ being selected before the long task completes.
 Typed formatting requests now schedule snapshot work on the dedicated
 formatting lane, and the main-loop selector prioritizes ready formatting task
 results ahead of ready normal worker results.
+Phase 6 cancellation plumbing has started: in-flight background task
+cancellation handles are stored by typed request ID, formatting task results
+carry their request ID, and completed task responses retire their in-flight
+handle.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,

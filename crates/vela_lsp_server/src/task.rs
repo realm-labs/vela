@@ -2,7 +2,7 @@ use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
 
-use crate::JsonRpcResult;
+use crate::{JsonRpcResult, RequestId};
 
 type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 
@@ -11,6 +11,7 @@ pub(crate) enum TaskResult {
     Response {
         lane: TaskLane,
         method: Option<String>,
+        request_id: Option<RequestId>,
         result: JsonRpcResult,
     },
 }
@@ -54,7 +55,7 @@ impl TaskScheduler {
         lane: TaskLane,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, None, job);
+        self.spawn_labeled(lane, None, None, job);
     }
 
     #[allow(dead_code)]
@@ -64,16 +65,30 @@ impl TaskScheduler {
         method: impl Into<String>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, Some(method.into()), job);
+        self.spawn_labeled(lane, Some(method.into()), None, job);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn spawn_for_request(
+        &self,
+        lane: TaskLane,
+        method: impl Into<String>,
+        request_id: RequestId,
+        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+    ) {
+        self.spawn_labeled(lane, Some(method.into()), Some(request_id), job);
     }
 
     fn spawn_labeled(
         &self,
         lane: TaskLane,
         method: Option<String>,
+        request_id: Option<RequestId>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        let task = Box::new(move || TaskResult::lane_method_response(lane, method, job()));
+        let task = Box::new(move || {
+            TaskResult::lane_method_request_response(lane, method, request_id, job())
+        });
         match lane {
             TaskLane::Latency => self.latency_jobs.send(task),
             TaskLane::Formatting => self.formatting_jobs.send(task),
@@ -116,9 +131,19 @@ impl TaskResult {
         method: Option<String>,
         result: JsonRpcResult,
     ) -> Self {
+        Self::lane_method_request_response(lane, method, None, result)
+    }
+
+    pub(crate) const fn lane_method_request_response(
+        lane: TaskLane,
+        method: Option<String>,
+        request_id: Option<RequestId>,
+        result: JsonRpcResult,
+    ) -> Self {
         Self::Response {
             lane,
             method,
+            request_id,
             result,
         }
     }
@@ -132,6 +157,12 @@ impl TaskResult {
     pub(crate) fn method(&self) -> Option<&str> {
         match self {
             Self::Response { method, .. } => method.as_deref(),
+        }
+    }
+
+    pub(crate) fn request_id(&self) -> Option<&RequestId> {
+        match self {
+            Self::Response { request_id, .. } => request_id.as_ref(),
         }
     }
 

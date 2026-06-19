@@ -1190,7 +1190,15 @@ cargo test -p vela_lsp_server completion
     incoming set and removes them on finish; `RequestQueue::request_id`
     extracts typed IDs from `lsp_server::Message::Request`. Validated with
     `cargo test -p vela_lsp_server request_queue_tracks_typed_request_ids`.
-- [ ] Store cancellation handles by request ID for in-flight background tasks.
+- [x] Store cancellation handles by request ID for in-flight background tasks.
+  - `RequestQueue` now stores in-flight `CancellationHandle` values keyed by
+    typed request ID, scheduled formatting tasks carry their request ID in
+    `TaskResult`, and `GlobalState::send_task_result` removes the in-flight
+    handle when the task response is sent. Validated with
+    `cargo test -p vela_lsp_server request_queue_stores_in_flight_cancellation_handles`,
+    `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
+    `cargo test -p vela_lsp_server formatting`, and representative worker
+    routing checks.
 - [ ] Cancel unknown or completed IDs as no-response no-ops.
 - [ ] Carry `GenerationToken` through background tasks.
 - [ ] Discard stale results when the current generation differs.

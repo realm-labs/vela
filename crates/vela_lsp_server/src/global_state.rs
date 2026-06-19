@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crossbeam_channel::Sender;
 use lsp_server::Message;
@@ -14,8 +14,8 @@ use lsp_types::{
     WorkspaceSymbolParams,
 };
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, LineIndex as ServiceLineIndex, WorkspaceConfig,
-    WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
+    CancellationHandle, DocumentId, LanguageServiceDatabases, LineIndex as ServiceLineIndex,
+    WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot, WorkspaceSnapshot,
 };
 
 use crate::lsp::{from_proto, to_proto};
@@ -917,14 +917,23 @@ impl GlobalState {
         Ok(summary)
     }
 
-    pub(crate) fn send_task_result(&self, result: TaskResult) -> anyhow::Result<ResultSummary> {
+    pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         let _method = result.method();
+        let request_id = result.request_id().cloned();
+        if let Some(request_id) = request_id.as_ref() {
+            self.request_queue.finish_in_flight(request_id);
+        }
         self.send_result(result.into_result())
     }
 
     pub(crate) const fn task_scheduler(&self) -> &TaskScheduler {
         &self.task_scheduler
+    }
+
+    pub(crate) fn register_in_flight_cancellation(&mut self, id: RequestId) {
+        let (_token, handle) = self.databases.begin_cancellable_background_request();
+        self.request_queue.start_in_flight(id, handle);
     }
 
     pub(crate) const fn is_exited(&self) -> bool {
@@ -1251,6 +1260,7 @@ impl GlobalState {
 struct RequestQueue {
     incoming: BTreeSet<RequestId>,
     cancelled: BTreeSet<RequestId>,
+    in_flight: BTreeMap<RequestId, CancellationHandle>,
 }
 
 impl RequestQueue {
@@ -1269,8 +1279,20 @@ impl RequestQueue {
         self.incoming.remove(id);
     }
 
+    fn start_in_flight(&mut self, id: RequestId, handle: CancellationHandle) {
+        self.in_flight.insert(id, handle);
+    }
+
+    fn finish_in_flight(&mut self, id: &RequestId) -> Option<CancellationHandle> {
+        self.in_flight.remove(id)
+    }
+
     fn cancel(&mut self, id: RequestId) {
-        self.cancelled.insert(id);
+        if let Some(handle) = self.in_flight.get(&id) {
+            handle.cancel();
+        } else {
+            self.cancelled.insert(id);
+        }
     }
 
     fn take_cancelled(&mut self, id: &RequestId) -> bool {
@@ -2461,6 +2483,57 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
+    fn typed_formatting_dispatch_registers_in_flight_cancellation_handle() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "pub fn main(){return 1}",
+            SourceVersion::new(1),
+        );
+        state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
+        state.sync_from_legacy_server();
+        let request_id = RequestId::Number(30);
+
+        let result = state.handle_message(
+            &Message::Request(lsp_server::Request {
+                id: lsp_server::RequestId::from(30),
+                method: "textDocument/formatting".to_owned(),
+                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    options: lsp_formatting_options(),
+                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                })
+                .expect("formatting params should serialize"),
+            }),
+            "",
+        );
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.request_queue.in_flight.contains_key(&request_id));
+        let task = state
+            .task_scheduler()
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("formatting task should complete");
+        assert_eq!(task.request_id(), Some(&request_id));
+
+        state
+            .send_task_result(task)
+            .expect("formatting task response should send");
+        assert!(!state.request_queue.in_flight.contains_key(&request_id));
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2685,6 +2758,22 @@ pub fn main(amount: i64) -> i64 {
             params: serde_json::json!({}),
         });
         assert_eq!(RequestQueue::request_id(&message), Some(string));
+    }
+
+    #[test]
+    fn request_queue_stores_in_flight_cancellation_handles() {
+        let mut queue = RequestQueue::default();
+        let id = RequestId::Number(9);
+        let databases = LanguageServiceDatabases::new();
+        let (token, handle) = databases.begin_cancellable_background_request();
+
+        queue.start_in_flight(id.clone(), handle);
+        assert!(queue.in_flight.contains_key(&id));
+
+        queue.cancel(id.clone());
+        assert!(token.is_cancelled());
+        assert!(queue.finish_in_flight(&id).is_some());
+        assert!(!queue.in_flight.contains_key(&id));
     }
 
     fn typed_navigation_response(
