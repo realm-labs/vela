@@ -1356,6 +1356,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server schema_reload`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - The legacy JSON compatibility path in `lib.rs` now routes parse errors,
+    malformed request envelopes, lifecycle gates, and request-shaped document
+    notifications through `JsonRpcResult::error`, and the crate root no
+    longer re-exports the temporary standalone response helpers. Validated
+    with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server close_overlay`,
+    `cargo test -p vela_lsp_server workspace_folders`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

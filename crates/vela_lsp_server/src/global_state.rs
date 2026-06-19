@@ -20,6 +20,7 @@ use vela_language_service::{
 };
 
 use crate::lsp::{from_proto, to_proto};
+use crate::rpc::{error_response, success_response};
 use crate::{
     ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
     apply_lsp_document_changes,
@@ -27,7 +28,6 @@ use crate::{
     completion::service_completion_resolve_payload,
     config::EditorConfiguration,
     config_change::ConfigChange,
-    error_response,
     handlers::dispatch,
     lifecycle::{
         lsp_semantic_token_projection, lsp_supports_watched_file_registration,
@@ -37,7 +37,7 @@ use crate::{
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
     rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
     semantic_tokens::SemanticTokenProjection,
-    source_version, success_response,
+    source_version,
     task::{TaskResult, TaskScheduler},
     transport::{ResultSummary, messages_from_result},
     watching, with_work_done_progress,

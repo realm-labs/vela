@@ -39,9 +39,7 @@ use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
 use crate::lsp::to_proto;
 pub use crate::rpc::JsonRpcResult;
-pub(crate) use crate::rpc::{
-    ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response, success_response,
-};
+pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId};
 use crate::semantic_tokens::SemanticTokenProjection;
 
 pub use crate::config::LaunchConfiguration;
@@ -103,11 +101,11 @@ impl LspServer {
         let message = match serde_json::from_str::<JsonRpcMessage>(input) {
             Ok(message) => message,
             Err(error) => {
-                return JsonRpcResult::Response(error_response(
+                return JsonRpcResult::error(
                     None,
                     ErrorCode::ParseError,
                     format!("failed to parse JSON-RPC message: {error}"),
-                ));
+                );
             }
         };
 
@@ -117,11 +115,11 @@ impl LspServer {
     fn handle_message(&mut self, message: JsonRpcMessage) -> JsonRpcResult {
         if message.jsonrpc != JSONRPC_VERSION {
             return message.id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::Response(error_response(
+                JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     "unsupported JSON-RPC version",
-                ))
+                )
             });
         }
 
@@ -130,31 +128,27 @@ impl LspServer {
                 return JsonRpcResult::None;
             }
             return message.id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::Response(error_response(
+                JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     "missing JSON-RPC method",
-                ))
+                )
             });
         };
 
         if self.shutdown_requested && method != "exit" {
             return message.id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    "server has shut down",
-                ))
+                JsonRpcResult::error(Some(id), ErrorCode::InvalidRequest, "server has shut down")
             });
         }
 
         if !self.initialized && !lifecycle::is_pre_initialize_method(method) {
             return message.id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::Response(error_response(
+                JsonRpcResult::error(
                     Some(id),
                     ErrorCode::ServerNotInitialized,
                     "server has not been initialized",
-                ))
+                )
             });
         }
 
@@ -216,11 +210,11 @@ impl LspServer {
 
     fn did_open(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didOpen` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidOpenTextDocumentParams>(params) {
@@ -246,11 +240,11 @@ impl LspServer {
 
     fn did_change(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didChange` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidChangeTextDocumentParams>(params) {
@@ -299,11 +293,11 @@ impl LspServer {
 
     fn did_close(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`textDocument/didClose` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidCloseTextDocumentParams>(params) {
@@ -335,11 +329,11 @@ impl LspServer {
         params: JsonValue,
     ) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeWatchedFiles` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidChangeWatchedFilesParams>(params) {
@@ -379,11 +373,11 @@ impl LspServer {
         params: JsonValue,
     ) -> JsonRpcResult {
         if let Some(id) = id {
-            return JsonRpcResult::Response(error_response(
+            return JsonRpcResult::error(
                 Some(id),
                 ErrorCode::InvalidRequest,
                 "`workspace/didChangeWorkspaceFolders` must be sent as a notification",
-            ));
+            );
         }
 
         let params = match serde_json::from_value::<DidChangeWorkspaceFoldersParams>(params) {

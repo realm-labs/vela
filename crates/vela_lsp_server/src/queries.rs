@@ -4,9 +4,8 @@ use vela_language_service::{DocumentId, LineIndex as ServiceLineIndex};
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
     completion::service_completion_resolve_payload,
-    error_response,
     lsp::{from_proto, to_proto},
-    success_response,
+    rpc::{error_response, success_response},
 };
 
 enum NavigationLocationQuery {
