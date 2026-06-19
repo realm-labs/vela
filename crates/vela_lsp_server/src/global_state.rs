@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use lsp_server::Message;
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer, handlers::dispatch};
+use crate::{JsonRpcResult, LaunchConfiguration, LspServer, RequestId, handlers::dispatch};
 
 pub(crate) struct GlobalState {
     launch_configuration: LaunchConfiguration,
@@ -46,6 +46,10 @@ impl GlobalState {
 
     pub(crate) const fn is_shutdown_requested(&self) -> bool {
         self.server.is_shutdown_requested()
+    }
+
+    pub(crate) fn take_cancelled_request(&mut self, id: &RequestId) -> bool {
+        self.server.take_cancelled_request(id)
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {

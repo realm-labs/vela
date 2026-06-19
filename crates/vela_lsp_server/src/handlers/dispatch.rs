@@ -34,6 +34,11 @@ fn dispatch_request(
     request: Request,
     legacy_input: &str,
 ) -> JsonRpcResult {
+    let request_id = rpc_request_id(request.id.clone());
+    if global_state.take_cancelled_request(&request_id) {
+        return request_cancelled(request_id);
+    }
+
     let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
     dispatcher
         .on_sync_mut::<lsp_types::request::Initialize>()
@@ -212,6 +217,14 @@ fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
         Some(rpc_request_id(id)),
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
+    ))
+}
+
+fn request_cancelled(id: RequestId) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(id),
+        ErrorCode::RequestCancelled,
+        "request was cancelled before processing",
     ))
 }
 

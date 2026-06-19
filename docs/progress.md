@@ -628,7 +628,9 @@ Phase 2 task.
 M20.5 RA-style main-loop update: shared dispatch/main-loop error projection is
 now in progress. Post-initialize unknown requests are projected from
 `handlers/dispatch.rs`, unknown notifications are no-response no-ops at the
-dispatcher finish boundary, and pre-initialize plus post-shutdown gates still
+dispatcher finish boundary, and cancelled request IDs are consumed before typed
+request dispatch so `RequestCancelled` wins over handler routing and
+method-not-found projection. Pre-initialize plus post-shutdown gates still
 delegate through the legacy lifecycle bridge until typed lifecycle migration
 lands.
 
