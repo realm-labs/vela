@@ -1945,6 +1945,9 @@ node editors/vscode/scripts/validate-package.js
   - Converted the schema references/highlight fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
+  - Converted lifecycle request/notification fixture traffic off the legacy
+    custom request/notification builders and onto the shared typed helpers,
+    while preserving raw malformed-message coverage.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.

@@ -176,6 +176,10 @@ impl LspServer {
 
     #[cfg(test)]
     fn handle_message(&mut self, message: Message) -> JsonRpcResult {
+        if self.exited {
+            return JsonRpcResult::None;
+        }
+
         let (id, method, params) = match message {
             Message::Request(request) => (Some(request.id), request.method, request.params),
             Message::Notification(notification) => (None, notification.method, notification.params),

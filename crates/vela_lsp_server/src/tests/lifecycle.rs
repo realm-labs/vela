@@ -1,20 +1,22 @@
 use crate::LaunchConfiguration;
 
 use super::{
-    JsonRpcResult, JsonValue, LspServer, notification, notification_value, request, response_value,
+    JsonRpcResult, JsonValue, LspServer, handle_notification, handle_request, notification_value,
+    response_value,
 };
 
 #[test]
 fn lsp_initialize_reports_capabilities() {
     let mut server = LspServer::new();
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert!(server.is_initialized());
     assert_eq!(response["jsonrpc"], "2.0");
@@ -183,14 +185,15 @@ fn lsp_initialize_reports_capabilities() {
 #[test]
 fn server_info_reports_version() {
     let mut server = LspServer::new();
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
     assert_eq!(
@@ -202,7 +205,8 @@ fn server_info_reports_version() {
 #[test]
 fn lsp_rejects_repeated_initialize_without_resetting_state() {
     let mut server = LspServer::new();
-    let first = response_value(server.handle_json(&request(
+    let first = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -221,8 +225,9 @@ fn lsp_rejects_repeated_initialize_without_resetting_state() {
                 }
             }
         }),
-    )));
-    let repeated = response_value(server.handle_json(&request(
+    ));
+    let repeated = response_value(handle_request(
+        &mut server,
         2,
         "initialize",
         serde_json::json!({
@@ -230,9 +235,12 @@ fn lsp_rejects_repeated_initialize_without_resetting_state() {
             "rootUri": "file:///other",
             "capabilities": {}
         }),
-    )));
-    let registration =
-        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+    ));
+    let registration = notification_value(handle_notification(
+        &mut server,
+        "initialized",
+        serde_json::json!({}),
+    ));
     let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
         .as_array()
         .expect("watcher registration should include watchers");
@@ -257,22 +265,24 @@ fn lsp_rejects_repeated_initialize_without_resetting_state() {
 #[test]
 fn lsp_rejects_malformed_initialize_without_initializing() {
     let mut server = LspServer::new();
-    let malformed = response_value(server.handle_json(&request(
+    let malformed = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": []
         }),
-    )));
-    let initialize = response_value(server.handle_json(&request(
+    ));
+    let initialize = response_value(handle_request(
+        &mut server,
         2,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(malformed["id"], 1);
     assert_eq!(malformed["error"]["code"], -32602);
@@ -292,29 +302,32 @@ fn lsp_rejects_malformed_initialize_without_initializing() {
 #[test]
 fn lsp_initialize_notification_does_not_initialize() {
     let mut server = LspServer::new();
-    let notification_result = server.handle_json(&notification(
+    let notification_result = handle_notification(
+        &mut server,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    ));
-    let early_hover = response_value(server.handle_json(&request(
+    );
+    let early_hover = response_value(handle_request(
+        &mut server,
         1,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
-    let initialize = response_value(server.handle_json(&request(
+    ));
+    let initialize = response_value(handle_request(
+        &mut server,
         2,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(notification_result, JsonRpcResult::None);
     assert_eq!(early_hover["id"], 1);
@@ -334,15 +347,16 @@ fn lsp_initialize_notification_does_not_initialize() {
 #[test]
 fn lsp_initialized_notification_has_no_response() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let result = server.handle_json(&notification("initialized", serde_json::json!({})));
+    ));
+    let result = handle_notification(&mut server, "initialized", serde_json::json!({}));
 
     assert!(server.is_initialized());
     assert_eq!(result, JsonRpcResult::None);
@@ -352,14 +366,15 @@ fn lsp_initialized_notification_has_no_response() {
 fn lsp_rejects_requests_before_initialize() {
     let mut server = LspServer::new();
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
+    ));
 
     assert!(!server.is_initialized());
     assert_eq!(response["id"], 1);
@@ -373,15 +388,16 @@ fn lsp_rejects_requests_before_initialize() {
 #[test]
 fn lsp_initialized_notification_before_initialize_does_not_unlock_requests() {
     let mut server = LspServer::new();
-    let initialized = server.handle_json(&notification("initialized", serde_json::json!({})));
-    let response = response_value(server.handle_json(&request(
+    let initialized = handle_notification(&mut server, "initialized", serde_json::json!({}));
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
+    ));
 
     assert_eq!(initialized, JsonRpcResult::None);
     assert!(!server.is_initialized());
@@ -396,26 +412,28 @@ fn lsp_initialized_notification_before_initialize_does_not_unlock_requests() {
 #[test]
 fn lsp_did_save_is_not_advertised_and_has_no_response() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(
         initialize["result"]["capabilities"]["textDocumentSync"]["save"],
         false
     );
 
-    let result = server.handle_json(&notification(
+    let result = handle_notification(
+        &mut server,
         "textDocument/didSave",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
         }),
-    ));
+    );
 
     assert_eq!(result, JsonRpcResult::None);
 }
@@ -423,7 +441,8 @@ fn lsp_did_save_is_not_advertised_and_has_no_response() {
 #[test]
 fn lsp_initialized_registers_watched_files_when_supported() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -442,10 +461,13 @@ fn lsp_initialized_registers_watched_files_when_supported() {
                 }
             }
         }),
-    )));
+    ));
 
-    let registration =
-        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+    let registration = notification_value(handle_notification(
+        &mut server,
+        "initialized",
+        serde_json::json!({}),
+    ));
 
     assert_eq!(registration["jsonrpc"], "2.0");
     assert_eq!(registration["method"], "client/registerCapability");
@@ -470,7 +492,7 @@ fn lsp_initialized_registers_watched_files_when_supported() {
             .is_some_and(|pattern| pattern.ends_with("/workspace/target/vela/schema.json"))
     }));
 
-    let repeated = server.handle_json(&notification("initialized", serde_json::json!({})));
+    let repeated = handle_notification(&mut server, "initialized", serde_json::json!({}));
     assert_eq!(repeated, JsonRpcResult::None);
 }
 
@@ -479,7 +501,8 @@ fn lsp_initialized_skips_watched_files_when_disabled() {
     let mut configuration = LaunchConfiguration::new();
     configuration.set_watch_files_enabled(false);
     let mut server = LspServer::with_launch_configuration(configuration);
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -493,9 +516,9 @@ fn lsp_initialized_skips_watched_files_when_disabled() {
                 }
             }
         }),
-    )));
+    ));
 
-    let result = server.handle_json(&notification("initialized", serde_json::json!({})));
+    let result = handle_notification(&mut server, "initialized", serde_json::json!({}));
 
     assert_eq!(result, JsonRpcResult::None);
 }
@@ -503,7 +526,8 @@ fn lsp_initialized_skips_watched_files_when_disabled() {
 #[test]
 fn lsp_initialized_ignores_empty_host_schema_setting() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -522,10 +546,13 @@ fn lsp_initialized_ignores_empty_host_schema_setting() {
                 }
             }
         }),
-    )));
+    ));
 
-    let registration =
-        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+    let registration = notification_value(handle_notification(
+        &mut server,
+        "initialized",
+        serde_json::json!({}),
+    ));
     let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
         .as_array()
         .expect("watcher registration should include watchers");
@@ -549,7 +576,8 @@ fn lsp_initialized_ignores_empty_host_schema_setting() {
 #[test]
 fn lsp_did_open_with_empty_host_schema_has_no_schema_diagnostic() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -562,9 +590,10 @@ fn lsp_did_open_with_empty_host_schema_has_no_schema_diagnostic() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
 
-    let diagnostics = notification_value(server.handle_json(&notification(
+    let diagnostics = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -574,7 +603,7 @@ fn lsp_did_open_with_empty_host_schema_has_no_schema_diagnostic() {
                 "text": "fn main() { return 1; }"
             }
         }),
-    )));
+    ));
     let diagnostics = diagnostics["params"]["diagnostics"]
         .as_array()
         .expect("didOpen should publish diagnostics");
@@ -627,14 +656,15 @@ fn lsp_missing_method_request_reports_invalid_request() {
 #[test]
 fn lsp_implementation_request_is_not_advertised_or_supported() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert!(
         initialize["result"]["capabilities"]["implementationProvider"].is_null(),
@@ -645,35 +675,39 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
         "{initialize:?}"
     );
 
-    let implementation = response_value(server.handle_json(&request(
+    let implementation = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/implementation",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
-    let document_link = response_value(server.handle_json(&request(
+    ));
+    let document_link = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/documentLink",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
         }),
-    )));
-    let unsupported_notification = server.handle_json(&notification(
+    ));
+    let unsupported_notification = handle_notification(
+        &mut server,
         "textDocument/documentLink",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" }
         }),
-    ));
-    let hover = response_value(server.handle_json(&request(
+    );
+    let hover = response_value(handle_request(
+        &mut server,
         4,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
+    ));
 
     assert_eq!(implementation["id"], 2);
     assert_eq!(implementation["error"]["code"], -32601);
@@ -687,20 +721,22 @@ fn lsp_implementation_request_is_not_advertised_or_supported() {
 #[test]
 fn lsp_cancellation_before_request_does_not_poison_request_id() {
     let mut server = LspServer::new();
-    let cancel = server.handle_json(&notification(
+    let cancel = handle_notification(
+        &mut server,
         "$/cancelRequest",
         serde_json::json!({ "id": 7 }),
-    ));
+    );
     assert_eq!(cancel, JsonRpcResult::None);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         7,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert!(server.is_initialized());
     assert_eq!(response["id"], 7);
@@ -710,18 +746,20 @@ fn lsp_cancellation_before_request_does_not_poison_request_id() {
 #[test]
 fn lsp_cancellation_ignores_unknown_request_id() {
     let mut server = LspServer::new();
-    let cancel = server.handle_json(&notification(
+    let cancel = handle_notification(
+        &mut server,
         "$/cancelRequest",
         serde_json::json!({ "id": 404 }),
-    ));
-    let response = response_value(server.handle_json(&request(
+    );
+    let response = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(cancel, JsonRpcResult::None);
     assert!(server.is_initialized());
@@ -732,19 +770,21 @@ fn lsp_cancellation_ignores_unknown_request_id() {
 #[test]
 fn lsp_cancellation_request_is_rejected_without_poisoning_later_requests() {
     let mut server = LspServer::new();
-    let cancel = response_value(server.handle_json(&request(
+    let cancel = response_value(handle_request(
+        &mut server,
         1,
         "$/cancelRequest",
         serde_json::json!({ "id": 2 }),
-    )));
-    let initialize = response_value(server.handle_json(&request(
+    ));
+    let initialize = response_value(handle_request(
+        &mut server,
         2,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(cancel["id"], 1);
     assert_eq!(cancel["error"]["code"], -32600);
@@ -763,18 +803,20 @@ fn lsp_cancellation_request_is_rejected_without_poisoning_later_requests() {
 #[test]
 fn lsp_cancellation_ignores_malformed_params() {
     let mut server = LspServer::new();
-    let cancel = server.handle_json(&notification(
+    let cancel = handle_notification(
+        &mut server,
         "$/cancelRequest",
         serde_json::json!({ "id": { "nested": 7 } }),
-    ));
-    let initialize = response_value(server.handle_json(&request(
+    );
+    let initialize = response_value(handle_request(
+        &mut server,
         7,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(cancel, JsonRpcResult::None);
     assert_eq!(initialize["id"], 7);
@@ -788,26 +830,29 @@ fn lsp_cancellation_ignores_malformed_params() {
 #[test]
 fn lsp_cancellation_ignores_completed_request_id() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let cancel = server.handle_json(&notification(
+    ));
+    let cancel = handle_notification(
+        &mut server,
         "$/cancelRequest",
         serde_json::json!({ "id": 1 }),
-    ));
-    let hover = response_value(server.handle_json(&request(
+    );
+    let hover = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
+    ));
 
     assert_eq!(initialize["id"], 1);
     assert_eq!(cancel, JsonRpcResult::None);
@@ -818,16 +863,17 @@ fn lsp_cancellation_ignores_completed_request_id() {
 #[test]
 fn lsp_shutdown_exits_without_background_tasks() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let response = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
-    let exit = server.handle_json(&notification("exit", JsonValue::Null));
+    ));
+    let response = response_value(handle_request(&mut server, 2, "shutdown", JsonValue::Null));
+    let exit = handle_notification(&mut server, "exit", JsonValue::Null);
 
     assert_eq!(response["result"], JsonValue::Null);
     assert!(server.is_shutdown_requested());
@@ -838,32 +884,34 @@ fn lsp_shutdown_exits_without_background_tasks() {
 #[test]
 fn lsp_rejects_requests_after_shutdown_until_exit() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let shutdown = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
+    ));
+    let shutdown = response_value(handle_request(&mut server, 2, "shutdown", JsonValue::Null));
 
     assert_eq!(shutdown["result"], JsonValue::Null);
     assert!(server.is_shutdown_requested());
 
-    let completion = response_value(server.handle_json(&request(
+    let completion = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/completion",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
+    ));
     assert_eq!(completion["id"], 3);
     assert_eq!(completion["error"]["code"], -32600);
     assert_eq!(completion["error"]["message"], "server has shut down");
 
-    let exit = server.handle_json(&notification("exit", JsonValue::Null));
+    let exit = handle_notification(&mut server, "exit", JsonValue::Null);
     assert!(server.is_exited());
     assert_eq!(exit, JsonRpcResult::None);
 }
@@ -871,27 +919,29 @@ fn lsp_rejects_requests_after_shutdown_until_exit() {
 #[test]
 fn lsp_shutdown_notification_does_not_shutdown() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let notification_result = server.handle_json(&notification("shutdown", JsonValue::Null));
+    ));
+    let notification_result = handle_notification(&mut server, "shutdown", JsonValue::Null);
     assert_eq!(notification_result, JsonRpcResult::None);
     assert!(!server.is_shutdown_requested());
 
-    let hover = response_value(server.handle_json(&request(
+    let hover = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    )));
-    let shutdown = response_value(server.handle_json(&request(3, "shutdown", JsonValue::Null)));
+    ));
+    let shutdown = response_value(handle_request(&mut server, 3, "shutdown", JsonValue::Null));
 
     assert_eq!(hover["id"], 2);
     assert!(hover["result"].is_null());
@@ -903,15 +953,16 @@ fn lsp_shutdown_notification_does_not_shutdown() {
 #[test]
 fn lsp_rejects_shutdown_before_initialize_without_closing() {
     let mut server = LspServer::new();
-    let shutdown = response_value(server.handle_json(&request(1, "shutdown", JsonValue::Null)));
-    let initialize = response_value(server.handle_json(&request(
+    let shutdown = response_value(handle_request(&mut server, 1, "shutdown", JsonValue::Null));
+    let initialize = response_value(handle_request(
+        &mut server,
         2,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
+    ));
 
     assert_eq!(shutdown["id"], 1);
     assert_eq!(shutdown["error"]["code"], -32002);
@@ -931,23 +982,25 @@ fn lsp_rejects_shutdown_before_initialize_without_closing() {
 #[test]
 fn lsp_exit_request_reports_invalid_request_and_exits() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let exit = response_value(server.handle_json(&request(2, "exit", JsonValue::Null)));
-    let hover = server.handle_json(&request(
+    ));
+    let exit = response_value(handle_request(&mut server, 2, "exit", JsonValue::Null));
+    let hover = handle_request(
+        &mut server,
         3,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    ));
+    );
 
     assert_eq!(exit["id"], 2);
     assert_eq!(exit["error"]["code"], -32600);
@@ -962,25 +1015,28 @@ fn lsp_exit_request_reports_invalid_request_and_exits() {
 #[test]
 fn lsp_ignores_messages_after_exit() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
             "processId": null,
             "capabilities": {}
         }),
-    )));
-    let exit = server.handle_json(&notification("exit", JsonValue::Null));
+    ));
+    let exit = handle_notification(&mut server, "exit", JsonValue::Null);
 
-    let hover = server.handle_json(&request(
+    let hover = handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
             "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
             "position": { "line": 0, "character": 0 }
         }),
-    ));
-    let did_open = server.handle_json(&notification(
+    );
+    let did_open = handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -990,7 +1046,7 @@ fn lsp_ignores_messages_after_exit() {
                 "text": "let broken ="
             }
         }),
-    ));
+    );
     let malformed = server.handle_json("{not json");
 
     assert!(server.is_exited());
