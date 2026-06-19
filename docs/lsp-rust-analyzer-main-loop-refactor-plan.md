@@ -1443,6 +1443,12 @@ cargo test -p vela_lsp_server semantic_tokens
     tests; production stdio already enters through `lsp_server::Connection`
     and the typed main loop. Validated with
     `cargo test -p vela_lsp_server stdio`.
+  - Production `GlobalState::handle_message` now calls the dispatcher through
+    a typed `Vec<lsp_server::Message>` boundary; the old
+    `handle_message_result` and dispatcher result wrapper remain test-only
+    compatibility helpers. Validated with
+    `cargo test -p vela_lsp_server lifecycle` and
+    `cargo test -p vela_lsp_server task`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

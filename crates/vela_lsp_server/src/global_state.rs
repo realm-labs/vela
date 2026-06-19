@@ -877,9 +877,18 @@ impl GlobalState {
         message: &Message,
         input: &str,
     ) -> anyhow::Result<Vec<Message>> {
-        self.handle_message_result(message, input).into_messages()
+        let request_id = RequestQueue::request_id(message);
+        if let Some(id) = request_id.as_ref() {
+            self.request_queue.start(id.clone());
+        }
+        let messages = dispatch::dispatch_message(self, message, input);
+        if let Some(id) = request_id {
+            self.request_queue.finish(&id);
+        }
+        Ok(messages)
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_message_result(
         &mut self,
         message: &Message,
@@ -889,7 +898,7 @@ impl GlobalState {
         if let Some(id) = request_id.as_ref() {
             self.request_queue.start(id.clone());
         }
-        let result = dispatch::dispatch_message(self, message, input);
+        let result = dispatch::dispatch_message_result(self, message, input);
         if let Some(id) = request_id {
             self.request_queue.finish(&id);
         }

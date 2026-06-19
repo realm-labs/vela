@@ -31,6 +31,27 @@ pub(crate) fn dispatch_message(
     global_state: &mut GlobalState,
     message: &Message,
     legacy_input: &str,
+) -> Vec<Message> {
+    typed_messages(dispatch_message_result_inner(
+        global_state,
+        message,
+        legacy_input,
+    ))
+}
+
+#[cfg(test)]
+pub(crate) fn dispatch_message_result(
+    global_state: &mut GlobalState,
+    message: &Message,
+    legacy_input: &str,
+) -> JsonRpcResult {
+    dispatch_message_result_inner(global_state, message, legacy_input)
+}
+
+fn dispatch_message_result_inner(
+    global_state: &mut GlobalState,
+    message: &Message,
+    legacy_input: &str,
 ) -> JsonRpcResult {
     match message {
         Message::Request(request) => dispatch_request(global_state, request.clone(), legacy_input),
