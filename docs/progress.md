@@ -300,11 +300,12 @@ Phase 4 cleanup is raw JSON/protocol helper retirement, while Phase 5 task
 pool scheduling is the next architectural milestone.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
-document-highlight, prepare-rename, and rename compatibility paths now
-serialize typed `lsp/to_proto.rs` projections instead of keeping duplicate raw
-response encoders. Call hierarchy compatibility responses also serialize typed
-`lsp/to_proto.rs` projections; its remaining helper only decodes legacy
-custom call-hierarchy item params until custom protocol params are retired.
+document-highlight, prepare-rename, rename, document-symbol, and
+workspace-symbol compatibility paths now serialize typed `lsp/to_proto.rs`
+projections instead of keeping duplicate raw response encoders. Call hierarchy
+compatibility responses also serialize typed `lsp/to_proto.rs` projections;
+its remaining helper only decodes legacy custom call-hierarchy item params
+until custom protocol params are retired.
 
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native

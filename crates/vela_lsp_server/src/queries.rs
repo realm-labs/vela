@@ -27,7 +27,6 @@ use crate::{
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
     success_response,
-    symbols::{lsp_document_symbols, lsp_workspace_symbols},
 };
 
 enum NavigationLocationQuery {
@@ -1036,7 +1035,11 @@ impl LspServer {
         self.refresh_databases_for_query(&document_id);
         let symbols = self.databases.document_symbols(&document_id);
 
-        JsonRpcResult::Response(success_response(id, lsp_document_symbols(&symbols)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::document_symbols(&symbols))
+                .expect("typed documentSymbol response should serialize"),
+        ))
     }
 
     pub(crate) fn document_symbol_typed(
@@ -1602,7 +1605,11 @@ impl LspServer {
         self.refresh_databases_for_workspace_query();
         let symbols = self.databases.workspace_symbols(&params.query);
 
-        JsonRpcResult::Response(success_response(id, lsp_workspace_symbols(&symbols)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::workspace_symbols(&symbols))
+                .expect("typed workspace/symbol response should serialize"),
+        ))
     }
 
     pub(crate) fn workspace_symbol_typed(

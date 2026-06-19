@@ -18,7 +18,6 @@ mod reload;
 mod rpc;
 mod semantic_tokens;
 pub mod stdio;
-mod symbols;
 mod tracing;
 pub mod transport;
 mod watching;
