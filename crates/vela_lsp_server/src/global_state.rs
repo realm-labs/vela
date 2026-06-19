@@ -5,7 +5,7 @@ use lsp_server::Message;
 use lsp_types::{
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, SignatureHelpParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -342,6 +342,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.hover_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn signature_help(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: SignatureHelpParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.signature_help_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1236,6 +1247,64 @@ mod tests {
             .expect("hover contents should be markdown");
         assert!(value.contains("amount"), "{value}");
         assert!(value.contains("_parameter_: i64"), "{value}");
+    }
+
+    #[test]
+    fn typed_signature_help_dispatch_projects_signature_response() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(9),
+            method: "textDocument/signatureHelp".to_owned(),
+            params: serde_json::to_value(lsp_types::SignatureHelpParams {
+                text_document_position_params: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        0,
+                        u32::try_from(
+                            text.find("2)")
+                                .expect("signature fixture should contain second argument"),
+                        )
+                        .expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                context: None,
+            })
+            .expect("signatureHelp params should serialize"),
+        });
+
+        let result = state.handle_message(&request, "");
+
+        let response = result
+            .into_response()
+            .expect("typed signatureHelp should return a response");
+        let response: serde_json::Value =
+            serde_json::from_str(&response).expect("response should be JSON");
+        assert_eq!(response["id"], 9);
+        assert_eq!(response["result"]["activeSignature"], 0);
+        assert_eq!(response["result"]["activeParameter"], 1);
+        assert_eq!(
+            response["result"]["signatures"][0]["label"],
+            "grant(amount: i64, bonus: i64) -> bool"
+        );
+        assert_eq!(
+            response["result"]["signatures"][0]["parameters"][1]["label"],
+            "bonus: i64"
+        );
     }
 
     #[test]

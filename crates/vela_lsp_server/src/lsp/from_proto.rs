@@ -68,6 +68,13 @@ pub(crate) fn hover_params(
     text_document_position(text, &params.text_document_position_params)
 }
 
+pub(crate) fn signature_help_params(
+    text: &str,
+    params: &lsp_types::SignatureHelpParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position_params)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -197,6 +204,29 @@ mod tests {
         };
 
         let input = hover_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn signature_help_params_convert_nested_position_input() {
+        let params = lsp_types::SignatureHelpParams {
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            context: None,
+        };
+
+        let input = signature_help_params("main", &params).expect("position should convert");
 
         assert_eq!(
             input.document_id,

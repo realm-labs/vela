@@ -2,7 +2,7 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
     CompletionResolvePayload, CompletionSymbol, DiagnosticRange, Hover, HoverKind, LineIndex,
-    TextRange,
+    SignatureHelp, TextRange,
 };
 
 pub(crate) fn completion_response(
@@ -42,6 +42,22 @@ pub(crate) fn hover(hover: &Hover) -> lsp_types::Hover {
             value: hover_markdown(hover),
         }),
         range: Some(diagnostic_range(hover.range())),
+    }
+}
+
+pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {
+    lsp_types::SignatureHelp {
+        signatures: help
+            .signatures()
+            .iter()
+            .map(signature_information)
+            .collect(),
+        active_signature: Some(
+            u32::try_from(help.active_signature()).expect("active signature should fit in u32"),
+        ),
+        active_parameter: Some(
+            u32::try_from(help.active_parameter()).expect("active parameter should fit in u32"),
+        ),
     }
 }
 
@@ -127,6 +143,32 @@ fn completion_symbol(symbol: &CompletionSymbol) -> JsonValue {
             }
             value
         }
+    }
+}
+
+fn signature_information(
+    signature: &vela_language_service::SignatureInformation,
+) -> lsp_types::SignatureInformation {
+    lsp_types::SignatureInformation {
+        label: signature.label().to_owned(),
+        documentation: None,
+        parameters: Some(
+            signature
+                .parameters()
+                .iter()
+                .map(signature_parameter)
+                .collect(),
+        ),
+        active_parameter: None,
+    }
+}
+
+fn signature_parameter(
+    parameter: &vela_language_service::SignatureParameter,
+) -> lsp_types::ParameterInformation {
+    lsp_types::ParameterInformation {
+        label: lsp_types::ParameterLabel::Simple(parameter.label().to_owned()),
+        documentation: None,
     }
 }
 
@@ -326,6 +368,43 @@ mod tests {
                 lsp_types::Position::new(0, 41),
                 lsp_types::Position::new(0, 47)
             ))
+        );
+    }
+
+    #[test]
+    fn signature_help_projects_typed_lsp_shape() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            0,
+            source
+                .find("2)")
+                .expect("signature fixture should contain second argument"),
+        );
+        let help = databases
+            .signature_help(&document, position)
+            .expect("call should have signature help");
+
+        let help = signature_help(&help);
+
+        assert_eq!(help.active_signature, Some(0));
+        assert_eq!(help.active_parameter, Some(1));
+        assert_eq!(
+            help.signatures[0].label,
+            "grant(amount: i64, bonus: i64) -> bool"
+        );
+        let parameters = help.signatures[0]
+            .parameters
+            .as_ref()
+            .expect("parameters should be projected");
+        assert_eq!(
+            parameters[1].label,
+            lsp_types::ParameterLabel::Simple("bonus: i64".to_owned())
         );
     }
 }

@@ -658,6 +658,16 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_language_service hover`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/signatureHelp` now uses typed `SignatureHelpParams`
+    through `GlobalState` and typed `lsp_types::SignatureHelp` projection
+    through `lsp/to_proto.rs`. Validated with
+    `cargo test -p vela_lsp_server signature`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service signature`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses
   as each feature migrates.
 - [ ] Preserve current advertised capabilities unless a test proves an

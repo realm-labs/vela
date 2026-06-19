@@ -60,7 +60,7 @@ fn dispatch_request(
         .on_latency_sensitive_typed::<Completion>(GlobalState::completion)
         .on_latency_sensitive_typed::<ResolveCompletionItem>(GlobalState::completion_resolve)
         .on_latency_sensitive_typed::<HoverRequest>(GlobalState::hover)
-        .on_latency_sensitive::<SignatureHelpRequest>()
+        .on_latency_sensitive_typed::<SignatureHelpRequest>(GlobalState::signature_help)
         .on_latency_sensitive::<SemanticTokensFullRequest>()
         .on_latency_sensitive::<SemanticTokensFullDeltaRequest>()
         .on_worker::<GotoDefinition>()
