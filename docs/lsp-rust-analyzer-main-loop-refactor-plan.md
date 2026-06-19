@@ -406,7 +406,7 @@ document or `docs/decisions.md`.
   keeping stdio as the default editor path.
 - [x] Reject non-loopback TCP bind addresses by default or require a separate
   explicit unsafe opt-in flag before accepting them.
-- [ ] Introduce `transport.rs` so stdio and TCP setup produce the same typed
+- [x] Introduce `transport.rs` so stdio and TCP setup produce the same typed
   message-loop input and share response writing, IO thread ownership, shutdown
   joining, profiling, and tracing behavior.
 - [x] Make `main.rs` start `lsp_server::Connection::stdio()` for real stdio
@@ -417,7 +417,7 @@ document or `docs/decisions.md`.
   need custom Content-Length frame parsing.
 - [x] Keep the old `stdio::run_stdio_with_configuration` only as a temporary
   compatibility wrapper during this phase. Mark it for deletion in Phase 9.
-- [ ] Add tests proving the typed transport shell responds to initialize and
+- [x] Add tests proving the typed transport shell responds to initialize and
   exits cleanly over stdio, in-memory channels, and loopback TCP.
 
 Validation:
