@@ -619,6 +619,62 @@ fn lsp_cancellation_ignores_unknown_request_id() {
 }
 
 #[test]
+fn lsp_cancellation_request_is_rejected_without_poisoning_later_requests() {
+    let mut server = LspServer::new();
+    let cancel = response_value(server.handle_json(&request(
+        1,
+        "$/cancelRequest",
+        serde_json::json!({ "id": 2 }),
+    )));
+    let initialize = response_value(server.handle_json(&request(
+        2,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(cancel["id"], 1);
+    assert_eq!(cancel["error"]["code"], -32600);
+    assert_eq!(
+        cancel["error"]["message"],
+        "`$/cancelRequest` must be sent as a notification"
+    );
+    assert_eq!(initialize["id"], 2);
+    assert_eq!(
+        initialize["result"]["serverInfo"]["name"],
+        "vela_lsp_server"
+    );
+    assert!(server.is_initialized());
+}
+
+#[test]
+fn lsp_cancellation_ignores_malformed_params() {
+    let mut server = LspServer::new();
+    let cancel = server.handle_json(&notification(
+        "$/cancelRequest",
+        serde_json::json!({ "id": { "nested": 7 } }),
+    ));
+    let initialize = response_value(server.handle_json(&request(
+        7,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(cancel, JsonRpcResult::None);
+    assert_eq!(initialize["id"], 7);
+    assert_eq!(
+        initialize["result"]["serverInfo"]["name"],
+        "vela_lsp_server"
+    );
+    assert!(server.is_initialized());
+}
+
+#[test]
 fn lsp_cancellation_ignores_completed_request_id() {
     let mut server = LspServer::new();
     let initialize = response_value(server.handle_json(&request(

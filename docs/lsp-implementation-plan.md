@@ -232,7 +232,8 @@ coverage complete based only on the older capability phases.
     the in-memory dispatcher, matching the method's notification-only
     process-termination intent.
   - `$/cancelRequest` now has protocol fixtures for stale queued requests,
-    unknown request IDs, and already-completed request IDs.
+    unknown request IDs, already-completed request IDs, request-shaped cancel
+    rejection, and malformed notification params.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP
   as user-facing complete.
   - Cover the authoring-core model itself: structured completion analysis

@@ -204,6 +204,10 @@ M20.5 lifecycle update: native LSP cancellation fixtures now cover stale
 queued requests plus unknown and already-completed request IDs as no-response
 no-ops that do not poison later requests.
 
+M20.5 lifecycle update: native LSP cancellation fixtures now also cover
+request-shaped `$/cancelRequest` rejection and malformed cancel params as
+no-response no-ops that do not cancel later valid requests.
+
 M20.5 lifecycle update: native LSP `exit` now terminates the in-memory
 dispatcher contract as well as process intent; later requests, notifications,
 and malformed input are ignored with no responses.
