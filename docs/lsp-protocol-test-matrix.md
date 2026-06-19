@@ -293,9 +293,9 @@ These were the first places compared against the matrix before acceptance:
    pins both the absent capability and direct request rejection.
 4. `textDocumentSync.openClose` is advertised and `textDocument/didClose`
    behavior is covered for scratch diagnostics, disk-backed diagnostic
-   restoration, and disk-backed definition queries after closing an overlay;
-   remaining audits should focus on other cross-feature close/open
-   interactions rather than basic capability support.
+   restoration, and disk-backed definition, type-definition, and completion
+   queries after closing an overlay; remaining audits should focus on other
+   cross-feature close/open interactions rather than basic capability support.
 5. Capability-to-handler consistency should be audited for every advertised
    provider. A capability is incomplete if the lifecycle test advertises it but
    there is no method fixture and no service proof.

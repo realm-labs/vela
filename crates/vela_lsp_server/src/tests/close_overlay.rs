@@ -1,7 +1,10 @@
 use super::{JsonRpcResult, LspServer, notification, notification_value, request, response_value};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_did_close_restores_disk_snapshot_completion_queries() {
@@ -99,6 +102,91 @@ fn lsp_did_close_restores_disk_snapshot_completion_queries() {
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
 }
 
+#[test]
+fn lsp_did_close_restores_disk_snapshot_type_definition_queries() {
+    let root = temp_workspace();
+    let source_path = root.join("scripts").join("game").join("main.vela");
+    let disk_source = r#"struct DiskInventory {
+    slots: i64,
+}
+
+struct Player {
+    inventory: DiskInventory,
+}
+
+fn main(player: Player) {
+    return player.inventory;
+}"#;
+    let overlay_source = r#"struct OverlayInventory {
+    slots: i64,
+}
+
+struct Player {
+    inventory: OverlayInventory,
+}
+
+fn main(player: Player) {
+    return player.inventory;
+}"#;
+    fs::write(&source_path, disk_source).expect("disk source should be writable");
+    let source_uri = file_uri(&source_path);
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root.join("scripts")),
+            "capabilities": {}
+        }),
+    )));
+    assert_eq!(
+        server.handle_json(&notification(
+            "workspace/didChangeWatchedFiles",
+            serde_json::json!({
+                "changes": [{ "uri": source_uri, "type": 1 }]
+            }),
+        )),
+        JsonRpcResult::None
+    );
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": overlay_source
+            }
+        }),
+    )));
+
+    let overlay_definition = response_value(server.handle_json(&type_definition_request(
+        2,
+        &source_uri,
+        overlay_source,
+    )));
+    assert_type_definition_range(&overlay_definition, &source_uri, 7, 23);
+
+    let close = notification_value(server.handle_json(&notification(
+        "textDocument/didClose",
+        serde_json::json!({
+            "textDocument": {
+                "uri": source_uri
+            }
+        }),
+    )));
+    assert_eq!(close["method"], "textDocument/publishDiagnostics");
+    assert_eq!(close["params"]["uri"], source_uri);
+
+    let disk_definition =
+        response_value(server.handle_json(&type_definition_request(3, &source_uri, disk_source)));
+    assert_type_definition_range(&disk_definition, &source_uri, 7, 20);
+
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
 fn completion_labels(response: &serde_json::Value) -> Vec<String> {
     response["result"]["items"]
         .as_array()
@@ -114,15 +202,59 @@ fn completion_character(source: &str, prefix: &str) -> usize {
     line.find(prefix).expect("completion prefix should exist") + prefix.len()
 }
 
+fn type_definition_request(id: i64, uri: &str, source: &str) -> String {
+    request(
+        id,
+        "textDocument/typeDefinition",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": {
+                "line": 9,
+                "character": type_definition_character(source)
+            }
+        }),
+    )
+}
+
+fn type_definition_character(source: &str) -> usize {
+    let line = source
+        .lines()
+        .nth(9)
+        .expect("type-definition line should exist");
+    line.find("inventory")
+        .expect("type-definition target should exist")
+}
+
+fn assert_type_definition_range(
+    response: &serde_json::Value,
+    expected_uri: &str,
+    expected_start: usize,
+    expected_end: usize,
+) {
+    assert_eq!(response["result"]["uri"], expected_uri);
+    assert_eq!(response["result"]["range"]["start"]["line"], 0);
+    assert_eq!(
+        response["result"]["range"]["start"]["character"],
+        expected_start
+    );
+    assert_eq!(response["result"]["range"]["end"]["line"], 0);
+    assert_eq!(
+        response["result"]["range"]["end"]["character"],
+        expected_end
+    );
+}
+
 fn temp_workspace() -> PathBuf {
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_close_overlay_{}_{}",
+        "vela_lsp_close_overlay_{}_{}_{}",
         std::process::id(),
-        suffix
+        suffix,
+        sequence
     ));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
