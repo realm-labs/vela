@@ -126,7 +126,11 @@ The lossless CST rowan refactor has started as a breaking syntax foundation
 track. Phase 1 is complete: `vela_syntax` now has the `rowan` dependency,
 `SyntaxKind`, `VelaLanguage`, syntax node/token aliases, `SyntaxTreeBuilder`,
 and a minimal `Parse<T>` green-tree shell while the old production parser
-remains unchanged for follow-on lexer/parser migration.
+remains unchanged for follow-on lexer/parser migration. Phase 2 is complete:
+the lexer now carries a parser-facing significant token stream plus a
+lossless token stream that preserves whitespace, comments, shebangs, unknown
+characters, malformed token fragments, exact source text, and existing lexical
+diagnostics for later CST construction.
 
 ## Milestone Snapshot
 

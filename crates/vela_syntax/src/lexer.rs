@@ -1,11 +1,13 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
+use crate::SyntaxKind;
 use crate::ast::{FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix};
-use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKind};
+use crate::token::{InterpolatedStringTokenPart, Keyword, LosslessToken, Symbol, Token, TokenKind};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Lexed {
     pub tokens: Vec<Token>,
+    pub lossless_tokens: Vec<LosslessToken>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -25,6 +27,7 @@ struct Lexer<'src> {
     base_offset: u32,
     offset: usize,
     tokens: Vec<Token>,
+    lossless_tokens: Vec<LosslessToken>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -36,6 +39,7 @@ impl<'src> Lexer<'src> {
             base_offset: 0,
             offset: 0,
             tokens: Vec::new(),
+            lossless_tokens: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -47,20 +51,19 @@ impl<'src> Lexer<'src> {
             base_offset,
             offset: 0,
             tokens: Vec::new(),
+            lossless_tokens: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
 
     fn lex(mut self) -> Lexed {
-        self.skip_shebang();
+        self.lex_shebang();
 
         while let Some(ch) = self.peek_char() {
             match ch {
-                ' ' | '\t' | '\r' | '\n' => {
-                    self.bump_char();
-                }
-                '/' if self.peek_next_char() == Some('/') => self.skip_line_comment(),
-                '/' if self.peek_next_char() == Some('*') => self.skip_block_comment(),
+                ' ' | '\t' | '\r' | '\n' => self.lex_whitespace(),
+                '/' if self.peek_next_char() == Some('/') => self.lex_line_comment(),
+                '/' if self.peek_next_char() == Some('*') => self.lex_block_comment(),
                 '"' if self.starts_with_at_current("\"\"\"") => self.lex_multiline_string(),
                 '"' => self.lex_string(),
                 'f' if self.peek_next_char() == Some('"') => self.lex_interpolated_string(),
@@ -75,21 +78,32 @@ impl<'src> Lexer<'src> {
         self.push_token(TokenKind::Eof, self.offset, self.offset);
         Lexed {
             tokens: self.tokens,
+            lossless_tokens: self.lossless_tokens,
             diagnostics: self.diagnostics,
         }
     }
 
-    fn skip_shebang(&mut self) {
+    fn lex_shebang(&mut self) {
         if self.offset != 0
             || !(self.peek_char() == Some('#') && self.peek_next_char() == Some('!'))
         {
             return;
         }
+        let start = self.offset;
         while let Some(ch) = self.bump_char() {
             if ch == '\n' {
                 break;
             }
         }
+        self.push_lossless_token(SyntaxKind::Shebang, start, self.offset);
+    }
+
+    fn lex_whitespace(&mut self) {
+        let start = self.offset;
+        while matches!(self.peek_char(), Some(' ' | '\t' | '\r' | '\n')) {
+            self.bump_char();
+        }
+        self.push_lossless_token(SyntaxKind::Whitespace, start, self.offset);
     }
 
     fn peek_char(&self) -> Option<char> {
@@ -129,7 +143,27 @@ impl<'src> Lexer<'src> {
         }
     }
 
+    fn lex_line_comment(&mut self) {
+        let start = self.offset;
+        self.bump_char();
+        self.bump_char();
+        while self.peek_char().is_some_and(|ch| ch != '\n') {
+            self.bump_char();
+        }
+        self.push_lossless_token(SyntaxKind::LineComment, start, self.offset);
+    }
+
     fn skip_block_comment(&mut self) {
+        self.consume_block_comment();
+    }
+
+    fn lex_block_comment(&mut self) {
+        let start = self.offset;
+        self.consume_block_comment();
+        self.push_lossless_token(SyntaxKind::BlockComment, start, self.offset);
+    }
+
+    fn consume_block_comment(&mut self) {
         let start = self.offset;
         self.bump_char();
         self.bump_char();
@@ -213,6 +247,7 @@ impl<'src> Lexer<'src> {
                 .with_code("E_LEX_STRING")
                 .with_span(self.span(start, self.offset)),
         );
+        self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
     }
 
     fn lex_char(&mut self) {
@@ -278,6 +313,7 @@ impl<'src> Lexer<'src> {
             }
         }
         self.push_char_literal_diagnostic(start);
+        self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
     }
 
     fn lex_multiline_string(&mut self) {
@@ -300,6 +336,7 @@ impl<'src> Lexer<'src> {
                 .with_code("E_LEX_MULTILINE_STRING")
                 .with_span(self.span(start, self.offset)),
         );
+        self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
     }
 
     fn lex_interpolated_string(&mut self) {
@@ -376,6 +413,7 @@ impl<'src> Lexer<'src> {
                 .with_code(code)
                 .with_span(self.span(start, self.offset)),
         );
+        self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
     }
 
     fn lex_interpolated_escape(&mut self, text: &mut String) {
@@ -549,6 +587,7 @@ impl<'src> Lexer<'src> {
                 .with_code("E_LEX_BYTE_STRING")
                 .with_span(self.span(start, self.offset)),
         );
+        self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
     }
 
     fn lex_byte_escape(&mut self, value: &mut Vec<u8>) {
@@ -1021,6 +1060,7 @@ impl<'src> Lexer<'src> {
         if let Some(symbol) = symbol {
             self.push_token(TokenKind::Symbol(symbol), start, self.offset);
         } else {
+            self.push_lossless_token(SyntaxKind::Unknown, start, self.offset);
             self.diagnostics.push(
                 Diagnostic::error(format!("unexpected character `{ch}`"))
                     .with_code("E_LEX_CHAR")
@@ -1030,9 +1070,18 @@ impl<'src> Lexer<'src> {
     }
 
     fn push_token(&mut self, kind: TokenKind, start: usize, end: usize) {
+        self.push_lossless_token(kind.syntax_kind(), start, end);
         self.tokens.push(Token {
             kind,
             span: self.span(start, end),
+        });
+    }
+
+    fn push_lossless_token(&mut self, kind: SyntaxKind, start: usize, end: usize) {
+        self.lossless_tokens.push(LosslessToken {
+            kind,
+            span: self.span(start, end),
+            text: self.slice(start, end).to_owned(),
         });
     }
 

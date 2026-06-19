@@ -224,6 +224,70 @@ fn lexes_leading_shebang_as_layout() {
 }
 
 #[test]
+fn lexes_lossless_tokens_that_reconstruct_source() {
+    let source = "#!/usr/bin/env vela\n// leading\nfn main() {\n  /* nested /* ok */ comment */\n  return \"a\\\\n\";\n}\n";
+    let lexed = lex(source_id(), source);
+
+    assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+    assert_eq!(
+        lexed
+            .lossless_tokens
+            .iter()
+            .map(|token| token.text.as_str())
+            .collect::<String>(),
+        source
+    );
+    assert_eq!(
+        lexed
+            .lossless_tokens
+            .iter()
+            .map(|token| token.kind)
+            .take(6)
+            .collect::<Vec<_>>(),
+        vec![
+            crate::SyntaxKind::Shebang,
+            crate::SyntaxKind::LineComment,
+            crate::SyntaxKind::Whitespace,
+            crate::SyntaxKind::FnKw,
+            crate::SyntaxKind::Whitespace,
+            crate::SyntaxKind::Ident,
+        ]
+    );
+}
+
+#[test]
+fn lexes_lossless_unknown_tokens_for_malformed_fragments() {
+    let source = "'ab' @ \"unterminated";
+    let lexed = lex(source_id(), source);
+
+    assert_eq!(
+        lexed
+            .tokens
+            .iter()
+            .map(|token| token.kind.clone())
+            .collect::<Vec<_>>(),
+        vec![TokenKind::Eof]
+    );
+    assert_eq!(
+        lexed
+            .lossless_tokens
+            .iter()
+            .map(|token| token.text.as_str())
+            .collect::<String>(),
+        source
+    );
+    assert_eq!(
+        lexed
+            .lossless_tokens
+            .iter()
+            .filter(|token| token.kind == crate::SyntaxKind::Unknown)
+            .map(|token| token.text.as_str())
+            .collect::<Vec<_>>(),
+        vec!["'ab'", "@", "\"unterminated"]
+    );
+}
+
+#[test]
 fn lexes_unicode_string_escapes() {
     let lexed = lex(source_id(), r#""\u{41}\u{7a}""#);
 

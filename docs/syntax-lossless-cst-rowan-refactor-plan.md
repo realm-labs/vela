@@ -248,7 +248,7 @@ cargo test -p vela_syntax parser
 
 ### Phase 2: Replace lexer with lossless tokenization
 
-- [ ] Task: Make lexical output preserve all source text.
+- [x] Task: Make lexical output preserve all source text.
 
 Expected behavior:
 
@@ -508,7 +508,7 @@ Tests:
 cargo test -p vela_syntax syntax
 ```
 
-- [ ] Task 2: Make lexer output lossless.
+- [x] Task 2: Make lexer output lossless.
 
 Context: The parser cannot become lossless until trivia and unknown text survive
 lexing.
