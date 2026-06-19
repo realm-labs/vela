@@ -63,9 +63,9 @@ fn dispatch_request(
         .on_latency_sensitive_typed::<SignatureHelpRequest>(GlobalState::signature_help)
         .on_latency_sensitive::<SemanticTokensFullRequest>()
         .on_latency_sensitive::<SemanticTokensFullDeltaRequest>()
-        .on_worker::<GotoDefinition>()
-        .on_worker::<GotoDeclaration>()
-        .on_worker::<GotoTypeDefinition>()
+        .on_worker_typed::<GotoDefinition>(GlobalState::definition)
+        .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
+        .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
         .on_worker::<References>()
         .on_worker::<Rename>()
         .on_worker::<CodeActionRequest>()
@@ -168,6 +168,18 @@ impl<'a> RequestDispatcher<'a> {
         R: lsp_types::request::Request,
     {
         self.dispatch_legacy::<R>();
+        self
+    }
+
+    pub(crate) fn on_worker_typed<R>(
+        &mut self,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_typed::<R>(f);
         self
     }
 

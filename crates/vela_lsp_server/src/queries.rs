@@ -400,6 +400,85 @@ impl LspServer {
         )
     }
 
+    pub(crate) fn definition_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::GotoDefinitionParams,
+    ) -> JsonRpcResult {
+        self.navigation_location_typed(
+            id,
+            params,
+            "definition",
+            NavigationLocationQuery::Definition,
+        )
+    }
+
+    pub(crate) fn declaration_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::request::GotoDeclarationParams,
+    ) -> JsonRpcResult {
+        self.navigation_location_typed(
+            id,
+            params,
+            "declaration",
+            NavigationLocationQuery::Declaration,
+        )
+    }
+
+    pub(crate) fn type_definition_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::request::GotoTypeDefinitionParams,
+    ) -> JsonRpcResult {
+        self.navigation_location_typed(
+            id,
+            params,
+            "typeDefinition",
+            NavigationLocationQuery::TypeDefinition,
+        )
+    }
+
+    fn navigation_location_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::GotoDefinitionParams,
+        method_name: &'static str,
+        query: NavigationLocationQuery,
+    ) -> JsonRpcResult {
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::goto_definition_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid {method_name} position: {error}"),
+                ));
+            }
+        };
+        let definition = match query {
+            NavigationLocationQuery::Definition => self
+                .databases
+                .definition(&input.document_id, input.position),
+            NavigationLocationQuery::Declaration => self
+                .databases
+                .declaration(&input.document_id, input.position),
+            NavigationLocationQuery::TypeDefinition => self
+                .databases
+                .type_definition(&input.document_id, input.position),
+        };
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(definition.as_ref().map(to_proto::definition_location))
+                .expect("typed navigation response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         &mut self,
         id: Option<RequestId>,

@@ -75,6 +75,13 @@ pub(crate) fn signature_help_params(
     text_document_position(text, &params.text_document_position_params)
 }
 
+pub(crate) fn goto_definition_params(
+    text: &str,
+    params: &lsp_types::GotoDefinitionParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position_params)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -227,6 +234,29 @@ mod tests {
         };
 
         let input = signature_help_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn goto_definition_params_convert_nested_position_input() {
+        let params = lsp_types::GotoDefinitionParams {
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        let input = goto_definition_params("main", &params).expect("position should convert");
 
         assert_eq!(
             input.document_id,

@@ -622,6 +622,9 @@ cargo test -p vela_lsp_server workspace_folders
   - `textDocument/completion` now uses typed `CompletionParams` through the
     latency-sensitive dispatch category and converts its nested text-document
     position through `lsp/from_proto.rs`.
+  - `textDocument/definition`, `textDocument/declaration`, and
+    `textDocument/typeDefinition` now convert typed `GotoDefinitionParams`
+    and its protocol aliases through `lsp/from_proto.rs`.
 - [~] Create `lsp/to_proto.rs` for diagnostics, completion, hover,
   definitions, symbols, semantic tokens, references, rename edits, code
   actions, call hierarchy, folding, selection ranges, formatting edits, and
@@ -629,6 +632,8 @@ cargo test -p vela_lsp_server workspace_folders
   - Initial `lsp/to_proto.rs` now projects completion lists into typed
     `lsp_types::CompletionResponse` values. Broader feature projections and
     legacy raw JSON helpers remain to migrate.
+  - Navigation definitions now project through typed `lsp_types::Location`
+    values for definition, declaration, and type-definition responses.
 - [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
@@ -666,6 +671,16 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service signature`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/definition`, `textDocument/declaration`, and
+    `textDocument/typeDefinition` now use typed params through `GlobalState`
+    and typed `lsp_types::Location` projection through `lsp/to_proto.rs`.
+    Validated with `cargo test -p vela_lsp_server definition`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service definition`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

@@ -1,8 +1,8 @@
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionResolvePayload, CompletionSymbol, DiagnosticRange, Hover, HoverKind, LineIndex,
-    SignatureHelp, TextRange,
+    CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, Hover, HoverKind,
+    LineIndex, SignatureHelp, TextRange,
 };
 
 pub(crate) fn completion_response(
@@ -58,6 +58,14 @@ pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {
         active_parameter: Some(
             u32::try_from(help.active_parameter()).expect("active parameter should fit in u32"),
         ),
+    }
+}
+
+pub(crate) fn definition_location(definition: &Definition) -> lsp_types::Location {
+    lsp_types::Location {
+        uri: lsp_types::Url::parse(definition.document_id().as_str())
+            .expect("definition document id should be a valid LSP URI"),
+        range: diagnostic_range(definition.range()),
     }
 }
 
@@ -405,6 +413,40 @@ mod tests {
         assert_eq!(
             parameters[1].label,
             lsp_types::ParameterLabel::Simple("bonus: i64".to_owned())
+        );
+    }
+
+    #[test]
+    fn definition_location_projects_typed_location() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("main line should exist")
+                .find("grant")
+                .expect("call should contain grant"),
+        );
+        let definition = databases
+            .definition(&document, position)
+            .expect("call should have definition");
+
+        let location = definition_location(&definition);
+
+        assert_eq!(location.uri.as_str(), document.as_str());
+        assert_eq!(
+            location.range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 7),
+                lsp_types::Position::new(0, 12)
+            )
         );
     }
 }

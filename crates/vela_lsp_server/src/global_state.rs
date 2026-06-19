@@ -357,6 +357,39 @@ impl GlobalState {
         result
     }
 
+    pub(crate) fn definition(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: lsp_types::GotoDefinitionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.definition_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn declaration(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: lsp_types::request::GotoDeclarationParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.declaration_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn type_definition(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: lsp_types::request::GotoTypeDefinitionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.type_definition_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
     pub(crate) fn did_change_configuration(
         &mut self,
         params: DidChangeConfigurationParams,
@@ -1308,6 +1341,71 @@ mod tests {
     }
 
     #[test]
+    fn typed_navigation_dispatch_projects_location_responses() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+struct Inventory {
+    slots: i64,
+}
+
+struct Player {
+    inventory: Inventory,
+}
+
+fn grant() -> i64 { return 1 }
+fn main(player: Player) { grant(); return player.inventory }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        for (id, method) in [
+            (10, "textDocument/definition"),
+            (11, "textDocument/declaration"),
+        ] {
+            let response = typed_navigation_response(
+                &mut state,
+                id,
+                method,
+                &document,
+                9,
+                text.lines()
+                    .nth(9)
+                    .expect("main line should exist")
+                    .find("grant")
+                    .expect("call should contain grant"),
+            );
+            assert_eq!(response["result"]["uri"], document.as_str());
+            assert_eq!(response["result"]["range"]["start"]["line"], 8);
+            assert_eq!(response["result"]["range"]["start"]["character"], 3);
+            assert_eq!(response["result"]["range"]["end"]["character"], 8);
+        }
+
+        let response = typed_navigation_response(
+            &mut state,
+            12,
+            "textDocument/typeDefinition",
+            &document,
+            9,
+            text.lines()
+                .nth(9)
+                .expect("main line should exist")
+                .rfind("inventory")
+                .expect("field use should contain inventory"),
+        );
+        assert_eq!(response["result"]["uri"], document.as_str());
+        assert_eq!(response["result"]["range"]["start"]["line"], 0);
+        assert_eq!(response["result"]["range"]["start"]["character"], 7);
+        assert_eq!(response["result"]["range"]["end"]["character"], 16);
+    }
+
+    #[test]
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1344,6 +1442,40 @@ mod tests {
             params: serde_json::json!({}),
         });
         assert_eq!(RequestQueue::request_id(&message), Some(string));
+    }
+
+    fn typed_navigation_response(
+        state: &mut GlobalState,
+        id: i32,
+        method: &str,
+        document: &DocumentId,
+        line: u32,
+        character: usize,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: method.to_owned(),
+            params: serde_json::to_value(lsp_types::GotoDefinitionParams {
+                text_document_position_params: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        line,
+                        u32::try_from(character).expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("goto params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed navigation should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
     }
 
     fn workspace_config_with_schema(root: &str, schema: &str) -> WorkspaceConfig {
