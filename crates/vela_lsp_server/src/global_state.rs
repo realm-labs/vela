@@ -3,9 +3,9 @@ use std::collections::BTreeSet;
 use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
-    DidChangeConfigurationParams, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
-    DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams,
+    CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
+    DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -313,6 +313,17 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
+    }
+
+    pub(crate) fn completion(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: CompletionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.completion_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
     }
 
     pub(crate) fn did_change_configuration(

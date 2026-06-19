@@ -17,6 +17,7 @@ use crate::{
     formatting::lsp_text_edits,
     hover::lsp_hover,
     inlay::lsp_inlay_hints,
+    lsp::from_proto,
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
     protocol::CallHierarchyPrepareParams,
@@ -150,6 +151,35 @@ impl LspServer {
             Err(response) => return response,
         };
         let completions = self.databases.completion_items(&document_id, position);
+        let line_index = ServiceLineIndex::new(&text);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            lsp_completion_list(&completions, &line_index),
+        ))
+    }
+
+    pub(crate) fn completion_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CompletionParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::completion_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completion position: {error}"),
+                ));
+            }
+        };
+        let completions = self
+            .databases
+            .completion_items(&input.document_id, input.position);
         let line_index = ServiceLineIndex::new(&text);
 
         JsonRpcResult::Response(success_response(

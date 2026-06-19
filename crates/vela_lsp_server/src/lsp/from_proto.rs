@@ -54,6 +54,13 @@ pub(crate) fn text_document_position(
     })
 }
 
+pub(crate) fn completion_params(
+    text: &str,
+    params: &lsp_types::CompletionParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -143,6 +150,30 @@ mod tests {
             DocumentId::from("file:///workspace/scripts/main.vela")
         );
         assert_eq!(input.position, Position::new(1, 0));
+    }
+
+    #[test]
+    fn completion_params_convert_nested_position_input() {
+        let params = lsp_types::CompletionParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+            context: None,
+        };
+
+        let input = completion_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
     }
 
     #[test]

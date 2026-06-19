@@ -56,7 +56,7 @@ fn dispatch_request(
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
         .on_sync::<DocumentSymbolRequest>()
-        .on_latency_sensitive::<Completion>()
+        .on_latency_sensitive_typed::<Completion>(GlobalState::completion)
         .on_latency_sensitive::<HoverRequest>()
         .on_latency_sensitive::<SignatureHelpRequest>()
         .on_latency_sensitive::<SemanticTokensFullRequest>()
@@ -129,23 +129,7 @@ impl<'a> RequestDispatcher<'a> {
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug,
     {
-        let Some(request) = self.take_matching::<R>() else {
-            return self;
-        };
-        let id = request.id;
-        let params = match serde_json::from_value::<R::Params>(request.params) {
-            Ok(params) => params,
-            Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
-                return self;
-            }
-        };
-        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            f(self.global_state, id.clone(), params)
-        })) {
-            Ok(result) => result,
-            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-        };
+        self.dispatch_typed::<R>(f);
         self
     }
 
@@ -162,6 +146,18 @@ impl<'a> RequestDispatcher<'a> {
         R: lsp_types::request::Request,
     {
         self.dispatch_legacy::<R>();
+        self
+    }
+
+    pub(crate) fn on_latency_sensitive_typed<R>(
+        &mut self,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        self.dispatch_typed::<R>(f);
         self
     }
 
@@ -199,6 +195,32 @@ impl<'a> RequestDispatcher<'a> {
         if self.take_matching::<R>().is_some() {
             self.result = self.global_state.handle_legacy_json(self.legacy_input);
         }
+    }
+
+    fn dispatch_typed<R>(
+        &mut self,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            f(self.global_state, id.clone(), params)
+        })) {
+            Ok(result) => result,
+            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+        };
     }
 
     fn take_matching<R>(&mut self) -> Option<Request>
