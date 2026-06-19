@@ -432,6 +432,70 @@ mod tests {
     }
 
     #[test]
+    fn typed_dispatcher_reports_unsupported_requests() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "capabilities": {}
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "textDocument/implementation",
+                "params": {
+                    "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+                    "position": { "line": 0, "character": 0 }
+                }
+            })))
+            .expect("unsupported request should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, LaunchConfiguration::new())
+            .expect("typed connection should run");
+
+        let responses = client_receiver
+            .try_iter()
+            .filter_map(|message| match message {
+                Message::Response(response) => Some(response),
+                Message::Request(_) | Message::Notification(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(responses.len(), 2, "{responses:?}");
+        assert_eq!(responses[0].id.to_string(), "1");
+        assert!(responses[0].error.is_none());
+        assert_eq!(responses[1].id.to_string(), "2");
+        let error = responses[1]
+            .error
+            .as_ref()
+            .expect("unsupported request should produce an error");
+        assert_eq!(error.code, -32601);
+        assert_eq!(
+            error.message,
+            "method `textDocument/implementation` is not implemented"
+        );
+    }
+
+    #[test]
     fn tcp_rejects_non_loopback_bind_address() {
         let error = super::bind_loopback_tcp_listener("0.0.0.0:0")
             .expect_err("non-loopback bind should be rejected");

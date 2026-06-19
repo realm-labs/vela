@@ -40,6 +40,14 @@ impl GlobalState {
         self.server.is_exited()
     }
 
+    pub(crate) const fn is_initialized(&self) -> bool {
+        self.server.is_initialized()
+    }
+
+    pub(crate) const fn is_shutdown_requested(&self) -> bool {
+        self.server.is_shutdown_requested()
+    }
+
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
         self.server.handle_json(input)
     }

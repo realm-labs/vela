@@ -625,6 +625,13 @@ request categories. The categories currently delegate through the legacy
 handler bridge while lifecycle parameter/result migration remains the next
 Phase 2 task.
 
+M20.5 RA-style main-loop update: shared dispatch/main-loop error projection is
+now in progress. Post-initialize unknown requests are projected from
+`handlers/dispatch.rs`, unknown notifications are no-response no-ops at the
+dispatcher finish boundary, and pre-initialize plus post-shutdown gates still
+delegate through the legacy lifecycle bridge until typed lifecycle migration
+lands.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

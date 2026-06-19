@@ -439,7 +439,7 @@ cargo test -p vela_lsp_server lifecycle
 - [x] Implement explicit dispatcher APIs for `on_sync_mut`, `on_sync`,
   latency-sensitive background requests, formatting-lane requests, and worker
   requests.
-- [ ] Centralize invalid params, panic, cancellation, stale generation,
+- [~] Centralize invalid params, panic, cancellation, stale generation,
   `ContentModified`, `RequestCancelled`, method-not-found, and unknown
   notification projection in dispatch/main-loop code.
 - [ ] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and

@@ -13,7 +13,7 @@ use lsp_types::{
     },
 };
 
-use crate::{JsonRpcResult, global_state::GlobalState};
+use crate::{ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState};
 
 pub(crate) fn dispatch_message(
     global_state: &mut GlobalState,
@@ -136,9 +136,14 @@ impl<'a> RequestDispatcher<'a> {
     }
 
     pub(crate) fn finish(&mut self) -> JsonRpcResult {
-        if self.request.is_some() {
-            self.result = self.global_state.handle_legacy_json(self.legacy_input);
-            self.request = None;
+        if let Some(request) = self.request.take() {
+            self.result = if !self.global_state.is_initialized()
+                || self.global_state.is_shutdown_requested()
+            {
+                self.global_state.handle_legacy_json(self.legacy_input)
+            } else {
+                method_not_found(request.id, &request.method)
+            };
         }
         std::mem::replace(&mut self.result, JsonRpcResult::None)
     }
@@ -195,10 +200,22 @@ impl<'a> NotificationDispatcher<'a> {
     }
 
     pub(crate) fn finish(&mut self) -> JsonRpcResult {
-        if self.notification.is_some() {
-            self.result = self.global_state.handle_legacy_json(self.legacy_input);
-            self.notification = None;
+        if self.notification.take().is_some() {
+            self.result = JsonRpcResult::None;
         }
         std::mem::replace(&mut self.result, JsonRpcResult::None)
     }
+}
+
+fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(rpc_request_id(id)),
+        ErrorCode::MethodNotFound,
+        format!("method `{method}` is not implemented"),
+    ))
+}
+
+fn rpc_request_id(id: lsp_server::RequestId) -> RequestId {
+    let value = serde_json::to_value(id).expect("lsp-server request id should serialize");
+    serde_json::from_value(value).expect("lsp-server request id should match JSON-RPC id shape")
 }
