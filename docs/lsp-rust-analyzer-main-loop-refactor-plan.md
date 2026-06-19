@@ -1160,8 +1160,16 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_lsp_server formatting`, and
     `cargo test -p vela_lsp_server completion`.
-- [ ] Ensure formatting uses the formatting lane and cannot starve behind
+- [x] Ensure formatting uses the formatting lane and cannot starve behind
   normal worker requests.
+  - `on_fmt_thread_snapshot_typed` now schedules snapshot formatting work on
+    `TaskLane::Formatting`, and the direct typed formatting tests consume
+    formatting task results. `next_event_prioritizes_ready_formatting_task_over_worker_task`
+    pins that a ready formatting result is selected before a ready worker
+    result. Validated with `cargo test -p vela_lsp_server formatting`,
+    `cargo test -p vela_lsp_server next_event`,
+    `cargo test -p vela_lsp_server lifecycle`, and
+    `cargo test -p vela_lsp_server completion`.
 - [x] Add tests that simulate a queued long request and a following document
   change or cancel notification.
   - `next_event_receives_client_message_while_worker_task_is_pending` pins the

@@ -119,7 +119,10 @@ fn panic_message(payload: &Box<dyn Any + Send>) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{
+        thread,
+        time::{Duration, Instant},
+    };
 
     use crossbeam_channel::unbounded;
     use lsp_server::{Message, Notification};
@@ -213,6 +216,46 @@ mod tests {
     }
 
     #[test]
+    fn next_event_prioritizes_ready_formatting_task_over_worker_task() {
+        let (response_sender, _response_receiver) = unbounded();
+        let (_message_sender, message_receiver) = unbounded();
+        let state = GlobalState::new(response_sender, LaunchConfiguration::default());
+
+        state.task_scheduler().spawn_for_method(
+            TaskLane::Worker,
+            "textDocument/references",
+            || JsonRpcResult::Response("worker".to_owned()),
+        );
+        state.task_scheduler().spawn_for_method(
+            TaskLane::Formatting,
+            "textDocument/formatting",
+            || JsonRpcResult::Response("formatting".to_owned()),
+        );
+        wait_for_ready_task_results(&state);
+
+        let event = next_event(&message_receiver, &state)
+            .expect("formatting task event should be selected");
+
+        let MainLoopEvent::Task(task) = event else {
+            panic!("expected task event");
+        };
+        assert_eq!(task.lane(), TaskLane::Formatting);
+        assert_eq!(task.method(), Some("textDocument/formatting"));
+        assert_eq!(
+            task.into_result(),
+            JsonRpcResult::Response("formatting".to_owned())
+        );
+
+        let worker = state
+            .task_scheduler()
+            .worker_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker task should remain queued");
+        assert_eq!(worker.lane(), TaskLane::Worker);
+        assert_eq!(worker.method(), Some("textDocument/references"));
+    }
+
+    #[test]
     fn latency_main_loop_thread_is_named_without_custom_stack() {
         let (name_sender, name_receiver) = unbounded();
         let handle = spawn_latency_main_loop_thread(move || {
@@ -235,5 +278,18 @@ mod tests {
                 .as_deref(),
             Some(MAIN_LOOP_THREAD_NAME)
         );
+    }
+
+    fn wait_for_ready_task_results(state: &GlobalState) {
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while Instant::now() < deadline {
+            if !state.task_scheduler().formatting_results().is_empty()
+                && !state.task_scheduler().worker_results().is_empty()
+            {
+                return;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        panic!("formatting and worker task results should be ready");
     }
 }

@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 
 use crate::{
     ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState,
-    global_state::GlobalStateSnapshot, rpc::request_id_from_lsp,
+    global_state::GlobalStateSnapshot, rpc::request_id_from_lsp, task::TaskLane,
 };
 
 pub(crate) fn dispatch_message(
@@ -168,9 +168,9 @@ impl<'a> RequestDispatcher<'a> {
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug,
+        R::Params: DeserializeOwned + Debug + Send + 'static,
     {
-        self.dispatch_snapshot_typed::<R>(f);
+        self.dispatch_snapshot_task_typed::<R>(TaskLane::Formatting, f);
         self
     }
 
@@ -248,6 +248,39 @@ impl<'a> RequestDispatcher<'a> {
             Ok(result) => result,
             Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
         };
+    }
+
+    fn dispatch_snapshot_task_typed<R>(
+        &mut self,
+        lane: TaskLane,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + 'static,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        self.global_state
+            .task_scheduler()
+            .spawn_for_method(lane, R::METHOD, move || {
+                match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    f(snapshot, id.clone(), params)
+                })) {
+                    Ok(result) => result,
+                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                }
+            });
+        self.result = JsonRpcResult::None;
     }
 
     fn take_matching<R>(&mut self) -> Option<Request>

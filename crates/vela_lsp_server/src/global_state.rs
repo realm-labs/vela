@@ -1280,10 +1280,14 @@ impl RequestQueue {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use crossbeam_channel::unbounded;
     use vela_language_service::{
         DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
     };
+
+    use crate::task::TaskLane;
 
     use super::*;
 
@@ -3196,9 +3200,8 @@ pub fn main(amount: i64) -> i64 {
             .expect("formatting params should serialize"),
         });
         let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed formatting should return a response");
+        let response =
+            formatting_task_response(state, result, "typed formatting should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
@@ -3225,9 +3228,11 @@ pub fn main(amount: i64) -> i64 {
             .expect("rangeFormatting params should serialize"),
         });
         let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed rangeFormatting should return a response");
+        let response = formatting_task_response(
+            state,
+            result,
+            "typed rangeFormatting should return a response",
+        );
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
@@ -3253,10 +3258,29 @@ pub fn main(amount: i64) -> i64 {
             .expect("onTypeFormatting params should serialize"),
         });
         let result = state.handle_message(&request, "");
-        let response = result
-            .into_response()
-            .expect("typed onTypeFormatting should return a response");
+        let response = formatting_task_response(
+            state,
+            result,
+            "typed onTypeFormatting should return a response",
+        );
         serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn formatting_task_response(
+        state: &mut GlobalState,
+        result: JsonRpcResult,
+        expected: &str,
+    ) -> String {
+        if let Some(response) = result.into_response() {
+            return response;
+        }
+        let task = state
+            .task_scheduler()
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect(expected);
+        assert_eq!(task.lane(), TaskLane::Formatting);
+        task.into_result().into_response().expect(expected)
     }
 
     fn lsp_formatting_options() -> lsp_types::FormattingOptions {
