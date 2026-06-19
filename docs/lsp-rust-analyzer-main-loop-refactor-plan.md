@@ -1729,15 +1729,23 @@ helper references are allowed only if they describe external JSON fixtures.
     `cargo test -p vela_lsp_server send_task_result`,
     `cargo test -p vela_lsp_server task`, and
     `cargo test -p vela_lsp_server trace`.
-- [ ] Include method, request ID, document URI when available, generation,
+- [x] Include method, request ID, document URI when available, generation,
   queueMs, handleMs, writeMs, totalMs, outputBytes, lane, and status.
   - Sync `response_sent` trace events now include `handleMs`, `writeMs`, and
     `totalMs`. Task status and task `response_sent` trace events now include
     `queueMs`, `handleMs`, `writeMs`, and `totalMs` from scheduler timing and
-    main-loop send timing. Background task document URI propagation remains
-    open. Validated with `cargo test -p vela_lsp_server trace`,
+    main-loop send timing. Validated with
+    `cargo test -p vela_lsp_server trace`,
     `cargo test -p vela_lsp_server task`, and
     `cargo fmt --all -- --check`.
+  - Background task scheduling now extracts `textDocument.uri` from typed LSP
+    request params into `TaskRequestMetadata`, and task lifecycle/status/result
+    trace events include `documentUri` when present. All trace event families
+    now include a `status` string for the current event phase. Validated with
+    `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
+    `cargo test -p vela_lsp_server task`,
+    `cargo test -p vela_lsp_server trace`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Preserve the ability to identify a stuck handler from an unmatched or
   incomplete event sequence.
 - [ ] Document how to compare server handler time with VS Code-side stalls.

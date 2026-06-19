@@ -2609,6 +2609,7 @@ pub fn main(player: Player) -> i64 {
             .formatting_results()
             .recv_timeout(Duration::from_secs(1))
             .expect("formatting task should complete");
+        assert_eq!(task.document_uri(), Some(document.as_str()));
         assert_eq!(task.request_id(), Some(&request_id));
         let generation = task
             .generation_token()

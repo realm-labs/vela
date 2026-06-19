@@ -323,7 +323,7 @@ impl profile::ProfileSummary for ResultSummary {
     }
 }
 
-fn document_uri(value: &serde_json::Value) -> Option<String> {
+pub(crate) fn document_uri(value: &serde_json::Value) -> Option<String> {
     value
         .pointer("/textDocument/uri")
         .or_else(|| value.pointer("/uri"))

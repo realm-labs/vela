@@ -252,8 +252,11 @@ decision is made.
 M20.5 RA main-loop update: sync `response_sent` trace JSONL now includes
 handler, write, and total timing. Task status and task `response_sent` events
 now include queue, handler, write, and total timing from scheduler and
-main-loop send measurements; background task document URI propagation remains
-open.
+main-loop send measurements.
+M20.5 RA main-loop update: background task scheduling now extracts document
+URIs from typed LSP params into task metadata, and task lifecycle/status/result
+trace JSONL includes `documentUri` when present. Trace event families now
+include status strings for the current phase or outcome.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

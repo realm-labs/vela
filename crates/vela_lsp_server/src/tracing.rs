@@ -21,6 +21,7 @@ enum TraceWriter {
 pub(crate) struct TaskTraceMetadata {
     method: Option<String>,
     id: Option<String>,
+    document_uri: Option<String>,
     generation: Option<u64>,
     lane: &'static str,
     timing: Option<TaskTiming>,
@@ -31,6 +32,7 @@ impl TaskTraceMetadata {
         Self {
             method: task.method().map(str::to_owned),
             id: task.request_id().map(request_id_string),
+            document_uri: task.document_uri().map(str::to_owned),
             generation: task
                 .generation_token()
                 .map(|token| token.generation().get()),
@@ -72,7 +74,8 @@ impl TraceSink {
             "id": metadata.id(),
             "documentUri": metadata.document_uri(),
             "inputBytes": input_bytes,
-            "lane": "main"
+            "lane": "main",
+            "status": "received"
         }))
     }
 
@@ -98,7 +101,8 @@ impl TraceSink {
             "lane": "main",
             "handleMs": handle_ms,
             "writeMs": write_ms,
-            "totalMs": handle_ms.saturating_add(write_ms)
+            "totalMs": handle_ms.saturating_add(write_ms),
+            "status": "completed"
         }))
     }
 
@@ -128,6 +132,7 @@ impl TraceSink {
             "kind": "task",
             "method": metadata.method.as_deref(),
             "id": metadata.id.as_deref(),
+            "documentUri": metadata.document_uri.as_deref(),
             "generation": metadata.generation,
             "lane": metadata.lane,
             "resultKind": summary.kind(),
@@ -172,8 +177,10 @@ impl TraceSink {
             "timestampMs": timestamp_ms,
             "method": metadata.method.as_deref(),
             "id": metadata.id.as_deref(),
+            "documentUri": metadata.document_uri.as_deref(),
             "generation": metadata.generation,
             "lane": metadata.lane,
+            "status": task_lifecycle_status(event),
             "queueMs": timing.started_ms().saturating_sub(timing.queued_ms()),
             "handleMs": timing.ended_ms().saturating_sub(timing.started_ms())
         }))
@@ -192,6 +199,7 @@ impl TraceSink {
             "timestampMs": timestamp_ms(),
             "method": metadata.method.as_deref(),
             "id": metadata.id.as_deref(),
+            "documentUri": metadata.document_uri.as_deref(),
             "generation": metadata.generation,
             "lane": metadata.lane,
             "status": task_outcome_status(outcome),
@@ -249,6 +257,15 @@ fn task_outcome_status(outcome: TaskOutcome) -> &'static str {
         TaskOutcome::Cancelled => "cancelled",
         TaskOutcome::StaleDiscarded => "stale_discarded",
         TaskOutcome::Retried => "retried",
+    }
+}
+
+fn task_lifecycle_status(event: &str) -> &'static str {
+    match event {
+        "request_queued" => "queued",
+        "task_started" => "started",
+        "task_ended" => "ended",
+        _ => "unknown",
     }
 }
 
@@ -313,14 +330,12 @@ mod tests {
         configuration.set_trace_log_path(path.to_string_lossy().into_owned());
         let mut trace =
             TraceSink::from_configuration(&configuration).expect("file trace should open");
-        let task = TaskResult::lane_method_request_generation_timed_messages(
+        let task = TaskResult::timed_response_for_test(
             TaskLane::Worker,
             Some("textDocument/references".to_owned()),
+            Some("file:///workspace/scripts/main.vela".to_owned()),
             Some(RequestId::from(7)),
-            None,
-            None,
             TaskTiming::new(10, 14, 25),
-            Vec::new(),
         );
 
         trace
@@ -347,6 +362,10 @@ mod tests {
             .expect("task_ended event should be written");
         assert_eq!(task_ended["method"], "textDocument/references");
         assert_eq!(task_ended["id"], "7");
+        assert_eq!(
+            task_ended["documentUri"],
+            "file:///workspace/scripts/main.vela"
+        );
         assert_eq!(task_ended["lane"], "worker");
         assert_eq!(task_ended["queueMs"], 4);
         assert_eq!(task_ended["handleMs"], 11);
@@ -361,14 +380,12 @@ mod tests {
         configuration.set_trace_log_path(path.to_string_lossy().into_owned());
         let mut trace =
             TraceSink::from_configuration(&configuration).expect("file trace should open");
-        let task = TaskResult::lane_method_request_generation_timed_messages(
+        let task = TaskResult::timed_response_for_test(
             TaskLane::Formatting,
             Some("textDocument/formatting".to_owned()),
+            Some("file:///workspace/scripts/main.vela".to_owned()),
             Some(RequestId::from("fmt-1".to_owned())),
-            None,
-            None,
             TaskTiming::new(1, 2, 3),
-            Vec::new(),
         );
         let metadata = TaskTraceMetadata::from_task(&task);
         let summary = ResultSummary::from_messages(&[]);
@@ -411,6 +428,7 @@ mod tests {
             && event["kind"] == "task"
             && event["lane"] == "formatting"
             && event["id"] == "fmt-1"
+            && event["documentUri"] == "file:///workspace/scripts/main.vela"
             && event["queueMs"] == 1
             && event["handleMs"] == 1
             && event["writeMs"] == 4

@@ -18,6 +18,7 @@ pub(crate) enum TaskResult {
     Response {
         lane: TaskLane,
         method: Option<String>,
+        document_uri: Option<String>,
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
         retry: Option<Box<RetryTask>>,
@@ -61,6 +62,30 @@ pub(crate) enum TaskOutcome {
     Cancelled,
     StaleDiscarded,
     Retried,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TaskRequestMetadata {
+    method: String,
+    document_uri: Option<String>,
+    request_id: RequestId,
+    generation: GenerationToken,
+}
+
+impl TaskRequestMetadata {
+    pub(crate) fn new(
+        method: impl Into<String>,
+        document_uri: Option<String>,
+        request_id: RequestId,
+        generation: GenerationToken,
+    ) -> Self {
+        Self {
+            method: method.into(),
+            document_uri,
+            request_id,
+            generation,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -289,6 +314,50 @@ pub(crate) struct TaskScheduler {
     worker_results: Receiver<TaskResult>,
 }
 
+struct TaskDescriptor {
+    lane: TaskLane,
+    method: Option<String>,
+    document_uri: Option<String>,
+    request_id: Option<RequestId>,
+    generation: Option<GenerationToken>,
+    retry: Option<RetryTask>,
+}
+
+impl TaskDescriptor {
+    const fn lane(lane: TaskLane) -> Self {
+        Self {
+            lane,
+            method: None,
+            document_uri: None,
+            request_id: None,
+            generation: None,
+            retry: None,
+        }
+    }
+
+    fn method(lane: TaskLane, method: impl Into<String>) -> Self {
+        Self {
+            lane,
+            method: Some(method.into()),
+            document_uri: None,
+            request_id: None,
+            generation: None,
+            retry: None,
+        }
+    }
+
+    fn request(lane: TaskLane, request: TaskRequestMetadata, retry: Option<RetryTask>) -> Self {
+        Self {
+            lane,
+            method: Some(request.method),
+            document_uri: request.document_uri,
+            request_id: Some(request.request_id),
+            generation: Some(request.generation),
+            retry,
+        }
+    }
+}
+
 impl TaskScheduler {
     pub(crate) fn new() -> Self {
         let (latency_jobs, latency_results) = spawn_lane_worker(TaskLane::Latency);
@@ -310,7 +379,7 @@ impl TaskScheduler {
         lane: TaskLane,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
-        self.spawn_labeled(lane, None, None, None, None, job);
+        self.spawn_labeled(TaskDescriptor::lane(lane), job);
     }
 
     #[allow(dead_code)]
@@ -320,67 +389,42 @@ impl TaskScheduler {
         method: impl Into<String>,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
-        self.spawn_labeled(lane, Some(method.into()), None, None, None, job);
+        self.spawn_labeled(TaskDescriptor::method(lane, method), job);
     }
 
     #[allow(dead_code)]
     pub(crate) fn spawn_for_request(
         &self,
         lane: TaskLane,
-        method: impl Into<String>,
-        request_id: RequestId,
-        generation: GenerationToken,
+        request: TaskRequestMetadata,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
-        self.spawn_labeled(
-            lane,
-            Some(method.into()),
-            Some(request_id),
-            Some(generation),
-            None,
-            job,
-        );
+        self.spawn_labeled(TaskDescriptor::request(lane, request, None), job);
     }
 
     pub(crate) fn spawn_retryable_for_request(
         &self,
         lane: TaskLane,
-        method: impl Into<String>,
-        request_id: RequestId,
-        generation: GenerationToken,
+        request: TaskRequestMetadata,
         retry: RetryTask,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
-        self.spawn_labeled(
-            lane,
-            Some(method.into()),
-            Some(request_id),
-            Some(generation),
-            Some(retry),
-            job,
-        );
+        self.spawn_labeled(TaskDescriptor::request(lane, request, Some(retry)), job);
     }
 
     fn spawn_labeled(
         &self,
-        lane: TaskLane,
-        method: Option<String>,
-        request_id: Option<RequestId>,
-        generation: Option<GenerationToken>,
-        retry: Option<RetryTask>,
+        descriptor: TaskDescriptor,
         job: impl FnOnce() -> Vec<Message> + Send + 'static,
     ) {
+        let lane = descriptor.lane;
         let queued_ms = crate::profile::timestamp_ms();
         let task = Box::new(move || {
             let started_ms = crate::profile::timestamp_ms();
             let messages = job();
             let ended_ms = crate::profile::timestamp_ms();
-            TaskResult::lane_method_request_generation_timed_messages(
-                lane,
-                method,
-                request_id,
-                generation,
-                retry,
+            TaskResult::timed_response(
+                descriptor,
                 TaskTiming::new(queued_ms, started_ms, ended_ms),
                 messages,
             )
@@ -452,6 +496,7 @@ impl TaskResult {
         Self::Response {
             lane,
             method,
+            document_uri: None,
             request_id,
             generation,
             retry: retry.map(Box::new),
@@ -460,24 +505,43 @@ impl TaskResult {
         }
     }
 
-    pub(crate) fn lane_method_request_generation_timed_messages(
-        lane: TaskLane,
-        method: Option<String>,
-        request_id: Option<RequestId>,
-        generation: Option<GenerationToken>,
-        retry: Option<RetryTask>,
+    fn timed_response(
+        descriptor: TaskDescriptor,
         timing: TaskTiming,
         messages: Vec<Message>,
     ) -> Self {
         Self::Response {
-            lane,
-            method,
-            request_id,
-            generation,
-            retry: retry.map(Box::new),
+            lane: descriptor.lane,
+            method: descriptor.method,
+            document_uri: descriptor.document_uri,
+            request_id: descriptor.request_id,
+            generation: descriptor.generation,
+            retry: descriptor.retry.map(Box::new),
             timing: Some(timing),
             messages,
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn timed_response_for_test(
+        lane: TaskLane,
+        method: Option<String>,
+        document_uri: Option<String>,
+        request_id: Option<RequestId>,
+        timing: TaskTiming,
+    ) -> Self {
+        Self::timed_response(
+            TaskDescriptor {
+                lane,
+                method,
+                document_uri,
+                request_id,
+                generation: None,
+                retry: None,
+            },
+            timing,
+            Vec::new(),
+        )
     }
 
     pub(crate) const fn lane(&self) -> TaskLane {
@@ -489,6 +553,12 @@ impl TaskResult {
     pub(crate) fn method(&self) -> Option<&str> {
         match self {
             Self::Response { method, .. } => method.as_deref(),
+        }
+    }
+
+    pub(crate) fn document_uri(&self) -> Option<&str> {
+        match self {
+            Self::Response { document_uri, .. } => document_uri.as_deref(),
         }
     }
 
@@ -642,13 +712,13 @@ mod tests {
         let (token, _handle) = databases.begin_cancellable_background_request();
         let request_id = RequestId::from("fmt-1".to_owned());
 
-        scheduler.spawn_for_request(
-            TaskLane::Formatting,
+        let request = TaskRequestMetadata::new(
             "textDocument/formatting",
+            Some("file:///workspace/scripts/main.vela".to_owned()),
             request_id.clone(),
             token.clone(),
-            || test_messages("formatted"),
         );
+        scheduler.spawn_for_request(TaskLane::Formatting, request, || test_messages("formatted"));
 
         let task = scheduler
             .formatting_results()
@@ -657,6 +727,10 @@ mod tests {
 
         assert_eq!(task.lane(), TaskLane::Formatting);
         assert_eq!(task.method(), Some("textDocument/formatting"));
+        assert_eq!(
+            task.document_uri(),
+            Some("file:///workspace/scripts/main.vela")
+        );
         assert_eq!(task.request_id(), Some(&request_id));
         let generation = task
             .generation_token()
