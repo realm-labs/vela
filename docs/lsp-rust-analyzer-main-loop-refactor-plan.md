@@ -55,7 +55,17 @@ server architecture model, not Rust-only semantics: do not add macro
 expansion, borrow checking, Rust trait solving, proc macros, Cargo project
 modeling, flycheck, or script-language generics to Vela. Preserve the existing
 `vela_language_service` boundary as the editor-neutral analysis surface and
-keep editor packages thin launchers. rust-analyzer's production LSP entry is
+keep editor packages thin launchers. Preserve repository architecture hygiene:
+do not use more than one `super` segment in any Rust import path; prefer
+`crate::...` paths, local module re-exports, or a better module boundary over
+`super::super` imports. Do not flatten the crate into one directory of
+unscoped files; organize modules by ownership scope such as transport, main
+loop, state, handlers, protocol conversion, reload, profiling, and tests. Keep
+ordinary active source and test files under 1200 lines unless there is a
+concrete documented exception or splitting would make the logic materially
+less coherent; when a file approaches or exceeds that threshold, split it by
+responsibility before adding more unrelated logic. rust-analyzer's production
+LSP entry is
 stdio-only in this local checkout, so Vela's optional TCP listener is a Vela
 debug/remote-integration extension, not an RA compatibility requirement. When
 implemented, TCP must feed the same typed message loop, request queue,
@@ -1459,6 +1469,10 @@ until the full close-out checks pass or a real external blocker is recorded in
 - [ ] Do not touch unrelated user work. In particular, if
   `examples/src/bin/modules/game/reward.vela` is dirty, treat it as user work
   unless explicitly instructed otherwise.
+- [ ] Before committing implementation checkpoints, check that new Rust imports
+  do not use more than one `super` segment, active source/test files remain
+  under 1200 lines unless a concrete exception is documented, and new files are
+  grouped by ownership scope instead of flattened into unrelated siblings.
 - [ ] Update this document's checklist only after the relevant focused tests
   pass.
 - [ ] Update durable docs only for durable status or architecture changes, not
