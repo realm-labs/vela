@@ -1,15 +1,18 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+#[cfg(test)]
 use lsp_server::RequestId;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 
+#[cfg(test)]
+use crate::{ErrorCode, JsonRpcResult, publish_diagnostics_notification};
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer,
+    LspServer,
     config_change::{ConfigChange, WorkspaceConfigChange},
-    document_uri_path, normalized_path, publish_diagnostics_notification,
+    document_uri_path, normalized_path,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -189,6 +192,7 @@ pub(crate) fn workspace_config_from_roots_and_editor_config(
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct DidChangeConfigurationParams {
     settings: JsonValue,
 }
@@ -242,6 +246,7 @@ impl LspServer {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn did_change_configuration(
         &mut self,
         id: Option<RequestId>,

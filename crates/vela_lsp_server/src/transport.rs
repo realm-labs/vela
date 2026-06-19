@@ -5,7 +5,9 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crossbeam_channel::{Receiver, Sender, bounded};
-use lsp_server::{Connection, Message, Notification, Request, RequestId, Response, ResponseError};
+use lsp_server::{Connection, Message};
+#[cfg(test)]
+use lsp_server::{Notification, Request, RequestId, Response, ResponseError};
 
 use crate::{LaunchConfiguration, rpc};
 
@@ -134,6 +136,7 @@ pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<St
     Ok(rpc::serialize_message(message))
 }
 
+#[cfg(test)]
 pub(crate) fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
     if value.get("method").is_some() {
         let method = value
@@ -168,6 +171,7 @@ pub(crate) fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<
     Ok(Message::Response(Response { id, result, error }))
 }
 
+#[cfg(test)]
 pub(crate) fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<RequestId> {
     if let Some(id) = value.as_i64() {
         let id = i32::try_from(id)?;

@@ -1,6 +1,7 @@
 //! Native LSP protocol boundary for Vela editor tooling.
 
 mod capabilities;
+#[cfg(test)]
 mod client;
 mod completion;
 mod config;
@@ -12,6 +13,7 @@ mod line_index;
 mod lsp;
 pub mod main_loop;
 mod protocol;
+#[cfg(test)]
 mod queries;
 mod reload;
 mod rpc;
@@ -26,26 +28,35 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use lsp_server::{Message, Notification, RequestId};
+#[cfg(test)]
+use lsp_server::RequestId;
+use lsp_server::{Message, Notification};
 use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources, SourceFileSnapshot,
-    SourceVersion, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    SourceVersion, Workspace, WorkspaceConfig, assemble_project_sources,
     missing_import_diagnostics,
 };
 
+#[cfg(test)]
 use crate::client::WorkspaceFolder;
 use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
 use crate::lsp::to_proto;
+pub(crate) use crate::rpc::ErrorCode;
+#[cfg(test)]
+pub(crate) use crate::rpc::JSONRPC_VERSION;
+#[cfg(test)]
 pub use crate::rpc::JsonRpcResult;
-pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION};
 use crate::semantic_tokens::SemanticTokenProjection;
+#[cfg(test)]
+use vela_language_service::WorkspaceRoot;
 
 pub use crate::config::LaunchConfiguration;
 
+#[cfg(test)]
 const FILE_CHANGE_DELETED: u8 = 3;
 const CONFIG_FILE: &str = "vela.toml";
 const SOURCE_EXTENSION: &str = ".vela";
@@ -95,6 +106,7 @@ impl LspServer {
         self.exited
     }
 
+    #[cfg(test)]
     pub fn handle_json(&mut self, input: &str) -> JsonRpcResult {
         if self.exited {
             return JsonRpcResult::None;
@@ -159,6 +171,7 @@ impl LspServer {
         self.handle_message(message)
     }
 
+    #[cfg(test)]
     fn handle_message(&mut self, message: Message) -> JsonRpcResult {
         let (id, method, params) = match message {
             Message::Request(request) => (Some(request.id), request.method, request.params),
@@ -224,6 +237,7 @@ impl LspServer {
         }
     }
 
+    #[cfg(test)]
     fn did_open(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
             return JsonRpcResult::error(
@@ -254,6 +268,7 @@ impl LspServer {
         self.publish_current_diagnostics(&uri, &document_id)
     }
 
+    #[cfg(test)]
     fn did_change(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
             return JsonRpcResult::error(
@@ -307,6 +322,7 @@ impl LspServer {
         self.publish_current_diagnostics(&uri, &document_id)
     }
 
+    #[cfg(test)]
     fn did_close(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         if let Some(id) = id {
             return JsonRpcResult::error(
@@ -339,6 +355,7 @@ impl LspServer {
         }
     }
 
+    #[cfg(test)]
     fn did_change_watched_files(
         &mut self,
         id: Option<RequestId>,
@@ -383,6 +400,7 @@ impl LspServer {
         }
     }
 
+    #[cfg(test)]
     fn did_change_workspace_folders(
         &mut self,
         id: Option<RequestId>,
@@ -556,6 +574,7 @@ impl LspServer {
         notifications
     }
 
+    #[cfg(test)]
     pub(crate) fn publish_open_diagnostics(&mut self) -> JsonRpcResult {
         let notifications = self.publish_open_diagnostics_messages();
         if notifications.is_empty() {
@@ -586,6 +605,7 @@ impl LspServer {
         publish_diagnostics_notification(uri, diagnostics, None)
     }
 
+    #[cfg(test)]
     pub(crate) fn publish_current_diagnostics(
         &mut self,
         uri: &str,
@@ -594,6 +614,7 @@ impl LspServer {
         JsonRpcResult::Notification(self.publish_current_diagnostics_message(uri, document_id))
     }
 
+    #[cfg(test)]
     fn refresh_databases_for_query(&mut self, document_id: &DocumentId) {
         let config = self
             .config
@@ -603,6 +624,7 @@ impl LspServer {
         self.update_databases(&config, &files);
     }
 
+    #[cfg(test)]
     fn refresh_databases_for_workspace_query(&mut self) {
         let config = self.config.clone().unwrap_or_else(|| {
             self.open_documents
@@ -665,6 +687,7 @@ impl LspServer {
     }
 }
 
+#[cfg(test)]
 fn legacy_message_id(value: &JsonValue) -> Option<RequestId> {
     value
         .get("id")
@@ -673,12 +696,14 @@ fn legacy_message_id(value: &JsonValue) -> Option<RequestId> {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct DidOpenTextDocumentParams {
     text_document: TextDocumentItem,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct TextDocumentItem {
     uri: String,
     #[serde(rename = "languageId")]
@@ -689,6 +714,7 @@ struct TextDocumentItem {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct DidChangeTextDocumentParams {
     text_document: VersionedTextDocumentIdentifier,
     content_changes: Vec<TextDocumentContentChangeEvent>,
@@ -696,17 +722,20 @@ struct DidChangeTextDocumentParams {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct DidCloseTextDocumentParams {
     text_document: TextDocumentIdentifier,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 struct TextDocumentIdentifier {
     uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct VersionedTextDocumentIdentifier {
     uri: String,
     version: i32,
@@ -725,28 +754,33 @@ struct TextDocumentContentChangeEvent {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg(test)]
 struct DidChangeWatchedFilesParams {
     changes: Vec<FileEvent>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 struct DidChangeWorkspaceFoldersParams {
     event: WorkspaceFoldersChangeEvent,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 struct WorkspaceFoldersChangeEvent {
     added: Vec<WorkspaceFolder>,
     removed: Vec<WorkspaceFolder>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 struct FileEvent {
     uri: String,
     #[serde(rename = "type")]
     kind: u8,
 }
 
+#[cfg(test)]
 fn coalesced_watched_file_changes(changes: Vec<FileEvent>) -> Vec<FileEvent> {
     let mut latest_by_uri = std::collections::BTreeMap::<String, (usize, u8)>::new();
     for (index, change) in changes.into_iter().enumerate() {
@@ -925,6 +959,7 @@ pub(crate) fn with_work_done_progress_messages(
     wrapped
 }
 
+#[cfg(test)]
 pub(crate) fn with_work_done_progress(result: JsonRpcResult, title: &str) -> JsonRpcResult {
     let notifications = match result {
         JsonRpcResult::Notification(notification) => vec![notification],

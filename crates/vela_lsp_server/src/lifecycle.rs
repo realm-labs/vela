@@ -1,15 +1,19 @@
 use std::collections::BTreeSet;
 
+#[cfg(test)]
 use lsp_server::RequestId;
 use lsp_types::InitializeParams as LspInitializeParams;
+#[cfg(test)]
 use serde_json::Value as JsonValue;
 use vela_language_service::WorkspaceRoot;
 
+#[cfg(test)]
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, capabilities::initialize_result, client::InitializeParams,
     config_change::ConfigChange, rpc::CancelRequestParams, watching,
 };
 
+#[cfg(test)]
 impl LspServer {
     pub(crate) fn initialize(&mut self, id: Option<RequestId>, params: JsonValue) -> JsonRpcResult {
         let Some(id) = id else {
@@ -119,6 +123,7 @@ impl LspServer {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn is_pre_initialize_method(method: &str) -> bool {
     matches!(
         method,
@@ -126,6 +131,7 @@ pub(crate) fn is_pre_initialize_method(method: &str) -> bool {
     )
 }
 
+#[cfg(test)]
 fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String> {
     params
         .workspace_folders

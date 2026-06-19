@@ -1,11 +1,15 @@
-use lsp_server::{Message, RequestId, Response, ResponseError};
+use lsp_server::{Message, RequestId};
+#[cfg(test)]
+use lsp_server::{Response, ResponseError};
 use lsp_types::NumberOrString;
+#[cfg(test)]
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
 pub(crate) const JSONRPC_VERSION: &str = "2.0";
 
 #[derive(Debug, Clone)]
+#[cfg(test)]
 pub enum JsonRpcResult {
     Response(Response),
     Notification(Message),
@@ -13,6 +17,7 @@ pub enum JsonRpcResult {
     None,
 }
 
+#[cfg(test)]
 impl PartialEq for JsonRpcResult {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -36,8 +41,10 @@ impl PartialEq for JsonRpcResult {
     }
 }
 
+#[cfg(test)]
 impl Eq for JsonRpcResult {}
 
+#[cfg(test)]
 impl JsonRpcResult {
     #[must_use]
     pub fn into_response(self) -> Option<String> {
@@ -100,12 +107,14 @@ pub(crate) fn result_from_messages(messages: Vec<Message>) -> JsonRpcResult {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(test)]
 pub(crate) struct CancelRequestParams {
     pub(crate) id: RequestId,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ErrorCode {
+    #[cfg(test)]
     ParseError,
     InvalidRequest,
     MethodNotFound,
@@ -119,6 +128,7 @@ pub(crate) enum ErrorCode {
 impl ErrorCode {
     pub(crate) const fn value(self) -> i32 {
         match self {
+            #[cfg(test)]
             Self::ParseError => -32700,
             Self::InvalidRequest => -32600,
             Self::MethodNotFound => -32601,
@@ -131,6 +141,7 @@ impl ErrorCode {
     }
 }
 
+#[cfg(test)]
 impl JsonRpcResult {
     pub(crate) fn ok(id: RequestId, result: JsonValue) -> Self {
         Self::Response(Response {

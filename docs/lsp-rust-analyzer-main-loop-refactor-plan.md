@@ -1615,6 +1615,22 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_did_close`,
     `cargo test -p vela_lsp_server schema_reload`, and
     `cargo test -p vela_lsp_server close_overlay`.
+  - Legacy raw JSON entrypoints, hand-written client/query protocol wrappers,
+    raw JSON transport conversion helpers, lifecycle/config compatibility
+    handlers, and `JsonRpcResult` wrapper exports are now compiled only for
+    legacy unit tests. Production stdio/TCP enters through
+    `lsp_server::Connection`, typed transport, `GlobalState`, typed dispatch,
+    and direct `lsp_server::Message` batches. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server stdio`,
+    `cargo test -p vela_lsp_server config`,
+    `cargo test -p vela_lsp_server handlers::dispatch`,
+    `cargo test -p vela_lsp_server typed_dispatcher`,
+    `cargo test -p vela_lsp_server file_watching`,
+    `cargo test -p vela_lsp_server typed_did_open`,
+    `cargo test -p vela_lsp_server typed_did_change`,
+    `cargo test -p vela_lsp_server typed_did_close`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
