@@ -23,7 +23,6 @@ use crate::{
     ErrorCode,
     global_state::GlobalState,
     global_state::GlobalStateSnapshot,
-    rpc::typed_messages,
     task::{RetryTask, TaskLane},
 };
 
@@ -33,14 +32,14 @@ use crate::JsonRpcResult;
 pub(crate) fn dispatch_message(
     global_state: &mut GlobalState,
     message: &Message,
-    legacy_input: &str,
+    _legacy_input: &str,
 ) -> Vec<Message> {
     match message {
-        Message::Request(request) => dispatch_request(global_state, request.clone(), legacy_input),
+        Message::Request(request) => dispatch_request(global_state, request.clone()),
         Message::Notification(notification) => {
-            dispatch_notification(global_state, notification.clone(), legacy_input)
+            dispatch_notification(global_state, notification.clone())
         }
-        Message::Response(_) => typed_messages(global_state.handle_legacy_json(legacy_input)),
+        Message::Response(_) => Vec::new(),
     }
 }
 
@@ -53,11 +52,7 @@ pub(crate) fn dispatch_message_result(
     crate::rpc::result_from_messages(dispatch_message(global_state, message, legacy_input))
 }
 
-fn dispatch_request(
-    global_state: &mut GlobalState,
-    request: Request,
-    legacy_input: &str,
-) -> Vec<Message> {
+fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Message> {
     let request_id = request.id.clone();
     if global_state.take_cancelled_request(&request_id) {
         return request_cancelled(request_id);
@@ -68,8 +63,12 @@ fn dispatch_request(
     if !global_state.is_initialized() && !is_pre_initialize_method(&request.method) {
         return server_not_initialized(request.id);
     }
+    if request.method == "exit" {
+        let _ = global_state.exit(());
+        return exit_must_be_notification(request.id);
+    }
 
-    let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
+    let mut dispatcher = RequestDispatcher::new(global_state, request);
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
@@ -147,7 +146,6 @@ fn dispatch_request(
 fn dispatch_notification(
     global_state: &mut GlobalState,
     notification: Notification,
-    _legacy_input: &str,
 ) -> Vec<Message> {
     let mut dispatcher = NotificationDispatcher::new(global_state, notification);
     dispatcher
@@ -367,16 +365,14 @@ fn schedule_messages_retry<P, C>(
 pub(crate) struct RequestDispatcher<'a> {
     global_state: &'a mut GlobalState,
     request: Option<Request>,
-    legacy_input: &'a str,
     result: Vec<Message>,
 }
 
 impl<'a> RequestDispatcher<'a> {
-    fn new(global_state: &'a mut GlobalState, request: Request, legacy_input: &'a str) -> Self {
+    fn new(global_state: &'a mut GlobalState, request: Request) -> Self {
         Self {
             global_state,
             request: Some(request),
-            legacy_input,
             result: Vec::new(),
         }
     }
@@ -457,11 +453,7 @@ impl<'a> RequestDispatcher<'a> {
 
     pub(crate) fn finish(&mut self) -> Vec<Message> {
         if let Some(request) = self.request.take() {
-            self.result = if is_known_notification_method(&request.method) {
-                typed_messages(self.global_state.handle_legacy_json(self.legacy_input))
-            } else {
-                method_not_found(request.id, &request.method)
-            };
+            self.result = method_not_found(request.id, &request.method);
         }
         std::mem::take(&mut self.result)
     }
@@ -699,6 +691,14 @@ fn server_shut_down(id: lsp_server::RequestId) -> Vec<Message> {
     error_message(id, ErrorCode::InvalidRequest, "server has shut down")
 }
 
+fn exit_must_be_notification(id: lsp_server::RequestId) -> Vec<Message> {
+    error_message(
+        id,
+        ErrorCode::InvalidRequest,
+        "`exit` must be sent as a notification",
+    )
+}
+
 pub(crate) fn request_cancelled(id: RequestId) -> Vec<Message> {
     error_message(
         id,
@@ -770,22 +770,6 @@ fn is_pre_initialize_method(method: &str) -> bool {
     )
 }
 
-fn is_known_notification_method(method: &str) -> bool {
-    matches!(
-        method,
-        "initialized"
-            | "exit"
-            | "$/cancelRequest"
-            | "textDocument/didOpen"
-            | "textDocument/didChange"
-            | "textDocument/didClose"
-            | "textDocument/didSave"
-            | "workspace/didChangeConfiguration"
-            | "workspace/didChangeWorkspaceFolders"
-            | "workspace/didChangeWatchedFiles"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use crossbeam_channel::unbounded;
@@ -828,7 +812,7 @@ mod tests {
             }),
         };
 
-        let mut dispatcher = RequestDispatcher::new(&mut global_state, request, "");
+        let mut dispatcher = RequestDispatcher::new(&mut global_state, request);
         let messages = dispatcher
             .on_sync_mut_typed::<lsp_types::request::Initialize>(panic_request_handler)
             .finish();

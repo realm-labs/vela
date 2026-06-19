@@ -1598,6 +1598,14 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_semantic_token_dispatch`,
     `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
     and `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed dispatcher no longer routes client responses or
+    notification-shaped requests through `LspServer::handle_json`; client
+    responses are ignored directly, request-shaped `exit` preserves the typed
+    invalid-request lifecycle behavior, and the legacy JSON bridge is test-only.
+    Validated with `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_lsp_server typed_dispatcher`,
+    `cargo test -p vela_lsp_server handlers::dispatch`, and
+    `cargo test -p vela_lsp_server stdio`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

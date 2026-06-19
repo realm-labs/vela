@@ -21,7 +21,7 @@ use vela_language_service::{
 
 use crate::lsp::{from_proto, to_proto};
 use crate::{
-    ErrorCode, JsonRpcResult, LaunchConfiguration, LspServer, apply_lsp_document_changes,
+    ErrorCode, LaunchConfiguration, LspServer, apply_lsp_document_changes,
     capabilities::initialize_result,
     completion::service_completion_resolve_payload,
     config::EditorConfiguration,
@@ -40,6 +40,9 @@ use crate::{
     transport::ResultSummary,
     watching, with_work_done_progress_messages,
 };
+
+#[cfg(test)]
+use crate::JsonRpcResult;
 
 pub(crate) struct GlobalState {
     sender: Sender<Message>,
@@ -1185,12 +1188,14 @@ impl GlobalState {
         messages
     }
 
+    #[cfg(test)]
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
         let result = self.server.handle_json(input);
         self.sync_from_legacy_server();
         result
     }
 
+    #[cfg(test)]
     fn sync_from_legacy_server(&mut self) {
         self.initialized |= self.server.initialized;
         self.shutdown_requested |= self.server.shutdown_requested;
