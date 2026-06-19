@@ -1,4 +1,4 @@
-use super::{LspServer, notification, notification_value, request, response_value};
+use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -11,30 +11,13 @@ mod schema_method_return_receivers;
 #[test]
 fn lsp_inlay_hints_show_parameter_names() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -44,7 +27,7 @@ fn lsp_inlay_hints_show_parameter_names() {
                 "end": { "line": 1, "character": 80 }
             }
         }),
-    )));
+    ));
     let hints = response["result"]
         .as_array()
         .expect("inlayHint should return an array");
@@ -62,30 +45,13 @@ fn lsp_inlay_hints_show_parameter_names() {
 #[test]
 fn lsp_inlay_hints_respect_requested_range() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn grant(amount: i64, reason: String) -> i64 { return amount }\npub fn main() { return grant(10, \"quest\") }";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -95,7 +61,7 @@ fn lsp_inlay_hints_respect_requested_range() {
                 "end": { "line": 1, "character": 80 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -111,30 +77,13 @@ fn lsp_inlay_hints_respect_requested_range() {
 #[test]
 fn lsp_inlay_hints_degrade_to_any_without_schema() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { return host_grant(10) }";
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -144,7 +93,7 @@ fn lsp_inlay_hints_degrade_to_any_without_schema() {
                 "end": { "line": 0, "character": 80 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"], serde_json::json!([]));
 }
@@ -152,15 +101,7 @@ fn lsp_inlay_hints_degrade_to_any_without_schema() {
 #[test]
 fn lsp_inlay_hints_show_source_method_parameter_names() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
 impl Player {
@@ -168,19 +109,10 @@ impl Player {
 }
 pub fn main(player: Player) { player.grant(1, 2) }"#;
     let main_line = text.lines().nth(4).expect("main line should exist");
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -190,7 +122,7 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
                 "end": { "line": 4, "character": main_line.len() }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -214,15 +146,7 @@ pub fn main(player: Player) { player.grant(1, 2) }"#;
 #[test]
 fn lsp_inlay_hints_show_local_typefacts() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"const BONUS: i64 = 10
 pub fn main() {
@@ -231,19 +155,10 @@ pub fn main() {
     let scripted = BONUS;
     let explicit: i64 = 3;
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -253,7 +168,7 @@ pub fn main() {
                 "end": { "line": 6, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -283,15 +198,7 @@ pub fn main() {
 #[test]
 fn lsp_inlay_hints_show_lambda_parameter_facts() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"pub fn main() {
     let scores: Array<i64> = [1, 2, 3];
@@ -300,19 +207,10 @@ fn lsp_inlay_hints_show_lambda_parameter_facts() {
     let mapped: Map<String, i64> = rewards.map_values(|value| value + 1);
     let filtered: Map<String, i64> = rewards.filter(|key, value| key.len() > value);
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -322,7 +220,7 @@ fn lsp_inlay_hints_show_lambda_parameter_facts() {
                 "end": { "line": 7, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -413,21 +311,14 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": file_uri(&root),
-            "capabilities": {}
-        }),
-    )));
-    let _ = server.handle_json(&notification(
+    let _ = initialize(&mut server, file_uri(&root));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main(player: Player) {
     let next = player.level + 1;
@@ -435,19 +326,10 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     let dynamic = player.mystery;
     player.grant(next);
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, &uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -457,7 +339,7 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
                 "end": { "line": 6, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -565,40 +447,24 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": file_uri(&root),
-            "capabilities": {}
-        }),
-    )));
-    let _ = server.handle_json(&notification(
+    let _ = initialize(&mut server, file_uri(&root));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main(player: Player) {
     host_dynamic(player, 10)
     host_stable(player, 10)
     player.grant(player, 10)
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, &uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -608,7 +474,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
                 "end": { "line": 5, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -646,15 +512,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
 #[test]
 fn lsp_inlay_hints_suppress_any_source_function_and_method_parameters() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
 fn dynamic(raw: Any, count: i64) -> i64 { return count }
@@ -665,19 +523,10 @@ pub fn main(player: Player) {
     dynamic("raw", 1)
     player.grant("raw", 2)
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -687,7 +536,7 @@ pub fn main(player: Player) {
                 "end": { "line": 9, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -711,15 +560,7 @@ pub fn main(player: Player) {
 #[test]
 fn lsp_inlay_hints_suppress_any_source_method_parameters_on_source_function_return_receiver() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"struct Player { level: i64 }
 fn current_player() -> Player { return Player { level: 1 } }
@@ -732,19 +573,10 @@ pub fn main() {
 }"#;
     let first_call = text.lines().nth(6).expect("first call line");
     let second_call = text.lines().nth(7).expect("second call line");
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -754,7 +586,7 @@ pub fn main() {
                 "end": { "line": 9, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -784,15 +616,7 @@ pub fn main() {
 #[test]
 fn lsp_inlay_hints_show_enum_variant_payload_names() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"enum QuestProgress {
     Active(quest_id: String, count: i64),
@@ -801,19 +625,10 @@ fn lsp_inlay_hints_show_enum_variant_payload_names() {
 pub fn main() {
     let active = QuestProgress::Active("quest-1", 3);
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -823,7 +638,7 @@ pub fn main() {
                 "end": { "line": 7, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -854,7 +669,8 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
         .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -870,22 +686,13 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, &uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -895,7 +702,7 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
                 "end": { "line": 0, "character": text.len() }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -925,15 +732,7 @@ fn lsp_inlay_hints_show_schema_tuple_variant_payload_names() {
 #[test]
 fn lsp_inlay_hints_suppress_any_enum_variant_payloads() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
-        1,
-        "initialize",
-        serde_json::json!({
-            "processId": null,
-            "rootUri": "file:///workspace/scripts",
-            "capabilities": {}
-        }),
-    )));
+    let _ = initialize(&mut server, "file:///workspace/scripts");
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"enum Payload {
     Dynamic(raw: Any, count: i64),
@@ -943,19 +742,10 @@ pub fn main() {
     Payload::Dynamic("raw", 1)
     Payload::Stable("ok", 2)
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -965,7 +755,7 @@ pub fn main() {
                 "end": { "line": 8, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -1005,7 +795,8 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
     .expect("schema artifact should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -1021,26 +812,17 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
             },
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main() {
     QuestState::Dynamic("raw", 1)
     QuestState::Stable("ok", 2)
 }"#;
     let stable_line = text.lines().nth(2).expect("stable line should exist");
-    let _ = notification_value(server.handle_json(&notification(
-        "textDocument/didOpen",
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
-    )));
+    open_document(&mut server, &uri, text);
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/inlayHint",
         serde_json::json!({
@@ -1050,7 +832,7 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
                 "end": { "line": 4, "character": 0 }
             }
         }),
-    )));
+    ));
 
     assert_eq!(
         response["result"],
@@ -1083,6 +865,34 @@ fn lsp_inlay_hints_suppress_any_schema_enum_variant_payloads() {
     );
 
     fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+fn initialize(server: &mut LspServer, root_uri: impl AsRef<str>) -> serde_json::Value {
+    response_value(handle_request(
+        server,
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": root_uri.as_ref(),
+            "capabilities": {}
+        }),
+    ))
+}
+
+fn open_document(server: &mut LspServer, uri: &str, text: &str) {
+    let _ = notification_value(handle_notification(
+        server,
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    ));
 }
 
 fn temp_workspace() -> PathBuf {

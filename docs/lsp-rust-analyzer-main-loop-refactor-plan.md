@@ -1919,6 +1919,11 @@ node editors/vscode/scripts/validate-package.js
   - Converted the top-level rename fixture off `LspServer::handle_json` and
     onto typed request/notification helpers with local setup helpers for
     initialized workspaces and versioned document opens.
+  - Converted the top-level inlay fixture off `LspServer::handle_json` and
+    onto typed request/notification helpers with local setup helpers for
+    initialized workspaces and document opens.
+  - Deleted the obsolete test-only custom JSON-RPC request/notification string
+    builders after the last feature fixture stopped using them.
   - Converted the cross-file call hierarchy fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.

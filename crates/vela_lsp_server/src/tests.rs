@@ -2,25 +2,6 @@ use crate::{JsonRpcResult, LspServer};
 use lsp_server::{Message, Notification, Request, RequestId};
 use serde_json::Value as JsonValue;
 
-fn request(id: i64, method: &str, params: JsonValue) -> String {
-    serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "method": method,
-        "params": params
-    })
-    .to_string()
-}
-
-fn notification(method: &str, params: JsonValue) -> String {
-    serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": method,
-        "params": params
-    })
-    .to_string()
-}
-
 fn handle_request(
     server: &mut LspServer,
     id: i32,
