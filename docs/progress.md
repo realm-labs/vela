@@ -307,8 +307,8 @@ blocking; routing individual feature handlers through snapshots and lane
 categories remains the next architectural step. Snapshot-backed worker routing
 now covers navigation, references, document highlights, document/workspace
 symbols, folding ranges, selection ranges, prepare-rename, and rename in
-addition to call hierarchy and the earlier completion, hover, signature-help,
-semantic-token, and formatting families.
+addition to call hierarchy, code actions, inlay hints, and the earlier
+completion, hover, signature-help, semantic-token, and formatting families.
 Main-thread mutable request and notification routing is audited closed for
 this RA main-loop phase: lifecycle requests plus initialized, exit,
 cancellation, document sync, configuration, workspace-folder, watched-file,

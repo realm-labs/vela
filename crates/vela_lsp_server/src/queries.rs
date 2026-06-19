@@ -2,31 +2,17 @@ use serde_json::Value as JsonValue;
 use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLineIndex, Position};
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId,
-    call_hierarchy::service_call_hierarchy_item,
-    completion::service_completion_resolve_payload,
-    error_response,
-    lsp::{from_proto, to_proto},
-    protocol::CallHierarchyIncomingCallsParams,
-    protocol::CallHierarchyOutgoingCallsParams,
-    protocol::CallHierarchyPrepareParams,
-    protocol::CodeActionParams,
-    protocol::DocumentFormattingParams,
-    protocol::DocumentOnTypeFormattingParams,
-    protocol::DocumentRangeFormattingParams,
-    protocol::DocumentSymbolParams,
-    protocol::FoldingRangeParams,
-    protocol::InlayHintParams,
-    protocol::PrepareRenameParams,
-    protocol::ReferencesParams,
-    protocol::RenameParams,
-    protocol::SelectionRangeParams,
-    protocol::SemanticTokensDeltaParams,
-    protocol::SemanticTokensParams,
-    protocol::SemanticTokensRangeParams,
-    protocol::TextDocumentPositionParams,
-    protocol::WorkspaceSymbolParams,
-    success_response,
+    ErrorCode, JsonRpcResult, LspServer, RequestId, call_hierarchy::service_call_hierarchy_item,
+    completion::service_completion_resolve_payload, error_response, lsp::to_proto,
+    protocol::CallHierarchyIncomingCallsParams, protocol::CallHierarchyOutgoingCallsParams,
+    protocol::CallHierarchyPrepareParams, protocol::CodeActionParams,
+    protocol::DocumentFormattingParams, protocol::DocumentOnTypeFormattingParams,
+    protocol::DocumentRangeFormattingParams, protocol::DocumentSymbolParams,
+    protocol::FoldingRangeParams, protocol::InlayHintParams, protocol::PrepareRenameParams,
+    protocol::ReferencesParams, protocol::RenameParams, protocol::SelectionRangeParams,
+    protocol::SemanticTokensDeltaParams, protocol::SemanticTokensParams,
+    protocol::SemanticTokensRangeParams, protocol::TextDocumentPositionParams,
+    protocol::WorkspaceSymbolParams, success_response,
 };
 
 enum NavigationLocationQuery {
@@ -111,33 +97,6 @@ impl LspServer {
             id,
             serde_json::to_value(to_proto::code_actions(&actions))
                 .expect("codeAction response should serialize"),
-        ))
-    }
-
-    pub(crate) fn code_action_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::CodeActionParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::code_action_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid codeAction params: {error}"),
-                ));
-            }
-        };
-        let actions = self.databases.code_actions(&input.document_id, input.range);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::code_actions(&actions))
-                .expect("typed codeAction response should serialize"),
         ))
     }
 
@@ -961,33 +920,6 @@ impl LspServer {
             id,
             serde_json::to_value(to_proto::inlay_hints(&hints))
                 .expect("inlayHint response should serialize"),
-        ))
-    }
-
-    pub(crate) fn inlay_hint_typed(
-        &mut self,
-        id: RequestId,
-        params: lsp_types::InlayHintParams,
-    ) -> JsonRpcResult {
-        let document_id = from_proto::document_id(&params.text_document.uri);
-        self.refresh_databases_for_query(&document_id);
-        let text = document_text(self, &document_id);
-        let input = match from_proto::inlay_hint_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return JsonRpcResult::Response(error_response(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    format!("invalid inlayHint params: {error}"),
-                ));
-            }
-        };
-        let hints = self.databases.inlay_hints(&input.document_id, input.range);
-
-        JsonRpcResult::Response(success_response(
-            id,
-            serde_json::to_value(to_proto::inlay_hints(&hints))
-                .expect("typed inlayHint response should serialize"),
         ))
     }
 

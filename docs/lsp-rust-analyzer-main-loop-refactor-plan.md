@@ -1078,7 +1078,7 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [~] Run read-only handlers from `GlobalStateSnapshot`.
+- [x] Run read-only handlers from `GlobalStateSnapshot`.
   - `textDocument/completion`, `completionItem/resolve`,
     `textDocument/hover`, `textDocument/signatureHelp`,
     `textDocument/semanticTokens/full`,
@@ -1091,16 +1091,16 @@ cargo test -p vela_lsp_server inlay
     `workspace/symbol`, `textDocument/foldingRange`, and
     `textDocument/selectionRange`, `textDocument/prepareRename`, and
     `textDocument/rename`, `textDocument/prepareCallHierarchy`,
-    `callHierarchy/incomingCalls`, and `callHierarchy/outgoingCalls` now
-    dispatch through snapshot-specific dispatcher branches, clone a
+    `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls`,
+    `textDocument/codeAction`, and `textDocument/inlayHint` now dispatch
+    through snapshot-specific dispatcher branches, clone a
     `GlobalStateSnapshot`, and query the snapshot-owned
     `LanguageServiceDatabases`, `WorkspaceSnapshot`, and semantic-token
     projection state without mutating `GlobalState` or the legacy `LspServer`.
     The obsolete mutable typed completion, hover, signature-help,
     semantic-token, formatting, navigation, reference, highlight, symbol,
-    folding, selection-range, rename, and call-hierarchy wrappers were
-    removed. Code actions and inlay hints still need the same snapshot
-    migration before this checklist item can close. Validated with
+    folding, selection-range, rename, call-hierarchy, code-action, and
+    inlay-hint wrappers were removed. Validated with
     `cargo test -p vela_lsp_server completion`,
     `cargo test -p vela_lsp_server hover`,
     `cargo test -p vela_lsp_server signature`,
@@ -1118,6 +1118,8 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server call_hierarchy`,
     `cargo test -p vela_lsp_server incoming_calls`,
     `cargo test -p vela_lsp_server outgoing_calls`,
+    `cargo test -p vela_lsp_server code_action`,
+    `cargo test -p vela_lsp_server inlay`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.

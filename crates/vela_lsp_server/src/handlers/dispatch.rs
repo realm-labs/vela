@@ -90,11 +90,11 @@ fn dispatch_request(
         )
         .on_worker_snapshot_typed::<CallHierarchyIncomingCalls>(GlobalStateSnapshot::incoming_calls)
         .on_worker_snapshot_typed::<CallHierarchyOutgoingCalls>(GlobalStateSnapshot::outgoing_calls)
-        .on_worker_typed::<CodeActionRequest>(GlobalState::code_action)
+        .on_worker_snapshot_typed::<CodeActionRequest>(GlobalStateSnapshot::code_action)
         .on_worker_snapshot_typed::<SemanticTokensRangeRequest>(
             GlobalStateSnapshot::semantic_tokens_range,
         )
-        .on_worker_typed::<InlayHintRequest>(GlobalState::inlay_hint)
+        .on_worker_snapshot_typed::<InlayHintRequest>(GlobalStateSnapshot::inlay_hint)
         .on_fmt_thread_snapshot_typed::<Formatting>(GlobalStateSnapshot::formatting)
         .on_fmt_thread_snapshot_typed::<RangeFormatting>(GlobalStateSnapshot::range_formatting)
         .on_fmt_thread_snapshot_typed::<OnTypeFormatting>(GlobalStateSnapshot::on_type_formatting)
@@ -159,18 +159,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_worker_typed<R>(
-        &mut self,
-        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-    ) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug,
-    {
-        self.dispatch_typed::<R>(f);
         self
     }
 

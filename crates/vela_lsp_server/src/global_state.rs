@@ -720,6 +720,60 @@ impl GlobalStateSnapshot {
         ))
     }
 
+    pub(crate) fn code_action(
+        self,
+        id: lsp_server::RequestId,
+        params: CodeActionParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::code_action_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid codeAction params: {error}"),
+                ));
+            }
+        };
+        let actions = self.databases.code_actions(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::code_actions(&actions))
+                .expect("typed codeAction response should serialize"),
+        ))
+    }
+
+    pub(crate) fn inlay_hint(
+        self,
+        id: lsp_server::RequestId,
+        params: InlayHintParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id = from_proto::document_id(&params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::inlay_hint_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid inlayHint params: {error}"),
+                ));
+            }
+        };
+        let hints = self.databases.inlay_hints(&input.document_id, input.range);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::inlay_hints(&hints))
+                .expect("typed inlayHint response should serialize"),
+        ))
+    }
+
     fn navigation_location(
         self,
         id: lsp_server::RequestId,
@@ -968,28 +1022,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn code_action(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: CodeActionParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.code_action_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn inlay_hint(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: InlayHintParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.inlay_hint_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
     }
 
     pub(crate) fn did_change_configuration(
@@ -2317,6 +2349,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let typo_start = text.find("frist").expect("fixture should contain typo");
 
@@ -2355,6 +2390,9 @@ pub fn main(player: Player) -> i64 {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
         let response = typed_inlay_hint_response(&mut state, 24, &document);
