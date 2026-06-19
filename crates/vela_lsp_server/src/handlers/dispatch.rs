@@ -113,7 +113,9 @@ fn dispatch_request(
         .on_worker_snapshot_messages_typed::<SelectionRangeRequest>(
             GlobalStateSnapshot::selection_range,
         )
-        .on_worker_snapshot_typed::<PrepareRenameRequest>(GlobalStateSnapshot::prepare_rename)
+        .on_worker_snapshot_messages_typed::<PrepareRenameRequest>(
+            GlobalStateSnapshot::prepare_rename,
+        )
         .on_worker_snapshot_typed::<Rename>(GlobalStateSnapshot::rename)
         .on_worker_snapshot_typed::<CallHierarchyPrepare>(
             GlobalStateSnapshot::prepare_call_hierarchy,

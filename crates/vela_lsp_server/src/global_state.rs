@@ -569,14 +569,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: TextDocumentPositionParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::prepare_rename_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid prepareRename position: {error}"),
                 );
@@ -586,7 +586,7 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_rename(&input.document_id, input.position);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(prepare.as_ref().map(to_proto::prepare_rename))
                 .expect("typed prepareRename response should serialize"),
