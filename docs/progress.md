@@ -158,8 +158,9 @@ rebuilding project or HIR indexes.
 
 M20.5 Phase 15 update: service and native LSP inlay fixtures now cover
 parameter-name hints for imported source function calls plus local type hints
-from imported const/global value facts, extending W7 cross-file inlay coverage
-beyond single-file and schema-backed call facts.
+from imported const/global value facts plus imported enum variant payload-name
+hints, extending W7 cross-file inlay coverage beyond single-file and
+schema-backed call facts.
 
 M20.5 Phase 7 update: service and native LSP completion fixtures now suppress
 member and global fallback completions when a schema function returning `Any`

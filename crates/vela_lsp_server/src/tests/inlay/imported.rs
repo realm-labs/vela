@@ -110,6 +110,65 @@ pub fn main() {
     );
 }
 
+#[test]
+fn lsp_inlay_hints_show_imported_enum_variant_payload_names() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    open_document(
+        &mut server,
+        "file:///workspace/scripts/game/quest.vela",
+        r#"pub enum QuestProgress {
+    Active(quest_id: String, count: i64),
+    Done,
+}"#,
+    );
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"use game::quest::QuestProgress
+pub fn main() {
+    let active = QuestProgress::Active("quest-1", 3);
+}"#;
+    open_document(&mut server, uri, text);
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 4, "character": 0 }
+            }
+        }),
+    )));
+    let call_line = text.lines().nth(2).expect("call line should exist");
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": { "line": 2, "character": call_line.find("\"quest-1\"").expect("first arg") },
+                "label": "quest_id:",
+                "kind": 2,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 2, "character": call_line.find(", 3").expect("second arg") + 2 },
+                "label": "count:",
+                "kind": 2,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
 fn open_document(server: &mut LspServer, uri: &str, text: &str) {
     let diagnostics = notification_value(server.handle_json(&notification(
         "textDocument/didOpen",

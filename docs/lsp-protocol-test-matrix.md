@@ -329,9 +329,10 @@ These were the first places compared against the matrix before acceptance:
    uses, cross-file hover for imported function/const/global use sites, and
    cross-file signature help and inlay parameter-name hints for imported
    source functions plus inlay local type hints from imported const/global
-   value facts, plus protocol incrementality coverage proving a defining-file
-   function-body `didChange` reparses only the edited document without
-   rebuilding project or HIR indexes.
+   value facts plus imported enum variant payload-name hints, plus protocol
+   incrementality coverage proving a defining-file function-body `didChange`
+   reparses only the edited document without rebuilding project or HIR
+   indexes.
 
 ## Completion Criteria For This Matrix
 

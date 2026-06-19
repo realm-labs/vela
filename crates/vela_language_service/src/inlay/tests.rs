@@ -398,6 +398,49 @@ fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
 }
 
 #[test]
+fn inlay_hints_show_imported_enum_variant_payload_names() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let quest = DocumentId::from("/workspace/scripts/game/quest.vela");
+    let main_text = r#"use game::quest::QuestProgress
+pub fn main() {
+    let active = QuestProgress::Active("quest-1", 3);
+}"#;
+    let quest_text = r#"pub enum QuestProgress {
+    Active(quest_id: String, count: i64),
+    Done,
+}"#;
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(quest, quest_text),
+    ]);
+
+    let hints = databases.inlay_hints(
+        &main,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(4, 0)),
+    );
+    let call_line = main_text.lines().nth(2).expect("call line should exist");
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(2, call_line.find("\"quest-1\"").expect("first arg")),
+                "quest_id:".to_owned()
+            ),
+            (
+                Position::new(2, call_line.find(", 3").expect("second arg") + 2),
+                "count:".to_owned()
+            )
+        ]
+    );
+    assert!(
+        hints
+            .iter()
+            .all(|hint| hint.kind() == InlayHintKind::Parameter)
+    );
+}
+
+#[test]
 fn inlay_hints_show_enum_variant_payload_names() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"enum QuestProgress {

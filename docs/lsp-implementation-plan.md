@@ -417,8 +417,8 @@ coverage complete based only on the older capability phases.
     native LSP parameter-name hints including cross-file imported source
     functions, local type hints including imported const/global value facts,
     lambda parameter facts, host-path type facts, source/schema tuple-variant
-    payload names, requested range filtering, missing-schema degradation,
-    unknown-call suppression, and `Any`
+    payload names including imported source enum variants, requested range
+    filtering, missing-schema degradation, unknown-call suppression, and `Any`
     suppression for source/schema call parameters, schema `Any` returned
     receivers, and variant payloads.
 - [x] Audit workspace, configuration, file watching, schema reload, and launch
@@ -1862,6 +1862,7 @@ Tests:
 - [x] `inlay_hints_show_lambda_parameter_facts`
 - [x] `inlay_hints_show_host_path_typefacts`
 - [x] `inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver`
+- [x] `inlay_hints_show_imported_enum_variant_payload_names`
 - [x] `inlay_hints_show_enum_variant_payload_names`
 - [x] `inlay_hints_degrade_to_any_without_schema`
 - [x] `inlay_hints_suppress_any_schema_function_parameters`
@@ -1885,6 +1886,7 @@ Tests:
 - [x] `lsp_inlay_hints_show_lambda_parameter_facts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts`
 - [x] `lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver`
+- [x] `lsp_inlay_hints_show_imported_enum_variant_payload_names`
 - [x] `lsp_inlay_hints_show_enum_variant_payload_names`
 - [x] `lsp_inlay_hints_degrade_to_any_without_schema`
 - [x] `lsp_inlay_hints_suppress_any_schema_function_parameters`
