@@ -299,8 +299,9 @@ projection. Legacy request-dispatch helper methods were removed, and Phase 4
 feature-response raw JSON cleanup is closed; remaining custom protocol params,
 JSON-RPC envelopes, and extension payload cleanup are tracked by Phase 7. Phase
 5 task pool scheduling has started with a `TaskResult` response envelope routed
-through the main-loop send path; actual latency, formatting, and worker lanes
-remain the next architectural step.
+through the main-loop send path plus `TaskLane` metadata for main, latency,
+formatting, and worker work; actual separate latency, formatting, and worker
+execution paths remain the next architectural step.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and

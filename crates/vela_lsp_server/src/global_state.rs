@@ -225,6 +225,7 @@ impl GlobalState {
     }
 
     pub(crate) fn send_task_result(&self, result: TaskResult) -> anyhow::Result<ResultSummary> {
+        let _lane = result.lane();
         self.send_result(result.into_result())
     }
 
