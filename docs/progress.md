@@ -176,6 +176,10 @@ M20.5 lifecycle update: native LSP cancellation fixtures now cover stale
 queued requests plus unknown and already-completed request IDs as no-response
 no-ops that do not poison later requests.
 
+M20.5 lifecycle update: native LSP `exit` now terminates the in-memory
+dispatcher contract as well as process intent; later requests, notifications,
+and malformed input are ignored with no responses.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

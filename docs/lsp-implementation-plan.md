@@ -212,6 +212,8 @@ coverage complete based only on the older capability phases.
     correctness does not depend on save events.
   - Requests after `shutdown` now return a stable invalid-request error until
     the client sends the allowed `exit` notification.
+  - After `exit`, the in-memory dispatcher ignores later input, matching the
+    process-termination lifecycle even when tests call the server directly.
   - `$/cancelRequest` now has protocol fixtures for stale queued requests,
     unknown request IDs, and already-completed request IDs.
 - [x] Audit rust-analyzer-aligned authoring behavior before treating the LSP

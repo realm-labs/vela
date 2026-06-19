@@ -97,6 +97,10 @@ impl LspServer {
     }
 
     pub fn handle_json(&mut self, input: &str) -> JsonRpcResult {
+        if self.exited {
+            return JsonRpcResult::None;
+        }
+
         let message = match serde_json::from_str::<JsonRpcMessage>(input) {
             Ok(message) => message,
             Err(error) => {

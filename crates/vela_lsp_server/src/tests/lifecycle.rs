@@ -519,3 +519,44 @@ fn lsp_rejects_requests_after_shutdown_until_exit() {
     assert!(server.is_exited());
     assert_eq!(exit, JsonRpcResult::None);
 }
+
+#[test]
+fn lsp_ignores_messages_after_exit() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+    let exit = server.handle_json(&notification("exit", JsonValue::Null));
+
+    let hover = server.handle_json(&request(
+        2,
+        "textDocument/hover",
+        serde_json::json!({
+            "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+            "position": { "line": 0, "character": 0 }
+        }),
+    ));
+    let did_open = server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/scripts/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": "let broken ="
+            }
+        }),
+    ));
+    let malformed = server.handle_json("{not json");
+
+    assert!(server.is_exited());
+    assert_eq!(exit, JsonRpcResult::None);
+    assert_eq!(hover, JsonRpcResult::None);
+    assert_eq!(did_open, JsonRpcResult::None);
+    assert_eq!(malformed, JsonRpcResult::None);
+}
