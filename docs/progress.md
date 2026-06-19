@@ -648,6 +648,13 @@ shutdown-before-initialize, post-shutdown requests, request-shaped exit,
 cancelled request IDs, unsupported requests, `--no-watch-files`, and empty host
 schema watcher behavior.
 
+M20.5 RA-style main-loop update: `GlobalState` now owns the typed LSP sender
+and response sending helper used by `main_loop`, so outbound responses are
+routed through the central mutable server state. Workspace and language-service
+database ownership still sits behind the temporary legacy `LspServer` wrapper
+until the remaining protocol/config/reload migration moves those fields
+directly into `GlobalState`.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

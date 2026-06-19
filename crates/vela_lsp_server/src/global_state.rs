@@ -1,19 +1,26 @@
 use std::collections::BTreeSet;
 
+use crossbeam_channel::Sender;
 use lsp_server::Message;
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer, RequestId, handlers::dispatch};
+use crate::{
+    JsonRpcResult, LaunchConfiguration, LspServer, RequestId,
+    handlers::dispatch,
+    transport::{ResultSummary, messages_from_result},
+};
 
 pub(crate) struct GlobalState {
+    sender: Sender<Message>,
     launch_configuration: LaunchConfiguration,
     request_queue: RequestQueue,
     server: LspServer,
 }
 
 impl GlobalState {
-    pub(crate) fn new(launch_configuration: LaunchConfiguration) -> Self {
+    pub(crate) fn new(sender: Sender<Message>, launch_configuration: LaunchConfiguration) -> Self {
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
         Self {
+            sender,
             launch_configuration,
             request_queue: RequestQueue::default(),
             server,
@@ -34,6 +41,14 @@ impl GlobalState {
             self.request_queue.finish(&id);
         }
         result
+    }
+
+    pub(crate) fn send_result(&self, result: JsonRpcResult) -> anyhow::Result<ResultSummary> {
+        let summary = ResultSummary::from_result(&result);
+        for message in messages_from_result(result)? {
+            self.sender.send(message)?;
+        }
+        Ok(summary)
     }
 
     pub(crate) const fn is_exited(&self) -> bool {
