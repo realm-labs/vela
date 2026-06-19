@@ -22,7 +22,7 @@ use crate::{
     },
     publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
-    rpc::request_id_from_lsp,
+    rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
     success_response,
     transport::{ResultSummary, messages_from_result},
     with_work_done_progress,
@@ -147,7 +147,7 @@ impl GlobalState {
     }
 
     pub(crate) fn take_cancelled_request(&mut self, id: &RequestId) -> bool {
-        self.server.take_cancelled_request(id)
+        self.request_queue.take_cancelled(id)
     }
 
     pub(crate) fn apply_config_change(&mut self, change: ConfigChange) {
@@ -212,7 +212,9 @@ impl GlobalState {
     }
 
     pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
-        self.server.cancel_request_lsp(params)
+        self.request_queue
+            .cancel(request_id_from_lsp_number_or_string(params.id));
+        JsonRpcResult::None
     }
 
     pub(crate) fn did_change_configuration(
@@ -306,6 +308,7 @@ impl GlobalState {
 #[derive(Debug, Default)]
 struct RequestQueue {
     incoming: BTreeSet<String>,
+    cancelled: BTreeSet<RequestId>,
 }
 
 impl RequestQueue {
@@ -322,6 +325,14 @@ impl RequestQueue {
 
     fn finish(&mut self, id: &str) {
         self.incoming.remove(id);
+    }
+
+    fn cancel(&mut self, id: RequestId) {
+        self.cancelled.insert(id);
+    }
+
+    fn take_cancelled(&mut self, id: &RequestId) -> bool {
+        self.cancelled.remove(id)
     }
 }
 
@@ -374,5 +385,21 @@ mod tests {
         assert!(snapshot.open_documents().contains(&document));
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
+    }
+
+    #[test]
+    fn typed_cancellation_is_tracked_by_global_request_queue() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let request_id = RequestId::Number(7);
+
+        let result = state.cancel_request(lsp_types::CancelParams {
+            id: lsp_types::NumberOrString::Number(7),
+        });
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.take_cancelled_request(&request_id));
+        assert!(!state.take_cancelled_request(&request_id));
+        assert!(state.server.cancelled_requests.is_empty());
     }
 }

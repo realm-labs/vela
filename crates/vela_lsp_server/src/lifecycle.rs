@@ -1,8 +1,7 @@
 use std::collections::BTreeSet;
 
 use lsp_types::{
-    CancelParams as LspCancelParams, InitializeParams as LspInitializeParams,
-    InitializedParams as LspInitializedParams, NumberOrString,
+    InitializeParams as LspInitializeParams, InitializedParams as LspInitializedParams,
 };
 use serde_json::Value as JsonValue;
 use vela_language_service::WorkspaceRoot;
@@ -129,12 +128,6 @@ impl LspServer {
         JsonRpcResult::None
     }
 
-    pub(crate) fn cancel_request_lsp(&mut self, params: LspCancelParams) -> JsonRpcResult {
-        self.cancelled_requests
-            .insert(request_id_from_lsp_number_or_string(params.id));
-        JsonRpcResult::None
-    }
-
     pub(crate) fn method_not_found(&self, id: Option<RequestId>, method: &str) -> JsonRpcResult {
         id.map_or(JsonRpcResult::None, |id| {
             JsonRpcResult::Response(error_response(
@@ -162,13 +155,6 @@ fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String
         .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
         .map(|root| root.path().to_owned())
         .collect()
-}
-
-fn request_id_from_lsp_number_or_string(id: NumberOrString) -> RequestId {
-    match id {
-        NumberOrString::Number(id) => RequestId::Number(i64::from(id)),
-        NumberOrString::String(id) => RequestId::String(id),
-    }
 }
 
 pub(crate) fn workspace_roots_from_lsp_initialize(

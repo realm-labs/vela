@@ -106,10 +106,6 @@ impl LspServer {
         self.exited
     }
 
-    pub(crate) fn take_cancelled_request(&mut self, id: &RequestId) -> bool {
-        self.cancelled_requests.remove(id)
-    }
-
     pub fn handle_json(&mut self, input: &str) -> JsonRpcResult {
         if self.exited {
             return JsonRpcResult::None;
