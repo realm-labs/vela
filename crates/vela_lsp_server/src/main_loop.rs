@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::{any::Any, thread, time::Instant};
 
 use crossbeam_channel::{Receiver, RecvError, select};
 use lsp_server::{Connection, Message};
@@ -10,6 +10,17 @@ use crate::{
     tracing::TraceSink,
     transport::{MessageMetadata, RequestProfiler, serialize_json_rpc_message},
 };
+
+const MAIN_LOOP_THREAD_NAME: &str = "VelaLspMainLoop";
+
+pub fn run_on_latency_thread(
+    connection: Connection,
+    configuration: LaunchConfiguration,
+) -> anyhow::Result<()> {
+    join_latency_main_loop(spawn_latency_main_loop_thread(move || {
+        run(connection, configuration)
+    })?)
+}
 
 pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow::Result<()> {
     let Connection { sender, receiver } = connection;
@@ -83,13 +94,36 @@ fn elapsed_ms(start: Instant) -> u64 {
     u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
 }
 
+fn spawn_latency_main_loop_thread(
+    job: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
+) -> std::io::Result<thread::JoinHandle<anyhow::Result<()>>> {
+    thread::Builder::new()
+        .name(MAIN_LOOP_THREAD_NAME.to_owned())
+        .spawn(job)
+}
+
+fn join_latency_main_loop(handle: thread::JoinHandle<anyhow::Result<()>>) -> anyhow::Result<()> {
+    match handle.join() {
+        Ok(result) => result,
+        Err(payload) => anyhow::bail!("main loop thread panicked: {}", panic_message(&payload)),
+    }
+}
+
+fn panic_message(payload: &Box<dyn Any + Send>) -> &str {
+    payload
+        .downcast_ref::<&'static str>()
+        .copied()
+        .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+        .unwrap_or("unknown panic payload")
+}
+
 #[cfg(test)]
 mod tests {
     use crossbeam_channel::unbounded;
 
     use crate::{JsonRpcResult, LaunchConfiguration, global_state::GlobalState, task::TaskLane};
 
-    use super::{MainLoopEvent, next_event};
+    use super::{MAIN_LOOP_THREAD_NAME, MainLoopEvent, next_event, spawn_latency_main_loop_thread};
 
     #[test]
     fn next_event_receives_background_lane_task_results() {
@@ -110,6 +144,31 @@ mod tests {
         assert_eq!(
             task.into_result(),
             JsonRpcResult::Response("worker".to_owned())
+        );
+    }
+
+    #[test]
+    fn latency_main_loop_thread_is_named_without_custom_stack() {
+        let (name_sender, name_receiver) = unbounded();
+        let handle = spawn_latency_main_loop_thread(move || {
+            name_sender
+                .send(std::thread::current().name().map(str::to_owned))
+                .expect("thread name should send");
+            Ok(())
+        })
+        .expect("main loop thread should spawn");
+
+        handle
+            .join()
+            .expect("main loop thread should not panic")
+            .expect("main loop thread job should succeed");
+
+        assert_eq!(
+            name_receiver
+                .recv()
+                .expect("thread name should be received")
+                .as_deref(),
+            Some(MAIN_LOOP_THREAD_NAME)
         );
     }
 }

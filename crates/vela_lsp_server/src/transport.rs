@@ -127,7 +127,7 @@ pub fn run_connection(
     connection: Connection,
     configuration: LaunchConfiguration,
 ) -> anyhow::Result<()> {
-    crate::main_loop::run(connection, configuration)
+    crate::main_loop::run_on_latency_thread(connection, configuration)
 }
 
 pub(crate) fn messages_from_result(result: JsonRpcResult) -> anyhow::Result<Vec<Message>> {

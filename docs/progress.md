@@ -317,6 +317,9 @@ and save notifications stay synchronous on the main loop through
 Task lane workers are now lane-named, and scheduled task results carry
 optional LSP method names for profile/trace correlation once queued request
 execution uses the scheduler.
+Stdio and TCP connection execution now enter the server through a named
+`VelaLspMainLoop` thread with default stack sizing; no broader stack expansion
+is used until parser/analysis workloads demonstrate a need.
 Snapshot-backed read-only routing is complete for the current typed request
 surface: completion, completion resolve, hover, signature help, semantic
 tokens, formatting, navigation, references, highlights, symbols, folding,

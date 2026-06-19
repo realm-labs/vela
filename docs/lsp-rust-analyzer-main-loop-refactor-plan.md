@@ -1136,9 +1136,20 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Use a latency-sensitive main-loop thread and adequate stack sizing when
+- [x] Use a latency-sensitive main-loop thread and adequate stack sizing when
   needed by parser/analysis workloads; measure before expanding stack sizes
   globally.
+  - Stdio and TCP connection execution now enter the typed server through
+    `main_loop::run_on_latency_thread(...)`, which runs the main loop on a
+    named `VelaLspMainLoop` thread. No custom stack size is set because the
+    focused main-loop, lifecycle, and transport tests pass without stack
+    pressure; larger stack sizing remains deferred until parser/analysis
+    workloads prove a need. Validated with
+    `cargo test -p vela_lsp_server main_loop`,
+    `cargo test -p vela_lsp_server stdio_transport`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Ensure document changes and cancellation notifications can be processed
   while long read-only requests are pending.
 - [ ] Ensure formatting uses the formatting lane and cannot starve behind
