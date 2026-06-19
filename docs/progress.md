@@ -299,8 +299,8 @@ projection. Legacy request-dispatch helper methods were removed; remaining
 Phase 4 cleanup is raw JSON/protocol helper retirement, while Phase 5 task
 pool scheduling is the next architectural milestone.
 Code action, inlay hint, semantic token, formatting, folding-range,
-selection-range, and signature-help compatibility paths now serialize typed
-`lsp/to_proto.rs` projections instead of keeping duplicate raw response
+selection-range, signature-help, and hover compatibility paths now serialize
+typed `lsp/to_proto.rs` projections instead of keeping duplicate raw response
 encoders.
 
 M20.5 Phase 11 update: references and call hierarchy are complete enough for

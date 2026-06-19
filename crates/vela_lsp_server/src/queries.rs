@@ -10,7 +10,6 @@ use crate::{
     completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
     definition::lsp_definition,
     error_response,
-    hover::lsp_hover,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
     protocol::CallHierarchyOutgoingCallsParams,
@@ -358,7 +357,10 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            hover.as_ref().map_or(JsonValue::Null, lsp_hover),
+            hover.as_ref().map_or(JsonValue::Null, |hover| {
+                serde_json::to_value(to_proto::hover(hover))
+                    .expect("typed hover response should serialize")
+            }),
         ))
     }
 

@@ -9,7 +9,6 @@ mod config_change;
 mod definition;
 mod global_state;
 mod handlers;
-mod hover;
 mod lifecycle;
 mod line_index;
 mod lsp;
