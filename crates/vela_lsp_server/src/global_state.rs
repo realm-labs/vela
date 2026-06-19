@@ -326,11 +326,11 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: DocumentFormattingParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_formatting_params(&params);
         let edits = self.databases.document_formatting(&document_id);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed formatting response should serialize"),
@@ -341,14 +341,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: DocumentRangeFormattingParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::range_formatting_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid rangeFormatting params: {error}"),
                 );
@@ -358,7 +358,7 @@ impl GlobalStateSnapshot {
             .databases
             .range_formatting(&input.document_id, input.range);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed rangeFormatting response should serialize"),
@@ -369,14 +369,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: DocumentOnTypeFormattingParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::on_type_formatting_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid onTypeFormatting params: {error}"),
                 );
@@ -386,7 +386,7 @@ impl GlobalStateSnapshot {
             self.databases
                 .on_type_formatting(&input.document_id, input.position, &input.trigger);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::text_edits(&edits))
                 .expect("typed onTypeFormatting response should serialize"),

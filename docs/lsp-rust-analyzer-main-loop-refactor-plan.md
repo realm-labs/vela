@@ -1581,6 +1581,14 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server inlay_hint`,
     `cargo test -p vela_lsp_server typed_inlay_hint`, and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed formatting, range-formatting, and on-type-formatting snapshot
+    request handlers now return `lsp_server::Message` batches directly through
+    the typed formatting-lane dispatcher branch, and the obsolete wrapper-based
+    formatting task dispatcher has been removed. Validated with
+    `cargo test -p vela_lsp_server formatting`,
+    `cargo test -p vela_lsp_server typed_formatting`,
+    `cargo test -p vela_lsp_server handlers::dispatch`, and
+    `cargo test -p vela_lsp_server task`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

@@ -131,9 +131,13 @@ fn dispatch_request(
             GlobalStateSnapshot::semantic_tokens_range,
         )
         .on_worker_snapshot_messages_typed::<InlayHintRequest>(GlobalStateSnapshot::inlay_hint)
-        .on_fmt_thread_snapshot_typed::<Formatting>(GlobalStateSnapshot::formatting)
-        .on_fmt_thread_snapshot_typed::<RangeFormatting>(GlobalStateSnapshot::range_formatting)
-        .on_fmt_thread_snapshot_typed::<OnTypeFormatting>(GlobalStateSnapshot::on_type_formatting)
+        .on_fmt_thread_snapshot_messages_typed::<Formatting>(GlobalStateSnapshot::formatting)
+        .on_fmt_thread_snapshot_messages_typed::<RangeFormatting>(
+            GlobalStateSnapshot::range_formatting,
+        )
+        .on_fmt_thread_snapshot_messages_typed::<OnTypeFormatting>(
+            GlobalStateSnapshot::on_type_formatting,
+        )
         .finish()
 }
 
@@ -479,15 +483,15 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn on_fmt_thread_snapshot_typed<R>(
+    pub(crate) fn on_fmt_thread_snapshot_messages_typed<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug + Send + 'static,
     {
-        self.dispatch_snapshot_task_typed::<R>(TaskLane::Formatting, f);
+        self.dispatch_snapshot_messages_task_typed::<R>(TaskLane::Formatting, f);
         self
     }
 
@@ -555,45 +559,6 @@ impl<'a> RequestDispatcher<'a> {
         };
     }
 
-    fn dispatch_snapshot_task_typed<R>(
-        &mut self,
-        lane: TaskLane,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-    ) where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug + Send + 'static,
-    {
-        let Some(request) = self.take_matching::<R>() else {
-            return;
-        };
-        let id = request.id;
-        let request_id = id.clone();
-        let params = match serde_json::from_value::<R::Params>(request.params) {
-            Ok(params) => params,
-            Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
-                return;
-            }
-        };
-        let snapshot = self.global_state.snapshot();
-        let generation = self
-            .global_state
-            .register_in_flight_cancellation(request_id.clone());
-        self.global_state.task_scheduler().spawn_for_request(
-            lane,
-            R::METHOD,
-            request_id,
-            generation,
-            move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                f(snapshot, id.clone(), params)
-            })) {
-                Ok(result) => typed_messages(result),
-                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-            },
-        );
-        self.result.clear();
-    }
-
     fn dispatch_retryable_snapshot_task_typed<R>(
         &mut self,
         lane: TaskLane,
@@ -635,6 +600,45 @@ impl<'a> RequestDispatcher<'a> {
                     Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
                 },
             );
+        self.result.clear();
+    }
+
+    fn dispatch_snapshot_messages_task_typed<R>(
+        &mut self,
+        lane: TaskLane,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + 'static,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let request_id = id.clone();
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        let generation = self
+            .global_state
+            .register_in_flight_cancellation(request_id.clone());
+        self.global_state.task_scheduler().spawn_for_request(
+            lane,
+            R::METHOD,
+            request_id,
+            generation,
+            move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                f(snapshot, id.clone(), params)
+            })) {
+                Ok(messages) => messages,
+                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+            },
+        );
         self.result.clear();
     }
 
