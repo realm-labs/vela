@@ -60,6 +60,22 @@ impl GlobalState {
         self.server.initialize_lsp(id, params)
     }
 
+    pub(crate) fn shutdown(&mut self, id: lsp_server::RequestId, params: ()) -> JsonRpcResult {
+        self.server.shutdown_lsp(id, params)
+    }
+
+    pub(crate) fn initialized(&mut self, params: lsp_types::InitializedParams) -> JsonRpcResult {
+        self.server.initialized_lsp(params)
+    }
+
+    pub(crate) fn exit(&mut self, params: ()) -> JsonRpcResult {
+        self.server.exit_lsp(params)
+    }
+
+    pub(crate) fn cancel_request(&mut self, params: lsp_types::CancelParams) -> JsonRpcResult {
+        self.server.cancel_request_lsp(params)
+    }
+
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
         self.server.handle_json(input)
     }

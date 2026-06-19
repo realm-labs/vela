@@ -44,11 +44,17 @@ fn dispatch_request(
     if global_state.take_cancelled_request(&request_id) {
         return request_cancelled(request_id);
     }
+    if global_state.is_shutdown_requested() && request.method != "exit" {
+        return server_shut_down(request.id);
+    }
+    if !global_state.is_initialized() && !is_pre_initialize_method(&request.method) {
+        return server_not_initialized(request.id);
+    }
 
     let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
-        .on_sync_mut::<lsp_types::request::Shutdown>()
+        .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
         .on_sync::<DocumentSymbolRequest>()
         .on_latency_sensitive::<Completion>()
         .on_latency_sensitive::<HoverRequest>()
@@ -76,9 +82,9 @@ fn dispatch_notification(
 ) -> JsonRpcResult {
     let mut dispatcher = NotificationDispatcher::new(global_state, notification, legacy_input);
     dispatcher
-        .on_sync_mut::<Initialized>()
-        .on_sync_mut::<Exit>()
-        .on_sync_mut::<Cancel>()
+        .on_sync_mut_typed::<Initialized>(GlobalState::initialized)
+        .on_sync_mut_typed::<Exit>(GlobalState::exit)
+        .on_sync_mut_typed::<Cancel>(GlobalState::cancel_request)
         .on_sync_mut::<DidOpenTextDocument>()
         .on_sync_mut::<DidChangeTextDocument>()
         .on_sync_mut::<DidCloseTextDocument>()
@@ -106,6 +112,7 @@ impl<'a> RequestDispatcher<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn on_sync_mut<R>(&mut self) -> &mut Self
     where
         R: lsp_types::request::Request,
@@ -171,9 +178,7 @@ impl<'a> RequestDispatcher<'a> {
 
     pub(crate) fn finish(&mut self) -> JsonRpcResult {
         if let Some(request) = self.request.take() {
-            self.result = if !self.global_state.is_initialized()
-                || self.global_state.is_shutdown_requested()
-            {
+            self.result = if is_known_notification_method(&request.method) {
                 self.global_state.handle_legacy_json(self.legacy_input)
             } else {
                 method_not_found(request.id, &request.method)
@@ -243,11 +248,48 @@ impl<'a> NotificationDispatcher<'a> {
         self
     }
 
+    pub(crate) fn on_sync_mut_typed<N>(
+        &mut self,
+        f: fn(&mut GlobalState, N::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        N: lsp_types::notification::Notification,
+        N::Params: DeserializeOwned + Debug,
+    {
+        let Some(notification) = self.take_matching::<N>() else {
+            return self;
+        };
+        let params = match serde_json::from_value::<N::Params>(notification.params) {
+            Ok(params) => params,
+            Err(_) => {
+                self.result = JsonRpcResult::None;
+                return self;
+            }
+        };
+        self.result = f(self.global_state, params);
+        self
+    }
+
     pub(crate) fn finish(&mut self) -> JsonRpcResult {
         if self.notification.take().is_some() {
             self.result = JsonRpcResult::None;
         }
         std::mem::replace(&mut self.result, JsonRpcResult::None)
+    }
+
+    fn take_matching<N>(&mut self) -> Option<Notification>
+    where
+        N: lsp_types::notification::Notification,
+    {
+        if self
+            .notification
+            .as_ref()
+            .is_some_and(|notification| notification.method == N::METHOD)
+        {
+            self.notification.take()
+        } else {
+            None
+        }
     }
 }
 
@@ -256,6 +298,22 @@ fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
         Some(request_id_from_lsp(id)),
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
+    ))
+}
+
+fn server_not_initialized(id: lsp_server::RequestId) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(request_id_from_lsp(id)),
+        ErrorCode::ServerNotInitialized,
+        "server has not been initialized",
+    ))
+}
+
+fn server_shut_down(id: lsp_server::RequestId) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(request_id_from_lsp(id)),
+        ErrorCode::InvalidRequest,
+        "server has shut down",
     ))
 }
 
@@ -281,4 +339,27 @@ fn invalid_params(
 
 fn rpc_request_id(id: lsp_server::RequestId) -> RequestId {
     request_id_from_lsp(id)
+}
+
+fn is_pre_initialize_method(method: &str) -> bool {
+    matches!(
+        method,
+        "initialize" | "initialized" | "exit" | "$/cancelRequest"
+    )
+}
+
+fn is_known_notification_method(method: &str) -> bool {
+    matches!(
+        method,
+        "initialized"
+            | "exit"
+            | "$/cancelRequest"
+            | "textDocument/didOpen"
+            | "textDocument/didChange"
+            | "textDocument/didClose"
+            | "textDocument/didSave"
+            | "workspace/didChangeConfiguration"
+            | "workspace/didChangeWorkspaceFolders"
+            | "workspace/didChangeWatchedFiles"
+    )
 }

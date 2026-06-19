@@ -640,6 +640,114 @@ mod tests {
     }
 
     #[test]
+    fn typed_dispatcher_preserves_lifecycle_request_gates() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "shutdown",
+                "params": null
+            })))
+            .expect("early shutdown should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "capabilities": {}
+                }
+            })))
+            .expect("initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "shutdown",
+                "params": null
+            })))
+            .expect("shutdown should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "textDocument/hover",
+                "params": {
+                    "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+                    "position": { "line": 0, "character": 0 }
+                }
+            })))
+            .expect("post-shutdown hover should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "exit",
+                "params": null
+            })))
+            .expect("request-shaped exit should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "textDocument/hover",
+                "params": {
+                    "textDocument": { "uri": "file:///workspace/scripts/main.vela" },
+                    "position": { "line": 0, "character": 0 }
+                }
+            })))
+            .expect("post-exit hover should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, LaunchConfiguration::new())
+            .expect("typed connection should run");
+
+        let responses = client_receiver
+            .try_iter()
+            .filter_map(|message| match message {
+                Message::Response(response) => Some(response),
+                Message::Request(_) | Message::Notification(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(responses.len(), 5, "{responses:?}");
+        assert_eq!(responses[0].id.to_string(), "1");
+        assert_eq!(
+            responses[0]
+                .error
+                .as_ref()
+                .expect("early shutdown should error")
+                .code,
+            -32002
+        );
+        assert_eq!(responses[1].id.to_string(), "2");
+        assert!(responses[1].error.is_none());
+        assert_eq!(responses[2].id.to_string(), "3");
+        assert!(responses[2].error.is_none());
+        assert_eq!(responses[3].id.to_string(), "4");
+        let shutdown_error = responses[3]
+            .error
+            .as_ref()
+            .expect("post-shutdown request should error");
+        assert_eq!(shutdown_error.code, -32600);
+        assert_eq!(shutdown_error.message, "server has shut down");
+        assert_eq!(responses[4].id.to_string(), "5");
+        let exit_error = responses[4]
+            .error
+            .as_ref()
+            .expect("request-shaped exit should error");
+        assert_eq!(exit_error.code, -32600);
+        assert_eq!(exit_error.message, "`exit` must be sent as a notification");
+    }
+
+    #[test]
     fn tcp_rejects_non_loopback_bind_address() {
         let error = super::bind_loopback_tcp_listener("0.0.0.0:0")
             .expect_err("non-loopback bind should be rejected");

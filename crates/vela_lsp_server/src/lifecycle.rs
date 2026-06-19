@@ -1,6 +1,9 @@
 use std::collections::BTreeSet;
 
-use lsp_types::InitializeParams as LspInitializeParams;
+use lsp_types::{
+    CancelParams as LspCancelParams, InitializeParams as LspInitializeParams,
+    InitializedParams as LspInitializedParams, NumberOrString,
+};
 use serde_json::Value as JsonValue;
 use vela_language_service::WorkspaceRoot;
 
@@ -111,6 +114,14 @@ impl LspServer {
                 "`initialized` must be sent as a notification",
             ));
         }
+        self.register_watched_files_after_initialized()
+    }
+
+    pub(crate) fn initialized_lsp(&mut self, _params: LspInitializedParams) -> JsonRpcResult {
+        self.register_watched_files_after_initialized()
+    }
+
+    fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
         if self.client_supports_watched_file_registration
             && !self.file_watching_disabled
             && !self.watched_files_registered
@@ -131,6 +142,12 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, JsonValue::Null))
     }
 
+    pub(crate) fn shutdown_lsp(&mut self, id: lsp_server::RequestId, _params: ()) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        self.shutdown_requested = true;
+        JsonRpcResult::Response(success_response(id, JsonValue::Null))
+    }
+
     pub(crate) fn exit(&mut self, id: Option<RequestId>) -> JsonRpcResult {
         self.exited = true;
         id.map_or(JsonRpcResult::None, |id| {
@@ -140,6 +157,11 @@ impl LspServer {
                 "`exit` must be sent as a notification",
             ))
         })
+    }
+
+    pub(crate) fn exit_lsp(&mut self, _params: ()) -> JsonRpcResult {
+        self.exited = true;
+        JsonRpcResult::None
     }
 
     pub(crate) fn cancel_request(
@@ -159,6 +181,12 @@ impl LspServer {
             return JsonRpcResult::None;
         };
         self.cancelled_requests.insert(params.id);
+        JsonRpcResult::None
+    }
+
+    pub(crate) fn cancel_request_lsp(&mut self, params: LspCancelParams) -> JsonRpcResult {
+        self.cancelled_requests
+            .insert(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
     }
 
@@ -189,6 +217,13 @@ fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String
         .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
         .map(|root| root.path().to_owned())
         .collect()
+}
+
+fn request_id_from_lsp_number_or_string(id: NumberOrString) -> RequestId {
+    match id {
+        NumberOrString::Number(id) => RequestId::Number(i64::from(id)),
+        NumberOrString::String(id) => RequestId::String(id),
+    }
 }
 
 fn workspace_roots_from_lsp_initialize(params: &LspInitializeParams) -> BTreeSet<String> {
