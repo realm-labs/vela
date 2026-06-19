@@ -1,4 +1,10 @@
-use super::*;
+use std::fs;
+
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
+
+use super::{file_uri, temp_workspace};
 
 #[test]
 fn lsp_hover_reports_source_method_on_source_function_return_receiver() {
@@ -95,7 +101,8 @@ fn hover_value(text: &str, line: usize, character: usize) -> String {
     let root_uri = file_uri(&root.join("scripts"));
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -103,8 +110,9 @@ fn hover_value(text: &str, line: usize, character: usize) -> String {
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -114,9 +122,10 @@ fn hover_value(text: &str, line: usize, character: usize) -> String {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/hover",
         serde_json::json!({
@@ -126,7 +135,7 @@ fn hover_value(text: &str, line: usize, character: usize) -> String {
                 "character": character
             }
         }),
-    )));
+    ));
 
     let value = response["result"]["contents"]["value"]
         .as_str()
