@@ -759,7 +759,7 @@ impl LspServer {
 fn is_pre_initialize_method(method: &str) -> bool {
     matches!(
         method,
-        "initialize" | "initialized" | "shutdown" | "exit" | "$/cancelRequest"
+        "initialize" | "initialized" | "exit" | "$/cancelRequest"
     )
 }
 

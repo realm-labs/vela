@@ -544,6 +544,14 @@ fn lsp_cancellation_ignores_completed_request_id() {
 #[test]
 fn lsp_shutdown_exits_without_background_tasks() {
     let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
     let response = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
     let exit = server.handle_json(&notification("exit", JsonValue::Null));
 
@@ -556,6 +564,14 @@ fn lsp_shutdown_exits_without_background_tasks() {
 #[test]
 fn lsp_rejects_requests_after_shutdown_until_exit() {
     let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
     let shutdown = response_value(server.handle_json(&request(2, "shutdown", JsonValue::Null)));
 
     assert_eq!(shutdown["result"], JsonValue::Null);
@@ -576,6 +592,34 @@ fn lsp_rejects_requests_after_shutdown_until_exit() {
     let exit = server.handle_json(&notification("exit", JsonValue::Null));
     assert!(server.is_exited());
     assert_eq!(exit, JsonRpcResult::None);
+}
+
+#[test]
+fn lsp_rejects_shutdown_before_initialize_without_closing() {
+    let mut server = LspServer::new();
+    let shutdown = response_value(server.handle_json(&request(1, "shutdown", JsonValue::Null)));
+    let initialize = response_value(server.handle_json(&request(
+        2,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "capabilities": {}
+        }),
+    )));
+
+    assert_eq!(shutdown["id"], 1);
+    assert_eq!(shutdown["error"]["code"], -32002);
+    assert_eq!(
+        shutdown["error"]["message"],
+        "server has not been initialized"
+    );
+    assert!(!server.is_shutdown_requested());
+    assert_eq!(initialize["id"], 2);
+    assert_eq!(
+        initialize["result"]["serverInfo"]["name"],
+        "vela_lsp_server"
+    );
+    assert!(server.is_initialized());
 }
 
 #[test]

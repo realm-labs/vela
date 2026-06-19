@@ -207,8 +207,8 @@ coverage complete based only on the older capability phases.
   - Repeated `initialize` requests now return a stable invalid-request error
     without resetting workspace roots, editor configuration, or capabilities.
   - Requests before a successful `initialize` now return a stable
-    server-not-initialized error, and `initialized` alone does not unlock
-    feature requests.
+    server-not-initialized error, including `shutdown`; an early
+    `initialized` alone does not unlock feature requests.
   - `textDocumentSync.save` is now pinned false, and
     `textDocument/didSave` notifications are no-response no-ops so editor
     correctness does not depend on save events.

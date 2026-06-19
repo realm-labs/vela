@@ -164,6 +164,10 @@ M20.5 lifecycle update: repeated `initialize` requests now return a stable
 invalid-request error before any workspace roots, editor configuration, or
 capability state can be reset.
 
+M20.5 lifecycle update: `shutdown` now requires successful initialization;
+early shutdown requests return server-not-initialized without closing the
+server or blocking a later valid `initialize`.
+
 M20.5 lifecycle update: native LSP capability fixtures now pin
 `textDocumentSync.save = false`, and `textDocument/didSave` notifications are
 no-response no-ops so editor correctness does not depend on save events.
