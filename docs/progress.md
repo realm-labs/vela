@@ -261,6 +261,10 @@ M20.5 Phase 8 update: native LSP hover fixtures now cover missing-schema
 type-hint degradation, matching the language service's `Any` fallback without
 running host code.
 
+M20.5 Phase 8 update: service and native LSP hover fixtures now cover source
+functions returning `Any` used as member receivers, returning no hover instead
+of inventing source member facts across the dynamic boundary.
+
 M20.5 Phase 8 update: service and native LSP hover fixtures now cover
 schema-backed methods and trait methods where the receiver is produced by
 another schema method return, matching chained schema receiver facts used by

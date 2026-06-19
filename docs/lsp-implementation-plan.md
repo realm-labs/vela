@@ -873,7 +873,7 @@ Purpose: expose semantic facts and navigation.
     members and trait receiver methods, schema-backed traits and enum variants,
     stdlib functions, stdlib receiver methods, imported module path segments,
     missing-schema type-hint degradation, and null results for unresolved names
-    plus dynamic receiver members.
+    plus dynamic receiver members including source functions returning `Any`.
 - [x] Include docs, type facts, effects, permissions, origins, and source spans
   where known.
   - Schema-backed hover now surfaces docs copied through the static schema
@@ -911,6 +911,7 @@ Tests:
 - [x] `hover_degrades_to_any_without_schema`
 - [x] `hover_returns_none_for_unresolved_name`
 - [x] `hover_returns_none_for_dynamic_receiver_member`
+- [x] `hover_returns_none_for_source_any_return_receiver_member`
 - [x] `hover_reports_script_parameter_fact`
 - [x] `hover_recovers_parameter_fact_after_body_parse_error`
 - [x] `hover_reports_effects_and_permissions`
@@ -938,6 +939,7 @@ Tests:
 - [x] `lsp_hover_recovers_parameter_fact_after_body_parse_error`
 - [x] `lsp_hover_degrades_to_any_without_schema`
 - [x] `lsp_hover_returns_null_for_unresolved_and_dynamic_members`
+- [x] `lsp_hover_returns_null_for_source_any_return_receiver_member`
 - [x] `lsp_hover_reports_effects_and_permissions`
 - [x] `lsp_hover_reports_source_global_fact`
 - [x] `lsp_hover_reports_imported_module_path_fact`

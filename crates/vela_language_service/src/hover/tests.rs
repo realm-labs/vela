@@ -59,6 +59,27 @@ fn hover_returns_none_for_dynamic_receiver_member() {
 }
 
 #[test]
+fn hover_returns_none_for_source_any_return_receiver_member() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { level: i64 }
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { return source_any().level }"#;
+    let databases = databases_for(&document, text, RegistryFacts::default());
+    let use_line = text.lines().nth(3).expect("member use line should exist");
+
+    assert!(
+        databases
+            .hover(
+                &document,
+                Position::new(3, use_line.find("level").expect("member use")),
+            )
+            .is_none(),
+        "source Any return receivers must not invent member hover facts"
+    );
+}
+
+#[test]
 fn hover_reports_effects_and_permissions() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.grant(1) }";
