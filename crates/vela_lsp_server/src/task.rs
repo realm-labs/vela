@@ -10,6 +10,7 @@ type TaskJob = Box<dyn FnOnce() -> TaskResult + Send + 'static>;
 pub(crate) enum TaskResult {
     Response {
         lane: TaskLane,
+        method: Option<String>,
         result: JsonRpcResult,
     },
 }
@@ -53,7 +54,26 @@ impl TaskScheduler {
         lane: TaskLane,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        let task = Box::new(move || TaskResult::lane_response(lane, job()));
+        self.spawn_labeled(lane, None, job);
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn spawn_for_method(
+        &self,
+        lane: TaskLane,
+        method: impl Into<String>,
+        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+    ) {
+        self.spawn_labeled(lane, Some(method.into()), job);
+    }
+
+    fn spawn_labeled(
+        &self,
+        lane: TaskLane,
+        method: Option<String>,
+        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+    ) {
+        let task = Box::new(move || TaskResult::lane_method_response(lane, method, job()));
         match lane {
             TaskLane::Latency => self.latency_jobs.send(task),
             TaskLane::Formatting => self.formatting_jobs.send(task),
@@ -88,12 +108,30 @@ impl TaskResult {
     }
 
     pub(crate) const fn lane_response(lane: TaskLane, result: JsonRpcResult) -> Self {
-        Self::Response { lane, result }
+        Self::lane_method_response(lane, None, result)
+    }
+
+    pub(crate) const fn lane_method_response(
+        lane: TaskLane,
+        method: Option<String>,
+        result: JsonRpcResult,
+    ) -> Self {
+        Self::Response {
+            lane,
+            method,
+            result,
+        }
     }
 
     pub(crate) const fn lane(&self) -> TaskLane {
         match self {
             Self::Response { lane, .. } => *lane,
+        }
+    }
+
+    pub(crate) fn method(&self) -> Option<&str> {
+        match self {
+            Self::Response { method, .. } => method.as_deref(),
         }
     }
 
@@ -144,6 +182,15 @@ mod tests {
             TaskResult::lane_response(TaskLane::Worker, result.clone()).lane(),
             TaskLane::Worker
         );
+        assert_eq!(
+            TaskResult::lane_method_response(
+                TaskLane::Worker,
+                Some("textDocument/hover".to_owned()),
+                result.clone(),
+            )
+            .method(),
+            Some("textDocument/hover")
+        );
         assert_eq!(task_result.into_result(), result);
     }
 
@@ -188,6 +235,32 @@ mod tests {
         assert_eq!(
             worker.into_result(),
             JsonRpcResult::Response("worker".to_owned())
+        );
+    }
+
+    #[test]
+    fn task_scheduler_preserves_method_names_for_profiled_tasks() {
+        let scheduler = TaskScheduler::new();
+
+        scheduler.spawn_for_method(TaskLane::Worker, "textDocument/references", || {
+            assert_eq!(
+                thread::current().name(),
+                Some("VelaLspWorkerTask"),
+                "worker thread should still identify the lane"
+            );
+            JsonRpcResult::Response("references".to_owned())
+        });
+
+        let task = scheduler
+            .worker_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker lane should respond");
+
+        assert_eq!(task.lane(), TaskLane::Worker);
+        assert_eq!(task.method(), Some("textDocument/references"));
+        assert_eq!(
+            task.into_result(),
+            JsonRpcResult::Response("references".to_owned())
         );
     }
 }

@@ -1123,8 +1123,19 @@ cargo test -p vela_lsp_server inlay
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Name task threads or task spans by lane and request method so profile and
+- [x] Name task threads or task spans by lane and request method so profile and
   trace output can identify where work is running.
+  - Task lane workers are named by lane (`VelaLspLatencyTask`,
+    `VelaLspFormattingTask`, and `VelaLspWorkerTask`), and scheduled task
+    results can now carry the originating LSP method through
+    `TaskScheduler::spawn_for_method(...)` and `TaskResult::method()` so
+    profile/trace plumbing can report both lane and method once queued request
+    execution is wired to the scheduler. Validated with
+    `cargo test -p vela_lsp_server task`,
+    `cargo test -p vela_lsp_server next_event`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Use a latency-sensitive main-loop thread and adequate stack sizing when
   needed by parser/analysis workloads; measure before expanding stack sizes
   globally.

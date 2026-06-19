@@ -314,11 +314,15 @@ this RA main-loop phase: lifecycle requests plus initialized, exit,
 cancellation, document sync, configuration, workspace-folder, watched-file,
 and save notifications stay synchronous on the main loop through
 `&mut GlobalState`.
-Snapshot-backed read-only routing has started: completion, completion resolve,
-hover, signature help, semantic tokens, formatting, and navigation now clone
-`GlobalStateSnapshot` at dispatch and query snapshot-owned language-service
-state instead of mutating the legacy server wrapper. Worker-lane read-only
-request families still need the same migration.
+Task lane workers are now lane-named, and scheduled task results carry
+optional LSP method names for profile/trace correlation once queued request
+execution uses the scheduler.
+Snapshot-backed read-only routing is complete for the current typed request
+surface: completion, completion resolve, hover, signature help, semantic
+tokens, formatting, navigation, references, highlights, symbols, folding,
+selection ranges, rename, call hierarchy, code actions, and inlay hints now
+clone `GlobalStateSnapshot` at dispatch and query snapshot-owned
+language-service state instead of mutating the legacy server wrapper.
 Code action, inlay hint, semantic token, formatting, folding-range,
 selection-range, signature-help, hover, navigation, references, and
 document-highlight, prepare-rename, rename, document-symbol, and
