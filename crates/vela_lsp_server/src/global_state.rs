@@ -36,6 +36,7 @@ pub(crate) struct GlobalState {
     reload_scheduler: ReloadScheduler,
     server: LspServer,
     workspace_roots: BTreeSet<String>,
+    open_documents: BTreeSet<DocumentId>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -124,6 +125,7 @@ impl GlobalState {
         let watch_files_enabled = launch_configuration.watch_files_enabled();
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
         let workspace_roots = server.workspace_roots.clone();
+        let open_documents = server.open_documents.clone();
         Self {
             sender,
             launch_configuration,
@@ -131,6 +133,7 @@ impl GlobalState {
             reload_scheduler: ReloadScheduler::default(),
             server,
             workspace_roots,
+            open_documents,
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
@@ -153,7 +156,7 @@ impl GlobalState {
             workspace: self.server.workspace.snapshot(),
             databases: self.server.databases.clone(),
             workspace_roots: self.workspace_roots.clone(),
-            open_documents: self.server.open_documents.clone(),
+            open_documents: self.open_documents.clone(),
             client_supports_work_done_progress: self.client_supports_work_done_progress,
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
@@ -329,7 +332,7 @@ impl GlobalState {
         self.reload_scheduler.schedule_watched_files(
             params.changes,
             schema_path.as_deref(),
-            &self.server.open_documents,
+            &self.open_documents,
         );
         for work in self.reload_scheduler.drain() {
             self.apply_reload_work(work);
@@ -339,11 +342,11 @@ impl GlobalState {
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
         let result = self.server.handle_json(input);
-        self.sync_lifecycle_from_legacy_server();
+        self.sync_from_legacy_server();
         result
     }
 
-    fn sync_lifecycle_from_legacy_server(&mut self) {
+    fn sync_from_legacy_server(&mut self) {
         self.initialized |= self.server.initialized;
         self.shutdown_requested |= self.server.shutdown_requested;
         self.exited |= self.server.exited;
@@ -354,6 +357,7 @@ impl GlobalState {
         self.watched_files_registered |= self.server.watched_files_registered;
         self.watch_files_enabled = !self.server.file_watching_disabled;
         self.workspace_roots = self.server.workspace_roots.clone();
+        self.open_documents = self.server.open_documents.clone();
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -378,7 +382,7 @@ impl GlobalState {
     }
 
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
-        let has_open_documents = !self.server.open_documents.is_empty();
+        let has_open_documents = !self.open_documents.is_empty();
         let result = self.server.publish_open_diagnostics();
         if has_open_documents && self.client_supports_work_done_progress {
             with_work_done_progress(result, "Vela workspace diagnostics")
@@ -459,6 +463,7 @@ mod tests {
             .workspace_roots
             .insert("/workspace/scripts".to_owned());
         state.server.open_documents.insert(document.clone());
+        state.open_documents.insert(document.clone());
         state.server.workspace.open_document(
             document.clone(),
             "fn main() { 1 }",
@@ -482,6 +487,7 @@ mod tests {
             SourceVersion::new(4),
         );
         state.server.open_documents.clear();
+        state.open_documents.clear();
         state.client_supports_work_done_progress = false;
         state.client_supports_watched_file_registration = false;
         state.semantic_token_projection = SemanticTokenProjection::default();
@@ -655,6 +661,38 @@ mod tests {
         assert!(state.workspace_roots.contains("/workspace/tools"));
         assert!(!state.server.workspace_roots.contains("/legacy/only"));
         assert_eq!(state.server.workspace_roots, state.workspace_roots);
+    }
+
+    #[test]
+    fn legacy_document_sync_updates_global_open_documents() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+
+        let result = state.handle_legacy_json(
+            &serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": document.as_str(),
+                        "languageId": "vela",
+                        "version": 1,
+                        "text": "fn main() {}"
+                    }
+                }
+            })
+            .to_string(),
+        );
+
+        assert!(matches!(
+            result,
+            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
+        ));
+        assert!(state.open_documents.contains(&document));
+        assert_eq!(state.open_documents, state.server.open_documents);
     }
 
     #[test]

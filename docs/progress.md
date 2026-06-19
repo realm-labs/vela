@@ -258,6 +258,10 @@ legacy wrapper is kept synchronized for remaining legacy paths.
 Workspace roots now live in `GlobalState`, drive typed workspace-folder
 changes and watcher registration, and are mirrored back to the legacy wrapper
 for remaining non-typed handlers.
+Open document IDs now live in `GlobalState` and `GlobalStateSnapshot`; the
+temporary legacy document-sync path mirrors them back after legacy handling
+while typed watched-file scheduling and progress gating read the `GlobalState`
+owner.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace

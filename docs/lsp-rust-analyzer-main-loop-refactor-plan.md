@@ -466,6 +466,10 @@ cargo test -p vela_lsp_server lifecycle
   - Workspace roots now live in `GlobalState`, drive typed workspace-folder
     changes and watcher registration, and are mirrored back to the legacy
     wrapper for remaining non-typed handlers.
+  - Open document IDs now live in `GlobalState` and `GlobalStateSnapshot`;
+    the temporary legacy document-sync path mirrors them back after legacy
+    handling while typed watched-file scheduling and progress gating read the
+    `GlobalState` owner.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.
