@@ -79,7 +79,7 @@ fn dispatch_request(
             RetryTask::completion_resolve,
         )
         .on_latency_sensitive_snapshot_messages_typed::<HoverRequest>(GlobalStateSnapshot::hover)
-        .on_latency_sensitive_snapshot_typed::<SignatureHelpRequest>(
+        .on_latency_sensitive_snapshot_messages_typed::<SignatureHelpRequest>(
             GlobalStateSnapshot::signature_help,
         )
         .on_retryable_latency_snapshot_typed::<SemanticTokensFullRequest>(

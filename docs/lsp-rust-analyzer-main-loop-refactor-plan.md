@@ -1486,6 +1486,11 @@ cargo test -p vela_lsp_server semantic_tokens
     branch, leaving the remaining snapshot request handlers for follow-up
     slices. Validated with `cargo test -p vela_lsp_server hover` and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed signature-help snapshot request handler now returns
+    `lsp_server::Message` batches directly through the typed snapshot
+    dispatcher branch. Validated with
+    `cargo test -p vela_lsp_server signature` and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

@@ -228,15 +228,15 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: SignatureHelpParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id =
             from_proto::document_id(&params.text_document_position_params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::signature_help_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid signatureHelp position: {error}"),
                 );
@@ -246,7 +246,7 @@ impl GlobalStateSnapshot {
             .databases
             .signature_help(&input.document_id, input.position);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(signatures.as_ref().map(to_proto::signature_help))
                 .expect("typed signatureHelp response should serialize"),
