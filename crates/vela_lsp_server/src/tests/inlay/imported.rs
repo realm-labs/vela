@@ -53,6 +53,63 @@ fn lsp_inlay_hints_show_imported_function_parameter_names() {
     );
 }
 
+#[test]
+fn lsp_inlay_hints_show_imported_const_and_global_typefacts() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    open_document(
+        &mut server,
+        "file:///workspace/scripts/game/config.vela",
+        "pub const BONUS: i64 = 10\npub global reward_scale: i64",
+    );
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"use game::config::BONUS
+use game::config::reward_scale
+pub fn main() {
+    let scripted = BONUS;
+    let scale = reward_scale;
+}"#;
+    open_document(&mut server, uri, text);
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/inlayHint",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "range": {
+                "start": { "line": 0, "character": 0 },
+                "end": { "line": 6, "character": 0 }
+            }
+        }),
+    )));
+
+    assert_eq!(
+        response["result"],
+        serde_json::json!([
+            {
+                "position": { "line": 3, "character": "    let scripted".len() },
+                "label": ": i64",
+                "kind": 1,
+                "paddingRight": true
+            },
+            {
+                "position": { "line": 4, "character": "    let scale".len() },
+                "label": ": i64",
+                "kind": 1,
+                "paddingRight": true
+            }
+        ])
+    );
+}
+
 fn open_document(server: &mut LspServer, uri: &str, text: &str) {
     let diagnostics = notification_value(server.handle_json(&notification(
         "textDocument/didOpen",

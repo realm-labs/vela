@@ -88,6 +88,58 @@ fn inlay_hints_show_imported_function_parameter_names() {
 }
 
 #[test]
+fn inlay_hints_show_imported_const_and_global_typefacts() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let config = DocumentId::from("/workspace/scripts/game/config.vela");
+    let main_text = r#"use game::config::BONUS
+use game::config::reward_scale
+pub fn main() {
+    let scripted = BONUS;
+    let scale = reward_scale;
+}"#;
+    let scripted_start = main_text.find("scripted").expect("scripted local");
+    let scale_start = main_text.find("let scale").expect("scale local") + "let ".len();
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), main_text),
+        SourceFileSnapshot::new(
+            config,
+            "pub const BONUS: i64 = 10\npub global reward_scale: i64",
+        ),
+    ]);
+
+    let hints = databases.inlay_hints(
+        &main,
+        DiagnosticRange::new(Position::new(0, 0), Position::new(6, 0)),
+    );
+
+    assert_eq!(
+        hint_labels(&hints),
+        vec![
+            (
+                Position::new(3, "    let scripted".len()),
+                ": i64".to_owned()
+            ),
+            (Position::new(4, "    let scale".len()), ": i64".to_owned())
+        ]
+    );
+    assert_eq!(
+        hint_symbols(&hints),
+        vec![
+            Some(SymbolRef::local_at(
+                "scripted",
+                main.clone(),
+                TextRange::new(scripted_start, scripted_start + "scripted".len())
+            )),
+            Some(SymbolRef::local_at(
+                "scale",
+                main,
+                TextRange::new(scale_start, scale_start + "scale".len())
+            ))
+        ]
+    );
+}
+
+#[test]
 fn inlay_hints_skip_named_arguments_and_unknown_calls() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn grant(amount: i64) -> i64 { return amount }\npub fn main() { return grant(amount = 10) + missing(1) }";
