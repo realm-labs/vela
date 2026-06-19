@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use lsp_server::Message;
 
-use crate::{JsonRpcResult, LaunchConfiguration, LspServer};
+use crate::{JsonRpcResult, LaunchConfiguration, LspServer, handlers::dispatch};
 
 pub(crate) struct GlobalState {
     launch_configuration: LaunchConfiguration,
@@ -29,7 +29,7 @@ impl GlobalState {
         if let Some(id) = request_id.as_ref() {
             self.request_queue.start(id.clone());
         }
-        let result = self.server.handle_json(input);
+        let result = dispatch::dispatch_message(self, message, input);
         if let Some(id) = request_id {
             self.request_queue.finish(&id);
         }
@@ -38,6 +38,10 @@ impl GlobalState {
 
     pub(crate) const fn is_exited(&self) -> bool {
         self.server.is_exited()
+    }
+
+    pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
+        self.server.handle_json(input)
     }
 }
 

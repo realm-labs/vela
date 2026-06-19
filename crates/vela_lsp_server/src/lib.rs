@@ -10,6 +10,7 @@ mod definition;
 mod folding;
 mod formatting;
 mod global_state;
+mod handlers;
 mod hover;
 mod inlay;
 mod lifecycle;

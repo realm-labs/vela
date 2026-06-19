@@ -434,9 +434,9 @@ cargo test -p vela_lsp_server lifecycle
   configuration, workspace state, language-service databases, shutdown/exited
   flags, and send/respond helpers.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
-- [ ] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
+- [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.
-- [ ] Implement explicit dispatcher APIs for `on_sync_mut`, `on_sync`,
+- [x] Implement explicit dispatcher APIs for `on_sync_mut`, `on_sync`,
   latency-sensitive background requests, formatting-lane requests, and worker
   requests.
 - [ ] Centralize invalid params, panic, cancellation, stale generation,

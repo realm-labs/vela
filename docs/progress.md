@@ -618,6 +618,13 @@ M20.5 RA-style main-loop update: `main_loop.rs` now owns the typed
 in-memory tests. Transport setup remains in `transport.rs`, while typed
 lifecycle dispatch is the next Phase 2 migration step.
 
+M20.5 RA-style main-loop update: `handlers/dispatch.rs` now provides typed
+`RequestDispatcher` and `NotificationDispatcher` entry points with
+`on_sync_mut`, `on_sync`, latency-sensitive, formatting-lane, and worker
+request categories. The categories currently delegate through the legacy
+handler bridge while lifecycle parameter/result migration remains the next
+Phase 2 task.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
