@@ -237,6 +237,56 @@ fn lsp_member_completion_suppresses_schema_any_function_return_receiver() {
 }
 
 #[test]
+fn lsp_member_completion_suppresses_source_any_function_return_receiver() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace/scripts",
+            "capabilities": {}
+        }),
+    )));
+    let uri = "file:///workspace/scripts/game/main.vela";
+    let text = r#"
+struct Player { grant: i64 }
+fn source_any() -> Any { return Player { grant: 1 } }
+fn global_grant() -> bool { return true }
+pub fn main() { source_any().gr }"#;
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": uri },
+            "position": position_for(text, "source_any().gr")
+        }),
+    )));
+
+    assert_no_completion(&response, "grant");
+    assert_no_completion(&response, "global_grant");
+    let items = response["result"]["items"]
+        .as_array()
+        .expect("completion response should contain items");
+    assert!(
+        items.is_empty(),
+        "dynamic Any receivers must not invent member or global completions: {items:?}"
+    );
+}
+
+#[test]
 fn lsp_member_completion_uses_schema_trait_method_facts() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");

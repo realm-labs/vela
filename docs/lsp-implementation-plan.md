@@ -294,7 +294,8 @@ coverage complete based only on the older capability phases.
     facts, defaulted parameters, short labels with separate projection fields,
     repeated-query cache reuse, stale/cancelled completion rejection, and
     malformed/incomplete contexts without global fallback, including member
-    completion suppression for schema functions returning `Any` as receivers.
+    completion suppression for source/schema functions returning `Any` as
+    receivers.
   - Current fixtures cover `completionItem/resolve` payload projection,
     lazy schema docs for schema types/functions/fields/methods/variants, item
     pass-through without payloads, and invalid payload rejection.
@@ -2271,11 +2272,13 @@ Tests:
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
 - [x] `member_completion_uses_source_function_return_receiver_facts`
+- [x] `member_completion_suppresses_source_any_function_return_receiver`
 - [x] `member_completion_uses_source_method_return_receiver_facts`
 - [x] `member_completion_uses_schema_method_return_receiver_facts`
 - [x] `member_completion_uses_schema_trait_method_return_receiver_facts`
 - [x] `lsp_member_completion_includes_source_and_builtin_methods`
 - [x] `lsp_member_completion_uses_source_function_return_receiver_facts`
+- [x] `lsp_member_completion_suppresses_source_any_function_return_receiver`
 - [x] `lsp_member_completion_uses_source_method_return_receiver_facts`
 - [x] `lsp_member_completion_uses_schema_method_return_receiver_facts`
 - [x] `lsp_member_completion_uses_schema_trait_method_return_receiver_facts`

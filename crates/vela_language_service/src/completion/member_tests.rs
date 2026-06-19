@@ -114,6 +114,24 @@ fn member_completion_suppresses_schema_any_function_return_receiver() {
 }
 
 #[test]
+fn member_completion_suppresses_source_any_function_return_receiver() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+struct Player { grant: i64 }
+fn source_any() -> Any { return Player { grant: 1 } }
+fn global_grant() -> bool { return true }
+pub fn main() { source_any().gr }"#;
+
+    let completions = completions_for(document, text, "source_any().gr");
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::Member);
+    assert!(
+        completions.items().is_empty(),
+        "dynamic Any receivers must not invent member or global completions: {completions:?}"
+    );
+}
+
+#[test]
 fn member_completion_uses_schema_method_return_receiver_facts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.inventory(). }";
