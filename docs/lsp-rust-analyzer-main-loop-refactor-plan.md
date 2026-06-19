@@ -1574,6 +1574,13 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server semantic_tokens_range`,
     `cargo test -p vela_lsp_server typed_semantic_token_dispatch`, and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed inlay-hint snapshot request handler now returns
+    `lsp_server::Message` batches directly through the typed worker snapshot
+    dispatcher branch, and the obsolete wrapper-based immediate worker
+    snapshot dispatcher has been removed. Validated with
+    `cargo test -p vela_lsp_server inlay_hint`,
+    `cargo test -p vela_lsp_server typed_inlay_hint`, and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

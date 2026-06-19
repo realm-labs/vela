@@ -728,14 +728,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: InlayHintParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::inlay_hint_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid inlayHint params: {error}"),
                 );
@@ -743,7 +743,7 @@ impl GlobalStateSnapshot {
         };
         let hints = self.databases.inlay_hints(&input.document_id, input.range);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::inlay_hints(&hints))
                 .expect("typed inlayHint response should serialize"),
