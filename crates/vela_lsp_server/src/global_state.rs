@@ -275,13 +275,13 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: SemanticTokensDeltaParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let input = from_proto::semantic_tokens_delta_params(&params);
         let delta = self
             .databases
             .semantic_token_delta(&input.document_id, &input.previous_result_id);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::semantic_tokens_delta(
                 &delta,

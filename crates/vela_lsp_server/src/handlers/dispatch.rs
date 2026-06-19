@@ -86,7 +86,7 @@ fn dispatch_request(
             GlobalStateSnapshot::semantic_tokens_full,
             RetryTask::semantic_tokens_full,
         )
-        .on_latency_sensitive_snapshot_typed::<SemanticTokensFullDeltaRequest>(
+        .on_latency_sensitive_snapshot_messages_typed::<SemanticTokensFullDeltaRequest>(
             GlobalStateSnapshot::semantic_tokens_full_delta,
         )
         .on_worker_snapshot_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
@@ -371,18 +371,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_latency_sensitive_snapshot_typed<R>(
-        &mut self,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-    ) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug,
-    {
-        self.dispatch_snapshot_typed::<R>(f);
         self
     }
 

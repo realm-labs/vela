@@ -1491,6 +1491,12 @@ cargo test -p vela_lsp_server semantic_tokens
     dispatcher branch. Validated with
     `cargo test -p vela_lsp_server signature` and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed semanticTokens/full/delta snapshot request handler now returns
+    `lsp_server::Message` batches directly through the typed snapshot
+    dispatcher branch, and the obsolete latency snapshot wrapper dispatcher
+    method has been removed. Validated with
+    `cargo test -p vela_lsp_server semantic_tokens` and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
