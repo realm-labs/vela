@@ -6,6 +6,7 @@ mod client;
 mod code_action;
 mod completion;
 mod config;
+mod config_change;
 mod definition;
 mod folding;
 mod formatting;
@@ -42,7 +43,8 @@ use vela_language_service::{
 };
 
 use crate::client::WorkspaceFolder;
-use crate::config::{EditorConfiguration, workspace_config_from_roots_and_editor_config};
+use crate::config::EditorConfiguration;
+use crate::config_change::ConfigChange;
 pub use crate::rpc::JsonRpcResult;
 pub(crate) use crate::rpc::{
     ErrorCode, JSONRPC_VERSION, JsonRpcMessage, RequestId, error_response, success_response,
@@ -414,22 +416,16 @@ impl LspServer {
             }
         };
 
+        let mut workspace_roots = self.workspace_roots.clone();
         for folder in params.event.removed {
             let root = WorkspaceRoot::from(folder.uri);
-            self.workspace_roots.remove(root.path());
+            workspace_roots.remove(root.path());
         }
         for folder in params.event.added {
             let root = WorkspaceRoot::from(folder.uri);
-            self.workspace_roots.insert(root.path().to_owned());
+            workspace_roots.insert(root.path().to_owned());
         }
-        if !self.has_config_file {
-            self.config = workspace_config_from_roots_and_editor_config(
-                &self.workspace_roots,
-                self.editor_config.as_ref(),
-            );
-            self.databases.invalidate_project_config();
-            self.reload_schema_from_config();
-        }
+        self.apply_config_change(ConfigChange::from_workspace_roots(workspace_roots));
 
         let has_open_documents = !self.open_documents.is_empty();
         let result = self.publish_open_diagnostics();
@@ -450,11 +446,8 @@ impl LspServer {
             if !result.diagnostics.is_empty() || self.config_documents.contains(&document_id) {
                 self.config_documents.insert(document_id);
             }
-            self.has_config_file = true;
-            self.config = Some(result.config);
             self.config_diagnostics = result.diagnostics;
-            self.databases.invalidate_project_config();
-            self.reload_schema_from_config();
+            self.apply_config_change(ConfigChange::from_workspace_file(result.config));
         } else if self.is_schema_uri(uri) {
             self.upsert_schema_artifact(uri);
         } else if is_source_uri(uri) {
@@ -471,16 +464,10 @@ impl LspServer {
 
     fn remove_watched_file(&mut self, uri: &str) {
         if is_config_uri(uri) {
-            self.has_config_file = false;
-            self.config = workspace_config_from_roots_and_editor_config(
-                &self.workspace_roots,
-                self.editor_config.as_ref(),
-            );
             self.config_diagnostics.clear();
             self.config_documents
                 .insert(DocumentId::from(uri.to_owned()));
-            self.databases.invalidate_project_config();
-            self.reload_schema_from_config();
+            self.apply_config_change(ConfigChange::clear_workspace_file());
         } else if self.is_schema_uri(uri) {
             self.mark_schema_artifact_missing();
         } else if is_source_uri(uri) {

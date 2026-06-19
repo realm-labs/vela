@@ -457,7 +457,7 @@ cargo test -p vela_lsp_server lifecycle
 
 ### Phase 2.5: Config, Position, Reload, And Trace Boundaries
 
-- [ ] Introduce a `ConfigChange`-style pipeline separating immutable launch
+- [x] Introduce a `ConfigChange`-style pipeline separating immutable launch
   configuration, client/editor configuration, workspace `vela.toml`
   configuration, schema paths, watcher state, and effective config.
 - [ ] Apply configuration changes through `GlobalState`, not directly inside

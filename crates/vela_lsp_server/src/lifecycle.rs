@@ -9,8 +9,8 @@ use vela_language_service::WorkspaceRoot;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, capabilities::initialize_result,
-    client::InitializeParams, config::workspace_config_from_roots_and_editor_config,
-    error_response, rpc::CancelRequestParams, rpc::request_id_from_lsp, success_response, watching,
+    client::InitializeParams, config_change::ConfigChange, error_response,
+    rpc::CancelRequestParams, rpc::request_id_from_lsp, success_response, watching,
 };
 
 impl LspServer {
@@ -37,15 +37,10 @@ impl LspServer {
             }
         };
         self.initialized = true;
-        self.workspace_roots = workspace_roots_from_initialize(&params);
-        if params.initialization_options.is_some() {
-            self.editor_config = params.initialization_options.clone();
-        }
-        self.config = workspace_config_from_roots_and_editor_config(
-            &self.workspace_roots,
-            self.editor_config.as_ref(),
-        );
-        self.reload_schema_from_config();
+        self.apply_config_change(ConfigChange::from_initialize(
+            workspace_roots_from_initialize(&params),
+            params.initialization_options.clone(),
+        ));
         self.client_supports_work_done_progress = params.capabilities.supports_work_done_progress();
         self.client_supports_watched_file_registration =
             params.capabilities.supports_watched_file_registration();
@@ -87,15 +82,10 @@ impl LspServer {
         };
 
         self.initialized = true;
-        self.workspace_roots = workspace_roots_from_lsp_initialize(&params);
-        if editor_config.is_some() {
-            self.editor_config = editor_config;
-        }
-        self.config = workspace_config_from_roots_and_editor_config(
-            &self.workspace_roots,
-            self.editor_config.as_ref(),
-        );
-        self.reload_schema_from_config();
+        self.apply_config_change(ConfigChange::from_initialize(
+            workspace_roots_from_lsp_initialize(&params),
+            editor_config,
+        ));
         self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
         self.client_supports_watched_file_registration =
             lsp_supports_watched_file_registration(&params);

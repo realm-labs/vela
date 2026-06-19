@@ -6,8 +6,9 @@ use serde_json::Value as JsonValue;
 use vela_language_service::{SchemaConfig, WorkspaceConfig, WorkspaceRoot};
 
 use crate::{
-    ErrorCode, JsonRpcResult, LspServer, RequestId, document_uri_path, error_response,
-    normalized_path, publish_diagnostics_notification,
+    ErrorCode, JsonRpcResult, LspServer, RequestId,
+    config_change::{ConfigChange, WorkspaceConfigChange},
+    document_uri_path, error_response, normalized_path, publish_diagnostics_notification,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,7 +92,7 @@ impl LaunchConfiguration {
         self.watch_files_enabled
     }
 
-    fn into_editor_configuration(self) -> Option<EditorConfiguration> {
+    pub(crate) fn into_editor_configuration(self) -> Option<EditorConfiguration> {
         (!self.is_empty()).then(|| EditorConfiguration {
             workspace: (!self.workspace_roots.is_empty()).then_some(EditorWorkspaceConfiguration {
                 roots: Some(self.workspace_roots),
@@ -183,14 +184,49 @@ impl LspServer {
     #[must_use]
     pub fn with_launch_configuration(configuration: LaunchConfiguration) -> Self {
         let mut server = Self::new();
-        server.file_watching_disabled = !configuration.watch_files_enabled();
-        server.editor_config = configuration.into_editor_configuration();
-        server.config = workspace_config_from_roots_and_editor_config(
-            &server.workspace_roots,
-            server.editor_config.as_ref(),
-        );
-        server.reload_schema_from_config();
+        server.apply_config_change(ConfigChange::from_launch(configuration));
         server
+    }
+
+    pub(crate) fn apply_config_change(&mut self, mut change: ConfigChange) {
+        if let Some(enabled) = change.watch_files_enabled() {
+            self.file_watching_disabled = !enabled;
+        }
+        if let Some(workspace_roots) = change.take_workspace_roots() {
+            self.workspace_roots = workspace_roots;
+        }
+        if let Some(editor_config) = change.take_editor_config() {
+            self.editor_config = Some(editor_config);
+        }
+
+        match change.workspace_config_change() {
+            WorkspaceConfigChange::Unchanged => {}
+            WorkspaceConfigChange::RecomputeFromEditor => {
+                if !self.has_config_file {
+                    self.config = workspace_config_from_roots_and_editor_config(
+                        &self.workspace_roots,
+                        self.editor_config.as_ref(),
+                    );
+                    self.databases.invalidate_project_config();
+                    self.reload_schema_from_config();
+                }
+            }
+            WorkspaceConfigChange::WorkspaceFile(config) => {
+                self.has_config_file = true;
+                self.config = Some(config);
+                self.databases.invalidate_project_config();
+                self.reload_schema_from_config();
+            }
+            WorkspaceConfigChange::ClearWorkspaceFile => {
+                self.has_config_file = false;
+                self.config = workspace_config_from_roots_and_editor_config(
+                    &self.workspace_roots,
+                    self.editor_config.as_ref(),
+                );
+                self.databases.invalidate_project_config();
+                self.reload_schema_from_config();
+            }
+        }
     }
 
     pub(crate) fn did_change_configuration(
@@ -227,15 +263,7 @@ impl LspServer {
             }
         };
 
-        self.editor_config = Some(editor_config);
-        if !self.has_config_file {
-            self.config = workspace_config_from_roots_and_editor_config(
-                &self.workspace_roots,
-                self.editor_config.as_ref(),
-            );
-            self.databases.invalidate_project_config();
-            self.reload_schema_from_config();
-        }
+        self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
         self.publish_open_diagnostics()
     }
 }

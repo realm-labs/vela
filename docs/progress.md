@@ -655,6 +655,13 @@ database ownership still sits behind the temporary legacy `LspServer` wrapper
 until the remaining protocol/config/reload migration moves those fields
 directly into `GlobalState`.
 
+M20.5 RA-style main-loop update: Phase 2.5 now has a `ConfigChange` pipeline
+for immutable launch flags, editor settings, initialize/workspace roots,
+workspace `vela.toml` config, watcher enablement, and effective workspace
+config recomputation. The application helper currently lives on the temporary
+`LspServer` owner; routing all config changes through `GlobalState` remains the
+next config-boundary task.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,
