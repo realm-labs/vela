@@ -1650,9 +1650,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server handlers::dispatch`,
     `cargo test -p vela_lsp_server typed_completion`, and
     `cargo test -p vela_lsp_server typed_semantic_token_dispatch`.
-- [ ] Ensure no LSP protocol types leak into `vela_language_service`.
-- [ ] Add an assertion or package validation where practical that
+- [x] Ensure no LSP protocol types leak into `vela_language_service`.
+  - `rg -n "use lsp_types|lsp_types::|lsp-types\\s*=" crates/vela_language_service -g '*.rs' -g 'Cargo.toml'`
+    returns no matches, keeping LSP protocol imports and manifest dependency
+    declarations at the `vela_lsp_server` boundary.
+- [x] Add an assertion or package validation where practical that
   `vela_language_service` does not depend on `lsp-types`.
+  - Added a `vela_language_service` manifest boundary test that fails if
+    `lsp-types`/`lsp_types` becomes a direct dependency. Validated with
+    `cargo test -p vela_language_service manifest_does_not_depend_on_lsp_types`.
 
 Validation:
 

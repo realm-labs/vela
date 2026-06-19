@@ -86,3 +86,17 @@ pub use text::{LineIndex, Position, TextRange};
 pub use workspace::{
     DocumentId, DocumentSnapshot, SourceVersion, Workspace, WorkspaceGeneration, WorkspaceSnapshot,
 };
+
+#[cfg(test)]
+mod boundary_tests {
+    #[test]
+    fn manifest_does_not_depend_on_lsp_types() {
+        let manifest = include_str!("../Cargo.toml");
+        for line in manifest.lines().map(str::trim) {
+            assert!(
+                !line.starts_with("lsp-types") && !line.starts_with("lsp_types"),
+                "vela_language_service must remain editor-neutral; move LSP protocol dependencies to vela_lsp_server"
+            );
+        }
+    }
+}
