@@ -1549,6 +1549,12 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server prepare_rename`,
     `cargo test -p vela_lsp_server typed_prepare_rename`, and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed rename snapshot request handler now returns
+    `lsp_server::Message` batches directly through the typed worker snapshot
+    dispatcher branch. Validated with
+    `cargo test -p vela_lsp_server rename`,
+    `cargo test -p vela_lsp_server typed_rename`, and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

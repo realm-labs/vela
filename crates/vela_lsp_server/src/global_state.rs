@@ -593,14 +593,14 @@ impl GlobalStateSnapshot {
         )
     }
 
-    pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> JsonRpcResult {
+    pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::rename_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid rename position: {error}"),
                 );
@@ -610,7 +610,7 @@ impl GlobalStateSnapshot {
             .databases
             .rename(&input.document_id, input.position, &params.new_name);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
                 .expect("typed rename response should serialize"),
