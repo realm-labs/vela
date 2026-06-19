@@ -3,10 +3,10 @@ use std::collections::BTreeSet;
 use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
-    CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
-    DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, ReferenceParams,
-    RenameParams, SignatureHelpParams, TextDocumentPositionParams,
+    CallHierarchyPrepareParams, CompletionParams, DidChangeConfigurationParams,
+    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams,
+    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentPositionParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -420,6 +420,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.rename_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn prepare_call_hierarchy(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: CallHierarchyPrepareParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.prepare_call_hierarchy_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1559,6 +1570,38 @@ pub fn main(amount: i64) -> i64 {
     }
 
     #[test]
+    fn typed_prepare_call_hierarchy_dispatch_projects_items() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let line = text.lines().nth(1).expect("main line should exist");
+        let character = line.find("grant").expect("main line should contain grant");
+
+        let response =
+            typed_prepare_call_hierarchy_response(&mut state, 17, &document, 1, character);
+        let items = response["result"]
+            .as_array()
+            .expect("prepareCallHierarchy response should be an array");
+
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert_eq!(items[0]["name"], "grant");
+        assert_eq!(items[0]["kind"], 12);
+        assert_eq!(items[0]["uri"], document.as_str());
+        assert_eq!(items[0]["selectionRange"]["start"]["line"], 0);
+        assert_eq!(items[0]["selectionRange"]["start"]["character"], 7);
+        assert!(items[0]["data"].is_object());
+    }
+
+    #[test]
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1628,6 +1671,38 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed navigation should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_prepare_call_hierarchy_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        line: u32,
+        character: usize,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/prepareCallHierarchy".to_owned(),
+            params: serde_json::to_value(lsp_types::CallHierarchyPrepareParams {
+                text_document_position_params: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        line,
+                        u32::try_from(character).expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("prepareCallHierarchy params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed prepareCallHierarchy should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

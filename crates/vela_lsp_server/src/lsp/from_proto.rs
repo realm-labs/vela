@@ -103,6 +103,13 @@ pub(crate) fn rename_params(
     text_document_position(text, &params.text_document_position)
 }
 
+pub(crate) fn prepare_call_hierarchy_params(
+    text: &str,
+    params: &lsp_types::CallHierarchyPrepareParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position_params)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -346,6 +353,29 @@ mod tests {
         };
 
         let input = rename_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn prepare_call_hierarchy_params_convert_nested_position_input() {
+        let params = lsp_types::CallHierarchyPrepareParams {
+            text_document_position_params: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        };
+
+        let input =
+            prepare_call_hierarchy_params("main", &params).expect("position should convert");
 
         assert_eq!(
             input.document_id,

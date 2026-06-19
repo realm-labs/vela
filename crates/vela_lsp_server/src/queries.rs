@@ -747,6 +747,36 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_call_hierarchy_items(&items)))
     }
 
+    pub(crate) fn prepare_call_hierarchy_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CallHierarchyPrepareParams,
+    ) -> JsonRpcResult {
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::prepare_call_hierarchy_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid prepareCallHierarchy position: {error}"),
+                ));
+            }
+        };
+        let items = self
+            .databases
+            .prepare_call_hierarchy(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::call_hierarchy_items(&items))
+                .expect("typed prepareCallHierarchy response should serialize"),
+        ))
+    }
+
     pub(crate) fn incoming_calls(
         &mut self,
         id: Option<RequestId>,

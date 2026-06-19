@@ -8,11 +8,11 @@ use lsp_types::{
         Exit, Initialized,
     },
     request::{
-        CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
-        GotoDeclaration, GotoDefinition, GotoTypeDefinition, HoverRequest, InlayHintRequest,
-        PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
-        SemanticTokensFullDeltaRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
-        SignatureHelpRequest,
+        CallHierarchyPrepare, CodeActionRequest, Completion, DocumentSymbolRequest,
+        FoldingRangeRequest, Formatting, GotoDeclaration, GotoDefinition, GotoTypeDefinition,
+        HoverRequest, InlayHintRequest, PrepareRenameRequest, References, Rename,
+        ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullDeltaRequest,
+        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
     },
 };
 use serde::de::DeserializeOwned;
@@ -69,6 +69,7 @@ fn dispatch_request(
         .on_worker_typed::<References>(GlobalState::references)
         .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker_typed::<Rename>(GlobalState::rename)
+        .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)
         .on_worker::<CodeActionRequest>()
         .on_worker::<FoldingRangeRequest>()
         .on_worker::<SelectionRangeRequest>()

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
-    CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, DocumentTextEdit,
-    Hover, HoverKind, LineIndex, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
-    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
+    CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
+    CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
+    DiagnosticRange, DocumentTextEdit, Hover, HoverKind, LineIndex, PrepareRename, Reference,
+    RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
 };
 
 pub(crate) fn completion_response(
@@ -95,6 +95,12 @@ pub(crate) fn workspace_edit(edit: &WorkspaceEdit) -> lsp_types::WorkspaceEdit {
     }
 }
 
+pub(crate) fn call_hierarchy_items(
+    items: &[ServiceCallHierarchyItem],
+) -> Vec<lsp_types::CallHierarchyItem> {
+    items.iter().map(call_hierarchy_item).collect()
+}
+
 fn location(
     document_id: &vela_language_service::DocumentId,
     range: DiagnosticRange,
@@ -119,6 +125,26 @@ fn workspace_edit_changes(
             )
         })
         .collect()
+}
+
+fn call_hierarchy_item(item: &ServiceCallHierarchyItem) -> lsp_types::CallHierarchyItem {
+    let uri = lsp_types::Url::parse(item.document_id().as_str())
+        .expect("call hierarchy document id should be a valid LSP URI");
+    let selection_range = diagnostic_range(item.selection_range());
+    lsp_types::CallHierarchyItem {
+        name: item.name().to_owned(),
+        kind: lsp_types::SymbolKind::FUNCTION,
+        tags: None,
+        detail: None,
+        uri: uri.clone(),
+        range: diagnostic_range(item.range()),
+        selection_range,
+        data: Some(json!({
+            "name": item.name(),
+            "uri": uri.as_str(),
+            "selectionRange": selection_range,
+        })),
+    }
 }
 
 fn text_document_edit(document_edit: &DocumentTextEdit) -> lsp_types::TextDocumentEdit {
@@ -684,5 +710,41 @@ pub fn main(amount: i64) -> i64 {
             2
         );
         assert!(value.get("changeAnnotations").is_none());
+    }
+
+    #[test]
+    fn call_hierarchy_items_project_typed_items() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "pub fn grant() -> i64 { return 1 }\npub fn main() { return grant() }";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("main line should exist")
+                .find("grant")
+                .expect("call should contain grant"),
+        );
+        let items = databases.prepare_call_hierarchy(&document, position);
+
+        let items = call_hierarchy_items(&items);
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].name, "grant");
+        assert_eq!(items[0].kind, lsp_types::SymbolKind::FUNCTION);
+        assert_eq!(items[0].uri.as_str(), document.as_str());
+        assert_eq!(
+            items[0].selection_range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(0, 7),
+                lsp_types::Position::new(0, 12)
+            )
+        );
+        assert!(items[0].data.is_some());
     }
 }
