@@ -1294,6 +1294,12 @@ cargo test -p vela_lsp_server semantic_tokens
     param structs have been removed. Validated with
     `cargo test -p vela_lsp_server symbols` and
     `cargo test -p vela_lsp_server folding`.
+  - Legacy selection range, semantic tokens full/delta/range, and inlay hint
+    query decoding now use `lsp_types` params and `lsp/from_proto.rs`; their
+    custom protocol param structs have been removed. Validated with
+    `cargo test -p vela_lsp_server selection_range`,
+    `cargo test -p vela_lsp_server semantic_tokens`, and
+    `cargo test -p vela_lsp_server inlay`.
 - [ ] Delete production use of custom `RequestId`, `JsonRpcMessage`,
   `JsonRpcResult`, `success_response`, and `error_response`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,

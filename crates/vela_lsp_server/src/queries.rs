@@ -10,14 +10,9 @@ use crate::{
     protocol::DocumentFormattingParams,
     protocol::DocumentOnTypeFormattingParams,
     protocol::DocumentRangeFormattingParams,
-    protocol::InlayHintParams,
     protocol::PrepareRenameParams,
     protocol::ReferencesParams,
     protocol::RenameParams,
-    protocol::SelectionRangeParams,
-    protocol::SemanticTokensDeltaParams,
-    protocol::SemanticTokensParams,
-    protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
     success_response,
 };
@@ -767,7 +762,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<SelectionRangeParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::SelectionRangeParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -778,19 +773,22 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let positions = match params
-            .positions
-            .into_iter()
-            .map(|position| service_position_for_request(&id, "selectionRange", &text, position))
-            .collect::<Result<Vec<_>, _>>()
-        {
-            Ok(positions) => positions,
-            Err(response) => return response,
+        let input = match from_proto::selection_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid selectionRange position: {error}"),
+                ));
+            }
         };
-        let ranges = self.databases.selection_ranges(&document_id, &positions);
+        let ranges = self
+            .databases
+            .selection_ranges(&input.document_id, &input.positions);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -807,7 +805,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<SemanticTokensParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::SemanticTokensParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -818,7 +816,7 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::semantic_tokens_params(&params);
         self.refresh_databases_for_query(&document_id);
         let tokens = self.databases.semantic_tokens(&document_id);
 
@@ -840,7 +838,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<SemanticTokensDeltaParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::SemanticTokensDeltaParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -851,11 +849,12 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let input = from_proto::semantic_tokens_delta_params(&params);
+        let document_id = input.document_id;
         self.refresh_databases_for_query(&document_id);
         let delta = self
             .databases
-            .semantic_token_delta(&document_id, &params.previous_result_id);
+            .semantic_token_delta(&document_id, &input.previous_result_id);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -875,7 +874,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<SemanticTokensRangeParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::SemanticTokensRangeParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -886,15 +885,22 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let range =
-            match service_range_for_request(&id, "semanticTokens/range", &text, params.range) {
-                Ok(range) => range,
-                Err(response) => return response,
-            };
-        let tokens = self.databases.semantic_tokens_in_range(&document_id, range);
+        let input = match from_proto::semantic_tokens_range_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid semanticTokens/range range: {error}"),
+                ));
+            }
+        };
+        let tokens = self
+            .databases
+            .semantic_tokens_in_range(&input.document_id, input.range);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -910,7 +916,7 @@ impl LspServer {
         let Some(id) = id else {
             return JsonRpcResult::None;
         };
-        let params = match serde_json::from_value::<InlayHintParams>(params) {
+        let params = match serde_json::from_value::<lsp_types::InlayHintParams>(params) {
             Ok(params) => params,
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
@@ -921,14 +927,20 @@ impl LspServer {
             }
         };
 
-        let document_id = DocumentId::from(params.text_document.uri);
+        let document_id = from_proto::document_id(&params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
         let text = document_text(self, &document_id);
-        let range = match service_range_for_request(&id, "inlayHint", &text, params.range) {
-            Ok(range) => range,
-            Err(response) => return response,
+        let input = match from_proto::inlay_hint_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid inlayHint range: {error}"),
+                ));
+            }
         };
-        let hints = self.databases.inlay_hints(&document_id, range);
+        let hints = self.databases.inlay_hints(&input.document_id, input.range);
 
         JsonRpcResult::Response(success_response(
             id,

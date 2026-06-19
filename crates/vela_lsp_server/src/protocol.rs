@@ -69,40 +69,6 @@ pub(crate) struct FormattingOptions {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct SelectionRangeParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-    pub(crate) positions: Vec<LspPosition>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SemanticTokensParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SemanticTokensDeltaParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-    pub(crate) previous_result_id: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SemanticTokensRangeParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-    pub(crate) range: LspRange,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct InlayHintParams {
-    pub(crate) text_document: TextDocumentIdentifier,
-    pub(crate) range: LspRange,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct ReferencesParams {
     pub(crate) text_document: TextDocumentIdentifier,
     pub(crate) position: LspPosition,
