@@ -257,6 +257,10 @@ M20.5 RA main-loop update: background task scheduling now extracts document
 URIs from typed LSP params into task metadata, and task lifecycle/status/result
 trace JSONL includes `documentUri` when present. Trace event families now
 include status strings for the current phase or outcome.
+M20.5 RA main-loop update: task lifecycle trace events are now emitted through
+the main loop at queue, start, and end time, so an incomplete JSONL sequence
+identifies whether work is still queued, running inside a handler, or stuck
+between handler completion and response send.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

@@ -56,6 +56,145 @@ impl TaskTiming {
     }
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct TaskLifecycleEvent {
+    kind: TaskLifecycleKind,
+    lane: TaskLane,
+    method: Option<String>,
+    document_uri: Option<String>,
+    request_id: Option<RequestId>,
+    generation: Option<GenerationToken>,
+    queued_ms: u128,
+    started_ms: Option<u128>,
+    ended_ms: Option<u128>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TaskLifecycleKind {
+    Queued,
+    Started,
+    Ended,
+}
+
+impl TaskLifecycleKind {
+    pub(crate) const fn event_name(self) -> &'static str {
+        match self {
+            Self::Queued => "request_queued",
+            Self::Started => "task_started",
+            Self::Ended => "task_ended",
+        }
+    }
+
+    pub(crate) const fn status(self) -> &'static str {
+        match self {
+            Self::Queued => "queued",
+            Self::Started => "started",
+            Self::Ended => "ended",
+        }
+    }
+}
+
+impl TaskLifecycleEvent {
+    fn queued(descriptor: &TaskDescriptor, queued_ms: u128) -> Self {
+        Self::new(descriptor, TaskLifecycleKind::Queued, queued_ms, None, None)
+    }
+
+    fn started(descriptor: &TaskDescriptor, queued_ms: u128, started_ms: u128) -> Self {
+        Self::new(
+            descriptor,
+            TaskLifecycleKind::Started,
+            queued_ms,
+            Some(started_ms),
+            None,
+        )
+    }
+
+    fn ended(
+        descriptor: &TaskDescriptor,
+        queued_ms: u128,
+        started_ms: u128,
+        ended_ms: u128,
+    ) -> Self {
+        Self::new(
+            descriptor,
+            TaskLifecycleKind::Ended,
+            queued_ms,
+            Some(started_ms),
+            Some(ended_ms),
+        )
+    }
+
+    fn new(
+        descriptor: &TaskDescriptor,
+        kind: TaskLifecycleKind,
+        queued_ms: u128,
+        started_ms: Option<u128>,
+        ended_ms: Option<u128>,
+    ) -> Self {
+        Self {
+            kind,
+            lane: descriptor.lane,
+            method: descriptor.method.clone(),
+            document_uri: descriptor.document_uri.clone(),
+            request_id: descriptor.request_id.clone(),
+            generation: descriptor.generation.clone(),
+            queued_ms,
+            started_ms,
+            ended_ms,
+        }
+    }
+
+    pub(crate) const fn kind(&self) -> TaskLifecycleKind {
+        self.kind
+    }
+
+    pub(crate) const fn lane(&self) -> TaskLane {
+        self.lane
+    }
+
+    pub(crate) fn method(&self) -> Option<&str> {
+        self.method.as_deref()
+    }
+
+    pub(crate) fn document_uri(&self) -> Option<&str> {
+        self.document_uri.as_deref()
+    }
+
+    pub(crate) fn request_id(&self) -> Option<&RequestId> {
+        self.request_id.as_ref()
+    }
+
+    pub(crate) fn generation_token(&self) -> Option<&GenerationToken> {
+        self.generation.as_ref()
+    }
+
+    pub(crate) const fn timestamp_ms(&self) -> u128 {
+        match self.kind {
+            TaskLifecycleKind::Queued => self.queued_ms,
+            TaskLifecycleKind::Started => match self.started_ms {
+                Some(started_ms) => started_ms,
+                None => self.queued_ms,
+            },
+            TaskLifecycleKind::Ended => match self.ended_ms {
+                Some(ended_ms) => ended_ms,
+                None => self.queued_ms,
+            },
+        }
+    }
+
+    pub(crate) fn queue_ms(&self) -> Option<u128> {
+        self.started_ms
+            .map(|started_ms| started_ms.saturating_sub(self.queued_ms))
+            .or(Some(0))
+    }
+
+    pub(crate) fn handle_ms(&self) -> Option<u128> {
+        self.started_ms
+            .zip(self.ended_ms)
+            .map(|(started_ms, ended_ms)| ended_ms.saturating_sub(started_ms))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TaskOutcome {
     Completed,
@@ -309,11 +448,14 @@ pub(crate) struct TaskScheduler {
     latency_jobs: Sender<TaskJob>,
     formatting_jobs: Sender<TaskJob>,
     worker_jobs: Sender<TaskJob>,
+    lifecycle_sender: Sender<TaskLifecycleEvent>,
+    lifecycle_events: Receiver<TaskLifecycleEvent>,
     latency_results: Receiver<TaskResult>,
     formatting_results: Receiver<TaskResult>,
     worker_results: Receiver<TaskResult>,
 }
 
+#[derive(Clone)]
 struct TaskDescriptor {
     lane: TaskLane,
     method: Option<String>,
@@ -363,10 +505,13 @@ impl TaskScheduler {
         let (latency_jobs, latency_results) = spawn_lane_worker(TaskLane::Latency);
         let (formatting_jobs, formatting_results) = spawn_lane_worker(TaskLane::Formatting);
         let (worker_jobs, worker_results) = spawn_lane_worker(TaskLane::Worker);
+        let (lifecycle_sender, lifecycle_events) = unbounded::<TaskLifecycleEvent>();
         Self {
             latency_jobs,
             formatting_jobs,
             worker_jobs,
+            lifecycle_sender,
+            lifecycle_events,
             latency_results,
             formatting_results,
             worker_results,
@@ -419,10 +564,25 @@ impl TaskScheduler {
     ) {
         let lane = descriptor.lane;
         let queued_ms = crate::profile::timestamp_ms();
+        self.lifecycle_sender
+            .send(TaskLifecycleEvent::queued(&descriptor, queued_ms))
+            .expect("task lifecycle receiver should be alive");
+        let lifecycle_sender = self.lifecycle_sender.clone();
         let task = Box::new(move || {
             let started_ms = crate::profile::timestamp_ms();
+            let _ = lifecycle_sender.send(TaskLifecycleEvent::started(
+                &descriptor,
+                queued_ms,
+                started_ms,
+            ));
             let messages = job();
             let ended_ms = crate::profile::timestamp_ms();
+            let _ = lifecycle_sender.send(TaskLifecycleEvent::ended(
+                &descriptor,
+                queued_ms,
+                started_ms,
+                ended_ms,
+            ));
             TaskResult::timed_response(
                 descriptor,
                 TaskTiming::new(queued_ms, started_ms, ended_ms),
@@ -436,6 +596,10 @@ impl TaskScheduler {
             TaskLane::Main => unreachable!("main-thread work should not be scheduled as a task"),
         }
         .expect("task lane worker should be alive");
+    }
+
+    pub(crate) const fn lifecycle_events(&self) -> &Receiver<TaskLifecycleEvent> {
+        &self.lifecycle_events
     }
 
     pub(crate) const fn latency_results(&self) -> &Receiver<TaskResult> {

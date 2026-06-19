@@ -1746,8 +1746,17 @@ helper references are allowed only if they describe external JSON fixtures.
     `cargo test -p vela_lsp_server task`,
     `cargo test -p vela_lsp_server trace`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
-- [ ] Preserve the ability to identify a stuck handler from an unmatched or
+- [x] Preserve the ability to identify a stuck handler from an unmatched or
   incomplete event sequence.
+  - Task scheduling now emits lifecycle events onto a main-loop-consumed
+    channel at queue, start, and end time instead of reconstructing them only
+    after task completion. A trace with `request_queued` but no
+    `task_started` identifies a queued task; `task_started` without
+    `task_ended` identifies a running handler; `task_ended` without task
+    `response_sent` identifies response handling. Validated with
+    `cargo test -p vela_lsp_server next_event_reports_task_lifecycle_before_blocked_task_finishes`,
+    `cargo test -p vela_lsp_server trace_sink_writes_task_lifecycle_events`,
+    and `cargo test -p vela_lsp_server task`.
 - [ ] Document how to compare server handler time with VS Code-side stalls.
 
 Validation:

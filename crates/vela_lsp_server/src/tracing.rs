@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use crate::{
     LaunchConfiguration,
     profile::timestamp_ms,
-    task::{TaskOutcome, TaskResult, TaskTiming},
+    task::{TaskLifecycleEvent, TaskOutcome, TaskResult, TaskTiming},
     transport::{MessageMetadata, ResultSummary},
 };
 
@@ -106,14 +106,22 @@ impl TraceSink {
         }))
     }
 
-    pub(crate) fn task_lifecycle(&mut self, task: &TaskResult) -> anyhow::Result<()> {
-        let Some(timing) = task.timing() else {
-            return Ok(());
-        };
-        let metadata = TaskTraceMetadata::from_task(task);
-        self.task_event("request_queued", &metadata, timing, timing.queued_ms())?;
-        self.task_event("task_started", &metadata, timing, timing.started_ms())?;
-        self.task_event("task_ended", &metadata, timing, timing.ended_ms())
+    pub(crate) fn task_lifecycle_event(
+        &mut self,
+        event: &TaskLifecycleEvent,
+    ) -> anyhow::Result<()> {
+        self.write_json(serde_json::json!({
+            "event": event.kind().event_name(),
+            "timestampMs": event.timestamp_ms(),
+            "method": event.method(),
+            "id": event.request_id().map(request_id_string),
+            "documentUri": event.document_uri(),
+            "generation": event.generation_token().map(|token| token.generation().get()),
+            "lane": event.lane().as_trace_str(),
+            "status": event.kind().status(),
+            "queueMs": event.queue_ms(),
+            "handleMs": event.handle_ms()
+        }))
     }
 
     pub(crate) fn task_result(
@@ -162,27 +170,6 @@ impl TraceSink {
             "watchFilesEnabled": configuration.watch_files_enabled(),
             "workspaceRoots": configuration.workspace_roots(),
             "hostSchema": configuration.host_schema()
-        }))
-    }
-
-    fn task_event(
-        &mut self,
-        event: &str,
-        metadata: &TaskTraceMetadata,
-        timing: TaskTiming,
-        timestamp_ms: u128,
-    ) -> anyhow::Result<()> {
-        self.write_json(serde_json::json!({
-            "event": event,
-            "timestampMs": timestamp_ms,
-            "method": metadata.method.as_deref(),
-            "id": metadata.id.as_deref(),
-            "documentUri": metadata.document_uri.as_deref(),
-            "generation": metadata.generation,
-            "lane": metadata.lane,
-            "status": task_lifecycle_status(event),
-            "queueMs": timing.started_ms().saturating_sub(timing.queued_ms()),
-            "handleMs": timing.ended_ms().saturating_sub(timing.started_ms())
         }))
     }
 
@@ -260,15 +247,6 @@ fn task_outcome_status(outcome: TaskOutcome) -> &'static str {
     }
 }
 
-fn task_lifecycle_status(event: &str) -> &'static str {
-    match event {
-        "request_queued" => "queued",
-        "task_started" => "started",
-        "task_ended" => "ended",
-        _ => "unknown",
-    }
-}
-
 fn task_queue_ms(metadata: &TaskTraceMetadata) -> Option<u128> {
     metadata
         .timing
@@ -297,7 +275,7 @@ mod tests {
 
     use crate::{
         LaunchConfiguration,
-        task::{TaskLane, TaskOutcome, TaskResult, TaskTiming},
+        task::{TaskLane, TaskOutcome, TaskRequestMetadata, TaskResult, TaskScheduler, TaskTiming},
         transport::{MessageMetadata, ResultSummary},
     };
 
@@ -330,17 +308,25 @@ mod tests {
         configuration.set_trace_log_path(path.to_string_lossy().into_owned());
         let mut trace =
             TraceSink::from_configuration(&configuration).expect("file trace should open");
-        let task = TaskResult::timed_response_for_test(
-            TaskLane::Worker,
-            Some("textDocument/references".to_owned()),
+        let scheduler = TaskScheduler::new();
+        let databases = vela_language_service::LanguageServiceDatabases::new();
+        let (generation, _handle) = databases.begin_cancellable_background_request();
+        let request = TaskRequestMetadata::new(
+            "textDocument/references",
             Some("file:///workspace/scripts/main.vela".to_owned()),
-            Some(RequestId::from(7)),
-            TaskTiming::new(10, 14, 25),
+            RequestId::from(7),
+            generation,
         );
-
-        trace
-            .task_lifecycle(&task)
-            .expect("task lifecycle trace should write");
+        scheduler.spawn_for_request(TaskLane::Worker, request, Vec::new);
+        for _ in 0..3 {
+            let event = scheduler
+                .lifecycle_events()
+                .recv_timeout(std::time::Duration::from_secs(1))
+                .expect("task lifecycle event should be emitted before result handling");
+            trace
+                .task_lifecycle_event(&event)
+                .expect("task lifecycle trace should write");
+        }
 
         let output = fs::read_to_string(&path).expect("trace file should be readable");
         let events = output
@@ -367,8 +353,8 @@ mod tests {
             "file:///workspace/scripts/main.vela"
         );
         assert_eq!(task_ended["lane"], "worker");
-        assert_eq!(task_ended["queueMs"], 4);
-        assert_eq!(task_ended["handleMs"], 11);
+        assert!(task_ended["queueMs"].as_u64().is_some());
+        assert!(task_ended["handleMs"].as_u64().is_some());
 
         let _ = fs::remove_file(path);
     }

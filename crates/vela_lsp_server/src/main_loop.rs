@@ -7,7 +7,7 @@ use crate::{
     LaunchConfiguration,
     global_state::GlobalState,
     profile::RequestProfiler,
-    task::TaskResult,
+    task::{TaskLifecycleEvent, TaskResult},
     tracing::TraceSink,
     transport::{MessageMetadata, serialize_json_rpc_message},
 };
@@ -57,9 +57,11 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                     &summary,
                 )?;
             }
+            MainLoopEvent::TaskLifecycle(event) => {
+                trace.task_lifecycle_event(&event)?;
+            }
             MainLoopEvent::Task(task) => {
                 let task_metadata = crate::tracing::TaskTraceMetadata::from_task(&task);
-                trace.task_lifecycle(&task)?;
                 let write_start = Instant::now();
                 let task_summary = state.send_task_result(task)?;
                 let write_ms = elapsed_ms(write_start);
@@ -82,6 +84,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
 
 enum MainLoopEvent {
     Message(Message),
+    TaskLifecycle(TaskLifecycleEvent),
     Task(TaskResult),
 }
 
@@ -89,12 +92,17 @@ fn next_event(
     receiver: &Receiver<Message>,
     state: &GlobalState,
 ) -> Result<MainLoopEvent, RecvError> {
+    if let Ok(event) = state.task_scheduler().lifecycle_events().try_recv() {
+        return Ok(MainLoopEvent::TaskLifecycle(event));
+    }
+
     if let Ok(task) = state.task_scheduler().formatting_results().try_recv() {
         return Ok(MainLoopEvent::Task(task));
     }
 
     select! {
         recv(receiver) -> message => message.map(MainLoopEvent::Message),
+        recv(state.task_scheduler().lifecycle_events()) -> event => event.map(MainLoopEvent::TaskLifecycle),
         recv(state.task_scheduler().latency_results()) -> task => task.map(MainLoopEvent::Task),
         recv(state.task_scheduler().formatting_results()) -> task => task.map(MainLoopEvent::Task),
         recv(state.task_scheduler().worker_results()) -> task => task.map(MainLoopEvent::Task),
@@ -135,10 +143,14 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use crossbeam_channel::unbounded;
+    use crossbeam_channel::{Receiver, unbounded};
     use lsp_server::{Message, Notification, RequestId, Response};
 
-    use crate::{LaunchConfiguration, global_state::GlobalState, task::TaskLane};
+    use crate::{
+        LaunchConfiguration,
+        global_state::GlobalState,
+        task::{TaskLane, TaskLifecycleKind, TaskResult},
+    };
 
     use super::{MAIN_LOOP_THREAD_NAME, MainLoopEvent, next_event, spawn_latency_main_loop_thread};
 
@@ -152,13 +164,68 @@ mod tests {
             .task_scheduler()
             .spawn(TaskLane::Worker, || test_messages("worker"));
 
-        let event = next_event(&message_receiver, &state).expect("task event should be selected");
-
-        let MainLoopEvent::Task(task) = event else {
-            panic!("expected task event");
-        };
+        let task = next_task_event(&message_receiver, &state);
         assert_eq!(task.lane(), TaskLane::Worker);
         assert_response_messages(task.into_messages(), test_response("worker"));
+    }
+
+    #[test]
+    fn next_event_reports_task_lifecycle_before_blocked_task_finishes() {
+        let (response_sender, _response_receiver) = unbounded();
+        let (_message_sender, message_receiver) = unbounded();
+        let state = GlobalState::new(response_sender, LaunchConfiguration::default());
+        let (task_started_sender, task_started_receiver) = unbounded();
+        let (release_task_sender, release_task_receiver) = unbounded::<()>();
+
+        state.task_scheduler().spawn_for_method(
+            TaskLane::Worker,
+            "textDocument/references",
+            move || {
+                task_started_sender
+                    .send(())
+                    .expect("task start signal should send");
+                release_task_receiver
+                    .recv()
+                    .expect("task release signal should be received");
+                test_messages("worker")
+            },
+        );
+
+        let queued = next_lifecycle_event(&message_receiver, &state);
+        assert_eq!(queued.kind(), TaskLifecycleKind::Queued);
+        assert_eq!(queued.method(), Some("textDocument/references"));
+        assert_eq!(queued.lane(), TaskLane::Worker);
+
+        task_started_receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker task should start before release");
+
+        let started = next_lifecycle_event(&message_receiver, &state);
+        assert_eq!(started.kind(), TaskLifecycleKind::Started);
+        assert_eq!(started.method(), Some("textDocument/references"));
+        assert_eq!(started.lane(), TaskLane::Worker);
+        assert!(started.handle_ms().is_none());
+        assert!(
+            state.task_scheduler().worker_results().try_recv().is_err(),
+            "blocked task must not produce a result before release"
+        );
+
+        release_task_sender
+            .send(())
+            .expect("task release signal should send");
+        let ended = state
+            .task_scheduler()
+            .lifecycle_events()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("ended lifecycle event should be emitted after release");
+        assert_eq!(ended.kind(), TaskLifecycleKind::Ended);
+        assert!(ended.handle_ms().is_some());
+        let task = state
+            .task_scheduler()
+            .worker_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("worker task should finish after release");
+        assert_eq!(task.lane(), TaskLane::Worker);
     }
 
     #[test]
@@ -186,6 +253,14 @@ mod tests {
         task_started_receiver
             .recv_timeout(Duration::from_secs(1))
             .expect("worker task should start");
+        assert_eq!(
+            next_lifecycle_event(&message_receiver, &state).kind(),
+            TaskLifecycleKind::Queued
+        );
+        assert_eq!(
+            next_lifecycle_event(&message_receiver, &state).kind(),
+            TaskLifecycleKind::Started
+        );
 
         let cancel_method =
             <lsp_types::notification::Cancel as lsp_types::notification::Notification>::METHOD;
@@ -238,12 +313,7 @@ mod tests {
         );
         wait_for_ready_task_results(&state);
 
-        let event = next_event(&message_receiver, &state)
-            .expect("formatting task event should be selected");
-
-        let MainLoopEvent::Task(task) = event else {
-            panic!("expected task event");
-        };
+        let task = next_task_event(&message_receiver, &state);
         assert_eq!(task.lane(), TaskLane::Formatting);
         assert_eq!(task.method(), Some("textDocument/formatting"));
         assert_response_messages(task.into_messages(), test_response("formatting"));
@@ -293,6 +363,27 @@ mod tests {
             thread::sleep(Duration::from_millis(1));
         }
         panic!("formatting and worker task results should be ready");
+    }
+
+    fn next_lifecycle_event(
+        receiver: &Receiver<Message>,
+        state: &GlobalState,
+    ) -> crate::task::TaskLifecycleEvent {
+        loop {
+            match next_event(receiver, state).expect("main-loop event should be selected") {
+                MainLoopEvent::TaskLifecycle(event) => return event,
+                MainLoopEvent::Message(_) | MainLoopEvent::Task(_) => {}
+            }
+        }
+    }
+
+    fn next_task_event(receiver: &Receiver<Message>, state: &GlobalState) -> TaskResult {
+        loop {
+            match next_event(receiver, state).expect("main-loop event should be selected") {
+                MainLoopEvent::Task(task) => return task,
+                MainLoopEvent::Message(_) | MainLoopEvent::TaskLifecycle(_) => {}
+            }
+        }
     }
 
     fn test_response(value: &str) -> Response {
