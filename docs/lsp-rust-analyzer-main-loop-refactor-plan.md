@@ -447,6 +447,10 @@ cargo test -p vela_lsp_server lifecycle
   - `RequestQueue` now tracks incoming request IDs as typed `RequestId` values
     instead of stringified IDs, preparing it for later in-flight task
     cancellation and stale-result bookkeeping.
+  - Client work-done progress support, dynamic watched-file registration
+    support, and semantic-token projection state now live in `GlobalState` and
+    `GlobalStateSnapshot`, with temporary legacy-wrapper mirroring until
+    Phase 4/5 handler migration removes the old request path.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

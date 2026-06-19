@@ -23,6 +23,7 @@ use crate::{
     publish_diagnostics_notification,
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
     rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
+    semantic_tokens::SemanticTokenProjection,
     success_response,
     transport::{ResultSummary, messages_from_result},
     with_work_done_progress,
@@ -34,6 +35,9 @@ pub(crate) struct GlobalState {
     request_queue: RequestQueue,
     reload_scheduler: ReloadScheduler,
     server: LspServer,
+    client_supports_work_done_progress: bool,
+    client_supports_watched_file_registration: bool,
+    semantic_token_projection: SemanticTokenProjection,
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
@@ -47,6 +51,9 @@ pub(crate) struct GlobalStateSnapshot {
     databases: LanguageServiceDatabases,
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
+    client_supports_work_done_progress: bool,
+    client_supports_watched_file_registration: bool,
+    semantic_token_projection: SemanticTokenProjection,
     generation: WorkspaceGeneration,
     initialized: bool,
     shutdown_requested: bool,
@@ -78,6 +85,18 @@ impl GlobalStateSnapshot {
         &self.open_documents
     }
 
+    pub(crate) const fn client_supports_work_done_progress(&self) -> bool {
+        self.client_supports_work_done_progress
+    }
+
+    pub(crate) const fn client_supports_watched_file_registration(&self) -> bool {
+        self.client_supports_watched_file_registration
+    }
+
+    pub(crate) const fn semantic_token_projection(&self) -> &SemanticTokenProjection {
+        &self.semantic_token_projection
+    }
+
     pub(crate) const fn is_initialized(&self) -> bool {
         self.initialized
     }
@@ -96,6 +115,9 @@ impl GlobalState {
             request_queue: RequestQueue::default(),
             reload_scheduler: ReloadScheduler::default(),
             server,
+            client_supports_work_done_progress: false,
+            client_supports_watched_file_registration: false,
+            semantic_token_projection: SemanticTokenProjection::default(),
             initialized: false,
             shutdown_requested: false,
             exited: false,
@@ -114,6 +136,10 @@ impl GlobalState {
             databases: self.server.databases.clone(),
             workspace_roots: self.server.workspace_roots.clone(),
             open_documents: self.server.open_documents.clone(),
+            client_supports_work_done_progress: self.client_supports_work_done_progress,
+            client_supports_watched_file_registration: self
+                .client_supports_watched_file_registration,
+            semantic_token_projection: self.semantic_token_projection.clone(),
             generation: self.server.databases.generation(),
             initialized: self.initialized,
             shutdown_requested: self.shutdown_requested,
@@ -196,13 +222,14 @@ impl GlobalState {
             workspace_roots_from_lsp_initialize(&params),
             editor_config,
         ));
-        self.server.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
-        self.server.client_supports_watched_file_registration =
+        self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
+        self.client_supports_watched_file_registration =
             lsp_supports_watched_file_registration(&params);
-        self.server.semantic_token_projection = lsp_semantic_token_projection(&params);
+        self.semantic_token_projection = lsp_semantic_token_projection(&params);
+        self.sync_client_capabilities_to_legacy_server();
         JsonRpcResult::Response(success_response(
             id,
-            initialize_result(&self.server.semantic_token_projection),
+            initialize_result(&self.semantic_token_projection),
         ))
     }
 
@@ -294,12 +321,23 @@ impl GlobalState {
         self.initialized |= self.server.initialized;
         self.shutdown_requested |= self.server.shutdown_requested;
         self.exited |= self.server.exited;
+        self.client_supports_work_done_progress |= self.server.client_supports_work_done_progress;
+        self.client_supports_watched_file_registration |=
+            self.server.client_supports_watched_file_registration;
+        self.semantic_token_projection = self.server.semantic_token_projection.clone();
+    }
+
+    fn sync_client_capabilities_to_legacy_server(&mut self) {
+        self.server.client_supports_work_done_progress = self.client_supports_work_done_progress;
+        self.server.client_supports_watched_file_registration =
+            self.client_supports_watched_file_registration;
+        self.server.semantic_token_projection = self.semantic_token_projection.clone();
     }
 
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
         let has_open_documents = !self.server.open_documents.is_empty();
         let result = self.server.publish_open_diagnostics();
-        if has_open_documents && self.server.client_supports_work_done_progress {
+        if has_open_documents && self.client_supports_work_done_progress {
             with_work_done_progress(result, "Vela workspace diagnostics")
         } else {
             result
@@ -380,6 +418,12 @@ mod tests {
             "fn main() { 1 }",
             SourceVersion::new(3),
         );
+        state.client_supports_work_done_progress = true;
+        state.client_supports_watched_file_registration = true;
+        state.semantic_token_projection = SemanticTokenProjection::for_client(
+            Some(&["type".to_owned(), "function".to_owned()]),
+            Some(&["declaration".to_owned()]),
+        );
         state.initialized = true;
         state.server.initialized = true;
 
@@ -390,6 +434,9 @@ mod tests {
             SourceVersion::new(4),
         );
         state.server.open_documents.clear();
+        state.client_supports_work_done_progress = false;
+        state.client_supports_watched_file_registration = false;
+        state.semantic_token_projection = SemanticTokenProjection::default();
         state.server.shutdown_requested = true;
 
         assert_eq!(
@@ -403,8 +450,69 @@ mod tests {
         assert_eq!(snapshot.generation(), snapshot.databases().generation());
         assert!(snapshot.workspace_roots().contains("/workspace/scripts"));
         assert!(snapshot.open_documents().contains(&document));
+        assert!(snapshot.client_supports_work_done_progress());
+        assert!(snapshot.client_supports_watched_file_registration());
+        assert_ne!(
+            snapshot.semantic_token_projection(),
+            &SemanticTokenProjection::default()
+        );
         assert!(snapshot.is_initialized());
         assert!(!snapshot.is_shutdown_requested());
+    }
+
+    #[test]
+    fn client_capabilities_are_owned_by_global_state() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let params = lsp_types::InitializeParams {
+            process_id: None,
+            capabilities: serde_json::from_value(serde_json::json!({
+                "window": {
+                    "workDoneProgress": true
+                },
+                "workspace": {
+                    "didChangeWatchedFiles": {
+                        "dynamicRegistration": true
+                    }
+                },
+                "textDocument": {
+                    "semanticTokens": {
+                        "dynamicRegistration": false,
+                        "requests": {
+                            "range": true,
+                            "full": {
+                                "delta": true
+                            }
+                        },
+                        "tokenTypes": ["type", "function"],
+                        "tokenModifiers": ["declaration"],
+                        "formats": ["relative"]
+                    }
+                }
+            }))
+            .expect("client capabilities should deserialize"),
+            ..lsp_types::InitializeParams::default()
+        };
+        let expected_projection = lsp_semantic_token_projection(&params);
+
+        let initialize = state.initialize(lsp_server::RequestId::from(1), params);
+
+        assert!(initialize.into_response().is_some());
+        assert!(state.client_supports_work_done_progress);
+        assert!(state.client_supports_watched_file_registration);
+        assert_eq!(state.semantic_token_projection, expected_projection);
+        assert_eq!(
+            state.server.client_supports_work_done_progress,
+            state.client_supports_work_done_progress
+        );
+        assert_eq!(
+            state.server.client_supports_watched_file_registration,
+            state.client_supports_watched_file_registration
+        );
+        assert_eq!(
+            state.server.semantic_token_projection,
+            state.semantic_token_projection
+        );
     }
 
     #[test]
