@@ -1225,6 +1225,13 @@ cargo test -p vela_lsp_server completion
     `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
     and `cargo test -p vela_lsp_server formatting`.
 - [ ] Retry retryable stale requests once using a fresh snapshot.
+  - Retryable `textDocument/completion` requests now run on the latency task
+    lane with request metadata that lets `GlobalState::send_task_result`
+    reschedule one stale result against a fresh snapshot before responding.
+    Remaining retryable methods in the policy list still need equivalent task
+    metadata before this item is complete. Validated with
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`
+    and `cargo test -p vela_lsp_server completion`.
 - [ ] Return LSP `ContentModified` for non-retryable stale requests.
 - [ ] Return LSP `RequestCancelled` for cancelled in-flight requests.
 - [ ] Add tests for cancelled before start, cancelled while running, stale

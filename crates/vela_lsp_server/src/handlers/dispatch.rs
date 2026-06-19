@@ -20,8 +20,11 @@ use lsp_types::{
 use serde::de::DeserializeOwned;
 
 use crate::{
-    ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState,
-    global_state::GlobalStateSnapshot, rpc::request_id_from_lsp, task::TaskLane,
+    ErrorCode, JsonRpcResult, RequestId, error_response,
+    global_state::GlobalState,
+    global_state::GlobalStateSnapshot,
+    rpc::request_id_from_lsp,
+    task::{RetryTask, TaskLane},
 };
 
 pub(crate) fn dispatch_message(
@@ -58,7 +61,7 @@ fn dispatch_request(
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
-        .on_latency_sensitive_snapshot_typed::<Completion>(GlobalStateSnapshot::completion)
+        .on_retryable_latency_snapshot_typed::<Completion>(GlobalStateSnapshot::completion)
         .on_latency_sensitive_snapshot_typed::<ResolveCompletionItem>(
             GlobalStateSnapshot::completion_resolve,
         )
@@ -121,6 +124,43 @@ fn dispatch_notification(
         .finish()
 }
 
+pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTask) {
+    match retry {
+        RetryTask::Completion {
+            id,
+            request_id,
+            params,
+            attempts: _,
+        } => {
+            let snapshot = global_state.snapshot();
+            let generation = global_state.register_in_flight_cancellation(request_id.clone());
+            let retry = RetryTask::Completion {
+                id: id.clone(),
+                request_id: request_id.clone(),
+                params: params.clone(),
+                attempts: 1,
+            };
+            global_state.task_scheduler().spawn_retryable_for_request(
+                TaskLane::Latency,
+                <Completion as lsp_types::request::Request>::METHOD,
+                request_id,
+                generation,
+                retry,
+                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    GlobalStateSnapshot::completion(snapshot, id.clone(), params)
+                })) {
+                    Ok(result) => result,
+                    Err(payload) => handler_panic(
+                        id,
+                        <Completion as lsp_types::request::Request>::METHOD,
+                        payload.as_ref(),
+                    ),
+                },
+            );
+        }
+    }
+}
+
 pub(crate) struct RequestDispatcher<'a> {
     global_state: &'a mut GlobalState,
     request: Option<Request>,
@@ -159,6 +199,18 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_retryable_latency_snapshot_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request<Params = lsp_types::CompletionParams>,
+        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
+    {
+        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Latency, f);
         self
     }
 
@@ -286,6 +338,49 @@ impl<'a> RequestDispatcher<'a> {
                 Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
             },
         );
+        self.result = JsonRpcResult::None;
+    }
+
+    fn dispatch_retryable_snapshot_task_typed<R>(
+        &mut self,
+        lane: TaskLane,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) where
+        R: lsp_types::request::Request<Params = lsp_types::CompletionParams>,
+        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return;
+        };
+        let id = request.id;
+        let request_id = request_id_from_lsp(id.clone());
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return;
+            }
+        };
+        let snapshot = self.global_state.snapshot();
+        let generation = self
+            .global_state
+            .register_in_flight_cancellation(request_id.clone());
+        let retry = RetryTask::completion(id.clone(), request_id.clone(), params.clone());
+        self.global_state
+            .task_scheduler()
+            .spawn_retryable_for_request(
+                lane,
+                R::METHOD,
+                request_id,
+                generation,
+                retry,
+                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    f(snapshot, id.clone(), params)
+                })) {
+                    Ok(result) => result,
+                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+                },
+            );
         self.result = JsonRpcResult::None;
     }
 

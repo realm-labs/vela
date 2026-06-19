@@ -921,6 +921,7 @@ impl GlobalState {
     pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
         let _lane = result.lane();
         let _method = result.method();
+        let retry = result.retry().cloned();
         let is_stale = result
             .generation_token()
             .is_some_and(|generation| generation.generation() != self.databases.generation());
@@ -929,6 +930,9 @@ impl GlobalState {
             self.request_queue.finish_in_flight(request_id);
         }
         if is_stale {
+            if let Some(retry) = retry.and_then(|retry| retry.next_attempt()) {
+                dispatch::retry_stale_request(self, retry);
+            }
             return self.send_result(JsonRpcResult::None);
         }
         self.send_result(result.into_result())
@@ -2597,6 +2601,107 @@ pub fn main(player: Player) -> i64 {
 
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
         assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
+    }
+
+    #[test]
+    fn send_task_result_retries_stale_retryable_completion_once() {
+        let (sender, receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "pub fn old_only() { return 1 }",
+            SourceVersion::new(1),
+        );
+        state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
+        state.sync_from_legacy_server();
+        let request_id = RequestId::Number(32);
+
+        let result = state.handle_message(
+            &Message::Request(lsp_server::Request {
+                id: lsp_server::RequestId::from(32),
+                method: "textDocument/completion".to_owned(),
+                params: serde_json::to_value(lsp_types::CompletionParams {
+                    text_document_position: lsp_types::TextDocumentPositionParams {
+                        text_document: lsp_types::TextDocumentIdentifier {
+                            uri: lsp_types::Url::parse(document.as_str())
+                                .expect("document URI should parse"),
+                        },
+                        position: lsp_types::Position {
+                            line: 0,
+                            character: 7,
+                        },
+                    },
+                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                    partial_result_params: lsp_types::PartialResultParams::default(),
+                    context: None,
+                })
+                .expect("completion params should serialize"),
+            }),
+            "",
+        );
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.request_queue.in_flight.contains_key(&request_id));
+        let stale_task = state
+            .task_scheduler()
+            .latency_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("completion task should complete");
+        assert_eq!(stale_task.request_id(), Some(&request_id));
+        assert!(stale_task.retry().is_some());
+
+        state.server.workspace.open_document(
+            document.clone(),
+            "pub fn new_only() { return 2 }",
+            SourceVersion::new(2),
+        );
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
+        state.sync_from_legacy_server();
+
+        state
+            .send_task_result(stale_task)
+            .expect("stale completion task should schedule retry");
+
+        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
+        assert!(state.request_queue.in_flight.contains_key(&request_id));
+        let retry_task = state
+            .task_scheduler()
+            .latency_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("retry completion task should complete");
+        assert_eq!(retry_task.request_id(), Some(&request_id));
+
+        state
+            .send_task_result(retry_task)
+            .expect("fresh retry response should send");
+
+        assert!(!state.request_queue.in_flight.contains_key(&request_id));
+        let response = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("retry should send completion response");
+        let Message::Response(response) = response else {
+            panic!("retry should send response");
+        };
+        assert!(response.error.is_none(), "{response:?}");
+        let result = response
+            .result
+            .expect("completion retry should contain result");
+        let labels: Vec<_> = result["items"]
+            .as_array()
+            .expect("completion response should contain items")
+            .iter()
+            .filter_map(|item| item["label"].as_str())
+            .collect();
+        assert!(labels.contains(&"new_only"), "{labels:?}");
+        assert!(!labels.contains(&"old_only"), "{labels:?}");
     }
 
     #[test]

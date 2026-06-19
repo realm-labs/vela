@@ -1,6 +1,7 @@
 use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, unbounded};
+use lsp_types::CompletionParams;
 use vela_language_service::GenerationToken;
 
 use crate::{JsonRpcResult, RequestId};
@@ -14,8 +15,51 @@ pub(crate) enum TaskResult {
         method: Option<String>,
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
+        retry: Option<Box<RetryTask>>,
         result: JsonRpcResult,
     },
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum RetryTask {
+    Completion {
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: CompletionParams,
+        attempts: u8,
+    },
+}
+
+impl RetryTask {
+    pub(crate) fn completion(
+        id: lsp_server::RequestId,
+        request_id: RequestId,
+        params: CompletionParams,
+    ) -> Self {
+        Self::Completion {
+            id,
+            request_id,
+            params,
+            attempts: 0,
+        }
+    }
+
+    pub(crate) fn next_attempt(self) -> Option<Self> {
+        match self {
+            Self::Completion {
+                id,
+                request_id,
+                params,
+                attempts,
+            } if attempts == 0 => Some(Self::Completion {
+                id,
+                request_id,
+                params,
+                attempts: attempts + 1,
+            }),
+            Self::Completion { .. } => None,
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -57,7 +101,7 @@ impl TaskScheduler {
         lane: TaskLane,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, None, None, None, job);
+        self.spawn_labeled(lane, None, None, None, None, job);
     }
 
     #[allow(dead_code)]
@@ -67,7 +111,7 @@ impl TaskScheduler {
         method: impl Into<String>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
-        self.spawn_labeled(lane, Some(method.into()), None, None, job);
+        self.spawn_labeled(lane, Some(method.into()), None, None, None, job);
     }
 
     #[allow(dead_code)]
@@ -84,6 +128,26 @@ impl TaskScheduler {
             Some(method.into()),
             Some(request_id),
             Some(generation),
+            None,
+            job,
+        );
+    }
+
+    pub(crate) fn spawn_retryable_for_request(
+        &self,
+        lane: TaskLane,
+        method: impl Into<String>,
+        request_id: RequestId,
+        generation: GenerationToken,
+        retry: RetryTask,
+        job: impl FnOnce() -> JsonRpcResult + Send + 'static,
+    ) {
+        self.spawn_labeled(
+            lane,
+            Some(method.into()),
+            Some(request_id),
+            Some(generation),
+            Some(retry),
             job,
         );
     }
@@ -94,6 +158,7 @@ impl TaskScheduler {
         method: Option<String>,
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
+        retry: Option<RetryTask>,
         job: impl FnOnce() -> JsonRpcResult + Send + 'static,
     ) {
         let task = Box::new(move || {
@@ -102,6 +167,7 @@ impl TaskScheduler {
                 method,
                 request_id,
                 generation,
+                retry,
                 job(),
             )
         });
@@ -147,7 +213,7 @@ impl TaskResult {
         method: Option<String>,
         result: JsonRpcResult,
     ) -> Self {
-        Self::lane_method_request_generation_response(lane, method, None, None, result)
+        Self::lane_method_request_generation_response(lane, method, None, None, None, result)
     }
 
     pub(crate) fn lane_method_request_generation_response(
@@ -155,6 +221,7 @@ impl TaskResult {
         method: Option<String>,
         request_id: Option<RequestId>,
         generation: Option<GenerationToken>,
+        retry: Option<RetryTask>,
         result: JsonRpcResult,
     ) -> Self {
         Self::Response {
@@ -162,6 +229,7 @@ impl TaskResult {
             method,
             request_id,
             generation,
+            retry: retry.map(Box::new),
             result,
         }
     }
@@ -187,6 +255,12 @@ impl TaskResult {
     pub(crate) fn generation_token(&self) -> Option<&GenerationToken> {
         match self {
             Self::Response { generation, .. } => generation.as_ref(),
+        }
+    }
+
+    pub(crate) fn retry(&self) -> Option<&RetryTask> {
+        match self {
+            Self::Response { retry, .. } => retry.as_deref(),
         }
     }
 
