@@ -32,11 +32,13 @@ pub(crate) fn dispatch_message(
     message: &Message,
     legacy_input: &str,
 ) -> Vec<Message> {
-    typed_messages(dispatch_message_result_inner(
-        global_state,
-        message,
-        legacy_input,
-    ))
+    match message {
+        Message::Request(request) => dispatch_request(global_state, request.clone(), legacy_input),
+        Message::Notification(notification) => {
+            dispatch_notification(global_state, notification.clone(), legacy_input)
+        }
+        Message::Response(_) => typed_messages(global_state.handle_legacy_json(legacy_input)),
+    }
 }
 
 #[cfg(test)]
@@ -45,37 +47,23 @@ pub(crate) fn dispatch_message_result(
     message: &Message,
     legacy_input: &str,
 ) -> JsonRpcResult {
-    dispatch_message_result_inner(global_state, message, legacy_input)
-}
-
-fn dispatch_message_result_inner(
-    global_state: &mut GlobalState,
-    message: &Message,
-    legacy_input: &str,
-) -> JsonRpcResult {
-    match message {
-        Message::Request(request) => dispatch_request(global_state, request.clone(), legacy_input),
-        Message::Notification(notification) => {
-            dispatch_notification(global_state, notification.clone(), legacy_input)
-        }
-        Message::Response(_) => global_state.handle_legacy_json(legacy_input),
-    }
+    crate::rpc::result_from_messages(dispatch_message(global_state, message, legacy_input))
 }
 
 fn dispatch_request(
     global_state: &mut GlobalState,
     request: Request,
     legacy_input: &str,
-) -> JsonRpcResult {
+) -> Vec<Message> {
     let request_id = request.id.clone();
     if global_state.take_cancelled_request(&request_id) {
-        return request_cancelled(request_id);
+        return typed_messages(request_cancelled(request_id));
     }
     if global_state.is_shutdown_requested() && request.method != "exit" {
-        return server_shut_down(request.id);
+        return typed_messages(server_shut_down(request.id));
     }
     if !global_state.is_initialized() && !is_pre_initialize_method(&request.method) {
-        return server_not_initialized(request.id);
+        return typed_messages(server_not_initialized(request.id));
     }
 
     let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
@@ -143,7 +131,7 @@ fn dispatch_notification(
     global_state: &mut GlobalState,
     notification: Notification,
     _legacy_input: &str,
-) -> JsonRpcResult {
+) -> Vec<Message> {
     let mut dispatcher = NotificationDispatcher::new(global_state, notification);
     dispatcher
         .on_sync_mut_typed::<Initialized>(GlobalState::initialized)
@@ -365,7 +353,7 @@ pub(crate) struct RequestDispatcher<'a> {
     global_state: &'a mut GlobalState,
     request: Option<Request>,
     legacy_input: &'a str,
-    result: JsonRpcResult,
+    result: Vec<Message>,
 }
 
 impl<'a> RequestDispatcher<'a> {
@@ -374,7 +362,7 @@ impl<'a> RequestDispatcher<'a> {
             global_state,
             request: Some(request),
             legacy_input,
-            result: JsonRpcResult::None,
+            result: Vec::new(),
         }
     }
 
@@ -452,15 +440,15 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn finish(&mut self) -> JsonRpcResult {
+    pub(crate) fn finish(&mut self) -> Vec<Message> {
         if let Some(request) = self.request.take() {
             self.result = if is_known_notification_method(&request.method) {
-                self.global_state.handle_legacy_json(self.legacy_input)
+                typed_messages(self.global_state.handle_legacy_json(self.legacy_input))
             } else {
-                method_not_found(request.id, &request.method)
+                typed_messages(method_not_found(request.id, &request.method))
             };
         }
-        std::mem::replace(&mut self.result, JsonRpcResult::None)
+        std::mem::take(&mut self.result)
     }
 
     fn dispatch_typed<R>(
@@ -477,16 +465,18 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
+                self.result = typed_messages(invalid_params(id, R::METHOD, error));
                 return;
             }
         };
-        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            f(self.global_state, id.clone(), params)
-        })) {
-            Ok(result) => result,
-            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-        };
+        self.result = typed_messages(
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                f(self.global_state, id.clone(), params)
+            })) {
+                Ok(result) => result,
+                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+            },
+        );
     }
 
     fn dispatch_snapshot_typed<R>(
@@ -503,17 +493,17 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
+                self.result = typed_messages(invalid_params(id, R::METHOD, error));
                 return;
             }
         };
         let snapshot = self.global_state.snapshot();
-        self.result = match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            f(snapshot, id.clone(), params)
-        })) {
-            Ok(result) => result,
-            Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-        };
+        self.result = typed_messages(
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(snapshot, id.clone(), params))) {
+                Ok(result) => result,
+                Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
+            },
+        );
     }
 
     fn dispatch_snapshot_task_typed<R>(
@@ -532,7 +522,7 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
+                self.result = typed_messages(invalid_params(id, R::METHOD, error));
                 return;
             }
         };
@@ -556,7 +546,7 @@ impl<'a> RequestDispatcher<'a> {
                 )
             },
         );
-        self.result = JsonRpcResult::None;
+        self.result.clear();
     }
 
     fn dispatch_retryable_snapshot_task_typed<R>(
@@ -576,7 +566,7 @@ impl<'a> RequestDispatcher<'a> {
         let params = match serde_json::from_value::<R::Params>(request.params) {
             Ok(params) => params,
             Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
+                self.result = typed_messages(invalid_params(id, R::METHOD, error));
                 return;
             }
         };
@@ -604,7 +594,7 @@ impl<'a> RequestDispatcher<'a> {
                     )
                 },
             );
-        self.result = JsonRpcResult::None;
+        self.result.clear();
     }
 
     fn take_matching<R>(&mut self) -> Option<Request>
@@ -626,7 +616,7 @@ impl<'a> RequestDispatcher<'a> {
 pub(crate) struct NotificationDispatcher<'a> {
     global_state: &'a mut GlobalState,
     notification: Option<Notification>,
-    result: JsonRpcResult,
+    result: Vec<Message>,
 }
 
 impl<'a> NotificationDispatcher<'a> {
@@ -634,7 +624,7 @@ impl<'a> NotificationDispatcher<'a> {
         Self {
             global_state,
             notification: Some(notification),
-            result: JsonRpcResult::None,
+            result: Vec::new(),
         }
     }
 
@@ -652,23 +642,24 @@ impl<'a> NotificationDispatcher<'a> {
         let params = match serde_json::from_value::<N::Params>(notification.params) {
             Ok(params) => params,
             Err(_) => {
-                self.result = JsonRpcResult::None;
+                self.result.clear();
                 return self;
             }
         };
-        self.result =
+        self.result = typed_messages(
             match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self.global_state, params))) {
                 Ok(result) => result,
                 Err(_) => JsonRpcResult::None,
-            };
+            },
+        );
         self
     }
 
-    pub(crate) fn finish(&mut self) -> JsonRpcResult {
+    pub(crate) fn finish(&mut self) -> Vec<Message> {
         if self.notification.take().is_some() {
-            self.result = JsonRpcResult::None;
+            self.result.clear();
         }
-        std::mem::replace(&mut self.result, JsonRpcResult::None)
+        std::mem::take(&mut self.result)
     }
 
     fn take_matching<N>(&mut self) -> Option<Notification>
@@ -821,14 +812,10 @@ mod tests {
         };
 
         let mut dispatcher = RequestDispatcher::new(&mut global_state, request, "");
-        let result = dispatcher
+        let messages = dispatcher
             .on_sync_mut_typed::<lsp_types::request::Initialize>(panic_request_handler)
             .finish();
-        let response = result
-            .into_response()
-            .expect("panic should be projected as response");
-        let response =
-            serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON");
+        let response = response_value(messages);
 
         assert_eq!(response["id"], 7);
         assert_eq!(response["error"]["code"], -32603);
@@ -886,10 +873,16 @@ mod tests {
         };
 
         let mut dispatcher = NotificationDispatcher::new(&mut global_state, notification);
-        let result = dispatcher
+        let messages = dispatcher
             .on_sync_mut_typed::<lsp_types::notification::Initialized>(panic_notification_handler)
             .finish();
 
-        assert_eq!(result, JsonRpcResult::None);
+        assert!(messages.is_empty());
+    }
+
+    fn response_value(messages: Vec<Message>) -> JsonValue {
+        assert_eq!(messages.len(), 1);
+        let response = crate::rpc::serialize_message(&messages[0]);
+        serde_json::from_str::<JsonValue>(&response).expect("response should be valid JSON")
     }
 }

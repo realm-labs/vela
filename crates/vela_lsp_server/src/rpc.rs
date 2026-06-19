@@ -85,6 +85,18 @@ pub(crate) fn typed_messages(result: JsonRpcResult) -> Vec<Message> {
         .expect("JSON-RPC result should contain typed LSP messages")
 }
 
+#[cfg(test)]
+pub(crate) fn result_from_messages(messages: Vec<Message>) -> JsonRpcResult {
+    match messages.as_slice() {
+        [] => JsonRpcResult::None,
+        [Message::Response(response)] => JsonRpcResult::Response(response.clone()),
+        [message @ Message::Notification(_)] | [message @ Message::Request(_)] => {
+            JsonRpcResult::Notification(message.clone())
+        }
+        _ => JsonRpcResult::Notifications(messages),
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct CancelRequestParams {
     pub(crate) id: RequestId,

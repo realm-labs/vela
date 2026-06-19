@@ -1449,6 +1449,12 @@ cargo test -p vela_lsp_server semantic_tokens
     compatibility helpers. Validated with
     `cargo test -p vela_lsp_server lifecycle` and
     `cargo test -p vela_lsp_server task`.
+  - Request and notification dispatchers now store typed
+    `lsp_server::Message` batches internally instead of `JsonRpcResult`;
+    remaining handler-level `JsonRpcResult` values are converted at handler
+    dispatch points. Validated with
+    `cargo test -p vela_lsp_server handlers::dispatch` and
+    `cargo test -p vela_lsp_server lifecycle`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
