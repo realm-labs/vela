@@ -10,8 +10,9 @@ use lsp_types::{
     request::{
         CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
         GotoDeclaration, GotoDefinition, GotoTypeDefinition, HoverRequest, InlayHintRequest,
-        References, Rename, SelectionRangeRequest, SemanticTokensFullDeltaRequest,
-        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
+        References, Rename, ResolveCompletionItem, SelectionRangeRequest,
+        SemanticTokensFullDeltaRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
+        SignatureHelpRequest,
     },
 };
 use serde::de::DeserializeOwned;
@@ -57,6 +58,7 @@ fn dispatch_request(
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
         .on_sync::<DocumentSymbolRequest>()
         .on_latency_sensitive_typed::<Completion>(GlobalState::completion)
+        .on_latency_sensitive_typed::<ResolveCompletionItem>(GlobalState::completion_resolve)
         .on_latency_sensitive::<HoverRequest>()
         .on_latency_sensitive::<SignatureHelpRequest>()
         .on_latency_sensitive::<SemanticTokensFullRequest>()

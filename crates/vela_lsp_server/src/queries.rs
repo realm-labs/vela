@@ -8,9 +8,7 @@ use crate::{
         service_call_hierarchy_item,
     },
     code_action::lsp_code_actions,
-    completion::{
-        lsp_completion_list, lsp_completion_resolved_item, service_completion_resolve_payload,
-    },
+    completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
     definition::lsp_definition,
     error_response,
     folding::lsp_folding_ranges,
@@ -185,7 +183,8 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            lsp_completion_list(&completions, &line_index),
+            serde_json::to_value(to_proto::completion_response(&completions, &line_index))
+                .expect("typed completion response should serialize"),
         ))
     }
 
@@ -212,6 +211,32 @@ impl LspServer {
         JsonRpcResult::Response(success_response(
             id,
             lsp_completion_resolved_item(params, documentation),
+        ))
+    }
+
+    pub(crate) fn completion_resolve_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::CompletionItem,
+    ) -> JsonRpcResult {
+        let params_value =
+            serde_json::to_value(&params).expect("typed completion item should serialize");
+        let payload = match service_completion_resolve_payload(&params_value) {
+            Ok(payload) => payload,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completionItem/resolve payload: {error}"),
+                ));
+            }
+        };
+        let documentation =
+            payload.and_then(|payload| self.databases.completion_documentation(&payload));
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
+                .expect("typed completion item should serialize"),
         ))
     }
 

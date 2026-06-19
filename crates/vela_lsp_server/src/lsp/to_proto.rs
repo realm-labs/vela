@@ -19,6 +19,21 @@ pub(crate) fn completion_response(
     })
 }
 
+pub(crate) fn completion_item_resolved(
+    mut item: lsp_types::CompletionItem,
+    documentation: Option<String>,
+) -> lsp_types::CompletionItem {
+    if let Some(documentation) = documentation {
+        item.documentation = Some(lsp_types::Documentation::MarkupContent(
+            lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: documentation,
+            },
+        ));
+    }
+    item
+}
+
 fn completion_item(
     item: &vela_language_service::CompletionItem,
     line_index: &LineIndex,
@@ -203,5 +218,22 @@ mod tests {
             .expect("function completion should be projected");
         assert_eq!(item.kind, Some(lsp_types::CompletionItemKind::FUNCTION));
         assert!(item.data.is_some());
+    }
+
+    #[test]
+    fn completion_item_resolved_projects_markdown_documentation() {
+        let item = lsp_types::CompletionItem {
+            label: "Player".to_owned(),
+            ..lsp_types::CompletionItem::default()
+        };
+
+        let item = completion_item_resolved(item, Some("Player docs.".to_owned()));
+
+        let Some(lsp_types::Documentation::MarkupContent(documentation)) = item.documentation
+        else {
+            panic!("resolved completion should contain markdown documentation");
+        };
+        assert_eq!(documentation.kind, lsp_types::MarkupKind::Markdown);
+        assert_eq!(documentation.value, "Player docs.");
     }
 }

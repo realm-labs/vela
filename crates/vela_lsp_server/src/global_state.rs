@@ -326,6 +326,15 @@ impl GlobalState {
         result
     }
 
+    pub(crate) fn completion_resolve(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: lsp_types::CompletionItem,
+    ) -> JsonRpcResult {
+        self.server
+            .completion_resolve_typed(request_id_from_lsp(id), params)
+    }
+
     pub(crate) fn did_change_configuration(
         &mut self,
         params: DidChangeConfigurationParams,
@@ -1132,6 +1141,37 @@ mod tests {
         );
         assert!(result.into_response().is_some());
         assert!(state.is_exited());
+    }
+
+    #[test]
+    fn typed_completion_resolve_dispatch_projects_completion_item() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(7),
+            method: "completionItem/resolve".to_owned(),
+            params: serde_json::to_value(lsp_types::CompletionItem {
+                label: "plain".to_owned(),
+                kind: Some(lsp_types::CompletionItemKind::VARIABLE),
+                data: Some(serde_json::json!({ "source": "vela" })),
+                ..lsp_types::CompletionItem::default()
+            })
+            .expect("completion item should serialize"),
+        });
+
+        let result = state.handle_message(&request, "");
+
+        let response = result
+            .into_response()
+            .expect("typed completion resolve should return a response");
+        let response: serde_json::Value =
+            serde_json::from_str(&response).expect("response should be JSON");
+        assert_eq!(response["id"], 7);
+        assert_eq!(response["result"]["label"], "plain");
+        assert_eq!(response["result"]["kind"], 6);
+        assert!(response["result"].get("documentation").is_none());
     }
 
     #[test]

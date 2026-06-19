@@ -629,11 +629,21 @@ cargo test -p vela_lsp_server workspace_folders
   - Initial `lsp/to_proto.rs` now projects completion lists into typed
     `lsp_types::CompletionResponse` values. Broader feature projections and
     legacy raw JSON helpers remain to migrate.
-- [ ] Migrate completion and completion resolve first.
+- [x] Migrate completion and completion resolve first.
   - `textDocument/completion` now uses typed request params through
     `GlobalState` and typed completion result projection through
-    `lsp/to_proto.rs`; `completionItem/resolve` still uses the temporary
-    legacy payload path.
+    `lsp/to_proto.rs`.
+  - `completionItem/resolve` now uses typed `CompletionItem` params through
+    `GlobalState` and typed result projection through `lsp/to_proto.rs`;
+    resolve payload parsing still reuses the temporary JSON payload helper
+    until completion resolve data is replaced by a typed extension payload.
+  - Validated with `cargo test -p vela_lsp_server completion_resolve`,
+    `cargo test -p vela_lsp_server completion`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service completion`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Migrate hover, signature help, definition, declaration, type definition,
   references, prepare rename, rename, call hierarchy, document highlight,
   document symbols, workspace symbols, folding, formatting, range formatting,
