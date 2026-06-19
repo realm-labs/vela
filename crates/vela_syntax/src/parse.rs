@@ -243,6 +243,85 @@ mod tests {
     }
 
     #[test]
+    fn parser_parse_source_structures_enum_variant_nodes() {
+        let source = r#"enum QuestProgress {
+    #[empty]
+    None
+    Active { quest_id: String, count: i64 = 0 }
+    Finished(quest_id: String, reward: Option<String>)
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(14), source);
+        let tree = parse.tree();
+        let enumeration = tree.enums().next().expect("enum item");
+        let variant_list = enumeration.variant_list().expect("variant list");
+        let variants = variant_list.variants().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(enumeration.syntax().text().to_string(), source.trim_end());
+        assert_eq!(variant_list.syntax().kind(), SyntaxKind::EnumVariantList);
+        assert_eq!(
+            variants
+                .iter()
+                .map(|variant| variant.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec![
+                "#[empty]\n    None",
+                "Active { quest_id: String, count: i64 = 0 }",
+                "Finished(quest_id: String, reward: Option<String>)",
+            ]
+        );
+        assert!(variants[0].tuple_field_list().is_none());
+        assert!(variants[0].record_field_list().is_none());
+
+        let record_fields = variants[1]
+            .record_field_list()
+            .expect("record fields")
+            .fields()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            record_fields
+                .iter()
+                .map(|field| field.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["quest_id: String", "count: i64 = 0"]
+        );
+        assert_eq!(
+            record_fields[0]
+                .type_hint()
+                .expect("record field type")
+                .syntax()
+                .text()
+                .to_string(),
+            "String"
+        );
+
+        let tuple_params = variants[2]
+            .tuple_field_list()
+            .expect("tuple fields")
+            .params()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            tuple_params
+                .iter()
+                .map(|param| param.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["quest_id: String", " reward: Option<String>"]
+        );
+        let reward_hint = tuple_params[1].type_hint().expect("tuple field type");
+        assert_eq!(reward_hint.syntax().text().to_string(), "Option<String>");
+        assert_eq!(
+            reward_hint
+                .type_arg_list()
+                .expect("tuple type args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String>"
+        );
+    }
+
+    #[test]
     fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         let source = "fn main() { @ \"unterminated";
         let parse = parse_source_with_id(SourceId::new(9), source);

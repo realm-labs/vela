@@ -4,9 +4,10 @@ use vela_common::Span;
 mod syntax;
 
 pub use syntax::{
-    AstChildren, AstNode, SyntaxBlock, SyntaxFunctionItem, SyntaxItem, SyntaxParam,
-    SyntaxParamList, SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem,
-    SyntaxTypeArgList, SyntaxTypeHint,
+    AstChildren, AstNode, SyntaxBlock, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList,
+    SyntaxFunctionItem, SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxRecordFieldList,
+    SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem,
+    SyntaxTupleFieldList, SyntaxTypeArgList, SyntaxTypeHint,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]

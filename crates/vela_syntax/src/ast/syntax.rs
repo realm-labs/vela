@@ -39,6 +39,11 @@ impl SyntaxSourceFile {
     pub fn structs(&self) -> AstChildren<SyntaxStructItem> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn enums(&self) -> AstChildren<SyntaxEnumItem> {
+        AstChildren::new(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxSourceFile {
@@ -344,6 +349,141 @@ impl AstNode for SyntaxStructField {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxEnumItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxEnumItem {
+    #[must_use]
+    pub fn variant_list(&self) -> Option<SyntaxEnumVariantList> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxEnumItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::EnumItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxEnumVariantList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxEnumVariantList {
+    #[must_use]
+    pub fn variants(&self) -> AstChildren<SyntaxEnumVariant> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxEnumVariantList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::EnumVariantList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxEnumVariant {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxEnumVariant {
+    #[must_use]
+    pub fn tuple_field_list(&self) -> Option<SyntaxTupleFieldList> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn record_field_list(&self) -> Option<SyntaxRecordFieldList> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxEnumVariant {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::EnumVariant
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTupleFieldList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxTupleFieldList {
+    #[must_use]
+    pub fn params(&self) -> AstChildren<SyntaxParam> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxTupleFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TupleFieldList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxRecordFieldList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxRecordFieldList {
+    #[must_use]
+    pub fn fields(&self) -> AstChildren<SyntaxStructField> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxRecordFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::RecordFieldList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -557,5 +697,102 @@ mod tests {
             "<String>"
         );
         assert!(fields[1].type_hint().is_none());
+    }
+
+    #[test]
+    fn ast_enum_item_exposes_variant_children() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.start_node(SyntaxKind::EnumItem);
+        builder.token(SyntaxKind::EnumKw, "enum");
+        builder.start_node(SyntaxKind::EnumVariantList);
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.start_node(SyntaxKind::EnumVariant);
+        builder.token(SyntaxKind::Ident, "Finished");
+        builder.start_node(SyntaxKind::TupleFieldList);
+        builder.token(SyntaxKind::LParen, "(");
+        builder.start_node(SyntaxKind::Param);
+        builder.token(SyntaxKind::Ident, "reward");
+        builder.token(SyntaxKind::Colon, ":");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "Option");
+        builder.start_node(SyntaxKind::TypeArgList);
+        builder.token(SyntaxKind::Less, "<");
+        builder.token(SyntaxKind::Ident, "String");
+        builder.token(SyntaxKind::Greater, ">");
+        builder.finish_node();
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RParen, ")");
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::Comma, ",");
+        builder.start_node(SyntaxKind::EnumVariant);
+        builder.token(SyntaxKind::Ident, "Active");
+        builder.start_node(SyntaxKind::RecordFieldList);
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.start_node(SyntaxKind::StructField);
+        builder.token(SyntaxKind::Ident, "count");
+        builder.token(SyntaxKind::Colon, ":");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "i64");
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.finish_node();
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+        let enumeration = source.enums().next().expect("enum item");
+        let variants = enumeration
+            .variant_list()
+            .expect("variant list")
+            .variants()
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            variants
+                .iter()
+                .map(|variant| variant.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["Finished(reward:Option<String>)", "Active{count:i64}"]
+        );
+        let tuple_param = variants[0]
+            .tuple_field_list()
+            .expect("tuple fields")
+            .params()
+            .next()
+            .expect("tuple param");
+        let tuple_hint = tuple_param.type_hint().expect("tuple param type");
+        assert_eq!(tuple_hint.syntax().text().to_string(), "Option<String>");
+        assert_eq!(
+            tuple_hint
+                .type_arg_list()
+                .expect("tuple type args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String>"
+        );
+        let record_field = variants[1]
+            .record_field_list()
+            .expect("record fields")
+            .fields()
+            .next()
+            .expect("record field");
+        assert_eq!(
+            record_field
+                .type_hint()
+                .expect("record field type")
+                .syntax()
+                .text()
+                .to_string(),
+            "i64"
+        );
     }
 }
