@@ -89,7 +89,7 @@ fn dispatch_notification(
         .on_sync_mut_typed::<DidChangeWorkspaceFolders>(GlobalState::did_change_workspace_folders)
         .on_sync_mut_typed::<DidChangeWatchedFiles>(GlobalState::did_change_watched_files)
         .on_sync_mut_typed::<DidSaveTextDocument>(GlobalState::did_save)
-        .on_sync_mut::<DidOpenTextDocument>()
+        .on_sync_mut_typed::<DidOpenTextDocument>(GlobalState::did_open)
         .on_sync_mut::<DidChangeTextDocument>()
         .on_sync_mut::<DidCloseTextDocument>()
         .finish()

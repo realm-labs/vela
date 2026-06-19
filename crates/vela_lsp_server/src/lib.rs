@@ -568,7 +568,7 @@ impl LspServer {
         }
     }
 
-    fn publish_current_diagnostics(
+    pub(crate) fn publish_current_diagnostics(
         &mut self,
         uri: &str,
         document_id: &DocumentId,

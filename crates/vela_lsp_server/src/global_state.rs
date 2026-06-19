@@ -4,7 +4,7 @@ use crossbeam_channel::Sender;
 use lsp_server::Message;
 use lsp_types::{
     DidChangeConfigurationParams, DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams,
-    DidSaveTextDocumentParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -26,7 +26,7 @@ use crate::{
     reload::{ReloadOperation, ReloadScheduler, ReloadWork},
     rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
     semantic_tokens::SemanticTokenProjection,
-    success_response,
+    source_version, success_response,
     transport::{ResultSummary, messages_from_result},
     watching, with_work_done_progress,
 };
@@ -374,6 +374,23 @@ impl GlobalState {
 
     pub(crate) fn did_save(&mut self, _params: DidSaveTextDocumentParams) -> JsonRpcResult {
         JsonRpcResult::None
+    }
+
+    pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> JsonRpcResult {
+        let uri = params.text_document.uri.to_string();
+        let document_id = DocumentId::from(uri.clone());
+        let version = source_version(params.text_document.version);
+        self.server.workspace.open_document(
+            document_id.clone(),
+            params.text_document.text,
+            version,
+        );
+        self.server.open_documents.insert(document_id.clone());
+        self.open_documents.insert(document_id.clone());
+
+        let result = self.server.publish_current_diagnostics(&uri, &document_id);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
     }
 
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
@@ -865,6 +882,38 @@ mod tests {
         assert_eq!(result, JsonRpcResult::None);
         assert!(state.open_documents.contains(&document));
         assert!(state.server.open_documents.is_empty());
+    }
+
+    #[test]
+    fn typed_did_open_updates_global_workspace_and_diagnostics() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+
+        let result = state.did_open(lsp_types::DidOpenTextDocumentParams {
+            text_document: lsp_types::TextDocumentItem {
+                uri: lsp_types::Url::parse(document.as_str())
+                    .expect("document URI should parse as URL"),
+                language_id: "vela".to_owned(),
+                version: 3,
+                text: "fn main() {}".to_owned(),
+            },
+        });
+
+        assert!(matches!(
+            result,
+            JsonRpcResult::Notification(_) | JsonRpcResult::Notifications(_)
+        ));
+        assert!(state.open_documents.contains(&document));
+        assert_eq!(state.open_documents, state.server.open_documents);
+        assert_eq!(
+            state.snapshot().workspace().document_text(&document),
+            Some("fn main() {}")
+        );
+        assert_eq!(
+            state.snapshot().generation(),
+            state.snapshot().databases().generation()
+        );
     }
 
     #[test]

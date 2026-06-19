@@ -563,11 +563,14 @@ cargo test -p vela_lsp_server profile
 
 - [ ] Migrate `textDocument/didOpen`, `textDocument/didChange`,
   `textDocument/didClose`, and `textDocument/didSave` to `lsp-types`.
+  - `textDocument/didOpen` now uses typed `lsp-types` params through
+    `GlobalState`, updates the open-document mirror, and preserves existing
+    diagnostics publication. `didChange` and `didClose` remain on the
+    temporary legacy path until their overlay and close-restore behavior moves
+    behind typed helpers.
   - `textDocument/didSave` now uses typed `lsp-types` params through
     `GlobalState`; it remains a no-response no-op because save events are not
-    advertised or required for correctness. `didOpen`, `didChange`, and
-    `didClose` remain on the temporary legacy path until the document-sync
-    mutation backend moves.
+    advertised or required for correctness.
 - [ ] Migrate `workspace/didChangeConfiguration` to typed settings extraction
   through the `ConfigChange` pipeline while preserving nested `vela` settings
   support.
