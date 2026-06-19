@@ -3,14 +3,17 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_reference, line};
 
 #[test]
 fn lsp_references_find_cross_file_imported_source_field_and_method_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -18,7 +21,7 @@ fn lsp_references_find_cross_file_imported_source_field_and_method_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
     let main_text = "\
@@ -38,7 +41,8 @@ impl Reward {
     pub fn total(self) -> i64 { return 1 }
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -48,10 +52,11 @@ impl Reward {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let field_response = response_value(server.handle_json(&request(
+    let field_response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -64,7 +69,7 @@ impl Reward {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let field_references = field_response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -95,7 +100,8 @@ impl Reward {
             .expect("second field read should exist"),
     );
 
-    let method_response = response_value(server.handle_json(&request(
+    let method_response = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/references",
         serde_json::json!({
@@ -108,7 +114,7 @@ impl Reward {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let method_references = method_response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -170,7 +176,8 @@ pub fn main(amount: i64) -> i64 {
 }";
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -178,8 +185,9 @@ pub fn main(amount: i64) -> i64 {
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -187,8 +195,9 @@ pub fn main(amount: i64) -> i64 {
                 { "uri": reward_uri.clone(), "type": 1 }
             ]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -198,9 +207,10 @@ pub fn main(amount: i64) -> i64 {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let before = response_value(server.handle_json(&request(
+    let before = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -213,7 +223,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let before_references = before["result"]
         .as_array()
         .expect("references response should be an array");
@@ -235,14 +245,16 @@ pub fn main(amount: i64) -> i64 {
     );
 
     fs::remove_file(&reward_path).expect("source should be removable");
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": reward_uri, "type": 3 }]
         }),
-    ));
+    );
 
-    let after = response_value(server.handle_json(&request(
+    let after = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/references",
         serde_json::json!({
@@ -255,7 +267,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let after_references = after["result"]
         .as_array()
         .expect("references response should be an array");
@@ -305,7 +317,8 @@ pub fn main(amount: i64) -> i64 {
 }";
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -313,8 +326,9 @@ pub fn main(amount: i64) -> i64 {
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -322,8 +336,9 @@ pub fn main(amount: i64) -> i64 {
                 { "uri": reward_uri.clone(), "type": 1 }
             ]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -333,9 +348,10 @@ pub fn main(amount: i64) -> i64 {
                 "text": old_main_text
             }
         }),
-    )));
+    ));
 
-    let before = response_value(server.handle_json(&request(
+    let before = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -348,14 +364,15 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let before_references = before["result"]
         .as_array()
         .expect("references response should be an array");
     assert_reference(before_references, &reward_uri, 0, "pub fn ".len());
 
     fs::rename(&reward_path, &bonus_path).expect("source should be renameable");
-    let _ = server.handle_json(&notification(
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -363,8 +380,9 @@ pub fn main(amount: i64) -> i64 {
                 { "uri": bonus_uri.clone(), "type": 1 }
             ]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didChange",
         serde_json::json!({
             "textDocument": {
@@ -375,9 +393,10 @@ pub fn main(amount: i64) -> i64 {
                 { "text": new_main_text }
             ]
         }),
-    )));
+    ));
 
-    let after = response_value(server.handle_json(&request(
+    let after = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/references",
         serde_json::json!({
@@ -390,7 +409,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let after_references = after["result"]
         .as_array()
         .expect("references response should be an array");
@@ -453,7 +472,8 @@ pub fn main(amount: i64) -> i64 {
     let overlay_text = "pub fn grant(amount: i64) -> i64 { return amount }";
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -461,8 +481,9 @@ pub fn main(amount: i64) -> i64 {
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -470,8 +491,9 @@ pub fn main(amount: i64) -> i64 {
                 { "uri": reward_uri.clone(), "type": 1 }
             ]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -481,8 +503,9 @@ pub fn main(amount: i64) -> i64 {
                 "text": overlay_text
             }
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -492,9 +515,10 @@ pub fn main(amount: i64) -> i64 {
                 "text": main_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -507,7 +531,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -579,7 +603,8 @@ pub fn main(amount: i64) -> i64 {
 }";
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -587,8 +612,9 @@ pub fn main(amount: i64) -> i64 {
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [
@@ -597,8 +623,9 @@ pub fn main(amount: i64) -> i64 {
                 { "uri": reward_uri.clone(), "type": 1 }
             ]
         }),
-    ));
-    let _ = notification_value(server.handle_json(&notification(
+    );
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -608,9 +635,10 @@ pub fn main(amount: i64) -> i64 {
                 "text": overlay_text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -623,7 +651,7 @@ pub fn main(amount: i64) -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -652,7 +680,8 @@ pub fn main(amount: i64) -> i64 {
 #[test]
 fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -660,7 +689,7 @@ fn lsp_references_find_cross_file_imported_source_enum_variant_uses() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
     let main_text = "\
@@ -682,7 +711,8 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -692,10 +722,11 @@ pub enum QuestState {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -708,7 +739,7 @@ pub enum QuestState {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -743,7 +774,8 @@ pub enum QuestState {
 #[test]
 fn lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -751,7 +783,7 @@ fn lsp_references_find_cross_file_imported_source_enum_record_variant_field_uses
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let types_uri = "file:///workspace/scripts/game/types.vela";
     let main_text = "\
@@ -773,7 +805,8 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -783,10 +816,11 @@ pub enum QuestState {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -799,7 +833,7 @@ pub enum QuestState {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
