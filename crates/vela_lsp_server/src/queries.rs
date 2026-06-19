@@ -29,7 +29,6 @@ use crate::{
     protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
-    references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -582,7 +581,11 @@ impl LspServer {
             self.databases
                 .references(&document_id, position, params.context.include_declaration);
 
-        JsonRpcResult::Response(success_response(id, lsp_references(&references)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::reference_locations(&references))
+                .expect("typed references response should serialize"),
+        ))
     }
 
     pub(crate) fn references_typed(
@@ -963,7 +966,11 @@ impl LspServer {
             };
         let highlights = self.databases.document_highlights(&document_id, position);
 
-        JsonRpcResult::Response(success_response(id, lsp_document_highlights(&highlights)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::document_highlights(&highlights))
+                .expect("typed documentHighlight response should serialize"),
+        ))
     }
 
     pub(crate) fn document_highlight_typed(

@@ -14,7 +14,6 @@ mod lsp;
 pub mod main_loop;
 mod protocol;
 mod queries;
-mod references;
 mod reload;
 mod rename;
 mod rpc;
