@@ -4,7 +4,7 @@ use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLin
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
     call_hierarchy::service_call_hierarchy_item,
-    completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
+    completion::service_completion_resolve_payload,
     error_response,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
@@ -222,11 +222,22 @@ impl LspServer {
                 ));
             }
         };
+        let params = match serde_json::from_value::<lsp_types::CompletionItem>(params) {
+            Ok(params) => params,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid completionItem/resolve params: {error}"),
+                ));
+            }
+        };
         let documentation =
             payload.and_then(|payload| self.databases.completion_documentation(&payload));
         JsonRpcResult::Response(success_response(
             id,
-            lsp_completion_resolved_item(params, documentation),
+            serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
+                .expect("typed completion item should serialize"),
         ))
     }
 

@@ -1008,6 +1008,15 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `completionItem/resolve` compatibility handling now deserializes legacy
+    params into `lsp_types::CompletionItem` and serializes the typed
+    `lsp/to_proto.rs` resolved-item projection instead of mutating raw JSON
+    response values. The resolve payload itself remains a Vela extension
+    payload. Validated with
+    `cargo test -p vela_lsp_server completion_resolve`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
   - Phase 4 request migration preserved existing advertised capabilities; no

@@ -305,7 +305,9 @@ workspace-symbol compatibility paths now serialize typed `lsp/to_proto.rs`
 projections instead of keeping duplicate raw response encoders. Diagnostic
 publication also projects typed `lsp_types::Diagnostic` and
 `lsp_types::PublishDiagnosticsParams` through `lsp/to_proto.rs`, retaining only
-Vela extension payloads at the JSON boundary. Call hierarchy compatibility
+Vela extension payloads at the JSON boundary. Completion resolve compatibility
+also reuses typed `lsp_types::CompletionItem` projection while keeping only the
+resolve data as a Vela extension payload. Call hierarchy compatibility
 responses also serialize typed `lsp/to_proto.rs` projections; its remaining
 helper only decodes legacy custom call-hierarchy item params until custom
 protocol params are retired.

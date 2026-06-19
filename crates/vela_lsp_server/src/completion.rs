@@ -1,4 +1,4 @@
-use serde_json::{Value as JsonValue, json};
+use serde_json::Value as JsonValue;
 use vela_language_service::{CompletionResolvePayload, CompletionSymbol};
 
 pub(crate) fn service_completion_resolve_payload(
@@ -19,19 +19,6 @@ pub(crate) fn service_completion_resolve_payload(
         .and_then(service_completion_symbol)
         .ok_or("invalid resolve symbol")?;
     Ok(Some(CompletionResolvePayload::Documentation { symbol }))
-}
-
-pub(crate) fn lsp_completion_resolved_item(
-    mut item: JsonValue,
-    documentation: Option<String>,
-) -> JsonValue {
-    if let Some(documentation) = documentation {
-        item["documentation"] = json!({
-            "kind": "markdown",
-            "value": documentation
-        });
-    }
-    item
 }
 
 fn service_completion_symbol(value: &JsonValue) -> Option<CompletionSymbol> {
