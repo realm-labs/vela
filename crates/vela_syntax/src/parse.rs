@@ -4,7 +4,8 @@ use vela_common::{Diagnostic, SourceId};
 
 use crate::ast::{AstNode, SyntaxSourceFile};
 use crate::lexer::lex;
-use crate::{SyntaxKind, SyntaxNode, SyntaxTreeBuilder};
+use crate::parser::cst;
+use crate::{SyntaxNode, SyntaxTreeBuilder};
 
 #[must_use]
 pub fn parse_source(text: &str) -> Parse<SyntaxSourceFile> {
@@ -15,16 +16,10 @@ pub fn parse_source(text: &str) -> Parse<SyntaxSourceFile> {
 pub fn parse_source_with_id(source: SourceId, text: &str) -> Parse<SyntaxSourceFile> {
     let lexed = lex(source, text);
     let mut builder = SyntaxTreeBuilder::default();
+    let mut diagnostics = lexed.diagnostics.clone();
+    diagnostics.extend(cst::build_source_tree(&lexed, &mut builder));
 
-    builder.start_node(SyntaxKind::SourceFile);
-    for token in &lexed.lossless_tokens {
-        if token.kind != SyntaxKind::Eof {
-            builder.token(token.kind, &token.text);
-        }
-    }
-    builder.finish_node();
-
-    builder.finish_with_diagnostics(lexed.diagnostics)
+    builder.finish_with_diagnostics(diagnostics)
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -101,8 +96,35 @@ mod tests {
         assert_eq!(tree.syntax().kind(), SyntaxKind::SourceFile);
         assert_eq!(tree.syntax().text().to_string(), source);
         assert_eq!(
+            tree.syntax()
+                .children()
+                .map(|node| node.kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::FunctionItem]
+        );
+        assert_eq!(
             tree.text_range(),
             TextRange::new(TextSize::from(0), TextSize::of(source))
+        );
+    }
+
+    #[test]
+    fn parser_parse_source_wraps_top_level_items_in_cst_nodes() {
+        let source = "# [event(\"tick\")]\npub fn tick() {}\nuse game::state;\nstruct Player { level: i64 }\n";
+        let parse = parse_source_with_id(SourceId::new(11), source);
+        let tree = parse.tree();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(tree.syntax().text().to_string(), source);
+        assert_eq!(
+            tree.items()
+                .map(|item| item.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![
+                SyntaxKind::FunctionItem,
+                SyntaxKind::UseItem,
+                SyntaxKind::StructItem,
+            ]
         );
     }
 

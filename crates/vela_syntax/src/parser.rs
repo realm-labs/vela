@@ -83,6 +83,7 @@ impl Parser {
     }
 }
 
+pub(crate) mod cst;
 mod expressions;
 mod items;
 mod lists;

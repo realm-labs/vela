@@ -1,6 +1,8 @@
 use vela_common::Span;
 
-use crate::{SyntaxKind, SyntaxNode, TextRange};
+use std::marker::PhantomData;
+
+use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange};
 
 pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
@@ -24,11 +26,75 @@ impl SyntaxSourceFile {
     pub fn text_range(&self) -> TextRange {
         self.syntax.text_range()
     }
+
+    #[must_use]
+    pub fn items(&self) -> AstChildren<SyntaxItem> {
+        AstChildren::new(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxSourceFile {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::SourceFile
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AstChildren<N> {
+    inner: SyntaxNodeChildren,
+    _marker: PhantomData<N>,
+}
+
+impl<N> AstChildren<N> {
+    fn new(parent: &SyntaxNode) -> Self {
+        Self {
+            inner: parent.children(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<N: AstNode> Iterator for AstChildren<N> {
+    type Item = N;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.find_map(N::cast)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxItem {
+    #[must_use]
+    pub fn text_range(&self) -> TextRange {
+        self.syntax.text_range()
+    }
+}
+
+impl AstNode for SyntaxItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            SyntaxKind::UseItem
+                | SyntaxKind::ConstItem
+                | SyntaxKind::GlobalItem
+                | SyntaxKind::FunctionItem
+                | SyntaxKind::StructItem
+                | SyntaxKind::EnumItem
+                | SyntaxKind::TraitItem
+                | SyntaxKind::ImplItem
+        )
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -68,6 +134,31 @@ mod tests {
         let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
 
         assert!(SyntaxSourceFile::cast(parse.syntax_node()).is_none());
+    }
+
+    #[test]
+    fn ast_source_file_iterates_item_children() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.start_node(SyntaxKind::FunctionItem);
+        builder.token(SyntaxKind::FnKw, "fn");
+        builder.finish_node();
+        builder.token(SyntaxKind::Whitespace, "\n");
+        builder.start_node(SyntaxKind::StructItem);
+        builder.token(SyntaxKind::StructKw, "struct");
+        builder.finish_node();
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+
+        assert_eq!(
+            source
+                .items()
+                .map(|item| item.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::FunctionItem, SyntaxKind::StructItem]
+        );
     }
 }
 
