@@ -686,8 +686,7 @@ fn request_cancelled(id: RequestId) -> JsonRpcResult {
     ))
 }
 
-#[allow(dead_code)]
-fn content_modified(id: RequestId) -> JsonRpcResult {
+pub(crate) fn content_modified(id: RequestId) -> JsonRpcResult {
     JsonRpcResult::Response(error_response(
         Some(id),
         ErrorCode::ContentModified,

@@ -932,6 +932,10 @@ impl GlobalState {
         if is_stale {
             if let Some(retry) = retry.and_then(|retry| retry.next_attempt()) {
                 dispatch::retry_stale_request(self, retry);
+                return self.send_result(JsonRpcResult::None);
+            }
+            if let Some(request_id) = request_id {
+                return self.send_result(dispatch::content_modified(request_id));
             }
             return self.send_result(JsonRpcResult::None);
         }
@@ -2568,7 +2572,7 @@ pub fn main(player: Player) -> i64 {
     }
 
     #[test]
-    fn send_task_result_discards_stale_generation_response() {
+    fn send_task_result_returns_content_modified_for_stale_non_retryable_response() {
         let (sender, receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
@@ -2617,7 +2621,21 @@ pub fn main(player: Player) -> i64 {
             .expect("stale formatting task response should be handled");
 
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
-        assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
+        let response = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("stale formatting should send ContentModified");
+        let Message::Response(response) = response else {
+            panic!("stale formatting should send response");
+        };
+        assert_eq!(response.id, lsp_server::RequestId::from(31));
+        let error = response
+            .error
+            .expect("stale formatting should return an error");
+        assert_eq!(error.code, -32801);
+        assert_eq!(
+            error.message,
+            "request result is stale because the document was modified"
+        );
     }
 
     #[test]

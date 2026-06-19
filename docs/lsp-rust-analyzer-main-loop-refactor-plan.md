@@ -1219,9 +1219,10 @@ cargo test -p vela_lsp_server completion
 - [x] Discard stale results when the current generation differs.
   - `GlobalState::send_task_result` now compares a task result's
     `GenerationToken` against the current language-service database
-    generation and sends no response when the task result is stale, while
-    still retiring its in-flight cancellation handle. Validated with
-    `cargo test -p vela_lsp_server send_task_result_discards_stale_generation_response`,
+    generation and does not send stale success responses, while still retiring
+    the completed in-flight cancellation handle before retry/error policy is
+    applied. Validated with
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
     `cargo test -p vela_lsp_server typed_formatting_dispatch_registers_in_flight_cancellation_handle`,
     and `cargo test -p vela_lsp_server formatting`.
 - [x] Retry retryable stale requests once using a fresh snapshot.
@@ -1234,7 +1235,12 @@ cargo test -p vela_lsp_server completion
     retry scheduling path. Validated with
     `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`
     and `cargo test -p vela_lsp_server typed_`.
-- [ ] Return LSP `ContentModified` for non-retryable stale requests.
+- [x] Return LSP `ContentModified` for non-retryable stale requests.
+  - Stale task results without retry metadata now retire their in-flight
+    cancellation handle and respond with the shared LSP `ContentModified`
+    (`-32801`) error instead of silently dropping the request. Validated with
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`
+    and `cargo test -p vela_lsp_server dispatcher_projects_content_modified_as_lsp_error`.
 - [ ] Return LSP `RequestCancelled` for cancelled in-flight requests.
 - [ ] Add tests for cancelled before start, cancelled while running, stale
   retry, stale non-retry, unknown cancel, and completed cancel.
