@@ -335,6 +335,9 @@ fn lsp_initialized_registers_watched_files_when_supported() {
             .as_str()
             .is_some_and(|pattern| pattern.ends_with("/workspace/target/vela/schema.json"))
     }));
+
+    let repeated = server.handle_json(&notification("initialized", serde_json::json!({})));
+    assert_eq!(repeated, JsonRpcResult::None);
 }
 
 #[test]

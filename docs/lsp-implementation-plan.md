@@ -210,6 +210,8 @@ coverage complete based only on the older capability phases.
   - `textDocumentSync.save` is now pinned false, and
     `textDocument/didSave` notifications are no-response no-ops so editor
     correctness does not depend on save events.
+  - Repeated `initialized` notifications are stable no-ops after the initial
+    dynamic watched-file registration.
   - Requests after `shutdown` now return a stable invalid-request error until
     the client sends the allowed `exit` notification.
   - After `exit`, the in-memory dispatcher ignores later input, matching the

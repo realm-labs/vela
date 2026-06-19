@@ -69,6 +69,7 @@ pub struct LspServer {
     open_documents: BTreeSet<DocumentId>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
+    watched_files_registered: bool,
     semantic_token_projection: SemanticTokenProjection,
     initialized: bool,
     shutdown_requested: bool,
@@ -258,12 +259,15 @@ impl LspServer {
                 "`initialized` must be sent as a notification",
             ));
         }
-        if self.client_supports_watched_file_registration {
-            watching::registration_request(self.config.as_ref(), &self.workspace_roots)
-                .map_or(JsonRpcResult::None, JsonRpcResult::Notification)
-        } else {
-            JsonRpcResult::None
+        if self.client_supports_watched_file_registration
+            && !self.watched_files_registered
+            && let Some(registration) =
+                watching::registration_request(self.config.as_ref(), &self.workspace_roots)
+        {
+            self.watched_files_registered = true;
+            return JsonRpcResult::Notification(registration);
         }
+        JsonRpcResult::None
     }
 
     fn shutdown(&mut self, id: Option<RequestId>) -> JsonRpcResult {

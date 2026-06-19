@@ -164,6 +164,10 @@ M20.5 lifecycle update: native LSP capability fixtures now pin
 `textDocumentSync.save = false`, and `textDocument/didSave` notifications are
 no-response no-ops so editor correctness does not depend on save events.
 
+M20.5 lifecycle update: repeated `initialized` notifications are now stable
+no-ops after the first dynamic watched-file registration, avoiding duplicate
+`client/registerCapability` requests.
+
 M20.5 lifecycle update: native LSP shutdown handling now rejects subsequent
 requests with a stable invalid-request error while still allowing the final
 `exit` notification.
