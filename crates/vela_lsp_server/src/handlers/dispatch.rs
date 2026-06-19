@@ -20,12 +20,15 @@ use lsp_types::{
 use serde::de::DeserializeOwned;
 
 use crate::{
-    ErrorCode, JsonRpcResult,
+    ErrorCode,
     global_state::GlobalState,
     global_state::GlobalStateSnapshot,
     rpc::typed_messages,
     task::{RetryTask, TaskLane},
 };
+
+#[cfg(test)]
+use crate::JsonRpcResult;
 
 pub(crate) fn dispatch_message(
     global_state: &mut GlobalState,
@@ -70,11 +73,11 @@ fn dispatch_request(
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
-        .on_retryable_latency_snapshot_typed::<Completion>(
+        .on_retryable_latency_snapshot_messages_typed::<Completion>(
             GlobalStateSnapshot::completion,
             RetryTask::completion,
         )
-        .on_retryable_latency_snapshot_typed::<ResolveCompletionItem>(
+        .on_retryable_latency_snapshot_messages_typed::<ResolveCompletionItem>(
             GlobalStateSnapshot::completion_resolve,
             RetryTask::completion_resolve,
         )
@@ -82,7 +85,7 @@ fn dispatch_request(
         .on_latency_sensitive_snapshot_messages_typed::<SignatureHelpRequest>(
             GlobalStateSnapshot::signature_help,
         )
-        .on_retryable_latency_snapshot_typed::<SemanticTokensFullRequest>(
+        .on_retryable_latency_snapshot_messages_typed::<SemanticTokensFullRequest>(
             GlobalStateSnapshot::semantic_tokens_full,
             RetryTask::semantic_tokens_full,
         )
@@ -169,9 +172,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Latency,
                     method: <Completion as lsp_types::request::Request>::METHOD,
                     id,
@@ -194,9 +197,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Latency,
                     method: <ResolveCompletionItem as lsp_types::request::Request>::METHOD,
                     id,
@@ -219,9 +222,9 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
             params,
             attempts,
         } => {
-            schedule_retry(
+            schedule_messages_retry(
                 global_state,
-                RetrySchedule {
+                RetryMessagesSchedule {
                     lane: TaskLane::Latency,
                     method: <SemanticTokensFullRequest as lsp_types::request::Request>::METHOD,
                     id,
@@ -316,17 +319,6 @@ pub(crate) fn retry_stale_request(global_state: &mut GlobalState, retry: RetryTa
     }
 }
 
-struct RetrySchedule<P, C> {
-    lane: TaskLane,
-    method: &'static str,
-    id: lsp_server::RequestId,
-    request_id: RequestId,
-    params: P,
-    attempts: u8,
-    retry: C,
-    f: fn(GlobalStateSnapshot, lsp_server::RequestId, P) -> JsonRpcResult,
-}
-
 struct RetryMessagesSchedule<P, C> {
     lane: TaskLane,
     method: &'static str,
@@ -336,38 +328,6 @@ struct RetryMessagesSchedule<P, C> {
     attempts: u8,
     retry: C,
     f: fn(GlobalStateSnapshot, lsp_server::RequestId, P) -> Vec<Message>,
-}
-
-fn schedule_retry<P, C>(global_state: &mut GlobalState, schedule: RetrySchedule<P, C>)
-where
-    P: Clone + Send + 'static,
-    C: Fn(lsp_server::RequestId, RequestId, P, u8) -> RetryTask + Send + 'static,
-{
-    let RetrySchedule {
-        lane,
-        method,
-        id,
-        request_id,
-        params,
-        attempts,
-        retry,
-        f,
-    } = schedule;
-    let snapshot = global_state.snapshot();
-    let generation = global_state.register_in_flight_cancellation(request_id.clone());
-    global_state.task_scheduler().spawn_retryable_for_request(
-        lane,
-        method,
-        request_id.clone(),
-        generation,
-        retry(id.clone(), request_id, params.clone(), attempts),
-        move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-            f(snapshot, id.clone(), params)
-        })) {
-            Ok(result) => typed_messages(result),
-            Err(payload) => handler_panic(id, method, payload.as_ref()),
-        },
-    );
 }
 
 fn schedule_messages_retry<P, C>(
@@ -445,16 +405,16 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
-    pub(crate) fn on_retryable_latency_snapshot_typed<R>(
+    pub(crate) fn on_retryable_latency_snapshot_messages_typed<R>(
         &mut self,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
         retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
     ) -> &mut Self
     where
         R: lsp_types::request::Request,
         R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
     {
-        self.dispatch_retryable_snapshot_task_typed::<R>(TaskLane::Latency, f, retry);
+        self.dispatch_retryable_snapshot_messages_task_typed::<R>(TaskLane::Latency, f, retry);
         self
     }
 
@@ -557,50 +517,6 @@ impl<'a> RequestDispatcher<'a> {
             Ok(messages) => messages,
             Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
         };
-    }
-
-    fn dispatch_retryable_snapshot_task_typed<R>(
-        &mut self,
-        lane: TaskLane,
-        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> JsonRpcResult,
-        retry: fn(lsp_server::RequestId, RequestId, R::Params) -> RetryTask,
-    ) where
-        R: lsp_types::request::Request,
-        R::Params: DeserializeOwned + Debug + Send + Clone + 'static,
-    {
-        let Some(request) = self.take_matching::<R>() else {
-            return;
-        };
-        let id = request.id;
-        let request_id = id.clone();
-        let params = match serde_json::from_value::<R::Params>(request.params) {
-            Ok(params) => params,
-            Err(error) => {
-                self.result = invalid_params(id, R::METHOD, error);
-                return;
-            }
-        };
-        let snapshot = self.global_state.snapshot();
-        let generation = self
-            .global_state
-            .register_in_flight_cancellation(request_id.clone());
-        let retry = retry(id.clone(), request_id.clone(), params.clone());
-        self.global_state
-            .task_scheduler()
-            .spawn_retryable_for_request(
-                lane,
-                R::METHOD,
-                request_id,
-                generation,
-                retry,
-                move || match panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    f(snapshot, id.clone(), params)
-                })) {
-                    Ok(result) => typed_messages(result),
-                    Err(payload) => handler_panic(id, R::METHOD, payload.as_ref()),
-                },
-            );
-        self.result.clear();
     }
 
     fn dispatch_snapshot_messages_task_typed<R>(

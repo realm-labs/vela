@@ -1589,6 +1589,15 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server typed_formatting`,
     `cargo test -p vela_lsp_server handlers::dispatch`, and
     `cargo test -p vela_lsp_server task`.
+  - The typed completion, completion-resolve, and semanticTokens/full snapshot
+    request handlers now return `lsp_server::Message` batches directly through
+    the retryable typed latency dispatcher and retry replay paths, and the
+    obsolete wrapper-based retry scheduler has been removed. Validated with
+    `cargo test -p vela_lsp_server typed_completion`,
+    `cargo test -p vela_lsp_server completion_resolve`,
+    `cargo test -p vela_lsp_server typed_semantic_token_dispatch`,
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
+    and `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.

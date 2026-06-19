@@ -150,14 +150,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: CompletionParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::completion_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid completion position: {error}"),
                 );
@@ -168,7 +168,7 @@ impl GlobalStateSnapshot {
             .completion_items(&input.document_id, input.position);
         let line_index = ServiceLineIndex::new(&text);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::completion_response(&completions, &line_index))
                 .expect("typed completion response should serialize"),
@@ -179,14 +179,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: lsp_types::CompletionItem,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let params_value =
             serde_json::to_value(&params).expect("typed completion item should serialize");
         let payload = match service_completion_resolve_payload(&params_value) {
             Ok(payload) => payload,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid completionItem/resolve payload: {error}"),
                 );
@@ -194,7 +194,7 @@ impl GlobalStateSnapshot {
         };
         let documentation =
             payload.and_then(|payload| self.databases.completion_documentation(&payload));
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::completion_item_resolved(params, documentation))
                 .expect("typed completion item should serialize"),
@@ -257,11 +257,11 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: SemanticTokensParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::semantic_tokens_params(&params);
         let tokens = self.databases.semantic_tokens(&document_id);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::semantic_tokens(
                 &tokens,
