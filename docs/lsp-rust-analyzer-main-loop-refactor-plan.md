@@ -1857,6 +1857,8 @@ node editors/vscode/scripts/validate-package.js
   - Converted the schema-method-return inlay fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
+  - Converted the inlay suppression fixture off `LspServer::handle_json` and
+    onto the shared typed request/notification helpers.
   - Converted the schema variant-field references fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
