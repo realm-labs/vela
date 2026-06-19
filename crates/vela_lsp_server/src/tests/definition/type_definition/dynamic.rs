@@ -1,9 +1,12 @@
-use super::*;
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -11,12 +14,13 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = r#"fn main(value: Any) {
     return value.level;
 }"#;
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -26,10 +30,11 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
                 "text": text
             }
         }),
-    )));
+    ));
     let member_line = text.lines().nth(1).expect("member use line should exist");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/typeDefinition",
         serde_json::json!({
@@ -41,14 +46,14 @@ fn lsp_type_definition_returns_null_for_dynamic_receiver_member() {
                     .expect("dynamic member should contain name")
             }
         }),
-    )));
+    ));
 
     assert!(response["result"].is_null(), "{response:?}");
 }
 
 #[test]
 fn lsp_type_definition_returns_null_for_source_any_return_receiver_member() {
-    super::super::dynamic::assert_source_any_return_receiver_navigation_null(
+    crate::tests::definition::dynamic::assert_source_any_return_receiver_navigation_null(
         "textDocument/typeDefinition",
     );
 }

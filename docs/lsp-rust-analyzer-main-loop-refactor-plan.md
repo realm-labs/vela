@@ -1829,6 +1829,9 @@ node editors/vscode/scripts/validate-package.js
   - Converted the dynamic signature-help degradation fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers, using a crate-root test import instead of `super::super`.
+  - Converted the dynamic type-definition degradation fixture off
+    `LspServer::handle_json` and onto the shared typed request/notification
+    helpers, using crate-root test paths instead of `super::super`.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.
