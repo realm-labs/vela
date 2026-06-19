@@ -1,10 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
 
 mod schema_method_return_receivers;
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_signature_help_tracks_active_parameter() {
@@ -955,10 +958,12 @@ fn temp_workspace() -> PathBuf {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_signature_{}_{}",
+        "vela_lsp_signature_{}_{}_{}",
         std::process::id(),
-        suffix
+        suffix,
+        sequence
     ));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
