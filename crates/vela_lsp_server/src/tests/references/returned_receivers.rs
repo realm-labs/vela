@@ -1,6 +1,8 @@
 use std::fs;
 
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_reference, file_uri, line, temp_workspace};
 
@@ -72,7 +74,8 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -80,16 +83,18 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -99,7 +104,7 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -107,7 +112,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -117,9 +123,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -130,7 +137,7 @@ pub fn main() -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -228,7 +235,8 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -236,16 +244,18 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -255,7 +265,7 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -263,7 +273,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -273,9 +284,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -286,7 +298,7 @@ pub fn main() -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -384,7 +396,8 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -392,16 +405,18 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -411,7 +426,7 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -419,7 +434,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -429,9 +445,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -441,7 +458,7 @@ pub fn main() -> i64 {
                 "character": line(text, 1).find("grant").expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -531,7 +548,8 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
     .expect("schema should be writable");
 
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -539,16 +557,18 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
             "rootUri": file_uri(&root),
             "capabilities": {}
         }),
-    )));
-    let _ = server.handle_json(&notification(
+    ));
+    let _ = handle_notification(
+        &mut server,
         "workspace/didChangeWatchedFiles",
         serde_json::json!({
             "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
         }),
-    ));
+    );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -558,7 +578,7 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
                 "text": schema_text
             }
         }),
-    )));
+    ));
 
     let text = "\
 pub fn main() -> i64 {
@@ -566,7 +586,8 @@ pub fn main() -> i64 {
     return current_reward().preview(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -576,9 +597,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -588,7 +610,7 @@ pub fn main() -> i64 {
                 "character": line(text, 1).find("preview").expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -613,7 +635,8 @@ pub fn main() -> i64 {
 #[test]
 fn lsp_references_find_source_method_calls_on_source_function_return_receivers() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -621,7 +644,7 @@ fn lsp_references_find_source_method_calls_on_source_function_return_receivers()
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
 
     let text = "\
 pub struct Player {
@@ -639,7 +662,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -649,9 +673,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -662,7 +687,7 @@ pub fn main() -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -691,7 +716,8 @@ pub fn main() -> i64 {
 #[test]
 fn lsp_references_find_source_trait_default_method_calls_on_source_function_return_receivers() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -699,7 +725,7 @@ fn lsp_references_find_source_trait_default_method_calls_on_source_function_retu
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
 
     let text = "\
 pub trait Rewardable {
@@ -719,7 +745,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -729,9 +756,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/references",
         serde_json::json!({
@@ -742,7 +770,7 @@ pub fn main() -> i64 {
             },
             "context": { "includeDeclaration": true }
         }),
-    )));
+    ));
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -777,7 +805,8 @@ pub fn main() -> i64 {
 #[test]
 fn lsp_document_highlight_marks_source_method_calls_on_source_function_return_receivers() {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -785,7 +814,7 @@ fn lsp_document_highlight_marks_source_method_calls_on_source_function_return_re
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
 
     let text = "\
 pub struct Player {
@@ -803,7 +832,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -813,9 +843,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -825,7 +856,7 @@ pub fn main() -> i64 {
                 "character": line(text, 11).find("grant").expect("method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
@@ -855,7 +886,8 @@ pub fn main() -> i64 {
 fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_function_return_receivers()
  {
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -863,7 +895,7 @@ fn lsp_document_highlight_marks_source_trait_default_method_calls_on_source_func
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
 
     let text = "\
 pub trait Rewardable {
@@ -883,7 +915,8 @@ pub fn main() -> i64 {
     return current_player().grant(first)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(server.handle_json(&notification(
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -893,9 +926,10 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    )));
+    ));
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/documentHighlight",
         serde_json::json!({
@@ -905,7 +939,7 @@ pub fn main() -> i64 {
                 "character": line(text, 13).find("grant").expect("trait method call")
             }
         }),
-    )));
+    ));
     let highlights = response["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
