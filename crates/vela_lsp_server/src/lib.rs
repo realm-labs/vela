@@ -160,7 +160,7 @@ impl LspServer {
             });
         }
 
-        let message = match transport::message_from_json_rpc(value) {
+        let message = match legacy_rpc::message_from_json_rpc(value) {
             Ok(message) => message,
             Err(error) => {
                 return JsonRpcResult::error(
@@ -694,7 +694,7 @@ impl LspServer {
 fn legacy_message_id(value: &JsonValue) -> Option<RequestId> {
     value
         .get("id")
-        .and_then(|id| transport::request_id_from_json(id).ok())
+        .and_then(|id| legacy_rpc::request_id_from_json(id).ok())
 }
 
 #[derive(Debug, Clone, Deserialize)]

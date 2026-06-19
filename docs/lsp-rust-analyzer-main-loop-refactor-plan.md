@@ -1784,10 +1784,14 @@ node editors/vscode/scripts/validate-package.js
   - Moved the legacy `JsonRpcResult` envelope and cancel-request params out of
     the production `rpc` module into a test-only legacy helper module. The
     production RPC boundary now keeps typed `lsp_server::Message` serialization
-    and protocol error codes only. Remaining work: delete the legacy
-    `LspServer::handle_json` compatibility harness and its custom JSON-RPC
-    test helpers after converting the remaining feature tests to typed
-    messages.
+    and protocol error codes only.
+  - Moved the legacy JSON-RPC value-to-message parser and request ID parser
+    out of the typed transport module into the test-only legacy helper module.
+    The transport module now owns typed stdio/TCP connection code, message
+    serialization for profiling/tracing, and typed message metadata only.
+    Remaining work: delete the legacy `LspServer::handle_json` compatibility
+    harness and its custom JSON-RPC test helpers after converting the remaining
+    feature tests to typed messages.
 - [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.
 - [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs

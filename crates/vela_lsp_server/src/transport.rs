@@ -4,8 +4,6 @@ use std::thread;
 
 use crossbeam_channel::{Receiver, Sender, bounded};
 use lsp_server::{Connection, Message};
-#[cfg(test)]
-use lsp_server::{Notification, Request, RequestId, Response, ResponseError};
 
 use crate::{LaunchConfiguration, profile, rpc};
 
@@ -132,53 +130,6 @@ pub fn run_connection(
 
 pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<String> {
     Ok(rpc::serialize_message(message))
-}
-
-#[cfg(test)]
-pub(crate) fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
-    if value.get("method").is_some() {
-        let method = value
-            .get("method")
-            .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| anyhow::anyhow!("JSON-RPC message is missing method"))?
-            .to_owned();
-        let params = value
-            .get("params")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
-        if let Some(id) = value.get("id") {
-            return Ok(Message::Request(Request {
-                id: request_id_from_json(id)?,
-                method,
-                params,
-            }));
-        }
-        return Ok(Message::Notification(Notification { method, params }));
-    }
-
-    let id = value
-        .get("id")
-        .ok_or_else(|| anyhow::anyhow!("JSON-RPC response is missing id"))
-        .and_then(request_id_from_json)?;
-    let result = value.get("result").cloned();
-    let error = value
-        .get("error")
-        .cloned()
-        .map(serde_json::from_value::<ResponseError>)
-        .transpose()?;
-    Ok(Message::Response(Response { id, result, error }))
-}
-
-#[cfg(test)]
-pub(crate) fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<RequestId> {
-    if let Some(id) = value.as_i64() {
-        let id = i32::try_from(id)?;
-        return Ok(RequestId::from(id));
-    }
-    if let Some(id) = value.as_str() {
-        return Ok(RequestId::from(id.to_owned()));
-    }
-    anyhow::bail!("unsupported JSON-RPC response id `{value}`")
 }
 
 #[derive(Debug)]

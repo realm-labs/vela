@@ -1408,7 +1408,9 @@ diagnostics.
   custom stdio transport and isolated the legacy `JsonRpcResult` response
   envelope behind test-only compatibility helpers; production RPC code now
   keeps typed `lsp_server::Message` serialization and protocol error codes
-  only.
+  only. The legacy JSON-RPC value parser is also confined to the test-only
+  helper module, leaving the transport module focused on typed connection I/O,
+  message serialization for profiling/tracing, and typed metadata.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
   contracts.
