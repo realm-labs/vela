@@ -399,6 +399,30 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     }
 
     #[test]
+    fn signature_help_returns_none_for_source_any_return_receiver_call() {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let text = r#"
+struct Player { level: i64 }
+impl Player {
+    fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
+}
+fn source_any() -> Any { return Player { level: 1 } }
+pub fn main() { source_any().grant(1, 2) }"#;
+        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+
+        let call_line = text.lines().nth(6).expect("call line should exist");
+        let position = Position::new(6, call_line.find("2)").expect("second argument"));
+        assert!(
+            databases.signature_help(&document, position).is_none(),
+            "source Any return receivers must not invent method signature facts"
+        );
+    }
+
+    #[test]
     fn signature_help_resolves_script_method_call() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = r#"

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, notification, notification_value, request, response_value};
 
+mod dynamic;
 mod schema_method_return_receivers;
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);

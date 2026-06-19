@@ -432,6 +432,10 @@ signatures when the receiver is produced by a source function return, matching
 the source-return member completion path through the shared expression
 receiver facts.
 
+M20.5 Phase 7 update: service and native LSP signature-help fixtures now
+cover source functions returning `Any` used as method receivers, returning no
+signature help instead of inventing dynamic receiver method facts.
+
 M20.5 Phase 7 update: service and native LSP signature-help fixtures now cover
 source-owned method signatures where the receiver is produced by another
 source method return, matching member completion and semantic-token coverage

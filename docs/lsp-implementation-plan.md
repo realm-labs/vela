@@ -303,7 +303,7 @@ coverage complete based only on the older capability phases.
     functions, script/source trait/schema/schema-trait/stdlib calls, callback
     methods, source/schema methods on function-return receivers, enum variant
     calls, active parameters, incomplete calls, and dynamic or unresolved null
-    results.
+    results including source functions returning `Any` as receivers.
   - Current hover fixtures cover source, cross-file, schema, stdlib, trait,
     method, field, enum variant, global, parameter, imported module path,
     docs/effects/permissions, parser-recovery, missing-schema `Any`
@@ -818,6 +818,7 @@ Tests:
 - [x] `signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `signature_help_returns_none_for_unknown_call`
 - [x] `signature_help_returns_none_for_dynamic_receiver_call`
+- [x] `signature_help_returns_none_for_source_any_return_receiver_call`
 - [x] `lsp_signature_help_resolves_script_method_call`
 - [x] `lsp_signature_help_resolves_source_trait_default_method_on_source_function_return`
 - [x] `lsp_signature_help_resolves_source_method_on_source_method_return`
@@ -831,6 +832,7 @@ Tests:
 - [x] `lsp_signature_help_resolves_stdlib_function_call`
 - [x] `lsp_signature_help_resolves_imported_function_with_defaulted_parameter`
 - [x] `lsp_signature_help_returns_null_for_unknown_and_dynamic_calls`
+- [x] `lsp_signature_help_returns_null_for_source_any_return_receiver_call`
 - [x] `member_completion_triggers_after_dot_with_empty_prefix`
 - [x] `member_completion_includes_builtin_container_methods`
 - [x] `member_completion_includes_source_impl_and_trait_methods`
