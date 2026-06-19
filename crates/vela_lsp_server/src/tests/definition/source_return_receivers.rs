@@ -1,4 +1,9 @@
-use super::*;
+use std::fs;
+
+use super::{file_uri, temp_workspace};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 #[test]
 fn lsp_definition_follows_source_method_on_source_function_return_receiver() {
@@ -131,7 +136,8 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
     let root_uri = file_uri(&root.join("scripts"));
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let mut server = LspServer::new();
-    let _ = response_value(server.handle_json(&request(
+    let _ = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -139,8 +145,9 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
             "rootUri": root_uri,
             "capabilities": {}
         }),
-    )));
-    let _ = notification_value(server.handle_json(&notification(
+    ));
+    let _ = notification_value(handle_notification(
+        &mut server,
         "textDocument/didOpen",
         serde_json::json!({
             "textDocument": {
@@ -150,7 +157,7 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
                 "text": text
             }
         }),
-    )));
+    ));
     let call_line = text
         .lines()
         .nth(expectation.call_line)
@@ -160,7 +167,8 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
         .nth(expectation.declaration_line)
         .expect("declaration line should exist");
 
-    let response = response_value(server.handle_json(&request(
+    let response = response_value(handle_request(
+        &mut server,
         2,
         method,
         serde_json::json!({
@@ -172,7 +180,7 @@ fn assert_navigation(method: &str, text: &str, expectation: NavigationExpectatio
                     .unwrap_or_else(|| panic!("{} call should exist", expectation.call_name))
             }
         }),
-    )));
+    ));
 
     assert_eq!(response["result"]["uri"], uri);
     assert_eq!(
