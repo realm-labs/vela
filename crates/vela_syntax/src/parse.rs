@@ -192,6 +192,57 @@ mod tests {
     }
 
     #[test]
+    fn parser_parse_source_structures_struct_field_nodes() {
+        let source = r#"struct Reward {
+    #[doc("Reward item")]
+    item_id: String = "gold",
+    count: i64 = 1
+    tags: Array<String>
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(13), source);
+        let tree = parse.tree();
+        let record = tree.structs().next().expect("struct item");
+        let field_list = record.field_list().expect("field list");
+        let fields = field_list.fields().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(record.syntax().text().to_string(), source.trim_end());
+        assert_eq!(field_list.syntax().kind(), SyntaxKind::StructFieldList);
+        assert_eq!(
+            fields
+                .iter()
+                .map(|field| field.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec![
+                "#[doc(\"Reward item\")]\n    item_id: String = \"gold\"",
+                "count: i64 = 1",
+                "tags: Array<String>",
+            ]
+        );
+        assert_eq!(
+            fields[0]
+                .type_hint()
+                .expect("item type")
+                .syntax()
+                .text()
+                .to_string(),
+            "String"
+        );
+        let tags_hint = fields[2].type_hint().expect("tags type");
+        assert_eq!(tags_hint.syntax().text().to_string(), "Array<String>");
+        assert_eq!(
+            tags_hint
+                .type_arg_list()
+                .expect("tags type args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String>"
+        );
+    }
+
+    #[test]
     fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         let source = "fn main() { @ \"unterminated";
         let parse = parse_source_with_id(SourceId::new(9), source);

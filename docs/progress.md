@@ -136,9 +136,10 @@ lexer stream, preserves lexical diagnostics, and exposes the first typed
 source-file syntax wrapper. The rowan parse path now wraps top-level
 declarations in item CST nodes, exposes source-file item iteration, and gives
 function declarations typed parameter-list, parameter, type-hint,
-type-argument-list, and body block CST wrappers; deeper expression, pattern,
-statement, and non-function item grammar nodes plus downstream migration
-remain open.
+type-argument-list, and body block CST wrappers. Struct declarations now expose
+typed field-list and field CST wrappers with nested field type-hint and
+type-argument-list accessors; deeper expression, pattern, statement, enum,
+trait, impl, and downstream migration remain open.
 
 ## Milestone Snapshot
 

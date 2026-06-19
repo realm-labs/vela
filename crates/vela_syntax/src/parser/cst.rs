@@ -42,12 +42,11 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     }
 
     fn item(&mut self, item: ItemBoundary) {
-        if item.kind == SyntaxKind::FunctionItem {
-            self.function_item(item.end);
-            return;
+        match item.kind {
+            SyntaxKind::FunctionItem => self.function_item(item.end),
+            SyntaxKind::StructItem => self.struct_item(item.end),
+            _ => self.raw_item(item.kind, item.end),
         }
-
-        self.raw_item(item.kind, item.end);
     }
 
     fn raw_item(&mut self, kind: SyntaxKind, end: usize) {
@@ -81,6 +80,21 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             self.emit_until(body_start);
             let body_end = self.find_matching_brace_end(body_start).min(end);
             self.node_range(SyntaxKind::Block, body_start, body_end);
+        }
+
+        while self.pos < end {
+            self.emit_current_token();
+        }
+        self.builder.finish_node();
+    }
+
+    fn struct_item(&mut self, end: usize) {
+        self.builder.start_node(SyntaxKind::StructItem);
+        let field_list = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
+
+        if let Some(field_list_start) = field_list {
+            self.emit_until(field_list_start);
+            self.struct_field_list(field_list_start);
         }
 
         while self.pos < end {
@@ -138,6 +152,79 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             return;
         }
         self.builder.start_node(SyntaxKind::Param);
+
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            let value_end = self
+                .find_root_kind_before(SyntaxKind::Equal, colon + 1, end)
+                .unwrap_or(end);
+            let type_start = self.skip_trivia(colon + 1);
+            let type_end = self.trim_trailing_trivia(type_start, value_end);
+            if type_start < type_end {
+                self.emit_until(type_start);
+                self.type_hint_range(type_start, type_end);
+            }
+        }
+
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn struct_field_list(&mut self, start: usize) {
+        let Some(end) =
+            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+        else {
+            self.node_range(
+                SyntaxKind::StructFieldList,
+                start,
+                self.pos.saturating_add(1),
+            );
+            return;
+        };
+
+        self.builder.start_node(SyntaxKind::StructFieldList);
+        self.emit_current_token();
+        let close = end.saturating_sub(1);
+        let mut field_start = self.skip_trivia(self.pos);
+        self.emit_until(field_start);
+
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(field_start, self.pos)
+            {
+                let field_end = self.trim_trailing_trivia(field_start, self.pos);
+                self.struct_field_range(field_start, field_end);
+                self.emit_current_token();
+                field_start = self.skip_trivia(self.pos);
+                self.emit_until(field_start);
+            } else if self
+                .current_kind()
+                .is_some_and(|kind| kind.is_trivia() && self.current_token_text_contains('\n'))
+                && self.range_is_at_delimiter_root(field_start, self.pos)
+                && self.field_range_has_name(field_start, self.pos)
+                && self.next_significant_before(self.pos + 1, close).is_some()
+            {
+                let field_end = self.trim_trailing_trivia(field_start, self.pos);
+                self.struct_field_range(field_start, field_end);
+                field_start = self.skip_trivia(self.pos);
+                self.emit_until(field_start);
+            } else {
+                self.pos += 1;
+            }
+        }
+
+        let field_end = self.trim_trailing_trivia(field_start, close);
+        self.struct_field_range(field_start, field_end);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn struct_field_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+        self.builder.start_node(SyntaxKind::StructField);
 
         if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
             let value_end = self
@@ -425,6 +512,26 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.item_boundary_at(next).is_some()
     }
 
+    fn next_significant_before(&self, cursor: usize, end: usize) -> Option<usize> {
+        let next = self.skip_trivia(cursor);
+        (next < end).then_some(next)
+    }
+
+    fn field_range_has_name(&self, start: usize, end: usize) -> bool {
+        let mut cursor = start;
+        loop {
+            cursor = self.skip_trivia(cursor);
+            if cursor >= end {
+                return false;
+            }
+            if self.at_attribute_start(cursor) {
+                cursor = self.skip_attribute(cursor);
+                continue;
+            }
+            return self.at_kind(cursor, SyntaxKind::Ident);
+        }
+    }
+
     fn skip_trivia(&self, mut cursor: usize) -> usize {
         while self.kind_at(cursor).is_some_and(SyntaxKind::is_trivia) {
             cursor += 1;
@@ -459,6 +566,12 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn current_kind(&self) -> Option<SyntaxKind> {
         self.kind_at(self.pos)
+    }
+
+    fn current_token_text_contains(&self, needle: char) -> bool {
+        self.tokens
+            .get(self.pos)
+            .is_some_and(|token| token.text.contains(needle))
     }
 
     fn at_kind(&self, cursor: usize, kind: SyntaxKind) -> bool {
