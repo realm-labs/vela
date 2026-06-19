@@ -26,7 +26,7 @@ use crate::{
     semantic_tokens::SemanticTokenProjection,
     success_response,
     transport::{ResultSummary, messages_from_result},
-    with_work_done_progress,
+    watching, with_work_done_progress,
 };
 
 pub(crate) struct GlobalState {
@@ -239,8 +239,8 @@ impl GlobalState {
         result
     }
 
-    pub(crate) fn initialized(&mut self, params: lsp_types::InitializedParams) -> JsonRpcResult {
-        self.server.initialized_lsp(params)
+    pub(crate) fn initialized(&mut self, _params: lsp_types::InitializedParams) -> JsonRpcResult {
+        self.register_watched_files_after_initialized()
     }
 
     pub(crate) fn exit(&mut self, params: ()) -> JsonRpcResult {
@@ -332,6 +332,21 @@ impl GlobalState {
         self.server.client_supports_watched_file_registration =
             self.client_supports_watched_file_registration;
         self.server.semantic_token_projection = self.semantic_token_projection.clone();
+    }
+
+    fn register_watched_files_after_initialized(&mut self) -> JsonRpcResult {
+        if self.client_supports_watched_file_registration
+            && !self.server.file_watching_disabled
+            && !self.server.watched_files_registered
+            && let Some(registration) = watching::registration_request(
+                self.server.config.as_ref(),
+                &self.server.workspace_roots,
+            )
+        {
+            self.server.watched_files_registered = true;
+            return JsonRpcResult::Notification(registration);
+        }
+        JsonRpcResult::None
     }
 
     fn publish_workspace_diagnostics(&mut self) -> JsonRpcResult {
@@ -513,6 +528,33 @@ mod tests {
             state.server.semantic_token_projection,
             state.semantic_token_projection
         );
+    }
+
+    #[test]
+    fn typed_initialized_uses_global_watcher_capability() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state
+            .server
+            .workspace_roots
+            .insert("/workspace/scripts".to_owned());
+        state.client_supports_watched_file_registration = true;
+        state.server.client_supports_watched_file_registration = false;
+
+        let first = state.initialized(lsp_types::InitializedParams {});
+        let second = state.initialized(lsp_types::InitializedParams {});
+
+        let JsonRpcResult::Notification(registration) = first else {
+            panic!("expected watched-file registration notification");
+        };
+        let registration: serde_json::Value =
+            serde_json::from_str(&registration).expect("registration should be JSON");
+        assert_eq!(
+            registration["method"],
+            serde_json::json!("client/registerCapability")
+        );
+        assert!(state.server.watched_files_registered);
+        assert_eq!(second, JsonRpcResult::None);
     }
 
     #[test]

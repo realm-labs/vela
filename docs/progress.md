@@ -243,6 +243,9 @@ M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in
 `GlobalState` and `GlobalStateSnapshot`, while the legacy LSP wrapper is kept
 mirrored only for request paths that have not yet moved to typed handlers.
+Typed `initialized` now performs dynamic watched-file registration through
+`GlobalState` capability state, and the obsolete typed legacy bridge has been
+removed.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace

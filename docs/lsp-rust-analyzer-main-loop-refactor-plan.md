@@ -451,6 +451,9 @@ cargo test -p vela_lsp_server lifecycle
     support, and semantic-token projection state now live in `GlobalState` and
     `GlobalStateSnapshot`, with temporary legacy-wrapper mirroring until
     Phase 4/5 handler migration removes the old request path.
+  - Typed `initialized` now performs dynamic watched-file registration through
+    `GlobalState` capability state, and the obsolete typed legacy
+    `initialized_lsp` bridge has been removed.
 - [x] Introduce `main_loop.rs` with event loop over `lsp_server::Message`.
 - [x] Introduce `handlers/dispatch.rs` with typed `RequestDispatcher` and
   `NotificationDispatcher`.

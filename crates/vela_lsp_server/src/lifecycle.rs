@@ -1,8 +1,6 @@
 use std::collections::BTreeSet;
 
-use lsp_types::{
-    InitializeParams as LspInitializeParams, InitializedParams as LspInitializedParams,
-};
+use lsp_types::InitializeParams as LspInitializeParams;
 use serde_json::Value as JsonValue;
 use vela_language_service::WorkspaceRoot;
 
@@ -58,10 +56,6 @@ impl LspServer {
                 "`initialized` must be sent as a notification",
             ));
         }
-        self.register_watched_files_after_initialized()
-    }
-
-    pub(crate) fn initialized_lsp(&mut self, _params: LspInitializedParams) -> JsonRpcResult {
         self.register_watched_files_after_initialized()
     }
 
