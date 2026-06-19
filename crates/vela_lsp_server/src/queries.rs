@@ -3,10 +3,7 @@ use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLin
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
-    call_hierarchy::{
-        lsp_call_hierarchy_items, lsp_incoming_calls, lsp_outgoing_calls,
-        service_call_hierarchy_item,
-    },
+    call_hierarchy::service_call_hierarchy_item,
     completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
     error_response,
     lsp::{from_proto, to_proto},
@@ -777,7 +774,11 @@ impl LspServer {
             .databases
             .prepare_call_hierarchy(&document_id, position);
 
-        JsonRpcResult::Response(success_response(id, lsp_call_hierarchy_items(&items)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::call_hierarchy_items(&items))
+                .expect("typed prepareCallHierarchy response should serialize"),
+        ))
     }
 
     pub(crate) fn prepare_call_hierarchy_typed(
@@ -844,7 +845,11 @@ impl LspServer {
         };
         let calls = self.databases.incoming_calls(&item);
 
-        JsonRpcResult::Response(success_response(id, lsp_incoming_calls(&calls)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::incoming_calls(&calls))
+                .expect("typed incomingCalls response should serialize"),
+        ))
     }
 
     pub(crate) fn incoming_calls_typed(
@@ -908,7 +913,11 @@ impl LspServer {
         };
         let calls = self.databases.outgoing_calls(&item);
 
-        JsonRpcResult::Response(success_response(id, lsp_outgoing_calls(&calls)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::outgoing_calls(&calls))
+                .expect("typed outgoingCalls response should serialize"),
+        ))
     }
 
     pub(crate) fn outgoing_calls_typed(

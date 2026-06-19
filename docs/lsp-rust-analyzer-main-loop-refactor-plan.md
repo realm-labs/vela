@@ -981,6 +981,17 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/prepareCallHierarchy`,
+    `callHierarchy/incomingCalls`, and `callHierarchy/outgoingCalls`
+    compatibility handling now serializes typed `lsp/to_proto.rs`
+    call-hierarchy projections, and the obsolete raw response builders were
+    removed from the call-hierarchy adapter. The remaining helper only decodes
+    legacy custom call-hierarchy item params until custom protocol params are
+    retired. Validated with `cargo test -p vela_lsp_server call_hierarchy`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests::call_hierarchy_item_converts_ranges_and_document_id`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
   - Phase 4 request migration preserved existing advertised capabilities; no
