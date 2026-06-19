@@ -96,6 +96,13 @@ pub(crate) fn prepare_rename_params(
     text_document_position(text, params)
 }
 
+pub(crate) fn rename_params(
+    text: &str,
+    params: &lsp_types::RenameParams,
+) -> Result<TextDocumentPositionInput, String> {
+    text_document_position(text, &params.text_document_position)
+}
+
 pub(crate) fn text_document_range(
     text: &str,
     text_document: &lsp_types::TextDocumentIdentifier,
@@ -316,6 +323,29 @@ mod tests {
         };
 
         let input = prepare_rename_params("main", &params).expect("position should convert");
+
+        assert_eq!(
+            input.document_id,
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
+        assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn rename_params_convert_nested_position_input() {
+        let params = lsp_types::RenameParams {
+            text_document_position: lsp_types::TextDocumentPositionParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                        .expect("valid URI"),
+                },
+                position: lsp_types::Position::new(0, 4),
+            },
+            new_name: "renamed".to_owned(),
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+        };
+
+        let input = rename_params("main", &params).expect("position should convert");
 
         assert_eq!(
             input.document_id,

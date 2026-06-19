@@ -6,7 +6,7 @@ use lsp_types::{
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, ReferenceParams,
-    SignatureHelpParams, TextDocumentPositionParams,
+    RenameParams, SignatureHelpParams, TextDocumentPositionParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -409,6 +409,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.prepare_rename_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn rename(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: RenameParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.rename_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1505,6 +1516,49 @@ pub fn main(amount: i64) -> i64 {
     }
 
     #[test]
+    fn typed_rename_dispatch_projects_workspace_edit() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+pub fn main(amount: i64) -> i64 {
+    return amount
+}";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(2));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let line = text.lines().nth(1).expect("return line should exist");
+        let character = line
+            .find("amount")
+            .expect("return line should contain amount");
+
+        let response = typed_rename_response(&mut state, 16, &document, 1, character, "total");
+
+        let edits = response["result"]["changes"][document.as_str()]
+            .as_array()
+            .expect("rename changes should contain document edits");
+        assert_eq!(edits.len(), 2);
+        assert_eq!(edits[0]["newText"], "total");
+        assert_eq!(
+            response["result"]["documentChanges"][0]["textDocument"]["uri"],
+            document.as_str()
+        );
+        assert_eq!(
+            response["result"]["documentChanges"][0]["textDocument"]["version"],
+            2
+        );
+        assert_eq!(
+            response["result"]["documentChanges"][0]["edits"][0]["newText"],
+            "total"
+        );
+    }
+
+    #[test]
     fn typed_cancellation_is_tracked_by_global_request_queue() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1574,6 +1628,40 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed navigation should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_rename_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        line: u32,
+        character: usize,
+        new_name: &str,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/rename".to_owned(),
+            params: serde_json::to_value(lsp_types::RenameParams {
+                text_document_position: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        line,
+                        u32::try_from(character).expect("position should fit in u32"),
+                    ),
+                },
+                new_name: new_name.to_owned(),
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            })
+            .expect("rename params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed rename should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

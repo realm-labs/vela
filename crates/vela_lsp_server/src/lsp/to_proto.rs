@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CompletionInsertFormat, CompletionKind, CompletionLabelDetails, CompletionList,
-    CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, Hover, HoverKind,
-    LineIndex, PrepareRename, Reference, SignatureHelp, TextRange,
+    CompletionResolvePayload, CompletionSymbol, Definition, DiagnosticRange, DocumentTextEdit,
+    Hover, HoverKind, LineIndex, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
+    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
 };
 
 pub(crate) fn completion_response(
@@ -79,6 +82,19 @@ pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRename
     }
 }
 
+pub(crate) fn workspace_edit(edit: &WorkspaceEdit) -> lsp_types::WorkspaceEdit {
+    lsp_types::WorkspaceEdit {
+        changes: Some(workspace_edit_changes(edit)),
+        document_changes: Some(lsp_types::DocumentChanges::Edits(
+            edit.document_edits()
+                .iter()
+                .map(text_document_edit)
+                .collect(),
+        )),
+        change_annotations: (!edit.risks().is_empty()).then(|| change_annotations(edit)),
+    }
+}
+
 fn location(
     document_id: &vela_language_service::DocumentId,
     range: DiagnosticRange,
@@ -88,6 +104,68 @@ fn location(
             .expect("location document id should be a valid LSP URI"),
         range: diagnostic_range(range),
     }
+}
+
+fn workspace_edit_changes(
+    edit: &WorkspaceEdit,
+) -> HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> {
+    edit.document_edits()
+        .iter()
+        .map(|document_edit| {
+            (
+                lsp_types::Url::parse(document_edit.document_id().as_str())
+                    .expect("workspace edit document id should be a valid LSP URI"),
+                document_edit.edits().iter().map(text_edit).collect(),
+            )
+        })
+        .collect()
+}
+
+fn text_document_edit(document_edit: &DocumentTextEdit) -> lsp_types::TextDocumentEdit {
+    lsp_types::TextDocumentEdit {
+        text_document: lsp_types::OptionalVersionedTextDocumentIdentifier {
+            uri: lsp_types::Url::parse(document_edit.document_id().as_str())
+                .expect("workspace edit document id should be a valid LSP URI"),
+            version: document_edit.document_version().map(|version| {
+                i32::try_from(version.get()).expect("document version should fit in i32")
+            }),
+        },
+        edits: document_edit
+            .edits()
+            .iter()
+            .map(|edit| lsp_types::OneOf::Left(text_edit(edit)))
+            .collect(),
+    }
+}
+
+fn text_edit(edit: &ServiceTextEdit) -> lsp_types::TextEdit {
+    lsp_types::TextEdit {
+        range: diagnostic_range(edit.range()),
+        new_text: edit.new_text().to_owned(),
+    }
+}
+
+fn change_annotations(
+    edit: &WorkspaceEdit,
+) -> HashMap<lsp_types::ChangeAnnotationIdentifier, lsp_types::ChangeAnnotation> {
+    edit.risks()
+        .iter()
+        .enumerate()
+        .map(|(index, risk)| {
+            let description = match risk.kind() {
+                RenameRiskKind::HotReloadAbi => "hotReloadAbi",
+                RenameRiskKind::SchemaAbi => "schemaAbi",
+            };
+            (
+                format!("renameRisk{index}"),
+                lsp_types::ChangeAnnotation {
+                    label: risk.message().to_owned(),
+                    needs_confirmation: Some(true),
+                    description: Some(description.to_owned()),
+                },
+            )
+        })
+        .collect()
 }
 
 fn completion_item(
@@ -556,5 +634,55 @@ pub fn main(amount: i64) -> i64 {
                 placeholder: "amount".to_owned(),
             }
         );
+    }
+
+    #[test]
+    fn workspace_edit_projects_typed_rename_edits() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+pub fn main(amount: i64) -> i64 {
+    return amount
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            1,
+            source
+                .lines()
+                .nth(1)
+                .expect("return line should exist")
+                .find("amount")
+                .expect("line should contain amount"),
+        );
+        let edit = databases
+            .rename(&document, position, "total")
+            .expect("local binding should rename");
+
+        let edit = workspace_edit(&edit);
+        let value = serde_json::to_value(&edit).expect("workspace edit should serialize");
+
+        assert!(value["changes"][document.as_str()].is_array());
+        assert_eq!(
+            value["changes"][document.as_str()]
+                .as_array()
+                .expect("changes should contain document edit array")
+                .len(),
+            2
+        );
+        assert_eq!(
+            value["documentChanges"][0]["textDocument"]["uri"],
+            document.as_str()
+        );
+        assert_eq!(
+            value["documentChanges"][0]["edits"]
+                .as_array()
+                .expect("documentChanges should contain edit array")
+                .len(),
+            2
+        );
+        assert!(value.get("changeAnnotations").is_none());
     }
 }

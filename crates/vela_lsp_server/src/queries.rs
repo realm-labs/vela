@@ -683,6 +683,35 @@ impl LspServer {
         ))
     }
 
+    pub(crate) fn rename_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::RenameParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
+        self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let input = match from_proto::rename_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid rename position: {error}"),
+                ));
+            }
+        };
+        let edit = self
+            .databases
+            .rename(&input.document_id, input.position, &params.new_name);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(edit.as_ref().map(to_proto::workspace_edit))
+                .expect("typed rename response should serialize"),
+        ))
+    }
+
     pub(crate) fn prepare_call_hierarchy(
         &mut self,
         id: Option<RequestId>,
