@@ -157,7 +157,7 @@ pub(crate) fn serialize_json_rpc_message(message: &Message) -> anyhow::Result<St
     serde_json::to_string(&value).map_err(Into::into)
 }
 
-fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
+pub(crate) fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
     if value.get("method").is_some() {
         let method = value
             .get("method")
@@ -191,7 +191,7 @@ fn message_from_json_rpc(value: serde_json::Value) -> anyhow::Result<Message> {
     Ok(Message::Response(Response { id, result, error }))
 }
 
-fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<RequestId> {
+pub(crate) fn request_id_from_json(value: &serde_json::Value) -> anyhow::Result<RequestId> {
     if let Some(id) = value.as_i64() {
         let id = i32::try_from(id)?;
         return Ok(RequestId::from(id));

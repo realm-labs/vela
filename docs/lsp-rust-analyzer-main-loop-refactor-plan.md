@@ -1329,7 +1329,7 @@ cargo test -p vela_lsp_server semantic_tokens
   - Request-bound success and error response envelopes now serialize through
     upstream `lsp_server::Response` values before adding the JSON-RPC version
     marker; the remaining `id: null` parse-error response stays as the
-    temporary raw JSON path until `JsonRpcMessage` is removed. Validated with
+    temporary raw JSON path until `JsonRpcResult` is removed. Validated with
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
     `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
@@ -1392,6 +1392,14 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
     `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
     `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`,
+    `cargo test -p vela_lsp_server`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - The legacy `JsonRpcMessage` envelope has been deleted; legacy
+    `LspServer::handle_json` now validates JSON-RPC version/method shape from
+    `serde_json::Value`, then converts through the shared transport helper
+    into `lsp_server::Message` before dispatching. Validated with
+    `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_lsp_server`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.

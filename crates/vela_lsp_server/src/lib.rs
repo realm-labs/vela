@@ -25,7 +25,7 @@ mod watching;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use lsp_server::RequestId;
+use lsp_server::{Message, RequestId};
 use protocol::{LspPosition, LspRange};
 use serde::Deserialize;
 use serde_json::{Value as JsonValue, json};
@@ -40,7 +40,7 @@ use crate::config::EditorConfiguration;
 use crate::config_change::ConfigChange;
 use crate::lsp::to_proto;
 pub use crate::rpc::JsonRpcResult;
-pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION, JsonRpcMessage};
+pub(crate) use crate::rpc::{ErrorCode, JSONRPC_VERSION};
 use crate::semantic_tokens::SemanticTokenProjection;
 
 pub use crate::config::LaunchConfiguration;
@@ -99,8 +99,8 @@ impl LspServer {
             return JsonRpcResult::None;
         }
 
-        let message = match serde_json::from_str::<JsonRpcMessage>(input) {
-            Ok(message) => message,
+        let value = match serde_json::from_str::<JsonValue>(input) {
+            Ok(value) => value,
             Err(error) => {
                 return JsonRpcResult::error(
                     None,
@@ -110,41 +110,69 @@ impl LspServer {
             }
         };
 
-        self.handle_message(message)
-    }
-
-    fn handle_message(&mut self, message: JsonRpcMessage) -> JsonRpcResult {
-        if message.jsonrpc != JSONRPC_VERSION {
-            return message.id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::error(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    "unsupported JSON-RPC version",
-                )
-            });
+        let id = legacy_message_id(&value);
+        match value.get("jsonrpc").and_then(JsonValue::as_str) {
+            Some(JSONRPC_VERSION) => {}
+            Some(_) => {
+                return id.map_or(JsonRpcResult::None, |id| {
+                    JsonRpcResult::error(
+                        Some(id),
+                        ErrorCode::InvalidRequest,
+                        "unsupported JSON-RPC version",
+                    )
+                });
+            }
+            None => {
+                return JsonRpcResult::error(
+                    None,
+                    ErrorCode::ParseError,
+                    "failed to parse JSON-RPC message: missing or invalid JSON-RPC version",
+                );
+            }
         }
 
-        let Some(method) = message.method.as_deref() else {
-            if message.extra.contains_key("result") || message.extra.contains_key("error") {
+        if value.get("method").is_none() {
+            if value.get("result").is_some() || value.get("error").is_some() {
                 return JsonRpcResult::None;
             }
-            return message.id.map_or(JsonRpcResult::None, |id| {
+            return id.map_or(JsonRpcResult::None, |id| {
                 JsonRpcResult::error(
                     Some(id),
                     ErrorCode::InvalidRequest,
                     "missing JSON-RPC method",
                 )
             });
+        }
+
+        let message = match transport::message_from_json_rpc(value) {
+            Ok(message) => message,
+            Err(error) => {
+                return JsonRpcResult::error(
+                    id,
+                    ErrorCode::InvalidRequest,
+                    format!("invalid JSON-RPC message: {error}"),
+                );
+            }
+        };
+
+        self.handle_message(message)
+    }
+
+    fn handle_message(&mut self, message: Message) -> JsonRpcResult {
+        let (id, method, params) = match message {
+            Message::Request(request) => (Some(request.id), request.method, request.params),
+            Message::Notification(notification) => (None, notification.method, notification.params),
+            Message::Response(_) => return JsonRpcResult::None,
         };
 
         if self.shutdown_requested && method != "exit" {
-            return message.id.map_or(JsonRpcResult::None, |id| {
+            return id.map_or(JsonRpcResult::None, |id| {
                 JsonRpcResult::error(Some(id), ErrorCode::InvalidRequest, "server has shut down")
             });
         }
 
-        if !self.initialized && !lifecycle::is_pre_initialize_method(method) {
-            return message.id.map_or(JsonRpcResult::None, |id| {
+        if !self.initialized && !lifecycle::is_pre_initialize_method(&method) {
+            return id.map_or(JsonRpcResult::None, |id| {
                 JsonRpcResult::error(
                     Some(id),
                     ErrorCode::ServerNotInitialized,
@@ -153,59 +181,45 @@ impl LspServer {
             });
         }
 
-        match method {
-            "$/cancelRequest" => self.cancel_request(message.id, message.params),
-            "initialize" => self.initialize(message.id, message.params),
-            "initialized" => self.initialized(message.id),
-            "shutdown" => self.shutdown(message.id),
-            "exit" => self.exit(message.id),
-            "textDocument/didOpen" => self.did_open(message.id, message.params),
-            "textDocument/didChange" => self.did_change(message.id, message.params),
-            "textDocument/didClose" => self.did_close(message.id, message.params),
-            "textDocument/completion" => self.completion(message.id, message.params),
-            "completionItem/resolve" => self.completion_resolve(message.id, message.params),
-            "textDocument/codeAction" => self.code_action(message.id, message.params),
-            "textDocument/signatureHelp" => self.signature_help(message.id, message.params),
-            "textDocument/hover" => self.hover(message.id, message.params),
-            "textDocument/definition" => self.definition(message.id, message.params),
-            "textDocument/declaration" => self.declaration(message.id, message.params),
-            "textDocument/typeDefinition" => self.type_definition(message.id, message.params),
-            "textDocument/references" => self.references(message.id, message.params),
-            "textDocument/prepareRename" => self.prepare_rename(message.id, message.params),
-            "textDocument/rename" => self.rename(message.id, message.params),
-            "textDocument/prepareCallHierarchy" => {
-                self.prepare_call_hierarchy(message.id, message.params)
-            }
-            "callHierarchy/incomingCalls" => self.incoming_calls(message.id, message.params),
-            "callHierarchy/outgoingCalls" => self.outgoing_calls(message.id, message.params),
-            "textDocument/documentHighlight" => self.document_highlight(message.id, message.params),
-            "textDocument/documentSymbol" => self.document_symbol(message.id, message.params),
-            "textDocument/foldingRange" => self.folding_range(message.id, message.params),
-            "textDocument/formatting" => self.formatting(message.id, message.params),
-            "textDocument/rangeFormatting" => self.range_formatting(message.id, message.params),
-            "textDocument/onTypeFormatting" => self.on_type_formatting(message.id, message.params),
-            "textDocument/selectionRange" => self.selection_range(message.id, message.params),
-            "textDocument/semanticTokens/full" => {
-                self.semantic_tokens_full(message.id, message.params)
-            }
-            "textDocument/semanticTokens/full/delta" => {
-                self.semantic_tokens_full_delta(message.id, message.params)
-            }
-            "textDocument/semanticTokens/range" => {
-                self.semantic_tokens_range(message.id, message.params)
-            }
-            "textDocument/inlayHint" => self.inlay_hint(message.id, message.params),
-            "workspace/symbol" => self.workspace_symbol(message.id, message.params),
-            "workspace/didChangeWatchedFiles" => {
-                self.did_change_watched_files(message.id, message.params)
-            }
-            "workspace/didChangeConfiguration" => {
-                self.did_change_configuration(message.id, message.params)
-            }
-            "workspace/didChangeWorkspaceFolders" => {
-                self.did_change_workspace_folders(message.id, message.params)
-            }
-            method => self.method_not_found(message.id, method),
+        match method.as_str() {
+            "$/cancelRequest" => self.cancel_request(id, params),
+            "initialize" => self.initialize(id, params),
+            "initialized" => self.initialized(id),
+            "shutdown" => self.shutdown(id),
+            "exit" => self.exit(id),
+            "textDocument/didOpen" => self.did_open(id, params),
+            "textDocument/didChange" => self.did_change(id, params),
+            "textDocument/didClose" => self.did_close(id, params),
+            "textDocument/completion" => self.completion(id, params),
+            "completionItem/resolve" => self.completion_resolve(id, params),
+            "textDocument/codeAction" => self.code_action(id, params),
+            "textDocument/signatureHelp" => self.signature_help(id, params),
+            "textDocument/hover" => self.hover(id, params),
+            "textDocument/definition" => self.definition(id, params),
+            "textDocument/declaration" => self.declaration(id, params),
+            "textDocument/typeDefinition" => self.type_definition(id, params),
+            "textDocument/references" => self.references(id, params),
+            "textDocument/prepareRename" => self.prepare_rename(id, params),
+            "textDocument/rename" => self.rename(id, params),
+            "textDocument/prepareCallHierarchy" => self.prepare_call_hierarchy(id, params),
+            "callHierarchy/incomingCalls" => self.incoming_calls(id, params),
+            "callHierarchy/outgoingCalls" => self.outgoing_calls(id, params),
+            "textDocument/documentHighlight" => self.document_highlight(id, params),
+            "textDocument/documentSymbol" => self.document_symbol(id, params),
+            "textDocument/foldingRange" => self.folding_range(id, params),
+            "textDocument/formatting" => self.formatting(id, params),
+            "textDocument/rangeFormatting" => self.range_formatting(id, params),
+            "textDocument/onTypeFormatting" => self.on_type_formatting(id, params),
+            "textDocument/selectionRange" => self.selection_range(id, params),
+            "textDocument/semanticTokens/full" => self.semantic_tokens_full(id, params),
+            "textDocument/semanticTokens/full/delta" => self.semantic_tokens_full_delta(id, params),
+            "textDocument/semanticTokens/range" => self.semantic_tokens_range(id, params),
+            "textDocument/inlayHint" => self.inlay_hint(id, params),
+            "workspace/symbol" => self.workspace_symbol(id, params),
+            "workspace/didChangeWatchedFiles" => self.did_change_watched_files(id, params),
+            "workspace/didChangeConfiguration" => self.did_change_configuration(id, params),
+            "workspace/didChangeWorkspaceFolders" => self.did_change_workspace_folders(id, params),
+            method => self.method_not_found(id, method),
         }
     }
 
@@ -635,6 +649,12 @@ impl LspServer {
             })
             .collect()
     }
+}
+
+fn legacy_message_id(value: &JsonValue) -> Option<RequestId> {
+    value
+        .get("id")
+        .and_then(|id| transport::request_id_from_json(id).ok())
 }
 
 #[derive(Debug, Clone, Deserialize)]

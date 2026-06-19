@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use lsp_server::{Message, RequestId, Response, ResponseError};
 use lsp_types::NumberOrString;
 use serde::Deserialize;
@@ -43,18 +41,6 @@ impl JsonRpcResult {
             Self::Response(_) | Self::None => None,
         }
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct JsonRpcMessage {
-    pub(crate) jsonrpc: String,
-    pub(crate) id: Option<RequestId>,
-    #[serde(default)]
-    pub(crate) method: Option<String>,
-    #[serde(default)]
-    pub(crate) params: JsonValue,
-    #[serde(flatten)]
-    pub(crate) extra: BTreeMap<String, JsonValue>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
