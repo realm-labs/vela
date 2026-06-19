@@ -6,8 +6,9 @@ use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams, HoverParams,
-    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentPositionParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams,
+    DocumentSymbolParams, HoverParams, ReferenceParams, RenameParams, SignatureHelpParams,
+    TextDocumentPositionParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -410,6 +411,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.document_highlight_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn document_symbol(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: DocumentSymbolParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.document_symbol_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1568,6 +1580,52 @@ pub fn main(amount: i64) -> i64 {
     }
 
     #[test]
+    fn typed_document_symbol_dispatch_projects_nested_symbols() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+struct Player {
+    level: i64,
+}
+
+pub fn main(player: Player) -> i64 {
+    return player.level
+}";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+
+        let response = typed_document_symbol_response(&mut state, 16, &document);
+        let symbols = response["result"]
+            .as_array()
+            .expect("documentSymbol response should be an array");
+
+        let player = symbols
+            .iter()
+            .find(|symbol| symbol["name"] == "Player")
+            .expect("Player symbol should project");
+        assert_eq!(player["kind"], 23);
+        assert!(
+            player["children"]
+                .as_array()
+                .expect("Player should include field children")
+                .iter()
+                .any(|child| child["name"] == "level" && child["kind"] == 8)
+        );
+        assert!(
+            symbols
+                .iter()
+                .any(|symbol| symbol["name"] == "main" && symbol["kind"] == 12)
+        );
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -2022,6 +2080,31 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed documentHighlight should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_document_symbol_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/documentSymbol".to_owned(),
+            params: serde_json::to_value(lsp_types::DocumentSymbolParams {
+                text_document: lsp_types::TextDocumentIdentifier {
+                    uri: lsp_types::Url::parse(document.as_str())
+                        .expect("document URI should parse"),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("documentSymbol params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed documentSymbol should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 

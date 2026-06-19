@@ -98,6 +98,10 @@ pub(crate) fn document_highlight_params(
     text_document_position(text, &params.text_document_position_params)
 }
 
+pub(crate) fn document_symbol_params(params: &lsp_types::DocumentSymbolParams) -> DocumentId {
+    document_id(&params.text_document.uri)
+}
+
 pub(crate) fn prepare_rename_params(
     text: &str,
     params: &lsp_types::TextDocumentPositionParams,
@@ -361,6 +365,23 @@ mod tests {
             DocumentId::from("file:///workspace/scripts/main.vela")
         );
         assert_eq!(input.position, Position::new(0, 4));
+    }
+
+    #[test]
+    fn document_symbol_params_convert_document_id() {
+        let params = lsp_types::DocumentSymbolParams {
+            text_document: lsp_types::TextDocumentIdentifier {
+                uri: lsp_types::Url::parse("file:///workspace/scripts/main.vela")
+                    .expect("valid URI"),
+            },
+            work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+            partial_result_params: lsp_types::PartialResultParams::default(),
+        };
+
+        assert_eq!(
+            document_symbol_params(&params),
+            DocumentId::from("file:///workspace/scripts/main.vela")
+        );
     }
 
     #[test]

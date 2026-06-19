@@ -629,6 +629,8 @@ cargo test -p vela_lsp_server workspace_folders
     `lsp/from_proto.rs`.
   - `textDocument/documentHighlight` now converts typed
     `DocumentHighlightParams` through `lsp/from_proto.rs`.
+  - `textDocument/documentSymbol` now converts typed
+    `DocumentSymbolParams` through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -649,6 +651,8 @@ cargo test -p vela_lsp_server workspace_folders
   - References now project through typed `lsp_types::Location` arrays.
   - Document highlights now project through typed
     `lsp_types::DocumentHighlight` values.
+  - Document symbols now project through typed
+    `lsp_types::DocumentSymbolResponse::Nested` values.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -767,6 +771,17 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service document_highlight`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/documentSymbol` now uses typed `DocumentSymbolParams`
+    through `GlobalState` and typed
+    `lsp_types::DocumentSymbolResponse::Nested` projection through
+    `lsp/to_proto.rs`; the now-unused raw `on_sync` dispatcher branch was
+    removed. Validated with `cargo test -p vela_lsp_server document_symbol`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service document_symbols`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

@@ -57,7 +57,6 @@ fn dispatch_request(
     dispatcher
         .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut_typed::<lsp_types::request::Shutdown>(GlobalState::shutdown)
-        .on_sync::<DocumentSymbolRequest>()
         .on_latency_sensitive_typed::<Completion>(GlobalState::completion)
         .on_latency_sensitive_typed::<ResolveCompletionItem>(GlobalState::completion_resolve)
         .on_latency_sensitive_typed::<HoverRequest>(GlobalState::hover)
@@ -69,6 +68,7 @@ fn dispatch_request(
         .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
         .on_worker_typed::<References>(GlobalState::references)
         .on_worker_typed::<DocumentHighlightRequest>(GlobalState::document_highlight)
+        .on_worker_typed::<DocumentSymbolRequest>(GlobalState::document_symbol)
         .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker_typed::<Rename>(GlobalState::rename)
         .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)
@@ -138,14 +138,6 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_typed::<R>(f);
-        self
-    }
-
-    pub(crate) fn on_sync<R>(&mut self) -> &mut Self
-    where
-        R: lsp_types::request::Request,
-    {
-        self.dispatch_legacy::<R>();
         self
     }
 

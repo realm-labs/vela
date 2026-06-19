@@ -993,6 +993,22 @@ impl LspServer {
         JsonRpcResult::Response(success_response(id, lsp_document_symbols(&symbols)))
     }
 
+    pub(crate) fn document_symbol_typed(
+        &mut self,
+        id: RequestId,
+        params: lsp_types::DocumentSymbolParams,
+    ) -> JsonRpcResult {
+        let document_id = from_proto::document_symbol_params(&params);
+        self.refresh_databases_for_query(&document_id);
+        let symbols = self.databases.document_symbols(&document_id);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::document_symbols(&symbols))
+                .expect("typed documentSymbol response should serialize"),
+        ))
+    }
+
     pub(crate) fn folding_range(
         &mut self,
         id: Option<RequestId>,

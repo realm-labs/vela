@@ -4,9 +4,10 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
-    DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentTextEdit, Hover, HoverKind,
-    IncomingCall, LineIndex, OutgoingCall, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
-    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
+    DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentSymbol, DocumentSymbolKind,
+    DocumentTextEdit, Hover, HoverKind, IncomingCall, LineIndex, OutgoingCall, PrepareRename,
+    Reference, RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit, TextRange,
+    WorkspaceEdit,
 };
 
 pub(crate) fn completion_response(
@@ -86,6 +87,10 @@ pub(crate) fn document_highlights(
             kind: document_highlight_kind(highlight.kind()),
         })
         .collect()
+}
+
+pub(crate) fn document_symbols(symbols: &[DocumentSymbol]) -> lsp_types::DocumentSymbolResponse {
+    lsp_types::DocumentSymbolResponse::Nested(symbols.iter().map(document_symbol).collect())
 }
 
 pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
@@ -199,6 +204,40 @@ const fn document_highlight_kind(
         }
         DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
         DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
+    }
+}
+
+fn document_symbol(symbol: &DocumentSymbol) -> lsp_types::DocumentSymbol {
+    #[allow(deprecated)]
+    lsp_types::DocumentSymbol {
+        name: symbol.name().to_owned(),
+        detail: symbol.detail().map(str::to_owned),
+        kind: symbol_kind(symbol.kind()),
+        tags: None,
+        deprecated: None,
+        range: diagnostic_range(symbol.range()),
+        selection_range: diagnostic_range(symbol.selection_range()),
+        children: (!symbol.children().is_empty())
+            .then(|| symbol.children().iter().map(document_symbol).collect()),
+    }
+}
+
+const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {
+    match kind {
+        DocumentSymbolKind::File => lsp_types::SymbolKind::FILE,
+        DocumentSymbolKind::Class => lsp_types::SymbolKind::CLASS,
+        DocumentSymbolKind::Module => lsp_types::SymbolKind::MODULE,
+        DocumentSymbolKind::Method => lsp_types::SymbolKind::METHOD,
+        DocumentSymbolKind::Field => lsp_types::SymbolKind::FIELD,
+        DocumentSymbolKind::Enum => lsp_types::SymbolKind::ENUM,
+        DocumentSymbolKind::Interface => lsp_types::SymbolKind::INTERFACE,
+        DocumentSymbolKind::Function => lsp_types::SymbolKind::FUNCTION,
+        DocumentSymbolKind::Variable => lsp_types::SymbolKind::VARIABLE,
+        DocumentSymbolKind::Constant => lsp_types::SymbolKind::CONSTANT,
+        DocumentSymbolKind::Object => lsp_types::SymbolKind::OBJECT,
+        DocumentSymbolKind::EnumMember => lsp_types::SymbolKind::ENUM_MEMBER,
+        DocumentSymbolKind::Struct => lsp_types::SymbolKind::STRUCT,
+        DocumentSymbolKind::TypeParameter => lsp_types::SymbolKind::TYPE_PARAMETER,
     }
 }
 
@@ -720,6 +759,48 @@ pub fn main(amount: i64) -> i64 {
                 lsp_types::Position::new(2, 24)
             )
         );
+    }
+
+    #[test]
+    fn document_symbols_project_typed_nested_symbols() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+struct Player {
+    level: i64,
+}
+
+pub fn main(player: Player) -> i64 {
+    return player.level
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let symbols = databases.document_symbols(&document);
+
+        let symbols = document_symbols(&symbols);
+
+        let lsp_types::DocumentSymbolResponse::Nested(symbols) = symbols else {
+            panic!("document symbols should project nested response");
+        };
+        let player = symbols
+            .iter()
+            .find(|symbol| symbol.name == "Player")
+            .expect("Player symbol should project");
+        assert_eq!(player.kind, lsp_types::SymbolKind::STRUCT);
+        let children = player
+            .children
+            .as_ref()
+            .expect("Player should include field children");
+        assert!(
+            children.iter().any(|child| {
+                child.name == "level" && child.kind == lsp_types::SymbolKind::FIELD
+            })
+        );
+        assert!(symbols.iter().any(|symbol| {
+            symbol.name == "main" && symbol.kind == lsp_types::SymbolKind::FUNCTION
+        }));
     }
 
     #[test]
