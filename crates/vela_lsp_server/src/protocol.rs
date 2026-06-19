@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use vela_language_service::{DiagnosticRange, Position};
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -177,12 +176,4 @@ pub(crate) struct LspRange {
 pub(crate) struct LspPosition {
     pub(crate) line: u32,
     pub(crate) character: u32,
-}
-
-pub(crate) fn service_position(position: LspPosition) -> Position {
-    Position::new(position.line as usize, position.character as usize)
-}
-
-pub(crate) fn service_range(range: LspRange) -> DiagnosticRange {
-    DiagnosticRange::new(service_position(range.start), service_position(range.end))
 }

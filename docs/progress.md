@@ -667,8 +667,11 @@ is the shared `line_index.rs` position/range conversion layer.
 M20.5 RA-style main-loop update: Phase 2.5 line-index work is in progress.
 Ranged `didChange` edits now resolve UTF-16 LSP positions through
 `vela_lsp_server::line_index`, with focused coverage for surrogate-pair and
-CRLF edge cases. Existing request parameter conversion and response projection
-still need to move behind this boundary before the checklist item can close.
+CRLF edge cases. Legacy request parameter conversion in `queries.rs` and
+call-hierarchy item decoding now also go through the shared line-index
+boundary, including a native LSP regression for UTF-16 member completion after
+a non-BMP character. Response projection and negotiated position encoding still
+need to move behind this boundary before the checklist item can close.
 
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature

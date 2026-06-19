@@ -17,13 +17,15 @@ pub(crate) fn lsp_outgoing_calls(calls: &[OutgoingCall]) -> JsonValue {
 
 pub(crate) fn service_call_hierarchy_item(
     item: &crate::protocol::CallHierarchyItem,
-) -> CallHierarchyItem {
-    CallHierarchyItem::new(
+    document_text: &str,
+) -> Result<CallHierarchyItem, String> {
+    let line_index = crate::line_index::LineIndex::new(document_text);
+    Ok(CallHierarchyItem::new(
         item.name.clone(),
         vela_language_service::DocumentId::from(item.uri.clone()),
-        service_range(item.range),
-        service_range(item.selection_range),
-    )
+        line_index.service_range(item.range)?,
+        line_index.service_range(item.selection_range)?,
+    ))
 }
 
 fn lsp_incoming_call(call: &IncomingCall) -> JsonValue {
@@ -66,14 +68,4 @@ fn lsp_range(range: DiagnosticRange) -> JsonValue {
             "character": range.end().character
         }
     })
-}
-
-fn service_range(range: crate::protocol::LspRange) -> DiagnosticRange {
-    DiagnosticRange::new(
-        vela_language_service::Position::new(
-            range.start.line as usize,
-            range.start.character as usize,
-        ),
-        vela_language_service::Position::new(range.end.line as usize, range.end.character as usize),
-    )
 }

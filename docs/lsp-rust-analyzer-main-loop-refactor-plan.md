@@ -465,6 +465,11 @@ cargo test -p vela_lsp_server lifecycle
 - [~] Introduce `line_index.rs` as the only LSP `Position`/`Range` conversion
   boundary, preserving UTF-16 client behavior and recording negotiated position
   encoding when available.
+  - Ranged `didChange`, legacy request parameter conversion in `queries.rs`,
+    and call-hierarchy item decoding now resolve through `line_index.rs` with
+    UTF-16, surrogate-pair, CRLF, oversized range, and member-completion
+    regression coverage. Response projection, negotiated encoding storage, and
+    future `lsp/from_proto.rs` / `lsp/to_proto.rs` ownership remain open.
 - [ ] Introduce `reload.rs` or an equivalent reload scheduler for watched-file,
   schema, config, workspace-root, and disk-source changes.
 - [ ] Keep reload work generation-based and open-file-prioritized so watcher

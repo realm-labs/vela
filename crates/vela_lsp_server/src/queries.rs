@@ -1,5 +1,5 @@
 use serde_json::Value as JsonValue;
-use vela_language_service::{DocumentId, LineIndex};
+use vela_language_service::{DiagnosticRange, DocumentId, LineIndex as ServiceLineIndex, Position};
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId,
@@ -36,8 +36,6 @@ use crate::{
     protocol::SemanticTokensRangeParams,
     protocol::TextDocumentPositionParams,
     protocol::WorkspaceSymbolParams,
-    protocol::service_position,
-    protocol::service_range,
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
     selection::lsp_selection_ranges,
@@ -51,6 +49,49 @@ enum NavigationLocationQuery {
     Definition,
     Declaration,
     TypeDefinition,
+}
+
+fn document_text(server: &LspServer, document_id: &DocumentId) -> String {
+    server
+        .databases
+        .source_db()
+        .records()
+        .get(document_id)
+        .map_or_else(String::new, |source| source.text().to_owned())
+}
+
+fn service_position_for_request(
+    id: &RequestId,
+    method_name: &str,
+    document_text: &str,
+    position: crate::protocol::LspPosition,
+) -> Result<Position, JsonRpcResult> {
+    crate::line_index::LineIndex::new(document_text)
+        .service_position(position)
+        .map_err(|error| {
+            JsonRpcResult::Response(error_response(
+                Some(id.clone()),
+                ErrorCode::InvalidRequest,
+                format!("invalid {method_name} position: {error}"),
+            ))
+        })
+}
+
+fn service_range_for_request(
+    id: &RequestId,
+    method_name: &str,
+    document_text: &str,
+    range: crate::protocol::LspRange,
+) -> Result<DiagnosticRange, JsonRpcResult> {
+    crate::line_index::LineIndex::new(document_text)
+        .service_range(range)
+        .map_err(|error| {
+            JsonRpcResult::Response(error_response(
+                Some(id.clone()),
+                ErrorCode::InvalidRequest,
+                format!("invalid {method_name} range: {error}"),
+            ))
+        })
 }
 
 impl LspServer {
@@ -75,9 +116,12 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let actions = self
-            .databases
-            .code_actions(&document_id, crate::protocol::service_range(params.range));
+        let text = document_text(self, &document_id);
+        let range = match service_range_for_request(&id, "codeAction", &text, params.range) {
+            Ok(range) => range,
+            Err(response) => return response,
+        };
+        let actions = self.databases.code_actions(&document_id, range);
 
         JsonRpcResult::Response(success_response(id, lsp_code_actions(&actions)))
     }
@@ -99,18 +143,14 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let completions = self
-            .databases
-            .completion_items(&document_id, service_position(params.position));
-        let line_index = self
-            .databases
-            .source_db()
-            .records()
-            .get(&document_id)
-            .map_or_else(
-                || LineIndex::new(""),
-                |source| LineIndex::new(source.text()),
-            );
+        let text = document_text(self, &document_id);
+        let position = match service_position_for_request(&id, "completion", &text, params.position)
+        {
+            Ok(position) => position,
+            Err(response) => return response,
+        };
+        let completions = self.databases.completion_items(&document_id, position);
+        let line_index = ServiceLineIndex::new(&text);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -165,9 +205,13 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let signatures = self
-            .databases
-            .signature_help(&document_id, service_position(params.position));
+        let text = document_text(self, &document_id);
+        let position =
+            match service_position_for_request(&id, "signatureHelp", &text, params.position) {
+                Ok(position) => position,
+                Err(response) => return response,
+            };
+        let signatures = self.databases.signature_help(&document_id, position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -194,9 +238,12 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let hover = self
-            .databases
-            .hover(&document_id, service_position(params.position));
+        let text = document_text(self, &document_id);
+        let position = match service_position_for_request(&id, "hover", &text, params.position) {
+            Ok(position) => position,
+            Err(response) => return response,
+        };
+        let hover = self.databases.hover(&document_id, position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -262,7 +309,12 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let position = service_position(params.position);
+        let text = document_text(self, &document_id);
+        let position = match service_position_for_request(&id, method_name, &text, params.position)
+        {
+            Ok(position) => position,
+            Err(response) => return response,
+        };
         let definition = match query {
             NavigationLocationQuery::Definition => {
                 self.databases.definition(&document_id, position)
@@ -298,11 +350,15 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let references = self.databases.references(
-            &document_id,
-            service_position(params.position),
-            params.context.include_declaration,
-        );
+        let text = document_text(self, &document_id);
+        let position = match service_position_for_request(&id, "references", &text, params.position)
+        {
+            Ok(position) => position,
+            Err(response) => return response,
+        };
+        let references =
+            self.databases
+                .references(&document_id, position, params.context.include_declaration);
 
         JsonRpcResult::Response(success_response(id, lsp_references(&references)))
     }
@@ -328,9 +384,13 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let prepare = self
-            .databases
-            .prepare_rename(&document_id, service_position(params.position));
+        let text = document_text(self, &document_id);
+        let position =
+            match service_position_for_request(&id, "prepareRename", &text, params.position) {
+                Ok(position) => position,
+                Err(response) => return response,
+            };
+        let prepare = self.databases.prepare_rename(&document_id, position);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -355,11 +415,14 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let edit = self.databases.rename(
-            &document_id,
-            service_position(params.position),
-            &params.new_name,
-        );
+        let text = document_text(self, &document_id);
+        let position = match service_position_for_request(&id, "rename", &text, params.position) {
+            Ok(position) => position,
+            Err(response) => return response,
+        };
+        let edit = self
+            .databases
+            .rename(&document_id, position, &params.new_name);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -388,9 +451,16 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
+        let text = document_text(self, &document_id);
+        let position =
+            match service_position_for_request(&id, "prepareCallHierarchy", &text, params.position)
+            {
+                Ok(position) => position,
+                Err(response) => return response,
+            };
         let items = self
             .databases
-            .prepare_call_hierarchy(&document_id, service_position(params.position));
+            .prepare_call_hierarchy(&document_id, position);
 
         JsonRpcResult::Response(success_response(id, lsp_call_hierarchy_items(&items)))
     }
@@ -416,7 +486,17 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.item.uri.clone());
         self.refresh_databases_for_query(&document_id);
-        let item = service_call_hierarchy_item(&params.item);
+        let text = document_text(self, &document_id);
+        let item = match service_call_hierarchy_item(&params.item, &text) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid incomingCalls item range: {error}"),
+                ));
+            }
+        };
         let calls = self.databases.incoming_calls(&item);
 
         JsonRpcResult::Response(success_response(id, lsp_incoming_calls(&calls)))
@@ -443,7 +523,17 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.item.uri.clone());
         self.refresh_databases_for_query(&document_id);
-        let item = service_call_hierarchy_item(&params.item);
+        let text = document_text(self, &document_id);
+        let item = match service_call_hierarchy_item(&params.item, &text) {
+            Ok(item) => item,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid outgoingCalls item range: {error}"),
+                ));
+            }
+        };
         let calls = self.databases.outgoing_calls(&item);
 
         JsonRpcResult::Response(success_response(id, lsp_outgoing_calls(&calls)))
@@ -470,9 +560,13 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let highlights = self
-            .databases
-            .document_highlights(&document_id, service_position(params.position));
+        let text = document_text(self, &document_id);
+        let position =
+            match service_position_for_request(&id, "documentHighlight", &text, params.position) {
+                Ok(position) => position,
+                Err(response) => return response,
+            };
+        let highlights = self.databases.document_highlights(&document_id, position);
 
         JsonRpcResult::Response(success_response(id, lsp_document_highlights(&highlights)))
     }
@@ -572,9 +666,12 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let edits = self
-            .databases
-            .range_formatting(&document_id, service_range(params.range));
+        let text = document_text(self, &document_id);
+        let range = match service_range_for_request(&id, "rangeFormatting", &text, params.range) {
+            Ok(range) => range,
+            Err(response) => return response,
+        };
+        let edits = self.databases.range_formatting(&document_id, range);
 
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
     }
@@ -600,11 +697,15 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let edits = self.databases.on_type_formatting(
-            &document_id,
-            service_position(params.position),
-            &params.ch,
-        );
+        let text = document_text(self, &document_id);
+        let position =
+            match service_position_for_request(&id, "onTypeFormatting", &text, params.position) {
+                Ok(position) => position,
+                Err(response) => return response,
+            };
+        let edits = self
+            .databases
+            .on_type_formatting(&document_id, position, &params.ch);
 
         JsonRpcResult::Response(success_response(id, lsp_text_edits(&edits)))
     }
@@ -630,11 +731,16 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let positions = params
+        let text = document_text(self, &document_id);
+        let positions = match params
             .positions
             .into_iter()
-            .map(service_position)
-            .collect::<Vec<_>>();
+            .map(|position| service_position_for_request(&id, "selectionRange", &text, position))
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(positions) => positions,
+            Err(response) => return response,
+        };
         let ranges = self.databases.selection_ranges(&document_id, &positions);
 
         JsonRpcResult::Response(success_response(id, lsp_selection_ranges(&ranges)))
@@ -721,9 +827,13 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let tokens = self
-            .databases
-            .semantic_tokens_in_range(&document_id, service_range(params.range));
+        let text = document_text(self, &document_id);
+        let range =
+            match service_range_for_request(&id, "semanticTokens/range", &text, params.range) {
+                Ok(range) => range,
+                Err(response) => return response,
+            };
+        let tokens = self.databases.semantic_tokens_in_range(&document_id, range);
 
         JsonRpcResult::Response(success_response(
             id,
@@ -748,9 +858,12 @@ impl LspServer {
 
         let document_id = DocumentId::from(params.text_document.uri);
         self.refresh_databases_for_query(&document_id);
-        let hints = self
-            .databases
-            .inlay_hints(&document_id, service_range(params.range));
+        let text = document_text(self, &document_id);
+        let range = match service_range_for_request(&id, "inlayHint", &text, params.range) {
+            Ok(range) => range,
+            Err(response) => return response,
+        };
+        let hints = self.databases.inlay_hints(&document_id, range);
 
         JsonRpcResult::Response(success_response(id, lsp_inlay_hints(&hints)))
     }

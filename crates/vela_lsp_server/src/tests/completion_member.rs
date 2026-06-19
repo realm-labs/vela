@@ -114,6 +114,90 @@ fn lsp_member_completion_uses_host_schema_facts() {
 }
 
 #[test]
+fn lsp_member_completion_converts_utf16_positions_before_query() {
+    let root = temp_workspace();
+    let config_path = root.join("vela.toml");
+    let schema_path = root.join("target").join("vela").join("schema.json");
+    fs::create_dir_all(schema_path.parent().expect("schema should have parent"))
+        .expect("schema directory should be creatable");
+    fs::write(
+        &config_path,
+        r#"
+                [workspace]
+                roots = ["scripts"]
+
+                [host]
+                schema = "target/vela/schema.json"
+            "#,
+    )
+    .expect("vela.toml should be writable");
+    fs::write(
+        &schema_path,
+        r#"{
+                "formatVersion": 1,
+                "facts": {
+                    "types": [
+                        {
+                            "name": "Player",
+                            "fact": { "kind": "host", "name": "Player" }
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "owner": "Player",
+                            "name": "level",
+                            "fact": { "kind": "primitive", "name": "i64" }
+                        }
+                    ]
+                }
+            }"#,
+    )
+    .expect("schema should be writable");
+
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "capabilities": {}
+        }),
+    )));
+    let _ = server.handle_json(&notification(
+        "workspace/didChangeWatchedFiles",
+        serde_json::json!({
+            "changes": [{ "uri": file_uri(&config_path), "type": 1 }]
+        }),
+    ));
+    let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
+    let text = "pub fn main(player: Player) { let icon = \"💎\"; player.le }";
+    let _ = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": main_uri,
+                "languageId": "vela",
+                "version": 1,
+                "text": text
+            }
+        }),
+    )));
+
+    let response = response_value(server.handle_json(&request(
+        2,
+        "textDocument/completion",
+        serde_json::json!({
+            "textDocument": { "uri": main_uri },
+            "position": position_for(text, "player.le")
+        }),
+    )));
+
+    assert_completion(&response, "level", 5, "i64");
+    fs::remove_dir_all(&root).expect("temporary workspace should be removable");
+}
+
+#[test]
 fn lsp_member_completion_suppresses_schema_any_function_return_receiver() {
     let root = temp_workspace();
     let config_path = root.join("vela.toml");
@@ -1012,7 +1096,7 @@ fn position_for(text: &str, needle: &str) -> serde_json::Value {
             line += 1;
             character = 0;
         } else {
-            character += ch.len_utf8();
+            character += ch.len_utf16();
         }
     }
     serde_json::json!({ "line": line, "character": character })

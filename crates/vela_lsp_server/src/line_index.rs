@@ -1,4 +1,6 @@
-use crate::protocol::LspPosition;
+use vela_language_service::{DiagnosticRange, LineIndex as ServiceLineIndex, Position};
+
+use crate::protocol::{LspPosition, LspRange};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PositionEncoding {
@@ -24,6 +26,30 @@ impl<'a> LineIndex<'a> {
         }
     }
 
+    pub(crate) fn service_position(&self, position: LspPosition) -> Result<Position, String> {
+        let offset = self.offset(position)?;
+        Ok(ServiceLineIndex::new(self.text).position(offset))
+    }
+
+    pub(crate) fn service_range(&self, range: LspRange) -> Result<DiagnosticRange, String> {
+        let start_offset = self.offset_clamped(range.start)?;
+        let end_offset = self.offset_clamped(range.end)?;
+        if start_offset > end_offset {
+            return Err("LSP range start must not be after the end".to_owned());
+        }
+        let service_index = ServiceLineIndex::new(self.text);
+        Ok(DiagnosticRange::new(
+            service_index.position(start_offset),
+            service_index.position(end_offset),
+        ))
+    }
+
+    fn offset_clamped(&self, position: LspPosition) -> Result<usize, String> {
+        match self.encoding {
+            PositionEncoding::Utf16 => self.utf16_offset_clamped(position),
+        }
+    }
+
     fn utf16_offset(&self, position: LspPosition) -> Result<usize, String> {
         let line = usize::try_from(position.line)
             .map_err(|_| "LSP position line is too large".to_owned())?;
@@ -31,6 +57,18 @@ impl<'a> LineIndex<'a> {
             .map_err(|_| "LSP position character is too large".to_owned())?;
         let (line_start, line_end) = self.line_bounds(line)?;
         utf16_character_offset(&self.text[line_start..line_end], character)
+            .map(|offset| line_start + offset)
+    }
+
+    fn utf16_offset_clamped(&self, position: LspPosition) -> Result<usize, String> {
+        let line = usize::try_from(position.line)
+            .map_err(|_| "LSP position line is too large".to_owned())?;
+        let character = usize::try_from(position.character)
+            .map_err(|_| "LSP position character is too large".to_owned())?;
+        let (line_start, line_end) = self
+            .line_bounds(line)
+            .unwrap_or((self.text.len(), self.text.len()));
+        utf16_character_offset_clamped(&self.text[line_start..line_end], character)
             .map(|offset| line_start + offset)
     }
 
@@ -83,6 +121,21 @@ fn utf16_character_offset(line_text: &str, character: usize) -> Result<usize, St
     } else {
         Err("LSP position character is outside the line".to_owned())
     }
+}
+
+fn utf16_character_offset_clamped(line_text: &str, character: usize) -> Result<usize, String> {
+    let mut utf16_units = 0usize;
+    for (offset, ch) in line_text.char_indices() {
+        if utf16_units == character {
+            return Ok(offset);
+        }
+        let next_units = utf16_units + ch.len_utf16();
+        if character < next_units {
+            return Err("LSP position splits a UTF-16 character".to_owned());
+        }
+        utf16_units = next_units;
+    }
+    Ok(line_text.len())
 }
 
 #[cfg(test)]
@@ -156,6 +209,44 @@ mod tests {
                 })
                 .expect("second line start should resolve"),
             5
+        );
+    }
+
+    #[test]
+    fn service_positions_use_byte_columns_after_utf16_conversion() {
+        let text = "let icon = \"💎\"\nnext";
+        let index = LineIndex::new(text);
+
+        assert_eq!(
+            index
+                .service_position(LspPosition {
+                    line: 0,
+                    character: 14
+                })
+                .expect("position after diamond should resolve"),
+            Position::new(0, "let icon = \"💎".len())
+        );
+    }
+
+    #[test]
+    fn service_ranges_clamp_oversized_editor_ranges() {
+        let text = "one\ntwo";
+        let index = LineIndex::new(text);
+
+        assert_eq!(
+            index
+                .service_range(LspRange {
+                    start: LspPosition {
+                        line: 0,
+                        character: 2
+                    },
+                    end: LspPosition {
+                        line: 99,
+                        character: 99
+                    }
+                })
+                .expect("oversized range should clamp to document end"),
+            DiagnosticRange::new(Position::new(0, 2), Position::new(1, 3))
         );
     }
 }
