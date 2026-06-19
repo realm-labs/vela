@@ -112,3 +112,8 @@ pub(crate) fn error_response(
     })
     .to_string()
 }
+
+pub(crate) fn request_id_from_lsp(id: lsp_server::RequestId) -> RequestId {
+    let value = serde_json::to_value(id).expect("lsp-server request id should serialize");
+    serde_json::from_value(value).expect("lsp-server request id should match JSON-RPC id shape")
+}

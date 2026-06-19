@@ -52,6 +52,14 @@ impl GlobalState {
         self.server.take_cancelled_request(id)
     }
 
+    pub(crate) fn initialize(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: lsp_types::InitializeParams,
+    ) -> JsonRpcResult {
+        self.server.initialize_lsp(id, params)
+    }
+
     pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
         self.server.handle_json(input)
     }

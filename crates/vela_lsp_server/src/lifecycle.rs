@@ -1,12 +1,13 @@
 use std::collections::BTreeSet;
 
+use lsp_types::InitializeParams as LspInitializeParams;
 use serde_json::Value as JsonValue;
 use vela_language_service::WorkspaceRoot;
 
 use crate::{
     ErrorCode, JsonRpcResult, LspServer, RequestId, capabilities::initialize_result,
     client::InitializeParams, config::workspace_config_from_roots_and_editor_config,
-    error_response, rpc::CancelRequestParams, success_response, watching,
+    error_response, rpc::CancelRequestParams, rpc::request_id_from_lsp, success_response, watching,
 };
 
 impl LspServer {
@@ -46,6 +47,56 @@ impl LspServer {
         self.client_supports_watched_file_registration =
             params.capabilities.supports_watched_file_registration();
         self.semantic_token_projection = params.capabilities.semantic_token_projection();
+        JsonRpcResult::Response(success_response(
+            id,
+            initialize_result(&self.semantic_token_projection),
+        ))
+    }
+
+    pub(crate) fn initialize_lsp(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: LspInitializeParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        if self.initialized {
+            return JsonRpcResult::Response(error_response(
+                Some(id),
+                ErrorCode::InvalidRequest,
+                "server is already initialized",
+            ));
+        }
+
+        let editor_config = match params
+            .initialization_options
+            .clone()
+            .map(serde_json::from_value)
+            .transpose()
+        {
+            Ok(editor_config) => editor_config,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid initialize params: {error}"),
+                ));
+            }
+        };
+
+        self.initialized = true;
+        self.workspace_roots = workspace_roots_from_lsp_initialize(&params);
+        if editor_config.is_some() {
+            self.editor_config = editor_config;
+        }
+        self.config = workspace_config_from_roots_and_editor_config(
+            &self.workspace_roots,
+            self.editor_config.as_ref(),
+        );
+        self.reload_schema_from_config();
+        self.client_supports_work_done_progress = lsp_supports_work_done_progress(&params);
+        self.client_supports_watched_file_registration =
+            lsp_supports_watched_file_registration(&params);
+        self.semantic_token_projection = lsp_semantic_token_projection(&params);
         JsonRpcResult::Response(success_response(
             id,
             initialize_result(&self.semantic_token_projection),
@@ -138,4 +189,71 @@ fn workspace_roots_from_initialize(params: &InitializeParams) -> BTreeSet<String
         .chain(params.root_uri.iter().cloned().map(WorkspaceRoot::from))
         .map(|root| root.path().to_owned())
         .collect()
+}
+
+fn workspace_roots_from_lsp_initialize(params: &LspInitializeParams) -> BTreeSet<String> {
+    params
+        .workspace_folders
+        .iter()
+        .flatten()
+        .map(|folder| WorkspaceRoot::from(folder.uri.to_string()))
+        .chain(
+            #[allow(deprecated)]
+            params
+                .root_uri
+                .iter()
+                .map(ToString::to_string)
+                .map(WorkspaceRoot::from),
+        )
+        .map(|root| root.path().to_owned())
+        .collect()
+}
+
+fn lsp_supports_work_done_progress(params: &LspInitializeParams) -> bool {
+    params
+        .capabilities
+        .window
+        .as_ref()
+        .and_then(|window| window.work_done_progress)
+        .unwrap_or(false)
+}
+
+fn lsp_supports_watched_file_registration(params: &LspInitializeParams) -> bool {
+    params
+        .capabilities
+        .workspace
+        .as_ref()
+        .and_then(|workspace| workspace.did_change_watched_files.as_ref())
+        .and_then(|watched_files| watched_files.dynamic_registration)
+        .unwrap_or(false)
+}
+
+fn lsp_semantic_token_projection(
+    params: &LspInitializeParams,
+) -> crate::semantic_tokens::SemanticTokenProjection {
+    let semantic_tokens = params
+        .capabilities
+        .text_document
+        .as_ref()
+        .and_then(|text_document| text_document.semantic_tokens.as_ref());
+    let token_types = semantic_tokens.map(|semantic_tokens| {
+        semantic_tokens
+            .token_types
+            .iter()
+            .map(lsp_types::SemanticTokenType::as_str)
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    });
+    let token_modifiers = semantic_tokens.map(|semantic_tokens| {
+        semantic_tokens
+            .token_modifiers
+            .iter()
+            .map(lsp_types::SemanticTokenModifier::as_str)
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    });
+    crate::semantic_tokens::SemanticTokenProjection::for_client(
+        token_types.as_deref(),
+        token_modifiers.as_deref(),
+    )
 }

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use lsp_server::{Message, Notification, Request};
 use lsp_types::{
     notification::{
@@ -12,8 +14,12 @@ use lsp_types::{
         SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
     },
 };
+use serde::de::DeserializeOwned;
 
-use crate::{ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState};
+use crate::{
+    ErrorCode, JsonRpcResult, RequestId, error_response, global_state::GlobalState,
+    rpc::request_id_from_lsp,
+};
 
 pub(crate) fn dispatch_message(
     global_state: &mut GlobalState,
@@ -41,7 +47,7 @@ fn dispatch_request(
 
     let mut dispatcher = RequestDispatcher::new(global_state, request, legacy_input);
     dispatcher
-        .on_sync_mut::<lsp_types::request::Initialize>()
+        .on_sync_mut_typed::<lsp_types::request::Initialize>(GlobalState::initialize)
         .on_sync_mut::<lsp_types::request::Shutdown>()
         .on_sync::<DocumentSymbolRequest>()
         .on_latency_sensitive::<Completion>()
@@ -108,6 +114,29 @@ impl<'a> RequestDispatcher<'a> {
         self
     }
 
+    pub(crate) fn on_sync_mut_typed<R>(
+        &mut self,
+        f: fn(&mut GlobalState, lsp_server::RequestId, R::Params) -> JsonRpcResult,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug,
+    {
+        let Some(request) = self.take_matching::<R>() else {
+            return self;
+        };
+        let id = request.id;
+        let params = match serde_json::from_value::<R::Params>(request.params) {
+            Ok(params) => params,
+            Err(error) => {
+                self.result = invalid_params(id, R::METHOD, error);
+                return self;
+            }
+        };
+        self.result = f(self.global_state, id, params);
+        self
+    }
+
     pub(crate) fn on_sync<R>(&mut self) -> &mut Self
     where
         R: lsp_types::request::Request,
@@ -157,13 +186,23 @@ impl<'a> RequestDispatcher<'a> {
     where
         R: lsp_types::request::Request,
     {
+        if self.take_matching::<R>().is_some() {
+            self.result = self.global_state.handle_legacy_json(self.legacy_input);
+        }
+    }
+
+    fn take_matching<R>(&mut self) -> Option<Request>
+    where
+        R: lsp_types::request::Request,
+    {
         if self
             .request
             .as_ref()
             .is_some_and(|request| request.method == R::METHOD)
         {
-            self.result = self.global_state.handle_legacy_json(self.legacy_input);
-            self.request = None;
+            self.request.take()
+        } else {
+            None
         }
     }
 }
@@ -214,7 +253,7 @@ impl<'a> NotificationDispatcher<'a> {
 
 fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
     JsonRpcResult::Response(error_response(
-        Some(rpc_request_id(id)),
+        Some(request_id_from_lsp(id)),
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
     ))
@@ -228,7 +267,18 @@ fn request_cancelled(id: RequestId) -> JsonRpcResult {
     ))
 }
 
+fn invalid_params(
+    id: lsp_server::RequestId,
+    method: &str,
+    error: serde_json::Error,
+) -> JsonRpcResult {
+    JsonRpcResult::Response(error_response(
+        Some(request_id_from_lsp(id)),
+        ErrorCode::InvalidRequest,
+        format!("invalid {method} params: {error}"),
+    ))
+}
+
 fn rpc_request_id(id: lsp_server::RequestId) -> RequestId {
-    let value = serde_json::to_value(id).expect("lsp-server request id should serialize");
-    serde_json::from_value(value).expect("lsp-server request id should match JSON-RPC id shape")
+    request_id_from_lsp(id)
 }

@@ -634,6 +634,12 @@ method-not-found projection. Pre-initialize plus post-shutdown gates still
 delegate through the legacy lifecycle bridge until typed lifecycle migration
 lands.
 
+M20.5 RA-style main-loop update: typed lifecycle migration is now in progress.
+`initialize` is routed through `lsp_types::InitializeParams` in the typed
+dispatcher, with shared invalid-params projection and existing Vela
+initialization-options parsing preserved. `initialized`, `shutdown`, `exit`,
+and `$/cancelRequest` still delegate through the legacy lifecycle bridge.
+
 M20.5 cleanup update: the clean LSP architecture refactor has completed its
 shared query/display/symbol Phase 5 checkpoint. Language-service feature
 results now route source, schema, builtin, local, completion, hover,

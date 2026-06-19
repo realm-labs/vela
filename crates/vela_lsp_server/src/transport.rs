@@ -568,6 +568,78 @@ mod tests {
     }
 
     #[test]
+    fn typed_dispatcher_rejects_malformed_initialize_without_initializing() {
+        let (client_sender, server_receiver) = unbounded::<Message>();
+        let (server_sender, client_receiver) = unbounded::<Message>();
+        let connection = Connection {
+            sender: server_sender,
+            receiver: server_receiver,
+        };
+
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "capabilities": []
+                }
+            })))
+            .expect("malformed initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "initialize",
+                "params": {
+                    "processId": null,
+                    "capabilities": {}
+                }
+            })))
+            .expect("valid initialize should be sent");
+        client_sender
+            .send(message(serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": "exit"
+            })))
+            .expect("exit should be sent");
+        drop(client_sender);
+
+        super::run_connection(connection, LaunchConfiguration::new())
+            .expect("typed connection should run");
+
+        let responses = client_receiver
+            .try_iter()
+            .filter_map(|message| match message {
+                Message::Response(response) => Some(response),
+                Message::Request(_) | Message::Notification(_) => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(responses.len(), 2, "{responses:?}");
+        assert_eq!(responses[0].id.to_string(), "1");
+        let error = responses[0]
+            .error
+            .as_ref()
+            .expect("malformed initialize should produce an error");
+        assert_eq!(error.code, -32600);
+        assert!(
+            error.message.contains("invalid initialize params"),
+            "unexpected message: {}",
+            error.message
+        );
+        assert_eq!(responses[1].id.to_string(), "2");
+        assert!(responses[1].error.is_none(), "{responses:?}");
+        assert_eq!(
+            responses[1]
+                .result
+                .as_ref()
+                .expect("initialize should produce a result")["serverInfo"]["name"],
+            "vela_lsp_server"
+        );
+    }
+
+    #[test]
     fn tcp_rejects_non_loopback_bind_address() {
         let error = super::bind_loopback_tcp_listener("0.0.0.0:0")
             .expect_err("non-loopback bind should be rejected");
