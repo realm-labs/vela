@@ -1079,15 +1079,18 @@ cargo test -p vela_lsp_server inlay
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [~] Run read-only handlers from `GlobalStateSnapshot`.
-  - `textDocument/completion` and `completionItem/resolve` now dispatch
+  - `textDocument/completion`, `completionItem/resolve`,
+    `textDocument/hover`, and `textDocument/signatureHelp` now dispatch
     through `RequestDispatcher::on_latency_sensitive_snapshot_typed`, clone a
     `GlobalStateSnapshot`, and query the snapshot-owned
     `LanguageServiceDatabases` plus `WorkspaceSnapshot` without mutating
     `GlobalState` or the legacy `LspServer`. The obsolete mutable typed
-    completion wrappers were removed. Hover, signature help, semantic tokens,
-    formatting, and worker-lane read-only request families still need the same
-    snapshot migration before this checklist item can close. Validated with
-    `cargo test -p vela_lsp_server completion`,
+    completion, hover, and signature-help wrappers were removed. Semantic
+    tokens, formatting, and worker-lane read-only request families still need
+    the same snapshot migration before this checklist item can close.
+    Validated with `cargo test -p vela_lsp_server completion`,
+    `cargo test -p vela_lsp_server hover`,
+    `cargo test -p vela_lsp_server signature`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.

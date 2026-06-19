@@ -203,6 +203,60 @@ impl GlobalStateSnapshot {
                 .expect("typed completion item should serialize"),
         ))
     }
+
+    pub(crate) fn hover(self, id: lsp_server::RequestId, params: HoverParams) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::hover_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid hover position: {error}"),
+                ));
+            }
+        };
+        let hover = self.databases.hover(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(hover.as_ref().map(to_proto::hover))
+                .expect("typed hover response should serialize"),
+        ))
+    }
+
+    pub(crate) fn signature_help(
+        self,
+        id: lsp_server::RequestId,
+        params: SignatureHelpParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::signature_help_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid signatureHelp position: {error}"),
+                ));
+            }
+        };
+        let signatures = self
+            .databases
+            .signature_help(&input.document_id, input.position);
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(signatures.as_ref().map(to_proto::signature_help))
+                .expect("typed signatureHelp response should serialize"),
+        ))
+    }
 }
 
 fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
@@ -406,28 +460,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn hover(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: HoverParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.hover_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn signature_help(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: SignatureHelpParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.signature_help_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
     }
 
     pub(crate) fn definition(
@@ -1524,6 +1556,9 @@ mod tests {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let request = Message::Request(lsp_server::Request {
             id: lsp_server::RequestId::from(8),
@@ -1577,6 +1612,9 @@ mod tests {
             .workspace
             .open_document(document.clone(), text, SourceVersion::new(1));
         state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
         let request = Message::Request(lsp_server::Request {
             id: lsp_server::RequestId::from(9),

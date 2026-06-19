@@ -62,8 +62,10 @@ fn dispatch_request(
         .on_latency_sensitive_snapshot_typed::<ResolveCompletionItem>(
             GlobalStateSnapshot::completion_resolve,
         )
-        .on_latency_sensitive_typed::<HoverRequest>(GlobalState::hover)
-        .on_latency_sensitive_typed::<SignatureHelpRequest>(GlobalState::signature_help)
+        .on_latency_sensitive_snapshot_typed::<HoverRequest>(GlobalStateSnapshot::hover)
+        .on_latency_sensitive_snapshot_typed::<SignatureHelpRequest>(
+            GlobalStateSnapshot::signature_help,
+        )
         .on_latency_sensitive_typed::<SemanticTokensFullRequest>(GlobalState::semantic_tokens_full)
         .on_latency_sensitive_typed::<SemanticTokensFullDeltaRequest>(
             GlobalState::semantic_tokens_full_delta,
