@@ -678,7 +678,7 @@ fn server_shut_down(id: lsp_server::RequestId) -> JsonRpcResult {
     ))
 }
 
-fn request_cancelled(id: RequestId) -> JsonRpcResult {
+pub(crate) fn request_cancelled(id: RequestId) -> JsonRpcResult {
     JsonRpcResult::Response(error_response(
         Some(id),
         ErrorCode::RequestCancelled,

@@ -1241,9 +1241,25 @@ cargo test -p vela_lsp_server completion
     (`-32801`) error instead of silently dropping the request. Validated with
     `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`
     and `cargo test -p vela_lsp_server dispatcher_projects_content_modified_as_lsp_error`.
-- [ ] Return LSP `RequestCancelled` for cancelled in-flight requests.
-- [ ] Add tests for cancelled before start, cancelled while running, stale
+- [x] Return LSP `RequestCancelled` for cancelled in-flight requests.
+  - `GlobalState::send_task_result` now checks the task generation token's
+    cancellation flag before stale handling and responds with the shared LSP
+    `RequestCancelled` (`-32800`) error for cancelled in-flight requests.
+    Validated with
+    `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`
+    and `cargo test -p vela_lsp_server dispatcher_projects_request_cancelled_as_lsp_error`.
+- [x] Add tests for cancelled before start, cancelled while running, stale
   retry, stale non-retry, unknown cancel, and completed cancel.
+  - Coverage now includes queued cancellation before request dispatch,
+    in-flight task cancellation, stale retryable completion retry, stale
+    non-retryable `ContentModified`, unknown cancellation no-op, and completed
+    cancellation no-op. Validated with
+    `cargo test -p vela_lsp_server lsp_cancellation`,
+    `cargo test -p vela_lsp_server request_queue_ignores_unknown_and_completed_cancels`,
+    `cargo test -p vela_lsp_server send_task_result_retries_stale_retryable_completion_once`,
+    `cargo test -p vela_lsp_server send_task_result_returns_content_modified_for_stale_non_retryable_response`,
+    and
+    `cargo test -p vela_lsp_server send_task_result_returns_request_cancelled_for_cancelled_in_flight_response`.
 
 Validation:
 

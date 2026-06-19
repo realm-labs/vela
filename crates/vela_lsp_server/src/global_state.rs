@@ -922,12 +922,21 @@ impl GlobalState {
         let _lane = result.lane();
         let _method = result.method();
         let retry = result.retry().cloned();
+        let is_cancelled = result
+            .generation_token()
+            .is_some_and(GenerationToken::is_cancelled);
         let is_stale = result
             .generation_token()
             .is_some_and(|generation| generation.generation() != self.databases.generation());
         let request_id = result.request_id().cloned();
         if let Some(request_id) = request_id.as_ref() {
             self.request_queue.finish_in_flight(request_id);
+        }
+        if is_cancelled {
+            if let Some(request_id) = request_id {
+                return self.send_result(dispatch::request_cancelled(request_id));
+            }
+            return self.send_result(JsonRpcResult::None);
         }
         if is_stale {
             if let Some(retry) = retry.and_then(|retry| retry.next_attempt()) {
@@ -2636,6 +2645,82 @@ pub fn main(player: Player) -> i64 {
             error.message,
             "request result is stale because the document was modified"
         );
+    }
+
+    #[test]
+    fn send_task_result_returns_request_cancelled_for_cancelled_in_flight_response() {
+        let (sender, receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        state.server.workspace.open_document(
+            document.clone(),
+            "pub fn main(){return 1}",
+            SourceVersion::new(1),
+        );
+        state.server.open_documents.insert(document.clone());
+        let _ = state
+            .server
+            .publish_current_diagnostics(document.as_str(), &document);
+        state.sync_from_legacy_server();
+        let request_id = RequestId::Number(33);
+
+        let result = state.handle_message(
+            &Message::Request(lsp_server::Request {
+                id: lsp_server::RequestId::from(33),
+                method: "textDocument/formatting".to_owned(),
+                params: serde_json::to_value(lsp_types::DocumentFormattingParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    options: lsp_formatting_options(),
+                    work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                })
+                .expect("formatting params should serialize"),
+            }),
+            "",
+        );
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.request_queue.in_flight.contains_key(&request_id));
+        let task = state
+            .task_scheduler()
+            .formatting_results()
+            .recv_timeout(Duration::from_secs(1))
+            .expect("formatting task should complete");
+        let generation = task
+            .generation_token()
+            .expect("formatting task should carry generation token")
+            .clone();
+        assert!(!generation.is_cancelled());
+
+        assert_eq!(
+            state.cancel_request(lsp_types::CancelParams {
+                id: lsp_types::NumberOrString::Number(33),
+            }),
+            JsonRpcResult::None
+        );
+        assert!(generation.is_cancelled());
+
+        state
+            .send_task_result(task)
+            .expect("cancelled formatting task response should be handled");
+
+        assert!(!state.request_queue.in_flight.contains_key(&request_id));
+        let response = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("cancelled formatting should send RequestCancelled");
+        let Message::Response(response) = response else {
+            panic!("cancelled formatting should send response");
+        };
+        assert_eq!(response.id, lsp_server::RequestId::from(33));
+        let error = response
+            .error
+            .expect("cancelled formatting should return an error");
+        assert_eq!(error.code, -32800);
+        assert_eq!(error.message, "request was cancelled before processing");
     }
 
     #[test]
