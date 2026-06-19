@@ -35,6 +35,7 @@ use crate::{
     rpc::{request_id_from_lsp, request_id_from_lsp_number_or_string},
     semantic_tokens::SemanticTokenProjection,
     source_version, success_response,
+    task::TaskResult,
     transport::{ResultSummary, messages_from_result},
     watching, with_work_done_progress,
 };
@@ -221,6 +222,10 @@ impl GlobalState {
             self.sender.send(message)?;
         }
         Ok(summary)
+    }
+
+    pub(crate) fn send_task_result(&self, result: TaskResult) -> anyhow::Result<ResultSummary> {
+        self.send_result(result.into_result())
     }
 
     pub(crate) const fn is_exited(&self) -> bool {

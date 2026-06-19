@@ -5,6 +5,7 @@ use lsp_server::Connection;
 use crate::{
     LaunchConfiguration,
     global_state::GlobalState,
+    task::TaskResult,
     tracing::TraceSink,
     transport::{MessageMetadata, RequestProfiler, serialize_json_rpc_message},
 };
@@ -29,7 +30,7 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
         let handle_ms = elapsed_ms(handle_start);
 
         let write_start = Instant::now();
-        let summary = state.send_result(result)?;
+        let summary = state.send_task_result(TaskResult::response(result))?;
         let write_ms = elapsed_ms(write_start);
         trace.response_sent(sequence, &metadata, &summary)?;
         profiler.end(

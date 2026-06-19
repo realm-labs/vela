@@ -1044,7 +1044,16 @@ cargo test -p vela_lsp_server inlay
 
 ### Phase 5: Task Pools And Scheduling Lanes
 
-- [ ] Add task result enum for background request responses.
+- [x] Add task result enum for background request responses.
+  - `TaskResult::Response(JsonRpcResult)` now exists as the main-loop task
+    response envelope, and the current synchronous main loop sends handler
+    results through `GlobalState::send_task_result(...)`. This prepares the
+    receiver shape for future latency/formatting/worker lanes without changing
+    scheduling behavior in the same checkpoint. Validated with
+    `cargo test -p vela_lsp_server task_result`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Add latency, formatting, and worker execution lanes.
 - [ ] Run main-thread mutable handlers synchronously with `&mut GlobalState`.
 - [ ] Run read-only handlers from `GlobalStateSnapshot`.
