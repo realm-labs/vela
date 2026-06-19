@@ -1439,6 +1439,10 @@ cargo test -p vela_lsp_server semantic_tokens
     through `GlobalState::send_messages`; the old transport
     `JsonRpcResult`-to-message helper and wrapper-based result summary path
     have been deleted. Validated with `cargo test -p vela_lsp_server task`.
+  - The old hand-rolled stdio runner is now compiled only for legacy unit
+    tests; production stdio already enters through `lsp_server::Connection`
+    and the typed main loop. Validated with
+    `cargo test -p vela_lsp_server stdio`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
