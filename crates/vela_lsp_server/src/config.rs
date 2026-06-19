@@ -32,7 +32,8 @@ impl LaunchConfiguration {
     }
 
     pub fn set_host_schema(&mut self, schema: impl Into<String>) {
-        self.host_schema = Some(schema.into());
+        let schema = schema.into();
+        self.host_schema = (!schema.trim().is_empty()).then_some(schema);
     }
 
     #[must_use]
@@ -86,6 +87,7 @@ impl EditorConfiguration {
             .as_ref()
             .and_then(|host| host.schema.as_deref())
             .or(self.host_schema.as_deref())
+            .and_then(non_empty_setting)
     }
 }
 
@@ -214,6 +216,11 @@ fn normalize_path_or_uri(value: &str, base: Option<&str>) -> String {
     normalized_path(path)
 }
 
+fn non_empty_setting(value: &str) -> Option<&str> {
+    let value = value.trim();
+    (!value.is_empty()).then_some(value)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -242,5 +249,23 @@ mod tests {
             workspace.schema().path(),
             Some("/workspace/target/vela/schema.json")
         );
+    }
+
+    #[test]
+    fn editor_configuration_ignores_empty_schema_setting() {
+        let config = EditorConfiguration::from_settings(serde_json::json!({
+            "vela": {
+                "host": {
+                    "schema": ""
+                }
+            }
+        }))
+        .expect("empty schema setting should deserialize");
+        let lsp_roots = BTreeSet::from(["/workspace".to_owned()]);
+        let workspace = workspace_config_from_roots_and_editor_config(&lsp_roots, Some(&config))
+            .expect("workspace root should still produce workspace config");
+
+        assert_eq!(workspace.roots()[0].path(), "/workspace");
+        assert_eq!(workspace.schema().path(), None);
     }
 }

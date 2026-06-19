@@ -473,6 +473,94 @@ fn lsp_initialized_registers_watched_files_when_supported() {
 }
 
 #[test]
+fn lsp_initialized_ignores_empty_host_schema_setting() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace",
+            "initializationOptions": {
+                "host": {
+                    "schema": ""
+                }
+            },
+            "capabilities": {
+                "workspace": {
+                    "didChangeWatchedFiles": {
+                        "dynamicRegistration": true
+                    }
+                }
+            }
+        }),
+    )));
+
+    let registration =
+        notification_value(server.handle_json(&notification("initialized", serde_json::json!({}))));
+    let watchers = registration["params"]["registrations"][0]["registerOptions"]["watchers"]
+        .as_array()
+        .expect("watcher registration should include watchers");
+
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///workspace"
+            && watcher["globPattern"]["pattern"] == "**/*.vela"
+    }));
+    assert!(watchers.iter().any(|watcher| {
+        watcher["globPattern"]["baseUri"] == "file:///workspace"
+            && watcher["globPattern"]["pattern"] == "vela.toml"
+    }));
+    assert!(
+        watchers
+            .iter()
+            .all(|watcher| watcher["globPattern"] != "/workspace")
+    );
+    assert_eq!(watchers.len(), 2, "{watchers:?}");
+}
+
+#[test]
+fn lsp_did_open_with_empty_host_schema_has_no_schema_diagnostic() {
+    let mut server = LspServer::new();
+    let _ = response_value(server.handle_json(&request(
+        1,
+        "initialize",
+        serde_json::json!({
+            "processId": null,
+            "rootUri": "file:///workspace",
+            "initializationOptions": {
+                "host": {
+                    "schema": ""
+                }
+            },
+            "capabilities": {}
+        }),
+    )));
+
+    let diagnostics = notification_value(server.handle_json(&notification(
+        "textDocument/didOpen",
+        serde_json::json!({
+            "textDocument": {
+                "uri": "file:///workspace/main.vela",
+                "languageId": "vela",
+                "version": 1,
+                "text": "fn main() { return 1; }"
+            }
+        }),
+    )));
+    let diagnostics = diagnostics["params"]["diagnostics"]
+        .as_array()
+        .expect("didOpen should publish diagnostics");
+
+    assert!(
+        diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic["code"] != "schema::unavailable"
+                && diagnostic["code"] != "schema::diagnostic"),
+        "{diagnostics:?}"
+    );
+}
+
+#[test]
 fn lsp_ignores_client_response_to_server_request() {
     let mut server = LspServer::new();
 
