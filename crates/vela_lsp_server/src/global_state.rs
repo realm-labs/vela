@@ -295,14 +295,14 @@ impl GlobalStateSnapshot {
         self,
         id: lsp_server::RequestId,
         params: SemanticTokensRangeParams,
-    ) -> JsonRpcResult {
+    ) -> Vec<Message> {
         let document_id = from_proto::document_id(&params.text_document.uri);
         let text = snapshot_document_text(&self, &document_id);
         let input = match from_proto::semantic_tokens_range_params(&text, &params) {
             Ok(input) => input,
             Err(error) => {
-                return JsonRpcResult::error(
-                    Some(id),
+                return response_error_messages(
+                    id,
                     ErrorCode::InvalidRequest,
                     format!("invalid semanticTokens/range params: {error}"),
                 );
@@ -312,7 +312,7 @@ impl GlobalStateSnapshot {
             .databases
             .semantic_tokens_in_range(&input.document_id, input.range);
 
-        JsonRpcResult::ok(
+        response_ok_messages(
             id,
             serde_json::to_value(to_proto::semantic_tokens_range(
                 &tokens,

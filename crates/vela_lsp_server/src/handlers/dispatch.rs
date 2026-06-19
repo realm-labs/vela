@@ -127,7 +127,7 @@ fn dispatch_request(
             GlobalStateSnapshot::outgoing_calls,
         )
         .on_worker_snapshot_messages_typed::<CodeActionRequest>(GlobalStateSnapshot::code_action)
-        .on_worker_snapshot_typed::<SemanticTokensRangeRequest>(
+        .on_worker_snapshot_messages_typed::<SemanticTokensRangeRequest>(
             GlobalStateSnapshot::semantic_tokens_range,
         )
         .on_worker_snapshot_typed::<InlayHintRequest>(GlobalStateSnapshot::inlay_hint)

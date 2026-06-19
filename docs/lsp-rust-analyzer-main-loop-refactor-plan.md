@@ -1568,6 +1568,12 @@ cargo test -p vela_lsp_server semantic_tokens
     `cargo test -p vela_lsp_server code_action`,
     `cargo test -p vela_lsp_server typed_code_action`, and
     `cargo test -p vela_lsp_server handlers::dispatch`.
+  - The typed semanticTokens/range snapshot request handler now returns
+    `lsp_server::Message` batches directly through the typed worker snapshot
+    dispatcher branch. Validated with
+    `cargo test -p vela_lsp_server semantic_tokens_range`,
+    `cargo test -p vela_lsp_server typed_semantic_token_dispatch`, and
+    `cargo test -p vela_lsp_server handlers::dispatch`.
 - [ ] Keep `serde_json` only for extension payloads, completion resolve data,
   configuration settings, schema artifact JSON, and tests.
 - [ ] Ensure no LSP protocol types leak into `vela_language_service`.
