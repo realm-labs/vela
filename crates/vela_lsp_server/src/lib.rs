@@ -7,7 +7,6 @@ mod completion;
 mod config;
 mod config_change;
 mod definition;
-mod folding;
 mod global_state;
 mod handlers;
 mod hover;

@@ -10,7 +10,6 @@ use crate::{
     completion::{lsp_completion_resolved_item, service_completion_resolve_payload},
     definition::lsp_definition,
     error_response,
-    folding::lsp_folding_ranges,
     hover::lsp_hover,
     lsp::{from_proto, to_proto},
     protocol::CallHierarchyIncomingCallsParams,
@@ -1059,7 +1058,11 @@ impl LspServer {
         self.refresh_databases_for_query(&document_id);
         let ranges = self.databases.folding_ranges(&document_id);
 
-        JsonRpcResult::Response(success_response(id, lsp_folding_ranges(&ranges)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::folding_ranges(&ranges))
+                .expect("typed foldingRange response should serialize"),
+        ))
     }
 
     pub(crate) fn folding_range_typed(

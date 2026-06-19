@@ -927,6 +927,13 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/foldingRange` compatibility handling now serializes typed
+    `lsp/to_proto.rs` folding-range projections, and the obsolete raw folding
+    adapter module was removed. Validated with
+    `cargo test -p vela_lsp_server folding`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [x] Preserve current advertised capabilities unless a test proves an
   existing capability is incorrect.
   - Phase 4 request migration preserved existing advertised capabilities; no
