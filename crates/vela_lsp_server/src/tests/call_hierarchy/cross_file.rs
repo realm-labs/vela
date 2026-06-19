@@ -1,11 +1,14 @@
-use crate::tests::{LspServer, notification, notification_value, request, response_value};
+use crate::tests::{
+    LspServer, handle_notification, handle_request, notification_value, response_value,
+};
 
 use super::{assert_call_range, line};
 
 #[test]
 fn lsp_call_hierarchy_cross_file_trait_impl_method_calls() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -13,7 +16,7 @@ fn lsp_call_hierarchy_cross_file_trait_impl_method_calls() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
@@ -47,7 +50,8 @@ impl Rewardable for Player {
         (types_uri, types_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -57,10 +61,11 @@ impl Rewardable for Player {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let prepare_grant = response_value(server.handle_json(&request(
+    let prepare_grant = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -72,7 +77,7 @@ impl Rewardable for Player {
                     .expect("trait impl method declaration")
             }
         }),
-    )));
+    ));
     let grant_items = prepare_grant["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -81,7 +86,8 @@ impl Rewardable for Player {
     assert_eq!(grant_items[0]["kind"], 12);
     assert_eq!(grant_items[0]["uri"], types_uri);
 
-    let prepare_from_call = response_value(server.handle_json(&request(
+    let prepare_from_call = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -91,17 +97,18 @@ impl Rewardable for Player {
                 "character": line(main_text, 2).find("grant").expect("method call")
             }
         }),
-    )));
+    ));
     let call_items = prepare_from_call["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(call_items, grant_items);
 
-    let incoming = response_value(server.handle_json(&request(
+    let incoming = response_value(handle_request(
+        &mut server,
         4,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let incoming_calls = incoming["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -127,7 +134,8 @@ impl Rewardable for Player {
             .expect("second method call"),
     );
 
-    let prepare_first = response_value(server.handle_json(&request(
+    let prepare_first = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -137,17 +145,18 @@ impl Rewardable for Player {
                 "character": line(main_text, 1).find("first").expect("first declaration")
             }
         }),
-    )));
+    ));
     let first_items = prepare_first["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(first_items.len(), 1);
 
-    let first_outgoing = response_value(server.handle_json(&request(
+    let first_outgoing = response_value(handle_request(
+        &mut server,
         6,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": first_items[0].clone() }),
-    )));
+    ));
     let first_calls = first_outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -162,11 +171,12 @@ impl Rewardable for Player {
         line(main_text, 2).find("grant").expect("first method call"),
     );
 
-    let method_outgoing = response_value(server.handle_json(&request(
+    let method_outgoing = response_value(handle_request(
+        &mut server,
         7,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let method_calls = method_outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -187,7 +197,8 @@ impl Rewardable for Player {
 #[test]
 fn lsp_call_hierarchy_cross_file_trait_default_and_interface_methods() {
     let mut server = LspServer::new();
-    let initialize = response_value(server.handle_json(&request(
+    let initialize = response_value(handle_request(
+        &mut server,
         1,
         "initialize",
         serde_json::json!({
@@ -195,7 +206,7 @@ fn lsp_call_hierarchy_cross_file_trait_default_and_interface_methods() {
             "rootUri": "file:///workspace/scripts",
             "capabilities": {}
         }),
-    )));
+    ));
     assert_eq!(
         initialize["result"]["capabilities"]["callHierarchyProvider"],
         true
@@ -221,7 +232,8 @@ pub trait Rewardable {
         (traits_uri, traits_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(server.handle_json(&notification(
+        let _ = notification_value(handle_notification(
+            &mut server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -231,10 +243,11 @@ pub trait Rewardable {
                     "text": text
                 }
             }),
-        )));
+        ));
     }
 
-    let prepare_grant = response_value(server.handle_json(&request(
+    let prepare_grant = response_value(handle_request(
+        &mut server,
         2,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -246,7 +259,7 @@ pub trait Rewardable {
                     .expect("trait default method declaration")
             }
         }),
-    )));
+    ));
     let grant_items = prepare_grant["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -255,7 +268,8 @@ pub trait Rewardable {
     assert_eq!(grant_items[0]["kind"], 12);
     assert_eq!(grant_items[0]["uri"], traits_uri);
 
-    let prepare_grant_call = response_value(server.handle_json(&request(
+    let prepare_grant_call = response_value(handle_request(
+        &mut server,
         3,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -265,7 +279,7 @@ pub trait Rewardable {
                 "character": line(main_text, 2).find("grant").expect("grant call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_grant_call["result"]
             .as_array()
@@ -273,7 +287,8 @@ pub trait Rewardable {
         grant_items
     );
 
-    let prepare_preview = response_value(server.handle_json(&request(
+    let prepare_preview = response_value(handle_request(
+        &mut server,
         4,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -285,7 +300,7 @@ pub trait Rewardable {
                     .expect("trait interface method declaration")
             }
         }),
-    )));
+    ));
     let preview_items = prepare_preview["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
@@ -294,7 +309,8 @@ pub trait Rewardable {
     assert_eq!(preview_items[0]["kind"], 12);
     assert_eq!(preview_items[0]["uri"], traits_uri);
 
-    let prepare_preview_call = response_value(server.handle_json(&request(
+    let prepare_preview_call = response_value(handle_request(
+        &mut server,
         5,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -304,7 +320,7 @@ pub trait Rewardable {
                 "character": line(main_text, 3).find("preview").expect("preview call")
             }
         }),
-    )));
+    ));
     assert_eq!(
         prepare_preview_call["result"]
             .as_array()
@@ -312,11 +328,12 @@ pub trait Rewardable {
         preview_items
     );
 
-    let incoming_grant = response_value(server.handle_json(&request(
+    let incoming_grant = response_value(handle_request(
+        &mut server,
         6,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let grant_incoming = incoming_grant["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -331,11 +348,12 @@ pub trait Rewardable {
         line(main_text, 2).find("grant").expect("grant call"),
     );
 
-    let incoming_preview = response_value(server.handle_json(&request(
+    let incoming_preview = response_value(handle_request(
+        &mut server,
         7,
         "callHierarchy/incomingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
-    )));
+    ));
     let preview_incoming = incoming_preview["result"]
         .as_array()
         .expect("incomingCalls response should be an array");
@@ -350,7 +368,8 @@ pub trait Rewardable {
         line(main_text, 3).find("preview").expect("preview call"),
     );
 
-    let prepare_main = response_value(server.handle_json(&request(
+    let prepare_main = response_value(handle_request(
+        &mut server,
         8,
         "textDocument/prepareCallHierarchy",
         serde_json::json!({
@@ -360,17 +379,18 @@ pub trait Rewardable {
                 "character": line(main_text, 1).find("main").expect("main declaration")
             }
         }),
-    )));
+    ));
     let main_items = prepare_main["result"]
         .as_array()
         .expect("prepareCallHierarchy response should be an array");
     assert_eq!(main_items.len(), 1);
 
-    let main_outgoing = response_value(server.handle_json(&request(
+    let main_outgoing = response_value(handle_request(
+        &mut server,
         9,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": main_items[0].clone() }),
-    )));
+    ));
     let main_calls = main_outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -390,11 +410,12 @@ pub trait Rewardable {
         line(main_text, 3).find("preview").expect("preview call"),
     );
 
-    let grant_outgoing = response_value(server.handle_json(&request(
+    let grant_outgoing = response_value(handle_request(
+        &mut server,
         10,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": grant_items[0].clone() }),
-    )));
+    ));
     let grant_calls = grant_outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
@@ -411,11 +432,12 @@ pub trait Rewardable {
             .expect("imported helper call"),
     );
 
-    let preview_outgoing = response_value(server.handle_json(&request(
+    let preview_outgoing = response_value(handle_request(
+        &mut server,
         11,
         "callHierarchy/outgoingCalls",
         serde_json::json!({ "item": preview_items[0].clone() }),
-    )));
+    ));
     let preview_calls = preview_outgoing["result"]
         .as_array()
         .expect("outgoingCalls response should be an array");
