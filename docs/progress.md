@@ -381,6 +381,11 @@ M20.5 Phase 14 update: range formatting now has service and native LSP
 coverage for exact bodyless trait method selections, preserving surrounding
 same-line text without injecting an extra newline into unselected whitespace.
 
+M20.5 Phase 14 update: document formatting now has service and native LSP
+coverage for incomplete builtin container type-argument lists, preserving the
+syntax-owned recovery boundary by normalizing spacing without inventing a
+missing closing `>`.
+
 M20.5 Phase 10 update: semantic tokens now classify source-owned trait
 receiver method call sites and host-modified schema-backed trait receiver
 method call sites through both the language service and native LSP server,

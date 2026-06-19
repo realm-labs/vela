@@ -418,9 +418,10 @@ coverage complete based only on the older capability phases.
     `Any` suppression.
   - Current fixtures cover service and native LSP document/range/on-type
     formatting, comment and blank-line preservation, compact builtin container
-    type arguments, nested member and field-group selections, malformed-source
-    formatting degradation, idempotence, unsupported trigger fallback, and
-    syntax-only formatting under HIR errors. Inlay fixtures cover service and
+    type arguments, incomplete container type-argument fallback, nested member
+    and field-group selections, malformed-source formatting degradation,
+    idempotence, unsupported trigger fallback, and syntax-only formatting under
+    HIR errors. Inlay fixtures cover service and
     native LSP parameter-name hints including cross-file imported source
     functions, local type hints including imported const/global value facts,
     lambda parameter facts, host-path type facts, source/schema tuple-variant
@@ -1842,6 +1843,8 @@ Tests:
 - [x] `on_type_formatting_compacts_builtin_container_type_arguments`
 - [x] `lsp_document_formatting_compacts_container_type_arguments`
 - [x] `lsp_document_formatting_formats_container_type_hint_example`
+- [x] `formatting_handles_incomplete_container_type_arguments`
+- [x] `lsp_document_formatting_handles_incomplete_container_type_arguments`
 
 Validation:
 

@@ -575,6 +575,22 @@ fn main() {
 }
 
 #[test]
+fn formatting_handles_incomplete_container_type_arguments() {
+    let source = "fn load_rewards(rewards:Map < String, ){return rewards}";
+    let edits = format_source(source);
+    let formatted = apply_edits(source, &edits);
+
+    assert_eq!(
+        formatted,
+        "\
+fn load_rewards(rewards: Map<String,) {
+    return rewards
+}
+"
+    );
+}
+
+#[test]
 fn range_formatting_compacts_builtin_container_type_arguments() {
     let source = "\
 fn load_rewards(rewards:Map < String,i64 >)->Result < Map<String , i64>,String >{return result::ok(rewards)}
