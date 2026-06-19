@@ -21,7 +21,6 @@ mod reload;
 mod rename;
 mod rpc;
 mod semantic_tokens;
-mod signature;
 pub mod stdio;
 mod symbols;
 mod tracing;

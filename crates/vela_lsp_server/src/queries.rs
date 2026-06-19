@@ -33,7 +33,6 @@ use crate::{
     protocol::WorkspaceSymbolParams,
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
-    signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
 };
@@ -296,9 +295,10 @@ impl LspServer {
 
         JsonRpcResult::Response(success_response(
             id,
-            signatures
-                .as_ref()
-                .map_or(JsonValue::Null, lsp_signature_help),
+            signatures.as_ref().map_or(JsonValue::Null, |signatures| {
+                serde_json::to_value(to_proto::signature_help(signatures))
+                    .expect("typed signatureHelp response should serialize")
+            }),
         ))
     }
 
