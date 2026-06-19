@@ -1705,7 +1705,7 @@ helper references are allowed only if they describe external JSON fixtures.
     The package validator pins `serverTraceEnabled()`, `serverLogPath(cwd)`,
     and `--log` launcher wiring. Validated with
     `node editors/vscode/scripts/validate-package.js`.
-- [ ] Write JSONL events for session start, request received, queued,
+- [x] Write JSONL events for session start, request received, queued,
   task started, task ended, response sent, stale discarded, retried, and
   cancelled.
   - Task scheduling now records queued/start/end timestamps on `TaskResult`,
@@ -1720,6 +1720,15 @@ helper references are allowed only if they describe external JSON fixtures.
     `cargo test -p vela_lsp_server`, `cargo fmt --all -- --check`,
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`, and
     `node editors/vscode/scripts/validate-package.js`.
+  - Task-result handling now reports `Completed`, `Cancelled`,
+    `StaleDiscarded`, and `Retried` outcomes from
+    `GlobalState::send_task_result`. The typed main loop writes task
+    `response_sent` events and status events `request_cancelled`,
+    `request_stale`, and `request_retried` with request method, ID,
+    generation, lane, status, and output counts. Validated with
+    `cargo test -p vela_lsp_server send_task_result`,
+    `cargo test -p vela_lsp_server task`, and
+    `cargo test -p vela_lsp_server trace`.
 - [ ] Include method, request ID, document URI when available, generation,
   queueMs, handleMs, writeMs, totalMs, outputBytes, lane, and status.
 - [ ] Preserve the ability to identify a stuck handler from an unmatched or

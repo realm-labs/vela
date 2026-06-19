@@ -58,8 +58,14 @@ pub fn run(connection: Connection, configuration: LaunchConfiguration) -> anyhow
                 )?;
             }
             MainLoopEvent::Task(task) => {
+                let task_metadata = crate::tracing::TaskTraceMetadata::from_task(&task);
                 trace.task_lifecycle(&task)?;
-                let _summary = state.send_task_result(task)?;
+                let task_summary = state.send_task_result(task)?;
+                trace.task_result(
+                    &task_metadata,
+                    task_summary.outcome(),
+                    task_summary.summary(),
+                )?;
             }
         }
 

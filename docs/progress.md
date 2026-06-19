@@ -244,6 +244,11 @@ ended timestamps on background task results, and the typed main loop writes
 request method, ID, generation, lane, queue time, and handler time. Stale,
 retry, and cancellation trace status events remain open at the
 `GlobalState::send_task_result` boundary.
+M20.5 RA main-loop update: `GlobalState::send_task_result` now reports
+completed, cancelled, stale-discarded, and retried task outcomes. The typed
+main loop writes task `response_sent` trace JSONL plus `request_cancelled`,
+`request_stale`, and `request_retried` status events after the task result
+decision is made.
 
 M20.5 RA main-loop update: client work-done progress support, dynamic watched
 file registration support, and semantic-token projection state now live in

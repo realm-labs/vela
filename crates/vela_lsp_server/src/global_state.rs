@@ -36,7 +36,7 @@ use crate::{
     rpc::request_id_from_number_or_string,
     semantic_tokens::SemanticTokenProjection,
     source_version,
-    task::{TaskResult, TaskScheduler},
+    task::{TaskOutcome, TaskResult, TaskScheduler},
     transport::ResultSummary,
     watching, with_work_done_progress_messages,
 };
@@ -65,6 +65,25 @@ pub(crate) struct GlobalState {
     initialized: bool,
     shutdown_requested: bool,
     exited: bool,
+}
+
+pub(crate) struct TaskSendSummary {
+    summary: ResultSummary,
+    outcome: TaskOutcome,
+}
+
+impl TaskSendSummary {
+    pub(crate) const fn new(summary: ResultSummary, outcome: TaskOutcome) -> Self {
+        Self { summary, outcome }
+    }
+
+    pub(crate) const fn summary(&self) -> &ResultSummary {
+        &self.summary
+    }
+
+    pub(crate) const fn outcome(&self) -> TaskOutcome {
+        self.outcome
+    }
 }
 
 #[allow(dead_code)]
@@ -907,7 +926,10 @@ impl GlobalState {
         Ok(summary)
     }
 
-    pub(crate) fn send_task_result(&mut self, result: TaskResult) -> anyhow::Result<ResultSummary> {
+    pub(crate) fn send_task_result(
+        &mut self,
+        result: TaskResult,
+    ) -> anyhow::Result<TaskSendSummary> {
         let _lane = result.lane();
         let _method = result.method();
         let retry = result.retry().cloned();
@@ -922,22 +944,28 @@ impl GlobalState {
             self.request_queue.finish_in_flight(request_id);
         }
         if is_cancelled {
-            if let Some(request_id) = request_id {
-                return self.send_messages(dispatch::request_cancelled(request_id));
-            }
-            return self.send_messages(Vec::new());
+            let summary = if let Some(request_id) = request_id {
+                self.send_messages(dispatch::request_cancelled(request_id))?
+            } else {
+                self.send_messages(Vec::new())?
+            };
+            return Ok(TaskSendSummary::new(summary, TaskOutcome::Cancelled));
         }
         if is_stale {
             if let Some(retry) = retry.and_then(|retry| retry.next_attempt()) {
                 dispatch::retry_stale_request(self, retry);
-                return self.send_messages(Vec::new());
+                let summary = self.send_messages(Vec::new())?;
+                return Ok(TaskSendSummary::new(summary, TaskOutcome::Retried));
             }
-            if let Some(request_id) = request_id {
-                return self.send_messages(dispatch::content_modified(request_id));
-            }
-            return self.send_messages(Vec::new());
+            let summary = if let Some(request_id) = request_id {
+                self.send_messages(dispatch::content_modified(request_id))?
+            } else {
+                self.send_messages(Vec::new())?
+            };
+            return Ok(TaskSendSummary::new(summary, TaskOutcome::StaleDiscarded));
         }
-        self.send_messages(result.into_messages())
+        let summary = self.send_messages(result.into_messages())?;
+        Ok(TaskSendSummary::new(summary, TaskOutcome::Completed))
     }
 
     pub(crate) const fn task_scheduler(&self) -> &TaskScheduler {
@@ -1364,7 +1392,7 @@ mod tests {
         DocumentId, SchemaConfig, SourceVersion, WorkspaceConfig, WorkspaceRoot,
     };
 
-    use crate::task::TaskLane;
+    use crate::task::{TaskLane, TaskOutcome};
 
     use super::*;
 
@@ -1924,9 +1952,10 @@ mod tests {
             .recv_timeout(Duration::from_secs(1))
             .expect("completion resolve task should complete");
         assert!(task.retry().is_some());
-        state
+        let task_summary = state
             .send_task_result(task)
             .expect("completion resolve task response should send");
+        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
         let response = receiver
             .recv_timeout(Duration::from_secs(1))
             .expect("completion resolve should send response");
@@ -2587,9 +2616,10 @@ pub fn main(player: Player) -> i64 {
         assert_eq!(generation.generation(), state.databases.generation());
         assert!(!generation.is_cancelled());
 
-        state
+        let task_summary = state
             .send_task_result(task)
             .expect("formatting task response should send");
+        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
     }
 
@@ -2638,9 +2668,10 @@ pub fn main(player: Player) -> i64 {
             .expect("formatting task should complete");
         state.databases.invalidate_project_config();
 
-        state
+        let task_summary = state
             .send_task_result(task)
             .expect("stale formatting task response should be handled");
+        assert_eq!(task_summary.outcome(), TaskOutcome::StaleDiscarded);
 
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
         let response = receiver
@@ -2714,9 +2745,10 @@ pub fn main(player: Player) -> i64 {
         }));
         assert!(generation.is_cancelled());
 
-        state
+        let task_summary = state
             .send_task_result(task)
             .expect("cancelled formatting task response should be handled");
+        assert_eq!(task_summary.outcome(), TaskOutcome::Cancelled);
 
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
         let response = receiver
@@ -2796,9 +2828,10 @@ pub fn main(player: Player) -> i64 {
             .publish_current_diagnostics(document.as_str(), &document);
         state.sync_from_legacy_server();
 
-        state
+        let stale_summary = state
             .send_task_result(stale_task)
             .expect("stale completion task should schedule retry");
+        assert_eq!(stale_summary.outcome(), TaskOutcome::Retried);
 
         assert!(matches!(receiver.try_recv(), Err(TryRecvError::Empty)));
         assert!(state.request_queue.in_flight.contains_key(&request_id));
@@ -2809,9 +2842,10 @@ pub fn main(player: Player) -> i64 {
             .expect("retry completion task should complete");
         assert_eq!(retry_task.request_id(), Some(&request_id));
 
-        state
+        let retry_summary = state
             .send_task_result(retry_task)
             .expect("fresh retry response should send");
+        assert_eq!(retry_summary.outcome(), TaskOutcome::Completed);
 
         assert!(!state.request_queue.in_flight.contains_key(&request_id));
         let response = receiver
@@ -3353,9 +3387,10 @@ pub fn main(amount: i64) -> i64 {
         .recv_timeout(Duration::from_secs(1))
         .unwrap_or_else(|_| panic!("{label} task should complete"));
         assert!(task.retry().is_some());
-        state
+        let task_summary = state
             .send_task_result(task)
             .unwrap_or_else(|error| panic!("{label} task response should send: {error}"));
+        assert_eq!(task_summary.outcome(), TaskOutcome::Completed);
         let response = receiver
             .recv_timeout(Duration::from_secs(1))
             .unwrap_or_else(|_| panic!("{label} should send a response"));

@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use crate::{
     LaunchConfiguration,
     profile::timestamp_ms,
-    task::{TaskResult, TaskTiming},
+    task::{TaskOutcome, TaskResult, TaskTiming},
     transport::{MessageMetadata, ResultSummary},
 };
 
@@ -15,6 +15,27 @@ pub(crate) struct TraceSink {
 enum TraceWriter {
     File(File),
     Stderr(io::Stderr),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TaskTraceMetadata {
+    method: Option<String>,
+    id: Option<String>,
+    generation: Option<u64>,
+    lane: &'static str,
+}
+
+impl TaskTraceMetadata {
+    pub(crate) fn from_task(task: &TaskResult) -> Self {
+        Self {
+            method: task.method().map(str::to_owned),
+            id: task.request_id().map(request_id_string),
+            generation: task
+                .generation_token()
+                .map(|token| token.generation().get()),
+            lane: task.lane().as_trace_str(),
+        }
+    }
 }
 
 impl TraceSink {
@@ -78,9 +99,34 @@ impl TraceSink {
         let Some(timing) = task.timing() else {
             return Ok(());
         };
-        self.task_event("request_queued", task, timing, timing.queued_ms())?;
-        self.task_event("task_started", task, timing, timing.started_ms())?;
-        self.task_event("task_ended", task, timing, timing.ended_ms())
+        let metadata = TaskTraceMetadata::from_task(task);
+        self.task_event("request_queued", &metadata, timing, timing.queued_ms())?;
+        self.task_event("task_started", &metadata, timing, timing.started_ms())?;
+        self.task_event("task_ended", &metadata, timing, timing.ended_ms())
+    }
+
+    pub(crate) fn task_result(
+        &mut self,
+        metadata: &TaskTraceMetadata,
+        outcome: TaskOutcome,
+        summary: &ResultSummary,
+    ) -> anyhow::Result<()> {
+        if let Some(event) = task_outcome_event(outcome) {
+            self.task_status_event(event, metadata, outcome, summary)?;
+        }
+        self.write_json(serde_json::json!({
+            "event": "response_sent",
+            "timestampMs": timestamp_ms(),
+            "kind": "task",
+            "method": metadata.method.as_deref(),
+            "id": metadata.id.as_deref(),
+            "generation": metadata.generation,
+            "lane": metadata.lane,
+            "resultKind": summary.kind(),
+            "outputMessages": summary.messages(),
+            "outputBytes": summary.bytes(),
+            "status": task_outcome_status(outcome)
+        }))
     }
 
     fn session_start(
@@ -105,22 +151,39 @@ impl TraceSink {
     fn task_event(
         &mut self,
         event: &str,
-        task: &TaskResult,
+        metadata: &TaskTraceMetadata,
         timing: TaskTiming,
         timestamp_ms: u128,
     ) -> anyhow::Result<()> {
-        let generation = task
-            .generation_token()
-            .map(|token| token.generation().get());
         self.write_json(serde_json::json!({
             "event": event,
             "timestampMs": timestamp_ms,
-            "method": task.method(),
-            "id": task.request_id().map(request_id_string),
-            "generation": generation,
-            "lane": task.lane().as_trace_str(),
+            "method": metadata.method.as_deref(),
+            "id": metadata.id.as_deref(),
+            "generation": metadata.generation,
+            "lane": metadata.lane,
             "queueMs": timing.started_ms().saturating_sub(timing.queued_ms()),
             "handleMs": timing.ended_ms().saturating_sub(timing.started_ms())
+        }))
+    }
+
+    fn task_status_event(
+        &mut self,
+        event: &str,
+        metadata: &TaskTraceMetadata,
+        outcome: TaskOutcome,
+        summary: &ResultSummary,
+    ) -> anyhow::Result<()> {
+        self.write_json(serde_json::json!({
+            "event": event,
+            "timestampMs": timestamp_ms(),
+            "method": metadata.method.as_deref(),
+            "id": metadata.id.as_deref(),
+            "generation": metadata.generation,
+            "lane": metadata.lane,
+            "status": task_outcome_status(outcome),
+            "outputMessages": summary.messages(),
+            "outputBytes": summary.bytes()
         }))
     }
 
@@ -144,7 +207,32 @@ fn write_json_line(writer: &mut impl Write, value: &serde_json::Value) -> anyhow
 }
 
 fn request_id_string(id: &lsp_server::RequestId) -> String {
-    id.to_string()
+    match serde_json::to_value(id) {
+        Ok(value) => value
+            .as_str()
+            .map(str::to_owned)
+            .or_else(|| value.as_i64().map(|id| id.to_string()))
+            .unwrap_or_else(|| id.to_string()),
+        Err(_) => id.to_string(),
+    }
+}
+
+fn task_outcome_event(outcome: TaskOutcome) -> Option<&'static str> {
+    match outcome {
+        TaskOutcome::Completed => None,
+        TaskOutcome::Cancelled => Some("request_cancelled"),
+        TaskOutcome::StaleDiscarded => Some("request_stale"),
+        TaskOutcome::Retried => Some("request_retried"),
+    }
+}
+
+fn task_outcome_status(outcome: TaskOutcome) -> &'static str {
+    match outcome {
+        TaskOutcome::Completed => "completed",
+        TaskOutcome::Cancelled => "cancelled",
+        TaskOutcome::StaleDiscarded => "stale_discarded",
+        TaskOutcome::Retried => "retried",
+    }
 }
 
 #[cfg(test)]
@@ -154,11 +242,11 @@ mod tests {
 
     use crate::{
         LaunchConfiguration,
-        task::{TaskLane, TaskResult, TaskTiming},
+        task::{TaskLane, TaskOutcome, TaskResult, TaskTiming},
         transport::{MessageMetadata, ResultSummary},
     };
 
-    use super::TraceSink;
+    use super::{TaskTraceMetadata, TraceSink};
 
     #[test]
     fn trace_sink_accepts_stderr_destination() {
@@ -224,6 +312,67 @@ mod tests {
         assert_eq!(task_ended["lane"], "worker");
         assert_eq!(task_ended["queueMs"], 4);
         assert_eq!(task_ended["handleMs"], 11);
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn trace_sink_writes_task_result_status_events() {
+        let path = temp_trace_path("task-result-status");
+        let mut configuration = LaunchConfiguration::new();
+        configuration.set_trace_log_path(path.to_string_lossy().into_owned());
+        let mut trace =
+            TraceSink::from_configuration(&configuration).expect("file trace should open");
+        let task = TaskResult::lane_method_request_generation_timed_messages(
+            TaskLane::Formatting,
+            Some("textDocument/formatting".to_owned()),
+            Some(RequestId::from("fmt-1".to_owned())),
+            None,
+            None,
+            TaskTiming::new(1, 2, 3),
+            Vec::new(),
+        );
+        let metadata = TaskTraceMetadata::from_task(&task);
+        let summary = ResultSummary::from_messages(&[]);
+
+        trace
+            .task_result(&metadata, TaskOutcome::Cancelled, &summary)
+            .expect("cancelled task status should write");
+        trace
+            .task_result(&metadata, TaskOutcome::StaleDiscarded, &summary)
+            .expect("stale task status should write");
+        trace
+            .task_result(&metadata, TaskOutcome::Retried, &summary)
+            .expect("retried task status should write");
+
+        let output = fs::read_to_string(&path).expect("trace file should be readable");
+        let events = output
+            .lines()
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line)
+                    .expect("trace line should be valid JSON")
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            events.iter().any(
+                |event| event["event"] == "request_cancelled" && event["status"] == "cancelled"
+            )
+        );
+        assert!(
+            events
+                .iter()
+                .any(|event| event["event"] == "request_stale"
+                    && event["status"] == "stale_discarded")
+        );
+        assert!(
+            events
+                .iter()
+                .any(|event| event["event"] == "request_retried" && event["status"] == "retried")
+        );
+        assert!(events.iter().any(|event| event["event"] == "response_sent"
+            && event["kind"] == "task"
+            && event["lane"] == "formatting"
+            && event["id"] == "fmt-1"));
 
         let _ = fs::remove_file(path);
     }

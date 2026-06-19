@@ -55,6 +55,14 @@ impl TaskTiming {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TaskOutcome {
+    Completed,
+    Cancelled,
+    StaleDiscarded,
+    Retried,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum RetryTask {
     Completion {
