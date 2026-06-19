@@ -72,9 +72,9 @@ fn dispatch_request(
         .on_latency_sensitive_snapshot_typed::<SemanticTokensFullDeltaRequest>(
             GlobalStateSnapshot::semantic_tokens_full_delta,
         )
-        .on_worker_typed::<GotoDefinition>(GlobalState::definition)
-        .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
-        .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
+        .on_worker_snapshot_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
+        .on_worker_snapshot_typed::<GotoDeclaration>(GlobalStateSnapshot::declaration)
+        .on_worker_snapshot_typed::<GotoTypeDefinition>(GlobalStateSnapshot::type_definition)
         .on_worker_typed::<References>(GlobalState::references)
         .on_worker_typed::<DocumentHighlightRequest>(GlobalState::document_highlight)
         .on_worker_typed::<DocumentSymbolRequest>(GlobalState::document_symbol)

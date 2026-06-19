@@ -403,6 +403,91 @@ impl GlobalStateSnapshot {
                 .expect("typed onTypeFormatting response should serialize"),
         ))
     }
+
+    pub(crate) fn definition(
+        self,
+        id: lsp_server::RequestId,
+        params: lsp_types::GotoDefinitionParams,
+    ) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "definition",
+            SnapshotNavigationLocationQuery::Definition,
+        )
+    }
+
+    pub(crate) fn declaration(
+        self,
+        id: lsp_server::RequestId,
+        params: lsp_types::request::GotoDeclarationParams,
+    ) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "declaration",
+            SnapshotNavigationLocationQuery::Declaration,
+        )
+    }
+
+    pub(crate) fn type_definition(
+        self,
+        id: lsp_server::RequestId,
+        params: lsp_types::request::GotoTypeDefinitionParams,
+    ) -> JsonRpcResult {
+        self.navigation_location(
+            id,
+            params,
+            "typeDefinition",
+            SnapshotNavigationLocationQuery::TypeDefinition,
+        )
+    }
+
+    fn navigation_location(
+        self,
+        id: lsp_server::RequestId,
+        params: lsp_types::GotoDefinitionParams,
+        method_name: &'static str,
+        query: SnapshotNavigationLocationQuery,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let document_id =
+            from_proto::document_id(&params.text_document_position_params.text_document.uri);
+        let text = snapshot_document_text(&self, &document_id);
+        let input = match from_proto::goto_definition_params(&text, &params) {
+            Ok(input) => input,
+            Err(error) => {
+                return JsonRpcResult::Response(error_response(
+                    Some(id),
+                    ErrorCode::InvalidRequest,
+                    format!("invalid {method_name} position: {error}"),
+                ));
+            }
+        };
+        let definition = match query {
+            SnapshotNavigationLocationQuery::Definition => self
+                .databases
+                .definition(&input.document_id, input.position),
+            SnapshotNavigationLocationQuery::Declaration => self
+                .databases
+                .declaration(&input.document_id, input.position),
+            SnapshotNavigationLocationQuery::TypeDefinition => self
+                .databases
+                .type_definition(&input.document_id, input.position),
+        };
+
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(definition.as_ref().map(to_proto::definition_location))
+                .expect("typed navigation response should serialize"),
+        ))
+    }
+}
+
+enum SnapshotNavigationLocationQuery {
+    Definition,
+    Declaration,
+    TypeDefinition,
 }
 
 fn snapshot_document_text(snapshot: &GlobalStateSnapshot, document_id: &DocumentId) -> String {
@@ -606,39 +691,6 @@ impl GlobalState {
         self.request_queue
             .cancel(request_id_from_lsp_number_or_string(params.id));
         JsonRpcResult::None
-    }
-
-    pub(crate) fn definition(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: lsp_types::GotoDefinitionParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.definition_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn declaration(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: lsp_types::request::GotoDeclarationParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.declaration_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
-    }
-
-    pub(crate) fn type_definition(
-        &mut self,
-        id: lsp_server::RequestId,
-        params: lsp_types::request::GotoTypeDefinitionParams,
-    ) -> JsonRpcResult {
-        let id = request_id_from_lsp(id);
-        let result = self.server.type_definition_typed(id, params);
-        self.sync_workspace_analysis_from_legacy_server();
-        result
     }
 
     pub(crate) fn references(

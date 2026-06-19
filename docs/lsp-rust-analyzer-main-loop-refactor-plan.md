@@ -1084,20 +1084,23 @@ cargo test -p vela_lsp_server inlay
     `textDocument/semanticTokens/full`,
     `textDocument/semanticTokens/full/delta`, and
     `textDocument/semanticTokens/range`, `textDocument/formatting`,
-    `textDocument/rangeFormatting`, and `textDocument/onTypeFormatting` now
-    dispatch through snapshot-specific dispatcher branches, clone a
-    `GlobalStateSnapshot`, and query the snapshot-owned
-    `LanguageServiceDatabases`, `WorkspaceSnapshot`, and semantic-token
-    projection state without mutating `GlobalState` or the legacy `LspServer`.
-    The obsolete mutable typed completion, hover, signature-help,
-    semantic-token, and formatting wrappers were removed. Worker-lane
-    read-only request families still need the same snapshot migration before
-    this checklist item can close. Validated with
+    `textDocument/rangeFormatting`, `textDocument/onTypeFormatting`,
+    `textDocument/definition`, `textDocument/declaration`, and
+    `textDocument/typeDefinition` now dispatch through snapshot-specific
+    dispatcher branches, clone a `GlobalStateSnapshot`, and query the
+    snapshot-owned `LanguageServiceDatabases`, `WorkspaceSnapshot`, and
+    semantic-token projection state without mutating `GlobalState` or the
+    legacy `LspServer`. The obsolete mutable typed completion, hover,
+    signature-help, semantic-token, formatting, and navigation wrappers were
+    removed. References, highlights, symbols, folding, selection ranges,
+    rename, call hierarchy, code actions, and inlay hints still need the same
+    snapshot migration before this checklist item can close. Validated with
     `cargo test -p vela_lsp_server completion`,
     `cargo test -p vela_lsp_server hover`,
     `cargo test -p vela_lsp_server signature`,
     `cargo test -p vela_lsp_server semantic_tokens`,
     `cargo test -p vela_lsp_server formatting`,
+    `cargo test -p vela_lsp_server definition`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
