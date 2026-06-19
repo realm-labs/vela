@@ -1215,13 +1215,6 @@ impl GlobalState {
     }
 
     #[cfg(test)]
-    pub(crate) fn handle_legacy_json(&mut self, input: &str) -> JsonRpcResult {
-        let result = self.server.handle_json(input);
-        self.sync_from_legacy_server();
-        result
-    }
-
-    #[cfg(test)]
     fn sync_from_legacy_server(&mut self) {
         self.initialized |= self.server.initialized;
         self.shutdown_requested |= self.server.shutdown_requested;
@@ -1852,27 +1845,26 @@ mod tests {
     }
 
     #[test]
-    fn legacy_document_sync_updates_global_open_documents() {
+    fn typed_message_sync_updates_global_open_documents() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
         state.initialized = true;
         state.server.initialized = true;
         let document = DocumentId::from("file:///workspace/scripts/main.vela");
 
-        let result = state.handle_legacy_json(
-            &serde_json::json!({
-                "jsonrpc": "2.0",
-                "method": "textDocument/didOpen",
-                "params": {
+        let result = state.handle_message_result(
+            &lsp_server::Message::Notification(lsp_server::Notification {
+                method: "textDocument/didOpen".to_owned(),
+                params: serde_json::json!({
                     "textDocument": {
                         "uri": document.as_str(),
                         "languageId": "vela",
                         "version": 1,
                         "text": "fn main() {}"
                     }
-                }
-            })
-            .to_string(),
+                }),
+            }),
+            "textDocument/didOpen",
         );
 
         assert!(matches!(
@@ -1912,14 +1904,13 @@ mod tests {
 
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
-        let result = state.handle_legacy_json(
-            &serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 3,
-                "method": "exit",
-                "params": null
-            })
-            .to_string(),
+        let result = state.handle_message_result(
+            &lsp_server::Message::Request(lsp_server::Request {
+                id: lsp_server::RequestId::from(3),
+                method: "exit".to_owned(),
+                params: serde_json::Value::Null,
+            }),
+            "exit",
         );
         assert!(result.into_response_message().is_some());
         assert!(state.is_exited());

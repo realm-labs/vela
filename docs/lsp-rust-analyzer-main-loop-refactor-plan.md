@@ -1780,7 +1780,7 @@ node editors/vscode/scripts/validate-package.js
     and its legacy tests. The remaining stdio coverage runs the binary through
     the typed `lsp-server` transport in `tests/stdio_transport.rs`. Validated
     with `cargo test -p vela_lsp_server stdio_binary_uses_typed_transport_for_initialize_and_exit`.
-- [~] Delete obsolete custom JSON-RPC code.
+- [x] Delete obsolete custom JSON-RPC code.
   - Moved the legacy `JsonRpcResult` envelope and cancel-request params out of
     the production `rpc` module into a test-only legacy helper module. The
     production RPC boundary now keeps typed `lsp_server::Message` serialization
@@ -1924,6 +1924,9 @@ node editors/vscode/scripts/validate-package.js
     initialized workspaces and document opens.
   - Deleted the obsolete test-only custom JSON-RPC request/notification string
     builders after the last feature fixture stopped using them.
+  - Removed lifecycle's remaining raw `LspServer::handle_json` coverage,
+    deleted the `handle_json` compatibility harness, and dropped the obsolete
+    test-only raw JSON-RPC parser helpers.
   - Converted the cross-file call hierarchy fixture off
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
@@ -1978,11 +1981,7 @@ node editors/vscode/scripts/validate-package.js
     `LspServer::handle_json` and onto the shared typed request/notification
     helpers.
   - Converted lifecycle request/notification fixture traffic off the legacy
-    custom request/notification builders and onto the shared typed helpers,
-    while preserving raw malformed-message coverage.
-    Remaining work: delete the legacy `LspServer::handle_json` compatibility
-    harness and its custom JSON-RPC test helpers after converting the remaining
-    feature tests to typed messages.
+    custom request/notification builders and onto the shared typed helpers.
 - [ ] Update `docs/architecture/lsp.md` with the new RA-style main-loop
   boundary, stdio default, and optional loopback TCP debug transport.
 - [ ] Update `docs/lsp-implementation-plan.md` if its long goal prompt needs

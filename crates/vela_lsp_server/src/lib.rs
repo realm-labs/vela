@@ -51,8 +51,6 @@ use crate::config_change::ConfigChange;
 pub use crate::legacy_rpc::JsonRpcResult;
 use crate::lsp::to_proto;
 pub(crate) use crate::rpc::ErrorCode;
-#[cfg(test)]
-pub(crate) use crate::rpc::JSONRPC_VERSION;
 use crate::semantic_tokens::SemanticTokenProjection;
 #[cfg(test)]
 use vela_language_service::WorkspaceRoot;
@@ -107,71 +105,6 @@ impl LspServer {
     #[must_use]
     pub const fn is_exited(&self) -> bool {
         self.exited
-    }
-
-    #[cfg(test)]
-    pub fn handle_json(&mut self, input: &str) -> JsonRpcResult {
-        if self.exited {
-            return JsonRpcResult::None;
-        }
-
-        let value = match serde_json::from_str::<JsonValue>(input) {
-            Ok(value) => value,
-            Err(error) => {
-                return JsonRpcResult::error(
-                    None,
-                    ErrorCode::ParseError,
-                    format!("failed to parse JSON-RPC message: {error}"),
-                );
-            }
-        };
-
-        let id = legacy_message_id(&value);
-        match value.get("jsonrpc").and_then(JsonValue::as_str) {
-            Some(JSONRPC_VERSION) => {}
-            Some(_) => {
-                return id.map_or(JsonRpcResult::None, |id| {
-                    JsonRpcResult::error(
-                        Some(id),
-                        ErrorCode::InvalidRequest,
-                        "unsupported JSON-RPC version",
-                    )
-                });
-            }
-            None => {
-                return JsonRpcResult::error(
-                    None,
-                    ErrorCode::ParseError,
-                    "failed to parse JSON-RPC message: missing or invalid JSON-RPC version",
-                );
-            }
-        }
-
-        if value.get("method").is_none() {
-            if value.get("result").is_some() || value.get("error").is_some() {
-                return JsonRpcResult::None;
-            }
-            return id.map_or(JsonRpcResult::None, |id| {
-                JsonRpcResult::error(
-                    Some(id),
-                    ErrorCode::InvalidRequest,
-                    "missing JSON-RPC method",
-                )
-            });
-        }
-
-        let message = match legacy_rpc::message_from_json_rpc(value) {
-            Ok(message) => message,
-            Err(error) => {
-                return JsonRpcResult::error(
-                    id,
-                    ErrorCode::InvalidRequest,
-                    format!("invalid JSON-RPC message: {error}"),
-                );
-            }
-        };
-
-        self.handle_message(message)
     }
 
     #[cfg(test)]
@@ -692,13 +625,6 @@ impl LspServer {
             })
             .collect()
     }
-}
-
-#[cfg(test)]
-fn legacy_message_id(value: &JsonValue) -> Option<RequestId> {
-    value
-        .get("id")
-        .and_then(|id| legacy_rpc::request_id_from_json(id).ok())
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -221,6 +221,11 @@ M20.5 lifecycle update: native LSP cancellation fixtures now cover stale
 queued requests plus unknown and already-completed request IDs as no-response
 no-ops that do not poison later requests.
 
+M20.5 main-loop cleanup update: the rust-analyzer-style cleanup has removed
+the remaining test-only `LspServer::handle_json` compatibility harness plus
+raw JSON-RPC parser helpers; feature and lifecycle fixtures now enter through
+typed `lsp_server::Message` helpers.
+
 M20.5 lifecycle update: native LSP cancellation fixtures now also cover
 request-shaped `$/cancelRequest` rejection and malformed cancel params as
 no-response no-ops that do not cancel later valid requests.
@@ -1408,9 +1413,10 @@ diagnostics.
   custom stdio transport and isolated the legacy `JsonRpcResult` response
   envelope behind test-only compatibility helpers; production RPC code now
   keeps typed `lsp_server::Message` serialization and protocol error codes
-  only. The legacy JSON-RPC value parser is also confined to the test-only
-  helper module, leaving the transport module focused on typed connection I/O,
-  message serialization for profiling/tracing, and typed metadata.
+  only. The legacy JSON-RPC value parser and `LspServer::handle_json`
+  compatibility harness have been removed, leaving the transport module
+  focused on typed connection I/O, message serialization for
+  profiling/tracing, and typed metadata.
 - Plan M21 debugger and M22 Cranelift JIT only from stable source-span,
   frame-map, GC-root, budget, HostAccess, hot-reload, tooling, and conformance
   contracts.

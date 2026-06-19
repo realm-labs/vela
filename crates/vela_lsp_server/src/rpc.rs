@@ -6,8 +6,6 @@ pub(crate) const JSONRPC_VERSION: &str = "2.0";
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ErrorCode {
-    #[cfg(test)]
-    ParseError,
     InvalidRequest,
     MethodNotFound,
     InvalidParams,
@@ -20,8 +18,6 @@ pub(crate) enum ErrorCode {
 impl ErrorCode {
     pub(crate) const fn value(self) -> i32 {
         match self {
-            #[cfg(test)]
-            Self::ParseError => -32700,
             Self::InvalidRequest => -32600,
             Self::MethodNotFound => -32601,
             Self::InvalidParams => -32602,

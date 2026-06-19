@@ -621,36 +621,13 @@ fn lsp_did_open_with_empty_host_schema_has_no_schema_diagnostic() {
 fn lsp_ignores_client_response_to_server_request() {
     let mut server = LspServer::new();
 
-    let result = server.handle_json(
-        &serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": "vela/watched-files",
-            "result": null
-        })
-        .to_string(),
-    );
+    let result = server.handle_message(lsp_server::Message::Response(lsp_server::Response {
+        id: lsp_server::RequestId::from("vela/watched-files".to_owned()),
+        result: Some(JsonValue::Null),
+        error: None,
+    }));
 
     assert_eq!(result, JsonRpcResult::None);
-}
-
-#[test]
-fn lsp_missing_method_request_reports_invalid_request() {
-    let mut server = LspServer::new();
-
-    let response = response_value(
-        server.handle_json(
-            &serde_json::json!({
-                "jsonrpc": "2.0",
-                "id": 7,
-                "params": {}
-            })
-            .to_string(),
-        ),
-    );
-
-    assert_eq!(response["id"], 7);
-    assert_eq!(response["error"]["code"], -32600);
-    assert_eq!(response["error"]["message"], "missing JSON-RPC method");
 }
 
 #[test]
@@ -1047,11 +1024,8 @@ fn lsp_ignores_messages_after_exit() {
             }
         }),
     );
-    let malformed = server.handle_json("{not json");
-
     assert!(server.is_exited());
     assert_eq!(exit, JsonRpcResult::None);
     assert_eq!(hover, JsonRpcResult::None);
     assert_eq!(did_open, JsonRpcResult::None);
-    assert_eq!(malformed, JsonRpcResult::None);
 }
