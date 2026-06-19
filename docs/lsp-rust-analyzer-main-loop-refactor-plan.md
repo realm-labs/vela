@@ -1799,6 +1799,9 @@ node editors/vscode/scripts/validate-package.js
   - Added shared typed request/notification helpers for LSP feature tests and
     converted the document sync fixture group off `LspServer::handle_json`,
     leaving raw JSON-RPC construction out of that focused test surface.
+  - Converted the shared file-watching setup helpers off `LspServer::handle_json`
+    so the file-watching fixture paths used by reload/root-change tests enter
+    the test server through typed `lsp_server::Message` values.
     Remaining work: delete the legacy `LspServer::handle_json` compatibility
     harness and its custom JSON-RPC test helpers after converting the remaining
     feature tests to typed messages.

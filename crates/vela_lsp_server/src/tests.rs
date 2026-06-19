@@ -630,9 +630,9 @@ mod file_watching {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::{
-        JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, notification,
-        notification_value, notification_values, publish_diagnostics_notifications, request,
-        response_value,
+        JsonRpcResult, JsonValue, LspServer, assert_workspace_progress, handle_notification,
+        handle_request, notification, notification_value, notification_values,
+        publish_diagnostics_notifications, request, response_value,
     };
 
     static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
@@ -684,7 +684,8 @@ mod file_watching {
     }
     fn initialized_server(root: &Path, config_path: &Path, helper_path: &Path) -> LspServer {
         let mut server = LspServer::new();
-        let response = response_value(server.handle_json(&request(
+        let response = response_value(handle_request(
+            &mut server,
             1,
             "initialize",
             serde_json::json!({
@@ -696,10 +697,11 @@ mod file_watching {
                     }
                 }
             }),
-        )));
+        ));
         assert_eq!(response["result"]["serverInfo"]["name"], "vela_lsp_server");
 
-        let watched = server.handle_json(&notification(
+        let watched = handle_notification(
+            &mut server,
             "workspace/didChangeWatchedFiles",
             serde_json::json!({
                 "changes": [
@@ -707,13 +709,14 @@ mod file_watching {
                     { "uri": file_uri(helper_path), "type": 1 }
                 ]
             }),
-        ));
+        );
         assert_eq!(watched, JsonRpcResult::None);
         server
     }
     fn open_main(server: &mut LspServer, root: &Path, import_module: &str) -> JsonValue {
         let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-        notification_value(server.handle_json(&notification(
+        notification_value(handle_notification(
+            server,
             "textDocument/didOpen",
             serde_json::json!({
                 "textDocument": {
@@ -725,7 +728,7 @@ mod file_watching {
                     )
                 }
             }),
-        )))
+        ))
     }
     fn assert_no_unresolved_imports(notification: &JsonValue) {
         let Some(diagnostics) = notification["params"]["diagnostics"].as_array() else {
