@@ -33,7 +33,6 @@ use crate::{
     protocol::WorkspaceSymbolParams,
     references::{lsp_document_highlights, lsp_references},
     rename::{lsp_prepare_rename, lsp_workspace_edit},
-    selection::lsp_selection_ranges,
     signature::lsp_signature_help,
     success_response,
     symbols::{lsp_document_symbols, lsp_workspace_symbols},
@@ -1287,7 +1286,11 @@ impl LspServer {
         };
         let ranges = self.databases.selection_ranges(&document_id, &positions);
 
-        JsonRpcResult::Response(success_response(id, lsp_selection_ranges(&ranges)))
+        JsonRpcResult::Response(success_response(
+            id,
+            serde_json::to_value(to_proto::selection_ranges(&ranges))
+                .expect("typed selectionRange response should serialize"),
+        ))
     }
 
     pub(crate) fn selection_range_typed(

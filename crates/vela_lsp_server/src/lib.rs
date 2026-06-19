@@ -20,7 +20,6 @@ mod references;
 mod reload;
 mod rename;
 mod rpc;
-mod selection;
 mod semantic_tokens;
 mod signature;
 pub mod stdio;
