@@ -134,6 +134,9 @@ const languageConfiguration = readJson(language.configuration);
 assert(languageConfiguration.comments.lineComment === "//", "line comment configuration is missing");
 const configuration = manifest.contributes.configuration.properties;
 assert(configuration["vela.server.enabled"], "server enabled debug setting is missing");
+assert(configuration["vela.server.profile.enabled"], "server profile enabled setting is missing");
+assert(configuration["vela.server.profile.path"], "server profile path setting is missing");
+assert(configuration["vela.server.profile.slowMs"], "server profile slow threshold setting is missing");
 assert(configuration["vela.trace.server"], "LSP trace setting is missing");
 
 const grammarJson = readJson(grammar.path);
@@ -181,6 +184,7 @@ assert(extensionSource.includes("serverCommand"), "extension must provide server
 assert(extensionSource.includes("initializationOptions"), "extension must pass initialization options");
 assert(extensionSource.includes("createOutputChannel"), "extension must create debug output channels");
 assert(extensionSource.includes("initializationFailedHandler"), "extension must log initialization failures");
+assert(extensionSource.includes("--profile"), "extension must wire server profile flags");
 assert(
   !extensionSource.includes("context.subscriptions.push(client.start())"),
   "extension must not store the client.start() Promise as a disposable"

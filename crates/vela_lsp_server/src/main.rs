@@ -56,6 +56,8 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
     let mut configuration = LaunchConfiguration::new();
     let mut saw_stdio = false;
     let mut saw_schema = false;
+    let mut saw_profile = false;
+    let mut saw_profile_slow_ms = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
@@ -78,6 +80,30 @@ fn parse_args(args: impl IntoIterator<Item = String>) -> io::Result<Command> {
                 let schema = required_value(&args, index, "--schema")?;
                 configuration.set_host_schema(normalize_cli_path(schema)?);
                 saw_schema = true;
+                index += 2;
+            }
+            "--profile" => {
+                if saw_profile {
+                    return invalid_input("duplicate `--profile` flag");
+                }
+                let profile = required_value(&args, index, "--profile")?;
+                configuration.set_profile_path(normalize_cli_path(profile)?);
+                saw_profile = true;
+                index += 2;
+            }
+            "--profile-slow-ms" => {
+                if saw_profile_slow_ms {
+                    return invalid_input("duplicate `--profile-slow-ms` flag");
+                }
+                let slow_ms = required_value(&args, index, "--profile-slow-ms")?;
+                let slow_ms = slow_ms.parse::<u64>().map_err(|error| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!("invalid `--profile-slow-ms` value `{slow_ms}`: {error}"),
+                    )
+                })?;
+                configuration.set_profile_slow_ms(slow_ms);
+                saw_profile_slow_ms = true;
                 index += 2;
             }
             "--version" | "-V" => {
@@ -121,7 +147,7 @@ fn invalid_input<T>(message: impl Into<String>) -> io::Result<T> {
 }
 
 fn help_text() -> &'static str {
-    "Usage: vela_lsp_server [--stdio] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>]\n       vela_lsp_server --version"
+    "Usage: vela_lsp_server [--stdio] [--root <path-or-file-uri>]... [--schema <path-or-file-uri>] [--profile <jsonl-path>] [--profile-slow-ms <ms>]\n       vela_lsp_server --version"
 }
 
 #[cfg(test)]
@@ -138,6 +164,10 @@ mod tests {
             "file:///workspace/vendor".to_owned(),
             "--schema".to_owned(),
             "file:///workspace/target/vela/schema.json".to_owned(),
+            "--profile".to_owned(),
+            "/tmp/vela-lsp-profile.jsonl".to_owned(),
+            "--profile-slow-ms".to_owned(),
+            "25".to_owned(),
         ])
         .expect("config flags should parse");
 
@@ -155,6 +185,11 @@ mod tests {
             configuration.host_schema(),
             Some("file:///workspace/target/vela/schema.json")
         );
+        assert_eq!(
+            configuration.profile_path(),
+            Some("/tmp/vela-lsp-profile.jsonl")
+        );
+        assert_eq!(configuration.profile_slow_ms(), 25);
     }
 
     #[test]
@@ -177,5 +212,19 @@ mod tests {
 
         assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
         assert!(error.to_string().contains("missing value"));
+    }
+
+    #[test]
+    fn cli_profile_slow_ms_must_be_numeric() {
+        let error = parse_args(vec![
+            "--profile".to_owned(),
+            "/tmp/vela-lsp-profile.jsonl".to_owned(),
+            "--profile-slow-ms".to_owned(),
+            "slow".to_owned(),
+        ])
+        .expect_err("profile slow threshold should be numeric");
+
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+        assert!(error.to_string().contains("invalid `--profile-slow-ms`"));
     }
 }

@@ -1,5 +1,6 @@
 "use strict";
 
+const os = require("os");
 const path = require("path");
 const vscode = require("vscode");
 
@@ -27,6 +28,26 @@ function configuredSchema() {
   return config().get("host.schema", "");
 }
 
+function profileEnabled() {
+  return config().get("server.profile.enabled", false);
+}
+
+function profileSlowMs() {
+  const configured = Number(config().get("server.profile.slowMs", 50));
+  return Number.isFinite(configured) && configured >= 0 ? Math.floor(configured) : 50;
+}
+
+function profilePath(cwd) {
+  const configured = config().get("server.profile.path", "");
+  if (configured.trim().length > 0) {
+    return configured;
+  }
+  if (cwd) {
+    return path.join(cwd, ".vela-lsp-profile.jsonl");
+  }
+  return path.join(os.tmpdir(), "vela-lsp-profile.jsonl");
+}
+
 function serverCommand(context) {
   const configured = config().get("server.path", "");
   if (configured.trim().length > 0) {
@@ -36,7 +57,7 @@ function serverCommand(context) {
   return context.asAbsolutePath(path.join("server", executable));
 }
 
-function serverArgs() {
+function serverArgs(cwd) {
   const args = [...config().get("server.args", ["--stdio"])];
   for (const root of configuredRoots()) {
     args.push("--root", root);
@@ -44,6 +65,10 @@ function serverArgs() {
   const schema = configuredSchema();
   if (schema.trim().length > 0) {
     args.push("--schema", schema);
+  }
+  if (profileEnabled()) {
+    args.push("--profile", profilePath(cwd));
+    args.push("--profile-slow-ms", String(profileSlowMs()));
   }
   return args;
 }
@@ -88,10 +113,13 @@ function activate(context) {
   context.subscriptions.push(traceOutputChannel);
 
   const command = serverCommand(context);
-  const args = serverArgs();
   const cwd = workspaceFolderPath();
+  const args = serverArgs(cwd);
   log(`Starting native language server: ${command} ${args.join(" ")}`);
   log(`Language server cwd: ${cwd ?? "<none>"}`);
+  if (profileEnabled()) {
+    log(`Language server profile: ${profilePath(cwd)}`);
+  }
 
   const serverOptions = {
     command,

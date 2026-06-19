@@ -10,16 +10,31 @@ use crate::{
     normalized_path, publish_diagnostics_notification,
 };
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchConfiguration {
     workspace_roots: Vec<String>,
     host_schema: Option<String>,
+    profile_path: Option<String>,
+    profile_slow_ms: u64,
+}
+
+impl Default for LaunchConfiguration {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LaunchConfiguration {
+    pub const DEFAULT_PROFILE_SLOW_MS: u64 = 50;
+
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            workspace_roots: Vec::new(),
+            host_schema: None,
+            profile_path: None,
+            profile_slow_ms: Self::DEFAULT_PROFILE_SLOW_MS,
+        }
     }
 
     #[must_use]
@@ -36,6 +51,15 @@ impl LaunchConfiguration {
         self.host_schema = (!schema.trim().is_empty()).then_some(schema);
     }
 
+    pub fn set_profile_path(&mut self, path: impl Into<String>) {
+        let path = path.into();
+        self.profile_path = (!path.trim().is_empty()).then_some(path);
+    }
+
+    pub const fn set_profile_slow_ms(&mut self, slow_ms: u64) {
+        self.profile_slow_ms = slow_ms;
+    }
+
     #[must_use]
     pub fn workspace_roots(&self) -> &[String] {
         &self.workspace_roots
@@ -44,6 +68,16 @@ impl LaunchConfiguration {
     #[must_use]
     pub fn host_schema(&self) -> Option<&str> {
         self.host_schema.as_deref()
+    }
+
+    #[must_use]
+    pub fn profile_path(&self) -> Option<&str> {
+        self.profile_path.as_deref()
+    }
+
+    #[must_use]
+    pub const fn profile_slow_ms(&self) -> u64 {
+        self.profile_slow_ms
     }
 
     fn into_editor_configuration(self) -> Option<EditorConfiguration> {

@@ -23,6 +23,24 @@ The extension passes `vela.workspace.roots` and `vela.host.schema` both as
 native launch flags and initialization options. A project `vela.toml` remains
 the authoritative workspace configuration when present.
 
+## Language Server Profiling
+
+To diagnose editor stalls caused by the native language server, enable request
+profiling in VS Code settings:
+
+```json
+{
+  "vela.server.profile.enabled": true,
+  "vela.server.profile.slowMs": 50
+}
+```
+
+By default the server writes JSONL events to `.vela-lsp-profile.jsonl` in the
+workspace root. Each LSP message has a `begin` event and an `end` event. If the
+server hangs inside a handler, the last unmatched `begin` entry identifies the
+stuck method; otherwise inspect `end.totalMs`, `end.handleMs`, `end.writeMs`,
+and `end.outputBytes`.
+
 ## Validation
 
 ```bash

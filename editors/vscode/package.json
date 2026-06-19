@@ -331,6 +331,22 @@
           },
           "description": "Arguments passed to the native Vela language server."
         },
+        "vela.server.profile.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Write native language-server request profiling events to a local JSONL file."
+        },
+        "vela.server.profile.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path for native language-server request profiling JSONL. When empty, profiling writes .vela-lsp-profile.jsonl in the workspace root."
+        },
+        "vela.server.profile.slowMs": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "description": "Request duration threshold, in milliseconds, used to mark language-server profile events as slow."
+        },
         "vela.workspace.roots": {
           "type": "array",
           "default": [],
