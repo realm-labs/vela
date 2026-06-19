@@ -262,6 +262,9 @@ Open document IDs now live in `GlobalState` and `GlobalStateSnapshot`; the
 temporary legacy document-sync path mirrors them back after legacy handling
 while typed watched-file scheduling and progress gating read the `GlobalState`
 owner.
+Editor configuration now lives in `GlobalState` and `GlobalStateSnapshot`
+after launch, initialize, and typed configuration changes, with temporary
+mirroring from legacy paths.
 
 M20.5 RA main-loop update: `GlobalStateSnapshot` now captures immutable launch
 configuration, workspace snapshot, language-service databases, workspace

@@ -37,6 +37,7 @@ pub(crate) struct GlobalState {
     server: LspServer,
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
+    editor_config: Option<EditorConfiguration>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -55,6 +56,7 @@ pub(crate) struct GlobalStateSnapshot {
     databases: LanguageServiceDatabases,
     workspace_roots: BTreeSet<String>,
     open_documents: BTreeSet<DocumentId>,
+    editor_config: Option<EditorConfiguration>,
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
@@ -89,6 +91,10 @@ impl GlobalStateSnapshot {
 
     pub(crate) const fn open_documents(&self) -> &BTreeSet<DocumentId> {
         &self.open_documents
+    }
+
+    pub(crate) fn editor_config(&self) -> Option<&EditorConfiguration> {
+        self.editor_config.as_ref()
     }
 
     pub(crate) const fn client_supports_work_done_progress(&self) -> bool {
@@ -126,6 +132,7 @@ impl GlobalState {
         let server = LspServer::with_launch_configuration(launch_configuration.clone());
         let workspace_roots = server.workspace_roots.clone();
         let open_documents = server.open_documents.clone();
+        let editor_config = server.editor_config.clone();
         Self {
             sender,
             launch_configuration,
@@ -134,6 +141,7 @@ impl GlobalState {
             server,
             workspace_roots,
             open_documents,
+            editor_config,
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
@@ -157,6 +165,7 @@ impl GlobalState {
             databases: self.server.databases.clone(),
             workspace_roots: self.workspace_roots.clone(),
             open_documents: self.open_documents.clone(),
+            editor_config: self.editor_config.clone(),
             client_supports_work_done_progress: self.client_supports_work_done_progress,
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
@@ -209,6 +218,7 @@ impl GlobalState {
         let watch_files_enabled = change.watch_files_enabled();
         self.server.apply_config_change(change);
         self.workspace_roots = self.server.workspace_roots.clone();
+        self.editor_config = self.server.editor_config.clone();
         if let Some(enabled) = watch_files_enabled {
             self.watch_files_enabled = enabled;
         }
@@ -358,6 +368,7 @@ impl GlobalState {
         self.watch_files_enabled = !self.server.file_watching_disabled;
         self.workspace_roots = self.server.workspace_roots.clone();
         self.open_documents = self.server.open_documents.clone();
+        self.editor_config = self.server.editor_config.clone();
     }
 
     fn sync_client_capabilities_to_legacy_server(&mut self) {
@@ -471,6 +482,14 @@ mod tests {
         );
         state.client_supports_work_done_progress = true;
         state.client_supports_watched_file_registration = true;
+        state.editor_config = Some(
+            EditorConfiguration::from_settings(serde_json::json!({
+                "workspace": {
+                    "roots": ["/workspace/scripts"]
+                }
+            }))
+            .expect("editor config should deserialize"),
+        );
         state.semantic_token_projection = SemanticTokenProjection::for_client(
             Some(&["type".to_owned(), "function".to_owned()]),
             Some(&["declaration".to_owned()]),
@@ -488,6 +507,7 @@ mod tests {
         );
         state.server.open_documents.clear();
         state.open_documents.clear();
+        state.editor_config = None;
         state.client_supports_work_done_progress = false;
         state.client_supports_watched_file_registration = false;
         state.semantic_token_projection = SemanticTokenProjection::default();
@@ -506,6 +526,7 @@ mod tests {
         assert_eq!(snapshot.generation(), snapshot.databases().generation());
         assert!(snapshot.workspace_roots().contains("/workspace/scripts"));
         assert!(snapshot.open_documents().contains(&document));
+        assert!(snapshot.editor_config().is_some());
         assert!(snapshot.client_supports_work_done_progress());
         assert!(snapshot.client_supports_watched_file_registration());
         assert_ne!(
@@ -661,6 +682,29 @@ mod tests {
         assert!(state.workspace_roots.contains("/workspace/tools"));
         assert!(!state.server.workspace_roots.contains("/legacy/only"));
         assert_eq!(state.server.workspace_roots, state.workspace_roots);
+    }
+
+    #[test]
+    fn typed_configuration_updates_global_editor_config() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+
+        let result = state.did_change_configuration(lsp_types::DidChangeConfigurationParams {
+            settings: serde_json::json!({
+                "vela": {
+                    "workspace": {
+                        "roots": ["/workspace/scripts"]
+                    }
+                }
+            }),
+        });
+
+        assert_eq!(result, JsonRpcResult::None);
+        assert!(state.editor_config.is_some());
+        assert_eq!(
+            state.editor_config.is_some(),
+            state.server.editor_config.is_some()
+        );
     }
 
     #[test]
