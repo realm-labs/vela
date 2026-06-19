@@ -9,11 +9,11 @@ use lsp_types::{
     },
     request::{
         CallHierarchyIncomingCalls, CallHierarchyOutgoingCalls, CallHierarchyPrepare,
-        CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting,
-        GotoDeclaration, GotoDefinition, GotoTypeDefinition, HoverRequest, InlayHintRequest,
-        PrepareRenameRequest, References, Rename, ResolveCompletionItem, SelectionRangeRequest,
-        SemanticTokensFullDeltaRequest, SemanticTokensFullRequest, SemanticTokensRangeRequest,
-        SignatureHelpRequest,
+        CodeActionRequest, Completion, DocumentHighlightRequest, DocumentSymbolRequest,
+        FoldingRangeRequest, Formatting, GotoDeclaration, GotoDefinition, GotoTypeDefinition,
+        HoverRequest, InlayHintRequest, PrepareRenameRequest, References, Rename,
+        ResolveCompletionItem, SelectionRangeRequest, SemanticTokensFullDeltaRequest,
+        SemanticTokensFullRequest, SemanticTokensRangeRequest, SignatureHelpRequest,
     },
 };
 use serde::de::DeserializeOwned;
@@ -68,6 +68,7 @@ fn dispatch_request(
         .on_worker_typed::<GotoDeclaration>(GlobalState::declaration)
         .on_worker_typed::<GotoTypeDefinition>(GlobalState::type_definition)
         .on_worker_typed::<References>(GlobalState::references)
+        .on_worker_typed::<DocumentHighlightRequest>(GlobalState::document_highlight)
         .on_worker_typed::<PrepareRenameRequest>(GlobalState::prepare_rename)
         .on_worker_typed::<Rename>(GlobalState::rename)
         .on_worker_typed::<CallHierarchyPrepare>(GlobalState::prepare_call_hierarchy)

@@ -627,6 +627,8 @@ cargo test -p vela_lsp_server workspace_folders
     and its protocol aliases through `lsp/from_proto.rs`.
   - `textDocument/references` now converts typed `ReferenceParams` through
     `lsp/from_proto.rs`.
+  - `textDocument/documentHighlight` now converts typed
+    `DocumentHighlightParams` through `lsp/from_proto.rs`.
   - `textDocument/prepareRename` now converts typed
     `TextDocumentPositionParams` through `lsp/from_proto.rs`.
   - `textDocument/rename` now converts typed `RenameParams` through
@@ -645,6 +647,8 @@ cargo test -p vela_lsp_server workspace_folders
   - Navigation definitions now project through typed `lsp_types::Location`
     values for definition, declaration, and type-definition responses.
   - References now project through typed `lsp_types::Location` arrays.
+  - Document highlights now project through typed
+    `lsp_types::DocumentHighlight` values.
   - Prepare rename now projects through typed
     `lsp_types::PrepareRenameResponse` values.
   - Rename now projects through typed `lsp_types::WorkspaceEdit` values with
@@ -752,6 +756,17 @@ cargo test -p vela_lsp_server workspace_folders
     `cargo test -p vela_lsp_server lsp::to_proto::tests`,
     `cargo test -p vela_lsp_server lifecycle`,
     `cargo test -p vela_language_service call_hierarchy`,
+    `cargo fmt --all -- --check`, and
+    `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
+  - `textDocument/documentHighlight` now uses typed
+    `DocumentHighlightParams` through `GlobalState` and typed
+    `lsp_types::DocumentHighlight` projection through `lsp/to_proto.rs`.
+    Validated with `cargo test -p vela_lsp_server document_highlight`,
+    `cargo test -p vela_lsp_server references`,
+    `cargo test -p vela_lsp_server lsp::from_proto::tests`,
+    `cargo test -p vela_lsp_server lsp::to_proto::tests`,
+    `cargo test -p vela_lsp_server lifecycle`,
+    `cargo test -p vela_language_service document_highlight`,
     `cargo fmt --all -- --check`, and
     `cargo clippy -p vela_lsp_server --all-targets -- -D warnings`.
 - [ ] Remove feature-handler construction of raw `serde_json::Value` responses

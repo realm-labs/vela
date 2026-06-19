@@ -4,9 +4,9 @@ use serde_json::{Value as JsonValue, json};
 use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
-    DiagnosticRange, DocumentTextEdit, Hover, HoverKind, IncomingCall, LineIndex, OutgoingCall,
-    PrepareRename, Reference, RenameRiskKind, SignatureHelp, TextEdit as ServiceTextEdit,
-    TextRange, WorkspaceEdit,
+    DiagnosticRange, DocumentHighlight, DocumentHighlightKind, DocumentTextEdit, Hover, HoverKind,
+    IncomingCall, LineIndex, OutgoingCall, PrepareRename, Reference, RenameRiskKind, SignatureHelp,
+    TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
 };
 
 pub(crate) fn completion_response(
@@ -73,6 +73,18 @@ pub(crate) fn reference_locations(references: &[Reference]) -> Vec<lsp_types::Lo
     references
         .iter()
         .map(|reference| location(reference.document_id(), reference.range()))
+        .collect()
+}
+
+pub(crate) fn document_highlights(
+    highlights: &[DocumentHighlight],
+) -> Vec<lsp_types::DocumentHighlight> {
+    highlights
+        .iter()
+        .map(|highlight| lsp_types::DocumentHighlight {
+            range: diagnostic_range(highlight.range()),
+            kind: document_highlight_kind(highlight.kind()),
+        })
         .collect()
 }
 
@@ -175,6 +187,18 @@ fn call_hierarchy_item(item: &ServiceCallHierarchyItem) -> lsp_types::CallHierar
             "uri": uri.as_str(),
             "selectionRange": selection_range,
         })),
+    }
+}
+
+const fn document_highlight_kind(
+    kind: DocumentHighlightKind,
+) -> Option<lsp_types::DocumentHighlightKind> {
+    match kind {
+        DocumentHighlightKind::Text | DocumentHighlightKind::Call => {
+            Some(lsp_types::DocumentHighlightKind::TEXT)
+        }
+        DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
+        DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
     }
 }
 
@@ -647,6 +671,50 @@ pub fn main(amount: i64) -> i64 {
         );
         assert_eq!(
             locations[2].range,
+            lsp_types::Range::new(
+                lsp_types::Position::new(2, 18),
+                lsp_types::Position::new(2, 24)
+            )
+        );
+    }
+
+    #[test]
+    fn document_highlights_project_typed_highlights() {
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let source = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+        let files = vec![SourceFileSnapshot::new(document.clone(), source)];
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let position = Position::new(
+            2,
+            source
+                .lines()
+                .nth(2)
+                .expect("return line should exist")
+                .find("amount")
+                .expect("line should contain amount"),
+        );
+        let highlights = databases.document_highlights(&document, position);
+
+        let highlights = document_highlights(&highlights);
+
+        assert_eq!(highlights.len(), 3);
+        assert_eq!(
+            highlights[0].kind,
+            Some(lsp_types::DocumentHighlightKind::TEXT)
+        );
+        assert_eq!(
+            highlights[1].kind,
+            Some(lsp_types::DocumentHighlightKind::READ)
+        );
+        assert_eq!(
+            highlights[2].range,
             lsp_types::Range::new(
                 lsp_types::Position::new(2, 18),
                 lsp_types::Position::new(2, 24)

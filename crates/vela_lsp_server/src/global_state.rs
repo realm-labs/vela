@@ -6,8 +6,8 @@ use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
     DidChangeWatchedFilesParams, DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, HoverParams, ReferenceParams,
-    RenameParams, SignatureHelpParams, TextDocumentPositionParams,
+    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentHighlightParams, HoverParams,
+    ReferenceParams, RenameParams, SignatureHelpParams, TextDocumentPositionParams,
 };
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration, WorkspaceRoot,
@@ -399,6 +399,17 @@ impl GlobalState {
     ) -> JsonRpcResult {
         let id = request_id_from_lsp(id);
         let result = self.server.references_typed(id, params);
+        self.sync_workspace_analysis_from_legacy_server();
+        result
+    }
+
+    pub(crate) fn document_highlight(
+        &mut self,
+        id: lsp_server::RequestId,
+        params: DocumentHighlightParams,
+    ) -> JsonRpcResult {
+        let id = request_id_from_lsp(id);
+        let result = self.server.document_highlight_typed(id, params);
         self.sync_workspace_analysis_from_legacy_server();
         result
     }
@@ -1520,6 +1531,43 @@ pub fn main(amount: i64) -> i64 {
     }
 
     #[test]
+    fn typed_document_highlight_dispatch_projects_highlights() {
+        let (sender, _receiver) = unbounded();
+        let mut state = GlobalState::new(sender, LaunchConfiguration::new());
+        state.initialized = true;
+        state.server.initialized = true;
+        let document = DocumentId::from("file:///workspace/scripts/main.vela");
+        let text = "\
+pub fn main(amount: i64) -> i64 {
+    let next = amount + 1
+    return next + amount
+}";
+        state
+            .server
+            .workspace
+            .open_document(document.clone(), text, SourceVersion::new(1));
+        state.server.open_documents.insert(document.clone());
+        state.sync_from_legacy_server();
+        let line = text.lines().nth(2).expect("return line should exist");
+        let character = line
+            .find("amount")
+            .expect("return line should contain amount");
+
+        let response = typed_document_highlight_response(&mut state, 15, &document, 2, character);
+        let highlights = response["result"]
+            .as_array()
+            .expect("documentHighlight response should be an array");
+
+        assert_eq!(highlights.len(), 3, "{highlights:?}");
+        assert_eq!(highlights[0]["kind"], 1);
+        assert_eq!(highlights[1]["kind"], 2);
+        assert_eq!(highlights[0]["range"]["start"]["line"], 0);
+        assert_eq!(highlights[0]["range"]["start"]["character"], 12);
+        assert_eq!(highlights[2]["range"]["start"]["line"], 2);
+        assert_eq!(highlights[2]["range"]["start"]["character"], 18);
+    }
+
+    #[test]
     fn typed_prepare_rename_dispatch_projects_placeholder_range() {
         let (sender, _receiver) = unbounded();
         let mut state = GlobalState::new(sender, LaunchConfiguration::new());
@@ -1941,6 +1989,39 @@ pub fn main(amount: i64) -> i64 {
         let response = result
             .into_response()
             .expect("typed references should return a response");
+        serde_json::from_str(&response).expect("response should be JSON")
+    }
+
+    fn typed_document_highlight_response(
+        state: &mut GlobalState,
+        id: i32,
+        document: &DocumentId,
+        line: u32,
+        character: usize,
+    ) -> serde_json::Value {
+        let request = Message::Request(lsp_server::Request {
+            id: lsp_server::RequestId::from(id),
+            method: "textDocument/documentHighlight".to_owned(),
+            params: serde_json::to_value(lsp_types::DocumentHighlightParams {
+                text_document_position_params: lsp_types::TextDocumentPositionParams {
+                    text_document: lsp_types::TextDocumentIdentifier {
+                        uri: lsp_types::Url::parse(document.as_str())
+                            .expect("document URI should parse"),
+                    },
+                    position: lsp_types::Position::new(
+                        line,
+                        u32::try_from(character).expect("position should fit in u32"),
+                    ),
+                },
+                work_done_progress_params: lsp_types::WorkDoneProgressParams::default(),
+                partial_result_params: lsp_types::PartialResultParams::default(),
+            })
+            .expect("documentHighlight params should serialize"),
+        });
+        let result = state.handle_message(&request, "");
+        let response = result
+            .into_response()
+            .expect("typed documentHighlight should return a response");
         serde_json::from_str(&response).expect("response should be JSON")
     }
 
