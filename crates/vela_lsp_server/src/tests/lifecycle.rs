@@ -275,7 +275,7 @@ fn lsp_rejects_malformed_initialize_without_initializing() {
     )));
 
     assert_eq!(malformed["id"], 1);
-    assert_eq!(malformed["error"]["code"], -32600);
+    assert_eq!(malformed["error"]["code"], -32602);
     assert!(
         malformed["error"]["message"]
             .as_str()

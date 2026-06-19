@@ -341,7 +341,7 @@ fn invalid_params(
 ) -> JsonRpcResult {
     JsonRpcResult::Response(error_response(
         Some(request_id_from_lsp(id)),
-        ErrorCode::InvalidRequest,
+        ErrorCode::InvalidParams,
         format!("invalid {method} params: {error}"),
     ))
 }

@@ -713,7 +713,7 @@ mod tests {
             .error
             .as_ref()
             .expect("malformed initialize should produce an error");
-        assert_eq!(error.code, -32600);
+        assert_eq!(error.code, -32602);
         assert!(
             error.message.contains("invalid initialize params"),
             "unexpected message: {}",

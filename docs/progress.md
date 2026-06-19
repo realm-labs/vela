@@ -245,6 +245,10 @@ roots, open document IDs, generation, and lifecycle flags for future
 read-only request handlers. Routing read-only feature handlers through that
 snapshot remains pending with the task-lane migration.
 
+M20.5 RA main-loop update: typed request parameter decode failures now use the
+shared dispatcher `InvalidParams` JSON-RPC projection (`-32602`), while
+lifecycle-state failures such as repeated initialize remain `InvalidRequest`.
+
 M20.5 Phase 11 update: references and call hierarchy are complete enough for
 the current LSP track. The plan checklist is closed with service and native
 LSP fixtures for reference indexing, reference kinds, `textDocument/references`,

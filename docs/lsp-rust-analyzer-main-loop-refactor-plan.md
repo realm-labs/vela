@@ -451,6 +451,9 @@ cargo test -p vela_lsp_server lifecycle
     projected as JSON-RPC internal errors; typed notification handler panics
     are caught as no-response notification failures. Legacy feature-handler
     panic paths remain open until their Phase 4/5 typed migration.
+  - Typed request parameter decode failures now use the shared dispatcher
+    `InvalidParams` projection (`-32602`) while invalid lifecycle state remains
+    `InvalidRequest`.
 - [x] Migrate `initialize`, `initialized`, `shutdown`, `exit`, and
   `$/cancelRequest` to typed dispatch.
 - [x] Preserve current lifecycle behavior for repeated initialize, malformed

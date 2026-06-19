@@ -31,7 +31,7 @@ impl LspServer {
             Err(error) => {
                 return JsonRpcResult::Response(error_response(
                     Some(id),
-                    ErrorCode::InvalidRequest,
+                    ErrorCode::InvalidParams,
                     format!("invalid initialize params: {error}"),
                 ));
             }
