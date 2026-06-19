@@ -91,6 +91,16 @@ impl ErrorCode {
     }
 }
 
+impl JsonRpcResult {
+    pub(crate) fn error(
+        id: Option<RequestId>,
+        code: ErrorCode,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::Response(error_response(id, code, message))
+    }
+}
+
 pub(crate) fn success_response(id: RequestId, result: JsonValue) -> String {
     serialize_response(Response {
         id,

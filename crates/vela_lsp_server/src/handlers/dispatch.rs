@@ -20,7 +20,7 @@ use lsp_types::{
 use serde::de::DeserializeOwned;
 
 use crate::{
-    ErrorCode, JsonRpcResult, RequestId, error_response,
+    ErrorCode, JsonRpcResult, RequestId,
     global_state::GlobalState,
     global_state::GlobalStateSnapshot,
     rpc::request_id_from_lsp,
@@ -655,43 +655,43 @@ impl<'a> NotificationDispatcher<'a> {
 }
 
 fn method_not_found(id: lsp_server::RequestId, method: &str) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(request_id_from_lsp(id)),
         ErrorCode::MethodNotFound,
         format!("method `{method}` is not implemented"),
-    ))
+    )
 }
 
 fn server_not_initialized(id: lsp_server::RequestId) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(request_id_from_lsp(id)),
         ErrorCode::ServerNotInitialized,
         "server has not been initialized",
-    ))
+    )
 }
 
 fn server_shut_down(id: lsp_server::RequestId) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(request_id_from_lsp(id)),
         ErrorCode::InvalidRequest,
         "server has shut down",
-    ))
+    )
 }
 
 pub(crate) fn request_cancelled(id: RequestId) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(id),
         ErrorCode::RequestCancelled,
         "request was cancelled before processing",
-    ))
+    )
 }
 
 pub(crate) fn content_modified(id: RequestId) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(id),
         ErrorCode::ContentModified,
         "request result is stale because the document was modified",
-    ))
+    )
 }
 
 fn invalid_params(
@@ -699,11 +699,11 @@ fn invalid_params(
     method: &str,
     error: serde_json::Error,
 ) -> JsonRpcResult {
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(request_id_from_lsp(id)),
         ErrorCode::InvalidParams,
         format!("invalid {method} params: {error}"),
-    ))
+    )
 }
 
 fn handler_panic(
@@ -712,11 +712,11 @@ fn handler_panic(
     payload: &(dyn Any + Send),
 ) -> JsonRpcResult {
     let detail = panic_message(payload).unwrap_or("unknown panic payload");
-    JsonRpcResult::Response(error_response(
+    JsonRpcResult::error(
         Some(request_id_from_lsp(id)),
         ErrorCode::InternalError,
         format!("handler for `{method}` panicked: {detail}"),
-    ))
+    )
 }
 
 fn panic_message(payload: &(dyn Any + Send)) -> Option<&str> {
