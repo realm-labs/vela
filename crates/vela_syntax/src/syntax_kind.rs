@@ -142,6 +142,7 @@ pub enum SyntaxKind {
     OrOr,
     Pipe,
     Question,
+    Interpolation,
     Eof,
 }
 
@@ -215,6 +216,7 @@ impl SyntaxKind {
                 | Self::TuplePattern
                 | Self::RecordPattern
                 | Self::RecordPatternField
+                | Self::Interpolation
                 | Self::Error
         )
     }
@@ -453,7 +455,8 @@ impl From<u16> for SyntaxKind {
             136 => Self::OrOr,
             137 => Self::Pipe,
             138 => Self::Question,
-            139 => Self::Eof,
+            139 => Self::Interpolation,
+            140 => Self::Eof,
             _ => unreachable!("raw syntax kind already checked against LAST_KIND"),
         }
     }

@@ -10,7 +10,7 @@ mod operators;
 #[path = "expr/paren.rs"]
 mod paren;
 
-pub use literals::SyntaxLiteral;
+pub use literals::{SyntaxInterpolation, SyntaxLiteral};
 pub use operators::{SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxUnaryExpr};
 pub use paren::SyntaxParenExpr;
 

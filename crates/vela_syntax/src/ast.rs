@@ -34,8 +34,8 @@ pub use control::{SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchArmList, Syntax
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr,
-    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
+    SyntaxInterpolation, SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry,
+    SyntaxMapExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
     SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 pub use items::{

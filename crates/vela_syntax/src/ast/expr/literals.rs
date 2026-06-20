@@ -1,5 +1,5 @@
 use crate::ast::literal_semantics::literal_from_token;
-use crate::ast::{AstNode, Literal};
+use crate::ast::{AstChildren, AstNode, Literal, SyntaxExpression};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -23,7 +23,23 @@ impl SyntaxLiteral {
 
     #[must_use]
     pub fn token_text(&self) -> Option<String> {
-        self.token().map(|token| token.text().to_owned())
+        self.token().map(|token| {
+            if token.kind() == SyntaxKind::InterpolatedString {
+                self.syntax.text().to_string()
+            } else {
+                token.text().to_owned()
+            }
+        })
+    }
+
+    #[must_use]
+    pub fn interpolations(&self) -> AstChildren<SyntaxInterpolation> {
+        AstChildren::new(&self.syntax)
+    }
+
+    pub fn interpolation_expressions(&self) -> impl Iterator<Item = SyntaxExpression> {
+        self.interpolations()
+            .filter_map(|interpolation| interpolation.expression())
     }
 
     #[must_use]
@@ -36,6 +52,42 @@ impl SyntaxLiteral {
 impl AstNode for SyntaxLiteral {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::Literal
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxInterpolation {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxInterpolation {
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
+    #[must_use]
+    pub fn expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxInterpolation {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::Interpolation
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -62,10 +114,23 @@ fn literal_token_kind(kind: SyntaxKind) -> bool {
     )
 }
 
+fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
+    parent.children().find_map(N::cast)
+}
+
+fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == kind)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::SyntaxKind;
-    use crate::ast::{AstNode, FloatSuffix, IntRadix, IntegerSuffix, Literal, SyntaxLiteral};
+    use crate::ast::{
+        AstNode, FloatSuffix, IntRadix, IntegerSuffix, Literal, SyntaxExpressionKind, SyntaxLiteral,
+    };
     use crate::parse::parse_source;
 
     #[test]
@@ -170,6 +235,52 @@ mod tests {
                 Some(Literal::Bytes(vec![0, 255])),
                 None,
             ]
+        );
+    }
+
+    #[test]
+    fn ast_interpolated_literal_exposes_embedded_expressions() {
+        let source = r#"fn greet(name, player) {
+    let message = f"hello {name} {player.level + 1} {{ok}}";
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let initializer = body
+            .let_statements()
+            .next()
+            .expect("let statement")
+            .initializer()
+            .expect("initializer");
+        let literal = SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
+        let source_text = r#"f"hello {name} {player.level + 1} {{ok}}""#;
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(literal.syntax().text().to_string(), source_text);
+        assert_eq!(literal.token_text(), Some(source_text.to_owned()));
+
+        let interpolations = literal.interpolations().collect::<Vec<_>>();
+        assert_eq!(interpolations.len(), 2);
+        assert!(interpolations[0].l_brace_token().is_some());
+        assert!(interpolations[0].r_brace_token().is_some());
+
+        let expressions = literal.interpolation_expressions().collect::<Vec<_>>();
+        assert_eq!(expressions.len(), 2);
+        assert_eq!(expressions[0].expression_kind(), SyntaxExpressionKind::Path);
+        assert_eq!(expressions[0].syntax().text().to_string(), "name");
+        assert_eq!(
+            expressions[1].expression_kind(),
+            SyntaxExpressionKind::Binary
+        );
+        assert_eq!(
+            expressions[1].syntax().text().to_string(),
+            "player.level + 1"
         );
     }
 }

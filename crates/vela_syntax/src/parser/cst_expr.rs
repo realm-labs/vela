@@ -1,5 +1,8 @@
+use vela_common::SourceId;
+
 use super::{CstParser, DelimiterDepth};
 use crate::SyntaxKind;
+use crate::lexer::lex;
 
 impl CstParser<'_, '_> {
     pub(super) fn expression_range(&mut self, start: usize, end: usize) {
@@ -32,6 +35,7 @@ impl CstParser<'_, '_> {
             SyntaxKind::LambdaExpr => {
                 self.lambda_expression_body(expression_start, expression_end);
             }
+            SyntaxKind::Literal => self.literal_expression_body(expression_start, expression_end),
             SyntaxKind::Block => self.block_body(expression_start, expression_end),
             SyntaxKind::IfExpr => self.if_expression_body(expression_start, expression_end),
             SyntaxKind::MatchExpr => self.match_expression_body(expression_start, expression_end),
@@ -125,6 +129,79 @@ impl CstParser<'_, '_> {
     fn try_expression_body(&mut self, start: usize, end: usize) {
         self.expression_range(start, end.saturating_sub(1));
         self.emit_until(end);
+    }
+
+    fn literal_expression_body(&mut self, start: usize, end: usize) {
+        if self.kind_at(start) == Some(SyntaxKind::InterpolatedString)
+            && self.single_significant_token(start, end)
+        {
+            self.interpolated_string_literal_body(start);
+        } else {
+            self.emit_until(end);
+        }
+    }
+
+    fn interpolated_string_literal_body(&mut self, token_index: usize) {
+        let text = self.tokens[token_index].text.as_str();
+        let (content_start, content_end) = interpolated_content_range(text);
+        let Some((content_start, content_end)) = content_start.zip(content_end) else {
+            self.emit_current_token();
+            return;
+        };
+
+        let mut chunk_start = 0;
+        let mut cursor = content_start;
+        let mut emitted_interpolation = false;
+
+        while cursor < content_end {
+            if starts_with_at(text, cursor, "{{") || starts_with_at(text, cursor, "}}") {
+                cursor += 2;
+                continue;
+            }
+            if !starts_with_at(text, cursor, "{") {
+                cursor = next_char_boundary(text, cursor);
+                continue;
+            }
+
+            let Some(close) = find_interpolation_close(text, cursor + 1, content_end) else {
+                break;
+            };
+
+            if chunk_start < cursor {
+                self.builder
+                    .token(SyntaxKind::InterpolatedString, &text[chunk_start..cursor]);
+            }
+            self.builder.start_node(SyntaxKind::Interpolation);
+            self.builder.token(SyntaxKind::LBrace, "{");
+            self.interpolation_expression_body(&text[cursor + 1..close]);
+            self.builder.token(SyntaxKind::RBrace, "}");
+            self.builder.finish_node();
+            emitted_interpolation = true;
+
+            cursor = close + 1;
+            chunk_start = cursor;
+        }
+
+        if !emitted_interpolation {
+            self.emit_current_token();
+            return;
+        }
+
+        if chunk_start < text.len() {
+            self.builder
+                .token(SyntaxKind::InterpolatedString, &text[chunk_start..]);
+        }
+        self.pos = token_index + 1;
+    }
+
+    fn interpolation_expression_body(&mut self, source: &str) {
+        let lexed = lex(SourceId::new(0), source);
+        let end = lexed.lossless_tokens.len().saturating_sub(1);
+        if end == 0 {
+            return;
+        }
+        let mut nested = CstParser::new(&lexed.lossless_tokens, self.builder);
+        nested.expression_range(0, end);
     }
 
     fn array_expression_body(&mut self, start: usize, end: usize) {
@@ -867,4 +944,110 @@ impl CstParser<'_, '_> {
                 | SyntaxKind::Percent
         )
     }
+}
+
+fn interpolated_content_range(text: &str) -> (Option<usize>, Option<usize>) {
+    if text.starts_with("f\"\"\"") && text.ends_with("\"\"\"") {
+        (Some(4), Some(text.len().saturating_sub(3)))
+    } else if text.starts_with("f\"") && text.ends_with('"') {
+        (Some(2), Some(text.len().saturating_sub(1)))
+    } else {
+        (None, None)
+    }
+}
+
+fn find_interpolation_close(text: &str, mut cursor: usize, limit: usize) -> Option<usize> {
+    let mut depth = 0_u32;
+    while cursor < limit {
+        if starts_with_at(text, cursor, "\"\"\"") {
+            cursor = skip_until_after(text, cursor + 3, limit, "\"\"\"");
+            continue;
+        }
+        if starts_with_at(text, cursor, "\"") {
+            cursor = skip_quoted(text, cursor + 1, limit, '"');
+            continue;
+        }
+        if starts_with_at(text, cursor, "'") {
+            cursor = skip_quoted(text, cursor + 1, limit, '\'');
+            continue;
+        }
+        if starts_with_at(text, cursor, "//") {
+            cursor = skip_line_comment(text, cursor + 2, limit);
+            continue;
+        }
+        if starts_with_at(text, cursor, "/*") {
+            cursor = skip_until_after(text, cursor + 2, limit, "*/");
+            continue;
+        }
+        if starts_with_at(text, cursor, "{") {
+            depth = depth.saturating_add(1);
+            cursor += 1;
+            continue;
+        }
+        if starts_with_at(text, cursor, "}") {
+            if depth == 0 {
+                return Some(cursor);
+            }
+            depth = depth.saturating_sub(1);
+            cursor += 1;
+            continue;
+        }
+        cursor = next_char_boundary(text, cursor);
+    }
+    None
+}
+
+fn skip_quoted(text: &str, mut cursor: usize, limit: usize, quote: char) -> usize {
+    while cursor < limit {
+        let Some(ch) = text[cursor..].chars().next() else {
+            return cursor;
+        };
+        cursor += ch.len_utf8();
+        if ch == '\\' {
+            cursor = next_char_boundary(text, cursor);
+            continue;
+        }
+        if ch == quote {
+            return cursor;
+        }
+    }
+    cursor
+}
+
+fn skip_line_comment(text: &str, mut cursor: usize, limit: usize) -> usize {
+    while cursor < limit {
+        let Some(ch) = text[cursor..].chars().next() else {
+            return cursor;
+        };
+        if ch == '\n' {
+            return cursor;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
+}
+
+fn skip_until_after(text: &str, mut cursor: usize, limit: usize, needle: &str) -> usize {
+    while cursor < limit {
+        if starts_with_at(text, cursor, needle) {
+            return (cursor + needle.len()).min(limit);
+        }
+        cursor = next_char_boundary(text, cursor);
+    }
+    cursor
+}
+
+fn starts_with_at(text: &str, cursor: usize, needle: &str) -> bool {
+    text.get(cursor..)
+        .is_some_and(|suffix| suffix.starts_with(needle))
+}
+
+fn next_char_boundary(text: &str, cursor: usize) -> usize {
+    if cursor >= text.len() {
+        return cursor;
+    }
+    let Some(ch) = text[cursor..].chars().next() else {
+        return text.len();
+    };
+    cursor + ch.len_utf8()
 }
