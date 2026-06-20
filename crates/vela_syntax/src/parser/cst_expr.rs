@@ -21,6 +21,8 @@ impl CstParser<'_, '_> {
             SyntaxKind::UnaryExpr => self.unary_expression_body(expression_start, expression_end),
             SyntaxKind::FieldExpr => self.field_expression_body(expression_start, expression_end),
             SyntaxKind::CallExpr => self.call_expression_body(expression_start, expression_end),
+            SyntaxKind::IndexExpr => self.index_expression_body(expression_start, expression_end),
+            SyntaxKind::TryExpr => self.try_expression_body(expression_start, expression_end),
             SyntaxKind::IfExpr => self.if_expression_body(expression_start, expression_end),
             _ => self.emit_until(expression_end),
         }
@@ -88,6 +90,24 @@ impl CstParser<'_, '_> {
         self.emit_until(end);
     }
 
+    fn index_expression_body(&mut self, start: usize, end: usize) {
+        let Some(index_start) = self.find_outer_index_list_start(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.expression_range(start, index_start);
+        self.emit_until(index_start + 1);
+        let index_end = end.saturating_sub(1);
+        let value_start = self.skip_trivia(index_start + 1);
+        self.expression_range(value_start, index_end);
+        self.emit_until(end);
+    }
+
+    fn try_expression_body(&mut self, start: usize, end: usize) {
+        self.expression_range(start, end.saturating_sub(1));
+        self.emit_until(end);
+    }
+
     fn arg_list(&mut self, start: usize, end: usize) {
         self.builder.start_node(SyntaxKind::ArgList);
         self.emit_until(start + 1);
@@ -136,14 +156,20 @@ impl CstParser<'_, '_> {
         if self.is_unary_expression(start, end) {
             return SyntaxKind::UnaryExpr;
         }
+        if self.has_trailing_try_suffix(start, end) {
+            return SyntaxKind::TryExpr;
+        }
+        if self.find_outer_index_list_start(start, end).is_some() {
+            return SyntaxKind::IndexExpr;
+        }
+        if self.find_outer_call_arg_list_start(start, end).is_some() {
+            return SyntaxKind::CallExpr;
+        }
         if self
             .find_last_root_kind_before(SyntaxKind::Dot, start, end)
             .is_some()
         {
             return SyntaxKind::FieldExpr;
-        }
-        if self.find_outer_call_arg_list_start(start, end).is_some() {
-            return SyntaxKind::CallExpr;
         }
         match self.kind_at(start) {
             Some(
@@ -245,6 +271,34 @@ impl CstParser<'_, '_> {
             depth.bump(current);
         }
         None
+    }
+
+    fn find_outer_index_list_start(&self, start: usize, end: usize) -> Option<usize> {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root()
+                && current == SyntaxKind::LBracket
+                && cursor > start
+                && self.find_matching_delimiter_end(
+                    cursor,
+                    SyntaxKind::LBracket,
+                    SyntaxKind::RBracket,
+                ) == Some(end)
+            {
+                return Some(cursor);
+            }
+            depth.bump(current);
+        }
+        None
+    }
+
+    fn has_trailing_try_suffix(&self, start: usize, end: usize) -> bool {
+        end > start
+            && self.kind_at(end - 1) == Some(SyntaxKind::Question)
+            && self.next_significant_before(start, end - 1).is_some()
     }
 
     fn is_unary_expression(&self, start: usize, end: usize) -> bool {

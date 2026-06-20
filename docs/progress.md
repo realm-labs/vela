@@ -147,10 +147,12 @@ typed block and direct statement CST wrappers, including let-statement type
 hints, for-loop bodies, and nested if/else block structure. Statement values
 now expose initial expression CST wrappers for let initializers, return values,
 expression statements, assignments, binary/unary expressions, field access,
-calls, argument lists, paths, and literals. The rowan-backed typed AST wrapper
-layer now has focused syntax, statement, and expression submodules so
-additional wrappers can land without growing the legacy owned-AST file; deeper
-expression coverage, pattern coverage, and downstream migration remain open.
+calls, argument lists, paths, and literals. Postfix expression structure now
+also preserves method-call-over-field ordering and exposes index and try
+expression wrappers. The rowan-backed typed AST wrapper layer now has focused
+syntax, statement, and expression submodules so additional wrappers can land
+without growing the legacy owned-AST file; deeper expression coverage, pattern
+coverage, and downstream migration remain open.
 
 ## Milestone Snapshot
 

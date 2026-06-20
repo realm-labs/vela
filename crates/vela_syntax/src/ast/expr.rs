@@ -168,6 +168,58 @@ impl AstNode for SyntaxCallExpr {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxIndexExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxIndexExpr {
+    #[must_use]
+    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxIndexExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::IndexExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTryExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxTryExpr {
+    #[must_use]
+    pub fn expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxTryExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TryExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxArgList {
     syntax: SyntaxNode,
 }

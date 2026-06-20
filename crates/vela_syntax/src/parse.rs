@@ -84,7 +84,7 @@ mod tests {
 
     use crate::ast::{
         AstNode, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
-        SyntaxReturnStmt,
+        SyntaxIndexExpr, SyntaxReturnStmt, SyntaxTryExpr,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -587,6 +587,67 @@ impl Rewardable for Player {
                 .map(|expression| expression.syntax().kind())
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::FieldExpr, SyntaxKind::CallExpr]
+        );
+    }
+
+    #[test]
+    fn parser_parse_source_structures_postfix_expression_nodes() {
+        let source = r#"fn update(ctx: Context) {
+    let item = player.inventory[find_slot(score)]?;
+    player.reward(item);
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(18), source);
+        let tree = parse.tree();
+        let body = tree
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(tree.syntax().text().to_string(), source);
+
+        let try_expr = SyntaxTryExpr::cast(
+            body.let_statements()
+                .next()
+                .expect("let statement")
+                .initializer()
+                .expect("initializer")
+                .syntax()
+                .clone(),
+        )
+        .expect("try expression");
+        let index_expr =
+            SyntaxIndexExpr::cast(try_expr.expression().expect("try operand").syntax().clone())
+                .expect("index expression");
+        assert_eq!(
+            index_expr
+                .expressions()
+                .map(|expression| expression.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::FieldExpr, SyntaxKind::CallExpr]
+        );
+
+        let call_expr = body
+            .syntax()
+            .children()
+            .find_map(SyntaxExprStmt::cast)
+            .and_then(|statement| statement.expression())
+            .and_then(|expression| SyntaxCallExpr::cast(expression.syntax().clone()))
+            .expect("method call expression");
+        assert_eq!(
+            call_expr.callee().expect("method callee").syntax().kind(),
+            SyntaxKind::FieldExpr
+        );
+        assert_eq!(
+            call_expr
+                .arg_list()
+                .expect("method args")
+                .arguments()
+                .count(),
+            1
         );
     }
 
