@@ -7,7 +7,7 @@ use vela_hir::module_graph::{
     DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
-use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile};
+use vela_syntax::ast::{Expr, FunctionItem, ItemKind, SourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -166,20 +166,14 @@ impl SemanticSource {
     pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
         let mut values_by_name = BTreeMap::new();
-        for item in &self.parsed.items {
-            let ItemKind::Const(item) = &item.kind else {
+        let payloads = const_value_payloads(&self.parsed);
+        for (declaration, name) in module_const_declarations(&self.graph, self.module) {
+            let Some(expr) = payloads.get(name.as_str()) else {
                 continue;
             };
-            let Some(declaration) = self
-                .graph
-                .module(self.module)
-                .and_then(|m| m.get(&item.name))
-            else {
-                continue;
-            };
-            if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+            if let Some(value) = evaluate_const_expr(expr, &values_by_name)? {
                 values_by_declaration.insert(declaration, value.clone());
-                values_by_name.insert(item.name.clone(), value);
+                values_by_name.insert(name, value);
             }
         }
         Ok(values_by_declaration)
@@ -194,20 +188,11 @@ impl SemanticSource {
         const_values: &BTreeMap<HirDeclId, Constant>,
     ) -> BTreeMap<String, Constant> {
         let mut values = BTreeMap::new();
-        let Some(declarations) = self.graph.module(self.module) else {
-            return values;
-        };
-        for item in &self.parsed.items {
-            let ItemKind::Const(item) = &item.kind else {
-                continue;
-            };
-            let Some(declaration) = declarations.get(&item.name) else {
-                continue;
-            };
+        for (declaration, name) in module_const_declarations(&self.graph, self.module) {
             let Some(value) = const_values.get(&declaration).cloned() else {
                 continue;
             };
-            values.insert(item.name.clone(), value);
+            values.insert(name, value);
         }
         values
     }
@@ -372,26 +357,23 @@ impl SemanticModules {
                 let Some(parsed) = self.parsed.get(module) else {
                     continue;
                 };
-                for item in &parsed.items {
-                    let ItemKind::Const(item) = &item.kind else {
-                        continue;
-                    };
-                    let Some(declaration) =
-                        self.graph.module(*module).and_then(|m| m.get(&item.name))
-                    else {
-                        continue;
-                    };
+                let payloads = const_value_payloads(parsed);
+                for (declaration, name) in module_const_declarations(&self.graph, *module) {
                     if let Some(value) = values_by_declaration.get(&declaration).cloned() {
-                        previous_values.insert(item.name.clone(), value);
+                        previous_values.insert(name.clone(), value);
                         continue;
                     }
+
+                    let Some(expr) = payloads.get(name.as_str()) else {
+                        continue;
+                    };
 
                     let mut values_by_name =
                         self.imported_const_values(*module, &values_by_declaration);
                     values_by_name.extend(previous_values.clone());
-                    if let Some(value) = evaluate_const_expr(&item.value, &values_by_name)? {
+                    if let Some(value) = evaluate_const_expr(expr, &values_by_name)? {
                         values_by_declaration.insert(declaration, value.clone());
-                        previous_values.insert(item.name.clone(), value);
+                        previous_values.insert(name, value);
                         progressed = true;
                     }
                 }
@@ -413,23 +395,11 @@ impl SemanticModules {
         const_values: &BTreeMap<HirDeclId, Constant>,
     ) -> BTreeMap<String, Constant> {
         let mut values = self.imported_const_values(module, const_values);
-        let Some(parsed) = self.parsed.get(&module) else {
-            return values;
-        };
-        let Some(declarations) = self.graph.module(module) else {
-            return values;
-        };
-        for item in &parsed.items {
-            let ItemKind::Const(item) = &item.kind else {
-                continue;
-            };
-            let Some(declaration) = declarations.get(&item.name) else {
-                continue;
-            };
+        for (declaration, name) in module_const_declarations(&self.graph, module) {
             let Some(value) = const_values.get(&declaration).cloned() else {
                 continue;
             };
-            values.insert(item.name.clone(), value);
+            values.insert(name, value);
         }
         values
     }
@@ -463,6 +433,33 @@ impl SemanticModules {
         }
         values
     }
+}
+
+fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirDeclId, String)> {
+    let Some(declarations) = graph.module(module) else {
+        return Vec::new();
+    };
+    let mut consts = declarations
+        .names()
+        .filter_map(|name| {
+            let declaration = declarations.get(name)?;
+            let metadata = graph.declaration(declaration)?;
+            (metadata.kind == DeclarationKind::Const).then(|| (declaration, metadata.name.clone()))
+        })
+        .collect::<Vec<_>>();
+    consts.sort_by_key(|(declaration, _)| *declaration);
+    consts
+}
+
+fn const_value_payloads(parsed: &SourceFile) -> BTreeMap<&str, &Expr> {
+    let mut payloads = BTreeMap::new();
+    for (name, value) in parsed.items.iter().filter_map(|item| match &item.kind {
+        ItemKind::Const(item) => Some((item.name.as_str(), &item.value)),
+        _ => None,
+    }) {
+        payloads.entry(name).or_insert(value);
+    }
+    payloads
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
