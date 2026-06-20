@@ -1,6 +1,6 @@
 use super::expr::SyntaxExpression;
 use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
-use crate::{SyntaxKind, SyntaxNode};
+use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxStatement {
@@ -51,6 +51,21 @@ impl SyntaxLetStmt {
     }
 
     #[must_use]
+    pub fn let_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LetKw)
+    }
+
+    #[must_use]
+    pub fn name_token(&self) -> Option<SyntaxToken> {
+        token_after(&self.syntax, SyntaxKind::LetKw, SyntaxKind::Ident)
+    }
+
+    #[must_use]
+    pub fn name_text(&self) -> Option<String> {
+        self.name_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
@@ -87,6 +102,11 @@ impl SyntaxReturnStmt {
     }
 
     #[must_use]
+    pub fn return_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ReturnKw)
+    }
+
+    #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
@@ -116,6 +136,11 @@ impl SyntaxBreakStmt {
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn break_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::BreakKw)
+    }
 }
 
 impl AstNode for SyntaxBreakStmt {
@@ -141,6 +166,11 @@ impl SyntaxContinueStmt {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn continue_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ContinueKw)
     }
 }
 
@@ -201,6 +231,16 @@ impl SyntaxForStmt {
     }
 
     #[must_use]
+    pub fn for_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ForKw)
+    }
+
+    #[must_use]
+    pub fn in_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::InKw)
+    }
+
+    #[must_use]
     pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
         AstChildren::new(&self.syntax)
     }
@@ -254,6 +294,16 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn if_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::IfKw)
+    }
+
+    #[must_use]
+    pub fn else_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ElseKw)
+    }
+
+    #[must_use]
     pub fn condition(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
@@ -298,4 +348,25 @@ impl AstNode for SyntaxIfExpr {
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == kind)
+}
+
+fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Option<SyntaxToken> {
+    let mut seen_after = false;
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| {
+            if token.kind() == after {
+                seen_after = true;
+                return false;
+            }
+            seen_after && token.kind() == wanted
+        })
 }

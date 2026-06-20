@@ -155,10 +155,11 @@ and statement attributes now preserve their exact source as `Attribute` child
 CST nodes and expose typed attribute iteration plus path-text accessors.
 Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
-hints, for-loop binding patterns with explicit index/value pattern accessors,
-for-loop iterable expressions, for-loop bodies, break/continue statement
-wrappers, if/else-if condition expressions, explicit then/else block
-accessors, and nested if/else block structure.
+hints, let binding name token/text accessors, for-loop binding patterns with
+explicit index/value pattern accessors, for-loop iterable expressions,
+for-loop bodies, keyword tokens for let/return/break/continue/for/in/if/else,
+if/else-if condition expressions, explicit then/else block accessors, and
+nested if/else block structure.
 Statement values now expose initial expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary
 expressions, unary operands, field access, calls, argument lists, named
@@ -185,12 +186,13 @@ Bare braced expressions now keep the existing
 map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
 while `{ statements }` becomes a typed `Block` expression with nested
 statement children. Match expressions now expose scrutinees, arm lists,
-explicit guard and expression/block body accessors, tuple-variant
-pattern paths, record-variant pattern paths and fields, field labels, binding
-names, basic path-pattern text, literal patterns, and wildcard/basic pattern
-nodes. Pattern wrappers now also classify wildcard, literal, binding, path,
-tuple-variant, and record-variant shapes and can downcast tuple and record
-pattern nodes for variant payload traversal. Record pattern fields now expose
+match/brace/guard/arrow tokens, explicit guard and expression/block body
+accessors, tuple-variant pattern paths, record-variant pattern paths and
+fields, field labels, binding names, basic path-pattern text, literal
+patterns, and wildcard/basic pattern nodes. Pattern wrappers now also classify
+wildcard, literal, binding, path, tuple-variant, and record-variant shapes and
+can downcast tuple and record pattern nodes for variant payload traversal.
+Record pattern fields now expose
 their label tokens, label kinds, explicit colon tokens, nested pattern
 payloads, and shorthand classification. The
 rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,

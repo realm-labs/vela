@@ -1,8 +1,8 @@
 use crate::SyntaxKind;
 use crate::ast::{
     AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr, SyntaxExprStmt,
-    SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxRecordExpr,
-    SyntaxUnaryExpr,
+    SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchExpr,
+    SyntaxRecordExpr, SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -440,6 +440,7 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
         item,
     };
 }
+
 "#;
     let parse = parse_source(source);
     let body = parse
@@ -494,4 +495,44 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
     assert!(fields[1].colon_token().is_none());
     assert!(fields[1].expression().is_none());
     assert!(fields[1].is_shorthand());
+}
+
+#[test]
+fn ast_match_expression_exposes_control_tokens() {
+    let source = r#"fn reward(status) {
+    match status {
+        Ready if status.enabled => grant(),
+        Pending => { return wait(); },
+    };
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let statement = body.statements().next().expect("match statement");
+    let match_expr =
+        SyntaxMatchExpr::cast(statement.syntax().clone()).expect("typed match expression");
+    let arm_list = match_expr.arm_list().expect("match arms");
+    let arms = arm_list.arms().collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        match_expr.match_token().expect("match token").text(),
+        "match"
+    );
+    assert_eq!(arm_list.l_brace_token().expect("left brace").text(), "{");
+    assert_eq!(arm_list.r_brace_token().expect("right brace").text(), "}");
+    assert_eq!(arms.len(), 2);
+    assert_eq!(
+        arms[0].guard_if_token().expect("guard if token").text(),
+        "if"
+    );
+    assert_eq!(arms[0].fat_arrow_token().expect("arrow").text(), "=>");
+    assert!(arms[1].guard_if_token().is_none());
+    assert_eq!(arms[1].fat_arrow_token().expect("arrow").text(), "=>");
 }

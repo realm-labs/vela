@@ -671,6 +671,11 @@ pub struct SyntaxMatchExpr {
 
 impl SyntaxMatchExpr {
     #[must_use]
+    pub fn match_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::MatchKw)
+    }
+
+    #[must_use]
     pub fn scrutinee(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
@@ -701,6 +706,16 @@ pub struct SyntaxMatchArmList {
 }
 
 impl SyntaxMatchArmList {
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
     #[must_use]
     pub fn arms(&self) -> AstChildren<SyntaxMatchArm> {
         AstChildren::new(&self.syntax)
@@ -733,10 +748,20 @@ impl SyntaxMatchArm {
     }
 
     #[must_use]
+    pub fn guard_if_token(&self) -> Option<SyntaxToken> {
+        token_before(&self.syntax, SyntaxKind::IfKw, SyntaxKind::FatArrow)
+    }
+
+    #[must_use]
     pub fn guard(&self) -> Option<SyntaxExpression> {
         self.has_guard()
             .then(|| self.expressions().next())
             .flatten()
+    }
+
+    #[must_use]
+    pub fn fat_arrow_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::FatArrow)
     }
 
     #[must_use]
@@ -869,6 +894,18 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == kind)
+}
+
+fn token_before(
+    parent: &SyntaxNode,
+    wanted: SyntaxKind,
+    before: SyntaxKind,
+) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .take_while(|token| token.kind() != before)
+        .find(|token| token.kind() == wanted)
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
