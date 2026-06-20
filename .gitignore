@@ -1,15 +1,5 @@
 /target
-/examples/target
 /perf-results
-/site/.astro
-/site/dist
-/site/node_modules
-/site/public/pkg
-/editors/vscode/dist
-/editors/vscode/LICENSE
-/editors/vscode/node_modules
-/editors/vscode/server
-/editors/vscode/*.vsix
 __pycache__/
 *.trace
 /.vela-lsp-profile*.jsonl

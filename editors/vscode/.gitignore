@@ -1,0 +1,5 @@
+/dist
+/LICENSE
+/node_modules
+/server
+/*.vsix
