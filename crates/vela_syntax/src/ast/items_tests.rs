@@ -727,3 +727,67 @@ fn ast_trait_and_impl_items_expose_method_children() {
         "{return\"gold\";}"
     );
 }
+
+#[test]
+fn ast_impl_item_exposes_header_paths() {
+    let source = r#"trait Rewardable {}
+
+impl Reward {
+    fn grant(self) {}
+}
+
+impl game::reward::Rewardable for game::player::Player {
+    fn reward(self) {}
+}
+"#;
+    let parse = parse_source(source);
+    let tree = parse.tree();
+    let impls = tree.impls().collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(impls.len(), 2);
+
+    let inherent = &impls[0];
+    assert_eq!(inherent.impl_token().expect("impl token").text(), "impl");
+    assert!(inherent.for_token().is_none());
+    assert!(inherent.trait_path_text().is_none());
+    assert!(inherent.trait_path_tokens().is_empty());
+    assert_eq!(inherent.target_path_text().as_deref(), Some("Reward"));
+    assert_eq!(
+        inherent
+            .target_path_tokens()
+            .iter()
+            .map(|token| (token.kind(), token.text().to_owned()))
+            .collect::<Vec<_>>(),
+        vec![(SyntaxKind::Ident, "Reward".to_owned())]
+    );
+
+    let trait_impl = &impls[1];
+    assert_eq!(trait_impl.impl_token().expect("impl token").text(), "impl");
+    assert_eq!(trait_impl.for_token().expect("for token").text(), "for");
+    assert_eq!(
+        trait_impl.trait_path_text().as_deref(),
+        Some("game::reward::Rewardable")
+    );
+    assert_eq!(
+        trait_impl.target_path_text().as_deref(),
+        Some("game::player::Player")
+    );
+    assert_eq!(
+        trait_impl
+            .trait_path_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["game", "::", "reward", "::", "Rewardable"]
+    );
+    assert_eq!(
+        trait_impl
+            .target_path_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["game", "::", "player", "::", "Player"]
+    );
+    assert_eq!(trait_impl.methods().count(), 1);
+}

@@ -742,6 +742,43 @@ impl SyntaxImplItem {
     }
 
     #[must_use]
+    pub fn impl_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::ImplKw)
+    }
+
+    #[must_use]
+    pub fn for_token(&self) -> Option<SyntaxToken> {
+        token_before(&self.syntax, SyntaxKind::ForKw, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn trait_path_tokens(&self) -> Vec<SyntaxToken> {
+        if self.for_token().is_none() {
+            return Vec::new();
+        }
+        header_path_tokens_between(&self.syntax, SyntaxKind::ImplKw, SyntaxKind::ForKw)
+    }
+
+    #[must_use]
+    pub fn trait_path_text(&self) -> Option<String> {
+        token_text(self.trait_path_tokens())
+    }
+
+    #[must_use]
+    pub fn target_path_tokens(&self) -> Vec<SyntaxToken> {
+        if self.for_token().is_some() {
+            header_path_tokens_between(&self.syntax, SyntaxKind::ForKw, SyntaxKind::LBrace)
+        } else {
+            header_path_tokens_between(&self.syntax, SyntaxKind::ImplKw, SyntaxKind::LBrace)
+        }
+    }
+
+    #[must_use]
+    pub fn target_path_text(&self) -> Option<String> {
+        token_text(self.target_path_tokens())
+    }
+
+    #[must_use]
     pub fn methods(&self) -> AstChildren<SyntaxImplMethod> {
         AstChildren::new(&self.syntax)
     }
@@ -842,6 +879,46 @@ fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Op
             }
             seen_after && token.kind() == wanted
         })
+}
+
+fn token_before(
+    parent: &SyntaxNode,
+    wanted: SyntaxKind,
+    before: SyntaxKind,
+) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .take_while(|token| token.kind() != before)
+        .find(|token| token.kind() == wanted)
+}
+
+fn header_path_tokens_between(
+    parent: &SyntaxNode,
+    after: SyntaxKind,
+    before: SyntaxKind,
+) -> Vec<SyntaxToken> {
+    let mut seen_after = false;
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .take_while(|token| token.kind() != before)
+        .filter(|token| {
+            if token.kind() == after {
+                seen_after = true;
+                return false;
+            }
+            seen_after && !token.kind().is_trivia()
+        })
+        .collect()
+}
+
+fn token_text(tokens: Vec<SyntaxToken>) -> Option<String> {
+    let mut text = String::new();
+    for token in tokens {
+        text.push_str(token.text());
+    }
+    (!text.is_empty()).then_some(text)
 }
 
 fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
