@@ -4,6 +4,9 @@ use crate::lexer::Lexed;
 use crate::token::LosslessToken;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
 
+#[path = "cst_expr.rs"]
+mod cst_expr;
+
 pub(crate) fn build_source_tree(lexed: &Lexed, builder: &mut SyntaxTreeBuilder) -> Vec<Diagnostic> {
     let mut parser = CstParser::new(&lexed.lossless_tokens, builder);
     parser.source_file();
@@ -474,18 +477,19 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.builder.start_node(kind);
         match kind {
             SyntaxKind::LetStmt => self.let_statement_body(start, end),
+            SyntaxKind::ReturnStmt => self.return_statement_body(start, end),
             SyntaxKind::ForStmt => self.statement_with_body_block(start, end),
             SyntaxKind::IfExpr => self.if_expression_body(start, end),
+            SyntaxKind::ExprStmt => self.expr_statement_body(start, end),
             _ => self.emit_until(end),
         }
         self.builder.finish_node();
     }
 
     fn let_statement_body(&mut self, start: usize, end: usize) {
+        let initializer = self.find_root_kind_before(SyntaxKind::Equal, start, end);
         if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
-            let value_end = self
-                .find_root_kind_before(SyntaxKind::Equal, colon + 1, end)
-                .unwrap_or(end);
+            let value_end = initializer.unwrap_or(end);
             let type_start = self.skip_trivia(colon + 1);
             let type_end = self.trim_trailing_trivia(type_start, value_end);
             if type_start < type_end {
@@ -493,6 +497,31 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 self.type_hint_range(type_start, type_end);
             }
         }
+
+        if let Some(equal) = initializer {
+            let value_start = self.skip_trivia(equal + 1);
+            let value_end = self.statement_expression_end(value_start, end);
+            self.emit_until(value_start);
+            self.expression_range(value_start, value_end);
+        }
+        self.emit_until(end);
+    }
+
+    fn return_statement_body(&mut self, start: usize, end: usize) {
+        let Some(keyword) = self.find_root_kind_before(SyntaxKind::ReturnKw, start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        let value_start = self.skip_trivia(keyword + 1);
+        let value_end = self.statement_expression_end(value_start, end);
+        self.emit_until(value_start);
+        self.expression_range(value_start, value_end);
+        self.emit_until(end);
+    }
+
+    fn expr_statement_body(&mut self, start: usize, end: usize) {
+        let expression_end = self.statement_expression_end(start, end);
+        self.expression_range(start, expression_end);
         self.emit_until(end);
     }
 

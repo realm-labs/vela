@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use super::statements::{SyntaxLetStmt, SyntaxStatement};
 use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange};
 
 pub trait AstNode {
@@ -77,7 +78,7 @@ pub struct AstChildren<N> {
 }
 
 impl<N> AstChildren<N> {
-    fn new(parent: &SyntaxNode) -> Self {
+    pub(crate) fn new(parent: &SyntaxNode) -> Self {
         Self {
             inner: parent.children(),
             _marker: PhantomData,
@@ -282,118 +283,6 @@ impl SyntaxBlock {
 impl AstNode for SyntaxBlock {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::Block
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxStatement {
-    syntax: SyntaxNode,
-}
-
-impl AstNode for SyntaxStatement {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(
-            kind,
-            SyntaxKind::LetStmt
-                | SyntaxKind::ReturnStmt
-                | SyntaxKind::BreakStmt
-                | SyntaxKind::ContinueStmt
-                | SyntaxKind::ForStmt
-                | SyntaxKind::IfExpr
-                | SyntaxKind::MatchExpr
-                | SyntaxKind::ExprStmt
-        )
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxLetStmt {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxLetStmt {
-    #[must_use]
-    pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
-        child(&self.syntax)
-    }
-}
-
-impl AstNode for SyntaxLetStmt {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::LetStmt
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxForStmt {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxForStmt {
-    #[must_use]
-    pub fn body(&self) -> Option<SyntaxBlock> {
-        child(&self.syntax)
-    }
-}
-
-impl AstNode for SyntaxForStmt {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::ForStmt
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxIfExpr {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxIfExpr {
-    #[must_use]
-    pub fn blocks(&self) -> AstChildren<SyntaxBlock> {
-        AstChildren::new(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn else_if(&self) -> Option<SyntaxIfExpr> {
-        child(&self.syntax)
-    }
-}
-
-impl AstNode for SyntaxIfExpr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::IfExpr
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {

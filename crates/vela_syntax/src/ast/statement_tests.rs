@@ -1,4 +1,5 @@
-use super::{AstNode, SyntaxForStmt, SyntaxSourceFile};
+use super::{AstNode, SyntaxSourceFile};
+use crate::ast::SyntaxForStmt;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
 
 #[test]

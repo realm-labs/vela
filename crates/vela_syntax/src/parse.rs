@@ -82,7 +82,10 @@ impl Parse<SyntaxSourceFile> {
 mod tests {
     use vela_common::{SourceId, Span};
 
-    use crate::ast::{AstNode, SyntaxForStmt, SyntaxIfExpr};
+    use crate::ast::{
+        AstNode, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
+        SyntaxReturnStmt,
+    };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
 
@@ -511,6 +514,80 @@ impl Rewardable for Player {
         assert_eq!(if_expr.blocks().count(), 1);
         let else_if = if_expr.else_if().expect("else-if expression");
         assert_eq!(else_if.blocks().count(), 2);
+    }
+
+    #[test]
+    fn parser_parse_source_structures_statement_expression_nodes() {
+        let source = r#"fn update(ctx: Context) {
+    let score = award(player.level, amount = 1);
+    return score;
+    player.level += award(score, 1);
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(17), source);
+        let tree = parse.tree();
+        let body = tree
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(tree.syntax().text().to_string(), source);
+
+        let initializer = body
+            .let_statements()
+            .next()
+            .expect("let statement")
+            .initializer()
+            .expect("initializer");
+        assert_eq!(initializer.syntax().kind(), SyntaxKind::CallExpr);
+        let initializer_call =
+            SyntaxCallExpr::cast(initializer.syntax().clone()).expect("initializer call");
+        assert_eq!(
+            initializer_call
+                .arg_list()
+                .expect("initializer args")
+                .arguments()
+                .map(|argument| argument
+                    .expression()
+                    .expect("argument expression")
+                    .syntax()
+                    .kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::FieldExpr, SyntaxKind::Literal]
+        );
+
+        let return_stmt = body
+            .syntax()
+            .children()
+            .find_map(SyntaxReturnStmt::cast)
+            .expect("return statement");
+        assert_eq!(
+            return_stmt
+                .expression()
+                .expect("return expression")
+                .syntax()
+                .kind(),
+            SyntaxKind::PathExpr
+        );
+
+        let expr_stmt = body
+            .syntax()
+            .children()
+            .find_map(SyntaxExprStmt::cast)
+            .expect("expression statement");
+        let assignment =
+            SyntaxAssignExpr::cast(expr_stmt.expression().expect("expr").syntax().clone())
+                .expect("assignment expression");
+        assert_eq!(
+            assignment
+                .expressions()
+                .map(|expression| expression.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::FieldExpr, SyntaxKind::CallExpr]
+        );
     }
 
     #[test]

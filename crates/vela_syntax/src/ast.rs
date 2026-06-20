@@ -1,14 +1,25 @@
 use vela_common::Span;
 
+#[path = "ast/expr.rs"]
+mod expr;
+#[path = "ast/statements.rs"]
+mod statements;
 #[path = "ast/syntax.rs"]
 mod syntax;
 
+pub use expr::{
+    SyntaxArgList, SyntaxArgument, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxCallExpr,
+    SyntaxExpression, SyntaxFieldExpr, SyntaxLiteral, SyntaxPathExpr,
+};
+pub use statements::{
+    SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
+};
 pub use syntax::{
     AstChildren, AstNode, SyntaxBlock, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList,
-    SyntaxForStmt, SyntaxFunctionItem, SyntaxIfExpr, SyntaxImplItem, SyntaxImplMethod, SyntaxItem,
-    SyntaxLetStmt, SyntaxParam, SyntaxParamList, SyntaxRecordFieldList, SyntaxSourceFile,
-    SyntaxStatement, SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem, SyntaxTraitItem,
-    SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxTypeArgList, SyntaxTypeHint,
+    SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList,
+    SyntaxRecordFieldList, SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList,
+    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxTypeArgList,
+    SyntaxTypeHint,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]

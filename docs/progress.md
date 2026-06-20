@@ -144,10 +144,13 @@ lists and record variant payloads structured as field lists. Trait and impl
 declarations now expose typed method CST wrappers with parameter-list,
 return-type, and optional body accessors. Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
-hints, for-loop bodies, and nested if/else block structure. The rowan-backed
-typed AST wrapper layer now lives in a focused syntax submodule so additional
-wrappers can land without growing the legacy owned-AST file; deeper expression,
-pattern, and downstream migration remain open.
+hints, for-loop bodies, and nested if/else block structure. Statement values
+now expose initial expression CST wrappers for let initializers, return values,
+expression statements, assignments, binary/unary expressions, field access,
+calls, argument lists, paths, and literals. The rowan-backed typed AST wrapper
+layer now has focused syntax, statement, and expression submodules so
+additional wrappers can land without growing the legacy owned-AST file; deeper
+expression coverage, pattern coverage, and downstream migration remain open.
 
 ## Milestone Snapshot
 
