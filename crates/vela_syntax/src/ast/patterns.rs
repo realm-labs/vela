@@ -132,6 +132,17 @@ impl SyntaxPattern {
     pub fn is_literal(&self) -> bool {
         self.literal_token().is_some()
     }
+
+    #[must_use]
+    pub fn tuple_separator_token(&self) -> Option<SyntaxToken> {
+        following_separator_token(
+            &self.syntax,
+            SyntaxKind::TuplePattern,
+            SyntaxKind::Comma,
+            SyntaxKind::Pattern,
+            SyntaxKind::RParen,
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -291,6 +302,17 @@ impl SyntaxRecordPatternField {
     pub fn is_shorthand(&self) -> bool {
         self.label_token().is_some() && self.colon_token().is_none() && self.pattern().is_none()
     }
+
+    #[must_use]
+    pub fn separator_token(&self) -> Option<SyntaxToken> {
+        following_separator_token(
+            &self.syntax,
+            SyntaxKind::RecordPattern,
+            SyntaxKind::Comma,
+            SyntaxKind::RecordPatternField,
+            SyntaxKind::RBrace,
+        )
+    }
 }
 
 impl AstNode for SyntaxRecordPatternField {
@@ -324,6 +346,50 @@ fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken>
         .filter_map(|element| element.into_token())
         .filter(|token| token.kind() == wanted)
         .collect()
+}
+
+fn following_separator_token(
+    node: &SyntaxNode,
+    parent_kind: SyntaxKind,
+    separator_kind: SyntaxKind,
+    next_node_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+) -> Option<SyntaxToken> {
+    let parent = node.parent()?;
+    if parent.kind() != parent_kind {
+        return None;
+    }
+
+    let mut seen_node = false;
+    for element in parent.children_with_tokens() {
+        if let Some(child) = element.as_node() {
+            if child == node {
+                seen_node = true;
+                continue;
+            }
+            if seen_node
+                && (child.kind() == next_node_kind
+                    || (parent_kind == SyntaxKind::TuplePattern
+                        && SyntaxPattern::can_cast(child.kind())))
+            {
+                return None;
+            }
+        }
+
+        let Some(token) = element.as_token() else {
+            continue;
+        };
+        if !seen_node {
+            continue;
+        }
+        if token.kind() == separator_kind {
+            return Some(token.clone());
+        }
+        if token.kind() == close_kind {
+            return None;
+        }
+    }
+    None
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
@@ -661,6 +727,15 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![","]
         );
+        let tuple_fields = tuple_pattern.patterns().collect::<Vec<_>>();
+        assert_eq!(
+            tuple_fields[0]
+                .tuple_separator_token()
+                .expect("tuple payload separator")
+                .text(),
+            ","
+        );
+        assert!(tuple_fields[1].tuple_separator_token().is_none());
 
         let record_pattern = arms[5]
             .pattern()
@@ -713,9 +788,17 @@ mod tests {
             fields[0].label_token().expect("field label").text(),
             "error"
         );
+        assert_eq!(
+            fields[0]
+                .separator_token()
+                .expect("record field separator")
+                .text(),
+            ","
+        );
         assert!(fields[0].colon_token().is_none());
         assert!(fields[0].is_shorthand());
         assert_eq!(fields[1].label_text().as_deref(), Some("code"));
+        assert!(fields[1].separator_token().is_none());
     }
 
     #[test]
