@@ -874,13 +874,21 @@ impl SyntaxLambdaExpr {
     }
 
     #[must_use]
+    pub fn body(&self) -> Option<SyntaxLambdaBody> {
+        self.body_block()
+            .map(SyntaxLambdaBody::Block)
+            .or_else(|| self.body_expression().map(SyntaxLambdaBody::Expression))
+    }
+
+    #[must_use]
     pub fn body_expression(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        child_after_node(&self.syntax, SyntaxKind::ParamList)
+            .filter(|expression: &SyntaxExpression| expression.syntax().kind() != SyntaxKind::Block)
     }
 
     #[must_use]
     pub fn body_block(&self) -> Option<SyntaxBlock> {
-        child(&self.syntax)
+        child_after_node(&self.syntax, SyntaxKind::ParamList)
     }
 }
 
@@ -896,6 +904,12 @@ impl AstNode for SyntaxLambdaExpr {
     fn syntax(&self) -> &SyntaxNode {
         &self.syntax
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SyntaxLambdaBody {
+    Expression(SyntaxExpression),
+    Block(SyntaxBlock),
 }
 
 fn expression_kind(kind: SyntaxKind) -> bool {
@@ -983,6 +997,20 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == kind)
+}
+
+fn child_after_node<N: AstNode>(parent: &SyntaxNode, after: SyntaxKind) -> Option<N> {
+    let mut seen_after = false;
+    for node in parent.children() {
+        if node.kind() == after {
+            seen_after = true;
+            continue;
+        }
+        if seen_after && let Some(child) = N::cast(node) {
+            return Some(child);
+        }
+    }
+    None
 }
 
 fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {

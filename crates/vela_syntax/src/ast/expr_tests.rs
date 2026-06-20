@@ -1,9 +1,9 @@
 use crate::SyntaxKind;
 use crate::ast::{
     AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
-    SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
-    SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxPathExpr,
-    SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
+    SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaBody,
+    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
+    SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -400,6 +400,7 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
     let map = { "count": count, index: index };
     let record = Reward { amount: count, bonus };
     let lambda = |item: i64, extra| item + extra;
+    let block_lambda = |item| { return item; };
 }
 "#;
     let parse = parse_source(source);
@@ -547,6 +548,36 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
     );
     assert!(lambda_params.l_paren_token().is_none());
     assert!(lambda_params.r_paren_token().is_none());
+    assert!(matches!(
+        lambda.body().expect("lambda body"),
+        SyntaxLambdaBody::Expression(_)
+    ));
+    assert_eq!(
+        lambda
+            .body_expression()
+            .expect("lambda expression body")
+            .syntax()
+            .kind(),
+        SyntaxKind::BinaryExpr
+    );
+    assert!(lambda.body_block().is_none());
+
+    let block_lambda =
+        SyntaxLambdaExpr::cast(initializers[8].syntax().clone()).expect("block lambda expr");
+    assert!(matches!(
+        block_lambda.body().expect("block lambda body"),
+        SyntaxLambdaBody::Block(_)
+    ));
+    assert!(block_lambda.body_expression().is_none());
+    assert_eq!(
+        block_lambda
+            .body_block()
+            .expect("block lambda body")
+            .statements()
+            .map(|statement| statement.syntax().kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::ReturnStmt]
+    );
 }
 
 #[test]

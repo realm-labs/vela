@@ -29,9 +29,9 @@ pub use control::{SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchArmList, Syntax
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxPathExpr,
-    SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList, SyntaxTryExpr,
-    SyntaxUnaryExpr,
+    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr,
+    SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList,
+    SyntaxTryExpr, SyntaxUnaryExpr,
 };
 pub use items::{
     SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,
