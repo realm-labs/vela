@@ -19,7 +19,10 @@ mod statements;
 #[path = "ast/syntax.rs"]
 mod syntax;
 
-pub use attributes::SyntaxAttribute;
+pub use attributes::{
+    SyntaxAttribute, SyntaxAttributeArg, SyntaxAttributeArray, SyntaxAttributeMap,
+    SyntaxAttributeMapEntry,
+};
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,

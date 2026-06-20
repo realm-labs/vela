@@ -599,7 +599,156 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     }
 
     fn attribute_range(&mut self, start: usize, end: usize) {
-        self.node_range(SyntaxKind::Attribute, start, end);
+        self.pos = start;
+        let Some(open) = self.find_first_kind_before(SyntaxKind::LBracket, start, end) else {
+            self.node_range(SyntaxKind::Attribute, start, end);
+            return;
+        };
+        let Some(close_end) =
+            self.find_matching_delimiter_end(open, SyntaxKind::LBracket, SyntaxKind::RBracket)
+        else {
+            self.node_range(SyntaxKind::Attribute, start, end);
+            return;
+        };
+
+        self.builder.start_node(SyntaxKind::Attribute);
+        let close_end = close_end.min(end);
+        let close = close_end.saturating_sub(1);
+        let args_open = self.find_root_kind_before(SyntaxKind::LParen, open + 1, close);
+        if let Some(args_open) = args_open {
+            let args_close = self
+                .find_matching_delimiter_end(args_open, SyntaxKind::LParen, SyntaxKind::RParen)
+                .map_or(close, |end| end.saturating_sub(1).min(close));
+            self.emit_until(args_open + 1);
+            self.attribute_args(args_close);
+        }
+        self.emit_until(close_end);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn attribute_args(&mut self, close: usize) {
+        let mut arg_start = self.pos;
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(arg_start, self.pos)
+            {
+                self.attribute_arg_range(arg_start, self.pos);
+                self.emit_current_token();
+                arg_start = self.pos;
+            } else {
+                self.pos += 1;
+            }
+        }
+        self.attribute_arg_range(arg_start, close);
+    }
+
+    fn attribute_arg_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+
+        self.builder.start_node(SyntaxKind::AttributeArg);
+        let value_start =
+            if let Some(equal) = self.find_root_kind_before(SyntaxKind::Equal, start, end) {
+                self.skip_trivia(equal + 1)
+            } else {
+                self.skip_trivia(start)
+            };
+        self.emit_until(value_start);
+        self.attribute_value_range(value_start, end);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn attribute_value_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        let value_start = self.skip_trivia(start);
+        self.emit_until(value_start);
+        match self.kind_at(value_start) {
+            Some(SyntaxKind::LBracket) => self.attribute_array_range(value_start, end),
+            Some(SyntaxKind::LBrace) => self.attribute_map_range(value_start, end),
+            _ => self.emit_tokens(value_start, end),
+        }
+    }
+
+    fn attribute_array_range(&mut self, start: usize, end: usize) {
+        let Some(close_end) =
+            self.find_matching_delimiter_end(start, SyntaxKind::LBracket, SyntaxKind::RBracket)
+        else {
+            self.emit_tokens(start, end);
+            return;
+        };
+
+        self.builder.start_node(SyntaxKind::AttributeArray);
+        let close_end = close_end.min(end);
+        self.emit_until(start + 1);
+        let close = close_end.saturating_sub(1);
+        let mut value_start = self.pos;
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(value_start, self.pos)
+            {
+                self.attribute_value_range(value_start, self.pos);
+                self.emit_current_token();
+                value_start = self.pos;
+            } else {
+                self.pos += 1;
+            }
+        }
+        self.attribute_value_range(value_start, close);
+        self.emit_until(close_end);
+        self.builder.finish_node();
+        self.emit_tokens(close_end, end);
+    }
+
+    fn attribute_map_range(&mut self, start: usize, end: usize) {
+        let Some(close_end) =
+            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+        else {
+            self.emit_tokens(start, end);
+            return;
+        };
+
+        self.builder.start_node(SyntaxKind::AttributeMap);
+        let close_end = close_end.min(end);
+        self.emit_until(start + 1);
+        let close = close_end.saturating_sub(1);
+        let mut entry_start = self.pos;
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(entry_start, self.pos)
+            {
+                self.attribute_map_entry_range(entry_start, self.pos);
+                self.emit_current_token();
+                entry_start = self.pos;
+            } else {
+                self.pos += 1;
+            }
+        }
+        self.attribute_map_entry_range(entry_start, close);
+        self.emit_until(close_end);
+        self.builder.finish_node();
+        self.emit_tokens(close_end, end);
+    }
+
+    fn attribute_map_entry_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+
+        self.builder.start_node(SyntaxKind::AttributeMapEntry);
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            let value_start = self.skip_trivia(colon + 1);
+            self.emit_until(value_start);
+            self.attribute_value_range(value_start, end);
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
     }
 
     fn skip_leading_attributes(&self, start: usize, end: usize) -> usize {
