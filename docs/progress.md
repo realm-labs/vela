@@ -166,11 +166,13 @@ plain and compound assignment.
 Unary expression wrappers now expose their operator tokens and kinds for
 negation and logical inversion.
 Literal expression wrappers now expose their raw literal tokens, token kinds,
-and exact source text for boolean, null, numeric, quoted, and interpolated
-literals.
+and exact source text for boolean, null, numeric, quoted, bytes, and
+interpolated literals.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
-expression/block bodies. Bare braced expressions now keep the existing
+expression/block bodies. Record literal fields now expose label tokens, label
+kinds, explicit colon tokens, value expressions, and shorthand classification.
+Bare braced expressions now keep the existing
 map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
 while `{ statements }` becomes a typed `Block` expression with nested
 statement children. Match expressions now expose scrutinees, arm lists,

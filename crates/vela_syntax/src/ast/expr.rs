@@ -498,8 +498,33 @@ pub struct SyntaxRecordExprField {
 
 impl SyntaxRecordExprField {
     #[must_use]
+    pub fn label_token(&self) -> Option<SyntaxToken> {
+        first_significant_token(&self.syntax).filter(|token| token.kind() == SyntaxKind::Ident)
+    }
+
+    #[must_use]
+    pub fn label_kind(&self) -> Option<SyntaxKind> {
+        self.label_token().map(|token| token.kind())
+    }
+
+    #[must_use]
+    pub fn label_text(&self) -> Option<String> {
+        self.label_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn colon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Colon)
+    }
+
+    #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_shorthand(&self) -> bool {
+        self.label_token().is_some() && self.colon_token().is_none() && self.expression().is_none()
     }
 }
 
@@ -753,12 +778,26 @@ fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
 
+fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == kind)
+}
+
+fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| !token.kind().is_trivia())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::SyntaxKind;
     use crate::ast::{
         AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxLiteral,
-        SyntaxMapExpr, SyntaxUnaryExpr,
+        SyntaxMapExpr, SyntaxRecordExpr, SyntaxUnaryExpr,
     };
     use crate::parse::parse_source;
 
@@ -971,5 +1010,69 @@ mod tests {
                 ),
             ]
         );
+    }
+
+    #[test]
+    fn ast_record_expression_fields_expose_labels_and_shorthand() {
+        let source = r#"fn build(amount, item) {
+    let reward = Reward {
+        amount: amount + 1,
+        item,
+    };
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let initializer = body
+            .let_statements()
+            .next()
+            .expect("reward binding")
+            .initializer()
+            .expect("record initializer");
+        let record = SyntaxRecordExpr::cast(initializer.syntax().clone()).expect("record expr");
+        let fields = record
+            .field_list()
+            .expect("record field list")
+            .fields()
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));
+        assert_eq!(fields[0].label_text().as_deref(), Some("amount"));
+        assert_eq!(
+            fields[0]
+                .label_token()
+                .expect("explicit field label")
+                .text(),
+            "amount"
+        );
+        assert_eq!(
+            fields[0]
+                .colon_token()
+                .expect("explicit field colon")
+                .kind(),
+            SyntaxKind::Colon
+        );
+        assert_eq!(
+            fields[0]
+                .expression()
+                .expect("explicit field value")
+                .syntax()
+                .kind(),
+            SyntaxKind::BinaryExpr
+        );
+        assert!(!fields[0].is_shorthand());
+
+        assert_eq!(fields[1].label_text().as_deref(), Some("item"));
+        assert!(fields[1].colon_token().is_none());
+        assert!(fields[1].expression().is_none());
+        assert!(fields[1].is_shorthand());
     }
 }
