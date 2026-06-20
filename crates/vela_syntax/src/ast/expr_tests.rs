@@ -2,9 +2,8 @@ use crate::SyntaxKind;
 use crate::ast::{
     AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock,
     SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody,
-    SyntaxMatchExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
-    SyntaxUnaryExpr, UnaryOp,
+    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
+    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr, UnaryOp,
 };
 use crate::parse::parse_source;
 
@@ -388,57 +387,6 @@ fn ast_unary_expression_exposes_operator_tokens() {
             SyntaxKind::PathExpr
         );
     }
-}
-
-#[test]
-fn ast_literal_expression_exposes_token_text_and_kind() {
-    let source = r#"fn literals(name) {
-    let truthy = true;
-    let falsey = false;
-    let empty = null;
-    let count = 42;
-    let ratio = 3.5;
-    let label = "gold";
-    let marker = 'x';
-    let packet = b"\x00\xff";
-    let message = f"hello {name}";
-}
-"#;
-    let parse = parse_source(source);
-    let body = parse
-        .tree()
-        .functions()
-        .next()
-        .expect("function item")
-        .body()
-        .expect("function body");
-    let literals = body
-        .let_statements()
-        .map(|statement| {
-            let initializer = statement.initializer().expect("initializer");
-            let literal = SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
-            (literal.token_kind(), literal.token_text())
-        })
-        .collect::<Vec<_>>();
-
-    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
-    assert_eq!(
-        literals,
-        vec![
-            (Some(SyntaxKind::TrueKw), Some("true".to_owned())),
-            (Some(SyntaxKind::FalseKw), Some("false".to_owned())),
-            (Some(SyntaxKind::NullKw), Some("null".to_owned())),
-            (Some(SyntaxKind::Int), Some("42".to_owned())),
-            (Some(SyntaxKind::Float), Some("3.5".to_owned())),
-            (Some(SyntaxKind::String), Some(r#""gold""#.to_owned())),
-            (Some(SyntaxKind::Char), Some("'x'".to_owned())),
-            (Some(SyntaxKind::Bytes), Some(r#"b"\x00\xff""#.to_owned())),
-            (
-                Some(SyntaxKind::InterpolatedString),
-                Some(r#"f"hello {name}""#.to_owned()),
-            ),
-        ]
-    );
 }
 
 #[test]

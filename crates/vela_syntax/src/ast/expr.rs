@@ -3,11 +3,14 @@ use super::statements::SyntaxIfExpr;
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
+#[path = "expr/literals.rs"]
+mod literals;
 #[path = "expr/operators.rs"]
 mod operators;
 #[path = "expr/paren.rs"]
 mod paren;
 
+pub use literals::SyntaxLiteral;
 pub use operators::{SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxUnaryExpr};
 pub use paren::SyntaxParenExpr;
 
@@ -160,45 +163,6 @@ pub enum SyntaxExpressionKind {
     Block,
     If,
     Match,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxLiteral {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxLiteral {
-    #[must_use]
-    pub fn token(&self) -> Option<SyntaxToken> {
-        self.syntax
-            .children_with_tokens()
-            .filter_map(|element| element.into_token())
-            .find(|token| literal_token_kind(token.kind()))
-    }
-
-    #[must_use]
-    pub fn token_kind(&self) -> Option<SyntaxKind> {
-        self.token().map(|token| token.kind())
-    }
-
-    #[must_use]
-    pub fn token_text(&self) -> Option<String> {
-        self.token().map(|token| token.text().to_owned())
-    }
-}
-
-impl AstNode for SyntaxLiteral {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::Literal
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -928,21 +892,6 @@ fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
         .filter(|token| token.kind() == SyntaxKind::Ident)
         .map(|token| token.text().to_owned())
         .collect()
-}
-
-fn literal_token_kind(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::TrueKw
-            | SyntaxKind::FalseKw
-            | SyntaxKind::NullKw
-            | SyntaxKind::Int
-            | SyntaxKind::Float
-            | SyntaxKind::Char
-            | SyntaxKind::String
-            | SyntaxKind::InterpolatedString
-            | SyntaxKind::Bytes
-    )
 }
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
