@@ -4,9 +4,7 @@ use vela_common::{Diagnostic, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{
-    Argument, EnumVariantFields as SyntaxEnumVariantFields, Expr, ItemKind, RecordField, SourceFile,
-};
+use vela_syntax::ast::{Argument, Expr, RecordField};
 
 use crate::Constant;
 
@@ -129,14 +127,13 @@ pub(super) struct SchemaFieldDefault {
 }
 
 pub(super) fn source_schema_defaults(
-    parsed: &SourceFile,
+    default_payloads: &SchemaDefaultPayloads,
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
     constants: BTreeMap<String, Constant>,
 ) -> ScriptSchemaDefaults {
     let mut defaults = ScriptSchemaDefaults::default();
-    let default_payloads = SchemaDefaultPayloads::from_source(parsed);
 
     for declaration in module_schema_declarations(graph, module) {
         let Some(metadata) = graph.declaration(declaration) else {
@@ -189,7 +186,7 @@ pub(super) fn source_schema_defaults(
                         &metadata.name,
                         &variant.name,
                         &variant.fields,
-                        &default_payloads,
+                        default_payloads,
                         constants.clone(),
                     );
                     defaults.enum_shapes.insert(
@@ -226,61 +223,42 @@ fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirD
 }
 
 #[derive(Default)]
-struct SchemaDefaultPayloads {
+pub(super) struct SchemaDefaultPayloads {
     struct_fields: BTreeMap<(String, String), Expr>,
     enum_tuple_fields: BTreeMap<(String, String, usize), Expr>,
     enum_record_fields: BTreeMap<(String, String, String), Expr>,
 }
 
 impl SchemaDefaultPayloads {
-    fn from_source(parsed: &SourceFile) -> Self {
-        let mut payloads = Self::default();
-        for item in &parsed.items {
-            match &item.kind {
-                ItemKind::Struct(record) => {
-                    for field in &record.fields {
-                        if let Some(default_value) = field.default_value.clone() {
-                            payloads
-                                .struct_fields
-                                .insert((record.name.clone(), field.name.clone()), default_value);
-                        }
-                    }
-                }
-                ItemKind::Enum(enumeration) => {
-                    for variant in &enumeration.variants {
-                        match &variant.fields {
-                            SyntaxEnumVariantFields::Unit => {}
-                            SyntaxEnumVariantFields::Tuple(fields) => {
-                                for (index, field) in fields.iter().enumerate() {
-                                    if let Some(default_value) = field.default_value.clone() {
-                                        payloads.enum_tuple_fields.insert(
-                                            (enumeration.name.clone(), variant.name.clone(), index),
-                                            default_value,
-                                        );
-                                    }
-                                }
-                            }
-                            SyntaxEnumVariantFields::Record(fields) => {
-                                for field in fields {
-                                    if let Some(default_value) = field.default_value.clone() {
-                                        payloads.enum_record_fields.insert(
-                                            (
-                                                enumeration.name.clone(),
-                                                variant.name.clone(),
-                                                field.name.clone(),
-                                            ),
-                                            default_value,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        payloads
+    pub(super) fn insert_struct_field(
+        &mut self,
+        type_name: String,
+        field_name: String,
+        value: Expr,
+    ) {
+        self.struct_fields.insert((type_name, field_name), value);
+    }
+
+    pub(super) fn insert_enum_tuple_field(
+        &mut self,
+        type_name: String,
+        variant_name: String,
+        index: usize,
+        value: Expr,
+    ) {
+        self.enum_tuple_fields
+            .insert((type_name, variant_name, index), value);
+    }
+
+    pub(super) fn insert_enum_record_field(
+        &mut self,
+        type_name: String,
+        variant_name: String,
+        field_name: String,
+        value: Expr,
+    ) {
+        self.enum_record_fields
+            .insert((type_name, variant_name, field_name), value);
     }
 
     fn struct_field(&self, type_name: &str, field_name: &str) -> Option<Expr> {

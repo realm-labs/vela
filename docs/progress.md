@@ -244,8 +244,10 @@ longer carries an old-AST `TypeHint` conversion helper. Bytecode typed-let
 contracts now read HIR local binding type hints, and schema-default type and
 variant discovery, constructor shapes, field type facts, and default presence
 now read HIR struct and enum declarations/shapes, leaving the legacy owned AST
-in that path only as the temporary default-expression payload carrier. Bytecode
-script function lookup and parameter default flags now read HIR function
+in that path only as the temporary default-expression payload carrier.
+Constructor schema lowering now consumes explicit default-expression payload
+maps instead of traversing legacy source files inside the schema-default logic.
+Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, leaving legacy owned AST function bodies and
 parameters in that path only as the temporary body/default-expression payload
 carrier. Bytecode script-method parameter default flags now read HIR method
