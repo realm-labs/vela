@@ -1,5 +1,5 @@
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList, SyntaxPattern};
-use crate::{SyntaxKind, SyntaxNode};
+use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxExpression {
@@ -93,6 +93,19 @@ impl SyntaxBinaryExpr {
     #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn operator_token(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| binary_operator_kind(token.kind()))
+    }
+
+    #[must_use]
+    pub fn operator_kind(&self) -> Option<SyntaxKind> {
+        self.operator_token().map(|token| token.kind())
     }
 }
 
@@ -636,6 +649,29 @@ fn expression_kind(kind: SyntaxKind) -> bool {
     )
 }
 
+fn binary_operator_kind(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::OrOr
+            | SyntaxKind::AndAnd
+            | SyntaxKind::EqualEqual
+            | SyntaxKind::BangEqual
+            | SyntaxKind::EqualEqualEqual
+            | SyntaxKind::BangEqualEqual
+            | SyntaxKind::Less
+            | SyntaxKind::LessEqual
+            | SyntaxKind::Greater
+            | SyntaxKind::GreaterEqual
+            | SyntaxKind::DotDot
+            | SyntaxKind::DotDotEqual
+            | SyntaxKind::Plus
+            | SyntaxKind::Minus
+            | SyntaxKind::Star
+            | SyntaxKind::Slash
+            | SyntaxKind::Percent
+    )
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -643,7 +679,7 @@ fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
 #[cfg(test)]
 mod tests {
     use crate::SyntaxKind;
-    use crate::ast::{AstNode, SyntaxBlock, SyntaxMapExpr};
+    use crate::ast::{AstNode, SyntaxBinaryExpr, SyntaxBlock, SyntaxMapExpr};
     use crate::parse::parse_source;
 
     #[test]
@@ -688,6 +724,43 @@ mod tests {
                 .entries()
                 .count(),
             1
+        );
+    }
+
+    #[test]
+    fn ast_binary_expression_exposes_operator_tokens() {
+        let source = r#"fn update(start, end) {
+    let exclusive = start..end;
+    let inclusive = start..=end;
+    let sum = start + end;
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let operators = body
+            .let_statements()
+            .map(|statement| {
+                let initializer = statement.initializer().expect("initializer");
+                let binary =
+                    SyntaxBinaryExpr::cast(initializer.syntax().clone()).expect("binary expr");
+                binary.operator_kind()
+            })
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            operators,
+            vec![
+                Some(SyntaxKind::DotDot),
+                Some(SyntaxKind::DotDotEqual),
+                Some(SyntaxKind::Plus),
+            ]
         );
     }
 }
