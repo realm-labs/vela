@@ -1,7 +1,7 @@
 use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
-    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxPatternKind,
-    SyntaxReturnStmt,
+    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
+    SyntaxPatternKind, SyntaxReturnStmt,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
@@ -167,6 +167,7 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     let parse = parse_source(
         r#"fn update(items) {
     let total: i64 = 0;
+    total;
     for index, item in items {
         if item.ready {
             return item;
@@ -195,6 +196,26 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     assert_eq!(
         let_stmt.name_token().expect("let name").kind(),
         SyntaxKind::Ident
+    );
+    assert_eq!(
+        let_stmt
+            .semicolon_token()
+            .expect("let statement terminator")
+            .text(),
+        ";"
+    );
+
+    let expr_stmt = body
+        .syntax()
+        .children()
+        .find_map(SyntaxExprStmt::cast)
+        .expect("expression statement");
+    assert_eq!(
+        expr_stmt
+            .semicolon_token()
+            .expect("expression statement terminator")
+            .text(),
+        ";"
     );
 
     let for_stmt = body
@@ -266,6 +287,13 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         return_stmt.return_token().expect("return token").text(),
         "return"
     );
+    assert_eq!(
+        return_stmt
+            .semicolon_token()
+            .expect("return terminator")
+            .text(),
+        ";"
+    );
 
     let continue_stmt = else_if
         .then_block()
@@ -281,6 +309,13 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
             .text(),
         "continue"
     );
+    assert_eq!(
+        continue_stmt
+            .semicolon_token()
+            .expect("continue terminator")
+            .text(),
+        ";"
+    );
 
     let break_stmt = else_if
         .else_block()
@@ -292,5 +327,12 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     assert_eq!(
         break_stmt.break_token().expect("break token").text(),
         "break"
+    );
+    assert_eq!(
+        break_stmt
+            .semicolon_token()
+            .expect("break terminator")
+            .text(),
+        ";"
     );
 }

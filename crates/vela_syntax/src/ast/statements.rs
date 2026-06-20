@@ -74,6 +74,11 @@ impl SyntaxLetStmt {
     pub fn initializer(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Semicolon)
+    }
 }
 
 impl AstNode for SyntaxLetStmt {
@@ -110,6 +115,11 @@ impl SyntaxReturnStmt {
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Semicolon)
+    }
 }
 
 impl AstNode for SyntaxReturnStmt {
@@ -140,6 +150,11 @@ impl SyntaxBreakStmt {
     #[must_use]
     pub fn break_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::BreakKw)
+    }
+
+    #[must_use]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Semicolon)
     }
 }
 
@@ -172,6 +187,11 @@ impl SyntaxContinueStmt {
     pub fn continue_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::ContinueKw)
     }
+
+    #[must_use]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Semicolon)
+    }
 }
 
 impl AstNode for SyntaxContinueStmt {
@@ -202,6 +222,11 @@ impl SyntaxExprStmt {
     #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn semicolon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Semicolon)
     }
 }
 
