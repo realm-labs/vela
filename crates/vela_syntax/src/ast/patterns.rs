@@ -157,15 +157,33 @@ pub struct SyntaxRecordPatternField {
 
 impl SyntaxRecordPatternField {
     #[must_use]
+    pub fn label_token(&self) -> Option<SyntaxToken> {
+        first_significant_token(&self.syntax).filter(|token| token.kind() == SyntaxKind::Ident)
+    }
+
+    #[must_use]
+    pub fn label_kind(&self) -> Option<SyntaxKind> {
+        self.label_token().map(|token| token.kind())
+    }
+
+    #[must_use]
     pub fn label_text(&self) -> Option<String> {
-        first_significant_token(&self.syntax)
-            .filter(|token| token.kind() == SyntaxKind::Ident)
-            .map(|token| token.text().to_owned())
+        self.label_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn colon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Colon)
     }
 
     #[must_use]
     pub fn pattern(&self) -> Option<SyntaxPattern> {
         child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_shorthand(&self) -> bool {
+        self.label_token().is_some() && self.colon_token().is_none() && self.pattern().is_none()
     }
 }
 
@@ -185,6 +203,13 @@ impl AstNode for SyntaxRecordPatternField {
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == kind)
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
@@ -239,6 +264,7 @@ const fn literal_token(kind: SyntaxKind) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::SyntaxKind;
     use crate::ast::{AstNode, SyntaxMatchExpr, SyntaxPatternKind};
     use crate::parse::parse_source;
 
@@ -365,6 +391,70 @@ mod tests {
             .record_pattern()
             .expect("typed record pattern");
         assert_eq!(record_pattern.path_text().as_deref(), Some("Result::Err"));
-        assert_eq!(record_pattern.fields().count(), 1);
+        let fields = record_pattern.fields().collect::<Vec<_>>();
+        assert_eq!(fields.len(), 1);
+        assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));
+        assert_eq!(
+            fields[0].label_token().expect("field label").text(),
+            "error"
+        );
+        assert!(fields[0].colon_token().is_none());
+        assert!(fields[0].is_shorthand());
+    }
+
+    #[test]
+    fn ast_record_pattern_fields_expose_labels_and_explicit_payloads() {
+        let parse = parse_source(
+            r#"fn update(result) {
+    let value = match result {
+        Result::Err { error: reason, code } => 1,
+    };
+}
+"#,
+        );
+        let tree = parse.tree();
+        let match_expr = tree
+            .syntax()
+            .descendants()
+            .find_map(SyntaxMatchExpr::cast)
+            .expect("match expression");
+        let arm = match_expr
+            .arm_list()
+            .expect("match arm list")
+            .arms()
+            .next()
+            .expect("match arm");
+        let record_pattern = arm
+            .pattern()
+            .expect("record pattern")
+            .record_pattern()
+            .expect("typed record pattern");
+        let fields = record_pattern.fields().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].label_text().as_deref(), Some("error"));
+        assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));
+        assert_eq!(
+            fields[0]
+                .colon_token()
+                .expect("explicit field colon")
+                .kind(),
+            SyntaxKind::Colon
+        );
+        assert_eq!(
+            fields[0]
+                .pattern()
+                .expect("explicit field payload")
+                .binding_name()
+                .as_deref(),
+            Some("reason")
+        );
+        assert!(!fields[0].is_shorthand());
+
+        assert_eq!(fields[1].label_text().as_deref(), Some("code"));
+        assert!(fields[1].colon_token().is_none());
+        assert!(fields[1].pattern().is_none());
+        assert!(fields[1].is_shorthand());
     }
 }

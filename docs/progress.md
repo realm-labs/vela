@@ -179,7 +179,9 @@ pattern paths, record-variant pattern paths and fields, field labels, binding
 names, basic path-pattern text, literal patterns, and wildcard/basic pattern
 nodes. Pattern wrappers now also classify wildcard, literal, binding, path,
 tuple-variant, and record-variant shapes and can downcast tuple and record
-pattern nodes for variant payload traversal. The
+pattern nodes for variant payload traversal. Record pattern fields now expose
+their label tokens, label kinds, explicit colon tokens, nested pattern
+payloads, and shorthand classification. The
 rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,
 statement, expression, and pattern submodules so additional wrappers can land without
 growing the legacy owned-AST file; remaining pattern coverage, remaining
