@@ -1,4 +1,4 @@
-use super::{AstChildren, AstNode};
+use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
 use crate::{SyntaxKind, SyntaxNode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -260,6 +260,203 @@ impl SyntaxArgument {
 impl AstNode for SyntaxArgument {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::Argument
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxArrayExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxArrayExpr {
+    #[must_use]
+    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxArrayExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ArrayExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxMapExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxMapExpr {
+    #[must_use]
+    pub fn entries(&self) -> AstChildren<SyntaxMapEntry> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxMapExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MapExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxMapEntry {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxMapEntry {
+    #[must_use]
+    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxMapEntry {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MapEntry
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxRecordExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxRecordExpr {
+    #[must_use]
+    pub fn path(&self) -> Option<SyntaxPathExpr> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn field_list(&self) -> Option<SyntaxRecordExprFieldList> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxRecordExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::RecordExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxRecordExprFieldList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxRecordExprFieldList {
+    #[must_use]
+    pub fn fields(&self) -> AstChildren<SyntaxRecordExprField> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxRecordExprFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::RecordExprFieldList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxRecordExprField {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxRecordExprField {
+    #[must_use]
+    pub fn expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxRecordExprField {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::RecordExprField
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxLambdaExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxLambdaExpr {
+    #[must_use]
+    pub fn param_list(&self) -> Option<SyntaxParamList> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body_expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body_block(&self) -> Option<SyntaxBlock> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxLambdaExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::LambdaExpr
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {

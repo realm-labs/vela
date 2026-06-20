@@ -83,8 +83,9 @@ mod tests {
     use vela_common::{SourceId, Span};
 
     use crate::ast::{
-        AstNode, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
-        SyntaxIndexExpr, SyntaxReturnStmt, SyntaxTryExpr,
+        AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt,
+        SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxRecordExpr,
+        SyntaxReturnStmt, SyntaxTryExpr,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -648,6 +649,132 @@ impl Rewardable for Player {
                 .arguments()
                 .count(),
             1
+        );
+    }
+
+    #[test]
+    fn parser_parse_source_structures_container_and_lambda_expression_nodes() {
+        let source = r#"fn update(ctx: Context) {
+    let values = [1, score + 2, player.level];
+    let table = { "score": score, player: player.level };
+    let reward = Reward { item_id: item, count, tags: [item] };
+    let doubled = |value: i64| value * 2;
+    let from_block = |value| { return value; };
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(19), source);
+        let tree = parse.tree();
+        let body = tree
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let lets = body.let_statements().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(tree.syntax().text().to_string(), source);
+        assert_eq!(lets.len(), 5);
+
+        let array_expr =
+            SyntaxArrayExpr::cast(lets[0].initializer().expect("array").syntax().clone())
+                .expect("array expression");
+        assert_eq!(
+            array_expr
+                .expressions()
+                .map(|expression| expression.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![
+                SyntaxKind::Literal,
+                SyntaxKind::BinaryExpr,
+                SyntaxKind::FieldExpr,
+            ]
+        );
+
+        let map_expr = SyntaxMapExpr::cast(lets[1].initializer().expect("map").syntax().clone())
+            .expect("map expression");
+        assert_eq!(
+            map_expr
+                .entries()
+                .map(|entry| entry
+                    .expressions()
+                    .map(|expression| expression.syntax().kind())
+                    .collect::<Vec<_>>())
+                .collect::<Vec<Vec<_>>>(),
+            vec![
+                vec![SyntaxKind::Literal, SyntaxKind::PathExpr],
+                vec![SyntaxKind::PathExpr, SyntaxKind::FieldExpr],
+            ]
+        );
+
+        let record_expr =
+            SyntaxRecordExpr::cast(lets[2].initializer().expect("record").syntax().clone())
+                .expect("record expression");
+        assert_eq!(
+            record_expr
+                .path()
+                .expect("record path")
+                .syntax()
+                .text()
+                .to_string(),
+            "Reward"
+        );
+        let record_fields = record_expr
+            .field_list()
+            .expect("record fields")
+            .fields()
+            .collect::<Vec<_>>();
+        assert_eq!(record_fields.len(), 3);
+        assert_eq!(
+            record_fields
+                .iter()
+                .map(|field| field
+                    .expression()
+                    .map(|expression| expression.syntax().kind()))
+                .collect::<Vec<_>>(),
+            vec![
+                Some(SyntaxKind::PathExpr),
+                None,
+                Some(SyntaxKind::ArrayExpr),
+            ]
+        );
+
+        let lambda_expr =
+            SyntaxLambdaExpr::cast(lets[3].initializer().expect("lambda").syntax().clone())
+                .expect("lambda expression");
+        assert_eq!(
+            lambda_expr
+                .param_list()
+                .expect("lambda params")
+                .params()
+                .count(),
+            1
+        );
+        assert_eq!(
+            lambda_expr
+                .body_expression()
+                .expect("lambda body expression")
+                .syntax()
+                .kind(),
+            SyntaxKind::BinaryExpr
+        );
+
+        let block_lambda = SyntaxLambdaExpr::cast(
+            lets[4]
+                .initializer()
+                .expect("block lambda")
+                .syntax()
+                .clone(),
+        )
+        .expect("block lambda expression");
+        assert_eq!(
+            block_lambda
+                .body_block()
+                .expect("lambda block body")
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ReturnStmt]
         );
     }
 

@@ -23,6 +23,14 @@ impl CstParser<'_, '_> {
             SyntaxKind::CallExpr => self.call_expression_body(expression_start, expression_end),
             SyntaxKind::IndexExpr => self.index_expression_body(expression_start, expression_end),
             SyntaxKind::TryExpr => self.try_expression_body(expression_start, expression_end),
+            SyntaxKind::ArrayExpr => self.array_expression_body(expression_start, expression_end),
+            SyntaxKind::MapExpr => self.map_expression_body(expression_start, expression_end),
+            SyntaxKind::RecordExpr => {
+                self.record_expression_body(expression_start, expression_end);
+            }
+            SyntaxKind::LambdaExpr => {
+                self.lambda_expression_body(expression_start, expression_end);
+            }
             SyntaxKind::IfExpr => self.if_expression_body(expression_start, expression_end),
             _ => self.emit_until(expression_end),
         }
@@ -108,6 +116,164 @@ impl CstParser<'_, '_> {
         self.emit_until(end);
     }
 
+    fn array_expression_body(&mut self, start: usize, end: usize) {
+        let close = end.saturating_sub(1);
+        self.emit_until(start + 1);
+        self.comma_separated_expressions(close);
+        self.emit_until(end);
+    }
+
+    fn map_expression_body(&mut self, start: usize, end: usize) {
+        let close = end.saturating_sub(1);
+        self.emit_until(start + 1);
+        while self.pos < close {
+            let entry_start = self.skip_trivia(self.pos);
+            self.emit_until(entry_start);
+            if entry_start >= close {
+                break;
+            }
+            if self.at_kind(entry_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let entry_end = self.find_argument_end(entry_start, close);
+            self.map_entry_range(entry_start, entry_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn map_entry_range(&mut self, start: usize, end: usize) {
+        self.builder.start_node(SyntaxKind::MapEntry);
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            self.expression_range(start, colon);
+            self.emit_until(colon + 1);
+            let value_start = self.skip_trivia(colon + 1);
+            self.expression_range(value_start, end);
+        } else {
+            self.emit_until(end);
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn record_expression_body(&mut self, start: usize, end: usize) {
+        let Some(fields_start) = self.find_outer_record_field_list_start(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.expression_range(start, fields_start);
+        self.record_expr_field_list(fields_start, end);
+        self.emit_until(end);
+    }
+
+    fn record_expr_field_list(&mut self, start: usize, end: usize) {
+        let fields_end = self
+            .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            .filter(|candidate| *candidate <= end)
+            .unwrap_or(end);
+        let close = fields_end.saturating_sub(1);
+        self.builder.start_node(SyntaxKind::RecordExprFieldList);
+        self.emit_until(start + 1);
+        while self.pos < close {
+            let field_start = self.skip_trivia(self.pos);
+            self.emit_until(field_start);
+            if field_start >= close {
+                break;
+            }
+            if self.at_kind(field_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let field_end = self.find_argument_end(field_start, close);
+            self.record_expr_field_range(field_start, field_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(fields_end);
+        self.builder.finish_node();
+    }
+
+    fn record_expr_field_range(&mut self, start: usize, end: usize) {
+        self.builder.start_node(SyntaxKind::RecordExprField);
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            self.emit_until(colon + 1);
+            let value_start = self.skip_trivia(colon + 1);
+            self.expression_range(value_start, end);
+        } else {
+            self.emit_until(end);
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn lambda_expression_body(&mut self, start: usize, end: usize) {
+        let Some(params_end) = self.find_lambda_param_list_end(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.lambda_param_list(start, params_end);
+
+        let body_start = self.skip_trivia(params_end);
+        self.emit_until(body_start);
+        if body_start >= end {
+            return;
+        }
+        if self.at_kind(body_start, SyntaxKind::LBrace) {
+            let body_end = self.find_matching_brace_end(body_start).min(end);
+            self.block_range(body_start, body_end);
+            self.emit_until(end);
+        } else {
+            self.expression_range(body_start, end);
+        }
+    }
+
+    fn lambda_param_list(&mut self, start: usize, end: usize) {
+        let close = end.saturating_sub(1);
+        self.builder.start_node(SyntaxKind::ParamList);
+        self.emit_until(start + 1);
+        let mut param_start = self.pos;
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_delimiter_root(param_start, self.pos)
+            {
+                self.param_range(param_start, self.pos);
+                self.emit_current_token();
+                param_start = self.pos;
+            } else {
+                self.pos += 1;
+            }
+        }
+        self.param_range(param_start, close);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn comma_separated_expressions(&mut self, close: usize) {
+        while self.pos < close {
+            let expression_start = self.skip_trivia(self.pos);
+            self.emit_until(expression_start);
+            if expression_start >= close {
+                break;
+            }
+            if self.at_kind(expression_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let expression_end = self.find_argument_end(expression_start, close);
+            self.expression_range(expression_start, expression_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+    }
+
     fn arg_list(&mut self, start: usize, end: usize) {
         self.builder.start_node(SyntaxKind::ArgList);
         self.emit_until(start + 1);
@@ -150,6 +316,28 @@ impl CstParser<'_, '_> {
         if self.find_root_assign_op_before(start, end).is_some() {
             return SyntaxKind::AssignExpr;
         }
+        if self.at_kind(start, SyntaxKind::Pipe) {
+            return SyntaxKind::LambdaExpr;
+        }
+        if self.at_kind(start, SyntaxKind::IfKw) {
+            return SyntaxKind::IfExpr;
+        }
+        if self.at_kind(start, SyntaxKind::MatchKw) {
+            return SyntaxKind::MatchExpr;
+        }
+        if self.at_kind(start, SyntaxKind::LBracket) {
+            return SyntaxKind::ArrayExpr;
+        }
+        if self.at_kind(start, SyntaxKind::LBrace) {
+            return SyntaxKind::MapExpr;
+        }
+        if self.can_start_record_expression(start)
+            && self
+                .find_outer_record_field_list_start(start, end)
+                .is_some()
+        {
+            return SyntaxKind::RecordExpr;
+        }
         if self.find_root_binary_op_before(start, end).is_some() {
             return SyntaxKind::BinaryExpr;
         }
@@ -183,11 +371,6 @@ impl CstParser<'_, '_> {
                 | SyntaxKind::FalseKw
                 | SyntaxKind::NullKw,
             ) if self.single_significant_token(start, end) => SyntaxKind::Literal,
-            Some(SyntaxKind::LBracket) => SyntaxKind::ArrayExpr,
-            Some(SyntaxKind::LBrace) => SyntaxKind::MapExpr,
-            Some(SyntaxKind::Pipe) => SyntaxKind::LambdaExpr,
-            Some(SyntaxKind::IfKw) => SyntaxKind::IfExpr,
-            Some(SyntaxKind::MatchKw) => SyntaxKind::MatchExpr,
             _ => SyntaxKind::PathExpr,
         }
     }
@@ -271,6 +454,40 @@ impl CstParser<'_, '_> {
             depth.bump(current);
         }
         None
+    }
+
+    fn find_outer_record_field_list_start(&self, start: usize, end: usize) -> Option<usize> {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root()
+                && current == SyntaxKind::LBrace
+                && cursor > start
+                && self.find_matching_delimiter_end(cursor, SyntaxKind::LBrace, SyntaxKind::RBrace)
+                    == Some(end)
+            {
+                return Some(cursor);
+            }
+            depth.bump(current);
+        }
+        None
+    }
+
+    fn can_start_record_expression(&self, start: usize) -> bool {
+        matches!(
+            self.kind_at(start),
+            Some(SyntaxKind::Ident | SyntaxKind::SelfKw)
+        )
+    }
+
+    fn find_lambda_param_list_end(&self, start: usize, end: usize) -> Option<usize> {
+        if self.kind_at(start) != Some(SyntaxKind::Pipe) {
+            return None;
+        }
+        self.find_root_kind_before(SyntaxKind::Pipe, start + 1, end)
+            .map(|pipe| pipe + 1)
     }
 
     fn find_outer_index_list_start(&self, start: usize, end: usize) -> Option<usize> {

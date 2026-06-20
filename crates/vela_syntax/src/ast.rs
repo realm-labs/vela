@@ -8,9 +8,10 @@ mod statements;
 mod syntax;
 
 pub use expr::{
-    SyntaxArgList, SyntaxArgument, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxCallExpr,
-    SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLiteral, SyntaxPathExpr,
-    SyntaxTryExpr,
+    SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
+    SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
+    SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxPathExpr, SyntaxRecordExpr,
+    SyntaxRecordExprField, SyntaxRecordExprFieldList, SyntaxTryExpr,
 };
 pub use statements::{
     SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,

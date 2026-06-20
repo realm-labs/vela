@@ -149,10 +149,12 @@ now expose initial expression CST wrappers for let initializers, return values,
 expression statements, assignments, binary/unary expressions, field access,
 calls, argument lists, paths, and literals. Postfix expression structure now
 also preserves method-call-over-field ordering and exposes index and try
-expression wrappers. The rowan-backed typed AST wrapper layer now has focused
-syntax, statement, and expression submodules so additional wrappers can land
-without growing the legacy owned-AST file; deeper expression coverage, pattern
-coverage, and downstream migration remain open.
+expression wrappers. Container and callable expression structure now exposes
+array elements, map entries, record literal fields, lambda parameter lists, and
+lambda expression/block bodies. The rowan-backed typed AST wrapper layer now
+has focused syntax, statement, and expression submodules so additional wrappers
+can land without growing the legacy owned-AST file; deeper control-flow
+expression coverage, pattern coverage, and downstream migration remain open.
 
 ## Milestone Snapshot
 
