@@ -135,6 +135,37 @@ impl SyntaxMatchArm {
     }
 
     #[must_use]
+    pub fn separator_token(&self) -> Option<SyntaxToken> {
+        let parent = self.syntax.parent()?;
+        let mut seen_arm = false;
+        for element in parent.children_with_tokens() {
+            if let Some(node) = element.as_node() {
+                if node == &self.syntax {
+                    seen_arm = true;
+                    continue;
+                }
+                if seen_arm && node.kind() == SyntaxKind::MatchArm {
+                    return None;
+                }
+            }
+
+            let Some(token) = element.as_token() else {
+                continue;
+            };
+            if !seen_arm {
+                continue;
+            }
+            if matches!(token.kind(), SyntaxKind::Comma | SyntaxKind::Semicolon) {
+                return Some(token.clone());
+            }
+            if token.kind() == SyntaxKind::RBrace {
+                return None;
+            }
+        }
+        None
+    }
+
+    #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
     }

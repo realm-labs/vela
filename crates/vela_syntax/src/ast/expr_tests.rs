@@ -933,6 +933,10 @@ fn ast_match_expression_exposes_control_tokens() {
         "if"
     );
     assert_eq!(arms[0].fat_arrow_token().expect("arrow").text(), "=>");
+    assert_eq!(
+        arms[0].separator_token().expect("comma separator").text(),
+        ","
+    );
     assert!(matches!(
         arms[0].body().expect("expression body"),
         SyntaxMatchArmBody::Expression(_)
@@ -941,6 +945,13 @@ fn ast_match_expression_exposes_control_tokens() {
     assert!(arms[0].body_block().is_none());
     assert!(arms[1].guard_if_token().is_none());
     assert_eq!(arms[1].fat_arrow_token().expect("arrow").text(), "=>");
+    assert_eq!(
+        arms[1]
+            .separator_token()
+            .expect("semicolon separator")
+            .text(),
+        ";"
+    );
     assert!(matches!(
         arms[1].body().expect("block body"),
         SyntaxMatchArmBody::Block(_)
