@@ -1,4 +1,5 @@
-use vela_syntax::ast::SourceFile;
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
 
 use crate::callable_context::{
     CallableFacts, callable_facts, member_callable_facts, source_callable_facts,
@@ -95,6 +96,7 @@ pub struct QueryContext<'a> {
     generation: WorkspaceGeneration,
     source: QuerySource<'a>,
     parsed: Option<&'a SourceFile>,
+    syntax_parse: Option<&'a SyntaxParse<SyntaxSourceFile>>,
     bindings: Option<&'a BindingMap>,
     cursor: CursorContext,
 }
@@ -114,6 +116,7 @@ impl<'a> QueryContext<'a> {
             generation: snapshot.generation(),
             source: QuerySource::Snapshot(document),
             parsed: None,
+            syntax_parse: None,
             bindings: None,
             cursor,
         })
@@ -127,6 +130,7 @@ impl<'a> QueryContext<'a> {
     ) -> Option<Self> {
         let source = databases.source_db().records().get(document_id)?;
         let parsed = databases.parse_db().parsed_source(document_id);
+        let syntax_parse = databases.parse_db().syntax_parse(document_id);
         let cursor = cursor_context_at(source.text(), position, parsed);
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
         Some(Self {
@@ -135,6 +139,7 @@ impl<'a> QueryContext<'a> {
             generation: databases.generation(),
             source: QuerySource::Database(source),
             parsed,
+            syntax_parse,
             bindings,
             cursor,
         })
@@ -186,6 +191,11 @@ impl<'a> QueryContext<'a> {
     #[must_use]
     pub const fn parsed_source(&self) -> Option<&SourceFile> {
         self.parsed
+    }
+
+    #[must_use]
+    pub const fn syntax_parse(&self) -> Option<&SyntaxParse<SyntaxSourceFile>> {
+        self.syntax_parse
     }
 
     #[must_use]
@@ -532,6 +542,7 @@ mod tests {
         assert!(context.module_path().is_none());
         assert!(context.source_record().is_none());
         assert!(context.parsed_source().is_none());
+        assert!(context.syntax_parse().is_none());
         assert!(context.bindings().is_none());
     }
 
@@ -567,6 +578,7 @@ mod tests {
         assert_eq!(context.identifier_text(), Some("le"));
         assert_eq!(context.source_id(), Some(SourceId::new(1)));
         assert!(context.parsed_source().is_some());
+        assert!(context.syntax_parse().is_some());
         assert!(
             context
                 .bindings()

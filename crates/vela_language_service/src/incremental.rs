@@ -8,11 +8,13 @@ use std::time::Instant;
 use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
+use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    EnumVariantFields, FunctionItem, ImplKind, ItemKind, Param, SourceFile, StructField, TraitItem,
-    TraitMethod, TypeHint, Visibility,
+    EnumVariantFields, FunctionItem, ImplKind, ItemKind, Param, SourceFile, StructField,
+    SyntaxSourceFile, TraitItem, TraitMethod, TypeHint, Visibility,
 };
-use vela_syntax::parser::parse_source;
+use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use crate::{
     CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
@@ -108,6 +110,7 @@ struct ParseRecord {
     module_path: ModulePath,
     content_hash: u64,
     parsed: SourceFile,
+    syntax: SyntaxParse<SyntaxSourceFile>,
     summary: ParseSummary,
 }
 
@@ -138,6 +141,11 @@ impl ParseDb {
     #[must_use]
     pub fn parsed_source(&self, document_id: &DocumentId) -> Option<&SourceFile> {
         self.records.get(document_id).map(|record| &record.parsed)
+    }
+
+    #[must_use]
+    pub fn syntax_parse(&self, document_id: &DocumentId) -> Option<&SyntaxParse<SyntaxSourceFile>> {
+        self.records.get(document_id).map(|record| &record.syntax)
     }
 
     #[must_use]
@@ -180,13 +188,15 @@ impl ParseDb {
                 reparsed_documents.insert(document_id.clone());
                 changed_modules.insert(source.module_path.clone());
                 self.parse_count = self.parse_count.saturating_add(1);
-                let parsed = parse_source(source.source_id, source.text());
+                let parsed = parse_legacy_source(source.source_id, source.text());
+                let syntax = parse_syntax_source(source.source_id, source.text());
                 let summary = summarize_source(&parsed);
                 ParseRecord {
                     source: source.source_id,
                     module_path: source.module_path.clone(),
                     content_hash: source.content_hash,
                     parsed,
+                    syntax,
                     summary,
                 }
             };

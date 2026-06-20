@@ -36,6 +36,7 @@ fn module(name: &str) -> ModulePath {
 #[test]
 fn function_body_edit_does_not_invalidate_unrelated_modules() {
     let mut db = LanguageServiceDatabases::new();
+    let main_document = DocumentId::from("/workspace/scripts/game/main.vela");
     db.update(&project(&[
         file(
             "/workspace/scripts/game/main.vela",
@@ -91,6 +92,12 @@ fn function_body_edit_does_not_invalidate_unrelated_modules() {
             .expect("main fingerprint after body edit"),
         before_fingerprint
     );
+    let syntax_parse = db
+        .parse_db()
+        .syntax_parse(&main_document)
+        .expect("main syntax parse");
+    assert!(syntax_parse.diagnostics().is_empty());
+    assert_eq!(syntax_parse.tree().functions().count(), 1);
     assert_eq!(
         db.project_db().rebuild_count(),
         before_project_rebuild_count
