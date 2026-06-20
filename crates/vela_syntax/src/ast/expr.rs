@@ -68,6 +68,19 @@ impl SyntaxAssignExpr {
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn operator_token(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| assignment_operator_kind(token.kind()))
+    }
+
+    #[must_use]
+    pub fn operator_kind(&self) -> Option<SyntaxKind> {
+        self.operator_token().map(|token| token.kind())
+    }
 }
 
 impl AstNode for SyntaxAssignExpr {
@@ -672,6 +685,18 @@ fn binary_operator_kind(kind: SyntaxKind) -> bool {
     )
 }
 
+fn assignment_operator_kind(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::Equal
+            | SyntaxKind::PlusEqual
+            | SyntaxKind::MinusEqual
+            | SyntaxKind::StarEqual
+            | SyntaxKind::SlashEqual
+            | SyntaxKind::PercentEqual
+    )
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -679,7 +704,9 @@ fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
 #[cfg(test)]
 mod tests {
     use crate::SyntaxKind;
-    use crate::ast::{AstNode, SyntaxBinaryExpr, SyntaxBlock, SyntaxMapExpr};
+    use crate::ast::{
+        AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxMapExpr,
+    };
     use crate::parse::parse_source;
 
     #[test]
@@ -760,6 +787,51 @@ mod tests {
                 Some(SyntaxKind::DotDot),
                 Some(SyntaxKind::DotDotEqual),
                 Some(SyntaxKind::Plus),
+            ]
+        );
+    }
+
+    #[test]
+    fn ast_assignment_expression_exposes_operator_tokens() {
+        let source = r#"fn update(score) {
+    score = 1;
+    score += 2;
+    score -= 3;
+    score *= 4;
+    score /= 5;
+    score %= 6;
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let operators = body
+            .statements()
+            .map(|statement| {
+                let expr_statement =
+                    SyntaxExprStmt::cast(statement.syntax().clone()).expect("expression statement");
+                let expression = expr_statement.expression().expect("assignment expression");
+                let assignment =
+                    SyntaxAssignExpr::cast(expression.syntax().clone()).expect("assign expr");
+                assignment.operator_kind()
+            })
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            operators,
+            vec![
+                Some(SyntaxKind::Equal),
+                Some(SyntaxKind::PlusEqual),
+                Some(SyntaxKind::MinusEqual),
+                Some(SyntaxKind::StarEqual),
+                Some(SyntaxKind::SlashEqual),
+                Some(SyntaxKind::PercentEqual),
             ]
         );
     }

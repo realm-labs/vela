@@ -161,6 +161,8 @@ literals. Postfix expression structure now also preserves
 method-call-over-field ordering and exposes index and try expression wrappers.
 Binary expression wrappers now expose their operator tokens and kinds,
 including range operators such as `..` and `..=`.
+Assignment expression wrappers now expose their operator tokens and kinds for
+plain and compound assignment.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
 expression/block bodies. Bare braced expressions now keep the existing
