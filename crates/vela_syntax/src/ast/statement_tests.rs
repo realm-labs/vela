@@ -1,7 +1,7 @@
 use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
     SyntaxBreakStmt, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt,
+    SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt, SyntaxStatementKind,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
@@ -86,6 +86,69 @@ fn ast_block_exposes_statement_children() {
             .collect::<Vec<_>>(),
         vec![SyntaxKind::ContinueStmt]
     );
+}
+
+#[test]
+fn ast_statement_exposes_typed_variant_helpers() {
+    let parse = parse_source(
+        r#"fn variants(items, ready, state) {
+    let value = 1;
+    return value;
+    break;
+    continue;
+    for item in items {
+        item;
+    }
+    if ready {
+        value;
+    }
+    match state {
+        Ready => value,
+    }
+    {
+        value;
+    }
+    value;
+}
+"#,
+    );
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let statements = body.statements().collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        statements
+            .iter()
+            .map(|statement| statement.statement_kind())
+            .collect::<Vec<_>>(),
+        vec![
+            SyntaxStatementKind::Let,
+            SyntaxStatementKind::Return,
+            SyntaxStatementKind::Break,
+            SyntaxStatementKind::Continue,
+            SyntaxStatementKind::For,
+            SyntaxStatementKind::If,
+            SyntaxStatementKind::Match,
+            SyntaxStatementKind::Block,
+            SyntaxStatementKind::Expr,
+        ]
+    );
+    assert!(statements[0].as_let().is_some());
+    assert!(statements[1].as_return().is_some());
+    assert!(statements[2].as_break().is_some());
+    assert!(statements[3].as_continue().is_some());
+    assert!(statements[4].as_for().is_some());
+    assert!(statements[5].as_if().is_some());
+    assert!(statements[6].as_match().is_some());
+    assert!(statements[7].as_block().is_some());
+    assert!(statements[8].as_expr().is_some());
+    assert!(statements[0].as_match().is_none());
 }
 
 #[test]

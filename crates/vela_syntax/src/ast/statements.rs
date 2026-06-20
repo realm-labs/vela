@@ -1,4 +1,4 @@
-use super::expr::SyntaxExpression;
+use super::expr::{SyntaxExpression, SyntaxMatchExpr};
 use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
@@ -37,6 +37,80 @@ impl SyntaxStatement {
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn statement_kind(&self) -> SyntaxStatementKind {
+        match self.syntax.kind() {
+            SyntaxKind::LetStmt => SyntaxStatementKind::Let,
+            SyntaxKind::ReturnStmt => SyntaxStatementKind::Return,
+            SyntaxKind::BreakStmt => SyntaxStatementKind::Break,
+            SyntaxKind::ContinueStmt => SyntaxStatementKind::Continue,
+            SyntaxKind::ForStmt => SyntaxStatementKind::For,
+            SyntaxKind::IfExpr => SyntaxStatementKind::If,
+            SyntaxKind::MatchExpr => SyntaxStatementKind::Match,
+            SyntaxKind::Block => SyntaxStatementKind::Block,
+            SyntaxKind::ExprStmt => SyntaxStatementKind::Expr,
+            kind => unreachable!("non-statement syntax kind: {kind:?}"),
+        }
+    }
+
+    #[must_use]
+    pub fn as_let(&self) -> Option<SyntaxLetStmt> {
+        SyntaxLetStmt::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_return(&self) -> Option<SyntaxReturnStmt> {
+        SyntaxReturnStmt::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_break(&self) -> Option<SyntaxBreakStmt> {
+        SyntaxBreakStmt::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_continue(&self) -> Option<SyntaxContinueStmt> {
+        SyntaxContinueStmt::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_for(&self) -> Option<SyntaxForStmt> {
+        SyntaxForStmt::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_if(&self) -> Option<SyntaxIfExpr> {
+        SyntaxIfExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_match(&self) -> Option<SyntaxMatchExpr> {
+        SyntaxMatchExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_block(&self) -> Option<SyntaxBlock> {
+        SyntaxBlock::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_expr(&self) -> Option<SyntaxExprStmt> {
+        SyntaxExprStmt::cast(self.syntax.clone())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SyntaxStatementKind {
+    Let,
+    Return,
+    Break,
+    Continue,
+    For,
+    If,
+    Match,
+    Block,
+    Expr,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

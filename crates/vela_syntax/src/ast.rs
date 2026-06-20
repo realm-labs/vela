@@ -42,7 +42,7 @@ pub use patterns::{
 };
 pub use statements::{
     SyntaxBreakStmt, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
+    SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement, SyntaxStatementKind,
 };
 pub use syntax::{
     AstChildren, AstNode, SyntaxBlock, SyntaxSourceFile, SyntaxTypeArgList, SyntaxTypeHint,
