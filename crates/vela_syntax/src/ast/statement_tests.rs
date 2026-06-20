@@ -118,6 +118,7 @@ fn ast_for_statement_exposes_index_and_value_patterns() {
     assert_eq!(for_statements.len(), 2);
 
     let ordinary = &for_statements[0];
+    assert!(ordinary.binding_separator_token().is_none());
     assert!(ordinary.index_pattern().is_none());
     assert_eq!(
         ordinary
@@ -130,6 +131,13 @@ fn ast_for_statement_exposes_index_and_value_patterns() {
     assert_eq!(ordinary.patterns().count(), 1);
 
     let indexed = &for_statements[1];
+    assert_eq!(
+        indexed
+            .binding_separator_token()
+            .expect("binding separator")
+            .text(),
+        ","
+    );
     assert_eq!(
         indexed
             .index_pattern()

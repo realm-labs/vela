@@ -241,6 +241,11 @@ impl SyntaxForStmt {
     }
 
     #[must_use]
+    pub fn binding_separator_token(&self) -> Option<SyntaxToken> {
+        token_before(&self.syntax, SyntaxKind::Comma, SyntaxKind::InKw)
+    }
+
+    #[must_use]
     pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
         AstChildren::new(&self.syntax)
     }
@@ -369,4 +374,16 @@ fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Op
             }
             seen_after && token.kind() == wanted
         })
+}
+
+fn token_before(
+    parent: &SyntaxNode,
+    wanted: SyntaxKind,
+    before: SyntaxKind,
+) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .take_while(|token| token.kind() != before)
+        .find(|token| token.kind() == wanted)
 }
