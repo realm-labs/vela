@@ -7,7 +7,7 @@ use vela_hir::module_graph::{
     DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
-use vela_syntax::ast::{EnumVariantFields, Expr, FunctionItem, ItemKind, SourceFile};
+use vela_syntax::ast::{FunctionItem, SourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -16,7 +16,10 @@ use crate::Constant;
 use super::const_eval::evaluate_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::schema_defaults::{SchemaDefaultPayloads, ScriptSchemaDefaults, source_schema_defaults};
+use super::legacy_payloads::{
+    const_value_payloads, function_body_payloads, schema_default_payloads,
+};
+use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 
 pub(super) struct SemanticSource {
@@ -446,80 +449,6 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
         .collect::<Vec<_>>();
     consts.sort_by_key(|(declaration, _)| *declaration);
     consts
-}
-
-fn const_value_payloads(parsed: &SourceFile) -> BTreeMap<&str, &Expr> {
-    let mut payloads = BTreeMap::new();
-    for (name, value) in parsed.items.iter().filter_map(|item| match &item.kind {
-        ItemKind::Const(item) => Some((item.name.as_str(), &item.value)),
-        _ => None,
-    }) {
-        payloads.entry(name).or_insert(value);
-    }
-    payloads
-}
-
-fn function_body_payloads(parsed: &SourceFile) -> BTreeMap<&str, &FunctionItem> {
-    let mut payloads = BTreeMap::new();
-    for (name, function) in parsed.items.iter().filter_map(|item| match &item.kind {
-        ItemKind::Function(function) => Some((function.name.as_str(), function)),
-        _ => None,
-    }) {
-        payloads.entry(name).or_insert(function);
-    }
-    payloads
-}
-
-fn schema_default_payloads(parsed: &SourceFile) -> SchemaDefaultPayloads {
-    let mut payloads = SchemaDefaultPayloads::default();
-    for item in &parsed.items {
-        match &item.kind {
-            ItemKind::Struct(record) => {
-                for field in &record.fields {
-                    if let Some(default_value) = field.default_value.clone() {
-                        payloads.insert_struct_field(
-                            record.name.clone(),
-                            field.name.clone(),
-                            default_value,
-                        );
-                    }
-                }
-            }
-            ItemKind::Enum(enumeration) => {
-                for variant in &enumeration.variants {
-                    match &variant.fields {
-                        EnumVariantFields::Unit => {}
-                        EnumVariantFields::Tuple(fields) => {
-                            for (index, field) in fields.iter().enumerate() {
-                                if let Some(default_value) = field.default_value.clone() {
-                                    payloads.insert_enum_tuple_field(
-                                        enumeration.name.clone(),
-                                        variant.name.clone(),
-                                        index,
-                                        default_value,
-                                    );
-                                }
-                            }
-                        }
-                        EnumVariantFields::Record(fields) => {
-                            for field in fields {
-                                if let Some(default_value) = field.default_value.clone() {
-                                    payloads.insert_enum_record_field(
-                                        enumeration.name.clone(),
-                                        variant.name.clone(),
-                                        field.name.clone(),
-                                        default_value,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    payloads
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {

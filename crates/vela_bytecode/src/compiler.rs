@@ -12,6 +12,7 @@ mod expressions;
 mod field_slots;
 mod host_paths;
 mod lambdas;
+mod legacy_payloads;
 mod map_literals;
 mod methods;
 mod operators;

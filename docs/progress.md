@@ -261,6 +261,11 @@ identity from HIR impl and trait shapes, and method body/default payload
 association is keyed by HIR method metadata, leaving the legacy owned AST in
 that path only as the temporary method body and default-expression payload
 carrier.
+Bytecode semantic lowering now centralizes the remaining legacy owned-AST
+function body, const initializer, and schema default-expression payload
+extraction behind a dedicated compiler payload boundary, keeping semantic
+orchestration on HIR/CST diagnostics while the final expression/body migration
+continues.
 The rowan parse boundary now validates restricted builtin type arguments and
 non-keyable `Map`/`Set` contracts, and the
 bytecode semantic parse gate uses CST parse diagnostics before falling back to
