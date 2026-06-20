@@ -225,6 +225,11 @@ impl SyntaxPathExpr {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn self_token(&self) -> Option<SyntaxToken> {
         let mut tokens = self.path_tokens().into_iter();
         let token = tokens.next()?;
@@ -789,6 +794,13 @@ impl SyntaxRecordExpr {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        self.path()
+            .map(|path| path.path_segments())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
     pub fn field_list(&self) -> Option<SyntaxRecordExprFieldList> {
         child(&self.syntax)
     }
@@ -996,6 +1008,14 @@ fn expression_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::IfExpr
             | SyntaxKind::MatchExpr
     )
+}
+
+fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| token.text().to_owned())
+        .collect()
 }
 
 fn binary_operator_kind(kind: SyntaxKind) -> bool {

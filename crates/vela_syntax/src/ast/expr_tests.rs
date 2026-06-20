@@ -429,6 +429,7 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
 
     let path = SyntaxPathExpr::cast(initializers[0].syntax().clone()).expect("path expr");
     assert_eq!(path.path_text().as_deref(), Some("game::reward"));
+    assert_eq!(path.path_segments(), vec!["game", "reward"]);
     assert_eq!(
         path.path_tokens()
             .iter()
@@ -766,7 +767,7 @@ fn ast_map_entries_expose_key_colon_and_value() {
 #[test]
 fn ast_record_expression_fields_expose_labels_and_shorthand() {
     let source = r#"fn build(amount, item) {
-    let reward = Reward {
+    let reward = game::Reward {
         amount: amount + 1,
         item,
     };
@@ -792,14 +793,19 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
     let fields = record.fields();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
-    assert_eq!(record.path_text().as_deref(), Some("Reward"));
+    assert_eq!(record.path_text().as_deref(), Some("game::Reward"));
+    assert_eq!(record.path_segments(), vec!["game", "Reward"]);
     assert_eq!(
         record
             .path_tokens()
             .iter()
             .map(|token| (token.kind(), token.text().to_owned()))
             .collect::<Vec<_>>(),
-        vec![(SyntaxKind::Ident, "Reward".to_owned())]
+        vec![
+            (SyntaxKind::Ident, "game".to_owned()),
+            (SyntaxKind::ColonColon, "::".to_owned()),
+            (SyntaxKind::Ident, "Reward".to_owned()),
+        ]
     );
     assert_eq!(
         record
