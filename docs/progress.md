@@ -151,9 +151,10 @@ and statement attributes now preserve their exact source as `Attribute` child
 CST nodes and expose typed attribute iteration plus path-text accessors.
 Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
-hints, for-loop binding patterns, for-loop iterable expressions, for-loop
-bodies, break/continue statement wrappers, if/else-if condition expressions,
-explicit then/else block accessors, and nested if/else block structure.
+hints, for-loop binding patterns with explicit index/value pattern accessors,
+for-loop iterable expressions, for-loop bodies, break/continue statement
+wrappers, if/else-if condition expressions, explicit then/else block
+accessors, and nested if/else block structure.
 Statement values now expose initial expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary
 expressions, unary operands, field access, calls, argument lists, named

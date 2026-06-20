@@ -206,6 +206,18 @@ impl SyntaxForStmt {
     }
 
     #[must_use]
+    pub fn index_pattern(&self) -> Option<SyntaxPattern> {
+        let mut patterns = self.patterns();
+        let first = patterns.next()?;
+        patterns.next().map(|_| first)
+    }
+
+    #[must_use]
+    pub fn value_pattern(&self) -> Option<SyntaxPattern> {
+        self.patterns().last()
+    }
+
+    #[must_use]
     pub fn iterable(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
