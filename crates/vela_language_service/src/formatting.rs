@@ -1,10 +1,16 @@
 use crate::{DiagnosticRange, DocumentId, LanguageServiceDatabases, LineIndex, Position, TextEdit};
 use vela_common::SourceId;
-use vela_syntax::ast::{EnumVariantFields, ItemKind, SourceFile};
+use vela_syntax::ast::{
+    AstNode, SyntaxEnumItem, SyntaxImplItem, SyntaxItem, SyntaxSourceFile, SyntaxStructItem,
+    SyntaxTraitItem,
+};
 use vela_syntax::formatting::{
     FormatElementKind, TriviaKind, extract_format_elements, format_source,
 };
 use vela_syntax::token::{Symbol, TokenKind};
+use vela_syntax::{
+    Parse as SyntaxParse, SyntaxKind, SyntaxNode, TextRange as SyntaxTextRange, TextSize,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FormattingIr {
@@ -117,7 +123,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
 
-        if let Some(parsed) = self.parse_db().parsed_source(document_id)
+        if let Some(parsed) = self.parse_db().syntax_parse(document_id)
             && let Some(edit) =
                 selected_item_formatting_edit(source.source_id(), source.text(), parsed, range)
         {
@@ -142,7 +148,7 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         if trigger == "}"
-            && let Some(parsed) = self.parse_db().parsed_source(document_id)
+            && let Some(parsed) = self.parse_db().syntax_parse(document_id)
             && let Some(edit) = completed_item_formatting_edit(
                 source.source_id(),
                 source.text(),
@@ -184,7 +190,7 @@ fn format_document(source_id: SourceId, source: &str) -> String {
 fn selected_item_formatting_edit(
     source_id: SourceId,
     source: &str,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     range: DiagnosticRange,
 ) -> Option<TextEdit> {
     let line_index = LineIndex::new(source);
@@ -316,7 +322,7 @@ fn indent_continuation_lines(formatted: &str, indent: &str) -> String {
 
 fn selected_item_offsets(
     source: &str,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     start: usize,
     end: usize,
 ) -> Option<SelectedFormatRange> {
@@ -412,99 +418,175 @@ enum SelectableFormatRangeKind {
     EnumRecordVariant,
 }
 
-fn selectable_format_ranges(parsed: &SourceFile) -> Vec<SelectableFormatRange> {
+fn selectable_format_ranges(parsed: &SyntaxParse<SyntaxSourceFile>) -> Vec<SelectableFormatRange> {
     let mut ranges = Vec::new();
-    for item in &parsed.items {
-        let item_span = SelectableFormatGroup {
-            start: item.span.start as usize,
-            end: item.span.end as usize,
-        };
+    let source = parsed.tree();
+    for item in source.items() {
+        let item_span = format_group(item.syntax().text_range());
         ranges.push(SelectableFormatRange {
             start: item_span.start,
             end: item_span.end,
             group: None,
             kind: SelectableFormatRangeKind::Item,
         });
-        match &item.kind {
-            ItemKind::Trait(trait_item) => {
-                ranges.extend(
-                    trait_item
-                        .methods
-                        .iter()
-                        .map(|method| SelectableFormatRange {
-                            start: method.span.start as usize,
-                            end: method.span.end as usize,
-                            group: Some(item_span),
-                            kind: SelectableFormatRangeKind::NestedMember,
-                        }),
-                );
-            }
-            ItemKind::Impl(impl_item) => {
-                ranges.extend(
-                    impl_item
-                        .methods
-                        .iter()
-                        .map(|method| SelectableFormatRange {
-                            start: method.span.start as usize,
-                            end: method.span.end as usize,
-                            group: Some(item_span),
-                            kind: SelectableFormatRangeKind::NestedMember,
-                        }),
-                );
-            }
-            ItemKind::Struct(struct_item) => {
-                ranges.extend(
-                    struct_item
-                        .fields
-                        .iter()
-                        .map(|field| SelectableFormatRange {
-                            start: field.span.start as usize,
-                            end: field.span.end as usize,
-                            group: Some(item_span),
-                            kind: SelectableFormatRangeKind::NestedMember,
-                        }),
-                );
-            }
-            ItemKind::Enum(enum_item) => {
-                for variant in &enum_item.variants {
-                    let variant_span = SelectableFormatGroup {
-                        start: variant.span.start as usize,
-                        end: variant.span.end as usize,
-                    };
-                    ranges.push(SelectableFormatRange {
-                        start: variant_span.start,
-                        end: variant_span.end,
-                        group: Some(item_span),
-                        kind: match &variant.fields {
-                            EnumVariantFields::Record(_) => {
-                                SelectableFormatRangeKind::EnumRecordVariant
-                            }
-                            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => {
-                                SelectableFormatRangeKind::NestedMember
-                            }
-                        },
-                    });
-                    if let EnumVariantFields::Record(fields) = &variant.fields {
-                        ranges.extend(fields.iter().map(|field| SelectableFormatRange {
-                            start: field.span.start as usize,
-                            end: field.span.end as usize,
-                            group: Some(variant_span),
-                            kind: SelectableFormatRangeKind::NestedMember,
-                        }));
-                    }
-                }
-            }
-            ItemKind::Use(_) | ItemKind::Const(_) | ItemKind::Global(_) | ItemKind::Function(_) => {
-            }
+        match item.syntax().kind() {
+            SyntaxKind::TraitItem => collect_trait_format_ranges(&item, item_span, &mut ranges),
+            SyntaxKind::ImplItem => collect_impl_format_ranges(&item, item_span, &mut ranges),
+            SyntaxKind::StructItem => collect_struct_format_ranges(&item, item_span, &mut ranges),
+            SyntaxKind::EnumItem => collect_enum_format_ranges(&item, item_span, &mut ranges),
+            SyntaxKind::UseItem
+            | SyntaxKind::ConstItem
+            | SyntaxKind::GlobalItem
+            | SyntaxKind::FunctionItem => {}
+            kind => unreachable!("non-item syntax kind: {kind:?}"),
         }
     }
     ranges
 }
 
+fn collect_trait_format_ranges(
+    item: &SyntaxItem,
+    item_span: SelectableFormatGroup,
+    ranges: &mut Vec<SelectableFormatRange>,
+) {
+    let Some(trait_item) = SyntaxTraitItem::cast(item.syntax().clone()) else {
+        return;
+    };
+    for method in trait_item.methods() {
+        collect_method_format_ranges(method.syntax(), item_span, ranges);
+    }
+}
+
+fn collect_impl_format_ranges(
+    item: &SyntaxItem,
+    item_span: SelectableFormatGroup,
+    ranges: &mut Vec<SelectableFormatRange>,
+) {
+    let Some(impl_item) = SyntaxImplItem::cast(item.syntax().clone()) else {
+        return;
+    };
+    for method in impl_item.methods() {
+        collect_method_format_ranges(method.syntax(), item_span, ranges);
+    }
+}
+
+fn collect_struct_format_ranges(
+    item: &SyntaxItem,
+    item_span: SelectableFormatGroup,
+    ranges: &mut Vec<SelectableFormatRange>,
+) {
+    let Some(struct_item) = SyntaxStructItem::cast(item.syntax().clone()) else {
+        return;
+    };
+    let Some(field_list) = struct_item.field_list() else {
+        return;
+    };
+    ranges.extend(field_list.fields().map(|field| {
+        let span = format_group(field.syntax().text_range());
+        SelectableFormatRange {
+            start: span.start,
+            end: span.end,
+            group: Some(item_span),
+            kind: SelectableFormatRangeKind::NestedMember,
+        }
+    }));
+}
+
+fn collect_enum_format_ranges(
+    item: &SyntaxItem,
+    item_span: SelectableFormatGroup,
+    ranges: &mut Vec<SelectableFormatRange>,
+) {
+    let Some(enum_item) = SyntaxEnumItem::cast(item.syntax().clone()) else {
+        return;
+    };
+    let Some(variant_list) = enum_item.variant_list() else {
+        return;
+    };
+    for variant in variant_list.variants() {
+        let variant_span = format_group(variant.syntax().text_range());
+        let record_field_list = variant.record_field_list();
+        ranges.push(SelectableFormatRange {
+            start: variant_span.start,
+            end: variant_span.end,
+            group: Some(item_span),
+            kind: if record_field_list.is_some() {
+                SelectableFormatRangeKind::EnumRecordVariant
+            } else {
+                SelectableFormatRangeKind::NestedMember
+            },
+        });
+        if let Some(fields) = record_field_list {
+            ranges.extend(fields.fields().map(|field| {
+                let span = format_group(field.syntax().text_range());
+                SelectableFormatRange {
+                    start: span.start,
+                    end: span.end,
+                    group: Some(variant_span),
+                    kind: SelectableFormatRangeKind::NestedMember,
+                }
+            }));
+        }
+    }
+}
+
+fn collect_method_format_ranges(
+    method: &SyntaxNode,
+    item_span: SelectableFormatGroup,
+    ranges: &mut Vec<SelectableFormatRange>,
+) {
+    let tokens = method
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| !token.kind().is_trivia())
+        .collect::<Vec<_>>();
+    let fn_token_indexes = tokens
+        .iter()
+        .enumerate()
+        .filter_map(|(index, token)| (token.kind() == SyntaxKind::FnKw).then_some(index))
+        .collect::<Vec<_>>();
+    if fn_token_indexes.len() <= 1 {
+        let span = format_group(method.text_range());
+        ranges.push(SelectableFormatRange {
+            start: span.start,
+            end: span.end,
+            group: Some(item_span),
+            kind: SelectableFormatRangeKind::NestedMember,
+        });
+        return;
+    }
+
+    for (position, start_index) in fn_token_indexes.iter().copied().enumerate() {
+        let next_fn_index = fn_token_indexes.get(position + 1).copied();
+        let end_index = next_fn_index
+            .map(|index| index.saturating_sub(1))
+            .unwrap_or_else(|| tokens.len().saturating_sub(1));
+        let start = text_size_to_usize(tokens[start_index].text_range().start());
+        let end = text_size_to_usize(tokens[end_index].text_range().end());
+        ranges.push(SelectableFormatRange {
+            start,
+            end,
+            group: Some(item_span),
+            kind: SelectableFormatRangeKind::NestedMember,
+        });
+    }
+}
+
+fn format_group(range: SyntaxTextRange) -> SelectableFormatGroup {
+    SelectableFormatGroup {
+        start: text_size_to_usize(range.start()),
+        end: text_size_to_usize(range.end()),
+    }
+}
+
+fn text_size_to_usize(size: TextSize) -> usize {
+    u32::from(size) as usize
+}
+
 fn completed_item_formatting_edit(
     source_id: SourceId,
     source: &str,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     line_index: &LineIndex,
     position: Position,
 ) -> Option<TextEdit> {
