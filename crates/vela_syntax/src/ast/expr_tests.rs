@@ -1,9 +1,10 @@
 use crate::SyntaxKind;
 use crate::ast::{
-    AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
-    SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaBody,
-    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
-    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
+    AssignOp, AstNode, BinaryOp, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock,
+    SyntaxCallExpr, SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
+    SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody,
+    SyntaxMatchExpr, SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
+    SyntaxUnaryExpr, UnaryOp,
 };
 use crate::parse::parse_source;
 
@@ -170,9 +171,23 @@ fn ast_parenthesized_expression_exposes_parens_and_inner_expression() {
 #[test]
 fn ast_binary_expression_exposes_operator_and_operands() {
     let source = r#"fn update(start, end) {
+    let or_expr = start || end;
+    let and_expr = start && end;
+    let equal = start == end;
+    let not_equal = start != end;
+    let identity_equal = start === end;
+    let identity_not_equal = start !== end;
+    let less = start < end;
+    let less_equal = start <= end;
+    let greater = start > end;
+    let greater_equal = start >= end;
     let exclusive = start..end;
     let inclusive = start..=end;
     let sum = start + end;
+    let diff = start - end;
+    let product = start * end;
+    let quotient = start / end;
+    let remainder = start % end;
 }
 "#;
     let parse = parse_source(source);
@@ -190,18 +205,58 @@ fn ast_binary_expression_exposes_operator_and_operands() {
             SyntaxBinaryExpr::cast(initializer.syntax().clone()).expect("binary expr")
         })
         .collect::<Vec<_>>();
-    let operators = binary_expressions
+    let operator_kinds = binary_expressions
         .iter()
         .map(SyntaxBinaryExpr::operator_kind)
+        .collect::<Vec<_>>();
+    let operators = binary_expressions
+        .iter()
+        .map(SyntaxBinaryExpr::operator)
         .collect::<Vec<_>>();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(
-        operators,
+        operator_kinds,
         vec![
+            Some(SyntaxKind::OrOr),
+            Some(SyntaxKind::AndAnd),
+            Some(SyntaxKind::EqualEqual),
+            Some(SyntaxKind::BangEqual),
+            Some(SyntaxKind::EqualEqualEqual),
+            Some(SyntaxKind::BangEqualEqual),
+            Some(SyntaxKind::Less),
+            Some(SyntaxKind::LessEqual),
+            Some(SyntaxKind::Greater),
+            Some(SyntaxKind::GreaterEqual),
             Some(SyntaxKind::DotDot),
             Some(SyntaxKind::DotDotEqual),
             Some(SyntaxKind::Plus),
+            Some(SyntaxKind::Minus),
+            Some(SyntaxKind::Star),
+            Some(SyntaxKind::Slash),
+            Some(SyntaxKind::Percent),
+        ]
+    );
+    assert_eq!(
+        operators,
+        vec![
+            Some(BinaryOp::Or),
+            Some(BinaryOp::And),
+            Some(BinaryOp::Equal),
+            Some(BinaryOp::NotEqual),
+            Some(BinaryOp::IdentityEqual),
+            Some(BinaryOp::IdentityNotEqual),
+            Some(BinaryOp::Less),
+            Some(BinaryOp::LessEqual),
+            Some(BinaryOp::Greater),
+            Some(BinaryOp::GreaterEqual),
+            Some(BinaryOp::Range),
+            Some(BinaryOp::RangeInclusive),
+            Some(BinaryOp::Add),
+            Some(BinaryOp::Sub),
+            Some(BinaryOp::Mul),
+            Some(BinaryOp::Div),
+            Some(BinaryOp::Rem),
         ]
     );
     for expression in &binary_expressions {
@@ -245,14 +300,18 @@ fn ast_assignment_expression_exposes_operator_target_and_value() {
             SyntaxAssignExpr::cast(expression.syntax().clone()).expect("assign expr")
         })
         .collect::<Vec<_>>();
-    let operators = assignments
+    let operator_kinds = assignments
         .iter()
         .map(SyntaxAssignExpr::operator_kind)
+        .collect::<Vec<_>>();
+    let operators = assignments
+        .iter()
+        .map(SyntaxAssignExpr::operator)
         .collect::<Vec<_>>();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(
-        operators,
+        operator_kinds,
         vec![
             Some(SyntaxKind::Equal),
             Some(SyntaxKind::PlusEqual),
@@ -260,6 +319,17 @@ fn ast_assignment_expression_exposes_operator_target_and_value() {
             Some(SyntaxKind::StarEqual),
             Some(SyntaxKind::SlashEqual),
             Some(SyntaxKind::PercentEqual),
+        ]
+    );
+    assert_eq!(
+        operators,
+        vec![
+            Some(AssignOp::Set),
+            Some(AssignOp::Add),
+            Some(AssignOp::Sub),
+            Some(AssignOp::Mul),
+            Some(AssignOp::Div),
+            Some(AssignOp::Rem),
         ]
     );
     for assignment in &assignments {
@@ -290,20 +360,34 @@ fn ast_unary_expression_exposes_operator_tokens() {
         .expect("function item")
         .body()
         .expect("function body");
-    let operators = body
+    let unary_expressions = body
         .let_statements()
         .map(|statement| {
             let initializer = statement.initializer().expect("initializer");
-            let unary = SyntaxUnaryExpr::cast(initializer.syntax().clone()).expect("unary expr");
-            unary.operator_kind()
+            SyntaxUnaryExpr::cast(initializer.syntax().clone()).expect("unary expr")
         })
+        .collect::<Vec<_>>();
+    let operator_kinds = unary_expressions
+        .iter()
+        .map(SyntaxUnaryExpr::operator_kind)
+        .collect::<Vec<_>>();
+    let operators = unary_expressions
+        .iter()
+        .map(SyntaxUnaryExpr::operator)
         .collect::<Vec<_>>();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(
-        operators,
+        operator_kinds,
         vec![Some(SyntaxKind::Minus), Some(SyntaxKind::Bang)]
     );
+    assert_eq!(operators, vec![Some(UnaryOp::Negate), Some(UnaryOp::Not)]);
+    for expression in &unary_expressions {
+        assert_eq!(
+            expression.expression().expect("operand").syntax().kind(),
+            SyntaxKind::PathExpr
+        );
+    }
 }
 
 #[test]

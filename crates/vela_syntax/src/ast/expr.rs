@@ -3,9 +3,12 @@ use super::statements::SyntaxIfExpr;
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
+#[path = "expr/operators.rs"]
+mod operators;
 #[path = "expr/paren.rs"]
 mod paren;
 
+pub use operators::{SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxUnaryExpr};
 pub use paren::SyntaxParenExpr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -251,143 +254,6 @@ impl SyntaxPathExpr {
     #[must_use]
     pub fn is_self(&self) -> bool {
         self.self_token().is_some()
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxAssignExpr {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxAssignExpr {
-    #[must_use]
-    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
-        AstChildren::new(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn target(&self) -> Option<SyntaxExpression> {
-        self.expressions().next()
-    }
-
-    #[must_use]
-    pub fn value(&self) -> Option<SyntaxExpression> {
-        self.expressions().nth(1)
-    }
-
-    #[must_use]
-    pub fn operator_token(&self) -> Option<SyntaxToken> {
-        self.syntax
-            .children_with_tokens()
-            .filter_map(|element| element.into_token())
-            .find(|token| assignment_operator_kind(token.kind()))
-    }
-
-    #[must_use]
-    pub fn operator_kind(&self) -> Option<SyntaxKind> {
-        self.operator_token().map(|token| token.kind())
-    }
-}
-
-impl AstNode for SyntaxAssignExpr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::AssignExpr
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxBinaryExpr {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxBinaryExpr {
-    #[must_use]
-    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
-        AstChildren::new(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn lhs(&self) -> Option<SyntaxExpression> {
-        self.expressions().next()
-    }
-
-    #[must_use]
-    pub fn rhs(&self) -> Option<SyntaxExpression> {
-        self.expressions().nth(1)
-    }
-
-    #[must_use]
-    pub fn operator_token(&self) -> Option<SyntaxToken> {
-        self.syntax
-            .children_with_tokens()
-            .filter_map(|element| element.into_token())
-            .find(|token| binary_operator_kind(token.kind()))
-    }
-
-    #[must_use]
-    pub fn operator_kind(&self) -> Option<SyntaxKind> {
-        self.operator_token().map(|token| token.kind())
-    }
-}
-
-impl AstNode for SyntaxBinaryExpr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::BinaryExpr
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SyntaxUnaryExpr {
-    syntax: SyntaxNode,
-}
-
-impl SyntaxUnaryExpr {
-    #[must_use]
-    pub fn expression(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
-    }
-
-    #[must_use]
-    pub fn operator_token(&self) -> Option<SyntaxToken> {
-        self.syntax
-            .children_with_tokens()
-            .filter_map(|element| element.into_token())
-            .find(|token| unary_operator_kind(token.kind()))
-    }
-
-    #[must_use]
-    pub fn operator_kind(&self) -> Option<SyntaxKind> {
-        self.operator_token().map(|token| token.kind())
-    }
-}
-
-impl AstNode for SyntaxUnaryExpr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        kind == SyntaxKind::UnaryExpr
-    }
-
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        Self::can_cast(syntax.kind()).then_some(Self { syntax })
-    }
-
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
     }
 }
 
@@ -1062,45 +928,6 @@ fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
         .filter(|token| token.kind() == SyntaxKind::Ident)
         .map(|token| token.text().to_owned())
         .collect()
-}
-
-fn binary_operator_kind(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::OrOr
-            | SyntaxKind::AndAnd
-            | SyntaxKind::EqualEqual
-            | SyntaxKind::BangEqual
-            | SyntaxKind::EqualEqualEqual
-            | SyntaxKind::BangEqualEqual
-            | SyntaxKind::Less
-            | SyntaxKind::LessEqual
-            | SyntaxKind::Greater
-            | SyntaxKind::GreaterEqual
-            | SyntaxKind::DotDot
-            | SyntaxKind::DotDotEqual
-            | SyntaxKind::Plus
-            | SyntaxKind::Minus
-            | SyntaxKind::Star
-            | SyntaxKind::Slash
-            | SyntaxKind::Percent
-    )
-}
-
-fn assignment_operator_kind(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::Equal
-            | SyntaxKind::PlusEqual
-            | SyntaxKind::MinusEqual
-            | SyntaxKind::StarEqual
-            | SyntaxKind::SlashEqual
-            | SyntaxKind::PercentEqual
-    )
-}
-
-fn unary_operator_kind(kind: SyntaxKind) -> bool {
-    matches!(kind, SyntaxKind::Bang | SyntaxKind::Minus)
 }
 
 fn literal_token_kind(kind: SyntaxKind) -> bool {
