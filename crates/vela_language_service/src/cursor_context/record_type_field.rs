@@ -1,70 +1,122 @@
-use vela_common::{SourceId, Span};
-use vela_syntax::ast::{EnumVariantFields, ItemKind, SourceFile, StructField};
+use vela_common::SourceId;
+use vela_syntax::ast::{AstNode, SyntaxRecordFieldList, SyntaxSourceFile, SyntaxStructFieldList};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
-
-use crate::TextRange;
+use vela_syntax::{TextRange as SyntaxTextRange, TextSize};
 
 use super::is_type_context;
 
-pub(super) fn is_record_type_field_context(text: &str, source: &SourceFile, offset: usize) -> bool {
-    let Some(offset_u32) = u32::try_from(offset).ok() else {
+pub(super) fn is_record_type_field_context(
+    text: &str,
+    source: &SyntaxSourceFile,
+    offset: usize,
+) -> bool {
+    let Some(offset_size) = syntax_offset(offset) else {
         return false;
     };
-    let offset = usize::try_from(offset_u32).unwrap_or_default();
     if is_type_context(text, offset) {
         return false;
     }
-    if source.items.iter().any(|item| match &item.kind {
-        ItemKind::Struct(item) => item
-            .fields
-            .iter()
-            .any(|field| field_name_contains(text, field, offset_u32)),
-        ItemKind::Enum(item) => item.variants.iter().any(|variant| match &variant.fields {
-            EnumVariantFields::Record(fields) => fields
-                .iter()
-                .any(|field| field_name_contains(text, field, offset_u32)),
-            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => false,
-        }),
-        _ => false,
-    }) {
+    let field_lists = record_field_lists(source);
+    if field_lists
+        .iter()
+        .any(|list| field_list_name_contains(list, offset_size))
+    {
         return true;
     }
-    if source.items.iter().any(|item| match &item.kind {
-        ItemKind::Struct(item) => item
-            .fields
-            .iter()
-            .any(|field| span_contains_usize(field.span, offset)),
-        ItemKind::Enum(item) => item.variants.iter().any(|variant| match &variant.fields {
-            EnumVariantFields::Record(fields) => fields
-                .iter()
-                .any(|field| span_contains_usize(field.span, offset)),
-            EnumVariantFields::Unit | EnumVariantFields::Tuple(_) => false,
-        }),
-        _ => false,
-    }) {
+    if field_lists
+        .iter()
+        .any(|list| field_list_field_contains(list, offset_size))
+    {
         return false;
+    }
+    if field_lists
+        .iter()
+        .any(|list| range_contains_offset(list.text_range(), offset_size))
+    {
+        return true;
     }
     is_struct_item_body_context(text, offset)
 }
 
-fn field_name_contains(text: &str, field: &StructField, offset: u32) -> bool {
-    let Some(range) = field_name_range(text, field) else {
-        return false;
-    };
-    let Some(offset) = usize::try_from(offset).ok() else {
-        return false;
-    };
-    range.start <= offset && offset <= range.end
+#[derive(Clone, Debug)]
+enum RecordFieldList {
+    Struct(SyntaxStructFieldList),
+    EnumVariant(SyntaxRecordFieldList),
 }
 
-fn field_name_range(text: &str, field: &StructField) -> Option<TextRange> {
-    let start = usize::try_from(field.span.start).ok()?;
-    let end = usize::try_from(field.span.end).ok()?;
-    let field_text = text.get(start..end)?;
-    let name_start = field_text.find(&field.name)?;
-    let start = start + name_start;
-    Some(TextRange::new(start, start + field.name.len()))
+impl RecordFieldList {
+    fn text_range(&self) -> SyntaxTextRange {
+        match self {
+            RecordFieldList::Struct(list) => list.syntax().text_range(),
+            RecordFieldList::EnumVariant(list) => list.syntax().text_range(),
+        }
+    }
+
+    fn field_name_ranges(&self) -> Vec<SyntaxTextRange> {
+        match self {
+            RecordFieldList::Struct(list) => list
+                .fields()
+                .filter_map(|field| field.name_token().map(|token| token.text_range()))
+                .collect(),
+            RecordFieldList::EnumVariant(list) => list
+                .fields()
+                .filter_map(|field| field.name_token().map(|token| token.text_range()))
+                .collect(),
+        }
+    }
+
+    fn field_ranges(&self) -> Vec<SyntaxTextRange> {
+        match self {
+            RecordFieldList::Struct(list) => list
+                .fields()
+                .map(|field| field.syntax().text_range())
+                .collect(),
+            RecordFieldList::EnumVariant(list) => list
+                .fields()
+                .map(|field| field.syntax().text_range())
+                .collect(),
+        }
+    }
+}
+
+fn record_field_lists(source: &SyntaxSourceFile) -> Vec<RecordFieldList> {
+    source
+        .structs()
+        .filter_map(|item| item.field_list().map(RecordFieldList::Struct))
+        .chain(source.enums().flat_map(|item| {
+            item.variant_list().into_iter().flat_map(|list| {
+                list.variants()
+                    .filter_map(|variant| {
+                        variant
+                            .record_field_list()
+                            .map(RecordFieldList::EnumVariant)
+                    })
+                    .collect::<Vec<_>>()
+            })
+        }))
+        .collect()
+}
+
+fn field_list_name_contains(list: &RecordFieldList, offset: TextSize) -> bool {
+    list.field_name_ranges()
+        .into_iter()
+        .any(|range| range_contains_offset(range, offset))
+}
+
+fn field_list_field_contains(list: &RecordFieldList, offset: TextSize) -> bool {
+    list.field_ranges()
+        .into_iter()
+        .any(|range| range_contains_offset(range, offset))
+}
+
+fn range_contains_offset(range: SyntaxTextRange, offset: TextSize) -> bool {
+    range.start() <= offset && offset <= range.end()
+}
+
+fn syntax_offset(offset: usize) -> Option<TextSize> {
+    let offset = u32::try_from(offset).ok()?;
+    Some(TextSize::from(offset))
 }
 
 fn is_struct_item_body_context(text: &str, offset: usize) -> bool {
@@ -111,11 +163,4 @@ fn active_open_brace_before_offset(tokens: &[Token], offset: u32) -> Option<usiz
         }
     }
     stack.pop()
-}
-
-fn span_contains_usize(span: Span, offset: usize) -> bool {
-    let Some(offset) = u32::try_from(offset).ok() else {
-        return false;
-    };
-    span.start <= offset && offset <= span.end
 }

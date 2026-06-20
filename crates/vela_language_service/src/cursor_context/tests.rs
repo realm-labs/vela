@@ -1,16 +1,29 @@
 use super::*;
 use vela_common::SourceId;
+use vela_syntax::parse::parse_source_with_id;
 use vela_syntax::parser::parse_source;
 
 fn classify(text: &str, needle: &str) -> CursorContext {
     let offset = text.find(needle).expect("needle should exist") + needle.len();
     let parsed = parse_source(SourceId::new(1), text);
-    cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
+    let syntax_parse = parse_source_with_id(SourceId::new(1), text);
+    cursor_context_at(
+        text,
+        LineIndex::new(text).position(offset),
+        Some(&parsed),
+        Some(&syntax_parse),
+    )
 }
 
 fn classify_offset(text: &str, offset: usize) -> CursorContext {
     let parsed = parse_source(SourceId::new(1), text);
-    cursor_context_at(text, LineIndex::new(text).position(offset), Some(&parsed))
+    let syntax_parse = parse_source_with_id(SourceId::new(1), text);
+    cursor_context_at(
+        text,
+        LineIndex::new(text).position(offset),
+        Some(&parsed),
+        Some(&syntax_parse),
+    )
 }
 
 #[test]
@@ -124,6 +137,14 @@ fn cursor_context_keeps_struct_field_defaults_as_expression_context() {
 #[test]
 fn cursor_context_classifies_enum_record_variant_fields() {
     let cursor = classify("pub enum Quest { Reward { am } }", "am");
+
+    assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
+}
+
+#[test]
+fn cursor_context_recovers_empty_enum_record_variant_body_as_record_type_field() {
+    let text = "pub enum Quest { Reward {  } }";
+    let cursor = classify_offset(text, text.find("{  }").expect("variant body") + "{ ".len());
 
     assert_eq!(cursor.kind(), CursorContextKind::RecordTypeField);
 }

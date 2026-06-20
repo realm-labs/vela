@@ -1,5 +1,7 @@
+use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+    SyntaxSourceFile,
 };
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
@@ -59,57 +61,46 @@ impl CursorContext {
     pub const fn kind(&self) -> CursorContextKind {
         self.kind
     }
-
     #[must_use]
     pub fn prefix(&self) -> &str {
         &self.prefix
     }
-
     #[must_use]
     pub const fn replace_range(&self) -> TextRange {
         self.replace_range
     }
-
     #[must_use]
     pub const fn identifier_range(&self) -> Option<TextRange> {
         self.identifier_range
     }
-
     #[must_use]
     pub fn module_base(&self) -> Option<&str> {
         self.module_base.as_deref()
     }
-
     #[must_use]
     pub const fn module_path_role(&self) -> ModulePathRole {
         self.module_path_role
     }
-
     #[must_use]
     pub const fn member_receiver(&self) -> Option<TextRange> {
         self.member_receiver
     }
-
     #[must_use]
     pub const fn call_open(&self) -> Option<usize> {
         self.call_open
     }
-
     #[must_use]
     pub const fn call_callee(&self) -> Option<TextRange> {
         self.call_callee
     }
-
     #[must_use]
     pub const fn call_member_receiver(&self) -> Option<TextRange> {
         self.call_member_receiver
     }
-
     #[must_use]
     pub const fn lambda_method(&self) -> Option<TextRange> {
         self.lambda_method
     }
-
     #[must_use]
     pub const fn lambda_parameters(&self) -> Option<TextRange> {
         self.lambda_parameters
@@ -121,6 +112,7 @@ pub fn cursor_context_at(
     text: &str,
     position: Position,
     parsed: Option<&SourceFile>,
+    syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
 ) -> CursorContext {
     let offset = LineIndex::new(text).offset(position);
     let prefix_start = identifier_prefix_start(text, offset);
@@ -153,7 +145,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if parsed.is_some_and(|source| is_record_type_field_context(text, source, prefix_start)) {
+    if syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_record_type_field_context(text, &parse.tree(), prefix_start))
+    {
         return context(
             CursorContextKind::RecordTypeField,
             prefix_start,

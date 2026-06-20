@@ -109,7 +109,7 @@ impl<'a> QueryContext<'a> {
         position: Position,
     ) -> Option<Self> {
         let document = snapshot.document(document_id)?;
-        let cursor = cursor_context_at(document.text(), position, None);
+        let cursor = cursor_context_at(document.text(), position, None, None);
         Some(Self {
             document_id: document_id.clone(),
             position,
@@ -131,7 +131,7 @@ impl<'a> QueryContext<'a> {
         let source = databases.source_db().records().get(document_id)?;
         let parsed = databases.parse_db().parsed_source(document_id);
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
-        let cursor = cursor_context_at(source.text(), position, parsed);
+        let cursor = cursor_context_at(source.text(), position, parsed, syntax_parse);
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
         Some(Self {
             document_id: document_id.clone(),
