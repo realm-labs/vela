@@ -151,10 +151,13 @@ calls, argument lists, paths, and literals. Postfix expression structure now
 also preserves method-call-over-field ordering and exposes index and try
 expression wrappers. Container and callable expression structure now exposes
 array elements, map entries, record literal fields, lambda parameter lists, and
-lambda expression/block bodies. The rowan-backed typed AST wrapper layer now
-has focused syntax, statement, and expression submodules so additional wrappers
-can land without growing the legacy owned-AST file; deeper control-flow
-expression coverage, pattern coverage, and downstream migration remain open.
+lambda expression/block bodies. Match expressions now expose scrutinees, arm
+lists, guarded arm expressions, expression or block arm bodies, tuple-variant
+patterns, record-variant pattern fields, and wildcard/basic pattern nodes. The
+rowan-backed typed AST wrapper layer now has focused syntax, statement,
+expression, and pattern submodules so additional wrappers can land without
+growing the legacy owned-AST file; broader pattern coverage, remaining
+control-flow expression coverage, and downstream migration remain open.
 
 ## Milestone Snapshot
 

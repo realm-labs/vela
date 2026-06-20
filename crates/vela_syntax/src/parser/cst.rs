@@ -480,6 +480,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             SyntaxKind::ReturnStmt => self.return_statement_body(start, end),
             SyntaxKind::ForStmt => self.statement_with_body_block(start, end),
             SyntaxKind::IfExpr => self.if_expression_body(start, end),
+            SyntaxKind::MatchExpr => self.match_expression_body(start, end),
             SyntaxKind::ExprStmt => self.expr_statement_body(start, end),
             _ => self.emit_until(end),
         }

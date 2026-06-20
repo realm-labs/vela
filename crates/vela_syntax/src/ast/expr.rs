@@ -1,4 +1,4 @@
-use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
+use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList, SyntaxPattern};
 use crate::{SyntaxKind, SyntaxNode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -457,6 +457,99 @@ impl SyntaxLambdaExpr {
 impl AstNode for SyntaxLambdaExpr {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::LambdaExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxMatchExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxMatchExpr {
+    #[must_use]
+    pub fn scrutinee(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn arm_list(&self) -> Option<SyntaxMatchArmList> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxMatchExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MatchExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxMatchArmList {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxMatchArmList {
+    #[must_use]
+    pub fn arms(&self) -> AstChildren<SyntaxMatchArm> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxMatchArmList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MatchArmList
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxMatchArm {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxMatchArm {
+    #[must_use]
+    pub fn pattern(&self) -> Option<SyntaxPattern> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body_block(&self) -> Option<SyntaxBlock> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxMatchArm {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::MatchArm
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {

@@ -2,6 +2,8 @@ use vela_common::Span;
 
 #[path = "ast/expr.rs"]
 mod expr;
+#[path = "ast/patterns.rs"]
+mod patterns;
 #[path = "ast/statements.rs"]
 mod statements;
 #[path = "ast/syntax.rs"]
@@ -10,8 +12,12 @@ mod syntax;
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
-    SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxPathExpr, SyntaxRecordExpr,
-    SyntaxRecordExprField, SyntaxRecordExprFieldList, SyntaxTryExpr,
+    SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxMatchArm, SyntaxMatchArmList,
+    SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
+    SyntaxRecordExprFieldList, SyntaxTryExpr,
+};
+pub use patterns::{
+    SyntaxPattern, SyntaxRecordPattern, SyntaxRecordPatternField, SyntaxTuplePattern,
 };
 pub use statements::{
     SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,

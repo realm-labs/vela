@@ -32,6 +32,7 @@ impl CstParser<'_, '_> {
                 self.lambda_expression_body(expression_start, expression_end);
             }
             SyntaxKind::IfExpr => self.if_expression_body(expression_start, expression_end),
+            SyntaxKind::MatchExpr => self.match_expression_body(expression_start, expression_end),
             _ => self.emit_until(expression_end),
         }
         self.builder.finish_node();
@@ -250,6 +251,178 @@ impl CstParser<'_, '_> {
             }
         }
         self.param_range(param_start, close);
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    pub(super) fn match_expression_body(&mut self, start: usize, end: usize) {
+        let Some(arms_start) = self.find_root_kind_before(SyntaxKind::LBrace, start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        let scrutinee_start = self.skip_trivia(start + 1);
+        self.emit_until(scrutinee_start);
+        if scrutinee_start < arms_start {
+            self.expression_range(scrutinee_start, arms_start);
+        }
+        let arms_end = self.find_matching_brace_end(arms_start).min(end);
+        self.match_arm_list(arms_start, arms_end);
+        self.emit_until(end);
+    }
+
+    fn match_arm_list(&mut self, start: usize, end: usize) {
+        let close = end.saturating_sub(1);
+        self.builder.start_node(SyntaxKind::MatchArmList);
+        self.emit_until(start + 1);
+        while self.pos < close {
+            let arm_start = self.skip_trivia(self.pos);
+            self.emit_until(arm_start);
+            if arm_start >= close {
+                break;
+            }
+            if matches!(
+                self.kind_at(arm_start),
+                Some(SyntaxKind::Comma | SyntaxKind::Semicolon)
+            ) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let arm_end = self.find_match_arm_end(arm_start, close);
+            self.match_arm_range(arm_start, arm_end);
+            while self.pos < close
+                && matches!(
+                    self.current_kind(),
+                    Some(SyntaxKind::Comma | SyntaxKind::Semicolon)
+                )
+            {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn match_arm_range(&mut self, start: usize, end: usize) {
+        self.builder.start_node(SyntaxKind::MatchArm);
+        let Some(arrow) = self.find_root_kind_before(SyntaxKind::FatArrow, start, end) else {
+            self.pattern_range(start, end);
+            self.emit_until(end);
+            self.builder.finish_node();
+            return;
+        };
+
+        let guard = self.find_root_kind_before(SyntaxKind::IfKw, start, arrow);
+        let pattern_end = guard.unwrap_or(arrow);
+        self.pattern_range(start, pattern_end);
+
+        if let Some(guard_start) = guard {
+            let guard_expression_start = self.skip_trivia(guard_start + 1);
+            self.emit_until(guard_expression_start);
+            if guard_expression_start < arrow {
+                self.expression_range(guard_expression_start, arrow);
+            }
+        }
+
+        self.emit_until(arrow + 1);
+        let body_start = self.skip_trivia(arrow + 1);
+        self.emit_until(body_start);
+        if body_start < end {
+            if self.at_kind(body_start, SyntaxKind::LBrace) {
+                let body_end = self.find_matching_brace_end(body_start).min(end);
+                self.block_range(body_start, body_end);
+                self.emit_until(end);
+            } else {
+                self.expression_range(body_start, end);
+            }
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn pattern_range(&mut self, start: usize, end: usize) {
+        let pattern_start = self.skip_trivia(start);
+        let pattern_end = self.trim_trailing_trivia(pattern_start, end);
+        self.emit_until(pattern_start);
+        if pattern_start >= pattern_end {
+            self.emit_until(end);
+            return;
+        }
+
+        let kind = self.pattern_kind(pattern_start, pattern_end);
+        self.builder.start_node(kind);
+        match kind {
+            SyntaxKind::TuplePattern => self.tuple_pattern_body(pattern_start, pattern_end),
+            SyntaxKind::RecordPattern => self.record_pattern_body(pattern_start, pattern_end),
+            _ => self.emit_until(pattern_end),
+        }
+        self.builder.finish_node();
+        self.emit_until(end);
+    }
+
+    fn tuple_pattern_body(&mut self, start: usize, end: usize) {
+        let Some(fields_start) = self.find_outer_call_arg_list_start(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.emit_until(fields_start + 1);
+        let close = end.saturating_sub(1);
+        while self.pos < close {
+            let field_start = self.skip_trivia(self.pos);
+            self.emit_until(field_start);
+            if field_start >= close {
+                break;
+            }
+            if self.at_kind(field_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let field_end = self.find_argument_end(field_start, close);
+            self.pattern_range(field_start, field_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn record_pattern_body(&mut self, start: usize, end: usize) {
+        let Some(fields_start) = self.find_outer_record_field_list_start(start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.emit_until(fields_start + 1);
+        let close = end.saturating_sub(1);
+        while self.pos < close {
+            let field_start = self.skip_trivia(self.pos);
+            self.emit_until(field_start);
+            if field_start >= close {
+                break;
+            }
+            if self.at_kind(field_start, SyntaxKind::Comma) {
+                self.emit_current_token();
+                continue;
+            }
+
+            let field_end = self.find_argument_end(field_start, close);
+            self.record_pattern_field_range(field_start, field_end);
+            if self.pos < close && self.at_kind(self.pos, SyntaxKind::Comma) {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn record_pattern_field_range(&mut self, start: usize, end: usize) {
+        self.builder.start_node(SyntaxKind::RecordPatternField);
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            self.emit_until(colon + 1);
+            let value_start = self.skip_trivia(colon + 1);
+            self.pattern_range(value_start, end);
+        } else {
+            self.emit_until(end);
+        }
         self.emit_until(end);
         self.builder.finish_node();
     }
@@ -488,6 +661,33 @@ impl CstParser<'_, '_> {
         }
         self.find_root_kind_before(SyntaxKind::Pipe, start + 1, end)
             .map(|pipe| pipe + 1)
+    }
+
+    fn pattern_kind(&self, start: usize, end: usize) -> SyntaxKind {
+        if self.find_outer_call_arg_list_start(start, end).is_some() {
+            SyntaxKind::TuplePattern
+        } else if self
+            .find_outer_record_field_list_start(start, end)
+            .is_some()
+        {
+            SyntaxKind::RecordPattern
+        } else {
+            SyntaxKind::Pattern
+        }
+    }
+
+    fn find_match_arm_end(&self, start: usize, end: usize) -> usize {
+        let Some(arrow) = self.find_root_kind_before(SyntaxKind::FatArrow, start, end) else {
+            return self.find_argument_end(start, end);
+        };
+        let body_start = self.skip_trivia(arrow + 1);
+        if body_start >= end {
+            return end;
+        }
+        if self.at_kind(body_start, SyntaxKind::LBrace) {
+            return self.find_matching_brace_end(body_start).min(end);
+        }
+        self.find_argument_end(body_start, end)
     }
 
     fn find_outer_index_list_start(&self, start: usize, end: usize) -> Option<usize> {

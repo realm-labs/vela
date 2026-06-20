@@ -84,8 +84,8 @@ mod tests {
 
     use crate::ast::{
         AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt,
-        SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxRecordExpr,
-        SyntaxReturnStmt, SyntaxTryExpr,
+        SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr,
+        SyntaxRecordExpr, SyntaxRecordPattern, SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -775,6 +775,100 @@ impl Rewardable for Player {
                 .map(|statement| statement.syntax().kind())
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::ReturnStmt]
+        );
+    }
+
+    #[test]
+    fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
+        let source = r#"fn update(state) {
+    let reward = match state {
+        Option::Some(value) if value > 1 => Reward { count: value },
+        Quest::Active { quest_id: id, count } => {
+            id
+        },
+        _ => "none",
+    };
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(20), source);
+        let tree = parse.tree();
+        let body = tree
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let let_stmt = body.let_statements().next().expect("let statement");
+        let match_expr = let_stmt
+            .initializer()
+            .and_then(|expr| SyntaxMatchExpr::cast(expr.syntax().clone()))
+            .expect("match initializer");
+        let arms = match_expr
+            .arm_list()
+            .expect("match arm list")
+            .arms()
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            match_expr.scrutinee().expect("scrutinee").syntax().kind(),
+            SyntaxKind::PathExpr
+        );
+        assert_eq!(arms.len(), 3);
+
+        let tuple_pattern =
+            SyntaxTuplePattern::cast(arms[0].pattern().expect("tuple pattern").syntax().clone())
+                .expect("tuple pattern wrapper");
+        assert_eq!(tuple_pattern.patterns().count(), 1);
+        assert_eq!(
+            arms[0]
+                .expressions()
+                .map(|expression| expression.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::BinaryExpr, SyntaxKind::RecordExpr]
+        );
+
+        let record_pattern =
+            SyntaxRecordPattern::cast(arms[1].pattern().expect("record pattern").syntax().clone())
+                .expect("record pattern wrapper");
+        let fields = record_pattern.fields().collect::<Vec<_>>();
+        assert_eq!(fields.len(), 2);
+        assert_eq!(
+            fields[0]
+                .pattern()
+                .expect("explicit field pattern")
+                .syntax()
+                .text()
+                .to_string(),
+            "id"
+        );
+        assert!(fields[1].pattern().is_none());
+        assert_eq!(
+            arms[1]
+                .body_block()
+                .expect("block body")
+                .statements()
+                .count(),
+            1
+        );
+
+        assert_eq!(
+            arms[2]
+                .pattern()
+                .expect("wildcard pattern")
+                .syntax()
+                .text()
+                .to_string(),
+            "_"
+        );
+        assert_eq!(
+            arms[2]
+                .expressions()
+                .next()
+                .expect("literal arm body")
+                .syntax()
+                .kind(),
+            SyntaxKind::Literal
         );
     }
 
