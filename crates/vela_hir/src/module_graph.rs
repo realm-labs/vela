@@ -291,11 +291,10 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.validate_struct_shape(record);
-                    self.struct_shapes.insert(
-                        declaration,
-                        syntax_metadata::struct_shape(syntax_summary.as_ref(), item_index, record),
-                    );
+                    let shape =
+                        syntax_metadata::struct_shape(syntax_summary.as_ref(), item_index, record);
+                    self.validate_struct_shape(&shape);
+                    self.struct_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
@@ -317,15 +316,13 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.validate_enum_shape(enumeration);
-                    self.enum_shapes.insert(
-                        declaration,
-                        syntax_metadata::enum_shape(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            enumeration,
-                        ),
+                    let shape = syntax_metadata::enum_shape(
+                        syntax_summary.as_ref(),
+                        item_index,
+                        enumeration,
                     );
+                    self.validate_enum_shape(&shape);
+                    self.enum_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
@@ -357,16 +354,14 @@ impl ModuleGraph {
                                 .map(|body| (self.next_node_id(), body.span))
                         })
                         .collect::<Vec<_>>();
-                    self.validate_trait_shape(trait_item);
-                    self.trait_shapes.insert(
-                        declaration,
-                        syntax_metadata::trait_shape(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            trait_item,
-                            default_method_nodes.clone(),
-                        ),
+                    let shape = syntax_metadata::trait_shape(
+                        syntax_summary.as_ref(),
+                        item_index,
+                        trait_item,
+                        default_method_nodes.clone(),
                     );
+                    self.validate_trait_shape(&shape);
+                    self.trait_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
@@ -415,16 +410,14 @@ impl ModuleGraph {
                         .iter()
                         .map(|method| (self.next_node_id(), method.function.body.span))
                         .collect::<Vec<_>>();
-                    self.validate_impl_shape(impl_item);
-                    self.impl_metadata.insert(
-                        declaration,
-                        syntax_metadata::impl_metadata(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            impl_item,
-                            method_nodes.clone(),
-                        ),
+                    let metadata = syntax_metadata::impl_metadata(
+                        syntax_summary.as_ref(),
+                        item_index,
+                        impl_item,
+                        method_nodes.clone(),
                     );
+                    self.validate_impl_shape(&metadata);
+                    self.impl_metadata.insert(declaration, metadata);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),

@@ -1,11 +1,13 @@
 use std::collections::BTreeSet;
 
+use vela_common::Span;
 use vela_syntax::ast::Attribute;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirAttribute {
     pub name: String,
     pub value: Option<String>,
+    pub span: Span,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -21,6 +23,7 @@ impl HirAttribute {
         Self {
             name: attribute.path.join("::"),
             value: attribute.value.clone(),
+            span: attribute.span,
         }
     }
 
@@ -82,6 +85,7 @@ mod tests {
         let attrs = [HirAttribute {
             name: "derive".to_owned(),
             value: Some("PartialEq, Eq, PartialOrd, Ord".to_owned()),
+            span: Span::new(vela_common::SourceId::new(1), 0, 0),
         }];
 
         assert_eq!(

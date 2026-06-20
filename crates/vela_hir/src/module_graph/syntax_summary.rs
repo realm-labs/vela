@@ -52,7 +52,7 @@ impl SyntaxModuleSummary {
     pub(super) fn attrs_or(&self, index: usize, fallback: Vec<HirAttribute>) -> Vec<HirAttribute> {
         self.items
             .get(index)
-            .map(|item| attrs_from_cst(item.attributes()))
+            .map(|item| attrs_from_cst(self.source, item.attributes()))
             .unwrap_or(fallback)
     }
 
@@ -393,7 +393,7 @@ fn trait_method_metadata(
     let (default_body_node, default_body_span) =
         default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
     Some(TraitMethodMetadata {
-        attrs: attrs_from_cst(method.attributes()),
+        attrs: attrs_from_cst(source, method.attributes()),
         name: method.name_text()?,
         span: span_for(source, method.syntax().text_range()),
         signature: function_signature(source, method.param_list(), method.return_type()),
@@ -436,7 +436,7 @@ fn enum_variant_hint(source: SourceId, variant: &SyntaxEnumVariant) -> Option<En
         EnumVariantFieldsHint::Unit
     };
     Some(EnumVariantHint {
-        attrs: attrs_from_cst(variant.attributes()),
+        attrs: attrs_from_cst(source, variant.attributes()),
         name: variant.name_text()?,
         span: span_for(source, variant.syntax().text_range()),
         fields,
@@ -445,7 +445,7 @@ fn enum_variant_hint(source: SourceId, variant: &SyntaxEnumVariant) -> Option<En
 
 fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<StructFieldHint> {
     Some(StructFieldHint {
-        attrs: attrs_from_cst(field.attributes()),
+        attrs: attrs_from_cst(source, field.attributes()),
         name: field.name_text()?,
         span: span_for(source, field.syntax().text_range()),
         type_hint: field
@@ -487,14 +487,17 @@ fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
     }
 }
 
-fn attrs_from_cst(attrs: AstChildren<SyntaxAttribute>) -> Vec<HirAttribute> {
-    attrs.filter_map(|attr| attr_from_cst(&attr)).collect()
+fn attrs_from_cst(source: SourceId, attrs: AstChildren<SyntaxAttribute>) -> Vec<HirAttribute> {
+    attrs
+        .filter_map(|attr| attr_from_cst(source, &attr))
+        .collect()
 }
 
-fn attr_from_cst(attr: &SyntaxAttribute) -> Option<HirAttribute> {
+fn attr_from_cst(source: SourceId, attr: &SyntaxAttribute) -> Option<HirAttribute> {
     Some(HirAttribute {
         name: attr.path_text()?,
         value: attr_value(attr),
+        span: span_for(source, attr.syntax().text_range()),
     })
 }
 

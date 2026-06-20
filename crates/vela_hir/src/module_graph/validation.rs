@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
 use vela_common::{Diagnostic, Span};
-use vela_syntax::ast::{Attribute, EnumItem, EnumVariantFields, ImplItem, StructItem, TraitItem};
 
 use super::names::import_binding_name;
 use super::*;
-use crate::attributes::{SchemaIdAttrError, parse_schema_id_attr};
+use crate::attributes::{HirAttribute, SchemaIdAttrError, parse_schema_id_attr};
+use crate::type_hint::{EnumShape, EnumVariantFieldsHint, ImplMetadata, StructShape, TraitShape};
 
 impl ModuleGraph {
     pub(super) fn validate_import_bindings(&mut self, module: &HirModule) {
@@ -41,38 +41,38 @@ impl ModuleGraph {
         }
     }
 
-    pub(super) fn validate_struct_shape(&mut self, item: &StructItem) {
+    pub(super) fn validate_struct_shape(&mut self, shape: &StructShape) {
         self.validate_member_names(
-            &item.fields,
+            &shape.fields,
             |field| (&field.name, field.span),
             "field",
             "hir::duplicate_field",
         );
         self.validate_member_schema_ids(
-            &item.fields,
+            &shape.fields,
             |field| (&field.name, field.span, field.attrs.as_slice()),
             "field",
             "hir::duplicate_field_id",
         );
     }
 
-    pub(super) fn validate_enum_shape(&mut self, item: &EnumItem) {
+    pub(super) fn validate_enum_shape(&mut self, shape: &EnumShape) {
         self.validate_member_names(
-            &item.variants,
+            &shape.variants,
             |variant| (&variant.name, variant.span),
             "variant",
             "hir::duplicate_variant",
         );
         self.validate_member_schema_ids(
-            &item.variants,
+            &shape.variants,
             |variant| (&variant.name, variant.span, variant.attrs.as_slice()),
             "variant",
             "hir::duplicate_variant_id",
         );
-        for variant in &item.variants {
+        for variant in &shape.variants {
             match &variant.fields {
-                EnumVariantFields::Unit => {}
-                EnumVariantFields::Tuple(params) => {
+                EnumVariantFieldsHint::Unit => {}
+                EnumVariantFieldsHint::Tuple(params) => {
                     self.validate_member_names(
                         params,
                         |param| (&param.name, param.span),
@@ -80,7 +80,7 @@ impl ModuleGraph {
                         "hir::duplicate_variant_field",
                     );
                 }
-                EnumVariantFields::Record(fields) => {
+                EnumVariantFieldsHint::Record(fields) => {
                     self.validate_member_names(
                         fields,
                         |field| (&field.name, field.span),
@@ -98,16 +98,16 @@ impl ModuleGraph {
         }
     }
 
-    pub(super) fn validate_trait_shape(&mut self, item: &TraitItem) {
+    pub(super) fn validate_trait_shape(&mut self, shape: &TraitShape) {
         self.validate_member_names(
-            &item.methods,
+            &shape.methods,
             |method| (&method.name, method.span),
             "trait method",
             "hir::duplicate_trait_method",
         );
-        for method in &item.methods {
+        for method in &shape.methods {
             self.validate_member_names(
-                &method.params,
+                &method.signature.params,
                 |param| (&param.name, param.span),
                 "parameter",
                 "hir::duplicate_parameter",
@@ -115,10 +115,10 @@ impl ModuleGraph {
         }
     }
 
-    pub(super) fn validate_impl_shape(&mut self, item: &ImplItem) {
+    pub(super) fn validate_impl_shape(&mut self, metadata: &ImplMetadata) {
         self.validate_member_names(
-            &item.methods,
-            |method| (&method.function.name, method.function.body.span),
+            &metadata.methods,
+            |method| (&method.name, method.span),
             "impl method",
             "hir::duplicate_impl_method",
         );
@@ -149,7 +149,7 @@ impl ModuleGraph {
     fn validate_member_schema_ids<T>(
         &mut self,
         members: &[T],
-        member_info: impl Fn(&T) -> (&String, Span, &[Attribute]),
+        member_info: impl Fn(&T) -> (&String, Span, &[HirAttribute]),
         label: &str,
         code: &'static str,
     ) {
@@ -174,11 +174,14 @@ impl ModuleGraph {
         }
     }
 
-    fn member_schema_id(&mut self, member_name: &str, attrs: &[Attribute]) -> Option<(u64, Span)> {
+    fn member_schema_id(
+        &mut self,
+        member_name: &str,
+        attrs: &[HirAttribute],
+    ) -> Option<(u64, Span)> {
         let mut found = None;
         for attr in attrs {
-            let name = attr.path.join("::");
-            match parse_schema_id_attr(&name, attr.value.as_deref()) {
+            match parse_schema_id_attr(&attr.name, attr.value.as_deref()) {
                 Ok(Some(id)) => {
                     if let Some((previous_id, previous_span)) = found {
                         self.diagnostics.push(

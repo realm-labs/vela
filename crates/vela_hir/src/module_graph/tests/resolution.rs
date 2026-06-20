@@ -283,6 +283,33 @@ struct Reward {
     assert!(duplicate.labels[1].message.contains("duplicate"));
     assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
 }
+
+#[test]
+fn duplicate_struct_field_ids_report_both_spans() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(source(
+        1,
+        "game::reward",
+        r#"
+struct Reward {
+    #[id(7)]
+    count: i64,
+    #[id(7)]
+    amount: i64
+}
+"#,
+    ));
+    let duplicate = graph
+        .diagnostics()
+        .iter()
+        .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::duplicate_field_id"))
+        .expect("duplicate field id diagnostic");
+    assert_eq!(duplicate.labels.len(), 2);
+    assert!(duplicate.labels[0].message.contains("previous"));
+    assert!(duplicate.labels[1].message.contains("duplicate"));
+    assert_ne!(duplicate.labels[0].span, duplicate.labels[1].span);
+}
+
 #[test]
 fn duplicate_enum_variants_and_fields_report_both_spans() {
     let mut graph = ModuleGraph::new();
