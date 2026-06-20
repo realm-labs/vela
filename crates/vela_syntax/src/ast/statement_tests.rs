@@ -122,6 +122,14 @@ fn ast_for_statement_exposes_index_and_value_patterns() {
     assert!(ordinary.index_pattern().is_none());
     assert_eq!(
         ordinary
+            .iterable()
+            .expect("ordinary iterable")
+            .syntax()
+            .kind(),
+        SyntaxKind::PathExpr
+    );
+    assert_eq!(
+        ordinary
             .value_pattern()
             .expect("ordinary value pattern")
             .binding_name()
@@ -160,6 +168,79 @@ fn ast_for_statement_exposes_index_and_value_patterns() {
         Some("Reward::Item")
     );
     assert_eq!(indexed.patterns().count(), 2);
+}
+
+#[test]
+fn ast_control_flow_accessors_do_not_confuse_missing_operands_with_body_blocks() {
+    let parse = parse_source(
+        r#"fn run(items) {
+    if {
+        return;
+    }
+    for item in {
+        continue;
+    }
+    for item in { items } {
+        continue;
+    }
+}
+"#,
+    );
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let if_expr = body
+        .syntax()
+        .children()
+        .find_map(SyntaxIfExpr::cast)
+        .expect("if expression");
+    let for_statements = body
+        .syntax()
+        .children()
+        .filter_map(SyntaxForStmt::cast)
+        .collect::<Vec<_>>();
+
+    assert!(if_expr.condition().is_none());
+    assert_eq!(
+        if_expr.then_block().expect("if body").syntax().kind(),
+        SyntaxKind::Block
+    );
+
+    assert_eq!(for_statements.len(), 2);
+    assert!(for_statements[0].iterable().is_none());
+    assert_eq!(
+        for_statements[0]
+            .body()
+            .expect("missing iterable body")
+            .syntax()
+            .kind(),
+        SyntaxKind::Block
+    );
+    assert_eq!(
+        for_statements[1]
+            .iterable()
+            .expect("block expression iterable")
+            .syntax()
+            .kind(),
+        SyntaxKind::Block
+    );
+    assert_eq!(
+        for_statements[1]
+            .body()
+            .expect("for body after block iterable")
+            .syntax()
+            .children()
+            .find_map(SyntaxContinueStmt::cast)
+            .expect("continue in for body")
+            .continue_token()
+            .expect("continue token")
+            .text(),
+        "continue"
+    );
 }
 
 #[test]
@@ -225,6 +306,10 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         .expect("for statement");
     assert_eq!(for_stmt.for_token().expect("for token").text(), "for");
     assert_eq!(for_stmt.in_token().expect("in token").text(), "in");
+    assert_eq!(
+        for_stmt.iterable().expect("for iterable").syntax().kind(),
+        SyntaxKind::PathExpr
+    );
 
     let if_expr = for_stmt
         .body()
@@ -234,6 +319,10 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         .find_map(SyntaxIfExpr::cast)
         .expect("if expression");
     assert_eq!(if_expr.if_token().expect("if token").text(), "if");
+    assert_eq!(
+        if_expr.condition().expect("if condition").syntax().kind(),
+        SyntaxKind::FieldExpr
+    );
     assert_eq!(if_expr.else_token().expect("else token").text(), "else");
     assert_eq!(
         if_expr

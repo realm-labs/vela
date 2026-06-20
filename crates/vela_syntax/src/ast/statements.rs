@@ -289,12 +289,18 @@ impl SyntaxForStmt {
 
     #[must_use]
     pub fn iterable(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        let in_end = token(&self.syntax, SyntaxKind::InKw)?.text_range().end();
+        let body_start = self.body()?.syntax().text_range().start();
+        self.syntax.children().find_map(|node| {
+            let expression = SyntaxExpression::cast(node)?;
+            let range = expression.syntax().text_range();
+            (range.start() >= in_end && range.end() <= body_start).then_some(expression)
+        })
     }
 
     #[must_use]
     pub fn body(&self) -> Option<SyntaxBlock> {
-        child(&self.syntax)
+        self.syntax.children().filter_map(SyntaxBlock::cast).last()
     }
 }
 
@@ -345,7 +351,13 @@ impl SyntaxIfExpr {
 
     #[must_use]
     pub fn condition(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        let if_end = token(&self.syntax, SyntaxKind::IfKw)?.text_range().end();
+        let then_start = self.then_block()?.syntax().text_range().start();
+        self.syntax.children().find_map(|node| {
+            let expression = SyntaxExpression::cast(node)?;
+            let range = expression.syntax().text_range();
+            (range.start() >= if_end && range.end() <= then_start).then_some(expression)
+        })
     }
 
     #[must_use]
