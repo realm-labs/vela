@@ -795,6 +795,15 @@ impl SyntaxMatchArmList {
     pub fn arms(&self) -> AstChildren<SyntaxMatchArm> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| matches!(token.kind(), SyntaxKind::Comma | SyntaxKind::Semicolon))
+            .collect()
+    }
 }
 
 impl AstNode for SyntaxMatchArmList {

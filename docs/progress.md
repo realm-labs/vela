@@ -193,10 +193,11 @@ Bare braced expressions now keep the existing
 map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
 while `{ statements }` becomes a typed `Block` expression with nested
 statement children. Match expressions now expose scrutinees, arm lists,
-match/brace/guard/arrow tokens, explicit guard and expression/block body
-accessors, tuple-variant pattern paths, record-variant pattern paths and
-fields, field labels, binding names, basic path-pattern text, literal
-patterns, and wildcard/basic pattern nodes. Pattern wrappers now also classify
+match/brace/guard/arrow tokens, comma/semicolon arm separator tokens,
+explicit guard and expression/block body accessors, tuple-variant pattern
+paths, record-variant pattern paths and fields, field labels, binding names,
+basic path-pattern text, literal patterns, and wildcard/basic pattern nodes.
+Pattern wrappers now also classify
 wildcard, literal, binding, path, tuple-variant, and record-variant shapes and
 can downcast tuple and record pattern nodes for variant payload traversal,
 with tuple paren and record brace delimiter tokens exposed.

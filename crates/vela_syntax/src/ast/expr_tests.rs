@@ -624,7 +624,7 @@ fn ast_match_expression_exposes_control_tokens() {
     let source = r#"fn reward(status) {
     match status {
         Ready if status.enabled => grant(),
-        Pending => { return wait(); },
+        Pending => { return wait(); };
     };
 }
 "#;
@@ -649,6 +649,14 @@ fn ast_match_expression_exposes_control_tokens() {
     );
     assert_eq!(arm_list.l_brace_token().expect("left brace").text(), "{");
     assert_eq!(arm_list.r_brace_token().expect("right brace").text(), "}");
+    assert_eq!(
+        arm_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![",", ";"]
+    );
     assert_eq!(arms.len(), 2);
     assert_eq!(
         arms[0].guard_if_token().expect("guard if token").text(),
