@@ -1,9 +1,10 @@
-use vela_common::Span;
+use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+    AstNode, SyntaxLetStmt, SyntaxMapEntry, SyntaxMapExpr, SyntaxSourceFile, SyntaxTypeHint,
 };
+use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
 
 use crate::{
     TextRange,
@@ -19,18 +20,6 @@ pub(super) struct MapKeyContext {
     pub(super) key_hint: Option<HirTypeHint>,
     pub(super) used_keys: Vec<Vec<String>>,
     pub(super) current_module: Vec<String>,
-}
-
-pub(super) fn map_key_at(source: &SourceFile, offset: usize) -> Option<MapKeyContext> {
-    let offset = u32::try_from(offset).ok()?;
-    for item in &source.items {
-        if let ItemKind::Function(item) = &item.kind
-            && let Some(context) = map_key_for_function(item, offset)
-        {
-            return Some(context);
-        }
-    }
-    None
 }
 
 pub(super) fn map_key_completion_items(
@@ -55,177 +44,102 @@ pub(super) fn map_key_completion_items(
     })
 }
 
-fn map_key_for_function(item: &FunctionItem, offset: u32) -> Option<MapKeyContext> {
-    map_key_for_block(&item.body, offset)
-}
-
-fn map_key_for_block(block: &Block, offset: u32) -> Option<MapKeyContext> {
-    if !block.span.contains(offset) {
-        return None;
-    }
-    block
-        .statements
-        .iter()
-        .find_map(|statement| map_key_for_statement(statement, offset))
-}
-
-fn map_key_for_statement(statement: &Stmt, offset: u32) -> Option<MapKeyContext> {
-    if !statement.span.contains(offset) {
-        return None;
-    }
-    match &statement.kind {
-        StmtKind::Let {
-            type_hint,
-            value: Some(value),
-            ..
-        } => map_key_for_expr(value, offset, type_hint.as_ref().and_then(map_key_hint)),
-        StmtKind::Return(Some(expr)) | StmtKind::Expr(expr) => map_key_for_expr(expr, offset, None),
-        StmtKind::For { iterable, body, .. } => {
-            map_key_for_expr(iterable, offset, None).or_else(|| map_key_for_block(body, offset))
-        }
-        StmtKind::Block(block) => map_key_for_block(block, offset),
-        StmtKind::Let { .. } | StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => {
-            None
-        }
-    }
-}
-
-fn map_key_hint(hint: &vela_syntax::ast::TypeHint) -> Option<HirTypeHint> {
-    (hint.path.as_slice() == ["Map"] && hint.args.len() == 2)
-        .then(|| HirTypeHint::from_syntax(&hint.args[0]))
-}
-
-fn map_key_for_expr(
-    expr: &Expr,
-    offset: u32,
-    expected_key: Option<HirTypeHint>,
+pub(super) fn map_key_at(
+    source: &SyntaxSourceFile,
+    source_id: Option<SourceId>,
+    offset: usize,
 ) -> Option<MapKeyContext> {
-    if !expr.span.contains(offset) {
+    let offset_size = syntax_offset(offset)?;
+    let token = significant_token_at(source.syntax(), offset_size)?;
+    let entry = token.parent_ancestors().find_map(SyntaxMapEntry::cast)?;
+    let key = entry.key()?;
+    range_contains_offset(key.syntax().text_range(), offset_size)?;
+    let map = entry.syntax().parent().and_then(SyntaxMapExpr::cast)?;
+    Some(MapKeyContext {
+        key_hint: enclosing_let_map_key_hint(source_id, &map),
+        used_keys: map_entry_path_keys(&map),
+        current_module: Vec::new(),
+    })
+}
+
+fn significant_token_at(root: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
+    match root.token_at_offset(offset) {
+        TokenAtOffset::None => None,
+        TokenAtOffset::Single(token) => non_trivia_token(token),
+        TokenAtOffset::Between(left, right) => {
+            non_trivia_token(left).or_else(|| non_trivia_token(right))
+        }
+    }
+}
+
+fn non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
+    (!token.kind().is_trivia()).then_some(token)
+}
+
+fn enclosing_let_map_key_hint(
+    source_id: Option<SourceId>,
+    map: &SyntaxMapExpr,
+) -> Option<HirTypeHint> {
+    let let_stmt = map
+        .syntax()
+        .ancestors()
+        .skip(1)
+        .find_map(SyntaxLetStmt::cast)?;
+    let initializer = let_stmt.initializer()?;
+    if initializer.syntax() != map.syntax() {
         return None;
     }
-    match &expr.kind {
-        ExprKind::Map(entries) => {
-            for entry in entries {
-                if span_contains_completion_offset(entry.key.span, offset) {
-                    return Some(MapKeyContext {
-                        key_hint: expected_key.clone(),
-                        used_keys: map_entry_path_keys(entries),
-                        current_module: Vec::new(),
-                    });
-                }
-                if let Some(context) = map_key_for_expr(&entry.value, offset, None) {
-                    return Some(context);
-                }
-            }
-            None
-        }
-        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
-            map_key_for_expr(expr, offset, expected_key)
-        }
-        ExprKind::Binary { left, right, .. }
-        | ExprKind::Assign {
-            target: left,
-            value: right,
-            ..
-        } => map_key_for_expr(left, offset, None).or_else(|| map_key_for_expr(right, offset, None)),
-        ExprKind::Field { base, .. } => map_key_for_expr(base, offset, None),
-        ExprKind::Call { callee, args } => map_key_for_expr(callee, offset, None).or_else(|| {
-            args.iter()
-                .find_map(|arg| map_key_for_expr(&arg.value, offset, None))
-        }),
-        ExprKind::Index { base, index } => {
-            map_key_for_expr(base, offset, None).or_else(|| map_key_for_expr(index, offset, None))
-        }
-        ExprKind::Array(values) => values
-            .iter()
-            .find_map(|value| map_key_for_expr(value, offset, None)),
-        ExprKind::Record { fields, .. } => fields.iter().find_map(|field| {
-            field
-                .value
-                .as_ref()
-                .and_then(|value| map_key_for_expr(value, offset, None))
-        }),
-        ExprKind::Lambda { params, body } => params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| map_key_for_expr(value, offset, None))
-            .or_else(|| map_key_for_expr(body, offset, None)),
-        ExprKind::If(if_expr) => map_key_for_expr(&if_expr.condition, offset, None)
-            .or_else(|| map_key_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| match branch {
-                        ElseBranch::Block(block) => map_key_for_block(block, offset),
-                        ElseBranch::If(if_expr) => map_key_for_if(if_expr, offset),
-                    })
-            }),
-        ExprKind::Match(match_expr) => map_key_for_expr(&match_expr.scrutinee, offset, None)
-            .or_else(|| {
-                match_expr
-                    .arms
-                    .iter()
-                    .find_map(|arm| map_key_for_expr(&arm.body, offset, None))
-            }),
-        ExprKind::Block(block) => map_key_for_block(block, offset),
-        ExprKind::Literal(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::Path(_)
-        | ExprKind::SelfValue
-        | ExprKind::Error => None,
+    map_key_hint(source_id, &let_stmt.type_hint()?)
+}
+
+fn map_key_hint(source_id: Option<SourceId>, hint: &SyntaxTypeHint) -> Option<HirTypeHint> {
+    let args = hint.type_arg_list()?;
+    let mut arg_hints = args.type_hints();
+    let key = arg_hints.next()?;
+    let value = arg_hints.next();
+    (hint.path_segments().as_slice() == ["Map"] && value.is_some() && arg_hints.next().is_none())
+        .then(|| hir_type_hint_from_cst(source_id, &key))
+}
+
+fn hir_type_hint_from_cst(source_id: Option<SourceId>, hint: &SyntaxTypeHint) -> HirTypeHint {
+    HirTypeHint {
+        path: hint.path_segments(),
+        args: hint
+            .type_arg_list()
+            .into_iter()
+            .flat_map(|args| args.type_hints())
+            .map(|arg| hir_type_hint_from_cst(source_id, &arg))
+            .collect(),
+        span: span_for(source_id, hint.syntax().text_range()),
     }
 }
 
-fn map_key_for_if(if_expr: &vela_syntax::ast::IfExpr, offset: u32) -> Option<MapKeyContext> {
-    if !if_expr.condition.span.contains(offset)
-        && !if_expr.then_branch.span.contains(offset)
-        && !if_expr
-            .else_branch
-            .as_ref()
-            .is_some_and(|branch| else_branch_contains(branch, offset))
-    {
-        return None;
-    }
-    map_key_for_expr(&if_expr.condition, offset, None)
-        .or_else(|| map_key_for_block(&if_expr.then_branch, offset))
-        .or_else(|| {
-            if_expr
-                .else_branch
-                .as_ref()
-                .and_then(|branch| match branch {
-                    ElseBranch::Block(block) => map_key_for_block(block, offset),
-                    ElseBranch::If(if_expr) => map_key_for_if(if_expr, offset),
-                })
-        })
+fn span_for(source_id: Option<SourceId>, range: SyntaxTextRange) -> vela_common::Span {
+    vela_common::Span::new(
+        source_id.unwrap_or_else(|| SourceId::new(0)),
+        range.start().into(),
+        range.end().into(),
+    )
 }
 
-fn else_branch_contains(branch: &ElseBranch, offset: u32) -> bool {
-    match branch {
-        ElseBranch::If(if_expr) => {
-            if_expr.condition.span.contains(offset)
-                || if_expr.then_branch.span.contains(offset)
-                || if_expr
-                    .else_branch
-                    .as_ref()
-                    .is_some_and(|branch| else_branch_contains(branch, offset))
-        }
-        ElseBranch::Block(block) => block.span.contains(offset),
-    }
-}
-
-fn map_entry_path_keys(entries: &[vela_syntax::ast::MapEntry]) -> Vec<Vec<String>> {
-    entries
-        .iter()
-        .filter_map(|entry| match &entry.key.kind {
-            ExprKind::Path(path) => Some(path.clone()),
-            _ => None,
+fn map_entry_path_keys(map: &SyntaxMapExpr) -> Vec<Vec<String>> {
+    map.entries()
+        .filter_map(|entry| {
+            entry
+                .key()
+                .and_then(|key| key.as_path())
+                .map(|path| path.path_segments())
         })
         .collect()
 }
 
-fn span_contains_completion_offset(span: Span, offset: u32) -> bool {
-    span.start <= offset && offset <= span.end
+fn range_contains_offset(range: SyntaxTextRange, offset: TextSize) -> Option<()> {
+    (range.start() <= offset && offset <= range.end()).then_some(())
+}
+
+fn syntax_offset(offset: usize) -> Option<TextSize> {
+    let offset = u32::try_from(offset).ok()?;
+    Some(TextSize::from(offset))
 }
 
 fn script_enum_variant_key_completions(

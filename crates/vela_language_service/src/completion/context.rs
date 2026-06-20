@@ -88,8 +88,8 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
 
     if cursor.kind() == CursorContextKind::MapKey
         && let Some(mut map_key) = query
-            .parsed_source()
-            .and_then(|source| map_key_at(source, offset))
+            .syntax_parse()
+            .and_then(|parse| map_key_at(&parse.tree(), query.source_id(), offset))
     {
         map_key.current_module = query
             .module_path()

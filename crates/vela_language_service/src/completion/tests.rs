@@ -848,6 +848,41 @@ pub fn main() {
 }
 
 #[test]
+fn map_key_completion_does_not_apply_outer_key_hint_to_nested_maps() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let text = r#"
+pub enum QuestState { Started, Completed }
+pub fn main() {
+    let rewards: Map<QuestState, Any> = {
+        Started: {
+            Co: 1,
+        },
+    }
+}
+"#;
+    let files = vec![SourceFileSnapshot::new(document.clone(), text)];
+    let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
+    let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&project);
+    let nested_key_line = text
+        .lines()
+        .nth(5)
+        .expect("nested map key line should exist");
+
+    let completions = databases.completion_items(
+        &document,
+        Position::new(
+            5,
+            nested_key_line.find("Co:").expect("map key prefix") + "Co".len(),
+        ),
+    );
+
+    assert_eq!(completions.context().kind(), CompletionContextKind::MapKey);
+    assert!(completions.items().is_empty(), "{completions:?}");
+}
+
+#[test]
 fn pattern_completion_suggests_source_enum_variants() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"
