@@ -362,6 +362,13 @@ fn ast_call_arguments_expose_names_and_values() {
     assert!(arguments[0].equal_token().is_none());
     assert_eq!(
         arguments[0]
+            .separator_token()
+            .expect("first argument separator")
+            .text(),
+        ","
+    );
+    assert_eq!(
+        arguments[0]
             .expression()
             .expect("positional argument value")
             .syntax()
@@ -373,6 +380,13 @@ fn ast_call_arguments_expose_names_and_values() {
     assert_eq!(
         arguments[1].name_token().expect("named argument").text(),
         "amount"
+    );
+    assert_eq!(
+        arguments[1]
+            .separator_token()
+            .expect("second argument separator")
+            .text(),
+        ","
     );
     assert_eq!(
         arguments[1].equal_token().expect("argument equal").kind(),
@@ -388,6 +402,7 @@ fn ast_call_arguments_expose_names_and_values() {
     );
 
     assert_eq!(arguments[2].name_text().as_deref(), Some("reason"));
+    assert!(arguments[2].separator_token().is_none());
     assert_eq!(
         arguments[2]
             .expression()
@@ -745,6 +760,13 @@ fn ast_map_entries_expose_key_colon_and_value() {
         SyntaxKind::Colon
     );
     assert_eq!(
+        entries[0]
+            .separator_token()
+            .expect("map entry separator")
+            .text(),
+        ","
+    );
+    assert_eq!(
         entries[0].value().expect("first value").syntax().kind(),
         SyntaxKind::BinaryExpr
     );
@@ -757,6 +779,13 @@ fn ast_map_entries_expose_key_colon_and_value() {
     assert_eq!(
         entries[1].colon_token().expect("second colon").kind(),
         SyntaxKind::Colon
+    );
+    assert_eq!(
+        entries[1]
+            .separator_token()
+            .expect("trailing map entry separator")
+            .text(),
+        ","
     );
     assert_eq!(
         entries[1].value().expect("second value").syntax().kind(),
@@ -856,6 +885,13 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
     );
     assert_eq!(
         fields[0]
+            .separator_token()
+            .expect("record field separator")
+            .text(),
+        ","
+    );
+    assert_eq!(
+        fields[0]
             .expression()
             .expect("explicit field value")
             .syntax()
@@ -867,6 +903,13 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
     assert_eq!(fields[1].label_text().as_deref(), Some("item"));
     assert!(fields[1].colon_token().is_none());
     assert!(fields[1].expression().is_none());
+    assert_eq!(
+        fields[1]
+            .separator_token()
+            .expect("trailing record field separator")
+            .text(),
+        ","
+    );
     assert!(fields[1].is_shorthand());
 }
 

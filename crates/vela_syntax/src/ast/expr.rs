@@ -631,6 +631,17 @@ impl SyntaxArgument {
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_token(&self) -> Option<SyntaxToken> {
+        following_separator_token(
+            &self.syntax,
+            SyntaxKind::ArgList,
+            SyntaxKind::Comma,
+            SyntaxKind::Argument,
+            SyntaxKind::RParen,
+        )
+    }
 }
 
 impl AstNode for SyntaxArgument {
@@ -753,6 +764,17 @@ impl SyntaxMapEntry {
     #[must_use]
     pub fn colon_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::Colon)
+    }
+
+    #[must_use]
+    pub fn separator_token(&self) -> Option<SyntaxToken> {
+        following_separator_token(
+            &self.syntax,
+            SyntaxKind::MapExpr,
+            SyntaxKind::Comma,
+            SyntaxKind::MapEntry,
+            SyntaxKind::RBrace,
+        )
     }
 }
 
@@ -921,6 +943,17 @@ impl SyntaxRecordExprField {
     #[must_use]
     pub fn is_shorthand(&self) -> bool {
         self.label_token().is_some() && self.colon_token().is_none() && self.expression().is_none()
+    }
+
+    #[must_use]
+    pub fn separator_token(&self) -> Option<SyntaxToken> {
+        following_separator_token(
+            &self.syntax,
+            SyntaxKind::RecordExprFieldList,
+            SyntaxKind::Comma,
+            SyntaxKind::RecordExprField,
+            SyntaxKind::RBrace,
+        )
     }
 }
 
@@ -1103,6 +1136,46 @@ fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken>
         .filter_map(|element| element.into_token())
         .filter(|token| token.kind() == wanted)
         .collect()
+}
+
+fn following_separator_token(
+    node: &SyntaxNode,
+    parent_kind: SyntaxKind,
+    separator_kind: SyntaxKind,
+    next_node_kind: SyntaxKind,
+    close_kind: SyntaxKind,
+) -> Option<SyntaxToken> {
+    let parent = node.parent()?;
+    if parent.kind() != parent_kind {
+        return None;
+    }
+
+    let mut seen_node = false;
+    for element in parent.children_with_tokens() {
+        if let Some(child) = element.as_node() {
+            if child == node {
+                seen_node = true;
+                continue;
+            }
+            if seen_node && child.kind() == next_node_kind {
+                return None;
+            }
+        }
+
+        let Some(token) = element.as_token() else {
+            continue;
+        };
+        if !seen_node {
+            continue;
+        }
+        if token.kind() == separator_kind {
+            return Some(token.clone());
+        }
+        if token.kind() == close_kind {
+            return None;
+        }
+    }
+    None
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
