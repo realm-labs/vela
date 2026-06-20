@@ -487,8 +487,10 @@ impl LanguageServiceDatabases {
             .unwrap_or_default();
         let inferred_local_facts = self
             .parse_db()
-            .parsed_source(document_id)
-            .map(|parsed| local_record_facts::collect(self.hir_db().graph(), parsed))
+            .syntax_parse(document_id)
+            .map(|parsed| {
+                local_record_facts::collect(self.hir_db().graph(), parsed, source.source_id())
+            })
             .unwrap_or_default();
         let classifications = self.semantic_token_classifications(&SemanticClassificationInput {
             source_id: source.source_id(),
