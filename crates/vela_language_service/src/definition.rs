@@ -267,7 +267,7 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         target: &SymbolTarget,
     ) -> Option<Definition> {
-        let parsed = query.parsed_source()?;
+        let parsed = query.syntax_parse()?;
         let call_site = member_access::member_call_sites(parsed)
             .into_iter()
             .find(|site| site.member_range == target.range())?;

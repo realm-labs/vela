@@ -470,7 +470,7 @@ impl LanguageServiceDatabases {
         let lexed = lex(source.source_id(), source.text());
         let member_receivers = self
             .parse_db()
-            .parsed_source(document_id)
+            .syntax_parse(document_id)
             .map(crate::member_access::member_receiver_ranges)
             .unwrap_or_default();
         let receiver_facts = self

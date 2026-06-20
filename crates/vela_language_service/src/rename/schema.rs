@@ -607,7 +607,7 @@ fn push_schema_member_use_edits(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
     for source in databases.source_db().records().values() {
-        let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
             continue;
         };
         match target.kind {

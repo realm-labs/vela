@@ -309,7 +309,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let Some(parsed) = self.parse_db().parsed_source(source.document_id()) else {
+        let Some(parsed) = self.parse_db().syntax_parse(source.document_id()) else {
             return Vec::new();
         };
         member_access::member_call_sites(parsed)

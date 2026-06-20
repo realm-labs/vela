@@ -375,7 +375,7 @@ fn schema_method_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
         return references;
     };
     for site in member_access::member_call_sites(parsed) {
@@ -409,7 +409,7 @@ fn schema_field_use_references_for_source(
     let mut references = Vec::new();
     let source_id = source.source_id();
     let text = source.text();
-    let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+    let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
         return references;
     };
     for site in member_access::member_access_sites(parsed) {
