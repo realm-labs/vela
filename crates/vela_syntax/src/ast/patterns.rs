@@ -72,9 +72,18 @@ impl SyntaxPattern {
     }
 
     #[must_use]
+    pub fn literal_token(&self) -> Option<SyntaxToken> {
+        first_significant_token(&self.syntax).filter(|token| literal_token_kind(token.kind()))
+    }
+
+    #[must_use]
+    pub fn literal_token_kind(&self) -> Option<SyntaxKind> {
+        self.literal_token().map(|token| token.kind())
+    }
+
+    #[must_use]
     pub fn literal_text(&self) -> Option<String> {
-        let token = first_significant_token(&self.syntax)?;
-        literal_token(token.kind()).then(|| self.syntax.text().to_string())
+        self.literal_token().map(|token| token.text().to_owned())
     }
 }
 
@@ -286,7 +295,7 @@ fn path_text_before_payload(parent: &SyntaxNode) -> Option<String> {
     (has_path_separator && !path.is_empty()).then_some(path)
 }
 
-const fn literal_token(kind: SyntaxKind) -> bool {
+const fn literal_token_kind(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::TrueKw
@@ -413,6 +422,27 @@ mod tests {
                 Some(SyntaxPatternKind::TupleVariant),
                 Some(SyntaxPatternKind::RecordVariant),
             ]
+        );
+
+        let literal_pattern = arms[1].pattern().expect("literal pattern");
+        assert_eq!(
+            literal_pattern
+                .literal_token()
+                .expect("literal pattern token")
+                .text(),
+            "\"ready\""
+        );
+        assert_eq!(
+            literal_pattern.literal_token_kind(),
+            Some(SyntaxKind::String)
+        );
+        assert_eq!(literal_pattern.literal_text().as_deref(), Some("\"ready\""));
+        assert!(
+            arms[0]
+                .pattern()
+                .expect("wildcard pattern")
+                .literal_token()
+                .is_none()
         );
 
         let tuple_pattern = arms[4]

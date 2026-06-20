@@ -198,7 +198,8 @@ statement children. Match expressions now expose scrutinees, arm lists,
 match/brace/guard/arrow tokens, comma/semicolon arm separator tokens,
 explicit guard and expression/block body accessors, tuple-variant pattern
 paths, record-variant pattern paths and fields, field labels, binding names,
-basic path-pattern text, literal patterns, and wildcard/basic pattern nodes.
+basic path-pattern text, literal pattern token/kind/text accessors, and
+wildcard/basic pattern nodes.
 For-loop wrappers now expose the binding separator token between index and
 value patterns.
 Pattern wrappers now also classify
