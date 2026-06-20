@@ -165,6 +165,9 @@ Assignment expression wrappers now expose their operator tokens and kinds for
 plain and compound assignment.
 Unary expression wrappers now expose their operator tokens and kinds for
 negation and logical inversion.
+Literal expression wrappers now expose their raw literal tokens, token kinds,
+and exact source text for boolean, null, numeric, quoted, and interpolated
+literals.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
 expression/block bodies. Bare braced expressions now keep the existing

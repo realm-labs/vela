@@ -25,6 +25,26 @@ pub struct SyntaxLiteral {
     syntax: SyntaxNode,
 }
 
+impl SyntaxLiteral {
+    #[must_use]
+    pub fn token(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| literal_token_kind(token.kind()))
+    }
+
+    #[must_use]
+    pub fn token_kind(&self) -> Option<SyntaxKind> {
+        self.token().map(|token| token.kind())
+    }
+
+    #[must_use]
+    pub fn token_text(&self) -> Option<String> {
+        self.token().map(|token| token.text().to_owned())
+    }
+}
+
 impl AstNode for SyntaxLiteral {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::Literal
@@ -714,6 +734,20 @@ fn unary_operator_kind(kind: SyntaxKind) -> bool {
     matches!(kind, SyntaxKind::Bang | SyntaxKind::Minus)
 }
 
+fn literal_token_kind(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::TrueKw
+            | SyntaxKind::FalseKw
+            | SyntaxKind::NullKw
+            | SyntaxKind::Int
+            | SyntaxKind::Float
+            | SyntaxKind::Char
+            | SyntaxKind::String
+            | SyntaxKind::InterpolatedString
+    )
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -722,8 +756,8 @@ fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
 mod tests {
     use crate::SyntaxKind;
     use crate::ast::{
-        AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxMapExpr,
-        SyntaxUnaryExpr,
+        AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxLiteral,
+        SyntaxMapExpr, SyntaxUnaryExpr,
     };
     use crate::parse::parse_source;
 
@@ -883,6 +917,56 @@ mod tests {
         assert_eq!(
             operators,
             vec![Some(SyntaxKind::Minus), Some(SyntaxKind::Bang)]
+        );
+    }
+
+    #[test]
+    fn ast_literal_expression_exposes_token_text_and_kind() {
+        let source = r#"fn literals(name) {
+    let truthy = true;
+    let falsey = false;
+    let empty = null;
+    let count = 42;
+    let ratio = 3.5;
+    let label = "gold";
+    let marker = 'x';
+    let message = f"hello {name}";
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let literals = body
+            .let_statements()
+            .map(|statement| {
+                let initializer = statement.initializer().expect("initializer");
+                let literal =
+                    SyntaxLiteral::cast(initializer.syntax().clone()).expect("literal expr");
+                (literal.token_kind(), literal.token_text())
+            })
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            literals,
+            vec![
+                (Some(SyntaxKind::TrueKw), Some("true".to_owned())),
+                (Some(SyntaxKind::FalseKw), Some("false".to_owned())),
+                (Some(SyntaxKind::NullKw), Some("null".to_owned())),
+                (Some(SyntaxKind::Int), Some("42".to_owned())),
+                (Some(SyntaxKind::Float), Some("3.5".to_owned())),
+                (Some(SyntaxKind::String), Some(r#""gold""#.to_owned())),
+                (Some(SyntaxKind::Char), Some("'x'".to_owned())),
+                (
+                    Some(SyntaxKind::InterpolatedString),
+                    Some(r#"f"hello {name}""#.to_owned()),
+                ),
+            ]
         );
     }
 }
