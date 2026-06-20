@@ -840,6 +840,7 @@ impl Rewardable for Player {
         Quest::Active { quest_id: id, count } => {
             id
         },
+        null => "empty",
         _ => "none",
     };
 }
@@ -868,12 +869,22 @@ impl Rewardable for Player {
             match_expr.scrutinee().expect("scrutinee").syntax().kind(),
             SyntaxKind::PathExpr
         );
-        assert_eq!(arms.len(), 3);
+        assert_eq!(arms.len(), 4);
 
         let tuple_pattern =
             SyntaxTuplePattern::cast(arms[0].pattern().expect("tuple pattern").syntax().clone())
                 .expect("tuple pattern wrapper");
+        assert_eq!(tuple_pattern.path_text().as_deref(), Some("Option::Some"));
         assert_eq!(tuple_pattern.patterns().count(), 1);
+        assert_eq!(
+            tuple_pattern
+                .patterns()
+                .next()
+                .expect("tuple field binding")
+                .binding_name()
+                .as_deref(),
+            Some("value")
+        );
         assert_eq!(
             arms[0]
                 .expressions()
@@ -898,17 +909,19 @@ impl Rewardable for Player {
         let record_pattern =
             SyntaxRecordPattern::cast(arms[1].pattern().expect("record pattern").syntax().clone())
                 .expect("record pattern wrapper");
+        assert_eq!(record_pattern.path_text().as_deref(), Some("Quest::Active"));
         let fields = record_pattern.fields().collect::<Vec<_>>();
         assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].label_text().as_deref(), Some("quest_id"));
         assert_eq!(
             fields[0]
                 .pattern()
                 .expect("explicit field pattern")
-                .syntax()
-                .text()
-                .to_string(),
-            "id"
+                .binding_name()
+                .as_deref(),
+            Some("id")
         );
+        assert_eq!(fields[1].label_text().as_deref(), Some("count"));
         assert!(fields[1].pattern().is_none());
         assert_eq!(
             arms[1]
@@ -924,14 +937,23 @@ impl Rewardable for Player {
         assert_eq!(
             arms[2]
                 .pattern()
-                .expect("wildcard pattern")
-                .syntax()
-                .text()
-                .to_string(),
-            "_"
+                .expect("literal pattern")
+                .literal_text()
+                .as_deref(),
+            Some("null")
         );
         assert_eq!(
             arms[2]
+                .body_expression()
+                .expect("literal arm body")
+                .syntax()
+                .kind(),
+            SyntaxKind::Literal
+        );
+
+        assert!(arms[3].pattern().expect("wildcard pattern").is_wildcard());
+        assert_eq!(
+            arms[3]
                 .expressions()
                 .next()
                 .expect("literal arm body")
@@ -939,9 +961,9 @@ impl Rewardable for Player {
                 .kind(),
             SyntaxKind::Literal
         );
-        assert!(arms[2].guard().is_none());
+        assert!(arms[3].guard().is_none());
         assert_eq!(
-            arms[2]
+            arms[3]
                 .body_expression()
                 .expect("literal arm body")
                 .syntax()
@@ -975,21 +997,23 @@ impl Rewardable for Player {
 
         assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
         assert_eq!(patterns.len(), 2);
-        assert_eq!(patterns[0].syntax().text().to_string(), "index");
+        assert_eq!(patterns[0].binding_name().as_deref(), Some("index"));
 
         let record_pattern =
             SyntaxRecordPattern::cast(patterns[1].syntax().clone()).expect("record pattern");
+        assert_eq!(record_pattern.path_text().as_deref(), Some("Reward::Grant"));
         let fields = record_pattern.fields().collect::<Vec<_>>();
         assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].label_text().as_deref(), Some("amount"));
         assert_eq!(
             fields[0]
                 .pattern()
                 .expect("explicit field pattern")
-                .syntax()
-                .text()
-                .to_string(),
-            "value"
+                .binding_name()
+                .as_deref(),
+            Some("value")
         );
+        assert_eq!(fields[1].label_text().as_deref(), Some("item"));
         assert!(fields[1].pattern().is_none());
         assert_eq!(
             for_stmt

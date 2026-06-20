@@ -157,10 +157,11 @@ structure now exposes array elements, map entries, record literal fields,
 lambda parameter lists, and
 lambda expression/block bodies. Match expressions now expose scrutinees, arm
 lists, explicit guard and expression/block body accessors, tuple-variant
-patterns, record-variant pattern fields, and wildcard/basic pattern nodes. The
+pattern paths, record-variant pattern paths and fields, field labels, binding
+names, literal patterns, and wildcard/basic pattern nodes. The
 rowan-backed typed AST wrapper layer now has focused syntax, statement,
 expression, and pattern submodules so additional wrappers can land without
-growing the legacy owned-AST file; broader pattern coverage, remaining
+growing the legacy owned-AST file; remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
 ## Milestone Snapshot
