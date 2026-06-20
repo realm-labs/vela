@@ -316,16 +316,28 @@ struct Bag {
     );
     assert_eq!(args.less_token().expect("less token").text(), "<");
     assert_eq!(args.greater_token().expect("greater token").text(), ">");
+    assert_eq!(
+        args.separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
     assert_eq!(arg_hints[0].path_text().as_deref(), Some("String"));
     assert_eq!(arg_hints[0].path_segments(), vec!["String"]);
     assert_eq!(arg_hints[1].path_text().as_deref(), Some("Result"));
     assert_eq!(arg_hints[1].path_segments(), vec!["Result"]);
 
-    let result_args = arg_hints[1]
-        .type_arg_list()
-        .expect("result type args")
-        .type_hints()
-        .collect::<Vec<_>>();
+    let result_arg_list = arg_hints[1].type_arg_list().expect("result type args");
+    assert_eq!(
+        result_arg_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
+    let result_args = result_arg_list.type_hints().collect::<Vec<_>>();
     assert_eq!(result_args[0].path_text().as_deref(), Some("i64"));
     assert_eq!(result_args[0].path_segments(), vec!["i64"]);
     assert_eq!(result_args[1].path_text().as_deref(), Some("String"));

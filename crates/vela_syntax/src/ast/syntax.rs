@@ -196,6 +196,11 @@ impl SyntaxTypeArgList {
     pub fn type_hints(&self) -> AstChildren<SyntaxTypeHint> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -248,6 +253,14 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == kind)
+}
+
+fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == wanted)
+        .collect()
 }
 
 fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
