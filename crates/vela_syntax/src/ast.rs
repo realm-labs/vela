@@ -14,7 +14,7 @@ pub use expr::{
     SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
     SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxMatchArm, SyntaxMatchArmList,
     SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
-    SyntaxRecordExprFieldList, SyntaxTryExpr,
+    SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 pub use patterns::{
     SyntaxPattern, SyntaxRecordPattern, SyntaxRecordPatternField, SyntaxTuplePattern,

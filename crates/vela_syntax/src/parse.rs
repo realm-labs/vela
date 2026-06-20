@@ -86,7 +86,7 @@ mod tests {
         AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBreakStmt, SyntaxCallExpr,
         SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxIndexExpr,
         SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr, SyntaxRecordExpr, SyntaxRecordPattern,
-        SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern,
+        SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern, SyntaxUnaryExpr,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -575,6 +575,8 @@ impl Rewardable for Player {
     fn parser_parse_source_structures_statement_expression_nodes() {
         let source = r#"fn update(ctx: Context) {
     let score = award(player.level, amount = 1);
+    let penalty = -score;
+    let ready = !done;
     return score;
     player.level += award(score, 1);
 }
@@ -591,12 +593,8 @@ impl Rewardable for Player {
         assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
         assert_eq!(tree.syntax().text().to_string(), source);
 
-        let initializer = body
-            .let_statements()
-            .next()
-            .expect("let statement")
-            .initializer()
-            .expect("initializer");
+        let let_statements = body.let_statements().collect::<Vec<_>>();
+        let initializer = let_statements[0].initializer().expect("initializer");
         assert_eq!(initializer.syntax().kind(), SyntaxKind::CallExpr);
         let initializer_call =
             SyntaxCallExpr::cast(initializer.syntax().clone()).expect("initializer call");
@@ -612,6 +610,38 @@ impl Rewardable for Player {
                     .kind())
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::FieldExpr, SyntaxKind::Literal]
+        );
+        let negative = SyntaxUnaryExpr::cast(
+            let_statements[1]
+                .initializer()
+                .expect("negative initializer")
+                .syntax()
+                .clone(),
+        )
+        .expect("negative unary expression");
+        assert_eq!(
+            negative
+                .expression()
+                .expect("negative operand")
+                .syntax()
+                .kind(),
+            SyntaxKind::PathExpr
+        );
+        let inverted = SyntaxUnaryExpr::cast(
+            let_statements[2]
+                .initializer()
+                .expect("inverted initializer")
+                .syntax()
+                .clone(),
+        )
+        .expect("inverted unary expression");
+        assert_eq!(
+            inverted
+                .expression()
+                .expect("inverted operand")
+                .syntax()
+                .kind(),
+            SyntaxKind::PathExpr
         );
 
         let return_stmt = body

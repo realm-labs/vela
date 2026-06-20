@@ -111,6 +111,32 @@ impl AstNode for SyntaxBinaryExpr {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxUnaryExpr {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxUnaryExpr {
+    #[must_use]
+    pub fn expression(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxUnaryExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::UnaryExpr
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxFieldExpr {
     syntax: SyntaxNode,
 }
