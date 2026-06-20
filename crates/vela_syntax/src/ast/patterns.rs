@@ -304,6 +304,17 @@ impl SyntaxRecordPatternField {
     }
 
     #[must_use]
+    pub fn shorthand_binding_name_token(&self) -> Option<SyntaxToken> {
+        self.is_shorthand().then(|| self.label_token()).flatten()
+    }
+
+    #[must_use]
+    pub fn shorthand_binding_name(&self) -> Option<String> {
+        self.shorthand_binding_name_token()
+            .map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
     pub fn colon_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::Colon)
     }
@@ -906,10 +917,20 @@ mod tests {
             Some("reason")
         );
         assert!(!fields[0].is_shorthand());
+        assert!(fields[0].shorthand_binding_name_token().is_none());
+        assert!(fields[0].shorthand_binding_name().is_none());
 
         assert_eq!(fields[1].label_text().as_deref(), Some("code"));
         assert!(fields[1].colon_token().is_none());
         assert!(fields[1].pattern().is_none());
         assert!(fields[1].is_shorthand());
+        assert_eq!(
+            fields[1]
+                .shorthand_binding_name_token()
+                .expect("shorthand binding token")
+                .text(),
+            "code"
+        );
+        assert_eq!(fields[1].shorthand_binding_name().as_deref(), Some("code"));
     }
 }
