@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+mod body_binding;
 mod model;
 mod names;
 mod schema_diagnostics;
@@ -8,9 +9,7 @@ mod syntax_summary;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::ast::{
-    Block, FunctionItem, ImplKind, ItemKind, Param, SourceFile, TraitMethod, Visibility,
-};
+use vela_syntax::ast::{ImplKind, ItemKind, SourceFile, Visibility};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -22,8 +21,9 @@ use names::{
     closest_name, import_binding_name, inherent_impl_declaration_name, trait_impl_declaration_name,
 };
 
+use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
-use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
+use crate::binding::BindingMap;
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::top_level::validate_const_initializer;
 #[cfg(test)]
@@ -266,7 +266,11 @@ impl ModuleGraph {
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
-                    function_declarations.push((declaration, function.clone()));
+                    function_declarations.push(FunctionBodySource::new(
+                        declaration,
+                        &function.params,
+                        &function.body,
+                    ));
                 }
                 ItemKind::Struct(record) => {
                     let (name, visibility, span) = declaration_or(
@@ -370,7 +374,12 @@ impl ModuleGraph {
                             .iter()
                             .zip(default_method_nodes)
                             .filter_map(|(method, default_body)| {
-                                default_body.map(|(node, _)| (declaration, node, method.clone()))
+                                let (node, _) = default_body?;
+                                let body = method.default_body.as_ref()?;
+                                Some((
+                                    node,
+                                    FunctionBodySource::new(declaration, &method.params, body),
+                                ))
                             }),
                     );
                 }
@@ -423,7 +432,14 @@ impl ModuleGraph {
                             .iter()
                             .zip(method_nodes)
                             .map(|(method, (node, _))| {
-                                (declaration, node, method.function.clone())
+                                (
+                                    node,
+                                    FunctionBodySource::new(
+                                        declaration,
+                                        &method.function.params,
+                                        &method.function.body,
+                                    ),
+                                )
                             }),
                     );
                 }
@@ -432,14 +448,14 @@ impl ModuleGraph {
 
         self.validate_import_bindings(&hir_module);
 
-        for (declaration, function) in function_declarations {
-            self.bind_function_body(&hir_module, declaration, &function);
+        for source in function_declarations {
+            self.bind_function_body(&hir_module, source);
         }
-        for (declaration, node, method) in trait_default_method_declarations {
-            self.bind_trait_default_method_body(&hir_module, declaration, node, &method);
+        for (node, source) in trait_default_method_declarations {
+            self.bind_trait_default_method_body(&hir_module, node, source);
         }
-        for (declaration, node, function) in impl_method_declarations {
-            self.bind_impl_method_body(&hir_module, declaration, node, &function);
+        for (node, source) in impl_method_declarations {
+            self.bind_impl_method_body(&hir_module, node, source);
         }
 
         self.schema_references_validated = false;
@@ -775,94 +791,6 @@ impl ModuleGraph {
         }
     }
 
-    fn bind_function_body(
-        &mut self,
-        module: &HirModule,
-        declaration: HirDeclId,
-        function: &FunctionItem,
-    ) {
-        let (bindings, diagnostics) =
-            self.bind_body(module, declaration, &function.params, &function.body);
-        self.bindings.insert(declaration, bindings);
-        self.diagnostics.extend(diagnostics);
-    }
-
-    fn bind_trait_default_method_body(
-        &mut self,
-        module: &HirModule,
-        declaration: HirDeclId,
-        method: HirNodeId,
-        trait_method: &TraitMethod,
-    ) {
-        let Some(body) = &trait_method.default_body else {
-            return;
-        };
-        let (bindings, diagnostics) =
-            self.bind_body(module, declaration, &trait_method.params, body);
-        self.trait_default_method_bindings.insert(method, bindings);
-        self.diagnostics.extend(diagnostics);
-    }
-
-    fn bind_impl_method_body(
-        &mut self,
-        module: &HirModule,
-        declaration: HirDeclId,
-        method: HirNodeId,
-        function: &FunctionItem,
-    ) {
-        let (bindings, diagnostics) =
-            self.bind_body(module, declaration, &function.params, &function.body);
-        self.impl_method_bindings.insert(method, bindings);
-        self.diagnostics.extend(diagnostics);
-    }
-
-    fn bind_body(
-        &mut self,
-        module: &HirModule,
-        declaration: HirDeclId,
-        params: &[Param],
-        body: &Block,
-    ) -> (BindingMap, Vec<Diagnostic>) {
-        let module_declarations = module
-            .declarations
-            .names()
-            .filter_map(|name| {
-                module
-                    .declarations
-                    .get(name)
-                    .map(|declaration| (name.to_owned(), declaration))
-            })
-            .collect::<Vec<_>>();
-        let imports = self.import_bindings(module);
-        let qualified_declarations = self.qualified_declarations_with(module);
-
-        bind_function(FunctionBindingInput {
-            declaration,
-            params,
-            body,
-            module_declarations,
-            qualified_declarations,
-            imports,
-            next_expr_id: &mut self.next_expr_id,
-            next_local_id: &mut self.next_local_id,
-        })
-    }
-
-    fn import_bindings(&self, module: &HirModule) -> Vec<ImportBinding> {
-        module
-            .imports
-            .iter()
-            .filter_map(|import| {
-                let name = import_binding_name(import)?;
-                let declaration = match import.resolution {
-                    Some(ImportResolution::Declaration(declaration)) => Some(declaration),
-                    None => self.lookup_import_declaration(import.module, &import.path),
-                };
-                Some(ImportBinding { name, declaration })
-            })
-            .collect()
-    }
-
     fn module_imports_module(&self, module: &HirModule, imported_module: ModuleId) -> bool {
         module.imports.iter().any(|import| {
             let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
@@ -871,42 +799,6 @@ impl ModuleGraph {
             self.declaration(declaration)
                 .is_some_and(|declaration| declaration.module == imported_module)
         })
-    }
-
-    fn qualified_declarations_with(&self, current: &HirModule) -> Vec<(Vec<String>, HirDeclId)> {
-        let mut declarations = self.qualified_declarations_for(current.id);
-        declarations.extend(self.qualified_declarations_in(current, current.id));
-        declarations.into_iter().collect()
-    }
-
-    fn qualified_declarations_for(
-        &self,
-        requesting_module: ModuleId,
-    ) -> BTreeMap<Vec<String>, HirDeclId> {
-        self.modules
-            .iter()
-            .flat_map(|module| self.qualified_declarations_in(module, requesting_module))
-            .collect()
-    }
-
-    fn qualified_declarations_in(
-        &self,
-        module: &HirModule,
-        requesting_module: ModuleId,
-    ) -> Vec<(Vec<String>, HirDeclId)> {
-        module
-            .declarations
-            .names()
-            .filter_map(|name| {
-                let declaration = module.declarations.get(name)?;
-                if !self.declaration_visible_from(declaration, requesting_module) {
-                    return None;
-                }
-                let mut path = module.path.segments().to_vec();
-                path.push(name.to_owned());
-                Some((path, declaration))
-            })
-            .collect()
     }
 
     fn refresh_import_binding_resolutions(&mut self) {
