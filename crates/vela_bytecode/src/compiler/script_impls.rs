@@ -5,14 +5,14 @@ use vela_hir::binding::BindingMap;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
-use vela_syntax::ast::{Block, ImplItem, ImplKind, ItemKind, Param, SourceFile, TraitItem};
+use vela_syntax::ast::{Block, Expr, ImplItem, ImplKind, ItemKind, SourceFile, TraitItem};
 
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
     pub(super) method_name: String,
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
-    pub(super) params: &'ast [Param],
+    pub(super) default_values: Vec<Option<Expr>>,
     pub(super) body: &'ast Block,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
@@ -132,7 +132,7 @@ fn collect_methods<'ast>(
                 method_name: method_metadata.name.clone(),
                 method_id,
                 symbol,
-                params: &method.function.params,
+                default_values: default_values(&method.function.params),
                 body: &method.function.body,
                 signature: &method_metadata.signature,
                 bindings,
@@ -185,12 +185,19 @@ fn collect_default_methods<'ast>(
                 method_name: method_metadata.name.clone(),
                 method_id,
                 symbol,
-                params: &method.params,
+                default_values: default_values(&method.params),
                 body,
                 signature: &method_metadata.signature,
                 bindings,
             })
         })
+        .collect()
+}
+
+fn default_values(params: &[vela_syntax::ast::Param]) -> Vec<Option<Expr>> {
+    params
+        .iter()
+        .map(|param| param.default_value.clone())
         .collect()
 }
 

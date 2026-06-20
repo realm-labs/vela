@@ -429,7 +429,7 @@ fn insert_script_impl_methods(
         program.insert_function(
             Compiler::new_script_method_body(
                 method.symbol,
-                method.params,
+                method.default_values.clone(),
                 method.signature,
                 method.body,
                 method.bindings,
@@ -695,7 +695,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     ) -> CompileResult<Self> {
         Self::new_body(
             code_name,
-            &function.params,
+            param_default_values(&function.params, signature.params.len()),
             signature,
             &function.body,
             bindings,
@@ -705,7 +705,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_body(
         code_name: String,
-        params: &'ast [Param],
+        param_defaults: Vec<Option<Expr>>,
         signature: &FunctionSignature,
         body: &'ast Block,
         bindings: &'ast BindingMap,
@@ -718,17 +718,14 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .iter()
             .map(|param| param.name.clone())
             .collect::<Vec<_>>();
-        let param_defaults = params
-            .iter()
-            .map(|param| param.default_value.is_some())
-            .collect::<Vec<_>>();
+        let param_default_flags = param_default_flags(signature);
         let return_type = signature
             .return_type
             .as_ref()
             .and_then(type_hint_value_type);
         let mut code = UnlinkedCodeObject::new(code_name, 0)
             .with_params(param_names)
-            .with_param_defaults(param_defaults);
+            .with_param_defaults(param_default_flags);
         if let Some(return_type) = &signature.return_type
             && let Some(guard) =
                 type_guard_for_hint(return_type, GuardLocation::Return, "return", &facts)
@@ -798,10 +795,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             value_shapes,
             bindings,
             next_register: param_count,
-            param_defaults: params
-                .iter()
-                .map(|param| param.default_value.clone())
-                .collect(),
+            param_defaults,
             return_type,
             body,
             facts,
@@ -811,14 +805,15 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_script_method_body(
         code_name: String,
-        params: &'ast [Param],
+        param_defaults: Vec<Option<Expr>>,
         signature: &FunctionSignature,
         body: &'ast Block,
         bindings: &'ast BindingMap,
         receiver_type: &str,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        let mut compiler = Self::new_body(code_name, params, signature, body, bindings, facts)?;
+        let mut compiler =
+            Self::new_body(code_name, param_defaults, signature, body, bindings, facts)?;
         compiler
             .script_types
             .set_name("self", Some(receiver_type.to_owned()));
@@ -1373,6 +1368,24 @@ fn frame_slot_kind(kind: LocalBindingKind) -> FrameSlotKind {
         LocalBindingKind::LambdaParameter => FrameSlotKind::LambdaParameter,
         LocalBindingKind::Pattern => FrameSlotKind::PatternBinding,
     }
+}
+
+fn param_default_flags(signature: &FunctionSignature) -> Vec<bool> {
+    signature
+        .params
+        .iter()
+        .map(|param| param.default_value_span.is_some())
+        .collect()
+}
+
+fn param_default_values(params: &[Param], param_count: usize) -> Vec<Option<Expr>> {
+    (0..param_count)
+        .map(|index| {
+            params
+                .get(index)
+                .and_then(|param| param.default_value.clone())
+        })
+        .collect()
 }
 
 fn reject_named_args(args: &[Argument], context: &'static str) -> CompileResult<()> {
