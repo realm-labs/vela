@@ -425,6 +425,26 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn then_l_brace_token(&self) -> Option<SyntaxToken> {
+        self.then_block()?.l_brace_token()
+    }
+
+    #[must_use]
+    pub fn then_r_brace_token(&self) -> Option<SyntaxToken> {
+        self.then_block()?.r_brace_token()
+    }
+
+    #[must_use]
+    pub fn else_l_brace_token(&self) -> Option<SyntaxToken> {
+        self.else_block()?.l_brace_token()
+    }
+
+    #[must_use]
+    pub fn else_r_brace_token(&self) -> Option<SyntaxToken> {
+        self.else_block()?.r_brace_token()
+    }
+
+    #[must_use]
     pub fn condition(&self) -> Option<SyntaxExpression> {
         let if_end = token(&self.syntax, SyntaxKind::IfKw)?.text_range().end();
         let then_start = self.then_block()?.syntax().text_range().start();

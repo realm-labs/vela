@@ -409,23 +409,15 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         SyntaxElseBranch::Block(_) => panic!("expected else-if branch"),
     }
     assert_eq!(
-        if_expr
-            .then_block()
-            .expect("then block")
-            .l_brace_token()
-            .expect("then open")
-            .kind(),
+        if_expr.then_l_brace_token().expect("then open").kind(),
         SyntaxKind::LBrace
     );
     assert_eq!(
-        if_expr
-            .then_block()
-            .expect("then block")
-            .r_brace_token()
-            .expect("then close")
-            .kind(),
+        if_expr.then_r_brace_token().expect("then close").kind(),
         SyntaxKind::RBrace
     );
+    assert!(if_expr.else_l_brace_token().is_none());
+    assert!(if_expr.else_r_brace_token().is_none());
     let else_if = if_expr.else_if().expect("else-if");
     assert_eq!(else_if.if_token().expect("else-if token").text(), "if");
     assert!(else_if.else_if_else_token().is_none());
@@ -446,6 +438,20 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         }
         SyntaxElseBranch::If(_) => panic!("expected else block branch"),
     }
+    assert_eq!(
+        else_if
+            .else_l_brace_token()
+            .expect("else block open")
+            .kind(),
+        SyntaxKind::LBrace
+    );
+    assert_eq!(
+        else_if
+            .else_r_brace_token()
+            .expect("else block close")
+            .kind(),
+        SyntaxKind::RBrace
+    );
 
     let return_stmt = if_expr
         .then_block()
