@@ -236,12 +236,12 @@ field completion without legacy metadata fallback. The HIR module graph source
 entrypoint now consumes the rowan parse record directly, including CST parse
 diagnostics and CST item iteration, so `vela_hir::ModuleGraph` no longer reparses
 sources through the old owned `SourceFile` API. HIR type and attribute metadata
-no longer expose old owned-AST conversion helpers; the remaining legacy
-`TypeHint` conversion is isolated in `vela_bytecode` expression/control-flow
-lowering until those paths migrate to rowan wrappers or HIR facts. Bytecode
-schema-default constructor shapes now read field type facts from HIR struct and
-enum shapes, leaving the legacy owned AST in that path only as the temporary
-default-expression payload carrier. The rowan parse boundary now validates
+no longer expose old owned-AST conversion helpers, and the bytecode compiler no
+longer carries an old-AST `TypeHint` conversion helper. Bytecode typed-let
+contracts now read HIR local binding type hints, and schema-default constructor
+shapes now read field type facts from HIR struct and enum shapes, leaving the
+legacy owned AST in those paths only as the temporary expression payload
+carrier. The rowan parse boundary now validates
 restricted builtin type arguments and non-keyable `Map`/`Set` contracts, and the
 bytecode semantic parse gate uses CST parse diagnostics before falling back to
 the legacy owned AST only as a temporary compiler body/expression carrier.

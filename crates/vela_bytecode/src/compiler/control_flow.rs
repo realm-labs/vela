@@ -13,7 +13,6 @@ use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
 use super::record_shapes::ValueShape;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
-use super::type_hints::hir_type_hint_from_syntax;
 use super::value_flow::{BlockValue, block_value};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
@@ -84,11 +83,19 @@ impl Compiler<'_, '_> {
         match &stmt.kind {
             StmtKind::Let {
                 name,
-                type_hint,
+                type_hint: _,
                 value,
             } => {
-                let hir_type_hint = type_hint.as_ref().map(hir_type_hint_from_syntax);
-                let hinted_script_fact = hir_type_hint.as_ref().and_then(|hint| {
+                let local_binding = self
+                    .bindings
+                    .local_named_at(name, LocalBindingKind::Let, stmt.span)
+                    .and_then(|local| {
+                        self.bindings
+                            .local(local)
+                            .map(|binding| (local, binding.type_hint.clone()))
+                    });
+                let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
+                let hinted_script_fact = hir_type_hint.and_then(|hint| {
                     let known_type_names = self.facts.known_type_names();
                     type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
                 });
@@ -101,7 +108,7 @@ impl Compiler<'_, '_> {
                     .is_some_and(|(hint, value)| hint == value);
                 let script_fact =
                     merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
-                let hinted_value_type = hir_type_hint.as_ref().and_then(type_hint_value_type);
+                let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
                 let value_type = value
                     .as_ref()
                     .and_then(|value| self.value_type_for_expr(value));
@@ -118,11 +125,9 @@ impl Compiler<'_, '_> {
                 } else {
                     (self.emit_constant(Constant::Null)?, false)
                 };
-                if let (Some(value), Some(hint), None) = (
-                    value.as_ref(),
-                    hir_type_hint.as_ref(),
-                    hinted_value_type.as_ref(),
-                ) && is_map_or_set_type_hint(hint)
+                if let (Some(value), Some(hint), None) =
+                    (value.as_ref(), hir_type_hint, hinted_value_type.as_ref())
+                    && is_map_or_set_type_hint(hint)
                     && !script_hint_proven
                     && let Some(guard) = super::type_guard_for_hint(
                         hint,
@@ -140,10 +145,7 @@ impl Compiler<'_, '_> {
                     );
                 }
                 self.locals.insert(name.clone(), register);
-                if let Some(local) =
-                    self.bindings
-                        .local_named_at(name, LocalBindingKind::Let, stmt.span)
-                {
+                if let Some((local, _)) = local_binding {
                     self.hir_locals.insert(local, register);
                     self.record_frame_slot(
                         name.clone(),

@@ -24,7 +24,6 @@ mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod semantic;
-mod type_hints;
 mod value_flow;
 mod value_types;
 
@@ -58,7 +57,6 @@ use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
-use type_hints::hir_type_hint_from_syntax;
 use value_types::{RuntimeTypeFact, StandardRuntimeType, ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
@@ -873,6 +871,14 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         }
         let known_type_names = facts.known_type_names();
         for (index, param) in params.iter().enumerate() {
+            let local_binding = bindings
+                .local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
+                .and_then(|local| {
+                    bindings
+                        .local(local)
+                        .map(|binding| (local, binding.type_hint.clone()))
+                });
+            let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
             let register = Register(
                 capture_count
                     .checked_add(
@@ -881,35 +887,28 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     )
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
-            if let Some(type_hint) = &param.type_hint {
-                let hint = hir_type_hint_from_syntax(type_hint);
-                if let Some(guard) = type_guard_for_hint(
-                    &hint,
+            if let Some(hint) = hir_type_hint
+                && let Some(guard) = type_guard_for_hint(
+                    hint,
                     GuardLocation::Parameter {
                         index: u16::try_from(index)
                             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
                     },
                     param.name.clone(),
                     &facts,
-                ) {
-                    code.push_param_guard(
-                        u16::try_from(index)
-                            .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
-                        guard,
-                    );
-                }
+                )
+            {
+                code.push_param_guard(
+                    u16::try_from(index)
+                        .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?,
+                    guard,
+                );
             }
             locals.insert(param.name.clone(), register);
-            let script_type = param.type_hint.as_ref().and_then(|hint| {
-                type_hint_script_type(&hir_type_hint_from_syntax(hint), known_type_names.iter())
-            });
-            let value_type = param
-                .type_hint
-                .as_ref()
-                .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint)));
-            if let Some(local) =
-                bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
-            {
+            let script_type =
+                hir_type_hint.and_then(|hint| type_hint_script_type(hint, known_type_names.iter()));
+            let value_type = hir_type_hint.and_then(type_hint_value_type);
+            if let Some((local, _)) = local_binding {
                 hir_locals.insert(local, register);
                 script_types.set_local(local, &param.name, script_type);
                 value_types.set_local(local, &param.name, value_type);
