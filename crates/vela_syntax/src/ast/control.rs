@@ -124,9 +124,7 @@ impl SyntaxMatchArm {
 
     #[must_use]
     pub fn guard(&self) -> Option<SyntaxExpression> {
-        self.has_guard()
-            .then(|| self.expressions().next())
-            .flatten()
+        child_between_tokens(&self.syntax, SyntaxKind::IfKw, SyntaxKind::FatArrow)
     }
 
     #[must_use]
@@ -202,14 +200,6 @@ impl SyntaxMatchArm {
     pub fn body_r_brace_token(&self) -> Option<SyntaxToken> {
         self.body_block()?.r_brace_token()
     }
-
-    fn has_guard(&self) -> bool {
-        self.syntax
-            .children_with_tokens()
-            .filter_map(|element| element.into_token())
-            .take_while(|token| token.kind() != SyntaxKind::FatArrow)
-            .any(|token| token.kind() == SyntaxKind::IfKw)
-    }
 }
 
 impl AstNode for SyntaxMatchArm {
@@ -246,6 +236,33 @@ fn child_after_token<N: AstNode>(parent: &SyntaxNode, after: SyntaxKind) -> Opti
             continue;
         }
         if !seen_after {
+            continue;
+        }
+        if let Some(node) = element.into_node().and_then(N::cast) {
+            return Some(node);
+        }
+    }
+    None
+}
+
+fn child_between_tokens<N: AstNode>(
+    parent: &SyntaxNode,
+    start: SyntaxKind,
+    end: SyntaxKind,
+) -> Option<N> {
+    let mut seen_start = false;
+    for element in parent.children_with_tokens() {
+        if let Some(token) = element.as_token() {
+            match token.kind() {
+                kind if kind == start => {
+                    seen_start = true;
+                }
+                kind if kind == end => return None,
+                _ => {}
+            }
+            continue;
+        }
+        if !seen_start {
             continue;
         }
         if let Some(node) = element.into_node().and_then(N::cast) {

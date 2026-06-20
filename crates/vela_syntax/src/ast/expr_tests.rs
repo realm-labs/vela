@@ -1044,6 +1044,10 @@ fn ast_match_expression_exposes_control_tokens() {
         arms[0].guard_if_token().expect("guard if token").text(),
         "if"
     );
+    assert_eq!(
+        arms[0].guard().expect("guard expression").expression_kind(),
+        SyntaxExpressionKind::Field
+    );
     assert_eq!(arms[0].fat_arrow_token().expect("arrow").text(), "=>");
     assert_eq!(
         arms[0].separator_token().expect("comma separator").text(),
@@ -1091,4 +1095,45 @@ fn ast_match_expression_exposes_control_tokens() {
         arms[1].body_r_brace_token().expect("body close").text(),
         "}"
     );
+}
+
+#[test]
+fn ast_match_arm_missing_guard_does_not_capture_body() {
+    let source = r#"fn reward(status) {
+    match status {
+        Ready if => grant(),
+    };
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let statement = body.statements().next().expect("match statement");
+    let match_expr =
+        SyntaxMatchExpr::cast(statement.syntax().clone()).expect("typed match expression");
+    let arms = match_expr.arms();
+
+    assert_eq!(arms.len(), 1);
+    assert_eq!(
+        arms[0].guard_if_token().expect("guard if token").text(),
+        "if"
+    );
+    assert!(arms[0].guard().is_none());
+    assert_eq!(arms[0].fat_arrow_token().expect("arrow").text(), "=>");
+    assert_eq!(
+        arms[0]
+            .body_as_expression()
+            .expect("body expression")
+            .expression_kind(),
+        SyntaxExpressionKind::Call
+    );
+    assert!(matches!(
+        arms[0].body().expect("expression body"),
+        SyntaxMatchArmBody::Expression(_)
+    ));
 }
