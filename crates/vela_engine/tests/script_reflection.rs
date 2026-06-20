@@ -1,5 +1,6 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallOptions, Runtime};
@@ -8,17 +9,35 @@ use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
-fn unique_test_dir(name: &str) -> PathBuf {
+struct TestDir(PathBuf);
+
+impl TestDir {
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn unique_test_dir(name: &str) -> TestDir {
+    static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
     let mut path = std::env::temp_dir();
+    let sequence = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     path.push(format!(
-        "vela_engine_{name}_{}_{}",
+        "vela_engine_{name}_{}_{}_{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("system time after epoch")
-            .as_nanos()
+            .as_nanos(),
+        sequence
     ));
-    path
+    TestDir(path)
 }
 
 #[test]
@@ -71,7 +90,7 @@ fn main() {
 #[test]
 fn runtime_reflection_includes_compiled_script_modules_and_exports() {
     let root = unique_test_dir("script_module_reflection");
-    let game_dir = root.join("game");
+    let game_dir = root.path().join("game");
     fs::create_dir_all(&game_dir).expect("create module dir");
     fs::write(
         game_dir.join("reward.vela"),
@@ -117,7 +136,7 @@ fn main() {
         .reflection_policy(ReflectPolicy::all())
         .build()
         .expect("build engine");
-    let program = engine.compile_dir(&root).expect("compile modules");
+    let program = engine.compile_dir(root.path()).expect("compile modules");
     engine
         .link_program(&program)
         .expect("reflection module script should link");
@@ -135,6 +154,4 @@ fn main() {
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
-
-    fs::remove_dir_all(root).expect("clean temp dir");
 }

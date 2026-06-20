@@ -27,14 +27,18 @@ impl Drop for TestDir {
 }
 
 fn unique_test_dir(name: &str) -> TestDir {
+    static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
     let mut path = std::env::temp_dir();
+    let sequence = NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     path.push(format!(
-        "vela_engine_{name}_{}_{}",
+        "vela_engine_{name}_{}_{}_{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("system time after epoch")
-            .as_nanos()
+            .as_nanos(),
+        sequence
     ));
     TestDir(path)
 }
@@ -426,4 +430,3 @@ enum ScriptFunctionReloadWorkflow {
     Directory,
     ChangedFile,
 }
-
