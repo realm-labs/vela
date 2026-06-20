@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod model;
 mod names;
 mod schema_diagnostics;
+mod syntax_metadata;
 mod syntax_summary;
 mod validation;
 
@@ -21,13 +22,15 @@ use names::{
     closest_name, import_binding_name, inherent_impl_declaration_name, trait_impl_declaration_name,
 };
 
-use crate::attributes::{HirAttribute, attrs_from_syntax};
+use crate::attributes::HirAttribute;
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::top_level::validate_const_initializer;
+#[cfg(test)]
+use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
-    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, HirTypeHint, ImplMetadata,
-    ParamHint, StructFieldHint, StructShape, TraitShape,
+    ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, ImplMetadata, StructShape,
+    TraitShape,
 };
 
 use self::syntax_summary::SyntaxModuleSummary;
@@ -191,10 +194,18 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.const_metadata
-                        .insert(declaration, ConstMetadata::from_syntax(const_item));
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.const_metadata.insert(
+                        declaration,
+                        syntax_metadata::const_metadata(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            const_item,
+                        ),
+                    );
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                     self.diagnostics
                         .extend(validate_const_initializer(const_item));
                 }
@@ -214,10 +225,18 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.global_metadata
-                        .insert(declaration, GlobalMetadata::from_syntax(global_item));
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.global_metadata.insert(
+                        declaration,
+                        syntax_metadata::global_metadata(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            global_item,
+                        ),
+                    );
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                 }
                 ItemKind::Function(function) => {
                     let (name, visibility, span) = declaration_or(
@@ -237,16 +256,16 @@ impl ModuleGraph {
                     );
                     self.function_signatures.insert(
                         declaration,
-                        FunctionSignature {
-                            params: function.params.iter().map(ParamHint::from_syntax).collect(),
-                            return_type: function
-                                .return_type
-                                .as_ref()
-                                .map(HirTypeHint::from_syntax),
-                        },
+                        syntax_metadata::function_signature(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            function,
+                        ),
                     );
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                     function_declarations.push((declaration, function.clone()));
                 }
                 ItemKind::Struct(record) => {
@@ -268,16 +287,12 @@ impl ModuleGraph {
                     self.validate_struct_shape(record);
                     self.struct_shapes.insert(
                         declaration,
-                        StructShape {
-                            fields: record
-                                .fields
-                                .iter()
-                                .map(StructFieldHint::from_syntax)
-                                .collect(),
-                        },
+                        syntax_metadata::struct_shape(syntax_summary.as_ref(), item_index, record),
                     );
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                 }
                 ItemKind::Enum(enumeration) => {
                     let (name, visibility, span) = declaration_or(
@@ -296,10 +311,18 @@ impl ModuleGraph {
                         span,
                     );
                     self.validate_enum_shape(enumeration);
-                    self.enum_shapes
-                        .insert(declaration, EnumShape::from_syntax(enumeration));
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.enum_shapes.insert(
+                        declaration,
+                        syntax_metadata::enum_shape(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            enumeration,
+                        ),
+                    );
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                 }
                 ItemKind::Trait(trait_item) => {
                     let (name, visibility, span) = declaration_or(
@@ -330,10 +353,17 @@ impl ModuleGraph {
                     self.validate_trait_shape(trait_item);
                     self.trait_shapes.insert(
                         declaration,
-                        TraitShape::from_syntax(trait_item, default_method_nodes.clone()),
+                        syntax_metadata::trait_shape(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            trait_item,
+                            default_method_nodes.clone(),
+                        ),
                     );
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                     trait_default_method_declarations.extend(
                         trait_item
                             .methods
@@ -376,10 +406,17 @@ impl ModuleGraph {
                     self.validate_impl_shape(impl_item);
                     self.impl_metadata.insert(
                         declaration,
-                        ImplMetadata::from_syntax(impl_item, method_nodes.clone()),
+                        syntax_metadata::impl_metadata(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            impl_item,
+                            method_nodes.clone(),
+                        ),
                     );
-                    self.declaration_attrs
-                        .insert(declaration, attrs_from_syntax(&item.attrs));
+                    self.declaration_attrs.insert(
+                        declaration,
+                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                    );
                     impl_method_declarations.extend(
                         impl_item
                             .methods

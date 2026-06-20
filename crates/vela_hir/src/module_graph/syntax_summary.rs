@@ -1,37 +1,125 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AstNode, SyntaxConstItem, SyntaxEnumItem, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem,
-    SyntaxItem, SyntaxSourceFile, SyntaxStructItem, SyntaxTraitItem, SyntaxUseItem, Visibility,
+    AstChildren, AstNode, SyntaxAttribute, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
+    SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem,
+    SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStructField, SyntaxStructItem,
+    SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem, Visibility,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, TextRange};
+
+use crate::attributes::HirAttribute;
+use crate::ids::HirNodeId;
+use crate::type_hint::{
+    ConstMetadata, EnumShape, EnumVariantFieldsHint, EnumVariantHint, FunctionSignature,
+    GlobalMetadata, HirTypeHint, ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint,
+    StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
+};
 
 use super::model::DeclarationKind;
 use super::names::{inherent_impl_declaration_name, trait_impl_declaration_name};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct SyntaxModuleSummary {
+    source: SourceId,
     module_span: Span,
+    items: Vec<SyntaxItem>,
     item_headers: Vec<SyntaxItemHeader>,
 }
 
 impl SyntaxModuleSummary {
     pub(super) fn from_parse(source: SourceId, parsed: &SyntaxParse<SyntaxSourceFile>) -> Self {
-        let item_headers = parsed
-            .tree()
-            .items()
-            .filter_map(|item| SyntaxItemHeader::from_item(source, &item))
+        let items = parsed.tree().items().collect::<Vec<_>>();
+        let item_headers = items
+            .iter()
+            .filter_map(|item| SyntaxItemHeader::from_item(source, item))
             .collect::<Vec<_>>();
         let module_span = item_headers
             .first()
             .map_or_else(|| Span::new(source, 0, 0), SyntaxItemHeader::span);
         Self {
+            source,
             module_span,
+            items,
             item_headers,
         }
     }
 
     pub(super) const fn module_span(&self) -> Span {
         self.module_span
+    }
+
+    pub(super) fn attrs_or(&self, index: usize, fallback: Vec<HirAttribute>) -> Vec<HirAttribute> {
+        self.items
+            .get(index)
+            .map(|item| attrs_from_cst(item.attributes()))
+            .unwrap_or(fallback)
+    }
+
+    pub(super) fn const_metadata_or(&self, index: usize, fallback: ConstMetadata) -> ConstMetadata {
+        self.item(index, SyntaxKind::ConstItem)
+            .and_then(|item| SyntaxConstItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| const_metadata(self.source, &item))
+    }
+
+    pub(super) fn global_metadata_or(
+        &self,
+        index: usize,
+        fallback: GlobalMetadata,
+    ) -> GlobalMetadata {
+        self.item(index, SyntaxKind::GlobalItem)
+            .and_then(|item| SyntaxGlobalItem::cast(item.syntax().clone()))
+            .and_then(|item| global_metadata(self.source, &item))
+            .unwrap_or(fallback)
+    }
+
+    pub(super) fn function_signature_or(
+        &self,
+        index: usize,
+        fallback: FunctionSignature,
+    ) -> FunctionSignature {
+        self.item(index, SyntaxKind::FunctionItem)
+            .and_then(|item| SyntaxFunctionItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| {
+                function_signature(self.source, item.param_list(), item.return_type())
+            })
+    }
+
+    pub(super) fn struct_shape_or(&self, index: usize, fallback: StructShape) -> StructShape {
+        self.item(index, SyntaxKind::StructItem)
+            .and_then(|item| SyntaxStructItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| struct_shape(self.source, &item))
+    }
+
+    pub(super) fn enum_shape_or(&self, index: usize, fallback: EnumShape) -> EnumShape {
+        self.item(index, SyntaxKind::EnumItem)
+            .and_then(|item| SyntaxEnumItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| enum_shape(self.source, &item))
+    }
+
+    pub(super) fn trait_shape_or(
+        &self,
+        index: usize,
+        default_method_nodes: Vec<Option<(HirNodeId, Span)>>,
+        fallback: TraitShape,
+    ) -> TraitShape {
+        self.item(index, SyntaxKind::TraitItem)
+            .and_then(|item| SyntaxTraitItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| {
+                trait_shape(self.source, &item, default_method_nodes)
+            })
+    }
+
+    pub(super) fn impl_metadata_or(
+        &self,
+        index: usize,
+        method_nodes: Vec<(HirNodeId, Span)>,
+        fallback: ImplMetadata,
+    ) -> ImplMetadata {
+        self.item(index, SyntaxKind::ImplItem)
+            .and_then(|item| SyntaxImplItem::cast(item.syntax().clone()))
+            .map_or(fallback, |item| {
+                impl_metadata(self.source, &item, method_nodes)
+            })
     }
 
     pub(super) fn import_or(
@@ -70,6 +158,12 @@ impl SyntaxModuleSummary {
             }) if *header_kind == kind => (name.clone(), visibility.clone(), *span),
             _ => (fallback_name, fallback_visibility, fallback_span),
         }
+    }
+
+    fn item(&self, index: usize, kind: SyntaxKind) -> Option<&SyntaxItem> {
+        self.items
+            .get(index)
+            .filter(|item| item.syntax().kind() == kind)
     }
 }
 
@@ -187,6 +281,267 @@ impl SyntaxItemHeader {
             Self::Import { span, .. } | Self::Declaration { span, .. } => *span,
         }
     }
+}
+
+fn const_metadata(source: SourceId, item: &SyntaxConstItem) -> ConstMetadata {
+    ConstMetadata {
+        type_hint: item
+            .type_hint()
+            .as_ref()
+            .map(|hint| hir_type_hint(source, hint)),
+        value_span: item.value().as_ref().map_or_else(
+            || span_for(source, item.syntax().text_range()),
+            |value| span_for(source, value.syntax().text_range()),
+        ),
+    }
+}
+
+fn global_metadata(source: SourceId, item: &SyntaxGlobalItem) -> Option<GlobalMetadata> {
+    Some(GlobalMetadata {
+        type_hint: hir_type_hint(source, &item.type_hint()?),
+    })
+}
+
+fn function_signature(
+    source: SourceId,
+    params: Option<SyntaxParamList>,
+    return_type: Option<SyntaxTypeHint>,
+) -> FunctionSignature {
+    FunctionSignature {
+        params: params
+            .into_iter()
+            .flat_map(|params| params.params())
+            .filter_map(|param| param_hint(source, &param))
+            .collect(),
+        return_type: return_type
+            .as_ref()
+            .map(|return_type| hir_type_hint(source, return_type)),
+    }
+}
+
+fn struct_shape(source: SourceId, item: &SyntaxStructItem) -> StructShape {
+    StructShape {
+        fields: item
+            .field_list()
+            .into_iter()
+            .flat_map(|list| list.fields())
+            .filter_map(|field| struct_field_hint(source, &field))
+            .collect(),
+    }
+}
+
+fn enum_shape(source: SourceId, item: &SyntaxEnumItem) -> EnumShape {
+    EnumShape {
+        variants: item
+            .variant_list()
+            .into_iter()
+            .flat_map(|list| list.variants())
+            .filter_map(|variant| enum_variant_hint(source, &variant))
+            .collect(),
+    }
+}
+
+fn trait_shape(
+    source: SourceId,
+    item: &SyntaxTraitItem,
+    default_method_nodes: Vec<Option<(HirNodeId, Span)>>,
+) -> TraitShape {
+    TraitShape {
+        methods: item
+            .methods()
+            .zip(default_method_nodes)
+            .filter_map(|(method, default_body)| {
+                trait_method_metadata(source, &method, default_body)
+            })
+            .collect(),
+    }
+}
+
+fn impl_metadata(
+    source: SourceId,
+    item: &SyntaxImplItem,
+    method_nodes: Vec<(HirNodeId, Span)>,
+) -> ImplMetadata {
+    let trait_path = item.trait_path_segments();
+    ImplMetadata {
+        kind: if trait_path.is_empty() {
+            ImplMetadataKind::Inherent
+        } else {
+            ImplMetadataKind::Trait { trait_path }
+        },
+        target_path: item.target_path_segments(),
+        methods: item
+            .methods()
+            .zip(method_nodes)
+            .filter_map(|(method, (node, span))| impl_method_metadata(source, &method, node, span))
+            .collect(),
+    }
+}
+
+fn trait_method_metadata(
+    source: SourceId,
+    method: &SyntaxTraitMethod,
+    default_body: Option<(HirNodeId, Span)>,
+) -> Option<TraitMethodMetadata> {
+    let (default_body_node, default_body_span) =
+        default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
+    Some(TraitMethodMetadata {
+        attrs: attrs_from_cst(method.attributes()),
+        name: method.name_text()?,
+        span: span_for(source, method.syntax().text_range()),
+        signature: function_signature(source, method.param_list(), method.return_type()),
+        has_default: method.body().is_some(),
+        default_body_node,
+        default_body_span,
+    })
+}
+
+fn impl_method_metadata(
+    source: SourceId,
+    method: &SyntaxImplMethod,
+    node: HirNodeId,
+    span: Span,
+) -> Option<ImplMethodMetadata> {
+    Some(ImplMethodMetadata {
+        node,
+        name: method.name_text()?,
+        signature: function_signature(source, method.param_list(), method.return_type()),
+        span,
+    })
+}
+
+fn enum_variant_hint(source: SourceId, variant: &SyntaxEnumVariant) -> Option<EnumVariantHint> {
+    let fields = if let Some(fields) = variant.tuple_field_list() {
+        EnumVariantFieldsHint::Tuple(
+            fields
+                .params()
+                .filter_map(|param| param_hint(source, &param))
+                .collect(),
+        )
+    } else if let Some(fields) = variant.record_field_list() {
+        EnumVariantFieldsHint::Record(
+            fields
+                .fields()
+                .filter_map(|field| struct_field_hint(source, &field))
+                .collect(),
+        )
+    } else {
+        EnumVariantFieldsHint::Unit
+    };
+    Some(EnumVariantHint {
+        attrs: attrs_from_cst(variant.attributes()),
+        name: variant.name_text()?,
+        span: span_for(source, variant.syntax().text_range()),
+        fields,
+    })
+}
+
+fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<StructFieldHint> {
+    Some(StructFieldHint {
+        attrs: attrs_from_cst(field.attributes()),
+        name: field.name_text()?,
+        span: span_for(source, field.syntax().text_range()),
+        type_hint: field
+            .type_hint()
+            .as_ref()
+            .map(|hint| hir_type_hint(source, hint)),
+        default_value_span: field
+            .default_value()
+            .as_ref()
+            .map(|value| span_for(source, value.syntax().text_range())),
+    })
+}
+
+fn param_hint(source: SourceId, param: &SyntaxParam) -> Option<ParamHint> {
+    Some(ParamHint {
+        name: param.name_text()?,
+        span: span_for(source, param.syntax().text_range()),
+        type_hint: param
+            .type_hint()
+            .as_ref()
+            .map(|hint| hir_type_hint(source, hint)),
+        default_value_span: param
+            .default_value()
+            .as_ref()
+            .map(|value| span_for(source, value.syntax().text_range())),
+    })
+}
+
+fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
+    HirTypeHint {
+        path: hint.path_segments(),
+        args: hint
+            .type_arg_list()
+            .into_iter()
+            .flat_map(|args| args.type_hints())
+            .map(|arg| hir_type_hint(source, &arg))
+            .collect(),
+        span: span_for(source, hint.syntax().text_range()),
+    }
+}
+
+fn attrs_from_cst(attrs: AstChildren<SyntaxAttribute>) -> Vec<HirAttribute> {
+    attrs.filter_map(|attr| attr_from_cst(&attr)).collect()
+}
+
+fn attr_from_cst(attr: &SyntaxAttribute) -> Option<HirAttribute> {
+    Some(HirAttribute {
+        name: attr.path_text()?,
+        value: attr_value(attr),
+    })
+}
+
+fn attr_value(attr: &SyntaxAttribute) -> Option<String> {
+    let values = attr
+        .arguments()
+        .filter_map(|arg| {
+            let value = normalize_attr_value(arg.value_text()?);
+            Some(match arg.name_text() {
+                Some(name) => format!("{name}={value}"),
+                None => value,
+            })
+        })
+        .collect::<Vec<_>>();
+    (!values.is_empty()).then(|| values.join(","))
+}
+
+fn normalize_attr_value(value: String) -> String {
+    let value = compact_attr_value_whitespace(&value);
+    if value.len() >= 2
+        && ((value.starts_with('"') && value.ends_with('"'))
+            || (value.starts_with('\'') && value.ends_with('\'')))
+    {
+        value[1..value.len() - 1].to_owned()
+    } else {
+        value
+    }
+}
+
+fn compact_attr_value_whitespace(value: &str) -> String {
+    let mut compact = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+    for ch in value.chars() {
+        match quote {
+            Some(active_quote) => {
+                compact.push(ch);
+                if escaped {
+                    escaped = false;
+                } else if ch == '\\' {
+                    escaped = true;
+                } else if ch == active_quote {
+                    quote = None;
+                }
+            }
+            None if ch == '"' || ch == '\'' => {
+                quote = Some(ch);
+                compact.push(ch);
+            }
+            None if ch.is_whitespace() => {}
+            None => compact.push(ch),
+        }
+    }
+    compact
 }
 
 fn declaration_header(

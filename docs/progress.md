@@ -217,8 +217,10 @@ growing the legacy owned-AST file. Language-service parse diagnostics and
 module-summary fingerprints now read from the rowan parse record, with CST
 missing-delimiter diagnostics preserving existing editor diagnostic behavior.
 HIR `add_source` now uses rowan CST item headers for module spans, imports, and
-top-level declaration indexing while deeper body and metadata lowering continue
-through the old owned AST during the migration;
+top-level declaration indexing, and rowan-backed top-level metadata lowering
+now covers declaration attributes, const/global metadata, function signatures,
+struct fields, enum variants, trait methods, and impl method metadata while
+deeper body lowering continues through the old owned AST during the migration;
 remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
