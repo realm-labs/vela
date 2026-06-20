@@ -21,6 +21,30 @@ impl SyntaxMatchExpr {
     pub fn arm_list(&self) -> Option<SyntaxMatchArmList> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        self.arm_list()?.l_brace_token()
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        self.arm_list()?.r_brace_token()
+    }
+
+    #[must_use]
+    pub fn arms(&self) -> Vec<SyntaxMatchArm> {
+        self.arm_list()
+            .map(|arm_list| arm_list.arms().collect())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        self.arm_list()
+            .map(|arm_list| arm_list.separator_tokens())
+            .unwrap_or_default()
+    }
 }
 
 impl AstNode for SyntaxMatchExpr {

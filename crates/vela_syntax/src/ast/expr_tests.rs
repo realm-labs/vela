@@ -849,15 +849,34 @@ fn ast_match_expression_exposes_control_tokens() {
     let match_expr =
         SyntaxMatchExpr::cast(statement.syntax().clone()).expect("typed match expression");
     let arm_list = match_expr.arm_list().expect("match arms");
-    let arms = arm_list.arms().collect::<Vec<_>>();
+    let arms = match_expr.arms();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(
         match_expr.match_token().expect("match token").text(),
         "match"
     );
+    assert_eq!(
+        match_expr.l_brace_token().expect("match left brace").text(),
+        "{"
+    );
+    assert_eq!(
+        match_expr
+            .r_brace_token()
+            .expect("match right brace")
+            .text(),
+        "}"
+    );
     assert_eq!(arm_list.l_brace_token().expect("left brace").text(), "{");
     assert_eq!(arm_list.r_brace_token().expect("right brace").text(), "}");
+    assert_eq!(
+        match_expr
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![",", ";"]
+    );
     assert_eq!(
         arm_list
             .separator_tokens()
