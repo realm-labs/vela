@@ -325,14 +325,16 @@ impl CstParser<'_, '_> {
         let close = end.saturating_sub(1);
         self.builder.start_node(SyntaxKind::ParamList);
         self.emit_until(start + 1);
-        let mut param_start = self.pos;
+        let mut param_start = self.skip_trivia(self.pos);
+        self.emit_until(param_start);
         while self.pos < close {
             if self.current_kind() == Some(SyntaxKind::Comma)
                 && self.member_range_is_at_delimiter_root(param_start, self.pos)
             {
                 self.param_range(param_start, self.pos);
                 self.emit_current_token();
-                param_start = self.pos;
+                param_start = self.skip_trivia(self.pos);
+                self.emit_until(param_start);
             } else {
                 self.pos += 1;
             }
@@ -669,11 +671,14 @@ impl CstParser<'_, '_> {
 
     fn find_argument_end(&self, start: usize, end: usize) -> usize {
         let mut depth = DelimiterDepth::default();
+        let mut in_lambda_params = false;
         for cursor in start..end {
             let Some(current) = self.kind_at(cursor) else {
                 break;
             };
-            if depth.is_root() && current == SyntaxKind::Comma {
+            if depth.is_root() && current == SyntaxKind::Pipe {
+                in_lambda_params = !in_lambda_params;
+            } else if depth.is_root() && !in_lambda_params && current == SyntaxKind::Comma {
                 return cursor;
             }
             depth.bump(current);

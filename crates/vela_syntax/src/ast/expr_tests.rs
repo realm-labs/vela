@@ -650,6 +650,13 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
             .collect::<Vec<_>>(),
         vec![","]
     );
+    assert_eq!(
+        lambda_params
+            .params()
+            .filter_map(|param| param.name_text())
+            .collect::<Vec<_>>(),
+        vec!["item", "extra"]
+    );
     assert!(lambda_params.l_paren_token().is_none());
     assert!(lambda_params.r_paren_token().is_none());
     assert!(matches!(
@@ -681,6 +688,53 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
             .map(|statement| statement.syntax().kind())
             .collect::<Vec<_>>(),
         vec![SyntaxKind::ReturnStmt]
+    );
+}
+
+#[test]
+fn ast_call_argument_lambda_preserves_comma_parameters() {
+    let source = r#"fn update(rewards) {
+    let filtered = rewards.filter(|key, value| key.len() > value);
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let call = SyntaxCallExpr::cast(initializer.syntax().clone()).expect("call expression");
+    let arguments = call.arguments();
+    let lambda = arguments[0]
+        .expression()
+        .and_then(|expr| expr.as_lambda())
+        .expect("lambda argument");
+    let params = lambda.param_list().expect("lambda params");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(arguments.len(), 1);
+    assert_eq!(
+        params
+            .params()
+            .filter_map(|param| param.name_text())
+            .collect::<Vec<_>>(),
+        vec!["key", "value"]
+    );
+    assert_eq!(
+        lambda
+            .body_expression()
+            .expect("lambda body")
+            .syntax()
+            .kind(),
+        SyntaxKind::BinaryExpr
     );
 }
 

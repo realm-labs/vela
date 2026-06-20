@@ -475,7 +475,7 @@ impl LanguageServiceDatabases {
             .unwrap_or_default();
         let receiver_facts = self
             .parse_db()
-            .parsed_source(document_id)
+            .syntax_parse(document_id)
             .map(|parsed| {
                 expression_facts::collect(self.hir_db().graph(), parsed, self.schema_db().facts())
             })
