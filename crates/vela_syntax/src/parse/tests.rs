@@ -63,6 +63,28 @@ fn parser_parse_source_wraps_top_level_items_in_cst_nodes() {
 }
 
 #[test]
+fn parser_parse_source_reports_missing_function_name() {
+    let source = "fn () {}\nfn grant(amount: i64) -> i64 { return amount; }\n";
+    let parse = parse_source_with_id(SourceId::new(12), source);
+    let tree = parse.tree();
+
+    assert_eq!(
+        tree.items()
+            .map(|item| item.syntax().kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::FunctionItem, SyntaxKind::FunctionItem]
+    );
+    assert!(
+        parse.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("E_PARSE")
+                && diagnostic.message == "expected function name"
+        }),
+        "{:?}",
+        parse.diagnostics()
+    );
+}
+
+#[test]
 fn parser_parse_source_structures_use_const_and_global_items() {
     let source = r#"use game::state::Player as PlayerState;
 const DEFAULT_LEVEL: i64 = base_level + 1;

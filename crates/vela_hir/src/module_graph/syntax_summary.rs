@@ -33,6 +33,12 @@ pub(super) struct SyntaxBodySourceParts {
     pub(super) body: vela_syntax::ast::SyntaxBlock,
 }
 
+impl SyntaxBodySourceParts {
+    pub(super) fn body_span(&self, source: SourceId) -> Span {
+        span_for(source, self.body.syntax().text_range())
+    }
+}
+
 impl SyntaxModuleSummary {
     pub(super) fn from_parse(source: SourceId, parsed: &SyntaxParse<SyntaxSourceFile>) -> Self {
         let (items, item_headers): (Vec<_>, Vec<_>) = parsed
@@ -56,6 +62,38 @@ impl SyntaxModuleSummary {
 
     pub(super) const fn module_span(&self) -> Span {
         self.module_span
+    }
+
+    pub(super) fn items(&self) -> impl Iterator<Item = (usize, SyntaxKind)> + '_ {
+        self.items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| (index, item.syntax().kind()))
+    }
+
+    pub(super) fn import(&self, index: usize) -> Option<(Vec<String>, Option<String>, Span)> {
+        match self.item_headers.get(index) {
+            Some(SyntaxItemHeader::Import { path, alias, span }) => {
+                Some((path.clone(), alias.clone(), *span))
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn declaration(
+        &self,
+        index: usize,
+        kind: DeclarationKind,
+    ) -> Option<(String, Visibility, Span)> {
+        match self.item_headers.get(index) {
+            Some(SyntaxItemHeader::Declaration {
+                kind: header_kind,
+                name,
+                visibility,
+                span,
+            }) if *header_kind == kind => Some((name.clone(), visibility.clone(), *span)),
+            _ => None,
+        }
     }
 
     pub(super) fn attrs_or(&self, index: usize, fallback: Vec<HirAttribute>) -> Vec<HirAttribute> {
@@ -162,44 +200,6 @@ impl SyntaxModuleSummary {
                     .collect()
             })
             .unwrap_or_default()
-    }
-
-    pub(super) fn import_or(
-        &self,
-        index: usize,
-        fallback_path: &[String],
-        fallback_alias: &Option<String>,
-        fallback_span: Span,
-    ) -> (Vec<String>, Option<String>, Span) {
-        match self.item_headers.get(index) {
-            Some(SyntaxItemHeader::Import { path, alias, span }) => {
-                (path.clone(), alias.clone(), *span)
-            }
-            _ => (
-                fallback_path.to_vec(),
-                fallback_alias.clone(),
-                fallback_span,
-            ),
-        }
-    }
-
-    pub(super) fn declaration_or(
-        &self,
-        index: usize,
-        kind: DeclarationKind,
-        fallback_name: String,
-        fallback_visibility: Visibility,
-        fallback_span: Span,
-    ) -> (String, Visibility, Span) {
-        match self.item_headers.get(index) {
-            Some(SyntaxItemHeader::Declaration {
-                kind: header_kind,
-                name,
-                visibility,
-                span,
-            }) if *header_kind == kind => (name.clone(), visibility.clone(), *span),
-            _ => (fallback_name, fallback_visibility, fallback_span),
-        }
     }
 
     fn item(&self, index: usize, kind: SyntaxKind) -> Option<&SyntaxItem> {

@@ -232,9 +232,12 @@ downstream crates. HIR metadata, signatures, shapes, attributes, and top-level
 const initializer diagnostics now require the rowan CST summary instead of
 falling back to the legacy owned AST. Same-line missing separators in struct
 field lists now recover as distinct CST field nodes, preserving editor record
-field completion without legacy metadata fallback. Bytecode compilation and remaining
-downstream lowering still
-consume the old owned AST while their syntax API migration continues.
+field completion without legacy metadata fallback. The HIR module graph source
+entrypoint now consumes the rowan parse record directly, including CST parse
+diagnostics and CST item iteration, so `vela_hir::ModuleGraph` no longer reparses
+sources through the old owned `SourceFile` API. Bytecode compilation and
+remaining downstream lowering still consume the old owned AST while their syntax
+API migration continues.
 Remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 

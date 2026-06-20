@@ -9,17 +9,15 @@ mod syntax_summary;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_syntax::ast::{ImplKind, ItemKind, SourceFile, Visibility};
+use vela_syntax::SyntaxKind;
+use vela_syntax::ast::Visibility;
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
-use vela_syntax::parser::parse_source as parse_legacy_source;
 
 pub use model::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModulePath,
     ModuleSource, ResolvedImport,
 };
-use names::{
-    closest_name, import_binding_name, inherent_impl_declaration_name, trait_impl_declaration_name,
-};
+use names::{closest_name, import_binding_name};
 
 use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
@@ -78,26 +76,24 @@ impl ModuleGraph {
     }
 
     pub fn add_source(&mut self, source: ModuleSource) -> ModuleId {
-        let parsed = parse_legacy_source(source.id, &source.text);
-        let syntax_summary = SyntaxModuleSummary::from_parse(
-            source.id,
-            &parse_syntax_source(source.id, &source.text),
-        );
+        let parsed = parse_syntax_source(source.id, &source.text);
+        let diagnostics = parsed.diagnostics().to_vec();
+        let syntax_summary = SyntaxModuleSummary::from_parse(source.id, &parsed);
         let source_hash = stable_source_hash(&source.text);
-        self.add_legacy_parsed_source(
+        self.add_syntax_source(
             source.id,
             source.path,
-            parsed,
+            diagnostics,
             Some(source_hash),
             syntax_summary,
         )
     }
 
-    fn add_legacy_parsed_source(
+    fn add_syntax_source(
         &mut self,
         source: SourceId,
         path: ModulePath,
-        parsed: SourceFile,
+        diagnostics: Vec<Diagnostic>,
         source_hash: Option<u64>,
         syntax_summary: SyntaxModuleSummary,
     ) -> ModuleId {
@@ -113,12 +109,12 @@ impl ModuleGraph {
                         format!("module `{}` is declared more than once", path.join()),
                     ),
             );
-            self.diagnostics.extend(parsed.diagnostics);
+            self.diagnostics.extend(diagnostics);
             return existing;
         }
         self.module_by_path.insert(path.clone(), module);
         self.index_module_path(&path);
-        self.diagnostics.extend(parsed.diagnostics);
+        self.diagnostics.extend(diagnostics);
 
         let mut hir_module = HirModule {
             id: module,
@@ -133,15 +129,12 @@ impl ModuleGraph {
         let mut trait_default_method_declarations = Vec::new();
         let mut impl_method_declarations = Vec::new();
 
-        for (item_index, item) in parsed.items.iter().enumerate() {
-            match &item.kind {
-                ItemKind::Use(use_item) => {
-                    let (path, alias, span) = syntax_summary.import_or(
-                        item_index,
-                        &use_item.path,
-                        &use_item.alias,
-                        item.span,
-                    );
+        for (item_index, item_kind) in syntax_summary.items() {
+            match item_kind {
+                SyntaxKind::UseItem => {
+                    let Some((path, alias, span)) = syntax_summary.import(item_index) else {
+                        continue;
+                    };
                     hir_module.imports.push(Import {
                         module,
                         path,
@@ -150,15 +143,12 @@ impl ModuleGraph {
                         resolution: None,
                     });
                 }
-                ItemKind::Const(const_item) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Const,
-                        const_item.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::ConstItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Const)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -180,15 +170,12 @@ impl ModuleGraph {
                             item_index,
                         ));
                 }
-                ItemKind::Global(global_item) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Global,
-                        global_item.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::GlobalItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Global)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -206,15 +193,12 @@ impl ModuleGraph {
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
-                ItemKind::Function(function) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Function,
-                        function.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::FunctionItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Function)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -238,15 +222,12 @@ impl ModuleGraph {
                         ));
                     }
                 }
-                ItemKind::Struct(record) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Struct,
-                        record.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::StructItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Struct)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -262,15 +243,12 @@ impl ModuleGraph {
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
-                ItemKind::Enum(enumeration) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Enum,
-                        enumeration.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::EnumItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Enum)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -286,15 +264,12 @@ impl ModuleGraph {
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
-                ItemKind::Trait(trait_item) => {
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Trait,
-                        trait_item.name.clone(),
-                        item.visibility.clone(),
-                        item.span,
-                    );
+                SyntaxKind::TraitItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Trait)
+                    else {
+                        continue;
+                    };
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -302,18 +277,15 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    let default_method_nodes = trait_item
-                        .methods
-                        .iter()
-                        .map(|method| {
-                            method
-                                .default_body
-                                .as_ref()
-                                .map(|body| (self.next_node_id(), body.span))
-                        })
-                        .collect::<Vec<_>>();
                     let default_method_bodies =
                         syntax_summary.trait_default_body_sources(item_index);
+                    let default_method_nodes = default_method_bodies
+                        .iter()
+                        .map(|body| {
+                            body.as_ref()
+                                .map(|body| (self.next_node_id(), body.body_span(source)))
+                        })
+                        .collect::<Vec<_>>();
                     let shape = syntax_metadata::trait_shape(
                         &syntax_summary,
                         item_index,
@@ -325,46 +297,32 @@ impl ModuleGraph {
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                     trait_default_method_declarations.extend(
-                        trait_item
+                        shape
                             .methods
                             .iter()
-                            .zip(&shape.methods)
                             .zip(default_method_nodes)
                             .enumerate()
-                            .filter_map(
-                                |(method_index, ((_method, method_metadata), default_body))| {
-                                    let (node, _) = default_body?;
-                                    let body = default_method_bodies.get(method_index)?.clone()?;
-                                    Some((
-                                        node,
-                                        FunctionBodySource::new(
-                                            declaration,
-                                            method_metadata.signature.params.clone(),
-                                            body,
-                                        ),
-                                    ))
-                                },
-                            ),
+                            .filter_map(|(method_index, (method_metadata, default_body))| {
+                                let (node, _) = default_body?;
+                                let body = default_method_bodies.get(method_index)?.clone()?;
+                                Some((
+                                    node,
+                                    FunctionBodySource::new(
+                                        declaration,
+                                        method_metadata.signature.params.clone(),
+                                        body,
+                                    ),
+                                ))
+                            }),
                     );
                     self.trait_shapes.insert(declaration, shape);
                 }
-                ItemKind::Impl(impl_item) => {
-                    let fallback_name = match &impl_item.kind {
-                        ImplKind::Inherent => {
-                            inherent_impl_declaration_name(&impl_item.target_path)
-                        }
-                        ImplKind::Trait { trait_path } => {
-                            trait_impl_declaration_name(trait_path, &impl_item.target_path)
-                        }
+                SyntaxKind::ImplItem => {
+                    let Some((name, visibility, span)) =
+                        syntax_summary.declaration(item_index, DeclarationKind::Impl)
+                    else {
+                        continue;
                     };
-                    let (name, visibility, span) = declaration_or(
-                        &syntax_summary,
-                        item_index,
-                        DeclarationKind::Impl,
-                        fallback_name,
-                        item.visibility.clone(),
-                        item.span,
-                    );
                     let declaration = self.insert_declaration(
                         &mut hir_module,
                         name,
@@ -372,12 +330,11 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    let method_nodes = impl_item
-                        .methods
-                        .iter()
-                        .map(|method| (self.next_node_id(), method.function.body.span))
-                        .collect::<Vec<_>>();
                     let method_bodies = syntax_summary.impl_method_body_sources(item_index);
+                    let method_nodes = method_bodies
+                        .iter()
+                        .map(|body| (self.next_node_id(), body.body_span(source)))
+                        .collect::<Vec<_>>();
                     let metadata = syntax_metadata::impl_metadata(
                         &syntax_summary,
                         item_index,
@@ -389,12 +346,8 @@ impl ModuleGraph {
                         syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                     impl_method_declarations.extend(
-                        impl_item
-                            .methods
-                            .iter()
-                            .zip(&metadata.methods)
-                            .enumerate()
-                            .filter_map(|(method_index, (_method, method_metadata))| {
+                        metadata.methods.iter().enumerate().filter_map(
+                            |(method_index, method_metadata)| {
                                 let body = method_bodies.get(method_index)?.clone();
                                 Some((
                                     method_metadata.node,
@@ -404,10 +357,12 @@ impl ModuleGraph {
                                         body,
                                     ),
                                 ))
-                            }),
+                            },
+                        ),
                     );
                     self.impl_metadata.insert(declaration, metadata);
                 }
+                _ => {}
             }
         }
 
@@ -1010,23 +965,6 @@ impl ModuleGraph {
         self.next_decl_id = self.next_decl_id.saturating_add(1);
         id
     }
-}
-
-fn declaration_or(
-    syntax_summary: &SyntaxModuleSummary,
-    index: usize,
-    kind: DeclarationKind,
-    fallback_name: String,
-    fallback_visibility: Visibility,
-    fallback_span: Span,
-) -> (String, Visibility, Span) {
-    syntax_summary.declaration_or(
-        index,
-        kind,
-        fallback_name,
-        fallback_visibility,
-        fallback_span,
-    )
 }
 
 #[must_use]

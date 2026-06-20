@@ -109,6 +109,9 @@ impl CstParser<'_, '_> {
         let body = self.find_first_kind_before(SyntaxKind::LBrace, param_list_end, end);
 
         if let Some(param_list_start) = param_list {
+            if self.function_name_missing(param_list_start) {
+                self.error_at(param_list_start, "expected function name");
+            }
             self.emit_until(param_list_start);
             self.param_list(param_list_start);
         }
@@ -127,6 +130,16 @@ impl CstParser<'_, '_> {
             self.emit_current_token();
         }
         self.builder.finish_node();
+    }
+
+    fn function_name_missing(&self, param_list_start: usize) -> bool {
+        let Some(keyword) =
+            self.find_first_kind_before(SyntaxKind::FnKw, self.pos, param_list_start)
+        else {
+            return false;
+        };
+        self.find_first_kind_before(SyntaxKind::Ident, keyword + 1, param_list_start)
+            .is_none()
     }
 
     fn struct_item(&mut self, end: usize) {
