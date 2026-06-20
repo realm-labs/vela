@@ -11,9 +11,11 @@ use vela_common::{SourceId, Span};
 
 use crate::{LineIndex, Position, TextRange};
 
+mod member_receiver;
 mod pattern;
 mod record_expression_field;
 mod record_type_field;
+use member_receiver::member_receiver_for_source;
 use pattern::is_pattern_context;
 use record_expression_field::is_record_expression_field_context;
 use record_type_field::is_record_type_field_context;
@@ -196,8 +198,9 @@ pub fn cursor_context_at(
         );
     }
 
-    if let Some(receiver) =
-        parsed.and_then(|source| member_receiver_for_source(source, prefix_start))
+    if let Some(receiver) = syntax_parse
+        .as_ref()
+        .and_then(|parse| member_receiver_for_source(&parse.tree(), prefix_start))
     {
         let mut cursor = context(
             CursorContextKind::MemberAccess,
@@ -479,132 +482,6 @@ fn range_contains_syntax_offset(range: SyntaxTextRange, offset: TextSize) -> boo
 fn syntax_offset(offset: usize) -> Option<TextSize> {
     let offset = u32::try_from(offset).ok()?;
     Some(TextSize::from(offset))
-}
-
-fn member_receiver_for_source(source: &SourceFile, offset: usize) -> Option<TextRange> {
-    let offset = u32::try_from(offset).ok()?;
-    source.items.iter().find_map(|item| match &item.kind {
-        ItemKind::Const(item) => member_receiver_for_expr(&item.value, offset),
-        ItemKind::Function(item) => item
-            .params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| member_receiver_for_expr(value, offset))
-            .or_else(|| member_receiver_for_block(&item.body, offset)),
-        _ => None,
-    })
-}
-
-fn member_receiver_for_block(block: &Block, offset: u32) -> Option<TextRange> {
-    block.span.contains(offset).then(|| {
-        block
-            .statements
-            .iter()
-            .find_map(|statement| member_receiver_for_statement(statement, offset))
-    })?
-}
-
-fn member_receiver_for_statement(statement: &Stmt, offset: u32) -> Option<TextRange> {
-    if !statement.span.contains(offset) {
-        return None;
-    }
-    match &statement.kind {
-        StmtKind::Let { value, .. } => value
-            .as_ref()
-            .and_then(|value| member_receiver_for_expr(value, offset)),
-        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => {
-            member_receiver_for_expr(value, offset)
-        }
-        StmtKind::For { iterable, body, .. } => member_receiver_for_expr(iterable, offset)
-            .or_else(|| member_receiver_for_block(body, offset)),
-        StmtKind::Block(block) => member_receiver_for_block(block, offset),
-        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => None,
-    }
-}
-
-fn member_receiver_for_expr(expr: &Expr, offset: u32) -> Option<TextRange> {
-    if !expr.span.contains(offset) {
-        return None;
-    }
-    match &expr.kind {
-        ExprKind::Field { base, name } => {
-            let name_len = u32::try_from(name.len()).ok()?;
-            let name_start = expr.span.end.saturating_sub(name_len);
-            if (name.is_empty() && offset == expr.span.end)
-                || (!name.is_empty() && name_start <= offset && offset <= expr.span.end)
-            {
-                return span_range(base.span);
-            }
-            member_receiver_for_expr(base, offset)
-        }
-        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
-            member_receiver_for_expr(expr, offset)
-        }
-        ExprKind::Binary { left, right, .. }
-        | ExprKind::Assign {
-            target: left,
-            value: right,
-            ..
-        } => member_receiver_for_expr(left, offset)
-            .or_else(|| member_receiver_for_expr(right, offset)),
-        ExprKind::Call { callee, args } => member_receiver_for_expr(callee, offset).or_else(|| {
-            args.iter()
-                .find_map(|arg| member_receiver_for_expr(&arg.value, offset))
-        }),
-        ExprKind::Index { base, index } => member_receiver_for_expr(base, offset)
-            .or_else(|| member_receiver_for_expr(index, offset)),
-        ExprKind::Array(values) => values
-            .iter()
-            .find_map(|value| member_receiver_for_expr(value, offset)),
-        ExprKind::Map(entries) => entries.iter().find_map(|entry| {
-            member_receiver_for_expr(&entry.key, offset)
-                .or_else(|| member_receiver_for_expr(&entry.value, offset))
-        }),
-        ExprKind::Record { fields, .. } => fields
-            .iter()
-            .filter_map(|field| field.value.as_ref())
-            .find_map(|value| member_receiver_for_expr(value, offset)),
-        ExprKind::Lambda { params, body } => params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| member_receiver_for_expr(value, offset))
-            .or_else(|| member_receiver_for_expr(body, offset)),
-        ExprKind::If(if_expr) => member_receiver_for_expr(&if_expr.condition, offset)
-            .or_else(|| member_receiver_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| member_receiver_for_else_branch(branch, offset))
-            }),
-        ExprKind::Match(match_expr) => member_receiver_for_expr(&match_expr.scrutinee, offset)
-            .or_else(|| {
-                match_expr
-                    .arms
-                    .iter()
-                    .find_map(|arm| member_receiver_for_expr(&arm.body, offset))
-            }),
-        ExprKind::Block(block) => member_receiver_for_block(block, offset),
-        ExprKind::Literal(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::Path(_)
-        | ExprKind::SelfValue
-        | ExprKind::Error => None,
-    }
-}
-
-fn member_receiver_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<TextRange> {
-    match branch {
-        ElseBranch::Block(block) => member_receiver_for_block(block, offset),
-        ElseBranch::If(if_expr) => member_receiver_for_expr(&if_expr.condition, offset)
-            .or_else(|| member_receiver_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| member_receiver_for_else_branch(branch, offset))
-            }),
-    }
 }
 
 fn recovered_member_receiver_before_dot(text: &str, offset: usize) -> Option<TextRange> {
