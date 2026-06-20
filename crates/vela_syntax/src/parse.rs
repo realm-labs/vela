@@ -512,8 +512,20 @@ impl Rewardable for Player {
             .children()
             .find_map(SyntaxIfExpr::cast)
             .expect("if expression");
+        assert_eq!(
+            if_expr.condition().expect("if condition").syntax().kind(),
+            SyntaxKind::BinaryExpr
+        );
         assert_eq!(if_expr.blocks().count(), 1);
         let else_if = if_expr.else_if().expect("else-if expression");
+        assert_eq!(
+            else_if
+                .condition()
+                .expect("else-if condition")
+                .syntax()
+                .kind(),
+            SyntaxKind::BinaryExpr
+        );
         assert_eq!(else_if.blocks().count(), 2);
     }
 

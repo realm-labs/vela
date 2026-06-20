@@ -157,6 +157,11 @@ pub struct SyntaxIfExpr {
 
 impl SyntaxIfExpr {
     #[must_use]
+    pub fn condition(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
     pub fn blocks(&self) -> AstChildren<SyntaxBlock> {
         AstChildren::new(&self.syntax)
     }

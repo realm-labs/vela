@@ -579,6 +579,11 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             self.emit_until(end);
             return;
         };
+        let condition_start = self.skip_trivia(start + 1);
+        self.emit_until(condition_start);
+        if condition_start < body_start {
+            self.expression_range(condition_start, body_start);
+        }
         self.emit_until(body_start);
         let body_end = self.find_matching_brace_end(body_start).min(end);
         self.block_range(body_start, body_end);
