@@ -258,6 +258,89 @@ fn ast_function_signature_exposes_type_hint_children() {
 }
 
 #[test]
+fn ast_type_hints_expose_path_and_argument_delimiters() {
+    let parse = parse_source(
+        r#"fn typed(items: Map<String, Result<i64, String>>) -> game::Reward {
+    return null;
+}
+
+struct Bag {
+    entries: Map<String, i64>,
+}
+"#,
+    );
+    let tree = parse.tree();
+    let function = tree.functions().next().expect("function item");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let param = function
+        .param_list()
+        .expect("function params")
+        .params()
+        .next()
+        .expect("param");
+    let hint = param.type_hint().expect("param type hint");
+    let args = hint.type_arg_list().expect("type args");
+    let arg_hints = args.type_hints().collect::<Vec<_>>();
+
+    assert_eq!(hint.path_text().as_deref(), Some("Map"));
+    assert_eq!(
+        hint.path_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["Map"]
+    );
+    assert_eq!(args.less_token().expect("less token").text(), "<");
+    assert_eq!(args.greater_token().expect("greater token").text(), ">");
+    assert_eq!(arg_hints[0].path_text().as_deref(), Some("String"));
+    assert_eq!(arg_hints[1].path_text().as_deref(), Some("Result"));
+
+    let result_args = arg_hints[1]
+        .type_arg_list()
+        .expect("result type args")
+        .type_hints()
+        .collect::<Vec<_>>();
+    assert_eq!(result_args[0].path_text().as_deref(), Some("i64"));
+    assert_eq!(result_args[1].path_text().as_deref(), Some("String"));
+
+    let return_type = function.return_type().expect("return type");
+    assert_eq!(return_type.path_text().as_deref(), Some("game::Reward"));
+    assert_eq!(
+        return_type
+            .path_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["game", "::", "Reward"]
+    );
+    assert!(return_type.type_arg_list().is_none());
+
+    let field = tree
+        .structs()
+        .next()
+        .expect("struct item")
+        .field_list()
+        .expect("field list")
+        .fields()
+        .next()
+        .expect("field");
+    let field_hint = field.type_hint().expect("field type hint");
+    assert_eq!(field.name_text().as_deref(), Some("entries"));
+    assert_eq!(field_hint.path_text().as_deref(), Some("Map"));
+    assert_eq!(
+        field_hint
+            .type_arg_list()
+            .expect("field type args")
+            .type_hints()
+            .map(|hint| hint.path_text().expect("type arg path"))
+            .collect::<Vec<_>>(),
+        vec!["String", "i64"]
+    );
+}
+
+#[test]
 fn ast_items_expose_default_value_expressions() {
     let source = r#"
 fn defaults(amount: i64 = bonus(1), label = "gold") -> i64 {

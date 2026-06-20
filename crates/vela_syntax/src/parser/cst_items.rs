@@ -217,7 +217,7 @@ impl CstParser<'_, '_> {
         let mut param_start = self.pos;
         while self.pos < close {
             if self.current_kind() == Some(SyntaxKind::Comma)
-                && self.range_is_at_delimiter_root(param_start, self.pos)
+                && self.member_range_is_at_delimiter_root(param_start, self.pos)
             {
                 self.param_range(param_start, self.pos);
                 self.emit_current_token();
@@ -284,7 +284,7 @@ impl CstParser<'_, '_> {
             if matches!(
                 self.current_kind(),
                 Some(SyntaxKind::Comma | SyntaxKind::Semicolon)
-            ) && self.range_is_at_delimiter_root(field_start, self.pos)
+            ) && self.member_range_is_at_delimiter_root(field_start, self.pos)
             {
                 let field_end = self.trim_trailing_trivia(field_start, self.pos);
                 self.struct_field_range(field_start, field_end);
@@ -294,7 +294,7 @@ impl CstParser<'_, '_> {
             } else if self
                 .current_kind()
                 .is_some_and(|kind| kind.is_trivia() && self.current_token_text_contains('\n'))
-                && self.range_is_at_delimiter_root(field_start, self.pos)
+                && self.member_range_is_at_delimiter_root(field_start, self.pos)
                 && self.member_range_has_name(field_start, self.pos)
                 && self.next_significant_before(self.pos + 1, close).is_some()
             {

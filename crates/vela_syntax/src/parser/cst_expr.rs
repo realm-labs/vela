@@ -242,7 +242,7 @@ impl CstParser<'_, '_> {
         let mut param_start = self.pos;
         while self.pos < close {
             if self.current_kind() == Some(SyntaxKind::Comma)
-                && self.range_is_at_delimiter_root(param_start, self.pos)
+                && self.member_range_is_at_delimiter_root(param_start, self.pos)
             {
                 self.param_range(param_start, self.pos);
                 self.emit_current_token();

@@ -144,9 +144,10 @@ parameter-list, parameter name token/text, type-hint, type-argument-list with
 nested type-hint children, default value expression accessors, and body block
 CST wrappers.
 Struct declarations now expose typed field-list and field CST wrappers with
-field name token/text, nested field type-hint, and type-argument-list
-accessors plus field default value expression accessors. Enum declarations now
-expose typed variant-list
+field name token/text, nested field type-hint, and field default value
+expression accessors. Type-hint wrappers now expose path tokens/text,
+type-argument delimiter tokens, and nested type-hint children. Enum
+declarations now expose typed variant-list
 and variant CST wrappers with enum and variant name token/text accessors, with
 tuple variant payloads structured as parameter lists and record variant
 payloads structured as field lists, reusing parameter and field default value

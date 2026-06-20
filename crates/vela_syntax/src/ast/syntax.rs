@@ -5,7 +5,7 @@ use super::items::{
     SyntaxItem, SyntaxStructItem, SyntaxTraitItem, SyntaxUseItem,
 };
 use super::statements::{SyntaxLetStmt, SyntaxStatement};
-use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange};
+use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, SyntaxToken, TextRange};
 
 pub trait AstNode {
     fn can_cast(kind: SyntaxKind) -> bool
@@ -120,6 +120,24 @@ pub struct SyntaxTypeHint {
 
 impl SyntaxTypeHint {
     #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| !token.kind().is_trivia())
+            .collect()
+    }
+
+    #[must_use]
+    pub fn path_text(&self) -> Option<String> {
+        let mut text = String::new();
+        for token in self.path_tokens() {
+            text.push_str(token.text());
+        }
+        (!text.is_empty()).then_some(text)
+    }
+
+    #[must_use]
     pub fn type_arg_list(&self) -> Option<SyntaxTypeArgList> {
         child(&self.syntax)
     }
@@ -160,6 +178,16 @@ impl AstNode for SyntaxTypeArgList {
 
 impl SyntaxTypeArgList {
     #[must_use]
+    pub fn less_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Less)
+    }
+
+    #[must_use]
+    pub fn greater_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Greater)
+    }
+
+    #[must_use]
     pub fn type_hints(&self) -> AstChildren<SyntaxTypeHint> {
         AstChildren::new(&self.syntax)
     }
@@ -198,6 +226,13 @@ impl AstNode for SyntaxBlock {
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == kind)
 }
 
 #[cfg(test)]

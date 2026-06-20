@@ -412,6 +412,14 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         depth.is_root()
     }
 
+    fn member_range_is_at_delimiter_root(&self, start: usize, end: usize) -> bool {
+        let mut depth = MemberDelimiterDepth::default();
+        for token in &self.tokens[start..end] {
+            depth.bump(token.kind);
+        }
+        depth.is_root()
+    }
+
     fn error_run(&mut self) {
         let start = self.pos;
         while !self.at_eof() {
@@ -782,6 +790,42 @@ impl DelimiterDepth {
             SyntaxKind::RBracket => self.bracket = self.bracket.saturating_sub(1),
             SyntaxKind::LBrace => self.brace = self.brace.saturating_add(1),
             SyntaxKind::RBrace => self.brace = self.brace.saturating_sub(1),
+            _ => {}
+        }
+    }
+}
+
+#[derive(Default)]
+struct MemberDelimiterDepth {
+    paren: u32,
+    bracket: u32,
+    brace: u32,
+    angle: u32,
+    default_value: bool,
+}
+
+impl MemberDelimiterDepth {
+    fn is_root(&self) -> bool {
+        self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
+    }
+
+    fn bump(&mut self, kind: SyntaxKind) {
+        match kind {
+            SyntaxKind::LParen => self.paren = self.paren.saturating_add(1),
+            SyntaxKind::RParen => self.paren = self.paren.saturating_sub(1),
+            SyntaxKind::LBracket => self.bracket = self.bracket.saturating_add(1),
+            SyntaxKind::RBracket => self.bracket = self.bracket.saturating_sub(1),
+            SyntaxKind::LBrace => self.brace = self.brace.saturating_add(1),
+            SyntaxKind::RBrace => self.brace = self.brace.saturating_sub(1),
+            SyntaxKind::Less if !self.default_value => {
+                self.angle = self.angle.saturating_add(1);
+            }
+            SyntaxKind::Greater if !self.default_value => {
+                self.angle = self.angle.saturating_sub(1);
+            }
+            SyntaxKind::Equal if self.is_root() => {
+                self.default_value = true;
+            }
             _ => {}
         }
     }
