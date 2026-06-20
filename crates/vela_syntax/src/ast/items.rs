@@ -935,6 +935,11 @@ impl SyntaxImplItem {
     }
 
     #[must_use]
+    pub fn trait_path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.trait_path_tokens())
+    }
+
+    #[must_use]
     pub fn target_path_tokens(&self) -> Vec<SyntaxToken> {
         if self.for_token().is_some() {
             header_path_tokens_between(&self.syntax, SyntaxKind::ForKw, SyntaxKind::LBrace)
@@ -951,6 +956,11 @@ impl SyntaxImplItem {
     #[must_use]
     pub fn target_path_segments(&self) -> Vec<String> {
         path_segments_from_tokens(&self.target_path_tokens())
+    }
+
+    #[must_use]
+    pub fn target_path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.target_path_tokens())
     }
 
     #[must_use]

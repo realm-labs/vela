@@ -896,8 +896,10 @@ impl game::reward::Rewardable for game::player::Player {
     assert!(inherent.trait_path_text().is_none());
     assert!(inherent.trait_path_tokens().is_empty());
     assert!(inherent.trait_path_segments().is_empty());
+    assert!(inherent.trait_path_separator_tokens().is_empty());
     assert_eq!(inherent.target_path_text().as_deref(), Some("Reward"));
     assert_eq!(inherent.target_path_segments(), vec!["Reward"]);
+    assert!(inherent.target_path_separator_tokens().is_empty());
     assert_eq!(
         inherent
             .target_path_tokens()
@@ -923,8 +925,24 @@ impl game::reward::Rewardable for game::player::Player {
         vec!["game", "reward", "Rewardable"]
     );
     assert_eq!(
+        trait_impl
+            .trait_path_separator_tokens()
+            .iter()
+            .map(|token| token.kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::ColonColon, SyntaxKind::ColonColon]
+    );
+    assert_eq!(
         trait_impl.target_path_segments(),
         vec!["game", "player", "Player"]
+    );
+    assert_eq!(
+        trait_impl
+            .target_path_separator_tokens()
+            .iter()
+            .map(|token| token.kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::ColonColon, SyntaxKind::ColonColon]
     );
     assert_eq!(
         trait_impl
