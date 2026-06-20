@@ -146,6 +146,19 @@ impl SyntaxUnaryExpr {
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn operator_token(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| unary_operator_kind(token.kind()))
+    }
+
+    #[must_use]
+    pub fn operator_kind(&self) -> Option<SyntaxKind> {
+        self.operator_token().map(|token| token.kind())
+    }
 }
 
 impl AstNode for SyntaxUnaryExpr {
@@ -697,6 +710,10 @@ fn assignment_operator_kind(kind: SyntaxKind) -> bool {
     )
 }
 
+fn unary_operator_kind(kind: SyntaxKind) -> bool {
+    matches!(kind, SyntaxKind::Bang | SyntaxKind::Minus)
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -706,6 +723,7 @@ mod tests {
     use crate::SyntaxKind;
     use crate::ast::{
         AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxMapExpr,
+        SyntaxUnaryExpr,
     };
     use crate::parse::parse_source;
 
@@ -833,6 +851,38 @@ mod tests {
                 Some(SyntaxKind::SlashEqual),
                 Some(SyntaxKind::PercentEqual),
             ]
+        );
+    }
+
+    #[test]
+    fn ast_unary_expression_exposes_operator_tokens() {
+        let source = r#"fn update(score, active) {
+    let negative = -score;
+    let inverted = !active;
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let operators = body
+            .let_statements()
+            .map(|statement| {
+                let initializer = statement.initializer().expect("initializer");
+                let unary =
+                    SyntaxUnaryExpr::cast(initializer.syntax().clone()).expect("unary expr");
+                unary.operator_kind()
+            })
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            operators,
+            vec![Some(SyntaxKind::Minus), Some(SyntaxKind::Bang)]
         );
     }
 }
