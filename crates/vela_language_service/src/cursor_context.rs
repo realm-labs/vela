@@ -137,7 +137,10 @@ pub fn cursor_context_at(
         return cursor;
     }
 
-    if parsed.is_some_and(|source| is_pattern_context(text, source, prefix_start)) {
+    if syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_pattern_context(&parse.tree(), prefix_start))
+    {
         return context(
             CursorContextKind::Pattern,
             prefix_start,
