@@ -1,5 +1,5 @@
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
+use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::callable_context::{
     CallableFacts, callable_facts, member_callable_facts, source_callable_facts,
@@ -95,7 +95,6 @@ pub struct QueryContext<'a> {
     position: Position,
     generation: WorkspaceGeneration,
     source: QuerySource<'a>,
-    parsed: Option<&'a SourceFile>,
     syntax_parse: Option<&'a SyntaxParse<SyntaxSourceFile>>,
     bindings: Option<&'a BindingMap>,
     cursor: CursorContext,
@@ -115,7 +114,6 @@ impl<'a> QueryContext<'a> {
             position,
             generation: snapshot.generation(),
             source: QuerySource::Snapshot(document),
-            parsed: None,
             syntax_parse: None,
             bindings: None,
             cursor,
@@ -129,7 +127,6 @@ impl<'a> QueryContext<'a> {
         position: Position,
     ) -> Option<Self> {
         let source = databases.source_db().records().get(document_id)?;
-        let parsed = databases.parse_db().parsed_source(document_id);
         let syntax_parse = databases.parse_db().syntax_parse(document_id);
         let cursor = cursor_context_at(source.text(), position, syntax_parse);
         let bindings = query_bindings(databases, source, cursor.replace_range().end);
@@ -138,7 +135,6 @@ impl<'a> QueryContext<'a> {
             position,
             generation: databases.generation(),
             source: QuerySource::Database(source),
-            parsed,
             syntax_parse,
             bindings,
             cursor,
@@ -186,11 +182,6 @@ impl<'a> QueryContext<'a> {
     #[must_use]
     pub fn module_path(&self) -> Option<&ModulePath> {
         self.source_record().map(SourceRecord::module_path)
-    }
-
-    #[must_use]
-    pub const fn parsed_source(&self) -> Option<&SourceFile> {
-        self.parsed
     }
 
     #[must_use]
@@ -541,13 +532,12 @@ mod tests {
         assert_eq!(context.source_id(), None);
         assert!(context.module_path().is_none());
         assert!(context.source_record().is_none());
-        assert!(context.parsed_source().is_none());
         assert!(context.syntax_parse().is_none());
         assert!(context.bindings().is_none());
     }
 
     #[test]
-    fn query_context_from_databases_carries_parsed_source_and_module_facts() {
+    fn query_context_from_databases_carries_syntax_parse_and_module_facts() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let source =
             "struct Player { level: i64 }\nfn main() { let player = Player { le }; let after = 1 }";
@@ -577,7 +567,6 @@ mod tests {
         );
         assert_eq!(context.identifier_text(), Some("le"));
         assert_eq!(context.source_id(), Some(SourceId::new(1)));
-        assert!(context.parsed_source().is_some());
         assert!(context.syntax_parse().is_some());
         assert!(
             context
