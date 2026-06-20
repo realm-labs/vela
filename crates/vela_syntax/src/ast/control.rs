@@ -188,6 +188,16 @@ impl SyntaxMatchArm {
         child_after_token(&self.syntax, SyntaxKind::FatArrow)
     }
 
+    #[must_use]
+    pub fn body_l_brace_token(&self) -> Option<SyntaxToken> {
+        self.body_block()?.l_brace_token()
+    }
+
+    #[must_use]
+    pub fn body_r_brace_token(&self) -> Option<SyntaxToken> {
+        self.body_block()?.r_brace_token()
+    }
+
     fn has_guard(&self) -> bool {
         self.syntax
             .children_with_tokens()
