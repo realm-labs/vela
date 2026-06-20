@@ -1,4 +1,5 @@
-use super::expr::{SyntaxExpression, SyntaxMatchExpr};
+use super::control::SyntaxMatchExpr;
+use super::expr::SyntaxExpression;
 use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 

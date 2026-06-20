@@ -2,8 +2,8 @@ use crate::SyntaxKind;
 use crate::ast::{
     AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
     SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
-    SyntaxLiteral, SyntaxMapExpr, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
-    SyntaxUnaryExpr,
+    SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxPathExpr,
+    SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -822,6 +822,18 @@ fn ast_match_expression_exposes_control_tokens() {
         "if"
     );
     assert_eq!(arms[0].fat_arrow_token().expect("arrow").text(), "=>");
+    assert!(matches!(
+        arms[0].body().expect("expression body"),
+        SyntaxMatchArmBody::Expression(_)
+    ));
+    assert!(arms[0].body_expression().is_some());
+    assert!(arms[0].body_block().is_none());
     assert!(arms[1].guard_if_token().is_none());
     assert_eq!(arms[1].fat_arrow_token().expect("arrow").text(), "=>");
+    assert!(matches!(
+        arms[1].body().expect("block body"),
+        SyntaxMatchArmBody::Block(_)
+    ));
+    assert!(arms[1].body_expression().is_none());
+    assert!(arms[1].body_block().is_some());
 }

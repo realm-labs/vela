@@ -2,6 +2,8 @@ use vela_common::Span;
 
 #[path = "ast/attributes.rs"]
 mod attributes;
+#[path = "ast/control.rs"]
+mod control;
 #[path = "ast/expr.rs"]
 mod expr;
 #[cfg(test)]
@@ -23,12 +25,13 @@ pub use attributes::{
     SyntaxAttribute, SyntaxAttributeArg, SyntaxAttributeArray, SyntaxAttributeMap,
     SyntaxAttributeMapEntry,
 };
+pub use control::{SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchArmList, SyntaxMatchExpr};
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
-    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxMatchArm,
-    SyntaxMatchArmList, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
-    SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
+    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxPathExpr,
+    SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList, SyntaxTryExpr,
+    SyntaxUnaryExpr,
 };
 pub use items::{
     SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,
