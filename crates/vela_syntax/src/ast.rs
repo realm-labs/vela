@@ -14,6 +14,8 @@ mod items;
 #[cfg(test)]
 #[path = "ast/items_tests.rs"]
 mod items_tests;
+#[path = "ast/literal_semantics.rs"]
+mod literal_semantics;
 #[path = "ast/patterns.rs"]
 mod patterns;
 #[path = "ast/statements.rs"]

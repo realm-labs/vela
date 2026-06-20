@@ -1,4 +1,5 @@
-use super::{AstChildren, AstNode};
+use super::{AstChildren, AstNode, Literal};
+use crate::ast::literal_semantics::literal_from_token;
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -131,6 +132,12 @@ impl SyntaxPattern {
     #[must_use]
     pub fn literal_text(&self) -> Option<String> {
         self.literal_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn literal(&self) -> Option<Literal> {
+        let token = self.literal_token()?;
+        literal_from_token(token.kind(), token.text())
     }
 
     #[must_use]
@@ -509,7 +516,9 @@ const fn literal_token_kind(kind: SyntaxKind) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::SyntaxKind;
-    use crate::ast::{AstNode, SyntaxMatchExpr, SyntaxPatternKind};
+    use crate::ast::{
+        AstNode, FloatSuffix, IntRadix, IntegerSuffix, Literal, SyntaxMatchExpr, SyntaxPatternKind,
+    };
     use crate::parse::parse_source;
 
     #[test]
@@ -706,6 +715,10 @@ mod tests {
             Some(SyntaxKind::String)
         );
         assert_eq!(literal_pattern.literal_text().as_deref(), Some("\"ready\""));
+        assert_eq!(
+            literal_pattern.literal(),
+            Some(Literal::String("ready".to_owned()))
+        );
         assert!(
             arms[0]
                 .pattern()
@@ -866,6 +879,102 @@ mod tests {
         assert!(fields[0].is_shorthand());
         assert_eq!(fields[1].label_text().as_deref(), Some("code"));
         assert!(fields[1].separator_token().is_none());
+    }
+
+    #[test]
+    fn ast_literal_patterns_expose_semantic_values() {
+        let parse = parse_source(
+            r#"fn update(state) {
+    let value = match state {
+        true => 0,
+        false => 1,
+        null => 2,
+        42 => 3,
+        0x2a => 4,
+        12i8 => 5,
+        3.5 => 6,
+        12.0f32 => 7,
+        "ready" => 8,
+        'x' => 9,
+        b"\x00\xff" => 10,
+    };
+}
+"#,
+        );
+        let tree = parse.tree();
+        let match_expr = tree
+            .syntax()
+            .descendants()
+            .find_map(SyntaxMatchExpr::cast)
+            .expect("match expression");
+        let patterns = match_expr
+            .arm_list()
+            .expect("match arm list")
+            .arms()
+            .map(|arm| arm.pattern().expect("pattern"))
+            .collect::<Vec<_>>();
+        let literals = patterns
+            .iter()
+            .map(|pattern| pattern.literal())
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            patterns
+                .iter()
+                .map(|pattern| pattern.literal_token_kind())
+                .collect::<Vec<_>>(),
+            vec![
+                Some(SyntaxKind::TrueKw),
+                Some(SyntaxKind::FalseKw),
+                Some(SyntaxKind::NullKw),
+                Some(SyntaxKind::Int),
+                Some(SyntaxKind::Int),
+                Some(SyntaxKind::Int),
+                Some(SyntaxKind::Float),
+                Some(SyntaxKind::Float),
+                Some(SyntaxKind::String),
+                Some(SyntaxKind::Char),
+                Some(SyntaxKind::Bytes),
+            ]
+        );
+        assert_eq!(
+            literals[0..4],
+            [
+                Some(Literal::Bool(true)),
+                Some(Literal::Bool(false)),
+                Some(Literal::Null),
+                Some(Literal::integer("42")),
+            ]
+        );
+        assert!(matches!(
+            &literals[4],
+            Some(Literal::Integer(value))
+                if value.source_text() == "0x2a"
+                    && value.radix == IntRadix::Hex
+                    && value.suffix.is_none()
+        ));
+        assert!(matches!(
+            &literals[5],
+            Some(Literal::Integer(value))
+                if value.source_text() == "12"
+                    && value.radix == IntRadix::Decimal
+                    && value.suffix == Some(IntegerSuffix::I8)
+        ));
+        assert_eq!(literals[6], Some(Literal::float("3.5")));
+        assert!(matches!(
+            &literals[7],
+            Some(Literal::Float(value))
+                if value.source_text() == "12.0" && value.suffix == Some(FloatSuffix::F32)
+        ));
+        assert_eq!(
+            literals[8..],
+            [
+                Some(Literal::String("ready".to_owned())),
+                Some(Literal::Char('x')),
+                Some(Literal::Bytes(vec![0, 255])),
+            ]
+        );
     }
 
     #[test]
