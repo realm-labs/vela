@@ -164,7 +164,8 @@ entries, record literal fields, lambda parameter lists, and lambda
 expression/block bodies. Match expressions now expose scrutinees, arm lists,
 explicit guard and expression/block body accessors, tuple-variant
 pattern paths, record-variant pattern paths and fields, field labels, binding
-names, literal patterns, and wildcard/basic pattern nodes. The
+names, basic path-pattern text, literal patterns, and wildcard/basic pattern
+nodes. The
 rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,
 statement, expression, and pattern submodules so additional wrappers can land without
 growing the legacy owned-AST file; remaining pattern coverage, remaining

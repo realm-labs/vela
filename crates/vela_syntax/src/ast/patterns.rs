@@ -40,6 +40,11 @@ impl SyntaxPattern {
     }
 
     #[must_use]
+    pub fn path_text(&self) -> Option<String> {
+        path_text_before_payload(&self.syntax)
+    }
+
+    #[must_use]
     pub fn literal_text(&self) -> Option<String> {
         let token = first_significant_token(&self.syntax)?;
         literal_token(token.kind()).then(|| self.syntax.text().to_string())
@@ -167,6 +172,20 @@ fn path_text_before(parent: &SyntaxNode, delimiter: SyntaxKind) -> Option<String
     (!path.is_empty()).then_some(path)
 }
 
+fn path_text_before_payload(parent: &SyntaxNode) -> Option<String> {
+    let mut path = String::new();
+    let mut has_path_separator = false;
+    for token in significant_tokens(parent) {
+        match token.kind() {
+            SyntaxKind::LParen | SyntaxKind::LBrace => break,
+            SyntaxKind::ColonColon => has_path_separator = true,
+            _ => {}
+        }
+        path.push_str(token.text());
+    }
+    (has_path_separator && !path.is_empty()).then_some(path)
+}
+
 const fn literal_token(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -179,4 +198,75 @@ const fn literal_token(kind: SyntaxKind) -> bool {
             | SyntaxKind::String
             | SyntaxKind::Bytes
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{AstNode, SyntaxMatchExpr};
+    use crate::parse::parse_source;
+
+    #[test]
+    fn ast_basic_pattern_exposes_path_text_without_confusing_bindings() {
+        let parse = parse_source(
+            r#"fn update(state) {
+    let value = match state {
+        Option::None => 0,
+        binding => 1,
+        null => 2,
+        _ => 3,
+    };
+}
+"#,
+        );
+        let tree = parse.tree();
+        let match_expr = tree
+            .syntax()
+            .descendants()
+            .find_map(SyntaxMatchExpr::cast)
+            .expect("match expression");
+        let arms = match_expr
+            .arm_list()
+            .expect("match arm list")
+            .arms()
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            arms[0]
+                .pattern()
+                .expect("path pattern")
+                .path_text()
+                .as_deref(),
+            Some("Option::None")
+        );
+        assert_eq!(
+            arms[1]
+                .pattern()
+                .expect("binding pattern")
+                .binding_name()
+                .as_deref(),
+            Some("binding")
+        );
+        assert!(
+            arms[1]
+                .pattern()
+                .expect("binding pattern")
+                .path_text()
+                .is_none()
+        );
+        assert!(
+            arms[2]
+                .pattern()
+                .expect("literal pattern")
+                .path_text()
+                .is_none()
+        );
+        assert!(
+            arms[3]
+                .pattern()
+                .expect("wildcard pattern")
+                .path_text()
+                .is_none()
+        );
+    }
 }
