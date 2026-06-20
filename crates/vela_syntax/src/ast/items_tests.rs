@@ -114,6 +114,14 @@ impl Reward {
         vec!["game", "::", "reward", "::", "grant"]
     );
     assert_eq!(use_path.path_segments(), vec!["game", "reward", "grant"]);
+    assert_eq!(
+        use_path
+            .path_separator_tokens()
+            .iter()
+            .map(|token| token.kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::ColonColon, SyntaxKind::ColonColon]
+    );
     assert_eq!(use_item.alias_text().as_deref(), Some("grant_reward"));
     assert_eq!(
         use_item.alias_token().expect("use alias").kind(),
