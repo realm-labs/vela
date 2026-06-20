@@ -138,6 +138,11 @@ impl SyntaxTypeHint {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn type_arg_list(&self) -> Option<SyntaxTypeArgList> {
         child(&self.syntax)
     }
@@ -243,6 +248,14 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == kind)
+}
+
+fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| token.text().to_owned())
+        .collect()
 }
 
 #[cfg(test)]

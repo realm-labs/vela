@@ -55,10 +55,17 @@ impl Reward {
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
 
     let use_item = tree.uses().next().expect("use item");
+    let use_path = use_item.path().expect("use path");
+    assert_eq!(use_path.path_text().as_deref(), Some("game::reward::grant"));
     assert_eq!(
-        use_item.path().expect("use path").path_text().as_deref(),
-        Some("game::reward::grant")
+        use_path
+            .path_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["game", "::", "reward", "::", "grant"]
     );
+    assert_eq!(use_path.path_segments(), vec!["game", "reward", "grant"]);
     assert_eq!(use_item.alias_text().as_deref(), Some("grant_reward"));
     assert_eq!(
         use_item.alias_token().expect("use alias").kind(),
@@ -299,6 +306,7 @@ struct Bag {
     let arg_hints = args.type_hints().collect::<Vec<_>>();
 
     assert_eq!(hint.path_text().as_deref(), Some("Map"));
+    assert_eq!(hint.path_segments(), vec!["Map"]);
     assert_eq!(
         hint.path_tokens()
             .iter()
@@ -309,7 +317,9 @@ struct Bag {
     assert_eq!(args.less_token().expect("less token").text(), "<");
     assert_eq!(args.greater_token().expect("greater token").text(), ">");
     assert_eq!(arg_hints[0].path_text().as_deref(), Some("String"));
+    assert_eq!(arg_hints[0].path_segments(), vec!["String"]);
     assert_eq!(arg_hints[1].path_text().as_deref(), Some("Result"));
+    assert_eq!(arg_hints[1].path_segments(), vec!["Result"]);
 
     let result_args = arg_hints[1]
         .type_arg_list()
@@ -317,10 +327,13 @@ struct Bag {
         .type_hints()
         .collect::<Vec<_>>();
     assert_eq!(result_args[0].path_text().as_deref(), Some("i64"));
+    assert_eq!(result_args[0].path_segments(), vec!["i64"]);
     assert_eq!(result_args[1].path_text().as_deref(), Some("String"));
+    assert_eq!(result_args[1].path_segments(), vec!["String"]);
 
     let return_type = function.return_type().expect("return type");
     assert_eq!(return_type.path_text().as_deref(), Some("game::Reward"));
+    assert_eq!(return_type.path_segments(), vec!["game", "Reward"]);
     assert_eq!(
         return_type
             .path_tokens()

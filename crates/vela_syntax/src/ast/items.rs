@@ -91,8 +91,18 @@ pub struct SyntaxUsePath {
 
 impl SyntaxUsePath {
     #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        significant_tokens(&self.syntax).collect()
+    }
+
+    #[must_use]
     pub fn path_text(&self) -> Option<String> {
-        significant_token_text(&self.syntax)
+        token_text(self.path_tokens())
+    }
+
+    #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
     }
 }
 
@@ -921,6 +931,14 @@ fn token_text(tokens: Vec<SyntaxToken>) -> Option<String> {
     (!text.is_empty()).then_some(text)
 }
 
+fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| token.text().to_owned())
+        .collect()
+}
+
 fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
     parent
         .children_with_tokens()
@@ -929,14 +947,9 @@ fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken>
         .collect()
 }
 
-fn significant_token_text(parent: &SyntaxNode) -> Option<String> {
-    let mut text = String::new();
-    for token in parent
+fn significant_tokens(parent: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> + '_ {
+    parent
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .filter(|token| !token.kind().is_trivia())
-    {
-        text.push_str(token.text());
-    }
-    (!text.is_empty()).then_some(text)
 }
