@@ -5,6 +5,7 @@ use vela_common::{Diagnostic, SourceId};
 use crate::ast::{AstNode, SyntaxSourceFile};
 use crate::lexer::lex;
 use crate::parser::cst;
+use crate::syntax_validation::validate_source;
 use crate::{SyntaxNode, SyntaxTreeBuilder};
 
 #[must_use]
@@ -19,7 +20,10 @@ pub fn parse_source_with_id(source: SourceId, text: &str) -> Parse<SyntaxSourceF
     let mut diagnostics = lexed.diagnostics.clone();
     diagnostics.extend(cst::build_source_tree(&lexed, &mut builder));
 
-    builder.finish_with_diagnostics(diagnostics)
+    let parse = builder.finish_with_diagnostics(diagnostics);
+    let mut diagnostics = parse.diagnostics().to_vec();
+    diagnostics.extend(validate_source(source, &parse.tree()));
+    Parse::new(parse.green().clone(), diagnostics)
 }
 
 #[derive(Debug, Eq, PartialEq)]

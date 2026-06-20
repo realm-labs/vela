@@ -8,6 +8,7 @@ pub mod parse;
 pub mod parser;
 pub mod syntax_kind;
 pub mod syntax_node;
+mod syntax_validation;
 pub mod token;
 
 pub use parse::Parse;

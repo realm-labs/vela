@@ -235,6 +235,7 @@ fn main() {
         CompileErrorKind::UnsupportedSyntax("continue outside loop")
     );
 }
+
 #[test]
 fn compiler_rejects_top_level_mutation_as_syntax_before_codegen() {
     let error = compile_program_source(
@@ -254,6 +255,26 @@ fn main(player) { return player.level; }
             .any(|diagnostic| diagnostic.message.contains("expected item"))
     );
 }
+
+#[test]
+fn compiler_reports_cst_parse_diagnostics_before_codegen() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn () {}
+fn main() { return 1; }
+"#,
+    )
+    .expect_err("missing function name should fail at the CST syntax gate");
+    let CompileErrorKind::SyntaxDiagnostics(diagnostics) = error.kind else {
+        panic!("expected syntax diagnostics");
+    };
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic.code.as_deref() == Some("E_PARSE")
+            && diagnostic.message == "expected function name"
+    }));
+}
+
 #[test]
 fn compiler_rejects_top_level_const_side_effects_from_hir() {
     let error = compile_program_source(

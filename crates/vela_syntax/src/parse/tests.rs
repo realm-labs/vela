@@ -1225,3 +1225,35 @@ fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         diagnostic.code.as_deref() == Some("E_PARSE") && diagnostic.message == "expected `}`"
     }));
 }
+
+#[test]
+fn parser_parse_source_reports_restricted_type_hint_arguments() {
+    for (source, code) in [
+        (
+            "fn bad(xs: Player<i64>) { return xs; }",
+            "syntax::generic_type_hint",
+        ),
+        (
+            "fn bad(xs: Map<PathProxy, String>) { return xs; }",
+            "syntax::map_key_type_argument",
+        ),
+        (
+            "fn bad(xs: Set<Function>) { return xs; }",
+            "syntax::set_element_type_argument",
+        ),
+        (
+            "fn bad(xs: Result<String>) { return xs; }",
+            "syntax::type_argument_arity",
+        ),
+    ] {
+        let parse = parse_source_with_id(SourceId::new(30), source);
+        assert!(
+            parse
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some(code)),
+            "{source}: {:?}",
+            parse.diagnostics()
+        );
+    }
+}

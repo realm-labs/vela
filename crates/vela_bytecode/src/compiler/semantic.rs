@@ -8,7 +8,8 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile};
-use vela_syntax::parser::parse_source;
+use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use crate::Constant;
 
@@ -465,7 +466,13 @@ impl SemanticModules {
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
-    let parsed = parse_checked_source(source, text)?;
+    let syntax_diagnostics = cst_syntax_diagnostics(source, text);
+    if !syntax_diagnostics.is_empty() {
+        return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
+            syntax_diagnostics,
+        )));
+    }
+    let parsed = parse_legacy_source(source, text);
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(ModuleSource::new(
         source,
@@ -489,25 +496,25 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
 }
 
 pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<SemanticModules> {
-    let mut parsed = BTreeMap::new();
-    let mut graph = ModuleGraph::new();
-    let mut modules = Vec::new();
-    let mut syntax_diagnostics = Vec::new();
-
-    for source in sources {
-        let source_file = parse_source(source.id, &source.text);
-        if !source_file.diagnostics.is_empty() {
-            syntax_diagnostics.extend(source_file.diagnostics.clone());
-        }
-        let module = graph.add_source(source.clone());
-        parsed.insert(module, source_file);
-        modules.push(module);
-    }
-
+    let syntax_diagnostics = sources
+        .iter()
+        .flat_map(|source| cst_syntax_diagnostics(source.id, &source.text))
+        .collect::<Vec<_>>();
     if !syntax_diagnostics.is_empty() {
         return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
             syntax_diagnostics,
         )));
+    }
+
+    let mut parsed = BTreeMap::new();
+    let mut graph = ModuleGraph::new();
+    let mut modules = Vec::new();
+
+    for source in sources {
+        let module = graph.add_source(source.clone());
+        let source_file = parse_legacy_source(source.id, &source.text);
+        parsed.insert(module, source_file);
+        modules.push(module);
     }
 
     graph.resolve_imports();
@@ -524,13 +531,6 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     }
 }
 
-fn parse_checked_source(source: SourceId, text: &str) -> CompileResult<SourceFile> {
-    let parsed = parse_source(source, text);
-    if parsed.diagnostics.is_empty() {
-        Ok(parsed)
-    } else {
-        Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
-            parsed.diagnostics,
-        )))
-    }
+fn cst_syntax_diagnostics(source: SourceId, text: &str) -> Vec<vela_common::Diagnostic> {
+    parse_syntax_source(source, text).into_diagnostics()
 }

@@ -238,9 +238,12 @@ diagnostics and CST item iteration, so `vela_hir::ModuleGraph` no longer reparse
 sources through the old owned `SourceFile` API. HIR type and attribute metadata
 no longer expose old owned-AST conversion helpers; the remaining legacy
 `TypeHint` conversion is isolated in `vela_bytecode` until compiler lowering
-migrates to rowan wrappers or HIR facts. Bytecode compilation and remaining
-downstream lowering still consume the old owned AST while their syntax API
-migration continues.
+migrates to rowan wrappers or HIR facts. The rowan parse boundary now validates
+restricted builtin type arguments and non-keyable `Map`/`Set` contracts, and the
+bytecode semantic parse gate uses CST parse diagnostics before falling back to
+the legacy owned AST only as a temporary compiler body/expression carrier.
+Bytecode compilation and remaining downstream lowering still consume the old
+owned AST while their syntax API migration continues.
 Remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
