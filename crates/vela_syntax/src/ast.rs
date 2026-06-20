@@ -5,9 +5,10 @@ mod syntax;
 
 pub use syntax::{
     AstChildren, AstNode, SyntaxBlock, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList,
-    SyntaxFunctionItem, SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxRecordFieldList,
-    SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem,
-    SyntaxTupleFieldList, SyntaxTypeArgList, SyntaxTypeHint,
+    SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList,
+    SyntaxRecordFieldList, SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList,
+    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxTypeArgList,
+    SyntaxTypeHint,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]

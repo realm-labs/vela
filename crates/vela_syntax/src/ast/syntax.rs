@@ -44,6 +44,16 @@ impl SyntaxSourceFile {
     pub fn enums(&self) -> AstChildren<SyntaxEnumItem> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn traits(&self) -> AstChildren<SyntaxTraitItem> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn impls(&self) -> AstChildren<SyntaxImplItem> {
+        AstChildren::new(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxSourceFile {
@@ -484,6 +494,130 @@ impl AstNode for SyntaxRecordFieldList {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTraitItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxTraitItem {
+    #[must_use]
+    pub fn methods(&self) -> AstChildren<SyntaxTraitMethod> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxTraitItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TraitItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxTraitMethod {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxTraitMethod {
+    #[must_use]
+    pub fn param_list(&self) -> Option<SyntaxParamList> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn return_type(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body(&self) -> Option<SyntaxBlock> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxTraitMethod {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::TraitMethod
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxImplItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxImplItem {
+    #[must_use]
+    pub fn methods(&self) -> AstChildren<SyntaxImplMethod> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxImplItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ImplItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxImplMethod {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxImplMethod {
+    #[must_use]
+    pub fn param_list(&self) -> Option<SyntaxParamList> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn return_type(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn body(&self) -> Option<SyntaxBlock> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxImplMethod {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ImplMethod
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
 }
@@ -793,6 +927,103 @@ mod tests {
                 .text()
                 .to_string(),
             "i64"
+        );
+    }
+
+    #[test]
+    fn ast_trait_and_impl_items_expose_method_children() {
+        let mut builder = SyntaxTreeBuilder::default();
+        builder.start_node(SyntaxKind::SourceFile);
+        builder.start_node(SyntaxKind::TraitItem);
+        builder.token(SyntaxKind::TraitKw, "trait");
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.start_node(SyntaxKind::TraitMethod);
+        builder.token(SyntaxKind::FnKw, "fn");
+        builder.token(SyntaxKind::Ident, "reward");
+        builder.start_node(SyntaxKind::ParamList);
+        builder.token(SyntaxKind::LParen, "(");
+        builder.start_node(SyntaxKind::Param);
+        builder.token(SyntaxKind::Ident, "amount");
+        builder.token(SyntaxKind::Colon, ":");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "i64");
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RParen, ")");
+        builder.finish_node();
+        builder.token(SyntaxKind::Arrow, "->");
+        builder.start_node(SyntaxKind::TypeHint);
+        builder.token(SyntaxKind::Ident, "String");
+        builder.finish_node();
+        builder.token(SyntaxKind::Semicolon, ";");
+        builder.finish_node();
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.start_node(SyntaxKind::ImplItem);
+        builder.token(SyntaxKind::ImplKw, "impl");
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.start_node(SyntaxKind::ImplMethod);
+        builder.token(SyntaxKind::FnKw, "fn");
+        builder.token(SyntaxKind::Ident, "reward");
+        builder.start_node(SyntaxKind::ParamList);
+        builder.token(SyntaxKind::LParen, "(");
+        builder.token(SyntaxKind::RParen, ")");
+        builder.finish_node();
+        builder.start_node(SyntaxKind::Block);
+        builder.token(SyntaxKind::LBrace, "{");
+        builder.token(SyntaxKind::ReturnKw, "return");
+        builder.token(SyntaxKind::String, "\"gold\"");
+        builder.token(SyntaxKind::Semicolon, ";");
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.finish_node();
+        builder.token(SyntaxKind::RBrace, "}");
+        builder.finish_node();
+        builder.finish_node();
+
+        let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+        let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+        let trait_item = source.traits().next().expect("trait item");
+        let trait_method = trait_item.methods().next().expect("trait method");
+        let impl_item = source.impls().next().expect("impl item");
+        let impl_method = impl_item.methods().next().expect("impl method");
+
+        assert_eq!(
+            trait_method.syntax().text().to_string(),
+            "fnreward(amount:i64)->String;"
+        );
+        assert_eq!(
+            trait_method
+                .param_list()
+                .expect("trait params")
+                .params()
+                .next()
+                .expect("trait param")
+                .type_hint()
+                .expect("param type")
+                .syntax()
+                .text()
+                .to_string(),
+            "i64"
+        );
+        assert_eq!(
+            trait_method
+                .return_type()
+                .expect("trait return type")
+                .syntax()
+                .text()
+                .to_string(),
+            "String"
+        );
+        assert!(trait_method.body().is_none());
+        assert_eq!(
+            impl_method
+                .body()
+                .expect("impl body")
+                .syntax()
+                .text()
+                .to_string(),
+            "{return\"gold\";}"
         );
     }
 }

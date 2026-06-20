@@ -46,6 +46,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             SyntaxKind::FunctionItem => self.function_item(item.end),
             SyntaxKind::StructItem => self.struct_item(item.end),
             SyntaxKind::EnumItem => self.enum_item(item.end),
+            SyntaxKind::TraitItem => self.trait_item(item.end),
+            SyntaxKind::ImplItem => self.impl_item(item.end),
             _ => self.raw_item(item.kind, item.end),
         }
     }
@@ -111,6 +113,29 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         if let Some(variant_list_start) = variant_list {
             self.emit_until(variant_list_start);
             self.enum_variant_list(variant_list_start);
+        }
+
+        while self.pos < end {
+            self.emit_current_token();
+        }
+        self.builder.finish_node();
+    }
+
+    fn trait_item(&mut self, end: usize) {
+        self.method_owner_item(SyntaxKind::TraitItem, SyntaxKind::TraitMethod, end);
+    }
+
+    fn impl_item(&mut self, end: usize) {
+        self.method_owner_item(SyntaxKind::ImplItem, SyntaxKind::ImplMethod, end);
+    }
+
+    fn method_owner_item(&mut self, item_kind: SyntaxKind, method_kind: SyntaxKind, end: usize) {
+        self.builder.start_node(item_kind);
+        let body = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
+
+        if let Some(body_start) = body {
+            self.emit_until(body_start);
+            self.method_body(body_start, method_kind);
         }
 
         while self.pos < end {
@@ -322,6 +347,71 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.builder.finish_node();
     }
 
+    fn method_body(&mut self, start: usize, method_kind: SyntaxKind) {
+        let Some(end) =
+            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+        else {
+            self.emit_current_token();
+            return;
+        };
+
+        self.emit_current_token();
+        let close = end.saturating_sub(1);
+        while self.pos < close {
+            let candidate = self.skip_trivia(self.pos);
+            self.emit_until(candidate);
+            if candidate >= close {
+                break;
+            }
+
+            if self.method_keyword_pos(candidate, close).is_some() {
+                let method_end = self.find_method_end(candidate, close);
+                self.method_range(method_kind, candidate, method_end);
+            } else {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn method_range(&mut self, method_kind: SyntaxKind, start: usize, end: usize) {
+        self.pos = start;
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+        self.builder.start_node(method_kind);
+
+        let signature_start = self.method_keyword_pos(start, end).unwrap_or(start);
+        let param_list = self.find_first_kind_before(SyntaxKind::LParen, signature_start, end);
+        let param_list_end = param_list
+            .and_then(|start| {
+                self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+            })
+            .unwrap_or(signature_start);
+        let body = self.find_root_kind_before(SyntaxKind::LBrace, param_list_end, end);
+        let signature_end = body
+            .or_else(|| self.find_root_kind_before(SyntaxKind::Semicolon, param_list_end, end))
+            .or_else(|| self.find_root_newline_before(param_list_end, end))
+            .unwrap_or(end);
+
+        if let Some(param_list_start) = param_list {
+            self.emit_until(param_list_start);
+            self.param_list(param_list_start);
+        }
+
+        self.return_type(param_list_end, signature_end);
+
+        if let Some(body_start) = body {
+            self.emit_until(body_start);
+            let body_end = self.find_matching_brace_end(body_start).min(end);
+            self.node_range(SyntaxKind::Block, body_start, body_end);
+        }
+
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
     fn struct_field_range(&mut self, start: usize, end: usize) {
         self.pos = start;
         if !self.has_significant_tokens(start, end) {
@@ -375,6 +465,20 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 break;
             };
             if depth.is_root() && current == kind {
+                return Some(cursor);
+            }
+            depth.bump(current);
+        }
+        None
+    }
+
+    fn find_root_newline_before(&self, start: usize, end: usize) -> Option<usize> {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() && current.is_trivia() && self.tokens[cursor].text.contains('\n') {
                 return Some(cursor);
             }
             depth.bump(current);
@@ -641,6 +745,46 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             } else {
                 start
             };
+        }
+    }
+
+    fn method_keyword_pos(&self, start: usize, end: usize) -> Option<usize> {
+        let mut cursor = start;
+        loop {
+            cursor = self.skip_trivia(cursor);
+            if cursor >= end {
+                return None;
+            }
+            if self.at_attribute_start(cursor) {
+                cursor = self.skip_attribute(cursor);
+                continue;
+            }
+            return self.at_kind(cursor, SyntaxKind::FnKw).then_some(cursor);
+        }
+    }
+
+    fn find_method_end(&self, start: usize, end: usize) -> usize {
+        let Some(signature_start) = self.method_keyword_pos(start, end) else {
+            return start.saturating_add(1).min(end);
+        };
+        let param_list_end = self
+            .find_first_kind_before(SyntaxKind::LParen, signature_start, end)
+            .and_then(|start| {
+                self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+            })
+            .unwrap_or(signature_start);
+        let body = self.find_root_kind_before(SyntaxKind::LBrace, param_list_end, end);
+        let semicolon = self.find_root_kind_before(SyntaxKind::Semicolon, param_list_end, end);
+
+        match (body, semicolon) {
+            (Some(body_start), Some(semicolon_pos)) if body_start < semicolon_pos => {
+                self.find_matching_brace_end(body_start).min(end)
+            }
+            (Some(body_start), None) => self.find_matching_brace_end(body_start).min(end),
+            (_, Some(semicolon_pos)) => semicolon_pos.saturating_add(1).min(end),
+            (None, None) => self
+                .find_root_newline_before(param_list_end, end)
+                .unwrap_or(end),
         }
     }
 

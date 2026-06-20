@@ -322,6 +322,107 @@ mod tests {
     }
 
     #[test]
+    fn parser_parse_source_structures_trait_and_impl_method_nodes() {
+        let source = r#"trait Rewardable {
+    #[doc("Reward method")]
+    fn reward(ctx: Context, amount: i64) -> Result<String, String>;
+    fn fallback(ctx: Context) { return "fallback"; }
+}
+
+impl Rewardable for Player {
+    #[trace]
+    fn reward(ctx: Context, amount: i64) -> Result<String, String> { return "gold"; }
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(15), source);
+        let tree = parse.tree();
+        let trait_item = tree.traits().next().expect("trait item");
+        let trait_methods = trait_item.methods().collect::<Vec<_>>();
+        let impl_item = tree.impls().next().expect("impl item");
+        let impl_methods = impl_item.methods().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            tree.items()
+                .map(|item| item.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::TraitItem, SyntaxKind::ImplItem]
+        );
+        assert_eq!(
+            trait_methods
+                .iter()
+                .map(|method| method.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec![
+                "#[doc(\"Reward method\")]\n    fn reward(ctx: Context, amount: i64) -> Result<String, String>;",
+                "fn fallback(ctx: Context) { return \"fallback\"; }",
+            ]
+        );
+        let reward_params = trait_methods[0]
+            .param_list()
+            .expect("trait method params")
+            .params()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            reward_params
+                .iter()
+                .map(|param| param.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["ctx: Context", " amount: i64"]
+        );
+        let reward_return = trait_methods[0]
+            .return_type()
+            .expect("trait method return type");
+        assert_eq!(
+            reward_return.syntax().text().to_string(),
+            "Result<String, String>"
+        );
+        assert_eq!(
+            reward_return
+                .type_arg_list()
+                .expect("trait method return args")
+                .syntax()
+                .text()
+                .to_string(),
+            "<String, String>"
+        );
+        assert!(trait_methods[0].body().is_none());
+        assert_eq!(
+            trait_methods[1]
+                .body()
+                .expect("trait default body")
+                .syntax()
+                .text()
+                .to_string(),
+            "{ return \"fallback\"; }"
+        );
+
+        assert_eq!(impl_methods.len(), 1);
+        assert_eq!(
+            impl_methods[0].syntax().text().to_string(),
+            "#[trace]\n    fn reward(ctx: Context, amount: i64) -> Result<String, String> { return \"gold\"; }"
+        );
+        assert_eq!(
+            impl_methods[0]
+                .body()
+                .expect("impl body")
+                .syntax()
+                .text()
+                .to_string(),
+            "{ return \"gold\"; }"
+        );
+        assert_eq!(
+            impl_methods[0]
+                .return_type()
+                .expect("impl return type")
+                .syntax()
+                .text()
+                .to_string(),
+            "Result<String, String>"
+        );
+    }
+
+    #[test]
     fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         let source = "fn main() { @ \"unterminated";
         let parse = parse_source_with_id(SourceId::new(9), source);
