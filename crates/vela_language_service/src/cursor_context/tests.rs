@@ -1,27 +1,22 @@
 use super::*;
 use vela_common::SourceId;
 use vela_syntax::parse::parse_source_with_id;
-use vela_syntax::parser::parse_source;
 
 fn classify(text: &str, needle: &str) -> CursorContext {
     let offset = text.find(needle).expect("needle should exist") + needle.len();
-    let parsed = parse_source(SourceId::new(1), text);
     let syntax_parse = parse_source_with_id(SourceId::new(1), text);
     cursor_context_at(
         text,
         LineIndex::new(text).position(offset),
-        Some(&parsed),
         Some(&syntax_parse),
     )
 }
 
 fn classify_offset(text: &str, offset: usize) -> CursorContext {
-    let parsed = parse_source(SourceId::new(1), text);
     let syntax_parse = parse_source_with_id(SourceId::new(1), text);
     cursor_context_at(
         text,
         LineIndex::new(text).position(offset),
-        Some(&parsed),
         Some(&syntax_parse),
     )
 }

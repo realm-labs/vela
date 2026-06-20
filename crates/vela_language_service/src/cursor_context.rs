@@ -1,5 +1,5 @@
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{AstNode, SourceFile, Stmt, StmtKind, SyntaxMapEntry, SyntaxSourceFile};
+use vela_syntax::ast::{AstNode, SyntaxMapEntry, SyntaxSourceFile};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
@@ -13,11 +13,13 @@ mod member_receiver;
 mod pattern;
 mod record_expression_field;
 mod record_type_field;
+mod statement_boundary;
 use call_callee::call_callee_for_source;
 use member_receiver::member_receiver_for_source;
 use pattern::is_pattern_context;
 use record_expression_field::is_record_expression_field_context;
 use record_type_field::is_record_type_field_context;
+use statement_boundary::{is_inside_item, is_statement_context};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CursorContextKind {
@@ -115,7 +117,6 @@ impl CursorContext {
 pub fn cursor_context_at(
     text: &str,
     position: Position,
-    parsed: Option<&SourceFile>,
     syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
 ) -> CursorContext {
     let offset = LineIndex::new(text).offset(position);
@@ -243,7 +244,7 @@ pub fn cursor_context_at(
         );
     }
 
-    if is_item_boundary_context(text, prefix_start, parsed) {
+    if is_item_boundary_context(text, prefix_start, syntax_parse) {
         return context(
             CursorContextKind::Item,
             prefix_start,
@@ -283,7 +284,11 @@ pub fn cursor_context_at(
         return cursor;
     }
 
-    if prefix.is_empty() && is_statement_context(parsed, prefix_start) {
+    if prefix.is_empty()
+        && syntax_parse
+            .as_ref()
+            .is_some_and(|parse| is_statement_context(&parse.tree(), prefix_start))
+    {
         return context(
             CursorContextKind::Statement,
             prefix_start,
@@ -292,7 +297,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if parsed.is_some_and(|source| offset_is_inside_item(source, prefix_start)) {
+    if syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_inside_item(&parse.tree(), prefix_start))
+    {
         return context(
             CursorContextKind::Expression,
             prefix_start,
@@ -381,8 +389,15 @@ fn is_use_import_context(text: &str, prefix_start: usize) -> bool {
         .starts_with("use ")
 }
 
-fn is_item_boundary_context(text: &str, prefix_start: usize, parsed: Option<&SourceFile>) -> bool {
-    if parsed.is_some_and(|source| offset_is_inside_item(source, prefix_start)) {
+fn is_item_boundary_context(
+    text: &str,
+    prefix_start: usize,
+    syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
+) -> bool {
+    if syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_inside_item(&parse.tree(), prefix_start))
+    {
         return false;
     }
     let before_prefix = text[..prefix_start].trim_end();
@@ -591,38 +606,6 @@ fn token_start_index(tokens: &[Token], start: u32) -> Option<usize> {
     tokens.iter().position(|token| token.span.start == start)
 }
 
-fn is_statement_context(parsed: Option<&SourceFile>, prefix_start: usize) -> bool {
-    let Some(offset) = u32::try_from(prefix_start).ok() else {
-        return false;
-    };
-    parsed.is_some_and(|source| {
-        source.items.iter().any(|item| {
-            if !item.span.contains(offset) {
-                return false;
-            }
-            match &item.kind {
-                vela_syntax::ast::ItemKind::Function(function) => {
-                    function.body.statements.iter().any(|statement| {
-                        statement.span.contains(offset) && is_statement_start(statement, offset)
-                    })
-                }
-                _ => false,
-            }
-        })
-    })
-}
-
-fn is_statement_start(statement: &Stmt, offset: u32) -> bool {
-    match &statement.kind {
-        StmtKind::Let { .. } => offset <= statement.span.start.saturating_add(4),
-        StmtKind::Return(_) | StmtKind::Break | StmtKind::Continue => true,
-        StmtKind::Expr(expr) => offset <= expr.span.start.saturating_add(1),
-        StmtKind::For { .. } | StmtKind::Block(_) => {
-            offset <= statement.span.start.saturating_add(1)
-        }
-    }
-}
-
 fn active_call_open(text: &str, offset: usize) -> Option<usize> {
     let mut stack = Vec::new();
     for (index, ch) in text[..offset].char_indices() {
@@ -662,13 +645,6 @@ fn member_receiver_for_callee_range(text: &str, callee: TextRange) -> Option<Tex
             })
             .unwrap_or(0);
     (receiver_start < receiver_end).then(|| TextRange::new(receiver_start, receiver_end))
-}
-
-fn offset_is_inside_item(source: &SourceFile, offset: usize) -> bool {
-    let Some(offset) = u32::try_from(offset).ok() else {
-        return false;
-    };
-    source.items.iter().any(|item| item.span.contains(offset))
 }
 
 fn identifier_prefix_start(text: &str, offset: usize) -> usize {
