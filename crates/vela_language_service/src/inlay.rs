@@ -10,9 +10,13 @@ use vela_common::SourceId;
 use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
-    Argument, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, MatchExpr, Param,
-    Stmt, StmtKind, TypeHint,
+    Argument, AstNode, Block, ElseBranch, Expr, ExprKind, FunctionItem, IfExpr, ItemKind, Param,
+    Stmt, StmtKind, SyntaxBlock, SyntaxCallExpr, SyntaxConstItem, SyntaxElseBranch,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod,
+    SyntaxLambdaBody, SyntaxMatchArmBody, SyntaxSourceFile, SyntaxStatementKind, SyntaxTraitItem,
+    SyntaxTraitMethod, TypeHint,
 };
+use vela_syntax::{Parse as SyntaxParse, TextRange as SyntaxTextRange, TextSize};
 
 use crate::callable_context::{
     CallableFacts, CallableParameterFacts, callable_facts, member_callable_facts,
@@ -160,7 +164,7 @@ impl LanguageServiceDatabases {
         let Some(source) = self.source_db().records().get(document_id) else {
             return Vec::new();
         };
-        let Some(parsed) = self.parse_db().parsed_source(document_id) else {
+        let Some(syntax_parse) = self.parse_db().syntax_parse(document_id) else {
             return Vec::new();
         };
         let line_index = LineIndex::new(source.text());
@@ -175,40 +179,15 @@ impl LanguageServiceDatabases {
         );
         let mut hints = Vec::new();
 
-        for item in &parsed.items {
-            match &item.kind {
-                ItemKind::Const(item) => {
-                    self.collect_expr_parameter_hints(&item.value, parameter_context, &mut hints);
-                }
-                ItemKind::Function(function) => {
-                    self.collect_function_parameter_hints(function, parameter_context, &mut hints);
-                }
-                ItemKind::Impl(item) => {
-                    for method in &item.methods {
-                        self.collect_function_parameter_hints(
-                            &method.function,
-                            parameter_context,
-                            &mut hints,
-                        );
-                    }
-                }
-                ItemKind::Trait(item) => {
-                    for method in &item.methods {
-                        if let Some(body) = &method.default_body {
-                            self.collect_block_parameter_hints(body, parameter_context, &mut hints);
-                        }
-                    }
-                }
-                ItemKind::Use(_)
-                | ItemKind::Global(_)
-                | ItemKind::Struct(_)
-                | ItemKind::Enum(_) => {}
-            }
-        }
+        self.collect_syntax_source_parameter_hints(syntax_parse, parameter_context, &mut hints);
 
         let graph = self.hir_db().graph();
         let facts = AnalysisFacts::from_module_graph(graph);
         let schema = self.schema_db().facts();
+        let Some(parsed) = self.parse_db().parsed_source(document_id) else {
+            hints.sort_by_key(|hint| (hint.position.line, hint.position.character));
+            return hints;
+        };
         let mut type_collector = TypeHintCollector::new(
             document_id,
             source.text(),
@@ -245,179 +224,373 @@ impl LanguageServiceDatabases {
         hints
     }
 
-    fn collect_function_parameter_hints(
+    fn collect_syntax_source_parameter_hints(
         &self,
-        function: &FunctionItem,
+        parsed: &SyntaxParse<SyntaxSourceFile>,
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        for param in &function.params {
-            if let Some(default) = &param.default_value {
-                self.collect_expr_parameter_hints(default, context, hints);
-            }
-        }
-        self.collect_block_parameter_hints(&function.body, context, hints);
-    }
-
-    fn collect_block_parameter_hints(
-        &self,
-        block: &Block,
-        context: ParameterHintContext<'_>,
-        hints: &mut Vec<InlayHint>,
-    ) {
-        for statement in &block.statements {
-            self.collect_stmt_parameter_hints(statement, context, hints);
-        }
-    }
-
-    fn collect_stmt_parameter_hints(
-        &self,
-        statement: &Stmt,
-        context: ParameterHintContext<'_>,
-        hints: &mut Vec<InlayHint>,
-    ) {
-        match &statement.kind {
-            StmtKind::Let { value, .. } | StmtKind::Return(value) => {
-                if let Some(expr) = value {
-                    self.collect_expr_parameter_hints(expr, context, hints);
+        let tree = parsed.tree();
+        for item in tree.items() {
+            match item.syntax().kind() {
+                vela_syntax::SyntaxKind::ConstItem => {
+                    if let Some(item) = SyntaxConstItem::cast(item.syntax().clone())
+                        && let Some(value) = item.value()
+                    {
+                        self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                    }
                 }
+                vela_syntax::SyntaxKind::FunctionItem => {
+                    if let Some(function) = SyntaxFunctionItem::cast(item.syntax().clone()) {
+                        self.collect_syntax_function_parameter_hints(&function, context, hints);
+                    }
+                }
+                vela_syntax::SyntaxKind::ImplItem => {
+                    if let Some(item) = SyntaxImplItem::cast(item.syntax().clone()) {
+                        for method in item.methods() {
+                            self.collect_syntax_impl_method_parameter_hints(
+                                &method, context, hints,
+                            );
+                        }
+                    }
+                }
+                vela_syntax::SyntaxKind::TraitItem => {
+                    if let Some(item) = SyntaxTraitItem::cast(item.syntax().clone()) {
+                        for method in item.methods() {
+                            self.collect_syntax_trait_method_parameter_hints(
+                                &method, context, hints,
+                            );
+                        }
+                    }
+                }
+                vela_syntax::SyntaxKind::UseItem
+                | vela_syntax::SyntaxKind::GlobalItem
+                | vela_syntax::SyntaxKind::StructItem
+                | vela_syntax::SyntaxKind::EnumItem => {}
+                kind => unreachable!("non-item syntax kind: {kind:?}"),
             }
-            StmtKind::For { iterable, body, .. } => {
-                self.collect_expr_parameter_hints(iterable, context, hints);
-                self.collect_block_parameter_hints(body, context, hints);
-            }
-            StmtKind::Expr(expr) => {
-                self.collect_expr_parameter_hints(expr, context, hints);
-            }
-            StmtKind::Block(block) => {
-                self.collect_block_parameter_hints(block, context, hints);
-            }
-            StmtKind::Break | StmtKind::Continue => {}
         }
     }
 
-    fn collect_expr_parameter_hints(
+    fn collect_syntax_function_parameter_hints(
         &self,
-        expr: &Expr,
+        function: &SyntaxFunctionItem,
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        match &expr.kind {
-            ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => {
-                self.collect_expr_parameter_hints(expr, context, hints);
-            }
-            ExprKind::Binary { left, right, .. }
-            | ExprKind::Assign {
-                target: left,
-                value: right,
-                ..
-            } => {
-                self.collect_expr_parameter_hints(left, context, hints);
-                self.collect_expr_parameter_hints(right, context, hints);
-            }
-            ExprKind::Field { base, .. } => {
-                self.collect_expr_parameter_hints(base, context, hints);
-            }
-            ExprKind::Call { callee, args } => {
-                self.collect_call_parameter_hints(callee, args, context, hints);
-                self.collect_expr_parameter_hints(callee, context, hints);
-                for arg in args {
-                    self.collect_expr_parameter_hints(&arg.value, context, hints);
+        if let Some(params) = function.param_list() {
+            for param in params.params() {
+                if let Some(default) = param.default_value() {
+                    self.collect_syntax_expr_parameter_hints(&default, context, hints);
                 }
             }
-            ExprKind::Index { base, index } => {
-                self.collect_expr_parameter_hints(base, context, hints);
-                self.collect_expr_parameter_hints(index, context, hints);
-            }
-            ExprKind::Array(items) => {
-                for item in items {
-                    self.collect_expr_parameter_hints(item, context, hints);
+        }
+        if let Some(body) = function.body() {
+            self.collect_syntax_block_parameter_hints(&body, context, hints);
+        }
+    }
+
+    fn collect_syntax_impl_method_parameter_hints(
+        &self,
+        method: &SyntaxImplMethod,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        if let Some(params) = method.param_list() {
+            for param in params.params() {
+                if let Some(default) = param.default_value() {
+                    self.collect_syntax_expr_parameter_hints(&default, context, hints);
                 }
             }
-            ExprKind::Map(entries) => {
-                for entry in entries {
-                    self.collect_expr_parameter_hints(&entry.key, context, hints);
-                    self.collect_expr_parameter_hints(&entry.value, context, hints);
+        }
+        if let Some(body) = method.body() {
+            self.collect_syntax_block_parameter_hints(&body, context, hints);
+        }
+    }
+
+    fn collect_syntax_trait_method_parameter_hints(
+        &self,
+        method: &SyntaxTraitMethod,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        if let Some(body) = method.body() {
+            self.collect_syntax_block_parameter_hints(&body, context, hints);
+        }
+    }
+
+    fn collect_syntax_block_parameter_hints(
+        &self,
+        block: &SyntaxBlock,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        for statement in block.statements() {
+            self.collect_syntax_stmt_parameter_hints(&statement, context, hints);
+        }
+    }
+
+    fn collect_syntax_stmt_parameter_hints(
+        &self,
+        statement: &vela_syntax::ast::SyntaxStatement,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        match statement.statement_kind() {
+            SyntaxStatementKind::Let => {
+                if let Some(statement) = statement.as_let()
+                    && let Some(expr) = statement.initializer()
+                {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
                 }
             }
-            ExprKind::Record { fields, .. } => {
-                for field in fields {
-                    if let Some(value) = &field.value {
-                        self.collect_expr_parameter_hints(value, context, hints);
+            SyntaxStatementKind::Return => {
+                if let Some(statement) = statement.as_return()
+                    && let Some(expr) = statement.expression()
+                {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxStatementKind::For => {
+                if let Some(statement) = statement.as_for() {
+                    if let Some(iterable) = statement.iterable() {
+                        self.collect_syntax_expr_parameter_hints(&iterable, context, hints);
+                    }
+                    if let Some(body) = statement.body() {
+                        self.collect_syntax_block_parameter_hints(&body, context, hints);
                     }
                 }
             }
-            ExprKind::Lambda { params, body } => {
-                for param in params {
-                    if let Some(default) = &param.default_value {
-                        self.collect_expr_parameter_hints(default, context, hints);
-                    }
-                }
-                self.collect_expr_parameter_hints(body, context, hints);
-            }
-            ExprKind::If(if_expr) => {
-                self.collect_if_parameter_hints(if_expr, context, hints);
-            }
-            ExprKind::Match(match_expr) => {
-                self.collect_match_parameter_hints(match_expr, context, hints);
-            }
-            ExprKind::Block(block) => {
-                self.collect_block_parameter_hints(block, context, hints);
-            }
-            ExprKind::InterpolatedString(parts) => {
-                for part in parts {
-                    if let vela_syntax::ast::InterpolatedStringPart::Expr(expr) = part {
-                        self.collect_expr_parameter_hints(expr, context, hints);
-                    }
+            SyntaxStatementKind::Expr => {
+                if let Some(statement) = statement.as_expr()
+                    && let Some(expr) = statement.expression()
+                {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
                 }
             }
-            ExprKind::Literal(_) | ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Error => {}
+            SyntaxStatementKind::Block => {
+                if let Some(block) = statement.as_block() {
+                    self.collect_syntax_block_parameter_hints(&block, context, hints);
+                }
+            }
+            SyntaxStatementKind::If => {
+                if let Some(expr) = statement.as_if() {
+                    self.collect_syntax_if_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxStatementKind::Match => {
+                if let Some(expr) = statement.as_match() {
+                    self.collect_syntax_match_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxStatementKind::Break | SyntaxStatementKind::Continue => {}
         }
     }
 
-    fn collect_if_parameter_hints(
+    fn collect_syntax_expr_parameter_hints(
         &self,
-        if_expr: &IfExpr,
+        expr: &SyntaxExpression,
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        self.collect_expr_parameter_hints(&if_expr.condition, context, hints);
-        self.collect_block_parameter_hints(&if_expr.then_branch, context, hints);
-        match &if_expr.else_branch {
-            Some(ElseBranch::If(if_expr)) => {
-                self.collect_if_parameter_hints(if_expr, context, hints);
+        match expr.expression_kind() {
+            SyntaxExpressionKind::Paren => {
+                if let Some(expr) = expr.as_paren().and_then(|expr| expr.expression()) {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
+                }
             }
-            Some(ElseBranch::Block(block)) => {
-                self.collect_block_parameter_hints(block, context, hints);
+            SyntaxExpressionKind::Unary => {
+                if let Some(expr) = expr.as_unary().and_then(|expr| expr.expression()) {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Try => {
+                if let Some(expr) = expr.as_try().and_then(|expr| expr.expression()) {
+                    self.collect_syntax_expr_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Binary => {
+                if let Some(expr) = expr.as_binary() {
+                    if let Some(lhs) = expr.lhs() {
+                        self.collect_syntax_expr_parameter_hints(&lhs, context, hints);
+                    }
+                    if let Some(rhs) = expr.rhs() {
+                        self.collect_syntax_expr_parameter_hints(&rhs, context, hints);
+                    }
+                }
+            }
+            SyntaxExpressionKind::Assign => {
+                if let Some(expr) = expr.as_assign() {
+                    if let Some(target) = expr.target() {
+                        self.collect_syntax_expr_parameter_hints(&target, context, hints);
+                    }
+                    if let Some(value) = expr.value() {
+                        self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                    }
+                }
+            }
+            SyntaxExpressionKind::Field => {
+                if let Some(base) = expr.as_field().and_then(|expr| expr.receiver()) {
+                    self.collect_syntax_expr_parameter_hints(&base, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Call => {
+                if let Some(call) = expr.as_call() {
+                    self.collect_syntax_call_parameter_hints(&call, context, hints);
+                    if let Some(callee) = call.callee() {
+                        self.collect_syntax_expr_parameter_hints(&callee, context, hints);
+                    }
+                    for arg in call.arguments() {
+                        if let Some(value) = arg.expression() {
+                            self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                        }
+                    }
+                }
+            }
+            SyntaxExpressionKind::Index => {
+                if let Some(expr) = expr.as_index() {
+                    if let Some(base) = expr.receiver() {
+                        self.collect_syntax_expr_parameter_hints(&base, context, hints);
+                    }
+                    if let Some(index) = expr.index() {
+                        self.collect_syntax_expr_parameter_hints(&index, context, hints);
+                    }
+                }
+            }
+            SyntaxExpressionKind::Array => {
+                if let Some(expr) = expr.as_array() {
+                    for item in expr.expressions() {
+                        self.collect_syntax_expr_parameter_hints(&item, context, hints);
+                    }
+                }
+            }
+            SyntaxExpressionKind::Map => {
+                if let Some(expr) = expr.as_map() {
+                    for entry in expr.entries() {
+                        if let Some(key) = entry.key() {
+                            self.collect_syntax_expr_parameter_hints(&key, context, hints);
+                        }
+                        if let Some(value) = entry.value() {
+                            self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                        }
+                    }
+                }
+            }
+            SyntaxExpressionKind::Record => {
+                if let Some(expr) = expr.as_record() {
+                    for field in expr.fields() {
+                        if let Some(value) = field.expression() {
+                            self.collect_syntax_expr_parameter_hints(&value, context, hints);
+                        }
+                    }
+                }
+            }
+            SyntaxExpressionKind::Lambda => {
+                if let Some(expr) = expr.as_lambda() {
+                    if let Some(params) = expr.param_list() {
+                        for param in params.params() {
+                            if let Some(default) = param.default_value() {
+                                self.collect_syntax_expr_parameter_hints(&default, context, hints);
+                            }
+                        }
+                    }
+                    match expr.body() {
+                        Some(SyntaxLambdaBody::Expression(body)) => {
+                            self.collect_syntax_expr_parameter_hints(&body, context, hints);
+                        }
+                        Some(SyntaxLambdaBody::Block(body)) => {
+                            self.collect_syntax_block_parameter_hints(&body, context, hints);
+                        }
+                        None => {}
+                    }
+                }
+            }
+            SyntaxExpressionKind::If => {
+                if let Some(expr) = expr.as_if() {
+                    self.collect_syntax_if_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Match => {
+                if let Some(expr) = expr.as_match() {
+                    self.collect_syntax_match_parameter_hints(&expr, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Block => {
+                if let Some(block) = expr.as_block() {
+                    self.collect_syntax_block_parameter_hints(&block, context, hints);
+                }
+            }
+            SyntaxExpressionKind::Literal => {
+                if let Some(literal) = expr.as_literal() {
+                    for interpolation in literal.interpolation_expressions() {
+                        self.collect_syntax_expr_parameter_hints(&interpolation, context, hints);
+                    }
+                }
+            }
+            SyntaxExpressionKind::Path => {}
+        }
+    }
+
+    fn collect_syntax_if_parameter_hints(
+        &self,
+        if_expr: &vela_syntax::ast::SyntaxIfExpr,
+        context: ParameterHintContext<'_>,
+        hints: &mut Vec<InlayHint>,
+    ) {
+        if let Some(condition) = if_expr.condition() {
+            self.collect_syntax_expr_parameter_hints(&condition, context, hints);
+        }
+        if let Some(then_branch) = if_expr.then_block() {
+            self.collect_syntax_block_parameter_hints(&then_branch, context, hints);
+        }
+        match if_expr.else_branch() {
+            Some(SyntaxElseBranch::If(if_expr)) => {
+                self.collect_syntax_if_parameter_hints(&if_expr, context, hints);
+            }
+            Some(SyntaxElseBranch::Block(block)) => {
+                self.collect_syntax_block_parameter_hints(&block, context, hints);
             }
             None => {}
         }
     }
 
-    fn collect_match_parameter_hints(
+    fn collect_syntax_match_parameter_hints(
         &self,
-        match_expr: &MatchExpr,
+        match_expr: &vela_syntax::ast::SyntaxMatchExpr,
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
-        self.collect_expr_parameter_hints(&match_expr.scrutinee, context, hints);
-        for arm in &match_expr.arms {
-            if let Some(guard) = &arm.guard {
-                self.collect_expr_parameter_hints(guard, context, hints);
+        if let Some(scrutinee) = match_expr.scrutinee() {
+            self.collect_syntax_expr_parameter_hints(&scrutinee, context, hints);
+        }
+        for arm in match_expr.arms() {
+            if let Some(guard) = arm.guard() {
+                self.collect_syntax_expr_parameter_hints(&guard, context, hints);
             }
-            self.collect_expr_parameter_hints(&arm.body, context, hints);
+            match arm.body() {
+                Some(SyntaxMatchArmBody::Expression(body)) => {
+                    self.collect_syntax_expr_parameter_hints(&body, context, hints);
+                }
+                Some(SyntaxMatchArmBody::Block(body)) => {
+                    self.collect_syntax_block_parameter_hints(&body, context, hints);
+                }
+                None => {}
+            }
         }
     }
 
-    fn collect_call_parameter_hints(
+    fn collect_syntax_call_parameter_hints(
         &self,
-        callee: &Expr,
-        args: &[Argument],
+        call: &SyntaxCallExpr,
         context: ParameterHintContext<'_>,
         hints: &mut Vec<InlayHint>,
     ) {
+        let Some(callee) = call.callee() else {
+            return;
+        };
+        let args = call.arguments();
         let Some(callable) = self
-            .call_callable_candidates(callee, args, context.source_id, context.source_text)
+            .syntax_call_callable_candidates(&callee, call, &args, context)
             .into_iter()
             .next()
         else {
@@ -425,15 +598,16 @@ impl LanguageServiceDatabases {
         };
 
         for (index, arg) in args.iter().enumerate() {
-            if arg.name.is_some() {
+            if arg.name_token().is_some() {
                 continue;
             }
-            if matches!(arg.value.kind, ExprKind::Lambda { .. }) {
-                continue;
-            }
-            let Ok(offset) = usize::try_from(arg.value.span.start) else {
+            let Some(value) = arg.expression() else {
                 continue;
             };
+            if value.expression_kind() == SyntaxExpressionKind::Lambda {
+                continue;
+            }
+            let offset = text_size_to_usize(value.syntax().text_range().start());
             if !context.range.contains(offset) {
                 continue;
             }
@@ -452,57 +626,79 @@ impl LanguageServiceDatabases {
         }
     }
 
-    fn call_callable_candidates(
+    fn syntax_call_callable_candidates(
         &self,
-        callee: &Expr,
-        args: &[Argument],
-        source_id: SourceId,
-        source_text: &str,
+        callee: &SyntaxExpression,
+        call: &SyntaxCallExpr,
+        args: &[vela_syntax::ast::SyntaxArgument],
+        context: ParameterHintContext<'_>,
     ) -> Vec<CallableFacts> {
-        if let Some((method, receiver_range)) = member_method_and_receiver_range(callee) {
+        if let Some((method, receiver_range)) = syntax_member_method_and_receiver_range(callee) {
             return member_callable_facts(
                 self,
-                source_id,
+                context.source_id,
                 receiver_range,
-                method,
-                &args_prefix(args, source_text),
+                &method,
+                &syntax_args_prefix(call, args, context.source_text),
             );
         }
 
-        let Some(callee) = callee_label(callee) else {
+        let Some(callee) = syntax_callee_label(callee) else {
             return Vec::new();
         };
         callable_facts(self, &callee)
     }
 }
 
-fn member_method_and_receiver_range(callee: &Expr) -> Option<(&str, TextRange)> {
-    let ExprKind::Field { base, name } = &callee.kind else {
-        return None;
-    };
-    let start = usize::try_from(base.span.start).ok()?;
-    let receiver_end = usize::try_from(base.span.end).ok()?;
-    Some((name.as_str(), TextRange::new(start, receiver_end)))
+fn syntax_member_method_and_receiver_range(
+    callee: &SyntaxExpression,
+) -> Option<(String, TextRange)> {
+    let field = callee.as_field()?;
+    let method = field.name_text()?;
+    let receiver = field.receiver()?;
+    Some((method, syntax_text_range(receiver.syntax().text_range())))
 }
 
-fn args_prefix(args: &[Argument], source_text: &str) -> String {
+fn syntax_args_prefix(
+    call: &SyntaxCallExpr,
+    args: &[vela_syntax::ast::SyntaxArgument],
+    source_text: &str,
+) -> String {
     let Some(last_arg) = args.last() else {
         return String::new();
     };
-    let Ok(end) = usize::try_from(last_arg.value.span.end) else {
+    let Some(last_value) = last_arg.expression() else {
         return String::new();
     };
-    let open = args
-        .first()
-        .and_then(|arg| usize::try_from(arg.value.span.start).ok())
-        .and_then(|first_arg_start| source_text[..first_arg_start].rfind('('));
-    let Some(open) = open else {
+    let Some(open) = call
+        .l_paren_token()
+        .map(|token| text_size_to_usize(token.text_range().end()))
+    else {
         return String::new();
     };
+    let end = text_size_to_usize(last_value.syntax().text_range().end()).min(source_text.len());
     source_text
-        .get(open + '('.len_utf8()..end.min(source_text.len()))
+        .get(open.min(end)..end)
         .unwrap_or_default()
         .to_owned()
+}
+
+fn syntax_callee_label(callee: &SyntaxExpression) -> Option<String> {
+    callee
+        .as_path()
+        .and_then(|path| path.path_text())
+        .or_else(|| callee.as_field().and_then(|field| field.name_text()))
+}
+
+fn syntax_text_range(range: SyntaxTextRange) -> TextRange {
+    TextRange::new(
+        text_size_to_usize(range.start()),
+        text_size_to_usize(range.end()),
+    )
+}
+
+fn text_size_to_usize(size: TextSize) -> usize {
+    u32::from(size) as usize
 }
 
 impl TypeHintCollector<'_, '_> {
@@ -905,14 +1101,6 @@ fn field_name_end_offset(expr: &Expr, name: &str, source_text: &str) -> Option<u
     let text = source_text.get(start..end)?;
     let name_start = text.rfind(name)?;
     Some(start + name_start + name.len())
-}
-
-fn callee_label(callee: &Expr) -> Option<String> {
-    match &callee.kind {
-        ExprKind::Path(path) => Some(path.join("::")),
-        ExprKind::Field { name, .. } => Some(name.clone()),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
