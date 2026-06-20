@@ -56,6 +56,16 @@ impl SyntaxAttribute {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
+    pub fn path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn arguments(&self) -> AstChildren<SyntaxAttributeArg> {
         AstChildren::new(&self.syntax)
     }
@@ -293,6 +303,22 @@ fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken>
         .collect()
 }
 
+fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| token.text().to_owned())
+        .collect()
+}
+
+fn path_separator_tokens_from_tokens(tokens: &[SyntaxToken]) -> Vec<SyntaxToken> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::ColonColon)
+        .cloned()
+        .collect()
+}
+
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
     parent
         .children_with_tokens()
@@ -381,6 +407,15 @@ mod tests {
             .expect("attribute");
 
         assert_eq!(attribute.path_text().as_deref(), Some("derive::PartialEq"));
+        assert_eq!(attribute.path_segments(), vec!["derive", "PartialEq"]);
+        assert_eq!(
+            attribute
+                .path_separator_tokens()
+                .iter()
+                .map(|token| token.kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ColonColon]
+        );
         assert_eq!(
             SyntaxAttribute::cast(attribute.syntax().clone()).expect("attribute node"),
             attribute
@@ -410,6 +445,8 @@ fn main() {}
             "]"
         );
         assert_eq!(attribute.path_text().as_deref(), Some("rule"));
+        assert_eq!(attribute.path_segments(), vec!["rule"]);
+        assert!(attribute.path_separator_tokens().is_empty());
         assert_eq!(attribute.l_paren_token().expect("open paren").text(), "(");
         assert_eq!(attribute.r_paren_token().expect("close paren").text(), ")");
         assert_eq!(
