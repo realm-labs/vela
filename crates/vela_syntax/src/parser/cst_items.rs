@@ -475,6 +475,60 @@ impl CstParser<'_, '_> {
             .find_matching_delimiter_end(start, SyntaxKind::Less, SyntaxKind::Greater)
             .filter(|candidate| *candidate <= end)
             .unwrap_or(end);
-        self.node_range(SyntaxKind::TypeArgList, start, args_end);
+
+        self.builder.start_node(SyntaxKind::TypeArgList);
+        self.emit_current_token();
+        let close = args_end.saturating_sub(1);
+        let mut arg_start = self.skip_trivia(self.pos);
+        self.emit_until(arg_start);
+
+        while self.pos < close {
+            if self.current_kind() == Some(SyntaxKind::Comma)
+                && self.range_is_at_type_arg_root(arg_start, self.pos)
+            {
+                let arg_end = self.trim_trailing_trivia(arg_start, self.pos);
+                self.type_arg_range(arg_start, arg_end);
+                self.emit_current_token();
+                arg_start = self.skip_trivia(self.pos);
+                self.emit_until(arg_start);
+            } else {
+                self.pos += 1;
+            }
+        }
+
+        let arg_end = self.trim_trailing_trivia(arg_start, close);
+        self.type_arg_range(arg_start, arg_end);
+        self.emit_until(args_end);
+        self.builder.finish_node();
+    }
+
+    fn type_arg_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        if self.has_significant_tokens(start, end) {
+            self.type_hint_range(start, end);
+        } else {
+            self.emit_tokens(start, end);
+        }
+    }
+
+    fn range_is_at_type_arg_root(&self, start: usize, end: usize) -> bool {
+        let mut angle = 0_u32;
+        let mut paren = 0_u32;
+        let mut bracket = 0_u32;
+        let mut brace = 0_u32;
+        for token in &self.tokens[start..end] {
+            match token.kind {
+                SyntaxKind::Less => angle = angle.saturating_add(1),
+                SyntaxKind::Greater => angle = angle.saturating_sub(1),
+                SyntaxKind::LParen => paren = paren.saturating_add(1),
+                SyntaxKind::RParen => paren = paren.saturating_sub(1),
+                SyntaxKind::LBracket => bracket = bracket.saturating_add(1),
+                SyntaxKind::RBracket => bracket = bracket.saturating_sub(1),
+                SyntaxKind::LBrace => brace = brace.saturating_add(1),
+                SyntaxKind::RBrace => brace = brace.saturating_sub(1),
+                _ => {}
+            }
+        }
+        angle == 0 && paren == 0 && bracket == 0 && brace == 0
     }
 }

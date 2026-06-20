@@ -229,14 +229,14 @@ global current_player: Player;
         );
         let items_hint = params_vec[1].type_hint().expect("items type");
         assert_eq!(items_hint.syntax().text().to_string(), "Array<String>");
+        let items_args = items_hint.type_arg_list().expect("items type args");
+        assert_eq!(items_args.syntax().text().to_string(), "<String>");
         assert_eq!(
-            items_hint
-                .type_arg_list()
-                .expect("items type args")
-                .syntax()
-                .text()
-                .to_string(),
-            "<String>"
+            items_args
+                .type_hints()
+                .map(|hint| hint.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["String"]
         );
         assert!(params_vec[2].type_hint().is_none());
         let return_type = function.return_type().expect("return type");
@@ -244,14 +244,27 @@ global current_player: Player;
             return_type.syntax().text().to_string(),
             "Result<Map<String, i64>, String>"
         );
+        let return_args = return_type.type_arg_list().expect("return type args");
         assert_eq!(
-            return_type
-                .type_arg_list()
-                .expect("return type args")
-                .syntax()
-                .text()
-                .to_string(),
+            return_args.syntax().text().to_string(),
             "<Map<String, i64>, String>"
+        );
+        let return_arg_hints = return_args.type_hints().collect::<Vec<_>>();
+        assert_eq!(
+            return_arg_hints
+                .iter()
+                .map(|hint| hint.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["Map<String, i64>", "String"]
+        );
+        assert_eq!(
+            return_arg_hints[0]
+                .type_arg_list()
+                .expect("nested map args")
+                .type_hints()
+                .map(|hint| hint.syntax().text().to_string())
+                .collect::<Vec<_>>(),
+            vec!["String", "i64"]
         );
         assert_eq!(body.syntax().kind(), SyntaxKind::Block);
         assert_eq!(body.syntax().text().to_string(), "{ return amount; }");

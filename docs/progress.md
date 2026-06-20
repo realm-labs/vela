@@ -139,9 +139,10 @@ use, const, global, and function declarations typed CST wrappers. Use items
 now expose use-path child nodes, const items expose type-hint and value
 expression accessors, global items expose type-hint accessors, and function
 declarations expose typed parameter-list, parameter, type-hint,
-type-argument-list, and body block CST wrappers. Struct declarations now expose
-typed field-list and field CST wrappers with nested field type-hint and
-type-argument-list accessors. Enum declarations now expose typed variant-list
+type-argument-list with nested type-hint children, and body block CST wrappers.
+Struct declarations now expose typed field-list and field CST wrappers with
+nested field type-hint and type-argument-list accessors. Enum declarations now
+expose typed variant-list
 and variant CST wrappers, with tuple variant payloads structured as parameter
 lists and record variant payloads structured as field lists. Trait and impl
 declarations now expose typed method CST wrappers with parameter-list,
@@ -161,7 +162,7 @@ expression/block bodies. Match expressions now expose scrutinees, arm lists,
 explicit guard and expression/block body accessors, tuple-variant
 pattern paths, record-variant pattern paths and fields, field labels, binding
 names, literal patterns, and wildcard/basic pattern nodes. The
-rowan-backed typed AST wrapper layer now has focused syntax, statement,
+rowan-backed typed AST wrapper layer now has focused syntax, item, statement,
 expression, and pattern submodules so additional wrappers can land without
 growing the legacy owned-AST file; remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.

@@ -2,6 +2,8 @@ use vela_common::Span;
 
 #[path = "ast/expr.rs"]
 mod expr;
+#[path = "ast/items.rs"]
+mod items;
 #[path = "ast/patterns.rs"]
 mod patterns;
 #[path = "ast/statements.rs"]
@@ -16,6 +18,12 @@ pub use expr::{
     SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
     SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
 };
+pub use items::{
+    SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,
+    SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList,
+    SyntaxRecordFieldList, SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem,
+    SyntaxTraitItem, SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxUseItem, SyntaxUsePath,
+};
 pub use patterns::{
     SyntaxPattern, SyntaxRecordPattern, SyntaxRecordPatternField, SyntaxTuplePattern,
 };
@@ -24,11 +32,7 @@ pub use statements::{
     SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
 };
 pub use syntax::{
-    AstChildren, AstNode, SyntaxBlock, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
-    SyntaxEnumVariantList, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod,
-    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxRecordFieldList, SyntaxSourceFile,
-    SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod,
-    SyntaxTupleFieldList, SyntaxTypeArgList, SyntaxTypeHint, SyntaxUseItem, SyntaxUsePath,
+    AstChildren, AstNode, SyntaxBlock, SyntaxSourceFile, SyntaxTypeArgList, SyntaxTypeHint,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
