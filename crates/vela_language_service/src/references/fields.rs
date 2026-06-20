@@ -2,7 +2,8 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
-use vela_syntax::ast::SourceFile;
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::{LanguageServiceDatabases, member_access, query_context};
 
@@ -36,7 +37,7 @@ pub(super) fn script_field_references(
         references.extend(script_field_use_references_for_source(
             databases, graph, source, target,
         ));
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
             references.extend(script_record_field_references_for_source(
                 graph, parsed, source, target,
             ));
@@ -98,27 +99,19 @@ pub(super) fn script_field_target_for_receiver_fact(
 
 pub(super) fn script_record_field_use_target(
     graph: &ModuleGraph,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<FieldReferenceTarget> {
     let field = token_text(text, token.range)?;
-    let mut target = None;
-    record_fields::for_each_record_field(parsed, |path, record_field| {
-        if target.is_some() || record_field.name != field {
-            return;
-        }
-        let Some(span_range) = span_text_range(record_field.span) else {
-            return;
-        };
-        let Some(name_range) = name_range_in_text(text, span_range, &record_field.name) else {
-            return;
-        };
-        if name_range.start <= token.range.start && token.range.end <= name_range.end {
-            target = script_field_target_for_constructor_path(graph, path, field);
-        }
-    });
-    target
+    record_fields::record_field_sites(parsed)
+        .into_iter()
+        .find(|site| {
+            site.name == field
+                && site.name_range.start <= token.range.start
+                && token.range.end <= site.name_range.end
+        })
+        .and_then(|site| script_field_target_for_constructor_path(graph, &site.path, field))
 }
 
 fn reference_for_script_field_declaration(
@@ -184,35 +177,29 @@ fn script_field_use_references_for_source(
 
 fn script_record_field_references_for_source(
     graph: &ModuleGraph,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     source: &crate::SourceRecord,
     target: &FieldReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    record_fields::for_each_record_field(parsed, |path, field| {
+    for field in record_fields::record_field_sites(parsed) {
         if field.name != target.field {
-            return;
+            continue;
         }
-        if script_field_target_for_constructor_path(graph, path, &target.field).as_ref()
+        if script_field_target_for_constructor_path(graph, &field.path, &target.field).as_ref()
             != Some(target)
         {
-            return;
-        }
-        let Some(span_range) = span_text_range(field.span) else {
-            return;
-        };
-        let Some(name_range) = name_range_in_text(text, span_range, &field.name) else {
-            return;
+            continue;
         };
         references.push(Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, name_range),
+            range: diagnostic_range(text, field.name_range),
             kind: ReferenceKind::Read,
             symbol: source_member_symbol(graph, target.owner, &target.field)
                 .expect("field target should have a source symbol"),
         });
-    });
+    }
     references
 }
 

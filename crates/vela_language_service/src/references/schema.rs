@@ -87,13 +87,15 @@ pub(super) fn schema_field_references(
             source,
             target,
         ));
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
             references.extend(schema_record_field_references_for_source(
                 databases.schema_db().facts(),
                 parsed,
                 source,
                 target,
             ));
+        }
+        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             references.extend(schema_record_variant_pattern_field_references_for_source(
                 databases.schema_db().facts(),
                 parsed,
@@ -259,29 +261,27 @@ pub(super) fn schema_variant_use_target(
 
 pub(super) fn schema_record_field_use_target(
     databases: &LanguageServiceDatabases,
+    syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
     parsed: &SourceFile,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<SchemaFieldReferenceTarget> {
     let field = token_text(text, token.range)?;
-    let mut target = None;
-    record_fields::for_each_record_field(parsed, |path, record_field| {
-        if target.is_some() || record_field.name != field {
-            return;
-        }
-        let Some(span_range) = span_text_range(record_field.span) else {
-            return;
-        };
-        let Some(name_range) = name_range_in_text(text, span_range, &record_field.name) else {
-            return;
-        };
-        if name_range.start <= token.range.start && token.range.end <= name_range.end {
-            target = schema_field_target_for_constructor_path(
-                databases.schema_db().facts(),
-                path,
-                field,
-            );
-        }
+    let mut target = syntax_parse.and_then(|parsed| {
+        record_fields::record_field_sites(parsed)
+            .into_iter()
+            .find(|site| {
+                site.name == field
+                    && site.name_range.start <= token.range.start
+                    && token.range.end <= site.name_range.end
+            })
+            .and_then(|site| {
+                schema_field_target_for_constructor_path(
+                    databases.schema_db().facts(),
+                    &site.path,
+                    field,
+                )
+            })
     });
     if target.is_none() {
         target = schema_record_variant_pattern_field_use_target(
@@ -442,34 +442,28 @@ fn schema_field_use_references_for_source(
 
 fn schema_record_field_references_for_source(
     schema: &RegistryFacts,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     source: &crate::SourceRecord,
     target: &SchemaFieldReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    record_fields::for_each_record_field(parsed, |path, field| {
+    for field in record_fields::record_field_sites(parsed) {
         if field.name != target.field {
-            return;
+            continue;
         }
-        if schema_field_target_for_constructor_path(schema, path, &target.field).as_ref()
+        if schema_field_target_for_constructor_path(schema, &field.path, &target.field).as_ref()
             != Some(target)
         {
-            return;
-        }
-        let Some(span_range) = span_text_range(field.span) else {
-            return;
-        };
-        let Some(name_range) = name_range_in_text(text, span_range, &field.name) else {
-            return;
+            continue;
         };
         references.push(Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, name_range),
+            range: diagnostic_range(text, field.name_range),
             kind: ReferenceKind::Read,
             symbol: schema_field_symbol(target),
         });
-    });
+    }
     references
 }
 
