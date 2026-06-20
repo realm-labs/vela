@@ -3,11 +3,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
-use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Argument, EnumVariantFields, Expr, ItemKind, RecordField, SourceFile};
 
 use crate::Constant;
 
+use super::type_hints::hir_type_hint_from_syntax;
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -154,10 +154,9 @@ pub(super) fn source_schema_defaults(
                     .map(|field| ConstructorField {
                         name: field.name.clone(),
                         argument_name: field.name.clone(),
-                        value_type: field
-                            .type_hint
-                            .as_ref()
-                            .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
+                        value_type: field.type_hint.as_ref().and_then(|hint| {
+                            type_hint_value_type(&hir_type_hint_from_syntax(hint))
+                        }),
                         default: field.default_value.clone().map(|value| SchemaFieldDefault {
                             name: field.name.clone(),
                             value,
@@ -441,7 +440,7 @@ fn enum_variant_fields(
                 value_type: field
                     .type_hint
                     .as_ref()
-                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
+                    .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint))),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: index.to_string(),
                     value,
@@ -457,7 +456,7 @@ fn enum_variant_fields(
                 value_type: field
                     .type_hint
                     .as_ref()
-                    .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint))),
+                    .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint))),
                 default: field.default_value.clone().map(|value| SchemaFieldDefault {
                     name: field.name.clone(),
                     value,

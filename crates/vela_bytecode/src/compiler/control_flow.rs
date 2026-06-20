@@ -13,6 +13,7 @@ use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
 use super::record_shapes::ValueShape;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
+use super::type_hints::hir_type_hint_from_syntax;
 use super::value_flow::{BlockValue, block_value};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
@@ -86,7 +87,7 @@ impl Compiler<'_, '_> {
                 type_hint,
                 value,
             } => {
-                let hir_type_hint = type_hint.as_ref().map(HirTypeHint::from_syntax);
+                let hir_type_hint = type_hint.as_ref().map(hir_type_hint_from_syntax);
                 let hinted_script_fact = hir_type_hint.as_ref().and_then(|hint| {
                     let known_type_names = self.facts.known_type_names();
                     type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)

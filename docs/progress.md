@@ -235,9 +235,12 @@ field lists now recover as distinct CST field nodes, preserving editor record
 field completion without legacy metadata fallback. The HIR module graph source
 entrypoint now consumes the rowan parse record directly, including CST parse
 diagnostics and CST item iteration, so `vela_hir::ModuleGraph` no longer reparses
-sources through the old owned `SourceFile` API. Bytecode compilation and
-remaining downstream lowering still consume the old owned AST while their syntax
-API migration continues.
+sources through the old owned `SourceFile` API. HIR type and attribute metadata
+no longer expose old owned-AST conversion helpers; the remaining legacy
+`TypeHint` conversion is isolated in `vela_bytecode` until compiler lowering
+migrates to rowan wrappers or HIR facts. Bytecode compilation and remaining
+downstream lowering still consume the old owned AST while their syntax API
+migration continues.
 Remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 

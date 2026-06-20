@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
 use vela_common::Span;
-use vela_syntax::ast::Attribute;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirAttribute {
@@ -19,23 +18,9 @@ pub enum SchemaIdAttrError {
 
 impl HirAttribute {
     #[must_use]
-    pub fn from_syntax(attribute: &Attribute) -> Self {
-        Self {
-            name: attribute.path.join("::"),
-            value: attribute.value.clone(),
-            span: attribute.span,
-        }
-    }
-
-    #[must_use]
     pub fn string_value(&self) -> &str {
         self.value.as_deref().unwrap_or("true")
     }
-}
-
-#[must_use]
-pub fn attrs_from_syntax(attributes: &[Attribute]) -> Vec<HirAttribute> {
-    attributes.iter().map(HirAttribute::from_syntax).collect()
 }
 
 #[must_use]

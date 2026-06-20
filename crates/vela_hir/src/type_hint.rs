@@ -1,10 +1,6 @@
 use vela_common::Span;
-use vela_syntax::ast::{
-    ConstItem, EnumItem, EnumVariantFields, GlobalItem, ImplItem, ImplKind, Param, StructField,
-    TraitItem, TypeHint,
-};
 
-use crate::{attributes::HirAttribute, attributes::attrs_from_syntax, ids::HirNodeId};
+use crate::{attributes::HirAttribute, ids::HirNodeId};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
@@ -14,15 +10,6 @@ pub struct HirTypeHint {
 }
 
 impl HirTypeHint {
-    #[must_use]
-    pub fn from_syntax(hint: &TypeHint) -> Self {
-        Self {
-            path: hint.path.clone(),
-            args: hint.args.iter().map(Self::from_syntax).collect(),
-            span: hint.span,
-        }
-    }
-
     #[must_use]
     pub fn display(&self) -> String {
         let path = self.path.join("::");
@@ -48,18 +35,6 @@ pub struct ParamHint {
     pub default_value_span: Option<Span>,
 }
 
-impl ParamHint {
-    #[must_use]
-    pub fn from_syntax(param: &Param) -> Self {
-        Self {
-            name: param.name.clone(),
-            span: param.span,
-            type_hint: param.type_hint.as_ref().map(HirTypeHint::from_syntax),
-            default_value_span: param.default_value.as_ref().map(|value| value.span),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionSignature {
     pub params: Vec<ParamHint>,
@@ -72,28 +47,9 @@ pub struct ConstMetadata {
     pub value_span: Span,
 }
 
-impl ConstMetadata {
-    #[must_use]
-    pub fn from_syntax(item: &ConstItem) -> Self {
-        Self {
-            type_hint: item.type_hint.as_ref().map(HirTypeHint::from_syntax),
-            value_span: item.value.span,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GlobalMetadata {
     pub type_hint: HirTypeHint,
-}
-
-impl GlobalMetadata {
-    #[must_use]
-    pub fn from_syntax(item: &GlobalItem) -> Self {
-        Self {
-            type_hint: HirTypeHint::from_syntax(&item.type_hint),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -103,19 +59,6 @@ pub struct StructFieldHint {
     pub span: Span,
     pub type_hint: Option<HirTypeHint>,
     pub default_value_span: Option<Span>,
-}
-
-impl StructFieldHint {
-    #[must_use]
-    pub fn from_syntax(field: &StructField) -> Self {
-        Self {
-            attrs: attrs_from_syntax(&field.attrs),
-            name: field.name.clone(),
-            span: field.span,
-            type_hint: field.type_hint.as_ref().map(HirTypeHint::from_syntax),
-            default_value_span: field.default_value.as_ref().map(|value| value.span),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -128,46 +71,12 @@ pub struct EnumShape {
     pub variants: Vec<EnumVariantHint>,
 }
 
-impl EnumShape {
-    #[must_use]
-    pub fn from_syntax(item: &EnumItem) -> Self {
-        Self {
-            variants: item
-                .variants
-                .iter()
-                .map(EnumVariantHint::from_syntax)
-                .collect(),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnumVariantHint {
     pub attrs: Vec<HirAttribute>,
     pub name: String,
     pub span: Span,
     pub fields: EnumVariantFieldsHint,
-}
-
-impl EnumVariantHint {
-    #[must_use]
-    pub fn from_syntax(variant: &vela_syntax::ast::EnumVariant) -> Self {
-        let fields = match &variant.fields {
-            EnumVariantFields::Unit => EnumVariantFieldsHint::Unit,
-            EnumVariantFields::Tuple(params) => {
-                EnumVariantFieldsHint::Tuple(params.iter().map(ParamHint::from_syntax).collect())
-            }
-            EnumVariantFields::Record(fields) => EnumVariantFieldsHint::Record(
-                fields.iter().map(StructFieldHint::from_syntax).collect(),
-            ),
-        };
-        Self {
-            attrs: attrs_from_syntax(&variant.attrs),
-            name: variant.name.clone(),
-            span: variant.span,
-            fields,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -180,38 +89,6 @@ pub enum EnumVariantFieldsHint {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitShape {
     pub methods: Vec<TraitMethodMetadata>,
-}
-
-impl TraitShape {
-    #[must_use]
-    pub fn from_syntax(
-        item: &TraitItem,
-        default_method_nodes: Vec<Option<(HirNodeId, Span)>>,
-    ) -> Self {
-        Self {
-            methods: item
-                .methods
-                .iter()
-                .zip(default_method_nodes)
-                .map(|(method, default_body)| {
-                    let (default_body_node, default_body_span) =
-                        default_body.map_or((None, None), |(node, span)| (Some(node), Some(span)));
-                    TraitMethodMetadata {
-                        attrs: attrs_from_syntax(&method.attrs),
-                        name: method.name.clone(),
-                        span: method.span,
-                        signature: FunctionSignature {
-                            params: method.params.iter().map(ParamHint::from_syntax).collect(),
-                            return_type: method.return_type.as_ref().map(HirTypeHint::from_syntax),
-                        },
-                        has_default: method.has_default,
-                        default_body_node,
-                        default_body_span,
-                    }
-                })
-                .collect(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -236,44 +113,6 @@ pub struct ImplMetadata {
 pub enum ImplMetadataKind {
     Inherent,
     Trait { trait_path: Vec<String> },
-}
-
-impl ImplMetadata {
-    #[must_use]
-    pub fn from_syntax(item: &ImplItem, method_nodes: Vec<(HirNodeId, Span)>) -> Self {
-        Self {
-            kind: match &item.kind {
-                ImplKind::Inherent => ImplMetadataKind::Inherent,
-                ImplKind::Trait { trait_path } => ImplMetadataKind::Trait {
-                    trait_path: trait_path.clone(),
-                },
-            },
-            target_path: item.target_path.clone(),
-            methods: item
-                .methods
-                .iter()
-                .zip(method_nodes)
-                .map(|(method, (node, span))| ImplMethodMetadata {
-                    node,
-                    name: method.function.name.clone(),
-                    signature: FunctionSignature {
-                        params: method
-                            .function
-                            .params
-                            .iter()
-                            .map(ParamHint::from_syntax)
-                            .collect(),
-                        return_type: method
-                            .function
-                            .return_type
-                            .as_ref()
-                            .map(HirTypeHint::from_syntax),
-                    },
-                    span,
-                })
-                .collect(),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

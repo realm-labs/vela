@@ -24,6 +24,7 @@ mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod semantic;
+mod type_hints;
 mod value_flow;
 mod value_types;
 
@@ -57,6 +58,7 @@ use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
 use script_types::{ScriptTypeFlow, type_hint_script_type};
 use semantic::{parse_semantic_modules, parse_semantic_source};
+use type_hints::hir_type_hint_from_syntax;
 use value_types::{RuntimeTypeFact, StandardRuntimeType, ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
@@ -880,7 +882,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             if let Some(type_hint) = &param.type_hint {
-                let hint = HirTypeHint::from_syntax(type_hint);
+                let hint = hir_type_hint_from_syntax(type_hint);
                 if let Some(guard) = type_guard_for_hint(
                     &hint,
                     GuardLocation::Parameter {
@@ -899,12 +901,12 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             }
             locals.insert(param.name.clone(), register);
             let script_type = param.type_hint.as_ref().and_then(|hint| {
-                type_hint_script_type(&HirTypeHint::from_syntax(hint), known_type_names.iter())
+                type_hint_script_type(&hir_type_hint_from_syntax(hint), known_type_names.iter())
             });
             let value_type = param
                 .type_hint
                 .as_ref()
-                .and_then(|hint| type_hint_value_type(&HirTypeHint::from_syntax(hint)));
+                .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint)));
             if let Some(local) =
                 bindings.local_named_at(&param.name, LocalBindingKind::LambdaParameter, param.span)
             {
