@@ -141,7 +141,7 @@ pub fn main(player: Player) -> i64 {
     assert!(
         chain
             .iter()
-            .any(|range| range["start"]["line"] == 0 && range["end"]["line"] == 3),
+            .any(|range| range["start"]["line"] == 0 && range["end"]["line"] == 4),
         "{chain:?}"
     );
 }
