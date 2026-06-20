@@ -1,8 +1,9 @@
 use crate::SyntaxKind;
 use crate::ast::{
-    AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr, SyntaxExprStmt,
-    SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchExpr,
-    SyntaxRecordExpr, SyntaxUnaryExpr,
+    AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
+    SyntaxExprStmt, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxLiteral,
+    SyntaxMapExpr, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
+    SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -308,6 +309,127 @@ fn ast_call_arguments_expose_names_and_values() {
             .kind(),
         SyntaxKind::PathExpr
     );
+}
+
+#[test]
+fn ast_path_and_delimited_expressions_expose_source_tokens() {
+    let source = r#"fn build(items, index, count) {
+    let path = game::reward;
+    let call = grant(count, reason = "xp");
+    let indexed = items[index + 1];
+    let attempted = grant()?;
+    let array = [count, index + 1];
+    let map = { "count": count };
+    let record = Reward { amount: count };
+    let lambda = |item: i64| item + 1;
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializers = body
+        .let_statements()
+        .map(|statement| statement.initializer().expect("initializer"))
+        .collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let path = SyntaxPathExpr::cast(initializers[0].syntax().clone()).expect("path expr");
+    assert_eq!(path.path_text().as_deref(), Some("game::reward"));
+    assert_eq!(
+        path.path_tokens()
+            .iter()
+            .map(|token| (token.kind(), token.text().to_owned()))
+            .collect::<Vec<_>>(),
+        vec![
+            (SyntaxKind::Ident, "game".to_owned()),
+            (SyntaxKind::ColonColon, "::".to_owned()),
+            (SyntaxKind::Ident, "reward".to_owned()),
+        ]
+    );
+
+    let call = SyntaxCallExpr::cast(initializers[1].syntax().clone()).expect("call expr");
+    let arg_list = call.arg_list().expect("argument list");
+    assert_eq!(arg_list.l_paren_token().expect("call open").text(), "(");
+    assert_eq!(arg_list.r_paren_token().expect("call close").text(), ")");
+
+    let index = SyntaxIndexExpr::cast(initializers[2].syntax().clone()).expect("index expr");
+    assert_eq!(
+        index.l_bracket_token().expect("index open").kind(),
+        SyntaxKind::LBracket
+    );
+    assert_eq!(
+        index.r_bracket_token().expect("index close").kind(),
+        SyntaxKind::RBracket
+    );
+
+    let tried = SyntaxTryExpr::cast(initializers[3].syntax().clone()).expect("try expr");
+    assert_eq!(
+        tried.question_token().expect("question token").kind(),
+        SyntaxKind::Question
+    );
+
+    let array = SyntaxArrayExpr::cast(initializers[4].syntax().clone()).expect("array expr");
+    assert_eq!(
+        array.l_bracket_token().expect("array open").kind(),
+        SyntaxKind::LBracket
+    );
+    assert_eq!(
+        array.r_bracket_token().expect("array close").kind(),
+        SyntaxKind::RBracket
+    );
+
+    let map = SyntaxMapExpr::cast(initializers[5].syntax().clone()).expect("map expr");
+    assert_eq!(
+        map.l_brace_token().expect("map open").kind(),
+        SyntaxKind::LBrace
+    );
+    assert_eq!(
+        map.r_brace_token().expect("map close").kind(),
+        SyntaxKind::RBrace
+    );
+
+    let record = SyntaxRecordExpr::cast(initializers[6].syntax().clone()).expect("record expr");
+    let record_fields = record.field_list().expect("record field list");
+    assert_eq!(
+        record_fields
+            .l_brace_token()
+            .expect("record field open")
+            .kind(),
+        SyntaxKind::LBrace
+    );
+    assert_eq!(
+        record_fields
+            .r_brace_token()
+            .expect("record field close")
+            .kind(),
+        SyntaxKind::RBrace
+    );
+
+    let lambda = SyntaxLambdaExpr::cast(initializers[7].syntax().clone()).expect("lambda expr");
+    let lambda_params = lambda.param_list().expect("lambda param list");
+    assert_eq!(
+        lambda_params
+            .opening_pipe_token()
+            .expect("lambda open")
+            .kind(),
+        SyntaxKind::Pipe
+    );
+    assert_eq!(
+        lambda_params
+            .closing_pipe_token()
+            .expect("lambda close")
+            .kind(),
+        SyntaxKind::Pipe
+    );
+    assert_eq!(lambda_params.pipe_tokens().len(), 2);
+    assert!(lambda_params.l_paren_token().is_none());
+    assert!(lambda_params.r_paren_token().is_none());
 }
 
 #[test]

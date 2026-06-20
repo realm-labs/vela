@@ -255,6 +255,35 @@ pub struct SyntaxParamList {
 
 impl SyntaxParamList {
     #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RParen)
+    }
+
+    #[must_use]
+    pub fn pipe_tokens(&self) -> Vec<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| token.kind() == SyntaxKind::Pipe)
+            .collect()
+    }
+
+    #[must_use]
+    pub fn opening_pipe_token(&self) -> Option<SyntaxToken> {
+        self.pipe_tokens().into_iter().next()
+    }
+
+    #[must_use]
+    pub fn closing_pipe_token(&self) -> Option<SyntaxToken> {
+        self.pipe_tokens().into_iter().nth(1)
+    }
+
+    #[must_use]
     pub fn params(&self) -> AstChildren<SyntaxParam> {
         AstChildren::new(&self.syntax)
     }

@@ -182,16 +182,18 @@ fn ast_function_item_exposes_signature_and_body_children() {
     let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
     let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
     let function = source.functions().next().expect("function item");
+    let param_list = function.param_list().expect("param list");
 
     assert_eq!(
-        function
-            .param_list()
-            .expect("param list")
+        param_list
             .params()
             .map(|param| param.syntax().text().to_string())
             .collect::<Vec<_>>(),
         vec!["ctx"]
     );
+    assert_eq!(param_list.l_paren_token().expect("open paren").text(), "(");
+    assert_eq!(param_list.r_paren_token().expect("close paren").text(), ")");
+    assert!(param_list.pipe_tokens().is_empty());
     assert_eq!(
         function.body().expect("body").syntax().text().to_string(),
         "{}"

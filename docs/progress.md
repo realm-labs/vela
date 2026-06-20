@@ -167,10 +167,11 @@ nested if/else block structure.
 Statement values now expose initial expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary
 expressions, unary operands, field access, calls, argument lists, named
-argument labels, paths, and literals. Postfix expression structure now also
-preserves
-method-call-over-field ordering and exposes field member-name tokens, index
-receiver/index accessors, and try expression wrappers.
+argument labels, path expression token/text accessors, and literals. Postfix
+expression structure now also preserves method-call-over-field ordering and
+exposes field member-name tokens, index receiver/index accessors, index
+bracket tokens, try expression question tokens, and call argument-list
+delimiter tokens.
 Binary expression wrappers now expose their operator tokens and kinds,
 including range operators such as `..` and `..=`, plus explicit left and right
 operand accessors.
@@ -183,9 +184,11 @@ and exact source text for boolean, null, numeric, quoted, bytes, and
 interpolated literals.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
-expression/block bodies. Map entries now expose explicit key/value accessors
-and colon tokens. Record literal fields now expose label tokens, label kinds,
-explicit colon tokens, value expressions, and shorthand classification.
+expression/block bodies. Array, map, and record expression field lists now
+expose their delimiter tokens; lambda parameter lists expose their pipe
+tokens. Map entries now expose explicit key/value accessors and colon tokens.
+Record literal fields now expose label tokens, label kinds, explicit colon
+tokens, value expressions, and shorthand classification.
 Bare braced expressions now keep the existing
 map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
 while `{ statements }` becomes a typed `Block` expression with nested

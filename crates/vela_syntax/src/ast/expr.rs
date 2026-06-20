@@ -78,6 +78,26 @@ impl AstNode for SyntaxPathExpr {
     }
 }
 
+impl SyntaxPathExpr {
+    #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| !token.kind().is_trivia())
+            .collect()
+    }
+
+    #[must_use]
+    pub fn path_text(&self) -> Option<String> {
+        let mut text = String::new();
+        for token in self.path_tokens() {
+            text.push_str(token.text());
+        }
+        (!text.is_empty()).then_some(text)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxAssignExpr {
     syntax: SyntaxNode,
@@ -309,6 +329,16 @@ impl SyntaxIndexExpr {
     }
 
     #[must_use]
+    pub fn l_bracket_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBracket)
+    }
+
+    #[must_use]
+    pub fn r_bracket_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBracket)
+    }
+
+    #[must_use]
     pub fn receiver(&self) -> Option<SyntaxExpression> {
         self.expressions().next()
     }
@@ -343,6 +373,11 @@ impl SyntaxTryExpr {
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn question_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Question)
+    }
 }
 
 impl AstNode for SyntaxTryExpr {
@@ -365,6 +400,16 @@ pub struct SyntaxArgList {
 }
 
 impl SyntaxArgList {
+    #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RParen)
+    }
+
     #[must_use]
     pub fn arguments(&self) -> AstChildren<SyntaxArgument> {
         AstChildren::new(&self.syntax)
@@ -434,6 +479,16 @@ pub struct SyntaxArrayExpr {
 
 impl SyntaxArrayExpr {
     #[must_use]
+    pub fn l_bracket_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBracket)
+    }
+
+    #[must_use]
+    pub fn r_bracket_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBracket)
+    }
+
+    #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
     }
@@ -459,6 +514,16 @@ pub struct SyntaxMapExpr {
 }
 
 impl SyntaxMapExpr {
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
     #[must_use]
     pub fn entries(&self) -> AstChildren<SyntaxMapEntry> {
         AstChildren::new(&self.syntax)
@@ -557,6 +622,16 @@ pub struct SyntaxRecordExprFieldList {
 }
 
 impl SyntaxRecordExprFieldList {
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
     #[must_use]
     pub fn fields(&self) -> AstChildren<SyntaxRecordExprField> {
         AstChildren::new(&self.syntax)
