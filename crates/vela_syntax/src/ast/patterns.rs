@@ -53,17 +53,29 @@ impl SyntaxPattern {
 
     #[must_use]
     pub fn is_wildcard(&self) -> bool {
-        significant_tokens(&self.syntax)
-            .map(|token| token.text().to_owned())
-            .eq(["_"])
+        self.wildcard_token().is_some()
+    }
+
+    #[must_use]
+    pub fn wildcard_token(&self) -> Option<SyntaxToken> {
+        let mut tokens = significant_tokens(&self.syntax);
+        let token = tokens.next()?;
+        (tokens.next().is_none() && token.kind() == SyntaxKind::Ident && token.text() == "_")
+            .then_some(token)
     }
 
     #[must_use]
     pub fn binding_name(&self) -> Option<String> {
+        self.binding_name_token()
+            .map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn binding_name_token(&self) -> Option<SyntaxToken> {
         let mut tokens = significant_tokens(&self.syntax);
         let token = tokens.next()?;
         (tokens.next().is_none() && token.kind() == SyntaxKind::Ident && token.text() != "_")
-            .then(|| token.text().to_owned())
+            .then_some(token)
     }
 
     #[must_use]
@@ -408,6 +420,15 @@ mod tests {
                 .as_deref(),
             Some("binding")
         );
+        assert_eq!(
+            arms[1]
+                .pattern()
+                .expect("binding pattern")
+                .binding_name_token()
+                .expect("binding name token")
+                .text(),
+            "binding"
+        );
         assert!(
             arms[1]
                 .pattern()
@@ -428,6 +449,15 @@ mod tests {
                 .expect("wildcard pattern")
                 .path_text()
                 .is_none()
+        );
+        assert_eq!(
+            arms[3]
+                .pattern()
+                .expect("wildcard pattern")
+                .wildcard_token()
+                .expect("wildcard token")
+                .text(),
+            "_"
         );
     }
 
@@ -495,6 +525,25 @@ mod tests {
                 .literal_token()
                 .is_none()
         );
+        assert_eq!(
+            arms[0]
+                .pattern()
+                .expect("wildcard pattern")
+                .wildcard_token()
+                .expect("wildcard token")
+                .kind(),
+            SyntaxKind::Ident
+        );
+
+        let binding_pattern = arms[2].pattern().expect("binding pattern");
+        assert_eq!(
+            binding_pattern
+                .binding_name_token()
+                .expect("binding name token")
+                .kind(),
+            SyntaxKind::Ident
+        );
+        assert_eq!(binding_pattern.binding_name().as_deref(), Some("binding"));
 
         let tuple_pattern = arms[4]
             .pattern()
