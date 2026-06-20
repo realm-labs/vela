@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{LspServer, handle_notification, handle_request, notification_value, response_value};
@@ -8,6 +9,8 @@ mod cross_file;
 mod dynamic;
 mod schema_method_return_receivers;
 mod source_return_receivers;
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_hover_reports_open_overlay_parameter_fact() {
@@ -776,8 +779,13 @@ fn temp_workspace() -> PathBuf {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
-    let root =
-        std::env::temp_dir().join(format!("vela_lsp_hover_{}_{}", std::process::id(), suffix));
+    let sequence = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "vela_lsp_hover_{}_{}_{}",
+        std::process::id(),
+        suffix,
+        sequence
+    ));
     fs::create_dir_all(root.join("scripts").join("game"))
         .expect("temporary workspace should be creatable");
     root
