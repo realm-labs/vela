@@ -28,6 +28,53 @@ fn ast_source_file_iterates_item_children() {
 }
 
 #[test]
+fn ast_items_expose_visibility_tokens() {
+    let source = r#"pub use game::reward::grant;
+pub const MAX: i64 = 10;
+pub global state: ServerState;
+#[event("tick")]
+pub fn update() {}
+pub struct Reward {}
+pub enum Status {}
+pub trait Award {}
+pub impl Reward {}
+fn private() {}
+"#;
+    let parse = parse_source(source);
+    let tree = parse.tree();
+    let items = tree.items().collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        items
+            .iter()
+            .map(|item| item.is_public())
+            .collect::<Vec<_>>(),
+        vec![true, true, true, true, true, true, true, true, false]
+    );
+    assert_eq!(
+        items[3].pub_token().expect("function pub token").text(),
+        "pub"
+    );
+    assert!(tree.uses().next().expect("use item").is_public());
+    assert!(tree.consts().next().expect("const item").is_public());
+    assert!(tree.globals().next().expect("global item").is_public());
+    assert_eq!(
+        tree.functions()
+            .next()
+            .expect("function item")
+            .pub_token()
+            .expect("function pub")
+            .kind(),
+        SyntaxKind::PubKw
+    );
+    assert!(tree.structs().next().expect("struct item").is_public());
+    assert!(tree.enums().next().expect("enum item").is_public());
+    assert!(tree.traits().next().expect("trait item").is_public());
+    assert!(tree.impls().next().expect("impl item").is_public());
+}
+
+#[test]
 fn ast_items_expose_declaration_name_tokens() {
     let source = r#"use game::reward::grant as grant_reward;
 const MAX: i64 = 10;

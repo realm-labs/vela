@@ -17,6 +17,16 @@ impl SyntaxItem {
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
 }
 
 impl AstNode for SyntaxItem {
@@ -52,6 +62,16 @@ impl SyntaxUseItem {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
     }
 
     #[must_use]
@@ -132,6 +152,16 @@ impl SyntaxConstItem {
     }
 
     #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::ConstKw, SyntaxKind::Ident)
     }
@@ -178,6 +208,16 @@ impl SyntaxGlobalItem {
     }
 
     #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::GlobalKw, SyntaxKind::Ident)
     }
@@ -216,6 +256,16 @@ impl SyntaxFunctionItem {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
     }
 
     #[must_use]
@@ -377,6 +427,16 @@ impl SyntaxStructItem {
     }
 
     #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::StructKw, SyntaxKind::Ident)
     }
@@ -492,6 +552,16 @@ impl SyntaxEnumItem {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
     }
 
     #[must_use]
@@ -660,6 +730,16 @@ impl SyntaxTraitItem {
     }
 
     #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
+    }
+
+    #[must_use]
     pub fn name_token(&self) -> Option<SyntaxToken> {
         token_after(&self.syntax, SyntaxKind::TraitKw, SyntaxKind::Ident)
     }
@@ -749,6 +829,16 @@ impl SyntaxImplItem {
     #[must_use]
     pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn pub_token(&self) -> Option<SyntaxToken> {
+        pub_token(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        self.pub_token().is_some()
     }
 
     #[must_use]
@@ -885,6 +975,30 @@ fn token(parent: &SyntaxNode, wanted: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == wanted)
+}
+
+fn pub_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
+    token_before_first_item_keyword(parent, SyntaxKind::PubKw)
+}
+
+fn token_before_first_item_keyword(parent: &SyntaxNode, wanted: SyntaxKind) -> Option<SyntaxToken> {
+    significant_tokens(parent)
+        .take_while(|token| !item_keyword(token.kind()))
+        .find(|token| token.kind() == wanted)
+}
+
+fn item_keyword(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::UseKw
+            | SyntaxKind::ConstKw
+            | SyntaxKind::GlobalKw
+            | SyntaxKind::FnKw
+            | SyntaxKind::StructKw
+            | SyntaxKind::EnumKw
+            | SyntaxKind::TraitKw
+            | SyntaxKind::ImplKw
+    )
 }
 
 fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Option<SyntaxToken> {
