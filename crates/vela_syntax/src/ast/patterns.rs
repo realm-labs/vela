@@ -100,6 +100,16 @@ impl SyntaxTuplePattern {
     }
 
     #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RParen)
+    }
+
+    #[must_use]
     pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
         AstChildren::new(&self.syntax)
     }
@@ -128,6 +138,16 @@ impl SyntaxRecordPattern {
     #[must_use]
     pub fn path_text(&self) -> Option<String> {
         path_text_before(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
     }
 
     #[must_use]
@@ -383,6 +403,20 @@ mod tests {
             .tuple_pattern()
             .expect("typed tuple pattern");
         assert_eq!(tuple_pattern.path_text().as_deref(), Some("Option::Some"));
+        assert_eq!(
+            tuple_pattern
+                .l_paren_token()
+                .expect("tuple pattern open")
+                .kind(),
+            SyntaxKind::LParen
+        );
+        assert_eq!(
+            tuple_pattern
+                .r_paren_token()
+                .expect("tuple pattern close")
+                .kind(),
+            SyntaxKind::RParen
+        );
         assert_eq!(tuple_pattern.patterns().count(), 1);
 
         let record_pattern = arms[5]
@@ -391,6 +425,20 @@ mod tests {
             .record_pattern()
             .expect("typed record pattern");
         assert_eq!(record_pattern.path_text().as_deref(), Some("Result::Err"));
+        assert_eq!(
+            record_pattern
+                .l_brace_token()
+                .expect("record pattern open")
+                .kind(),
+            SyntaxKind::LBrace
+        );
+        assert_eq!(
+            record_pattern
+                .r_brace_token()
+                .expect("record pattern close")
+                .kind(),
+            SyntaxKind::RBrace
+        );
         let fields = record_pattern.fields().collect::<Vec<_>>();
         assert_eq!(fields.len(), 1);
         assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));

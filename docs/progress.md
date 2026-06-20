@@ -198,7 +198,8 @@ accessors, tuple-variant pattern paths, record-variant pattern paths and
 fields, field labels, binding names, basic path-pattern text, literal
 patterns, and wildcard/basic pattern nodes. Pattern wrappers now also classify
 wildcard, literal, binding, path, tuple-variant, and record-variant shapes and
-can downcast tuple and record pattern nodes for variant payload traversal.
+can downcast tuple and record pattern nodes for variant payload traversal,
+with tuple paren and record brace delimiter tokens exposed.
 Record pattern fields now expose
 their label tokens, label kinds, explicit colon tokens, nested pattern
 payloads, and shorthand classification. The
