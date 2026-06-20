@@ -745,6 +745,7 @@ fn literal_token_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::Char
             | SyntaxKind::String
             | SyntaxKind::InterpolatedString
+            | SyntaxKind::Bytes
     )
 }
 
@@ -930,6 +931,7 @@ mod tests {
     let ratio = 3.5;
     let label = "gold";
     let marker = 'x';
+    let packet = b"\x00\xff";
     let message = f"hello {name}";
 }
 "#;
@@ -962,6 +964,7 @@ mod tests {
                 (Some(SyntaxKind::Float), Some("3.5".to_owned())),
                 (Some(SyntaxKind::String), Some(r#""gold""#.to_owned())),
                 (Some(SyntaxKind::Char), Some("'x'".to_owned())),
+                (Some(SyntaxKind::Bytes), Some(r#"b"\x00\xff""#.to_owned())),
                 (
                     Some(SyntaxKind::InterpolatedString),
                     Some(r#"f"hello {name}""#.to_owned()),
