@@ -280,6 +280,48 @@ fn schema_diagnostics_degrade_to_any() {
 }
 
 #[test]
+fn analysis_diagnostics_report_missing_required_record_fields() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+struct Reward {
+    amount: i64,
+    reason: String = \"quest\",
+}
+
+pub fn main() {
+    return Reward { reason: \"bonus\" }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::missing_constructor_field")
+                && diagnostic
+                    .message()
+                    .contains("missing constructor field `amount`")
+                && diagnostic.range().is_some()
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert!(
+        diagnostics
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| !diagnostic
+                .message()
+                .contains("missing constructor field `reason`")),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
 fn missing_schema_keeps_syntax_diagnostics_available() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let mut db = LanguageServiceDatabases::new();
