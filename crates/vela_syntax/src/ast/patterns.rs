@@ -42,13 +42,23 @@ impl SyntaxPattern {
     }
 
     #[must_use]
-    pub fn tuple_pattern(&self) -> Option<SyntaxTuplePattern> {
+    pub fn as_tuple_variant(&self) -> Option<SyntaxTuplePattern> {
         SyntaxTuplePattern::cast(self.syntax.clone())
     }
 
     #[must_use]
-    pub fn record_pattern(&self) -> Option<SyntaxRecordPattern> {
+    pub fn as_record_variant(&self) -> Option<SyntaxRecordPattern> {
         SyntaxRecordPattern::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn tuple_pattern(&self) -> Option<SyntaxTuplePattern> {
+        self.as_tuple_variant()
+    }
+
+    #[must_use]
+    pub fn record_pattern(&self) -> Option<SyntaxRecordPattern> {
+        self.as_record_variant()
     }
 
     #[must_use]
@@ -79,6 +89,11 @@ impl SyntaxPattern {
     }
 
     #[must_use]
+    pub fn is_binding(&self) -> bool {
+        self.binding_name_token().is_some()
+    }
+
+    #[must_use]
     pub fn path_text(&self) -> Option<String> {
         path_text_before_payload(&self.syntax)
     }
@@ -86,6 +101,11 @@ impl SyntaxPattern {
     #[must_use]
     pub fn path_tokens(&self) -> Vec<SyntaxToken> {
         path_tokens_before_payload(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn is_path(&self) -> bool {
+        self.path_text().is_some()
     }
 
     #[must_use]
@@ -101,6 +121,11 @@ impl SyntaxPattern {
     #[must_use]
     pub fn literal_text(&self) -> Option<String> {
         self.literal_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn is_literal(&self) -> bool {
+        self.literal_token().is_some()
     }
 }
 
@@ -491,6 +516,10 @@ mod tests {
             .iter()
             .map(|arm| arm.pattern().expect("pattern").pattern_kind())
             .collect::<Vec<_>>();
+        let patterns = arms
+            .iter()
+            .map(|arm| arm.pattern().expect("pattern"))
+            .collect::<Vec<_>>();
 
         assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
         assert_eq!(
@@ -504,6 +533,14 @@ mod tests {
                 Some(SyntaxPatternKind::RecordVariant),
             ]
         );
+        assert!(patterns[0].is_wildcard());
+        assert!(patterns[1].is_literal());
+        assert!(patterns[2].is_binding());
+        assert!(patterns[3].is_path());
+        assert!(patterns[4].as_tuple_variant().is_some());
+        assert!(patterns[5].as_record_variant().is_some());
+        assert!(patterns[0].as_tuple_variant().is_none());
+        assert!(!patterns[1].is_binding());
 
         let literal_pattern = arms[1].pattern().expect("literal pattern");
         assert_eq!(
