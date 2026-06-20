@@ -853,6 +853,19 @@ impl Rewardable for Player {
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::BinaryExpr, SyntaxKind::RecordExpr]
         );
+        assert_eq!(
+            arms[0].guard().expect("match guard").syntax().kind(),
+            SyntaxKind::BinaryExpr
+        );
+        assert_eq!(
+            arms[0]
+                .body_expression()
+                .expect("record arm body")
+                .syntax()
+                .kind(),
+            SyntaxKind::RecordExpr
+        );
+        assert!(arms[0].body_block().is_none());
 
         let record_pattern =
             SyntaxRecordPattern::cast(arms[1].pattern().expect("record pattern").syntax().clone())
@@ -877,6 +890,8 @@ impl Rewardable for Player {
                 .count(),
             1
         );
+        assert!(arms[1].guard().is_none());
+        assert!(arms[1].body_expression().is_none());
 
         assert_eq!(
             arms[2]
@@ -891,6 +906,15 @@ impl Rewardable for Player {
             arms[2]
                 .expressions()
                 .next()
+                .expect("literal arm body")
+                .syntax()
+                .kind(),
+            SyntaxKind::Literal
+        );
+        assert!(arms[2].guard().is_none());
+        assert_eq!(
+            arms[2]
+                .body_expression()
                 .expect("literal arm body")
                 .syntax()
                 .kind(),

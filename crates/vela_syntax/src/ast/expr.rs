@@ -537,13 +537,40 @@ impl SyntaxMatchArm {
     }
 
     #[must_use]
+    pub fn guard(&self) -> Option<SyntaxExpression> {
+        self.has_guard()
+            .then(|| self.expressions().next())
+            .flatten()
+    }
+
+    #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
     }
 
     #[must_use]
+    pub fn body_expression(&self) -> Option<SyntaxExpression> {
+        if self.body_block().is_some() {
+            return None;
+        }
+        let mut expressions = self.expressions();
+        if self.has_guard() {
+            expressions.next();
+        }
+        expressions.next()
+    }
+
+    #[must_use]
     pub fn body_block(&self) -> Option<SyntaxBlock> {
         child(&self.syntax)
+    }
+
+    fn has_guard(&self) -> bool {
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .take_while(|token| token.kind() != SyntaxKind::FatArrow)
+            .any(|token| token.kind() == SyntaxKind::IfKw)
     }
 }
 

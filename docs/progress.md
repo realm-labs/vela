@@ -155,7 +155,7 @@ exposes index and try expression wrappers. Container and callable expression
 structure now exposes array elements, map entries, record literal fields,
 lambda parameter lists, and
 lambda expression/block bodies. Match expressions now expose scrutinees, arm
-lists, guarded arm expressions, expression or block arm bodies, tuple-variant
+lists, explicit guard and expression/block body accessors, tuple-variant
 patterns, record-variant pattern fields, and wildcard/basic pattern nodes. The
 rowan-backed typed AST wrapper layer now has focused syntax, statement,
 expression, and pattern submodules so additional wrappers can land without
