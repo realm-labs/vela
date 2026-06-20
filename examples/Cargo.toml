@@ -1,21 +1,24 @@
 [package]
 name = "vela_examples"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
-serde = { workspace = true }
-vela_bytecode = { workspace = true }
-vela_common = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+vela_bytecode = { path = "../crates/vela_bytecode" }
+vela_common = { path = "../crates/vela_common" }
 
-vela_def = { workspace = true }
-vela_engine = { workspace = true, features = ["serde"] }
-vela_hot_reload = { workspace = true }
-vela_host = { workspace = true }
-vela_macros = { workspace = true }
-vela_reflect = { workspace = true }
-vela_vm = { workspace = true }
+vela_def = { path = "../crates/vela_def" }
+vela_engine = { path = "../crates/vela_engine", features = ["serde"] }
+vela_hot_reload = { path = "../crates/vela_hot_reload" }
+vela_host = { path = "../crates/vela_host" }
+vela_macros = { path = "../crates/vela_macros" }
+vela_reflect = { path = "../crates/vela_reflect" }
+vela_vm = { path = "../crates/vela_vm" }
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"

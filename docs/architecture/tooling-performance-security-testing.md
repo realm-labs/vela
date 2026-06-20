@@ -403,7 +403,7 @@ examples/src/bin/<example> directories with standalone main.rs and colocated .ve
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-cargo run -p vela_examples --bin level_up
+cargo run --manifest-path examples/Cargo.toml --bin level_up
 ```
 
 Later:

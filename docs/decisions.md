@@ -768,11 +768,13 @@ indexes instead of being renumbered by body execution count.
 
 ### Example Layout
 
-Runnable examples live in the `vela_examples` workspace package as standalone
-Cargo bins under `examples/src/bin/<example>/`. Each example keeps its `main.rs`
-and `.vela` source files in the same directory so users can inspect and run one
-capability without following a parameter-dispatched demo runner or a separate
-script tree.
+Runnable examples live in a standalone `examples/Cargo.toml` package excluded
+from the default workspace so `cargo test --workspace` stays focused on core
+development tests. CI and release validation run the examples explicitly with
+`cargo test --manifest-path examples/Cargo.toml`. Example bins live under
+`examples/src/bin/<example>/`; each example keeps its `main.rs` and `.vela`
+source files in the same directory so users can inspect and run one capability
+without following a parameter-dispatched demo runner or a separate script tree.
 
 ### CLI Role
 

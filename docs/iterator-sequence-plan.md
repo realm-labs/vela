@@ -453,7 +453,7 @@ Validation:
 ```bash
 cargo test -p vela_vm standard_callback_id_dispatch
 cargo test -p vela_engine
-cargo test -p vela_examples
+cargo test --manifest-path examples/Cargo.toml
 ```
 
 Termination:

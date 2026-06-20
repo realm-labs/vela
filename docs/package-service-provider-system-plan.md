@@ -806,7 +806,7 @@ Validation:
 ```bash
 cargo test -p vela_language_service package provider
 cargo test -p vela_lsp_server package provider
-cargo run -p vela_examples --bin plugin_provider_demo
+cargo run --manifest-path examples/Cargo.toml --bin plugin_provider_demo
 ```
 
 ---

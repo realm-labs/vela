@@ -4,14 +4,14 @@ Each example is a standalone Cargo bin with its own `main`, so examples do not
 depend on a parameter-dispatched demo runner.
 
 ```bash
-cargo run -p vela_examples --bin level_up
-cargo run -p vela_examples --bin monster_kill_reward
-cargo run -p vela_examples --bin hot_reload_function_swap
-cargo run -p vela_examples --bin host_type_methods
-cargo run -p vela_examples --bin script_global
-cargo run -p vela_examples --bin serde_value
-cargo run -p vela_examples --bin container_type_hints
-cargo run -p vela_examples --bin io_stdlib
+cargo run --manifest-path examples/Cargo.toml --bin level_up
+cargo run --manifest-path examples/Cargo.toml --bin monster_kill_reward
+cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap
+cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
+cargo run --manifest-path examples/Cargo.toml --bin script_global
+cargo run --manifest-path examples/Cargo.toml --bin serde_value
+cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
+cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:

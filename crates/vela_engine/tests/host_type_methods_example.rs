@@ -2,6 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
+#[ignore = "covered by vela_examples smoke tests; runs standalone example binary"]
 fn host_type_methods_example_runs() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -11,8 +12,8 @@ fn host_type_methods_example_runs() {
         .current_dir(workspace)
         .args([
             "run",
-            "-p",
-            "vela_examples",
+            "--manifest-path",
+            "examples/Cargo.toml",
             "--bin",
             "host_type_methods",
             "--quiet",
