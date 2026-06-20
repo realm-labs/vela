@@ -1,3 +1,4 @@
+use super::statements::SyntaxIfExpr;
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList, SyntaxPattern};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
@@ -18,6 +19,131 @@ impl AstNode for SyntaxExpression {
     fn syntax(&self) -> &SyntaxNode {
         &self.syntax
     }
+}
+
+impl SyntaxExpression {
+    #[must_use]
+    pub fn expression_kind(&self) -> SyntaxExpressionKind {
+        match self.syntax.kind() {
+            SyntaxKind::Literal => SyntaxExpressionKind::Literal,
+            SyntaxKind::PathExpr => SyntaxExpressionKind::Path,
+            SyntaxKind::UnaryExpr => SyntaxExpressionKind::Unary,
+            SyntaxKind::BinaryExpr => SyntaxExpressionKind::Binary,
+            SyntaxKind::AssignExpr => SyntaxExpressionKind::Assign,
+            SyntaxKind::FieldExpr => SyntaxExpressionKind::Field,
+            SyntaxKind::CallExpr => SyntaxExpressionKind::Call,
+            SyntaxKind::IndexExpr => SyntaxExpressionKind::Index,
+            SyntaxKind::TryExpr => SyntaxExpressionKind::Try,
+            SyntaxKind::ArrayExpr => SyntaxExpressionKind::Array,
+            SyntaxKind::MapExpr => SyntaxExpressionKind::Map,
+            SyntaxKind::RecordExpr => SyntaxExpressionKind::Record,
+            SyntaxKind::LambdaExpr => SyntaxExpressionKind::Lambda,
+            SyntaxKind::Block => SyntaxExpressionKind::Block,
+            SyntaxKind::IfExpr => SyntaxExpressionKind::If,
+            SyntaxKind::MatchExpr => SyntaxExpressionKind::Match,
+            kind => unreachable!("non-expression syntax kind: {kind:?}"),
+        }
+    }
+
+    #[must_use]
+    pub fn as_literal(&self) -> Option<SyntaxLiteral> {
+        SyntaxLiteral::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_path(&self) -> Option<SyntaxPathExpr> {
+        SyntaxPathExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_unary(&self) -> Option<SyntaxUnaryExpr> {
+        SyntaxUnaryExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_binary(&self) -> Option<SyntaxBinaryExpr> {
+        SyntaxBinaryExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_assign(&self) -> Option<SyntaxAssignExpr> {
+        SyntaxAssignExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_field(&self) -> Option<SyntaxFieldExpr> {
+        SyntaxFieldExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_call(&self) -> Option<SyntaxCallExpr> {
+        SyntaxCallExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_index(&self) -> Option<SyntaxIndexExpr> {
+        SyntaxIndexExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_try(&self) -> Option<SyntaxTryExpr> {
+        SyntaxTryExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_array(&self) -> Option<SyntaxArrayExpr> {
+        SyntaxArrayExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_map(&self) -> Option<SyntaxMapExpr> {
+        SyntaxMapExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_record(&self) -> Option<SyntaxRecordExpr> {
+        SyntaxRecordExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_lambda(&self) -> Option<SyntaxLambdaExpr> {
+        SyntaxLambdaExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_block(&self) -> Option<SyntaxBlock> {
+        SyntaxBlock::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_if(&self) -> Option<SyntaxIfExpr> {
+        SyntaxIfExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_match(&self) -> Option<SyntaxMatchExpr> {
+        SyntaxMatchExpr::cast(self.syntax.clone())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SyntaxExpressionKind {
+    Literal,
+    Path,
+    Unary,
+    Binary,
+    Assign,
+    Field,
+    Call,
+    Index,
+    Try,
+    Array,
+    Map,
+    Record,
+    Lambda,
+    Block,
+    If,
+    Match,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

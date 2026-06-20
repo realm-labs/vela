@@ -25,9 +25,9 @@ pub use attributes::{
 };
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
-    SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
-    SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxMatchArm, SyntaxMatchArmList,
-    SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
+    SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
+    SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr, SyntaxMatchArm,
+    SyntaxMatchArmList, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
     SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 pub use items::{

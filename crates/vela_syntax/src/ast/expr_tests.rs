@@ -1,8 +1,8 @@
 use crate::SyntaxKind;
 use crate::ast::{
     AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
-    SyntaxExprStmt, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxLiteral,
-    SyntaxMapExpr, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
+    SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,
+    SyntaxLiteral, SyntaxMapExpr, SyntaxMatchExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr,
     SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
@@ -50,6 +50,84 @@ fn ast_block_expression_exposes_statement_children() {
             .count(),
         1
     );
+}
+
+#[test]
+fn ast_expression_exposes_typed_variant_helpers() {
+    let source = r#"fn variants(value, account, items, ready, state) {
+    let literal = 1;
+    let path = value;
+    let unary = -value;
+    let binary = value + 1;
+    let assign = value = 1;
+    let field = account.balance;
+    let call = grant();
+    let index = items[0];
+    let tried = grant()?;
+    let array = [value];
+    let map = { key: value };
+    let record = Reward { amount: value };
+    let lambda = |item| item;
+    let block = { value; };
+    let branch = if ready { 1 } else { 0 };
+    let matched = match state { Ready => 1, _ => 0 };
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let expressions = body
+        .let_statements()
+        .map(|statement| statement.initializer().expect("initializer"))
+        .collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        expressions
+            .iter()
+            .map(|expression| expression.expression_kind())
+            .collect::<Vec<_>>(),
+        vec![
+            SyntaxExpressionKind::Literal,
+            SyntaxExpressionKind::Path,
+            SyntaxExpressionKind::Unary,
+            SyntaxExpressionKind::Binary,
+            SyntaxExpressionKind::Assign,
+            SyntaxExpressionKind::Field,
+            SyntaxExpressionKind::Call,
+            SyntaxExpressionKind::Index,
+            SyntaxExpressionKind::Try,
+            SyntaxExpressionKind::Array,
+            SyntaxExpressionKind::Map,
+            SyntaxExpressionKind::Record,
+            SyntaxExpressionKind::Lambda,
+            SyntaxExpressionKind::Block,
+            SyntaxExpressionKind::If,
+            SyntaxExpressionKind::Match,
+        ]
+    );
+    assert!(expressions[0].as_literal().is_some());
+    assert!(expressions[1].as_path().is_some());
+    assert!(expressions[2].as_unary().is_some());
+    assert!(expressions[3].as_binary().is_some());
+    assert!(expressions[4].as_assign().is_some());
+    assert!(expressions[5].as_field().is_some());
+    assert!(expressions[6].as_call().is_some());
+    assert!(expressions[7].as_index().is_some());
+    assert!(expressions[8].as_try().is_some());
+    assert!(expressions[9].as_array().is_some());
+    assert!(expressions[10].as_map().is_some());
+    assert!(expressions[11].as_record().is_some());
+    assert!(expressions[12].as_lambda().is_some());
+    assert!(expressions[13].as_block().is_some());
+    assert!(expressions[14].as_if().is_some());
+    assert!(expressions[15].as_match().is_some());
+    assert!(expressions[0].as_match().is_none());
 }
 
 #[test]
