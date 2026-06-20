@@ -238,10 +238,11 @@ diagnostics and CST item iteration, so `vela_hir::ModuleGraph` no longer reparse
 sources through the old owned `SourceFile` API. HIR type and attribute metadata
 no longer expose old owned-AST conversion helpers, and the bytecode compiler no
 longer carries an old-AST `TypeHint` conversion helper. Bytecode typed-let
-contracts now read HIR local binding type hints, and schema-default constructor
-shapes, field type facts, and default presence now read HIR struct and enum
-shapes, leaving the legacy owned AST in that path only as the temporary
-default-expression payload carrier. Bytecode function and script-method
+contracts now read HIR local binding type hints, and schema-default type and
+variant discovery, constructor shapes, field type facts, and default presence
+now read HIR struct and enum declarations/shapes, leaving the legacy owned AST
+in that path only as the temporary default-expression payload carrier. Bytecode
+function and script-method
 parameter default flags now read HIR function signatures, leaving legacy owned
 AST parameters in that path only as the temporary default-expression payload
 carrier. Bytecode const value discovery now reads HIR const declarations in

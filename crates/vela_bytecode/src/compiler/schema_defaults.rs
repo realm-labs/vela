@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::ast::{
     Argument, EnumVariantFields as SyntaxEnumVariantFields, Expr, ItemKind, RecordField, SourceFile,
@@ -136,17 +136,14 @@ pub(super) fn source_schema_defaults(
     constants: BTreeMap<String, Constant>,
 ) -> ScriptSchemaDefaults {
     let mut defaults = ScriptSchemaDefaults::default();
-    let Some(declarations) = graph.module(module) else {
-        return defaults;
-    };
     let default_payloads = SchemaDefaultPayloads::from_source(parsed);
 
-    for item in &parsed.items {
-        match &item.kind {
-            ItemKind::Struct(record) => {
-                let Some(declaration) = declarations.get(&record.name) else {
-                    continue;
-                };
+    for declaration in module_schema_declarations(graph, module) {
+        let Some(metadata) = graph.declaration(declaration) else {
+            continue;
+        };
+        match metadata.kind {
+            DeclarationKind::Struct => {
                 let Some(type_name) = type_symbols.get(&declaration).cloned() else {
                     continue;
                 };
@@ -163,7 +160,9 @@ pub(super) fn source_schema_defaults(
                         default: field
                             .default_value_span
                             .as_ref()
-                            .and_then(|_| default_payloads.struct_field(&record.name, &field.name))
+                            .and_then(|_| {
+                                default_payloads.struct_field(&metadata.name, &field.name)
+                            })
                             .map(|value| {
                                 schema_field_default(field.name.clone(), value, constants.clone())
                             }),
@@ -173,10 +172,7 @@ pub(super) fn source_schema_defaults(
                     .record_shapes
                     .insert(type_name, ConstructorShape::new(fields));
             }
-            ItemKind::Enum(enumeration) => {
-                let Some(declaration) = declarations.get(&enumeration.name) else {
-                    continue;
-                };
+            DeclarationKind::Enum => {
                 let Some(type_name) = type_symbols.get(&declaration).cloned() else {
                     continue;
                 };
@@ -190,7 +186,7 @@ pub(super) fn source_schema_defaults(
                         .or_default()
                         .insert(variant.name.clone());
                     let fields = enum_variant_fields(
-                        &enumeration.name,
+                        &metadata.name,
                         &variant.name,
                         &variant.fields,
                         &default_payloads,
@@ -207,6 +203,26 @@ pub(super) fn source_schema_defaults(
     }
 
     defaults
+}
+
+fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirDeclId> {
+    let Some(declarations) = graph.module(module) else {
+        return Vec::new();
+    };
+
+    let mut schema_declarations = declarations
+        .names()
+        .filter_map(|name| {
+            let declaration = declarations.get(name)?;
+            let metadata = graph.declaration(declaration)?;
+            match metadata.kind {
+                DeclarationKind::Struct | DeclarationKind::Enum => Some(declaration),
+                _ => None,
+            }
+        })
+        .collect::<Vec<_>>();
+    schema_declarations.sort_unstable();
+    schema_declarations
 }
 
 #[derive(Default)]
