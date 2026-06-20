@@ -113,6 +113,14 @@ fn cursor_context_classifies_record_expression_fields() {
 }
 
 #[test]
+fn cursor_context_recovers_empty_record_expression_body_as_record_expression_field() {
+    let text = "pub struct Player { level: i64 }\npub fn main() { let player = Player {  } }";
+    let cursor = classify_offset(text, text.rfind("{  }").expect("record body") + "{ ".len());
+
+    assert_eq!(cursor.kind(), CursorContextKind::RecordExpressionField);
+}
+
+#[test]
 fn cursor_context_classifies_record_type_fields() {
     let cursor = classify("pub struct Player { le }", "le");
 
