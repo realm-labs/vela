@@ -72,6 +72,11 @@ impl SyntaxPattern {
     }
 
     #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        path_tokens_before_payload(&self.syntax)
+    }
+
+    #[must_use]
     pub fn literal_token(&self) -> Option<SyntaxToken> {
         first_significant_token(&self.syntax).filter(|token| literal_token_kind(token.kind()))
     }
@@ -106,6 +111,11 @@ impl SyntaxTuplePattern {
     #[must_use]
     pub fn path_text(&self) -> Option<String> {
         path_text_before(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        path_tokens_before(&self.syntax, SyntaxKind::LParen)
     }
 
     #[must_use]
@@ -152,6 +162,11 @@ impl SyntaxRecordPattern {
     #[must_use]
     pub fn path_text(&self) -> Option<String> {
         path_text_before(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        path_tokens_before(&self.syntax, SyntaxKind::LBrace)
     }
 
     #[must_use]
@@ -271,18 +286,36 @@ fn significant_tokens(parent: &SyntaxNode) -> impl Iterator<Item = SyntaxToken> 
 }
 
 fn path_text_before(parent: &SyntaxNode, delimiter: SyntaxKind) -> Option<String> {
+    let tokens = path_tokens_before(parent, delimiter);
+    path_text_from_tokens(&tokens)
+}
+
+fn path_text_before_payload(parent: &SyntaxNode) -> Option<String> {
+    let tokens = path_tokens_before_payload(parent);
+    path_text_from_tokens(&tokens)
+}
+
+fn path_text_from_tokens(tokens: &[SyntaxToken]) -> Option<String> {
     let mut path = String::new();
-    for token in significant_tokens(parent) {
-        if token.kind() == delimiter {
-            break;
-        }
+    for token in tokens {
         path.push_str(token.text());
     }
     (!path.is_empty()).then_some(path)
 }
 
-fn path_text_before_payload(parent: &SyntaxNode) -> Option<String> {
-    let mut path = String::new();
+fn path_tokens_before(parent: &SyntaxNode, delimiter: SyntaxKind) -> Vec<SyntaxToken> {
+    let mut tokens = Vec::new();
+    for token in significant_tokens(parent) {
+        if token.kind() == delimiter {
+            break;
+        }
+        tokens.push(token);
+    }
+    tokens
+}
+
+fn path_tokens_before_payload(parent: &SyntaxNode) -> Vec<SyntaxToken> {
+    let mut tokens = Vec::new();
     let mut has_path_separator = false;
     for token in significant_tokens(parent) {
         match token.kind() {
@@ -290,9 +323,13 @@ fn path_text_before_payload(parent: &SyntaxNode) -> Option<String> {
             SyntaxKind::ColonColon => has_path_separator = true,
             _ => {}
         }
-        path.push_str(token.text());
+        tokens.push(token);
     }
-    (has_path_separator && !path.is_empty()).then_some(path)
+    if has_path_separator {
+        tokens
+    } else {
+        Vec::new()
+    }
 }
 
 const fn literal_token_kind(kind: SyntaxKind) -> bool {
@@ -348,6 +385,20 @@ mod tests {
                 .path_text()
                 .as_deref(),
             Some("Option::None")
+        );
+        assert_eq!(
+            arms[0]
+                .pattern()
+                .expect("path pattern")
+                .path_tokens()
+                .iter()
+                .map(|token| (token.kind(), token.text().to_owned()))
+                .collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::Ident, "Option".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "None".to_owned()),
+            ]
         );
         assert_eq!(
             arms[1]
@@ -453,6 +504,18 @@ mod tests {
         assert_eq!(tuple_pattern.path_text().as_deref(), Some("Option::Some"));
         assert_eq!(
             tuple_pattern
+                .path_tokens()
+                .iter()
+                .map(|token| (token.kind(), token.text().to_owned()))
+                .collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::Ident, "Option".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "Some".to_owned()),
+            ]
+        );
+        assert_eq!(
+            tuple_pattern
                 .l_paren_token()
                 .expect("tuple pattern open")
                 .kind(),
@@ -481,6 +544,18 @@ mod tests {
             .record_pattern()
             .expect("typed record pattern");
         assert_eq!(record_pattern.path_text().as_deref(), Some("Result::Err"));
+        assert_eq!(
+            record_pattern
+                .path_tokens()
+                .iter()
+                .map(|token| (token.kind(), token.text().to_owned()))
+                .collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::Ident, "Result".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "Err".to_owned()),
+            ]
+        );
         assert_eq!(
             record_pattern
                 .l_brace_token()
