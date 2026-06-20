@@ -1,7 +1,7 @@
 use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
-    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
-    SyntaxPatternKind, SyntaxReturnStmt,
+    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt, SyntaxForStmt,
+    SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
@@ -332,6 +332,19 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         "else"
     );
     assert!(if_expr.else_block_else_token().is_none());
+    match if_expr.else_branch().expect("else-if branch") {
+        SyntaxElseBranch::If(branch) => {
+            assert_eq!(
+                branch
+                    .condition()
+                    .expect("else-if condition")
+                    .syntax()
+                    .kind(),
+                SyntaxKind::FieldExpr
+            );
+        }
+        SyntaxElseBranch::Block(_) => panic!("expected else-if branch"),
+    }
     assert_eq!(
         if_expr
             .then_block()
@@ -364,6 +377,12 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
             .text(),
         "else"
     );
+    match else_if.else_branch().expect("else block branch") {
+        SyntaxElseBranch::Block(block) => {
+            assert_eq!(block.syntax().kind(), SyntaxKind::Block);
+        }
+        SyntaxElseBranch::If(_) => panic!("expected else block branch"),
+    }
 
     let return_stmt = if_expr
         .then_block()

@@ -41,8 +41,8 @@ pub use patterns::{
     SyntaxTuplePattern,
 };
 pub use statements::{
-    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
-    SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
+    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt, SyntaxForStmt,
+    SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
 };
 pub use syntax::{
     AstChildren, AstNode, SyntaxBlock, SyntaxSourceFile, SyntaxTypeArgList, SyntaxTypeHint,

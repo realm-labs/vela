@@ -379,6 +379,14 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn else_branch(&self) -> Option<SyntaxElseBranch> {
+        if let Some(if_expr) = self.else_if() {
+            return Some(SyntaxElseBranch::If(if_expr));
+        }
+        self.else_block().map(SyntaxElseBranch::Block)
+    }
+
+    #[must_use]
     pub fn else_if(&self) -> Option<SyntaxIfExpr> {
         child(&self.syntax)
     }
@@ -396,6 +404,12 @@ impl AstNode for SyntaxIfExpr {
     fn syntax(&self) -> &SyntaxNode {
         &self.syntax
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SyntaxElseBranch {
+    If(SyntaxIfExpr),
+    Block(SyntaxBlock),
 }
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
