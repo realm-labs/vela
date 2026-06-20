@@ -295,6 +295,16 @@ impl SyntaxParam {
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn default_equal_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Equal)
+    }
+
+    #[must_use]
+    pub fn default_value(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxParam {
@@ -401,6 +411,16 @@ impl SyntaxStructField {
 
     #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn default_equal_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Equal)
+    }
+
+    #[must_use]
+    pub fn default_value(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
 }
@@ -767,6 +787,13 @@ fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| !token.kind().is_trivia())
+}
+
+fn token(parent: &SyntaxNode, wanted: SyntaxKind) -> Option<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| token.kind() == wanted)
 }
 
 fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Option<SyntaxToken> {

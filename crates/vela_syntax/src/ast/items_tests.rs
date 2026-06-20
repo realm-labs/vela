@@ -258,6 +258,128 @@ fn ast_function_signature_exposes_type_hint_children() {
 }
 
 #[test]
+fn ast_items_expose_default_value_expressions() {
+    let source = r#"
+fn defaults(amount: i64 = bonus(1), label = "gold") -> i64 {
+    return amount
+}
+
+struct Reward {
+    amount: i64 = 10 + 5,
+    label = "gold",
+}
+
+enum Status {
+    Active(count: i64 = 1),
+    Finished { reward: String = "gold" },
+}
+"#;
+    let parse = parse_source(source);
+    let tree = parse.tree();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let function = tree.functions().next().expect("function item");
+    let params = function
+        .param_list()
+        .expect("function params")
+        .params()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        params[0].default_equal_token().map(|token| token.kind()),
+        Some(SyntaxKind::Equal)
+    );
+    assert_eq!(
+        params[0]
+            .default_value()
+            .expect("typed default")
+            .syntax()
+            .kind(),
+        SyntaxKind::CallExpr
+    );
+    assert_eq!(
+        params[0]
+            .default_value()
+            .expect("typed default")
+            .syntax()
+            .text()
+            .to_string(),
+        "bonus(1)"
+    );
+    assert_eq!(
+        params[1]
+            .default_value()
+            .expect("untyped default")
+            .syntax()
+            .kind(),
+        SyntaxKind::Literal
+    );
+
+    let struct_fields = tree
+        .structs()
+        .next()
+        .expect("struct item")
+        .field_list()
+        .expect("struct fields")
+        .fields()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        struct_fields[0]
+            .default_value()
+            .expect("field default")
+            .syntax()
+            .kind(),
+        SyntaxKind::BinaryExpr
+    );
+    assert_eq!(
+        struct_fields[1]
+            .default_equal_token()
+            .map(|token| token.kind()),
+        Some(SyntaxKind::Equal)
+    );
+
+    let variants = tree
+        .enums()
+        .next()
+        .expect("enum item")
+        .variant_list()
+        .expect("variant list")
+        .variants()
+        .collect::<Vec<_>>();
+    let tuple_param = variants[0]
+        .tuple_field_list()
+        .expect("tuple fields")
+        .params()
+        .next()
+        .expect("tuple param");
+    assert_eq!(
+        tuple_param
+            .default_value()
+            .expect("tuple default")
+            .syntax()
+            .text()
+            .to_string(),
+        "1"
+    );
+
+    let record_field = variants[1]
+        .record_field_list()
+        .expect("record fields")
+        .fields()
+        .next()
+        .expect("record field");
+    assert_eq!(
+        record_field
+            .default_value()
+            .expect("record default")
+            .syntax()
+            .text()
+            .to_string(),
+        "\"gold\""
+    );
+}
+
+#[test]
 fn ast_struct_item_exposes_field_children() {
     let mut builder = SyntaxTreeBuilder::default();
     builder.start_node(SyntaxKind::SourceFile);

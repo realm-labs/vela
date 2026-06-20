@@ -238,6 +238,7 @@ impl CstParser<'_, '_> {
             return;
         }
         self.builder.start_node(SyntaxKind::Param);
+        let default_start = self.find_root_kind_before(SyntaxKind::Equal, start, end);
 
         if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
             let value_end = self
@@ -249,6 +250,12 @@ impl CstParser<'_, '_> {
                 self.emit_until(type_start);
                 self.type_hint_range(type_start, type_end);
             }
+        }
+
+        if let Some(equal) = default_start {
+            let value_start = self.skip_trivia(equal + 1);
+            self.emit_until(value_start);
+            self.expression_range(value_start, end);
         }
 
         self.emit_until(end);
@@ -467,6 +474,11 @@ impl CstParser<'_, '_> {
             .find_root_kind_before(SyntaxKind::Equal, start, end)
             .unwrap_or(end);
         self.optional_type_hint_before(start, declaration_end);
+        if let Some(equal) = self.find_root_kind_before(SyntaxKind::Equal, start, end) {
+            let value_start = self.skip_trivia(equal + 1);
+            self.emit_until(value_start);
+            self.expression_range(value_start, end);
+        }
         self.emit_until(end);
         self.builder.finish_node();
     }
