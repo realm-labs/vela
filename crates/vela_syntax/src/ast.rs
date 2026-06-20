@@ -28,7 +28,8 @@ pub use items::{
     SyntaxTraitItem, SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxUseItem, SyntaxUsePath,
 };
 pub use patterns::{
-    SyntaxPattern, SyntaxRecordPattern, SyntaxRecordPatternField, SyntaxTuplePattern,
+    SyntaxPattern, SyntaxPatternKind, SyntaxRecordPattern, SyntaxRecordPatternField,
+    SyntaxTuplePattern,
 };
 pub use statements::{
     SyntaxBreakStmt, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,

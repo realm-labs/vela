@@ -170,7 +170,9 @@ statement children. Match expressions now expose scrutinees, arm lists,
 explicit guard and expression/block body accessors, tuple-variant
 pattern paths, record-variant pattern paths and fields, field labels, binding
 names, basic path-pattern text, literal patterns, and wildcard/basic pattern
-nodes. The
+nodes. Pattern wrappers now also classify wildcard, literal, binding, path,
+tuple-variant, and record-variant shapes and can downcast tuple and record
+pattern nodes for variant payload traversal. The
 rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,
 statement, expression, and pattern submodules so additional wrappers can land without
 growing the legacy owned-AST file; remaining pattern coverage, remaining

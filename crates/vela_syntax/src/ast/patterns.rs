@@ -25,6 +25,33 @@ impl AstNode for SyntaxPattern {
 
 impl SyntaxPattern {
     #[must_use]
+    pub fn pattern_kind(&self) -> Option<SyntaxPatternKind> {
+        match self.syntax.kind() {
+            SyntaxKind::TuplePattern => Some(SyntaxPatternKind::TupleVariant),
+            SyntaxKind::RecordPattern => Some(SyntaxPatternKind::RecordVariant),
+            SyntaxKind::Pattern if self.is_wildcard() => Some(SyntaxPatternKind::Wildcard),
+            SyntaxKind::Pattern if self.literal_text().is_some() => {
+                Some(SyntaxPatternKind::Literal)
+            }
+            SyntaxKind::Pattern if self.binding_name().is_some() => {
+                Some(SyntaxPatternKind::Binding)
+            }
+            SyntaxKind::Pattern if self.path_text().is_some() => Some(SyntaxPatternKind::Path),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn tuple_pattern(&self) -> Option<SyntaxTuplePattern> {
+        SyntaxTuplePattern::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn record_pattern(&self) -> Option<SyntaxRecordPattern> {
+        SyntaxRecordPattern::cast(self.syntax.clone())
+    }
+
+    #[must_use]
     pub fn is_wildcard(&self) -> bool {
         significant_tokens(&self.syntax)
             .map(|token| token.text().to_owned())
@@ -49,6 +76,16 @@ impl SyntaxPattern {
         let token = first_significant_token(&self.syntax)?;
         literal_token(token.kind()).then(|| self.syntax.text().to_string())
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SyntaxPatternKind {
+    Wildcard,
+    Literal,
+    Binding,
+    Path,
+    TupleVariant,
+    RecordVariant,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -202,7 +239,7 @@ const fn literal_token(kind: SyntaxKind) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstNode, SyntaxMatchExpr};
+    use crate::ast::{AstNode, SyntaxMatchExpr, SyntaxPatternKind};
     use crate::parse::parse_source;
 
     #[test]
@@ -268,5 +305,66 @@ mod tests {
                 .path_text()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn ast_pattern_classifies_owned_pattern_surface() {
+        let parse = parse_source(
+            r#"fn update(state) {
+    let value = match state {
+        _ => 0,
+        "ready" => 1,
+        binding => 2,
+        Option::None => 3,
+        Option::Some(payload) => 4,
+        Result::Err { error } => 5,
+    };
+}
+"#,
+        );
+        let tree = parse.tree();
+        let match_expr = tree
+            .syntax()
+            .descendants()
+            .find_map(SyntaxMatchExpr::cast)
+            .expect("match expression");
+        let arms = match_expr
+            .arm_list()
+            .expect("match arm list")
+            .arms()
+            .collect::<Vec<_>>();
+        let pattern_kinds = arms
+            .iter()
+            .map(|arm| arm.pattern().expect("pattern").pattern_kind())
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(
+            pattern_kinds,
+            vec![
+                Some(SyntaxPatternKind::Wildcard),
+                Some(SyntaxPatternKind::Literal),
+                Some(SyntaxPatternKind::Binding),
+                Some(SyntaxPatternKind::Path),
+                Some(SyntaxPatternKind::TupleVariant),
+                Some(SyntaxPatternKind::RecordVariant),
+            ]
+        );
+
+        let tuple_pattern = arms[4]
+            .pattern()
+            .expect("tuple pattern")
+            .tuple_pattern()
+            .expect("typed tuple pattern");
+        assert_eq!(tuple_pattern.path_text().as_deref(), Some("Option::Some"));
+        assert_eq!(tuple_pattern.patterns().count(), 1);
+
+        let record_pattern = arms[5]
+            .pattern()
+            .expect("record pattern")
+            .record_pattern()
+            .expect("typed record pattern");
+        assert_eq!(record_pattern.path_text().as_deref(), Some("Result::Err"));
+        assert_eq!(record_pattern.fields().count(), 1);
     }
 }
