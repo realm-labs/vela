@@ -14,6 +14,9 @@ use crate::{
     symbol_ref::{qualified_source_declaration_path, source_symbol_for_declaration},
 };
 
+#[path = "diagnostics/syntax_analysis.rs"]
+mod syntax_analysis;
+
 pub(crate) const UNUSED_IMPORT_CODE: &str = "lsp::unused_import";
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -420,29 +423,22 @@ impl LanguageServiceDatabases {
         }
         diagnostics.extend(self.unused_import_diagnostics(document_id));
 
-        if let Some(parsed) = self.parse_db().parsed_source(document_id) {
+        if let Some(parsed) = self.parse_db().syntax_parse(document_id)
+            && let Some(source) = self.parse_db().source_id(document_id)
+        {
             let graph = self.hir_db().graph();
-            let source_diagnostics = self
+            let module = self
                 .project_db()
                 .module_by_document()
                 .get(document_id)
-                .and_then(|module_path| graph.module_id(module_path))
-                .map_or_else(
-                    || {
-                        vela_analysis::diagnostics::source_diagnostics(
-                            parsed,
-                            self.schema_db().facts(),
-                        )
-                    },
-                    |module| {
-                        vela_analysis::diagnostics::source_diagnostics_in_module(
-                            parsed,
-                            graph,
-                            module,
-                            self.schema_db().facts(),
-                        )
-                    },
-                );
+                .and_then(|module_path| graph.module_id(module_path));
+            let source_diagnostics = syntax_analysis::source_diagnostics(
+                parsed,
+                source,
+                graph,
+                module,
+                self.schema_db().facts(),
+            );
             diagnostics.extend(
                 source_diagnostics
                     .iter()

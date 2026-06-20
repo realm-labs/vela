@@ -9,9 +9,8 @@ use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
+use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
-use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use crate::{
     CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
@@ -104,7 +103,6 @@ struct ParseRecord {
     source: SourceId,
     module_path: ModulePath,
     content_hash: u64,
-    parsed: SourceFile,
     syntax: SyntaxParse<SyntaxSourceFile>,
     summary: ParseSummary,
 }
@@ -131,11 +129,6 @@ impl ParseDb {
         self.records
             .get(document_id)
             .map(|record| record.syntax.diagnostics())
-    }
-
-    #[must_use]
-    pub fn parsed_source(&self, document_id: &DocumentId) -> Option<&SourceFile> {
-        self.records.get(document_id).map(|record| &record.parsed)
     }
 
     #[must_use]
@@ -183,14 +176,12 @@ impl ParseDb {
                 reparsed_documents.insert(document_id.clone());
                 changed_modules.insert(source.module_path.clone());
                 self.parse_count = self.parse_count.saturating_add(1);
-                let parsed = parse_legacy_source(source.source_id, source.text());
                 let syntax = parse_syntax_source(source.source_id, source.text());
                 let summary = summarize_source(&syntax);
                 ParseRecord {
                     source: source.source_id,
                     module_path: source.module_path.clone(),
                     content_hash: source.content_hash,
-                    parsed,
                     syntax,
                     summary,
                 }

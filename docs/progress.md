@@ -216,6 +216,10 @@ statement, expression, and pattern submodules so additional wrappers can land wi
 growing the legacy owned-AST file. Language-service parse diagnostics and
 module-summary fingerprints now read from the rowan parse record, with CST
 missing-delimiter diagnostics preserving existing editor diagnostic behavior.
+Language-service analysis diagnostics now also read from the CST parse record
+for unknown member access, non-exhaustive matches, and missing record
+constructor fields, so its parse database no longer stores the legacy owned
+`SourceFile`.
 HIR `add_source` now uses rowan CST item headers for module spans, imports, and
 top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,
