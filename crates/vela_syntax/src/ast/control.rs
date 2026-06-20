@@ -171,6 +171,11 @@ impl SyntaxMatchArm {
     }
 
     #[must_use]
+    pub fn body_as_expression(&self) -> Option<SyntaxExpression> {
+        child_after_token(&self.syntax, SyntaxKind::FatArrow)
+    }
+
+    #[must_use]
     pub fn body(&self) -> Option<SyntaxMatchArmBody> {
         self.body_block()
             .map(SyntaxMatchArmBody::Block)
@@ -179,7 +184,7 @@ impl SyntaxMatchArm {
 
     #[must_use]
     pub fn body_expression(&self) -> Option<SyntaxExpression> {
-        child_after_token(&self.syntax, SyntaxKind::FatArrow)
+        self.body_as_expression()
             .filter(|expression: &SyntaxExpression| expression.syntax().kind() != SyntaxKind::Block)
     }
 

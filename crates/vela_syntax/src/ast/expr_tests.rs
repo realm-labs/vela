@@ -984,6 +984,13 @@ fn ast_match_expression_exposes_control_tokens() {
         arms[0].body().expect("expression body"),
         SyntaxMatchArmBody::Expression(_)
     ));
+    assert_eq!(
+        arms[0]
+            .body_as_expression()
+            .expect("body as expression")
+            .expression_kind(),
+        SyntaxExpressionKind::Call
+    );
     assert!(arms[0].body_expression().is_some());
     assert!(arms[0].body_block().is_none());
     assert!(arms[0].body_l_brace_token().is_none());
@@ -1001,6 +1008,13 @@ fn ast_match_expression_exposes_control_tokens() {
         arms[1].body().expect("block body"),
         SyntaxMatchArmBody::Block(_)
     ));
+    assert_eq!(
+        arms[1]
+            .body_as_expression()
+            .expect("block body as expression")
+            .expression_kind(),
+        SyntaxExpressionKind::Block
+    );
     assert!(arms[1].body_expression().is_none());
     assert!(arms[1].body_block().is_some());
     assert_eq!(arms[1].body_l_brace_token().expect("body open").text(), "{");
