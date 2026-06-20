@@ -8,7 +8,7 @@ use vela_syntax::ast::{
 
 use crate::{
     ids::{HirDeclId, HirExprId, HirLocalId},
-    type_hint::HirTypeHint,
+    type_hint::{HirTypeHint, ParamHint},
 };
 
 mod name_candidates;
@@ -175,7 +175,8 @@ impl BindingMap {
 
 pub(crate) struct FunctionBindingInput<'a> {
     pub declaration: HirDeclId,
-    pub params: &'a [Param],
+    pub params: &'a [ParamHint],
+    pub default_params: &'a [Param],
     pub body: &'a Block,
     pub module_declarations: Vec<(String, HirDeclId)>,
     pub qualified_declarations: Vec<(Vec<String>, HirDeclId)>,
@@ -234,11 +235,11 @@ impl<'a> BindingLowerer<'a> {
             lowerer.declare_parameter(
                 param.name.clone(),
                 LocalBindingKind::Parameter,
-                param.type_hint.as_ref().map(HirTypeHint::from_syntax),
+                param.type_hint.clone(),
                 param.span,
             );
         }
-        for param in input.params {
+        for param in input.default_params {
             if let Some(default_value) = &param.default_value {
                 lowerer.bind_expr(default_value, PathUsage::Value);
             }

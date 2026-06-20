@@ -6,22 +6,30 @@ use vela_syntax::ast::{Block, Param};
 use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::module_graph::{HirModule, ModuleGraph};
+use crate::type_hint::ParamHint;
 
 use super::model::ImportResolution;
 use super::names::import_binding_name;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(super) struct FunctionBodySource<'a> {
     declaration: HirDeclId,
-    params: &'a [Param],
+    params: Vec<ParamHint>,
+    default_params: &'a [Param],
     body: &'a Block,
 }
 
 impl<'a> FunctionBodySource<'a> {
-    pub(super) fn new(declaration: HirDeclId, params: &'a [Param], body: &'a Block) -> Self {
+    pub(super) fn new(
+        declaration: HirDeclId,
+        params: Vec<ParamHint>,
+        default_params: &'a [Param],
+        body: &'a Block,
+    ) -> Self {
         Self {
             declaration,
             params,
+            default_params,
             body,
         }
     }
@@ -81,7 +89,8 @@ impl ModuleGraph {
 
         bind_function(FunctionBindingInput {
             declaration: source.declaration,
-            params: source.params,
+            params: &source.params,
+            default_params: source.default_params,
             body: source.body,
             module_declarations,
             qualified_declarations,

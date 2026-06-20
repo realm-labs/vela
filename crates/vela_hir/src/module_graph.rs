@@ -257,20 +257,20 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.function_signatures.insert(
-                        declaration,
-                        syntax_metadata::function_signature(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            function,
-                        ),
+                    let signature = syntax_metadata::function_signature(
+                        syntax_summary.as_ref(),
+                        item_index,
+                        function,
                     );
+                    self.function_signatures
+                        .insert(declaration, signature.clone());
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
                     function_declarations.push(FunctionBodySource::new(
                         declaration,
+                        signature.params,
                         &function.params,
                         &function.body,
                     ));
@@ -361,7 +361,6 @@ impl ModuleGraph {
                         default_method_nodes.clone(),
                     );
                     self.validate_trait_shape(&shape);
-                    self.trait_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
@@ -370,16 +369,23 @@ impl ModuleGraph {
                         trait_item
                             .methods
                             .iter()
+                            .zip(&shape.methods)
                             .zip(default_method_nodes)
-                            .filter_map(|(method, default_body)| {
+                            .filter_map(|((method, method_metadata), default_body)| {
                                 let (node, _) = default_body?;
                                 let body = method.default_body.as_ref()?;
                                 Some((
                                     node,
-                                    FunctionBodySource::new(declaration, &method.params, body),
+                                    FunctionBodySource::new(
+                                        declaration,
+                                        method_metadata.signature.params.clone(),
+                                        &method.params,
+                                        body,
+                                    ),
                                 ))
                             }),
                     );
+                    self.trait_shapes.insert(declaration, shape);
                 }
                 ItemKind::Impl(impl_item) => {
                     let fallback_name = match &impl_item.kind {
@@ -417,27 +423,26 @@ impl ModuleGraph {
                         method_nodes.clone(),
                     );
                     self.validate_impl_shape(&metadata);
-                    self.impl_metadata.insert(declaration, metadata);
                     self.declaration_attrs.insert(
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
                     impl_method_declarations.extend(
-                        impl_item
-                            .methods
-                            .iter()
-                            .zip(method_nodes)
-                            .map(|(method, (node, _))| {
+                        impl_item.methods.iter().zip(&metadata.methods).map(
+                            |(method, method_metadata)| {
                                 (
-                                    node,
+                                    method_metadata.node,
                                     FunctionBodySource::new(
                                         declaration,
+                                        method_metadata.signature.params.clone(),
                                         &method.function.params,
                                         &method.function.body,
                                     ),
                                 )
-                            }),
+                            },
+                        ),
                     );
+                    self.impl_metadata.insert(declaration, metadata);
                 }
             }
         }
