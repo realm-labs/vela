@@ -195,7 +195,8 @@ tokens, value expressions, and shorthand classification.
 Bare braced expressions now keep the existing
 map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
 while `{ statements }` becomes a typed `Block` expression with nested
-statement children. Match expressions now expose scrutinees, arm lists,
+statement children. Match expressions now expose leading attributes,
+scrutinees, arm lists,
 match/brace/guard/arrow tokens, comma/semicolon arm separator tokens,
 explicit guard and expression/block body accessors, tuple-variant pattern
 paths, record-variant pattern paths and fields, field labels, binding names,

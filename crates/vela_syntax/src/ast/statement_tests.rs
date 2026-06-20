@@ -113,6 +113,7 @@ fn ast_statement_exposes_typed_variant_helpers() {
     if ready {
         value;
     }
+    #[audit]
     match state {
         Ready => value,
     }
@@ -157,6 +158,14 @@ fn ast_statement_exposes_typed_variant_helpers() {
     assert!(statements[4].as_for().is_some());
     assert!(statements[5].as_if().is_some());
     assert!(statements[6].as_match().is_some());
+    assert_eq!(
+        statements[6]
+            .as_match()
+            .and_then(|match_expr| match_expr.attributes().next())
+            .and_then(|attribute| attribute.path_text())
+            .as_deref(),
+        Some("audit")
+    );
     assert!(statements[7].as_block().is_some());
     assert!(statements[8].as_expr().is_some());
     assert!(statements[0].as_match().is_none());

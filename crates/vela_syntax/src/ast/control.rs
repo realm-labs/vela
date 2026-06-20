@@ -1,4 +1,4 @@
-use super::{AstChildren, AstNode, SyntaxBlock, SyntaxExpression, SyntaxPattern};
+use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxExpression, SyntaxPattern};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -7,6 +7,11 @@ pub struct SyntaxMatchExpr {
 }
 
 impl SyntaxMatchExpr {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn match_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::MatchKw)
