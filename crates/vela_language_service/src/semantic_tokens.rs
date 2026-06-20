@@ -482,8 +482,8 @@ impl LanguageServiceDatabases {
             .unwrap_or_default();
         let path_sites = self
             .parse_db()
-            .parsed_source(document_id)
-            .map(|parsed| path_sites::collect(parsed, source.text()))
+            .syntax_parse(document_id)
+            .map(path_sites::collect)
             .unwrap_or_default();
         let inferred_local_facts = self
             .parse_db()

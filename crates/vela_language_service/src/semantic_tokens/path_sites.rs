@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use vela_syntax::ast::SourceFile;
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::path_calls;
 
@@ -11,9 +12,9 @@ pub(super) struct PathSiteMaps {
     pub(super) patterns: BTreeMap<(usize, usize), Vec<String>>,
 }
 
-pub(super) fn collect(parsed: &SourceFile, text: &str) -> PathSiteMaps {
+pub(super) fn collect(parsed: &SyntaxParse<SyntaxSourceFile>) -> PathSiteMaps {
     PathSiteMaps {
-        calls: path_calls::path_call_sites(parsed, text)
+        calls: path_calls::path_call_sites(parsed)
             .into_iter()
             .map(|site| {
                 (
@@ -22,7 +23,7 @@ pub(super) fn collect(parsed: &SourceFile, text: &str) -> PathSiteMaps {
                 )
             })
             .collect(),
-        expressions: path_calls::path_expression_sites(parsed, text)
+        expressions: path_calls::path_expression_sites(parsed)
             .into_iter()
             .map(|site| {
                 (
@@ -31,7 +32,7 @@ pub(super) fn collect(parsed: &SourceFile, text: &str) -> PathSiteMaps {
                 )
             })
             .collect(),
-        patterns: path_calls::pattern_path_sites(parsed, text)
+        patterns: path_calls::pattern_path_sites(parsed)
             .into_iter()
             .map(|site| {
                 (

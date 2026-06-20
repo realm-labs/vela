@@ -4,7 +4,8 @@ use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
-use vela_syntax::ast::SourceFile;
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::{
     CursorContextKind, DiagnosticRange, DocumentId, LanguageServiceDatabases, Position,
@@ -211,7 +212,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let parsed_source = self.parse_db().parsed_source(document_id);
+        let syntax_parse = self.parse_db().syntax_parse(document_id);
 
         if let Some(target) = trait_declaration_target(graph, source_id, source.text(), &token) {
             return self.trait_references(&target, include_declaration);
@@ -273,12 +274,12 @@ impl LanguageServiceDatabases {
                 return self.local_references(bindings, local, include_declaration);
             }
             if let Some(target) =
-                enum_variant_use_target(graph, bindings, parsed_source, source.text(), &token)
+                enum_variant_use_target(graph, bindings, syntax_parse, source.text(), &token)
             {
                 return self.enum_variant_references(&target.target, include_declaration);
             }
             if let Some(target) =
-                schema::schema_variant_use_target(self, parsed_source, source.text(), &token)
+                schema::schema_variant_use_target(self, syntax_parse, source.text(), &token)
             {
                 return schema::schema_variant_references(self, &target, include_declaration);
             }
@@ -863,17 +864,17 @@ struct EnumVariantUseReferenceSite<'a> {
 fn enum_variant_use_target(
     graph: &ModuleGraph,
     bindings: &BindingMap,
-    parsed: Option<&SourceFile>,
+    parsed: Option<&SyntaxParse<SyntaxSourceFile>>,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<EnumVariantUseTarget> {
     if let Some(parsed) = parsed {
-        for site in path_calls::path_expression_sites(parsed, text) {
+        for site in path_calls::path_expression_sites(parsed) {
             if site.segment_range == token.range {
                 return enum_variant_use_target_for_path(graph, bindings, &site.path, text, token);
             }
         }
-        for site in path_calls::pattern_path_sites(parsed, text) {
+        for site in path_calls::pattern_path_sites(parsed) {
             if site.segment_range == token.range {
                 return enum_variant_use_target_for_path(graph, bindings, &site.path, text, token);
             }
@@ -928,8 +929,8 @@ fn enum_variant_use_references_for_source(
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-        for site in path_calls::path_expression_sites(parsed, text) {
+    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+        for site in path_calls::path_expression_sites(parsed) {
             if site
                 .path
                 .last()
@@ -951,8 +952,8 @@ fn enum_variant_use_references_for_source(
             );
         }
     }
-    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-        for site in path_calls::pattern_path_sites(parsed, text) {
+    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+        for site in path_calls::pattern_path_sites(parsed) {
             if site
                 .path
                 .last()

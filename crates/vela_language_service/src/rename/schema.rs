@@ -314,13 +314,13 @@ pub(super) fn schema_type_use_target(
 pub(super) fn schema_function_use_target(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
-    text: &str,
+    _text: &str,
     token: &RenameToken,
 ) -> Option<SchemaFunctionRenameTarget> {
     if let Some(source) = query.source_record()
-        && let Some(parsed) = databases.parse_db().parsed_source(source.document_id())
+        && let Some(parsed) = databases.parse_db().syntax_parse(source.document_id())
     {
-        for site in path_calls::path_call_sites(parsed, text) {
+        for site in path_calls::path_call_sites(parsed) {
             if site.segment_range != token.range {
                 continue;
             }
@@ -338,13 +338,13 @@ pub(super) fn schema_function_use_target(
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
-    text: &str,
+    _text: &str,
     token: &RenameToken,
 ) -> Option<SchemaVariantRenameTarget> {
     if let Some(source) = query.source_record()
-        && let Some(parsed) = databases.parse_db().parsed_source(source.document_id())
+        && let Some(parsed) = databases.parse_db().syntax_parse(source.document_id())
     {
-        for site in path_calls::path_expression_sites(parsed, text) {
+        for site in path_calls::path_expression_sites(parsed) {
             if site.segment_range != token.range {
                 continue;
             }
@@ -496,10 +496,10 @@ fn push_schema_function_use_edits(
     let target_segment = schema_function_segment(&target.name);
     for source in databases.source_db().records().values() {
         let text = source.text();
-        let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) else {
+        let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
             continue;
         };
-        for site in path_calls::path_call_sites(parsed, text) {
+        for site in path_calls::path_call_sites(parsed) {
             if site
                 .path
                 .last()
@@ -530,8 +530,8 @@ fn push_schema_variant_use_edits(
 ) {
     for source in databases.source_db().records().values() {
         let text = source.text();
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-            for site in path_calls::path_expression_sites(parsed, text) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+            for site in path_calls::path_expression_sites(parsed) {
                 if site
                     .path
                     .last()
@@ -553,8 +553,8 @@ fn push_schema_variant_use_edits(
                 );
             }
         }
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-            for site in path_calls::pattern_path_sites(parsed, text) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+            for site in path_calls::pattern_path_sites(parsed) {
                 if site
                     .path
                     .last()

@@ -4,7 +4,8 @@ use vela_common::SourceId;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_syntax::ast::{SourceFile, Visibility};
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::{SyntaxSourceFile, Visibility};
 
 use crate::{DocumentId, LanguageServiceDatabases, TextRange, path_calls};
 
@@ -78,17 +79,17 @@ pub(super) fn enum_variant_declaration_target(
 pub(super) fn enum_variant_use_target(
     graph: &ModuleGraph,
     bindings: &BindingMap,
-    parsed: Option<&SourceFile>,
-    text: &str,
+    parsed: Option<&SyntaxParse<SyntaxSourceFile>>,
+    _text: &str,
     token: &RenameToken,
 ) -> Option<EnumVariantRenameTarget> {
     if let Some(parsed) = parsed {
-        for site in path_calls::path_expression_sites(parsed, text) {
+        for site in path_calls::path_expression_sites(parsed) {
             if site.segment_range == token.range {
                 return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
             }
         }
-        for site in path_calls::pattern_path_sites(parsed, text) {
+        for site in path_calls::pattern_path_sites(parsed) {
             if site.segment_range == token.range {
                 return enum_variant_use_target_for_path(graph, bindings, &site.path, token);
             }
@@ -164,8 +165,8 @@ fn push_enum_variant_use_edits(
     let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
         let text = source.text();
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-            for site in path_calls::path_expression_sites(parsed, text) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+            for site in path_calls::path_expression_sites(parsed) {
                 if site
                     .path
                     .last()
@@ -187,8 +188,8 @@ fn push_enum_variant_use_edits(
                 );
             }
         }
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-            for site in path_calls::pattern_path_sites(parsed, text) {
+        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+            for site in path_calls::pattern_path_sites(parsed) {
                 if site
                     .path
                     .last()

@@ -91,10 +91,9 @@ impl SymbolTarget {
         databases: &LanguageServiceDatabases,
         query: &QueryContext<'_>,
     ) -> Option<(Span, SymbolRef)> {
-        let text = query.text();
         let source = query.source_record()?;
-        let parsed = databases.parse_db().parsed_source(source.document_id())?;
-        for site in path_calls::path_expression_sites(parsed, text) {
+        let parsed = databases.parse_db().syntax_parse(source.document_id())?;
+        for site in path_calls::path_expression_sites(parsed) {
             if site.segment_range != self.range {
                 continue;
             }

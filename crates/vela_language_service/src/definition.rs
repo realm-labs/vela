@@ -252,8 +252,8 @@ impl LanguageServiceDatabases {
         query: &QueryContext<'_>,
         target: &SymbolTarget,
     ) -> Option<Definition> {
-        let parsed = query.parsed_source()?;
-        let call_site = path_calls::path_call_sites(parsed, query.text())
+        let parsed = query.syntax_parse()?;
+        let call_site = path_calls::path_call_sites(parsed)
             .into_iter()
             .find(|site| site.segment_range == target.range())?;
         let callee = call_site.path.join("::");

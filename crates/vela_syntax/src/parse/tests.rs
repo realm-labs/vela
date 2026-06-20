@@ -1016,6 +1016,74 @@ fn parser_parse_source_structures_match_expression_and_pattern_nodes() {
 }
 
 #[test]
+fn parser_parse_source_splits_unseparated_match_arms() {
+    let source = r#"fn update(state) {
+    let reward = match state {
+        Quest::Done => 1
+        Quest::Active { count } => count;
+        Quest::Pending(value) => value
+    };
+}
+"#;
+    let parse = parse_source_with_id(SourceId::new(25), source);
+    let tree = parse.tree();
+    let body = tree
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let let_stmt = body.let_statements().next().expect("let statement");
+    let match_expr = let_stmt
+        .initializer()
+        .and_then(|expr| SyntaxMatchExpr::cast(expr.syntax().clone()))
+        .expect("match initializer");
+    let arms = match_expr
+        .arm_list()
+        .expect("match arm list")
+        .arms()
+        .collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(arms.len(), 3);
+    assert_eq!(
+        arms[0]
+            .pattern()
+            .expect("path pattern")
+            .path_text()
+            .as_deref(),
+        Some("Quest::Done")
+    );
+    assert_eq!(
+        arms[0]
+            .body_expression()
+            .expect("literal body")
+            .syntax()
+            .kind(),
+        SyntaxKind::Literal
+    );
+
+    let record_pattern =
+        SyntaxRecordPattern::cast(arms[1].pattern().expect("record pattern").syntax().clone())
+            .expect("record pattern wrapper");
+    assert_eq!(record_pattern.path_text().as_deref(), Some("Quest::Active"));
+    assert_eq!(record_pattern.fields().count(), 1);
+    assert_eq!(
+        arms[1]
+            .separator_token()
+            .expect("semicolon separator")
+            .text(),
+        ";"
+    );
+
+    let tuple_pattern =
+        SyntaxTuplePattern::cast(arms[2].pattern().expect("tuple pattern").syntax().clone())
+            .expect("tuple pattern wrapper");
+    assert_eq!(tuple_pattern.path_text().as_deref(), Some("Quest::Pending"));
+    assert_eq!(tuple_pattern.patterns().count(), 1);
+}
+
+#[test]
 fn parser_parse_source_structures_for_statement_pattern_and_iterable_nodes() {
     let source = r#"fn update(rewards) {
     for index, Reward::Grant { amount: value, item } in rewards.filter(|reward| reward.active) {

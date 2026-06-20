@@ -729,7 +729,65 @@ impl CstParser<'_, '_> {
         if self.at_kind(body_start, SyntaxKind::LBrace) {
             return self.find_matching_brace_end(body_start).min(end);
         }
-        self.find_argument_end(body_start, end)
+        self.find_match_arm_expression_end(body_start, end)
+    }
+
+    fn find_match_arm_expression_end(&self, start: usize, end: usize) -> usize {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() {
+                if matches!(current, SyntaxKind::Comma | SyntaxKind::Semicolon) {
+                    return cursor;
+                }
+                if current.is_trivia() && self.tokens[cursor].text.contains('\n') {
+                    let next = self.skip_trivia(cursor + 1);
+                    if next >= end || self.can_start_match_arm(next, end) {
+                        return cursor;
+                    }
+                }
+            }
+            depth.bump(current);
+        }
+        end
+    }
+
+    fn can_start_match_arm(&self, start: usize, end: usize) -> bool {
+        if !matches!(
+            self.kind_at(start),
+            Some(
+                SyntaxKind::Ident
+                    | SyntaxKind::TrueKw
+                    | SyntaxKind::FalseKw
+                    | SyntaxKind::NullKw
+                    | SyntaxKind::String
+                    | SyntaxKind::Char
+                    | SyntaxKind::Bytes
+                    | SyntaxKind::Int
+                    | SyntaxKind::Float
+            )
+        ) {
+            return false;
+        }
+
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() {
+                if current == SyntaxKind::FatArrow {
+                    return true;
+                }
+                if matches!(current, SyntaxKind::Comma | SyntaxKind::Semicolon) {
+                    return false;
+                }
+            }
+            depth.bump(current);
+        }
+        false
     }
 
     fn find_outer_index_list_start(&self, start: usize, end: usize) -> Option<usize> {

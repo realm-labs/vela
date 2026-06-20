@@ -1,6 +1,7 @@
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
-use vela_syntax::ast::SourceFile;
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
 
 use crate::{
     LanguageServiceDatabases, SymbolRef, TextRange, member_access, path_calls, query_context,
@@ -238,17 +239,17 @@ pub(super) fn schema_field_declaration_target(
 
 pub(super) fn schema_variant_use_target(
     databases: &LanguageServiceDatabases,
-    parsed: Option<&SourceFile>,
-    text: &str,
+    parsed: Option<&SyntaxParse<SyntaxSourceFile>>,
+    _text: &str,
     token: &ReferenceToken,
 ) -> Option<SchemaVariantReferenceTarget> {
     let parsed = parsed?;
-    for site in path_calls::path_expression_sites(parsed, text) {
+    for site in path_calls::path_expression_sites(parsed) {
         if site.segment_range == token.range {
             return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
         }
     }
-    for site in path_calls::pattern_path_sites(parsed, text) {
+    for site in path_calls::pattern_path_sites(parsed) {
         if site.segment_range == token.range {
             return schema_variant_target_for_path(databases.schema_db().facts(), &site.path);
         }
@@ -513,8 +514,8 @@ fn schema_variant_use_references_for_source(
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-        for site in path_calls::path_expression_sites(parsed, text) {
+    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+        for site in path_calls::path_expression_sites(parsed) {
             if site
                 .path
                 .last()
@@ -534,8 +535,8 @@ fn schema_variant_use_references_for_source(
             });
         }
     }
-    if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
-        for site in path_calls::pattern_path_sites(parsed, text) {
+    if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
+        for site in path_calls::pattern_path_sites(parsed) {
             if site
                 .path
                 .last()
