@@ -113,6 +113,11 @@ impl SyntaxTuplePattern {
     pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
 }
 
 impl AstNode for SyntaxTuplePattern {
@@ -153,6 +158,11 @@ impl SyntaxRecordPattern {
     #[must_use]
     pub fn fields(&self) -> AstChildren<SyntaxRecordPatternField> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
     }
 }
 
@@ -230,6 +240,14 @@ fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| token.kind() == kind)
+}
+
+fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == wanted)
+        .collect()
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
@@ -362,8 +380,8 @@ mod tests {
         "ready" => 1,
         binding => 2,
         Option::None => 3,
-        Option::Some(payload) => 4,
-        Result::Err { error } => 5,
+        Option::Some(payload, fallback) => 4,
+        Result::Err { error, code } => 5,
     };
 }
 "#,
@@ -417,7 +435,15 @@ mod tests {
                 .kind(),
             SyntaxKind::RParen
         );
-        assert_eq!(tuple_pattern.patterns().count(), 1);
+        assert_eq!(tuple_pattern.patterns().count(), 2);
+        assert_eq!(
+            tuple_pattern
+                .separator_tokens()
+                .iter()
+                .map(|token| token.text().to_owned())
+                .collect::<Vec<_>>(),
+            vec![","]
+        );
 
         let record_pattern = arms[5]
             .pattern()
@@ -440,7 +466,15 @@ mod tests {
             SyntaxKind::RBrace
         );
         let fields = record_pattern.fields().collect::<Vec<_>>();
-        assert_eq!(fields.len(), 1);
+        assert_eq!(fields.len(), 2);
+        assert_eq!(
+            record_pattern
+                .separator_tokens()
+                .iter()
+                .map(|token| token.text().to_owned())
+                .collect::<Vec<_>>(),
+            vec![","]
+        );
         assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));
         assert_eq!(
             fields[0].label_token().expect("field label").text(),
@@ -448,6 +482,7 @@ mod tests {
         );
         assert!(fields[0].colon_token().is_none());
         assert!(fields[0].is_shorthand());
+        assert_eq!(fields[1].label_text().as_deref(), Some("code"));
     }
 
     #[test]
