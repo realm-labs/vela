@@ -24,11 +24,11 @@ pub use statements::{
     SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
 };
 pub use syntax::{
-    AstChildren, AstNode, SyntaxBlock, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList,
-    SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem, SyntaxParam, SyntaxParamList,
-    SyntaxRecordFieldList, SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList,
-    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTupleFieldList, SyntaxTypeArgList,
-    SyntaxTypeHint,
+    AstChildren, AstNode, SyntaxBlock, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
+    SyntaxEnumVariantList, SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod,
+    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxRecordFieldList, SyntaxSourceFile,
+    SyntaxStructField, SyntaxStructFieldList, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod,
+    SyntaxTupleFieldList, SyntaxTypeArgList, SyntaxTypeHint, SyntaxUseItem, SyntaxUsePath,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]

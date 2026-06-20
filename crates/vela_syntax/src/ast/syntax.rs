@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use super::expr::SyntaxExpression;
 use super::statements::{SyntaxLetStmt, SyntaxStatement};
 use crate::{SyntaxKind, SyntaxNode, SyntaxNodeChildren, TextRange};
 
@@ -53,6 +54,21 @@ impl SyntaxSourceFile {
 
     #[must_use]
     pub fn impls(&self) -> AstChildren<SyntaxImplItem> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn uses(&self) -> AstChildren<SyntaxUseItem> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn consts(&self) -> AstChildren<SyntaxConstItem> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn globals(&self) -> AstChildren<SyntaxGlobalItem> {
         AstChildren::new(&self.syntax)
     }
 }
@@ -119,6 +135,108 @@ impl AstNode for SyntaxItem {
                 | SyntaxKind::TraitItem
                 | SyntaxKind::ImplItem
         )
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxUseItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxUseItem {
+    #[must_use]
+    pub fn path(&self) -> Option<SyntaxUsePath> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxUseItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::UseItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxUsePath {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxUsePath {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::UsePath
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxConstItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxConstItem {
+    #[must_use]
+    pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn value(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxConstItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ConstItem
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxGlobalItem {
+    syntax: SyntaxNode,
+}
+
+impl SyntaxGlobalItem {
+    #[must_use]
+    pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
+        child(&self.syntax)
+    }
+}
+
+impl AstNode for SyntaxGlobalItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::GlobalItem
     }
 
     fn cast(syntax: SyntaxNode) -> Option<Self> {

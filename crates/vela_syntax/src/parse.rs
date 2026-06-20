@@ -84,9 +84,10 @@ mod tests {
 
     use crate::ast::{
         AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBreakStmt, SyntaxCallExpr,
-        SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxIndexExpr,
-        SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr, SyntaxRecordExpr, SyntaxRecordPattern,
-        SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern, SyntaxUnaryExpr,
+        SyntaxConstItem, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxGlobalItem,
+        SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr,
+        SyntaxRecordExpr, SyntaxRecordPattern, SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern,
+        SyntaxUnaryExpr, SyntaxUseItem,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -130,6 +131,66 @@ mod tests {
                 SyntaxKind::UseItem,
                 SyntaxKind::StructItem,
             ]
+        );
+    }
+
+    #[test]
+    fn parser_parse_source_structures_use_const_and_global_items() {
+        let source = r#"use game::state::Player as PlayerState;
+const DEFAULT_LEVEL: i64 = base_level + 1;
+global current_player: Player;
+"#;
+        let parse = parse_source_with_id(SourceId::new(22), source);
+        let tree = parse.tree();
+        let use_item = tree.uses().next().expect("use item");
+        let const_item = tree.consts().next().expect("const item");
+        let global_item = tree.globals().next().expect("global item");
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(tree.syntax().text().to_string(), source);
+        assert_eq!(
+            tree.items()
+                .map(|item| item.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![
+                SyntaxKind::UseItem,
+                SyntaxKind::ConstItem,
+                SyntaxKind::GlobalItem,
+            ]
+        );
+        assert_eq!(
+            SyntaxUseItem::cast(use_item.syntax().clone())
+                .expect("typed use item")
+                .path()
+                .expect("use path")
+                .syntax()
+                .text()
+                .to_string(),
+            "game::state::Player"
+        );
+        assert_eq!(
+            SyntaxConstItem::cast(const_item.syntax().clone())
+                .expect("typed const item")
+                .type_hint()
+                .expect("const type hint")
+                .syntax()
+                .text()
+                .to_string(),
+            "i64"
+        );
+        assert_eq!(
+            const_item.value().expect("const value").syntax().kind(),
+            SyntaxKind::BinaryExpr
+        );
+        assert_eq!(
+            SyntaxGlobalItem::cast(global_item.syntax().clone())
+                .expect("typed global item")
+                .type_hint()
+                .expect("global type hint")
+                .syntax()
+                .text()
+                .to_string(),
+            "Player"
         );
     }
 

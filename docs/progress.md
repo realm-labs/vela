@@ -135,7 +135,10 @@ diagnostics for later CST construction. Phase 3 has started with a rowan
 lexer stream, preserves lexical diagnostics, and exposes the first typed
 source-file syntax wrapper. The rowan parse path now wraps top-level
 declarations in item CST nodes, exposes source-file item iteration, and gives
-function declarations typed parameter-list, parameter, type-hint,
+use, const, global, and function declarations typed CST wrappers. Use items
+now expose use-path child nodes, const items expose type-hint and value
+expression accessors, global items expose type-hint accessors, and function
+declarations expose typed parameter-list, parameter, type-hint,
 type-argument-list, and body block CST wrappers. Struct declarations now expose
 typed field-list and field CST wrappers with nested field type-hint and
 type-argument-list accessors. Enum declarations now expose typed variant-list
