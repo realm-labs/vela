@@ -161,7 +161,10 @@ literals. Postfix expression structure now also preserves
 method-call-over-field ordering and exposes index and try expression wrappers.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
-expression/block bodies. Match expressions now expose scrutinees, arm lists,
+expression/block bodies. Bare braced expressions now keep the existing
+map-vs-block split in the rowan CST: `{ key: value }` remains a `MapExpr`,
+while `{ statements }` becomes a typed `Block` expression with nested
+statement children. Match expressions now expose scrutinees, arm lists,
 explicit guard and expression/block body accessors, tuple-variant
 pattern paths, record-variant pattern paths and fields, field labels, binding
 names, basic path-pattern text, literal patterns, and wildcard/basic pattern

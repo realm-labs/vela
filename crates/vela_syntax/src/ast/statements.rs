@@ -18,6 +18,7 @@ impl AstNode for SyntaxStatement {
                 | SyntaxKind::ForStmt
                 | SyntaxKind::IfExpr
                 | SyntaxKind::MatchExpr
+                | SyntaxKind::Block
                 | SyntaxKind::ExprStmt
         )
     }

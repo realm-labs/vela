@@ -31,6 +31,7 @@ impl CstParser<'_, '_> {
             SyntaxKind::LambdaExpr => {
                 self.lambda_expression_body(expression_start, expression_end);
             }
+            SyntaxKind::Block => self.block_body(expression_start, expression_end),
             SyntaxKind::IfExpr => self.if_expression_body(expression_start, expression_end),
             SyntaxKind::MatchExpr => self.match_expression_body(expression_start, expression_end),
             _ => self.emit_until(expression_end),
@@ -502,7 +503,7 @@ impl CstParser<'_, '_> {
             return SyntaxKind::ArrayExpr;
         }
         if self.at_kind(start, SyntaxKind::LBrace) {
-            return SyntaxKind::MapExpr;
+            return self.braced_expression_kind(start, end);
         }
         if self.can_start_record_expression(start)
             && self
@@ -546,6 +547,32 @@ impl CstParser<'_, '_> {
             ) if self.single_significant_token(start, end) => SyntaxKind::Literal,
             _ => SyntaxKind::PathExpr,
         }
+    }
+
+    fn braced_expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
+        if self.braced_expression_has_map_entry(start, end) {
+            SyntaxKind::MapExpr
+        } else {
+            SyntaxKind::Block
+        }
+    }
+
+    fn braced_expression_has_map_entry(&self, start: usize, end: usize) -> bool {
+        let close = end.saturating_sub(1);
+        if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            != Some(end)
+        {
+            return false;
+        }
+
+        let first_entry = self.skip_trivia(start + 1);
+        if first_entry >= close {
+            return false;
+        }
+
+        let first_entry_end = self.find_argument_end(first_entry, close);
+        self.find_root_kind_before(SyntaxKind::Colon, first_entry, first_entry_end)
+            .is_some()
     }
 
     fn find_argument_end(&self, start: usize, end: usize) -> usize {

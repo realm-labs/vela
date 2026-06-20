@@ -54,7 +54,12 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         }
 
         self.builder.start_node(SyntaxKind::Block);
-        self.emit_current_token();
+        self.block_body(start, end);
+        self.builder.finish_node();
+    }
+
+    pub(super) fn block_body(&mut self, start: usize, end: usize) {
+        self.emit_until(start + 1);
         let close = end.saturating_sub(1);
         while self.pos < close {
             let statement_start = self.skip_trivia(self.pos);
@@ -65,13 +70,16 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
             if let Some(kind) = self.statement_kind_at(statement_start, close) {
                 let statement_end = self.find_statement_end(kind, statement_start, close);
-                self.statement_range(kind, statement_start, statement_end);
+                if kind == SyntaxKind::Block && self.at_kind(statement_start, SyntaxKind::LBrace) {
+                    self.block_range(statement_start, statement_end);
+                } else {
+                    self.statement_range(kind, statement_start, statement_end);
+                }
             } else {
                 self.emit_current_token();
             }
         }
         self.emit_until(end);
-        self.builder.finish_node();
     }
 
     fn statement_range(&mut self, kind: SyntaxKind, start: usize, end: usize) {
@@ -263,6 +271,10 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 .find_root_kind_before(SyntaxKind::LBrace, start, end)
                 .map(|body| self.find_matching_brace_end(body).min(end))
                 .unwrap_or_else(|| self.find_statement_term_end(start, end)),
+            SyntaxKind::Block => {
+                let block_start = self.skip_leading_attributes(start, end);
+                self.find_matching_brace_end(block_start).min(end)
+            }
             _ => self.find_statement_term_end(start, end),
         }
     }
@@ -648,6 +660,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             SyntaxKind::ForKw => SyntaxKind::ForStmt,
             SyntaxKind::IfKw => SyntaxKind::IfExpr,
             SyntaxKind::MatchKw => SyntaxKind::MatchExpr,
+            SyntaxKind::LBrace => SyntaxKind::Block,
             _ => SyntaxKind::ExprStmt,
         })
     }

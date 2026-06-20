@@ -630,6 +630,7 @@ fn expression_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::MapExpr
             | SyntaxKind::RecordExpr
             | SyntaxKind::LambdaExpr
+            | SyntaxKind::Block
             | SyntaxKind::IfExpr
             | SyntaxKind::MatchExpr
     )
@@ -637,4 +638,56 @@ fn expression_kind(kind: SyntaxKind) -> bool {
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::SyntaxKind;
+    use crate::ast::{AstNode, SyntaxBlock, SyntaxMapExpr};
+    use crate::parse::parse_source;
+
+    #[test]
+    fn ast_block_expression_exposes_statement_children() {
+        let source = r#"fn update(score) {
+    let value = {
+        return score;
+    };
+    let table = { score: score };
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let lets = body.let_statements().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(lets.len(), 2);
+
+        let block_initializer = lets[0].initializer().expect("block initializer");
+        assert_eq!(block_initializer.syntax().kind(), SyntaxKind::Block);
+        let block =
+            SyntaxBlock::cast(block_initializer.syntax().clone()).expect("typed block expression");
+        assert_eq!(
+            block
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ReturnStmt]
+        );
+
+        let map_initializer = lets[1].initializer().expect("map initializer");
+        assert_eq!(map_initializer.syntax().kind(), SyntaxKind::MapExpr);
+        assert_eq!(
+            SyntaxMapExpr::cast(map_initializer.syntax().clone())
+                .expect("typed map expression")
+                .entries()
+                .count(),
+            1
+        );
+    }
 }
