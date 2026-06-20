@@ -1,7 +1,8 @@
 use crate::SyntaxKind;
 use crate::ast::{
     AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr, SyntaxExprStmt,
-    SyntaxLiteral, SyntaxMapExpr, SyntaxRecordExpr, SyntaxUnaryExpr,
+    SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxRecordExpr,
+    SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -305,6 +306,128 @@ fn ast_call_arguments_expose_names_and_values() {
             .expect("second named argument value")
             .syntax()
             .kind(),
+        SyntaxKind::PathExpr
+    );
+}
+
+#[test]
+fn ast_field_expression_exposes_receiver_and_member_name() {
+    let source = r#"fn update(account) {
+    let balance = account.balance;
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("field binding")
+        .initializer()
+        .expect("field initializer");
+    let field = SyntaxFieldExpr::cast(initializer.syntax().clone()).expect("field expr");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        field.receiver().expect("receiver").syntax().kind(),
+        SyntaxKind::PathExpr
+    );
+    assert_eq!(field.dot_token().expect("dot").kind(), SyntaxKind::Dot);
+    assert_eq!(field.name_token().expect("field name").text(), "balance");
+    assert_eq!(field.name_text().as_deref(), Some("balance"));
+}
+
+#[test]
+fn ast_index_expression_exposes_receiver_and_index() {
+    let source = r#"fn update(items, index) {
+    let item = items[index + 1];
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("index binding")
+        .initializer()
+        .expect("index initializer");
+    let index = SyntaxIndexExpr::cast(initializer.syntax().clone()).expect("index expr");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(
+        index.receiver().expect("receiver").syntax().kind(),
+        SyntaxKind::PathExpr
+    );
+    assert_eq!(
+        index.index().expect("index expression").syntax().kind(),
+        SyntaxKind::BinaryExpr
+    );
+    assert_eq!(index.expressions().count(), 2);
+}
+
+#[test]
+fn ast_map_entries_expose_key_colon_and_value() {
+    let source = r#"fn build(amount, item) {
+    let reward = {
+        "amount": amount + 1,
+        item: item,
+    };
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("map binding")
+        .initializer()
+        .expect("map initializer");
+    let map = SyntaxMapExpr::cast(initializer.syntax().clone()).expect("map expr");
+    let entries = map.entries().collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(entries.len(), 2);
+    assert_eq!(
+        entries[0].key().expect("string key").syntax().kind(),
+        SyntaxKind::Literal
+    );
+    assert_eq!(
+        entries[0].colon_token().expect("first colon").kind(),
+        SyntaxKind::Colon
+    );
+    assert_eq!(
+        entries[0].value().expect("first value").syntax().kind(),
+        SyntaxKind::BinaryExpr
+    );
+    assert_eq!(entries[0].expressions().count(), 2);
+
+    assert_eq!(
+        entries[1].key().expect("identifier key").syntax().kind(),
+        SyntaxKind::PathExpr
+    );
+    assert_eq!(
+        entries[1].colon_token().expect("second colon").kind(),
+        SyntaxKind::Colon
+    );
+    assert_eq!(
+        entries[1].value().expect("second value").syntax().kind(),
         SyntaxKind::PathExpr
     );
 }

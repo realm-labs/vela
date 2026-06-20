@@ -225,6 +225,31 @@ impl SyntaxFieldExpr {
     pub fn receiver(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn dot_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Dot)
+    }
+
+    #[must_use]
+    pub fn name_token(&self) -> Option<SyntaxToken> {
+        let mut past_dot = false;
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| {
+                if token.kind() == SyntaxKind::Dot {
+                    past_dot = true;
+                    return false;
+                }
+                past_dot && token.kind() == SyntaxKind::Ident
+            })
+    }
+
+    #[must_use]
+    pub fn name_text(&self) -> Option<String> {
+        self.name_token().map(|token| token.text().to_owned())
+    }
 }
 
 impl AstNode for SyntaxFieldExpr {
@@ -281,6 +306,16 @@ impl SyntaxIndexExpr {
     #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn receiver(&self) -> Option<SyntaxExpression> {
+        self.expressions().next()
+    }
+
+    #[must_use]
+    pub fn index(&self) -> Option<SyntaxExpression> {
+        self.expressions().nth(1)
     }
 }
 
@@ -453,6 +488,21 @@ impl SyntaxMapEntry {
     #[must_use]
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn key(&self) -> Option<SyntaxExpression> {
+        self.expressions().next()
+    }
+
+    #[must_use]
+    pub fn value(&self) -> Option<SyntaxExpression> {
+        self.expressions().nth(1)
+    }
+
+    #[must_use]
+    pub fn colon_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Colon)
     }
 }
 
