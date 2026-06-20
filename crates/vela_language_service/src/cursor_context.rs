@@ -1,20 +1,19 @@
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{
-    AstNode, Block, ElseBranch, Expr, ExprKind, ItemKind, SourceFile, Stmt, StmtKind,
-    SyntaxMapEntry, SyntaxSourceFile,
-};
+use vela_syntax::ast::{AstNode, SourceFile, Stmt, StmtKind, SyntaxMapEntry, SyntaxSourceFile};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
 
-use vela_common::{SourceId, Span};
+use vela_common::SourceId;
 
 use crate::{LineIndex, Position, TextRange};
 
+mod call_callee;
 mod member_receiver;
 mod pattern;
 mod record_expression_field;
 mod record_type_field;
+use call_callee::call_callee_for_source;
 use member_receiver::member_receiver_for_source;
 use pattern::is_pattern_context;
 use record_expression_field::is_record_expression_field_context;
@@ -253,7 +252,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if let Some(call) = parsed.and_then(|source| call_callee_for_source(source, prefix_start)) {
+    if let Some(call) = syntax_parse
+        .as_ref()
+        .and_then(|parse| call_callee_for_source(&parse.tree(), prefix_start))
+    {
         let mut cursor = context(
             CursorContextKind::CallArgument,
             prefix_start,
@@ -587,154 +589,6 @@ fn matching_open_token(
 
 fn token_start_index(tokens: &[Token], start: u32) -> Option<usize> {
     tokens.iter().position(|token| token.span.start == start)
-}
-
-fn span_range(span: Span) -> Option<TextRange> {
-    Some(TextRange::new(
-        usize::try_from(span.start).ok()?,
-        usize::try_from(span.end).ok()?,
-    ))
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-struct CallCalleeRanges {
-    callee: TextRange,
-    member_receiver: Option<TextRange>,
-}
-
-fn call_callee_for_source(source: &SourceFile, offset: usize) -> Option<CallCalleeRanges> {
-    let offset = u32::try_from(offset).ok()?;
-    source.items.iter().find_map(|item| match &item.kind {
-        ItemKind::Const(item) => call_callee_for_expr(&item.value, offset),
-        ItemKind::Function(item) => item
-            .params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| call_callee_for_expr(value, offset))
-            .or_else(|| call_callee_for_block(&item.body, offset)),
-        _ => None,
-    })
-}
-
-fn call_callee_for_block(block: &Block, offset: u32) -> Option<CallCalleeRanges> {
-    block.span.contains(offset).then(|| {
-        block
-            .statements
-            .iter()
-            .find_map(|statement| call_callee_for_statement(statement, offset))
-    })?
-}
-
-fn call_callee_for_statement(statement: &Stmt, offset: u32) -> Option<CallCalleeRanges> {
-    if !statement.span.contains(offset) {
-        return None;
-    }
-    match &statement.kind {
-        StmtKind::Let { value, .. } => value
-            .as_ref()
-            .and_then(|value| call_callee_for_expr(value, offset)),
-        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => {
-            call_callee_for_expr(value, offset)
-        }
-        StmtKind::For { iterable, body, .. } => {
-            call_callee_for_expr(iterable, offset).or_else(|| call_callee_for_block(body, offset))
-        }
-        StmtKind::Block(block) => call_callee_for_block(block, offset),
-        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => None,
-    }
-}
-
-fn call_callee_for_expr(expr: &Expr, offset: u32) -> Option<CallCalleeRanges> {
-    if !expr.span.contains(offset) {
-        return None;
-    }
-    match &expr.kind {
-        ExprKind::Call { callee, args } => call_callee_for_expr(callee, offset)
-            .or_else(|| {
-                args.iter()
-                    .find_map(|arg| call_callee_for_expr(&arg.value, offset))
-            })
-            .or_else(|| {
-                (callee.span.end < offset && offset <= expr.span.end)
-                    .then(|| call_callee_ranges(callee))
-                    .flatten()
-            }),
-        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => call_callee_for_expr(expr, offset),
-        ExprKind::Binary { left, right, .. }
-        | ExprKind::Assign {
-            target: left,
-            value: right,
-            ..
-        } => call_callee_for_expr(left, offset).or_else(|| call_callee_for_expr(right, offset)),
-        ExprKind::Field { base, .. } => call_callee_for_expr(base, offset),
-        ExprKind::Index { base, index } => {
-            call_callee_for_expr(base, offset).or_else(|| call_callee_for_expr(index, offset))
-        }
-        ExprKind::Array(values) => values
-            .iter()
-            .find_map(|value| call_callee_for_expr(value, offset)),
-        ExprKind::Map(entries) => entries.iter().find_map(|entry| {
-            call_callee_for_expr(&entry.key, offset)
-                .or_else(|| call_callee_for_expr(&entry.value, offset))
-        }),
-        ExprKind::Record { fields, .. } => fields
-            .iter()
-            .filter_map(|field| field.value.as_ref())
-            .find_map(|value| call_callee_for_expr(value, offset)),
-        ExprKind::Lambda { params, body } => params
-            .iter()
-            .filter_map(|param| param.default_value.as_ref())
-            .find_map(|value| call_callee_for_expr(value, offset))
-            .or_else(|| call_callee_for_expr(body, offset)),
-        ExprKind::If(if_expr) => call_callee_for_expr(&if_expr.condition, offset)
-            .or_else(|| call_callee_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| call_callee_for_else_branch(branch, offset))
-            }),
-        ExprKind::Match(match_expr) => {
-            call_callee_for_expr(&match_expr.scrutinee, offset).or_else(|| {
-                match_expr
-                    .arms
-                    .iter()
-                    .find_map(|arm| call_callee_for_expr(&arm.body, offset))
-            })
-        }
-        ExprKind::Block(block) => call_callee_for_block(block, offset),
-        ExprKind::Literal(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::Path(_)
-        | ExprKind::SelfValue
-        | ExprKind::Error => None,
-    }
-}
-
-fn call_callee_for_else_branch(branch: &ElseBranch, offset: u32) -> Option<CallCalleeRanges> {
-    match branch {
-        ElseBranch::Block(block) => call_callee_for_block(block, offset),
-        ElseBranch::If(if_expr) => call_callee_for_expr(&if_expr.condition, offset)
-            .or_else(|| call_callee_for_block(&if_expr.then_branch, offset))
-            .or_else(|| {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| call_callee_for_else_branch(branch, offset))
-            }),
-    }
-}
-
-fn call_callee_ranges(callee: &Expr) -> Option<CallCalleeRanges> {
-    let callee_range = span_range(callee.span)?;
-    let member_receiver = match &callee.kind {
-        ExprKind::Field { base, .. } => span_range(base.span),
-        _ => None,
-    };
-    Some(CallCalleeRanges {
-        callee: callee_range,
-        member_receiver,
-    })
 }
 
 fn is_statement_context(parsed: Option<&SourceFile>, prefix_start: usize) -> bool {
