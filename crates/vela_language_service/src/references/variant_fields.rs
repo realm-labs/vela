@@ -3,7 +3,7 @@ use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
+use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::LanguageServiceDatabases;
 
@@ -39,8 +39,6 @@ pub(super) fn script_variant_field_references(
             references.extend(variant_constructor_field_references_for_source(
                 graph, parsed, source, target,
             ));
-        }
-        if let Some(parsed) = databases.parse_db().parsed_source(source.document_id()) {
             references.extend(variant_pattern_field_references_for_source(
                 graph, parsed, source, target,
             ));
@@ -97,14 +95,13 @@ pub(super) fn script_variant_field_declaration_target(
 pub(super) fn script_variant_field_use_target(
     graph: &ModuleGraph,
     syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
-    parsed: &SourceFile,
     text: &str,
     token: &ReferenceToken,
 ) -> Option<VariantFieldReferenceTarget> {
     let field = token_text(text, token.range)?;
-    syntax_parse
-        .and_then(|parsed| variant_constructor_field_use_target(graph, parsed, token, field))
-        .or_else(|| variant_pattern_field_use_target(graph, parsed, text, token, field))
+    let parsed = syntax_parse?;
+    variant_constructor_field_use_target(graph, parsed, token, field)
+        .or_else(|| variant_pattern_field_use_target(graph, parsed, token, field))
 }
 
 fn reference_for_variant_field_declaration(
@@ -155,30 +152,18 @@ fn variant_constructor_field_use_target(
 
 fn variant_pattern_field_use_target(
     graph: &ModuleGraph,
-    parsed: &SourceFile,
-    text: &str,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     token: &ReferenceToken,
     field: &str,
 ) -> Option<VariantFieldReferenceTarget> {
-    let mut target = None;
-    record_variant_patterns::for_each_record_variant_pattern_field(
-        parsed,
-        |path, pattern_field| {
-            if target.is_some() || pattern_field.name != field {
-                return;
-            }
-            let Some(span_range) = span_text_range(pattern_field.span) else {
-                return;
-            };
-            let Some(name_range) = name_range_in_text(text, span_range, &pattern_field.name) else {
-                return;
-            };
-            if name_range.start <= token.range.start && token.range.end <= name_range.end {
-                target = variant_field_target_for_path(graph, path, field);
-            }
-        },
-    );
-    target
+    record_variant_patterns::record_pattern_field_sites(parsed)
+        .into_iter()
+        .find(|site| {
+            site.name == field
+                && site.name_range.start <= token.range.start
+                && token.range.end <= site.name_range.end
+        })
+        .and_then(|site| variant_field_target_for_path(graph, &site.path, field))
 }
 
 fn variant_constructor_field_references_for_source(
@@ -215,28 +200,23 @@ fn variant_constructor_field_references_for_source(
 
 fn variant_pattern_field_references_for_source(
     graph: &ModuleGraph,
-    parsed: &SourceFile,
+    parsed: &SyntaxParse<SyntaxSourceFile>,
     source: &crate::SourceRecord,
     target: &VariantFieldReferenceTarget,
 ) -> Vec<Reference> {
     let mut references = Vec::new();
     let text = source.text();
-    record_variant_patterns::for_each_record_variant_pattern_field(parsed, |path, field| {
+    for field in record_variant_patterns::record_pattern_field_sites(parsed) {
         if field.name != target.field {
-            return;
+            continue;
         }
-        if variant_field_target_for_path(graph, path, &target.field).as_ref() != Some(target) {
-            return;
+        if variant_field_target_for_path(graph, &field.path, &target.field).as_ref() != Some(target)
+        {
+            continue;
         }
-        let Some(span_range) = span_text_range(field.span) else {
-            return;
-        };
-        let Some(name_range) = name_range_in_text(text, span_range, &field.name) else {
-            return;
-        };
         references.push(Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, name_range),
+            range: diagnostic_range(text, field.name_range),
             kind: ReferenceKind::Pattern,
             symbol: source_variant_field_symbol(
                 graph,
@@ -246,7 +226,7 @@ fn variant_pattern_field_references_for_source(
             )
             .expect("variant field target should have a source symbol"),
         });
-    });
+    }
     references
 }
 

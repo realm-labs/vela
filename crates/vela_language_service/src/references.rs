@@ -283,14 +283,8 @@ impl LanguageServiceDatabases {
             {
                 return schema::schema_variant_references(self, &target, include_declaration);
             }
-            if let Some(parsed) = self.parse_db().parsed_source(document_id)
-                && let Some(target) = schema::schema_record_field_use_target(
-                    self,
-                    syntax_parse,
-                    parsed,
-                    source.text(),
-                    &token,
-                )
+            if let Some(target) =
+                schema::schema_record_field_use_target(self, syntax_parse, source.text(), &token)
             {
                 return schema::schema_field_references(self, &target, include_declaration);
             }
@@ -300,15 +294,12 @@ impl LanguageServiceDatabases {
             {
                 return fields::script_field_references(self, &target, include_declaration);
             }
-            if let Some(parsed) = self.parse_db().parsed_source(document_id)
-                && let Some(target) = variant_fields::script_variant_field_use_target(
-                    graph,
-                    syntax_parse,
-                    parsed,
-                    source.text(),
-                    &token,
-                )
-            {
+            if let Some(target) = variant_fields::script_variant_field_use_target(
+                graph,
+                syntax_parse,
+                source.text(),
+                &token,
+            ) {
                 return variant_fields::script_variant_field_references(
                     self,
                     &target,
