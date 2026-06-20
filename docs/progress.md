@@ -136,17 +136,21 @@ lexer stream, preserves lexical diagnostics, and exposes the first typed
 source-file syntax wrapper. The rowan parse path now wraps top-level
 declarations in item CST nodes, exposes source-file item iteration, and gives
 use, const, global, and function declarations typed CST wrappers. Use items
-now expose use-path child nodes, const items expose type-hint and value
-expression accessors, global items expose type-hint accessors, and function
-declarations expose typed parameter-list, parameter, type-hint,
-type-argument-list with nested type-hint children, and body block CST wrappers.
+now expose use-path child nodes, use-path text, and alias token/text accessors;
+const and global items expose declaration name token/text accessors plus
+type-hint accessors, const items expose value expression accessors, and
+function declarations expose name token/text accessors plus typed
+parameter-list, parameter name token/text, type-hint, type-argument-list with
+nested type-hint children, and body block CST wrappers.
 Struct declarations now expose typed field-list and field CST wrappers with
-nested field type-hint and type-argument-list accessors. Enum declarations now
-expose typed variant-list
-and variant CST wrappers, with tuple variant payloads structured as parameter
-lists and record variant payloads structured as field lists. Trait and impl
-declarations now expose typed method CST wrappers with parameter-list,
-return-type, and optional body accessors. Leading item, field, variant, method,
+field name token/text, nested field type-hint, and type-argument-list
+accessors. Enum declarations now expose typed variant-list
+and variant CST wrappers with enum and variant name token/text accessors, with
+tuple variant payloads structured as parameter lists and record variant
+payloads structured as field lists. Trait and impl declarations now expose
+typed method CST wrappers with trait and method name token/text,
+parameter-list, return-type, and optional body accessors. Leading item, field,
+variant, method,
 and statement attributes now preserve their exact source as `Attribute` child
 CST nodes and expose typed attribute iteration plus path-text accessors.
 Function and method bodies now expose

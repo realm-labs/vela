@@ -9,6 +9,9 @@ mod expr;
 mod expr_tests;
 #[path = "ast/items.rs"]
 mod items;
+#[cfg(test)]
+#[path = "ast/items_tests.rs"]
+mod items_tests;
 #[path = "ast/patterns.rs"]
 mod patterns;
 #[path = "ast/statements.rs"]

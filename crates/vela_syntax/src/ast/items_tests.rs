@@ -1,0 +1,510 @@
+use crate::ast::{AstNode, SyntaxSourceFile};
+use crate::parse::parse_source;
+use crate::{SyntaxKind, SyntaxTreeBuilder};
+
+#[test]
+fn ast_source_file_iterates_item_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::FunctionItem);
+    builder.token(SyntaxKind::FnKw, "fn");
+    builder.finish_node();
+    builder.token(SyntaxKind::Whitespace, "\n");
+    builder.start_node(SyntaxKind::StructItem);
+    builder.token(SyntaxKind::StructKw, "struct");
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+
+    assert_eq!(
+        source
+            .items()
+            .map(|item| item.syntax().kind())
+            .collect::<Vec<_>>(),
+        vec![SyntaxKind::FunctionItem, SyntaxKind::StructItem]
+    );
+}
+
+#[test]
+fn ast_items_expose_declaration_name_tokens() {
+    let source = r#"use game::reward::grant as grant_reward;
+const MAX: i64 = 10;
+global state: ServerState;
+fn update(ctx, amount: i64) {}
+struct Reward {
+    #[doc("amount")]
+    amount: i64,
+    item,
+}
+enum Status {
+    Pending,
+    Active(count: i64),
+}
+trait Award {
+    fn award(self, amount: i64);
+}
+impl Reward {
+    fn grant(self) {}
+}
+"#;
+    let parse = parse_source(source);
+    let tree = parse.tree();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let use_item = tree.uses().next().expect("use item");
+    assert_eq!(
+        use_item.path().expect("use path").path_text().as_deref(),
+        Some("game::reward::grant")
+    );
+    assert_eq!(use_item.alias_text().as_deref(), Some("grant_reward"));
+    assert_eq!(
+        use_item.alias_token().expect("use alias").kind(),
+        SyntaxKind::Ident
+    );
+
+    assert_eq!(
+        tree.consts()
+            .next()
+            .expect("const item")
+            .name_text()
+            .as_deref(),
+        Some("MAX")
+    );
+    assert_eq!(
+        tree.globals()
+            .next()
+            .expect("global item")
+            .name_text()
+            .as_deref(),
+        Some("state")
+    );
+
+    let function = tree.functions().next().expect("function item");
+    assert_eq!(function.name_text().as_deref(), Some("update"));
+    assert_eq!(
+        function
+            .param_list()
+            .expect("function params")
+            .params()
+            .map(|param| param.name_text().expect("param name"))
+            .collect::<Vec<_>>(),
+        vec!["ctx", "amount"]
+    );
+
+    let struct_item = tree.structs().next().expect("struct item");
+    assert_eq!(struct_item.name_text().as_deref(), Some("Reward"));
+    let fields = struct_item
+        .field_list()
+        .expect("struct fields")
+        .fields()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.name_text().expect("field name"))
+            .collect::<Vec<_>>(),
+        vec!["amount", "item"]
+    );
+    assert_eq!(
+        fields[0].name_token().expect("field token").text(),
+        "amount"
+    );
+
+    let enum_item = tree.enums().next().expect("enum item");
+    assert_eq!(enum_item.name_text().as_deref(), Some("Status"));
+    let variants = enum_item
+        .variant_list()
+        .expect("enum variants")
+        .variants()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        variants
+            .iter()
+            .map(|variant| variant.name_text().expect("variant name"))
+            .collect::<Vec<_>>(),
+        vec!["Pending", "Active"]
+    );
+    let tuple_param = variants[1]
+        .tuple_field_list()
+        .expect("tuple fields")
+        .params()
+        .next()
+        .expect("tuple field");
+    assert_eq!(tuple_param.name_text().as_deref(), Some("count"));
+
+    let trait_item = tree.traits().next().expect("trait item");
+    assert_eq!(trait_item.name_text().as_deref(), Some("Award"));
+    let trait_method = trait_item.methods().next().expect("trait method");
+    assert_eq!(trait_method.name_text().as_deref(), Some("award"));
+    assert_eq!(
+        trait_method
+            .param_list()
+            .expect("trait method params")
+            .params()
+            .map(|param| param.name_text().expect("trait param name"))
+            .collect::<Vec<_>>(),
+        vec!["self", "amount"]
+    );
+
+    let impl_method = tree
+        .impls()
+        .next()
+        .expect("impl item")
+        .methods()
+        .next()
+        .expect("impl method");
+    assert_eq!(impl_method.name_text().as_deref(), Some("grant"));
+}
+
+#[test]
+fn ast_function_item_exposes_signature_and_body_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::FunctionItem);
+    builder.token(SyntaxKind::FnKw, "fn");
+    builder.start_node(SyntaxKind::ParamList);
+    builder.token(SyntaxKind::LParen, "(");
+    builder.start_node(SyntaxKind::Param);
+    builder.token(SyntaxKind::Ident, "ctx");
+    builder.finish_node();
+    builder.token(SyntaxKind::RParen, ")");
+    builder.finish_node();
+    builder.start_node(SyntaxKind::Block);
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+    let function = source.functions().next().expect("function item");
+
+    assert_eq!(
+        function
+            .param_list()
+            .expect("param list")
+            .params()
+            .map(|param| param.syntax().text().to_string())
+            .collect::<Vec<_>>(),
+        vec!["ctx"]
+    );
+    assert_eq!(
+        function.body().expect("body").syntax().text().to_string(),
+        "{}"
+    );
+}
+
+#[test]
+fn ast_function_signature_exposes_type_hint_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::FunctionItem);
+    builder.start_node(SyntaxKind::ParamList);
+    builder.token(SyntaxKind::LParen, "(");
+    builder.start_node(SyntaxKind::Param);
+    builder.token(SyntaxKind::Ident, "items");
+    builder.token(SyntaxKind::Colon, ":");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "Array");
+    builder.start_node(SyntaxKind::TypeArgList);
+    builder.token(SyntaxKind::Less, "<");
+    builder.token(SyntaxKind::Ident, "String");
+    builder.token(SyntaxKind::Greater, ">");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RParen, ")");
+    builder.finish_node();
+    builder.token(SyntaxKind::Arrow, "->");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "Result");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+    let function = source.functions().next().expect("function item");
+    let param = function
+        .param_list()
+        .expect("param list")
+        .params()
+        .next()
+        .expect("param");
+
+    let hint = param.type_hint().expect("param type hint");
+    assert_eq!(hint.syntax().text().to_string(), "Array<String>");
+    assert_eq!(
+        hint.type_arg_list()
+            .expect("type arg list")
+            .syntax()
+            .text()
+            .to_string(),
+        "<String>"
+    );
+    assert_eq!(
+        function
+            .return_type()
+            .expect("return type")
+            .syntax()
+            .text()
+            .to_string(),
+        "Result"
+    );
+}
+
+#[test]
+fn ast_struct_item_exposes_field_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::StructItem);
+    builder.token(SyntaxKind::StructKw, "struct");
+    builder.start_node(SyntaxKind::StructFieldList);
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.start_node(SyntaxKind::StructField);
+    builder.token(SyntaxKind::Ident, "items");
+    builder.token(SyntaxKind::Colon, ":");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "Array");
+    builder.start_node(SyntaxKind::TypeArgList);
+    builder.token(SyntaxKind::Less, "<");
+    builder.token(SyntaxKind::Ident, "String");
+    builder.token(SyntaxKind::Greater, ">");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::Comma, ",");
+    builder.start_node(SyntaxKind::StructField);
+    builder.token(SyntaxKind::Ident, "count");
+    builder.finish_node();
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+    let record = source.structs().next().expect("struct item");
+    let fields = record
+        .field_list()
+        .expect("field list")
+        .fields()
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.syntax().text().to_string())
+            .collect::<Vec<_>>(),
+        vec!["items:Array<String>", "count"]
+    );
+    let hint = fields[0].type_hint().expect("field type hint");
+    assert_eq!(hint.syntax().text().to_string(), "Array<String>");
+    assert_eq!(
+        hint.type_arg_list()
+            .expect("field type args")
+            .syntax()
+            .text()
+            .to_string(),
+        "<String>"
+    );
+    assert!(fields[1].type_hint().is_none());
+}
+
+#[test]
+fn ast_enum_item_exposes_variant_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::EnumItem);
+    builder.token(SyntaxKind::EnumKw, "enum");
+    builder.start_node(SyntaxKind::EnumVariantList);
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.start_node(SyntaxKind::EnumVariant);
+    builder.token(SyntaxKind::Ident, "Finished");
+    builder.start_node(SyntaxKind::TupleFieldList);
+    builder.token(SyntaxKind::LParen, "(");
+    builder.start_node(SyntaxKind::Param);
+    builder.token(SyntaxKind::Ident, "reward");
+    builder.token(SyntaxKind::Colon, ":");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "Option");
+    builder.start_node(SyntaxKind::TypeArgList);
+    builder.token(SyntaxKind::Less, "<");
+    builder.token(SyntaxKind::Ident, "String");
+    builder.token(SyntaxKind::Greater, ">");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RParen, ")");
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::Comma, ",");
+    builder.start_node(SyntaxKind::EnumVariant);
+    builder.token(SyntaxKind::Ident, "Active");
+    builder.start_node(SyntaxKind::RecordFieldList);
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.start_node(SyntaxKind::StructField);
+    builder.token(SyntaxKind::Ident, "count");
+    builder.token(SyntaxKind::Colon, ":");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "i64");
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+    let enumeration = source.enums().next().expect("enum item");
+    let variants = enumeration
+        .variant_list()
+        .expect("variant list")
+        .variants()
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        variants
+            .iter()
+            .map(|variant| variant.syntax().text().to_string())
+            .collect::<Vec<_>>(),
+        vec!["Finished(reward:Option<String>)", "Active{count:i64}"]
+    );
+    let tuple_param = variants[0]
+        .tuple_field_list()
+        .expect("tuple fields")
+        .params()
+        .next()
+        .expect("tuple param");
+    let tuple_hint = tuple_param.type_hint().expect("tuple param type");
+    assert_eq!(tuple_hint.syntax().text().to_string(), "Option<String>");
+    assert_eq!(
+        tuple_hint
+            .type_arg_list()
+            .expect("tuple type args")
+            .syntax()
+            .text()
+            .to_string(),
+        "<String>"
+    );
+    let record_field = variants[1]
+        .record_field_list()
+        .expect("record fields")
+        .fields()
+        .next()
+        .expect("record field");
+    assert_eq!(
+        record_field
+            .type_hint()
+            .expect("record field type")
+            .syntax()
+            .text()
+            .to_string(),
+        "i64"
+    );
+}
+
+#[test]
+fn ast_trait_and_impl_items_expose_method_children() {
+    let mut builder = SyntaxTreeBuilder::default();
+    builder.start_node(SyntaxKind::SourceFile);
+    builder.start_node(SyntaxKind::TraitItem);
+    builder.token(SyntaxKind::TraitKw, "trait");
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.start_node(SyntaxKind::TraitMethod);
+    builder.token(SyntaxKind::FnKw, "fn");
+    builder.token(SyntaxKind::Ident, "reward");
+    builder.start_node(SyntaxKind::ParamList);
+    builder.token(SyntaxKind::LParen, "(");
+    builder.start_node(SyntaxKind::Param);
+    builder.token(SyntaxKind::Ident, "amount");
+    builder.token(SyntaxKind::Colon, ":");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "i64");
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RParen, ")");
+    builder.finish_node();
+    builder.token(SyntaxKind::Arrow, "->");
+    builder.start_node(SyntaxKind::TypeHint);
+    builder.token(SyntaxKind::Ident, "String");
+    builder.finish_node();
+    builder.token(SyntaxKind::Semicolon, ";");
+    builder.finish_node();
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.start_node(SyntaxKind::ImplItem);
+    builder.token(SyntaxKind::ImplKw, "impl");
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.start_node(SyntaxKind::ImplMethod);
+    builder.token(SyntaxKind::FnKw, "fn");
+    builder.token(SyntaxKind::Ident, "reward");
+    builder.start_node(SyntaxKind::ParamList);
+    builder.token(SyntaxKind::LParen, "(");
+    builder.token(SyntaxKind::RParen, ")");
+    builder.finish_node();
+    builder.start_node(SyntaxKind::Block);
+    builder.token(SyntaxKind::LBrace, "{");
+    builder.token(SyntaxKind::ReturnKw, "return");
+    builder.token(SyntaxKind::String, "\"gold\"");
+    builder.token(SyntaxKind::Semicolon, ";");
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+    builder.token(SyntaxKind::RBrace, "}");
+    builder.finish_node();
+    builder.finish_node();
+
+    let parse: crate::Parse<SyntaxSourceFile> = builder.finish();
+    let source = SyntaxSourceFile::cast(parse.syntax_node()).expect("source file root");
+    let trait_item = source.traits().next().expect("trait item");
+    let trait_method = trait_item.methods().next().expect("trait method");
+    let impl_item = source.impls().next().expect("impl item");
+    let impl_method = impl_item.methods().next().expect("impl method");
+
+    assert_eq!(
+        trait_method.syntax().text().to_string(),
+        "fnreward(amount:i64)->String;"
+    );
+    assert_eq!(
+        trait_method
+            .param_list()
+            .expect("trait params")
+            .params()
+            .next()
+            .expect("trait param")
+            .type_hint()
+            .expect("param type")
+            .syntax()
+            .text()
+            .to_string(),
+        "i64"
+    );
+    assert_eq!(
+        trait_method
+            .return_type()
+            .expect("trait return type")
+            .syntax()
+            .text()
+            .to_string(),
+        "String"
+    );
+    assert!(trait_method.body().is_none());
+    assert_eq!(
+        impl_method
+            .body()
+            .expect("impl body")
+            .syntax()
+            .text()
+            .to_string(),
+        "{return\"gold\";}"
+    );
+}
