@@ -73,6 +73,17 @@ fn ast_block_exposes_statement_children() {
         .children()
         .find_map(SyntaxForStmt::cast)
         .expect("for statement");
+    assert_eq!(
+        for_stmt.body_l_brace_token().expect("for body open").text(),
+        "{"
+    );
+    assert_eq!(
+        for_stmt
+            .body_r_brace_token()
+            .expect("for body close")
+            .text(),
+        "}"
+    );
     let for_body = for_stmt.body().expect("for body");
     assert_eq!(for_body.l_brace_token().expect("for body open").text(), "{");
     assert_eq!(

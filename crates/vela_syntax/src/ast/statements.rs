@@ -377,6 +377,16 @@ impl SyntaxForStmt {
     pub fn body(&self) -> Option<SyntaxBlock> {
         self.syntax.children().filter_map(SyntaxBlock::cast).last()
     }
+
+    #[must_use]
+    pub fn body_l_brace_token(&self) -> Option<SyntaxToken> {
+        self.body()?.l_brace_token()
+    }
+
+    #[must_use]
+    pub fn body_r_brace_token(&self) -> Option<SyntaxToken> {
+        self.body()?.r_brace_token()
+    }
 }
 
 impl AstNode for SyntaxForStmt {
