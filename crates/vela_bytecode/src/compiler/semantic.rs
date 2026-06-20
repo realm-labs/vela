@@ -4,7 +4,7 @@ use vela_common::SourceId;
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
-    DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource, stable_source_hash,
+    DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile};
@@ -35,12 +35,11 @@ pub(super) struct SemanticModules {
 impl SemanticSource {
     pub(super) fn script_metadata_graph(&self) -> ModuleGraph {
         let mut graph = ModuleGraph::new();
-        graph.add_parsed_source_with_hash(
+        graph.add_source(ModuleSource::new(
             self.source,
             ModulePath::new(Vec::<String>::new()),
-            self.parsed.clone(),
-            Some(stable_source_hash(&self.text)),
-        );
+            self.text.clone(),
+        ));
         graph.resolve_imports();
         graph
     }
@@ -468,12 +467,11 @@ impl SemanticModules {
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
     let parsed = parse_checked_source(source, text)?;
     let mut graph = ModuleGraph::new();
-    let module = graph.add_parsed_source_with_hash(
+    let module = graph.add_source(ModuleSource::new(
         source,
         ModulePath::from_qualified("main"),
-        parsed.clone(),
-        Some(stable_source_hash(text)),
-    );
+        text.to_owned(),
+    ));
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
         Ok(SemanticSource {
@@ -501,12 +499,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
         if !source_file.diagnostics.is_empty() {
             syntax_diagnostics.extend(source_file.diagnostics.clone());
         }
-        let module = graph.add_parsed_source_with_hash(
-            source.id,
-            source.path.clone(),
-            source_file.clone(),
-            Some(stable_source_hash(&source.text)),
-        );
+        let module = graph.add_source(source.clone());
         parsed.insert(module, source_file);
         modules.push(module);
     }

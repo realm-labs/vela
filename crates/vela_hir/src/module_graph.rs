@@ -84,47 +84,26 @@ impl ModuleGraph {
             &parse_syntax_source(source.id, &source.text),
         );
         let source_hash = stable_source_hash(&source.text);
-        self.add_parsed_source_with_hash_and_syntax_summary(
+        self.add_legacy_parsed_source(
             source.id,
             source.path,
             parsed,
             Some(source_hash),
-            Some(syntax_summary),
+            syntax_summary,
         )
     }
 
-    pub fn add_parsed_source(
-        &mut self,
-        source: SourceId,
-        path: ModulePath,
-        parsed: SourceFile,
-    ) -> ModuleId {
-        self.add_parsed_source_with_hash(source, path, parsed, None)
-    }
-
-    pub fn add_parsed_source_with_hash(
+    fn add_legacy_parsed_source(
         &mut self,
         source: SourceId,
         path: ModulePath,
         parsed: SourceFile,
         source_hash: Option<u64>,
-    ) -> ModuleId {
-        self.add_parsed_source_with_hash_and_syntax_summary(source, path, parsed, source_hash, None)
-    }
-
-    fn add_parsed_source_with_hash_and_syntax_summary(
-        &mut self,
-        source: SourceId,
-        path: ModulePath,
-        parsed: SourceFile,
-        source_hash: Option<u64>,
-        syntax_summary: Option<SyntaxModuleSummary>,
+        syntax_summary: SyntaxModuleSummary,
     ) -> ModuleId {
         let module = self.next_module_id();
-        let module_span = syntax_summary.as_ref().map_or_else(
-            || self.module_span(source, &parsed),
-            SyntaxModuleSummary::module_span,
-        );
+        let module_span = syntax_summary.module_span();
+        let syntax_summary = Some(syntax_summary);
 
         if let Some(existing) = self.module_by_path.get(&path).copied() {
             self.diagnostics.push(
@@ -1045,13 +1024,6 @@ impl ModuleGraph {
         let id = HirDeclId::new(self.next_decl_id);
         self.next_decl_id = self.next_decl_id.saturating_add(1);
         id
-    }
-
-    fn module_span(&self, source: SourceId, parsed: &SourceFile) -> Span {
-        parsed
-            .items
-            .first()
-            .map_or_else(|| Span::new(source, 0, 0), |item| item.span)
     }
 }
 

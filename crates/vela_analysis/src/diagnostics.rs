@@ -121,7 +121,7 @@ fn function_body_diagnostics(
 #[cfg(test)]
 mod tests {
     use vela_common::SourceId;
-    use vela_hir::module_graph::{ModuleGraph, ModulePath};
+    use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource};
     use vela_syntax::parser::parse_source;
 
     use super::*;
@@ -186,11 +186,11 @@ pub fn main() {
 }";
         let source = parse_source(SourceId::new(1), text);
         let mut graph = ModuleGraph::new();
-        let module = graph.add_parsed_source(
+        let module = graph.add_source(ModuleSource::new(
             SourceId::new(1),
             ModulePath::from_qualified("game::main"),
-            source.clone(),
-        );
+            text,
+        ));
         graph.resolve_imports();
 
         let diagnostics =

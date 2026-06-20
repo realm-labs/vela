@@ -225,6 +225,8 @@ top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,
 struct fields, enum variants, trait methods, and impl method metadata while
 deeper body lowering continues through the old owned AST during the migration;
+the public module-graph insertion API is now `ModuleSource`-based rather than
+accepting legacy owned `SourceFile` values from downstream crates.
 remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
