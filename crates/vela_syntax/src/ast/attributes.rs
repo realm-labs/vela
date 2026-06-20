@@ -1,5 +1,5 @@
 use super::{AstChildren, AstNode};
-use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
+use crate::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxAttribute {
@@ -132,6 +132,30 @@ impl SyntaxAttributeArg {
     }
 
     #[must_use]
+    pub fn value_tokens(&self) -> Vec<SyntaxToken> {
+        if self.equal_token().is_some() {
+            value_tokens_after_separator(&self.syntax, SyntaxKind::Equal)
+        } else {
+            significant_tokens(&self.syntax)
+        }
+    }
+
+    #[must_use]
+    pub fn value_path_tokens(&self) -> Vec<SyntaxToken> {
+        path_tokens_from_value_tokens(self.value_tokens())
+    }
+
+    #[must_use]
+    pub fn value_path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.value_path_tokens())
+    }
+
+    #[must_use]
+    pub fn value_path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.value_path_tokens())
+    }
+
+    #[must_use]
     pub fn value_array(&self) -> Option<SyntaxAttributeArray> {
         child(&self.syntax)
     }
@@ -260,6 +284,26 @@ impl SyntaxAttributeMapEntry {
     }
 
     #[must_use]
+    pub fn value_tokens(&self) -> Vec<SyntaxToken> {
+        value_tokens_after_separator(&self.syntax, SyntaxKind::Colon)
+    }
+
+    #[must_use]
+    pub fn value_path_tokens(&self) -> Vec<SyntaxToken> {
+        path_tokens_from_value_tokens(self.value_tokens())
+    }
+
+    #[must_use]
+    pub fn value_path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.value_path_tokens())
+    }
+
+    #[must_use]
+    pub fn value_path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.value_path_tokens())
+    }
+
+    #[must_use]
     pub fn value_array(&self) -> Option<SyntaxAttributeArray> {
         child(&self.syntax)
     }
@@ -319,11 +363,45 @@ fn path_separator_tokens_from_tokens(tokens: &[SyntaxToken]) -> Vec<SyntaxToken>
         .collect()
 }
 
+fn path_tokens_from_value_tokens(tokens: Vec<SyntaxToken>) -> Vec<SyntaxToken> {
+    if tokens.is_empty() {
+        return Vec::new();
+    }
+
+    let mut expect_ident = true;
+    let mut saw_ident = false;
+    for token in &tokens {
+        match (expect_ident, token.kind()) {
+            (true, SyntaxKind::Ident) => {
+                expect_ident = false;
+                saw_ident = true;
+            }
+            (false, SyntaxKind::ColonColon) => {
+                expect_ident = true;
+            }
+            _ => return Vec::new(),
+        }
+    }
+    if !saw_ident || expect_ident {
+        return Vec::new();
+    }
+
+    tokens
+}
+
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
     parent
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .find(|token| !token.kind().is_trivia())
+}
+
+fn significant_tokens(parent: &SyntaxNode) -> Vec<SyntaxToken> {
+    parent
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| !token.kind().is_trivia())
+        .collect()
 }
 
 fn value_text_after_separator(parent: &SyntaxNode, separator: SyntaxKind) -> Option<String> {
@@ -344,6 +422,35 @@ fn value_text_after_separator(parent: &SyntaxNode, separator: SyntaxKind) -> Opt
     }
 
     joined_parts_without_trailing_trivia(parts)
+}
+
+fn value_tokens_after_separator(parent: &SyntaxNode, separator: SyntaxKind) -> Vec<SyntaxToken> {
+    let mut seen_separator = false;
+    let mut tokens = Vec::new();
+
+    for element in parent.children_with_tokens() {
+        if !seen_separator {
+            if element.kind() == separator {
+                seen_separator = true;
+            }
+            continue;
+        }
+        collect_significant_tokens(element, &mut tokens);
+    }
+
+    tokens
+}
+
+fn collect_significant_tokens(element: SyntaxElement, tokens: &mut Vec<SyntaxToken>) {
+    match element {
+        rowan::NodeOrToken::Node(node) => tokens.extend(
+            node.descendants_with_tokens()
+                .filter_map(|element| element.into_token())
+                .filter(|token| !token.kind().is_trivia()),
+        ),
+        rowan::NodeOrToken::Token(token) if !token.kind().is_trivia() => tokens.push(token),
+        rowan::NodeOrToken::Token(_) => {}
+    }
 }
 
 fn significant_text(parent: &SyntaxNode) -> Option<String> {
@@ -425,7 +532,7 @@ mod tests {
     #[test]
     fn ast_attribute_exposes_argument_children() {
         let source = r#"
-#[rule(kind = game::reward::Rule, tags = ["daily", "quest"], config = { enabled: true, limit: 10 })]
+#[rule(kind = game::reward::Rule, tags = ["daily", "quest"], config = { enabled: true, target: game::reward::Rule, limit: 10 })]
 fn main() {}
 "#;
         let parse = parse_source(source);
@@ -470,9 +577,36 @@ fn main() {}
             Some("game::reward::Rule")
         );
         assert_eq!(
+            arguments[0]
+                .value_tokens()
+                .iter()
+                .map(|token| (token.kind(), token.text().to_owned()))
+                .collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::Ident, "game".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "reward".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "Rule".to_owned()),
+            ]
+        );
+        assert_eq!(
+            arguments[0].value_path_segments(),
+            vec!["game", "reward", "Rule"]
+        );
+        assert_eq!(
+            arguments[0]
+                .value_path_separator_tokens()
+                .iter()
+                .map(|token| token.text().to_owned())
+                .collect::<Vec<_>>(),
+            vec!["::", "::"]
+        );
+        assert_eq!(
             arguments[1].value_text().as_deref(),
             Some("[\"daily\", \"quest\"]")
         );
+        assert!(arguments[1].value_path_tokens().is_empty());
         assert_eq!(
             arguments[1]
                 .value_array()
@@ -491,7 +625,7 @@ fn main() {}
                 .iter()
                 .map(|token| token.text().to_owned())
                 .collect::<Vec<_>>(),
-            vec![","]
+            vec![",", ","]
         );
         let entries = config.entries().collect::<Vec<_>>();
         assert_eq!(
@@ -499,10 +633,41 @@ fn main() {}
                 .iter()
                 .map(|entry| entry.key_text().expect("map key"))
                 .collect::<Vec<_>>(),
-            vec!["enabled", "limit"]
+            vec!["enabled", "target", "limit"]
         );
         assert_eq!(entries[0].colon_token().expect("colon").text(), ":");
         assert_eq!(entries[0].value_text().as_deref(), Some("true"));
-        assert_eq!(entries[1].value_text().as_deref(), Some("10"));
+        assert!(entries[0].value_path_tokens().is_empty());
+        assert_eq!(
+            entries[1].value_text().as_deref(),
+            Some("game::reward::Rule")
+        );
+        assert_eq!(
+            entries[1]
+                .value_tokens()
+                .iter()
+                .map(|token| (token.kind(), token.text().to_owned()))
+                .collect::<Vec<_>>(),
+            vec![
+                (SyntaxKind::Ident, "game".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "reward".to_owned()),
+                (SyntaxKind::ColonColon, "::".to_owned()),
+                (SyntaxKind::Ident, "Rule".to_owned()),
+            ]
+        );
+        assert_eq!(
+            entries[1].value_path_segments(),
+            vec!["game", "reward", "Rule"]
+        );
+        assert_eq!(
+            entries[1]
+                .value_path_separator_tokens()
+                .iter()
+                .map(|token| token.text().to_owned())
+                .collect::<Vec<_>>(),
+            vec!["::", "::"]
+        );
+        assert_eq!(entries[2].value_text().as_deref(), Some("10"));
     }
 }
