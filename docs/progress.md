@@ -242,10 +242,13 @@ contracts now read HIR local binding type hints, and schema-default type and
 variant discovery, constructor shapes, field type facts, and default presence
 now read HIR struct and enum declarations/shapes, leaving the legacy owned AST
 in that path only as the temporary default-expression payload carrier. Bytecode
-function and script-method
-parameter default flags now read HIR function signatures, leaving legacy owned
-AST parameters in that path only as the temporary default-expression payload
-carrier. Bytecode const value discovery now reads HIR const declarations in
+script function lookup and parameter default flags now read HIR function
+declarations/signatures, leaving legacy owned AST function bodies and
+parameters in that path only as the temporary body/default-expression payload
+carrier. Bytecode script-method parameter default flags now read HIR method
+signatures, leaving legacy owned AST parameters in that path only as the
+temporary default-expression payload carrier. Bytecode const value discovery
+now reads HIR const declarations in
 source order, leaving the legacy owned AST in that path only as the temporary
 initializer expression payload carrier. Bytecode script impl method records now
 read names, signatures, explicit/default method metadata, and stable dispatch

@@ -50,12 +50,11 @@ impl SemanticSource {
         name: &str,
     ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
         let declaration = self.function_declaration(name)?;
+        let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
-        let function = self.parsed.items.iter().find_map(|item| match &item.kind {
-            ItemKind::Function(function) if function.name == name => Some(function),
-            _ => None,
-        })?;
+        let payloads = function_body_payloads(&self.parsed);
+        let function = payloads.get(metadata.name.as_str()).copied()?;
         Some((function, signature, bindings))
     }
 
@@ -217,10 +216,8 @@ impl SemanticModules {
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let parsed = self.parsed.get(&metadata.module)?;
-        let function = parsed.items.iter().find_map(|item| match &item.kind {
-            ItemKind::Function(function) if function.name == metadata.name => Some(function),
-            _ => None,
-        })?;
+        let payloads = function_body_payloads(parsed);
+        let function = payloads.get(metadata.name.as_str()).copied()?;
         Some((function, signature, bindings))
     }
 
@@ -458,6 +455,17 @@ fn const_value_payloads(parsed: &SourceFile) -> BTreeMap<&str, &Expr> {
         _ => None,
     }) {
         payloads.entry(name).or_insert(value);
+    }
+    payloads
+}
+
+fn function_body_payloads(parsed: &SourceFile) -> BTreeMap<&str, &FunctionItem> {
+    let mut payloads = BTreeMap::new();
+    for (name, function) in parsed.items.iter().filter_map(|item| match &item.kind {
+        ItemKind::Function(function) => Some((function.name.as_str(), function)),
+        _ => None,
+    }) {
+        payloads.entry(name).or_insert(function);
     }
     payloads
 }
