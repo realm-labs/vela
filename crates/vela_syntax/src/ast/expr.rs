@@ -337,6 +337,22 @@ pub struct SyntaxArgument {
 
 impl SyntaxArgument {
     #[must_use]
+    pub fn name_token(&self) -> Option<SyntaxToken> {
+        first_significant_token(&self.syntax)
+            .filter(|token| token.kind() == SyntaxKind::Ident && self.equal_token().is_some())
+    }
+
+    #[must_use]
+    pub fn name_text(&self) -> Option<String> {
+        self.name_token().map(|token| token.text().to_owned())
+    }
+
+    #[must_use]
+    pub fn equal_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::Equal)
+    }
+
+    #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
@@ -796,8 +812,8 @@ fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
 mod tests {
     use crate::SyntaxKind;
     use crate::ast::{
-        AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxExprStmt, SyntaxLiteral,
-        SyntaxMapExpr, SyntaxRecordExpr, SyntaxUnaryExpr,
+        AstNode, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr, SyntaxExprStmt,
+        SyntaxLiteral, SyntaxMapExpr, SyntaxRecordExpr, SyntaxUnaryExpr,
     };
     use crate::parse::parse_source;
 
@@ -1009,6 +1025,75 @@ mod tests {
                     Some(r#"f"hello {name}""#.to_owned()),
                 ),
             ]
+        );
+    }
+
+    #[test]
+    fn ast_call_arguments_expose_names_and_values() {
+        let source = r#"fn build(count, reason) {
+    reward(count, amount = count + 1, reason = reason);
+}
+"#;
+        let parse = parse_source(source);
+        let body = parse
+            .tree()
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let statement = body.statements().next().expect("call statement");
+        let expression = SyntaxExprStmt::cast(statement.syntax().clone())
+            .expect("expression statement")
+            .expression()
+            .expect("call expression");
+        let call = SyntaxCallExpr::cast(expression.syntax().clone()).expect("call expr");
+        let arguments = call
+            .arg_list()
+            .expect("argument list")
+            .arguments()
+            .collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(arguments.len(), 3);
+        assert!(arguments[0].name_token().is_none());
+        assert!(arguments[0].name_text().is_none());
+        assert!(arguments[0].equal_token().is_none());
+        assert_eq!(
+            arguments[0]
+                .expression()
+                .expect("positional argument value")
+                .syntax()
+                .kind(),
+            SyntaxKind::PathExpr
+        );
+
+        assert_eq!(arguments[1].name_text().as_deref(), Some("amount"));
+        assert_eq!(
+            arguments[1].name_token().expect("named argument").text(),
+            "amount"
+        );
+        assert_eq!(
+            arguments[1].equal_token().expect("argument equal").kind(),
+            SyntaxKind::Equal
+        );
+        assert_eq!(
+            arguments[1]
+                .expression()
+                .expect("named argument value")
+                .syntax()
+                .kind(),
+            SyntaxKind::BinaryExpr
+        );
+
+        assert_eq!(arguments[2].name_text().as_deref(), Some("reason"));
+        assert_eq!(
+            arguments[2]
+                .expression()
+                .expect("second named argument value")
+                .syntax()
+                .kind(),
+            SyntaxKind::PathExpr
         );
     }
 

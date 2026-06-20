@@ -156,8 +156,9 @@ bodies, break/continue statement wrappers, if/else-if condition expressions,
 explicit then/else block accessors, and nested if/else block structure.
 Statement values now expose initial expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary
-expressions, unary operands, field access, calls, argument lists, paths, and
-literals. Postfix expression structure now also preserves
+expressions, unary operands, field access, calls, argument lists, named
+argument labels, paths, and literals. Postfix expression structure now also
+preserves
 method-call-over-field ordering and exposes index and try expression wrappers.
 Binary expression wrappers now expose their operator tokens and kinds,
 including range operators such as `..` and `..=`.
