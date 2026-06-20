@@ -166,6 +166,7 @@ fn ast_statement_exposes_typed_variant_helpers() {
 fn ast_for_statement_exposes_index_and_value_patterns() {
     let parse = parse_source(
         r#"fn collect(rewards) {
+    #[audit]
     for reward in rewards {
         continue;
     }
@@ -194,6 +195,15 @@ fn ast_for_statement_exposes_index_and_value_patterns() {
     let ordinary = &for_statements[0];
     assert!(ordinary.binding_separator_token().is_none());
     assert!(ordinary.index_pattern().is_none());
+    assert_eq!(
+        ordinary
+            .attributes()
+            .next()
+            .expect("for attribute")
+            .path_text()
+            .as_deref(),
+        Some("audit")
+    );
     assert_eq!(
         ordinary
             .iterable()
@@ -315,6 +325,42 @@ fn ast_control_flow_accessors_do_not_confuse_missing_operands_with_body_blocks()
             .text(),
         "continue"
     );
+}
+
+#[test]
+fn ast_if_condition_preserves_multiline_logical_chain() {
+    let parse = parse_source(
+        r#"fn main() {
+    let score = if expect_i64(default_integer) == 12
+        && expect_i8(contextual) == 7i8
+    {
+        19
+    } else {
+        0
+    };
+}
+"#,
+    );
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function")
+        .body()
+        .expect("body");
+    let if_expr = body
+        .let_statements()
+        .next()
+        .and_then(|stmt| stmt.initializer())
+        .and_then(|expr| expr.as_if())
+        .expect("if initializer");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    let condition = if_expr.condition().expect("if condition");
+    assert_eq!(condition.syntax().kind(), SyntaxKind::BinaryExpr);
+    let condition_text = condition.syntax().text().to_string();
+    assert!(condition_text.contains("expect_i64"));
+    assert!(condition_text.contains("expect_i8"));
 }
 
 #[test]

@@ -322,8 +322,14 @@ impl CstParser<'_, '_> {
     }
 
     fn lambda_param_list(&mut self, start: usize, end: usize) {
-        let close = end.saturating_sub(1);
         self.builder.start_node(SyntaxKind::ParamList);
+        if self.kind_at(start) == Some(SyntaxKind::OrOr) {
+            self.emit_until(end);
+            self.builder.finish_node();
+            return;
+        }
+
+        let close = end.saturating_sub(1);
         self.emit_until(start + 1);
         let mut param_start = self.skip_trivia(self.pos);
         self.emit_until(param_start);
@@ -578,7 +584,7 @@ impl CstParser<'_, '_> {
         if self.find_root_assign_op_before(start, end).is_some() {
             return SyntaxKind::AssignExpr;
         }
-        if self.at_kind(start, SyntaxKind::Pipe) {
+        if self.at_kind(start, SyntaxKind::Pipe) || self.at_kind(start, SyntaxKind::OrOr) {
             return SyntaxKind::LambdaExpr;
         }
         if self.at_kind(start, SyntaxKind::IfKw) {
@@ -586,25 +592,6 @@ impl CstParser<'_, '_> {
         }
         if self.at_kind(start, SyntaxKind::MatchKw) {
             return SyntaxKind::MatchExpr;
-        }
-        if self.at_kind(start, SyntaxKind::LBracket) {
-            return SyntaxKind::ArrayExpr;
-        }
-        if self.at_kind(start, SyntaxKind::LBrace) {
-            return self.braced_expression_kind(start, end);
-        }
-        if self.at_kind(start, SyntaxKind::LParen)
-            && self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
-                == Some(end)
-        {
-            return SyntaxKind::ParenExpr;
-        }
-        if self.can_start_record_expression(start)
-            && self
-                .find_outer_record_field_list_start(start, end)
-                .is_some()
-        {
-            return SyntaxKind::RecordExpr;
         }
         if self.find_root_binary_op_before(start, end).is_some() {
             return SyntaxKind::BinaryExpr;
@@ -626,6 +613,25 @@ impl CstParser<'_, '_> {
             .is_some()
         {
             return SyntaxKind::FieldExpr;
+        }
+        if self.at_kind(start, SyntaxKind::LBracket) {
+            return SyntaxKind::ArrayExpr;
+        }
+        if self.at_kind(start, SyntaxKind::LBrace) {
+            return self.braced_expression_kind(start, end);
+        }
+        if self.at_kind(start, SyntaxKind::LParen)
+            && self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+                == Some(end)
+        {
+            return SyntaxKind::ParenExpr;
+        }
+        if self.can_start_record_expression(start)
+            && self
+                .find_outer_record_field_list_start(start, end)
+                .is_some()
+        {
+            return SyntaxKind::RecordExpr;
         }
         match self.kind_at(start) {
             Some(
@@ -780,8 +786,10 @@ impl CstParser<'_, '_> {
     }
 
     fn find_lambda_param_list_end(&self, start: usize, end: usize) -> Option<usize> {
-        if self.kind_at(start) != Some(SyntaxKind::Pipe) {
-            return None;
+        match self.kind_at(start) {
+            Some(SyntaxKind::OrOr) => return Some(start + 1),
+            Some(SyntaxKind::Pipe) => {}
+            _ => return None,
         }
         self.find_root_kind_before(SyntaxKind::Pipe, start + 1, end)
             .map(|pipe| pipe + 1)

@@ -247,12 +247,16 @@ impl ModuleGraph {
                         declaration,
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
-                    function_declarations.push(FunctionBodySource::new(
-                        declaration,
-                        signature.params,
-                        &function.params,
-                        &function.body,
-                    ));
+                    if let Some(body) = syntax_summary
+                        .as_ref()
+                        .and_then(|summary| summary.function_body_source(item_index))
+                    {
+                        function_declarations.push(FunctionBodySource::new(
+                            declaration,
+                            signature.params,
+                            body,
+                        ));
+                    }
                 }
                 ItemKind::Struct(record) => {
                     let (name, visibility, span) = declaration_or(
@@ -333,6 +337,10 @@ impl ModuleGraph {
                                 .map(|body| (self.next_node_id(), body.span))
                         })
                         .collect::<Vec<_>>();
+                    let default_method_bodies = syntax_summary
+                        .as_ref()
+                        .map(|summary| summary.trait_default_body_sources(item_index))
+                        .unwrap_or_default();
                     let shape = syntax_metadata::trait_shape(
                         syntax_summary.as_ref(),
                         item_index,
@@ -350,19 +358,21 @@ impl ModuleGraph {
                             .iter()
                             .zip(&shape.methods)
                             .zip(default_method_nodes)
-                            .filter_map(|((method, method_metadata), default_body)| {
-                                let (node, _) = default_body?;
-                                let body = method.default_body.as_ref()?;
-                                Some((
-                                    node,
-                                    FunctionBodySource::new(
-                                        declaration,
-                                        method_metadata.signature.params.clone(),
-                                        &method.params,
-                                        body,
-                                    ),
-                                ))
-                            }),
+                            .enumerate()
+                            .filter_map(
+                                |(method_index, ((_method, method_metadata), default_body))| {
+                                    let (node, _) = default_body?;
+                                    let body = default_method_bodies.get(method_index)?.clone()?;
+                                    Some((
+                                        node,
+                                        FunctionBodySource::new(
+                                            declaration,
+                                            method_metadata.signature.params.clone(),
+                                            body,
+                                        ),
+                                    ))
+                                },
+                            ),
                     );
                     self.trait_shapes.insert(declaration, shape);
                 }
@@ -395,6 +405,10 @@ impl ModuleGraph {
                         .iter()
                         .map(|method| (self.next_node_id(), method.function.body.span))
                         .collect::<Vec<_>>();
+                    let method_bodies = syntax_summary
+                        .as_ref()
+                        .map(|summary| summary.impl_method_body_sources(item_index))
+                        .unwrap_or_default();
                     let metadata = syntax_metadata::impl_metadata(
                         syntax_summary.as_ref(),
                         item_index,
@@ -407,19 +421,22 @@ impl ModuleGraph {
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
                     impl_method_declarations.extend(
-                        impl_item.methods.iter().zip(&metadata.methods).map(
-                            |(method, method_metadata)| {
-                                (
+                        impl_item
+                            .methods
+                            .iter()
+                            .zip(&metadata.methods)
+                            .enumerate()
+                            .filter_map(|(method_index, (_method, method_metadata))| {
+                                let body = method_bodies.get(method_index)?.clone();
+                                Some((
                                     method_metadata.node,
                                     FunctionBodySource::new(
                                         declaration,
                                         method_metadata.signature.params.clone(),
-                                        &method.function.params,
-                                        &method.function.body,
+                                        body,
                                     ),
-                                )
-                            },
-                        ),
+                                ))
+                            }),
                     );
                     self.impl_metadata.insert(declaration, metadata);
                 }

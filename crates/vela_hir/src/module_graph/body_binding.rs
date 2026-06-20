@@ -1,46 +1,39 @@
 use std::collections::BTreeMap;
 
 use vela_common::Diagnostic;
-use vela_syntax::ast::{Block, Param};
 
-use crate::binding::{BindingMap, FunctionBindingInput, ImportBinding, bind_function};
+use crate::binding::{BindingMap, ImportBinding, SyntaxFunctionBindingInput, bind_syntax_function};
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
 use crate::module_graph::{HirModule, ModuleGraph};
 use crate::type_hint::ParamHint;
 
 use super::model::ImportResolution;
 use super::names::import_binding_name;
+use super::syntax_summary::SyntaxBodySourceParts;
 
 #[derive(Clone, Debug)]
-pub(super) struct FunctionBodySource<'a> {
+pub(super) struct FunctionBodySource {
     declaration: HirDeclId,
     params: Vec<ParamHint>,
-    default_params: &'a [Param],
-    body: &'a Block,
+    syntax: SyntaxBodySourceParts,
 }
 
-impl<'a> FunctionBodySource<'a> {
+impl FunctionBodySource {
     pub(super) fn new(
         declaration: HirDeclId,
         params: Vec<ParamHint>,
-        default_params: &'a [Param],
-        body: &'a Block,
+        syntax: SyntaxBodySourceParts,
     ) -> Self {
         Self {
             declaration,
             params,
-            default_params,
-            body,
+            syntax,
         }
     }
 }
 
 impl ModuleGraph {
-    pub(super) fn bind_function_body(
-        &mut self,
-        module: &HirModule,
-        source: FunctionBodySource<'_>,
-    ) {
+    pub(super) fn bind_function_body(&mut self, module: &HirModule, source: FunctionBodySource) {
         let declaration = source.declaration;
         let (bindings, diagnostics) = self.bind_body(module, source);
         self.bindings.insert(declaration, bindings);
@@ -51,7 +44,7 @@ impl ModuleGraph {
         &mut self,
         module: &HirModule,
         method: HirNodeId,
-        source: FunctionBodySource<'_>,
+        source: FunctionBodySource,
     ) {
         let (bindings, diagnostics) = self.bind_body(module, source);
         self.trait_default_method_bindings.insert(method, bindings);
@@ -62,7 +55,7 @@ impl ModuleGraph {
         &mut self,
         module: &HirModule,
         method: HirNodeId,
-        source: FunctionBodySource<'_>,
+        source: FunctionBodySource,
     ) {
         let (bindings, diagnostics) = self.bind_body(module, source);
         self.impl_method_bindings.insert(method, bindings);
@@ -72,7 +65,7 @@ impl ModuleGraph {
     fn bind_body(
         &mut self,
         module: &HirModule,
-        source: FunctionBodySource<'_>,
+        source: FunctionBodySource,
     ) -> (BindingMap, Vec<Diagnostic>) {
         let module_declarations = module
             .declarations
@@ -87,11 +80,12 @@ impl ModuleGraph {
         let imports = self.import_bindings(module);
         let qualified_declarations = self.qualified_declarations_with(module);
 
-        bind_function(FunctionBindingInput {
+        bind_syntax_function(SyntaxFunctionBindingInput {
+            source: module.source,
             declaration: source.declaration,
             params: &source.params,
-            default_params: source.default_params,
-            body: source.body,
+            default_params: source.syntax.default_params,
+            body: source.syntax.body,
             module_declarations,
             qualified_declarations,
             imports,

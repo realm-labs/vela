@@ -27,6 +27,12 @@ pub(super) struct SyntaxModuleSummary {
     item_headers: Vec<SyntaxItemHeader>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct SyntaxBodySourceParts {
+    pub(super) default_params: Vec<SyntaxParam>,
+    pub(super) body: vela_syntax::ast::SyntaxBlock,
+}
+
 impl SyntaxModuleSummary {
     pub(super) fn from_parse(source: SourceId, parsed: &SyntaxParse<SyntaxSourceFile>) -> Self {
         let (items, item_headers): (Vec<_>, Vec<_>) = parsed
@@ -94,6 +100,12 @@ impl SyntaxModuleSummary {
             })
     }
 
+    pub(super) fn function_body_source(&self, index: usize) -> Option<SyntaxBodySourceParts> {
+        self.item(index, SyntaxKind::FunctionItem)
+            .and_then(|item| SyntaxFunctionItem::cast(item.syntax().clone()))
+            .and_then(|item| body_source(item.param_list(), item.body()))
+    }
+
     pub(super) fn struct_shape_or(&self, index: usize, fallback: StructShape) -> StructShape {
         self.item(index, SyntaxKind::StructItem)
             .and_then(|item| SyntaxStructItem::cast(item.syntax().clone()))
@@ -119,6 +131,20 @@ impl SyntaxModuleSummary {
             })
     }
 
+    pub(super) fn trait_default_body_sources(
+        &self,
+        index: usize,
+    ) -> Vec<Option<SyntaxBodySourceParts>> {
+        self.item(index, SyntaxKind::TraitItem)
+            .and_then(|item| SyntaxTraitItem::cast(item.syntax().clone()))
+            .map(|item| {
+                item.methods()
+                    .map(|method| body_source(method.param_list(), method.body()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     pub(super) fn impl_metadata_or(
         &self,
         index: usize,
@@ -130,6 +156,17 @@ impl SyntaxModuleSummary {
             .map_or(fallback, |item| {
                 impl_metadata(self.source, &item, method_nodes)
             })
+    }
+
+    pub(super) fn impl_method_body_sources(&self, index: usize) -> Vec<SyntaxBodySourceParts> {
+        self.item(index, SyntaxKind::ImplItem)
+            .and_then(|item| SyntaxImplItem::cast(item.syntax().clone()))
+            .map(|item| {
+                item.methods()
+                    .filter_map(|method| body_source(method.param_list(), method.body()))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     pub(super) fn import_or(
@@ -327,6 +364,19 @@ fn function_signature(
             .as_ref()
             .map(|return_type| hir_type_hint(source, return_type)),
     }
+}
+
+fn body_source(
+    params: Option<SyntaxParamList>,
+    body: Option<vela_syntax::ast::SyntaxBlock>,
+) -> Option<SyntaxBodySourceParts> {
+    Some(SyntaxBodySourceParts {
+        default_params: params
+            .into_iter()
+            .flat_map(|params| params.params())
+            .collect(),
+        body: body?,
+    })
 }
 
 fn struct_shape(source: SourceId, item: &SyntaxStructItem) -> StructShape {

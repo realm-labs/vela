@@ -224,9 +224,12 @@ HIR `add_source` now uses rowan CST item headers for module spans, imports, and
 top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,
 struct fields, enum variants, trait methods, and impl method metadata while
-deeper body lowering continues through the old owned AST during the migration;
-the public module-graph insertion API is now `ModuleSource`-based rather than
-accepting legacy owned `SourceFile` values from downstream crates.
+HIR body binding now consumes rowan CST function and method bodies for
+parameter defaults, statement/expression traversal, local scopes, pattern
+bindings, and name resolutions; the public module-graph insertion API is now
+`ModuleSource`-based rather than accepting legacy owned `SourceFile` values from
+downstream crates. Bytecode compilation and remaining downstream lowering still
+consume the old owned AST while their syntax API migration continues.
 remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 

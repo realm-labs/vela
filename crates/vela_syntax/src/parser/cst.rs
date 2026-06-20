@@ -159,7 +159,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             return;
         };
 
-        let pattern_start = self.skip_trivia(start + 1);
+        let for_kw = self.skip_leading_attributes(start, end);
+        let pattern_start = self.skip_trivia(for_kw + 1);
         let pattern_end = self.trim_trailing_trivia(pattern_start, in_kw);
         self.emit_until(pattern_start);
         if pattern_start < pattern_end {
@@ -267,6 +268,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn find_statement_end(&self, kind: SyntaxKind, start: usize, end: usize) -> usize {
         match kind {
+            SyntaxKind::LetStmt => self.find_let_statement_end(start, end),
             SyntaxKind::ForStmt => self
                 .find_root_kind_before(SyntaxKind::InKw, start, end)
                 .and_then(|in_kw| self.find_for_body_start(in_kw + 1, end))
@@ -282,6 +284,28 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 self.find_matching_brace_end(block_start).min(end)
             }
             _ => self.find_statement_term_end(start, end),
+        }
+    }
+
+    fn find_let_statement_end(&self, start: usize, end: usize) -> usize {
+        let Some(equal) = self.find_root_kind_before(SyntaxKind::Equal, start, end) else {
+            return self.find_statement_term_end(start, end);
+        };
+        let value_start = self.skip_trivia(equal + 1);
+        let value_end = match self.kind_at(value_start) {
+            Some(SyntaxKind::IfKw) => self.find_if_expression_end(value_start, end),
+            Some(SyntaxKind::MatchKw) => self
+                .find_root_kind_before(SyntaxKind::LBrace, value_start, end)
+                .map(|body| self.find_matching_brace_end(body).min(end))
+                .unwrap_or_else(|| self.find_statement_term_end(start, end)),
+            Some(SyntaxKind::LBrace) => self.find_matching_brace_end(value_start).min(end),
+            _ => return self.find_statement_term_end(start, end),
+        };
+        let after_value = self.skip_trivia(value_end);
+        if after_value < end && self.at_kind(after_value, SyntaxKind::Semicolon) {
+            after_value + 1
+        } else {
+            value_end
         }
     }
 

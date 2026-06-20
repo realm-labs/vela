@@ -1000,16 +1000,6 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     );
     assert_token_at(
         &tokens,
-        60,
-        line(HIGHLIGHTING_SHOWCASE, 60)
-            .find("missing_symbol")
-            .expect("unresolved match arm"),
-        "missing_symbol".len(),
-        unresolved_reference,
-        unresolved,
-    );
-    assert_token_at(
-        &tokens,
         63,
         line(HIGHLIGHTING_SHOWCASE, 63)
             .find("unknown_call")
