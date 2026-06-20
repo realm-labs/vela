@@ -406,6 +406,7 @@ struct Bag {
 
     assert_eq!(hint.path_text().as_deref(), Some("Map"));
     assert_eq!(hint.path_segments(), vec!["Map"]);
+    assert!(hint.path_separator_tokens().is_empty());
     assert_eq!(
         hint.path_tokens()
             .iter()
@@ -424,8 +425,10 @@ struct Bag {
     );
     assert_eq!(arg_hints[0].path_text().as_deref(), Some("String"));
     assert_eq!(arg_hints[0].path_segments(), vec!["String"]);
+    assert!(arg_hints[0].path_separator_tokens().is_empty());
     assert_eq!(arg_hints[1].path_text().as_deref(), Some("Result"));
     assert_eq!(arg_hints[1].path_segments(), vec!["Result"]);
+    assert!(arg_hints[1].path_separator_tokens().is_empty());
 
     let result_arg_list = arg_hints[1].type_arg_list().expect("result type args");
     assert_eq!(
@@ -445,6 +448,14 @@ struct Bag {
     let return_type = function.return_type().expect("return type");
     assert_eq!(return_type.path_text().as_deref(), Some("game::Reward"));
     assert_eq!(return_type.path_segments(), vec!["game", "Reward"]);
+    assert_eq!(
+        return_type
+            .path_separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec!["::"]
+    );
     assert_eq!(
         return_type
             .path_tokens()

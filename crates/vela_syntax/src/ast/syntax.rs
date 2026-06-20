@@ -143,6 +143,11 @@ impl SyntaxTypeHint {
     }
 
     #[must_use]
+    pub fn path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn type_arg_list(&self) -> Option<SyntaxTypeArgList> {
         child(&self.syntax)
     }
@@ -268,6 +273,14 @@ fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
         .iter()
         .filter(|token| token.kind() == SyntaxKind::Ident)
         .map(|token| token.text().to_owned())
+        .collect()
+}
+
+fn path_separator_tokens_from_tokens(tokens: &[SyntaxToken]) -> Vec<SyntaxToken> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::ColonColon)
+        .cloned()
         .collect()
 }
 
