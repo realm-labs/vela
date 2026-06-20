@@ -293,13 +293,7 @@ impl CstParser<'_, '_> {
                 self.emit_current_token();
                 field_start = self.skip_trivia(self.pos);
                 self.emit_until(field_start);
-            } else if self
-                .current_kind()
-                .is_some_and(|kind| kind.is_trivia() && self.current_token_text_contains('\n'))
-                && self.member_range_is_at_delimiter_root(field_start, self.pos)
-                && self.member_range_has_name(field_start, self.pos)
-                && self.next_significant_before(self.pos + 1, close).is_some()
-            {
+            } else if self.current_splits_recovered_field(field_start, close) {
                 let field_end = self.trim_trailing_trivia(field_start, self.pos);
                 self.struct_field_range(field_start, field_end);
                 field_start = self.skip_trivia(self.pos);
@@ -313,6 +307,31 @@ impl CstParser<'_, '_> {
         self.struct_field_range(field_start, field_end);
         self.emit_until(end);
         self.builder.finish_node();
+    }
+
+    fn current_splits_recovered_field(&self, field_start: usize, close: usize) -> bool {
+        self.current_starts_recovered_field(field_start, close)
+            || self.current_newline_splits_recovered_field(field_start, close)
+    }
+
+    fn current_starts_recovered_field(&self, field_start: usize, close: usize) -> bool {
+        if self.pos <= field_start || self.current_kind() != Some(SyntaxKind::Ident) {
+            return false;
+        }
+        let Some(next) = self.next_significant_before(self.pos + 1, close) else {
+            return false;
+        };
+        self.kind_at(next) == Some(SyntaxKind::Colon)
+            && self.member_range_is_at_delimiter_root(field_start, self.pos)
+            && self.member_range_has_name(field_start, self.pos)
+    }
+
+    fn current_newline_splits_recovered_field(&self, field_start: usize, close: usize) -> bool {
+        self.current_kind()
+            .is_some_and(|kind| kind.is_trivia() && self.current_token_text_contains('\n'))
+            && self.member_range_is_at_delimiter_root(field_start, self.pos)
+            && self.member_range_has_name(field_start, self.pos)
+            && self.next_significant_before(self.pos + 1, close).is_some()
     }
 
     fn enum_variant_list(&mut self, start: usize) {

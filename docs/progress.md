@@ -228,9 +228,14 @@ HIR body binding now consumes rowan CST function and method bodies for
 parameter defaults, statement/expression traversal, local scopes, pattern
 bindings, and name resolutions; the public module-graph insertion API is now
 `ModuleSource`-based rather than accepting legacy owned `SourceFile` values from
-downstream crates. Bytecode compilation and remaining downstream lowering still
+downstream crates. HIR metadata, signatures, shapes, attributes, and top-level
+const initializer diagnostics now require the rowan CST summary instead of
+falling back to the legacy owned AST. Same-line missing separators in struct
+field lists now recover as distinct CST field nodes, preserving editor record
+field completion without legacy metadata fallback. Bytecode compilation and remaining
+downstream lowering still
 consume the old owned AST while their syntax API migration continues.
-remaining pattern coverage, remaining
+Remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
 ## Milestone Snapshot

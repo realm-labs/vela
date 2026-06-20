@@ -77,15 +77,10 @@ impl SyntaxModuleSummary {
             .map(|item| validate_syntax_const_initializer(self.source, &item))
     }
 
-    pub(super) fn global_metadata_or(
-        &self,
-        index: usize,
-        fallback: GlobalMetadata,
-    ) -> GlobalMetadata {
+    pub(super) fn global_metadata(&self, index: usize) -> Option<GlobalMetadata> {
         self.item(index, SyntaxKind::GlobalItem)
             .and_then(|item| SyntaxGlobalItem::cast(item.syntax().clone()))
             .and_then(|item| global_metadata(self.source, &item))
-            .unwrap_or(fallback)
     }
 
     pub(super) fn function_signature_or(

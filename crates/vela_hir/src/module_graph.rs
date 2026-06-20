@@ -103,7 +103,6 @@ impl ModuleGraph {
     ) -> ModuleId {
         let module = self.next_module_id();
         let module_span = syntax_summary.module_span();
-        let syntax_summary = Some(syntax_summary);
 
         if let Some(existing) = self.module_by_path.get(&path).copied() {
             self.diagnostics.push(
@@ -137,16 +136,11 @@ impl ModuleGraph {
         for (item_index, item) in parsed.items.iter().enumerate() {
             match &item.kind {
                 ItemKind::Use(use_item) => {
-                    let (path, alias, span) = syntax_summary.as_ref().map_or_else(
-                        || (use_item.path.clone(), use_item.alias.clone(), item.span),
-                        |summary| {
-                            summary.import_or(
-                                item_index,
-                                &use_item.path,
-                                &use_item.alias,
-                                item.span,
-                            )
-                        },
+                    let (path, alias, span) = syntax_summary.import_or(
+                        item_index,
+                        &use_item.path,
+                        &use_item.alias,
+                        item.span,
                     );
                     hir_module.imports.push(Import {
                         module,
@@ -158,7 +152,7 @@ impl ModuleGraph {
                 }
                 ItemKind::Const(const_item) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Const,
                         const_item.name.clone(),
@@ -174,26 +168,21 @@ impl ModuleGraph {
                     );
                     self.const_metadata.insert(
                         declaration,
-                        syntax_metadata::const_metadata(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            const_item,
-                        ),
+                        syntax_metadata::const_metadata(&syntax_summary, item_index),
                     );
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                     self.diagnostics
                         .extend(syntax_metadata::const_initializer_diagnostics(
-                            syntax_summary.as_ref(),
+                            &syntax_summary,
                             item_index,
-                            const_item,
                         ));
                 }
                 ItemKind::Global(global_item) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Global,
                         global_item.name.clone(),
@@ -207,22 +196,19 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    self.global_metadata.insert(
-                        declaration,
-                        syntax_metadata::global_metadata(
-                            syntax_summary.as_ref(),
-                            item_index,
-                            global_item,
-                        ),
-                    );
+                    if let Some(metadata) =
+                        syntax_metadata::global_metadata(&syntax_summary, item_index)
+                    {
+                        self.global_metadata.insert(declaration, metadata);
+                    }
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
                 ItemKind::Function(function) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Function,
                         function.name.clone(),
@@ -236,21 +222,15 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    let signature = syntax_metadata::function_signature(
-                        syntax_summary.as_ref(),
-                        item_index,
-                        function,
-                    );
+                    let signature =
+                        syntax_metadata::function_signature(&syntax_summary, item_index);
                     self.function_signatures
                         .insert(declaration, signature.clone());
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
-                    if let Some(body) = syntax_summary
-                        .as_ref()
-                        .and_then(|summary| summary.function_body_source(item_index))
-                    {
+                    if let Some(body) = syntax_summary.function_body_source(item_index) {
                         function_declarations.push(FunctionBodySource::new(
                             declaration,
                             signature.params,
@@ -260,7 +240,7 @@ impl ModuleGraph {
                 }
                 ItemKind::Struct(record) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Struct,
                         record.name.clone(),
@@ -274,18 +254,17 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    let shape =
-                        syntax_metadata::struct_shape(syntax_summary.as_ref(), item_index, record);
+                    let shape = syntax_metadata::struct_shape(&syntax_summary, item_index);
                     self.validate_struct_shape(&shape);
                     self.struct_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
                 ItemKind::Enum(enumeration) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Enum,
                         enumeration.name.clone(),
@@ -299,21 +278,17 @@ impl ModuleGraph {
                         visibility,
                         span,
                     );
-                    let shape = syntax_metadata::enum_shape(
-                        syntax_summary.as_ref(),
-                        item_index,
-                        enumeration,
-                    );
+                    let shape = syntax_metadata::enum_shape(&syntax_summary, item_index);
                     self.validate_enum_shape(&shape);
                     self.enum_shapes.insert(declaration, shape);
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                 }
                 ItemKind::Trait(trait_item) => {
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Trait,
                         trait_item.name.clone(),
@@ -337,20 +312,17 @@ impl ModuleGraph {
                                 .map(|body| (self.next_node_id(), body.span))
                         })
                         .collect::<Vec<_>>();
-                    let default_method_bodies = syntax_summary
-                        .as_ref()
-                        .map(|summary| summary.trait_default_body_sources(item_index))
-                        .unwrap_or_default();
+                    let default_method_bodies =
+                        syntax_summary.trait_default_body_sources(item_index);
                     let shape = syntax_metadata::trait_shape(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
-                        trait_item,
                         default_method_nodes.clone(),
                     );
                     self.validate_trait_shape(&shape);
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                     trait_default_method_declarations.extend(
                         trait_item
@@ -386,7 +358,7 @@ impl ModuleGraph {
                         }
                     };
                     let (name, visibility, span) = declaration_or(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
                         DeclarationKind::Impl,
                         fallback_name,
@@ -405,20 +377,16 @@ impl ModuleGraph {
                         .iter()
                         .map(|method| (self.next_node_id(), method.function.body.span))
                         .collect::<Vec<_>>();
-                    let method_bodies = syntax_summary
-                        .as_ref()
-                        .map(|summary| summary.impl_method_body_sources(item_index))
-                        .unwrap_or_default();
+                    let method_bodies = syntax_summary.impl_method_body_sources(item_index);
                     let metadata = syntax_metadata::impl_metadata(
-                        syntax_summary.as_ref(),
+                        &syntax_summary,
                         item_index,
-                        impl_item,
                         method_nodes.clone(),
                     );
                     self.validate_impl_shape(&metadata);
                     self.declaration_attrs.insert(
                         declaration,
-                        syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
+                        syntax_metadata::attrs(&syntax_summary, item_index),
                     );
                     impl_method_declarations.extend(
                         impl_item
@@ -1045,23 +1013,20 @@ impl ModuleGraph {
 }
 
 fn declaration_or(
-    syntax_summary: Option<&SyntaxModuleSummary>,
+    syntax_summary: &SyntaxModuleSummary,
     index: usize,
     kind: DeclarationKind,
     fallback_name: String,
     fallback_visibility: Visibility,
     fallback_span: Span,
 ) -> (String, Visibility, Span) {
-    match syntax_summary {
-        Some(summary) => summary.declaration_or(
-            index,
-            kind,
-            fallback_name,
-            fallback_visibility,
-            fallback_span,
-        ),
-        None => (fallback_name, fallback_visibility, fallback_span),
-    }
+    syntax_summary.declaration_or(
+        index,
+        kind,
+        fallback_name,
+        fallback_visibility,
+        fallback_span,
+    )
 }
 
 #[must_use]

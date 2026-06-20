@@ -253,6 +253,40 @@ fn parser_parse_source_structures_struct_field_nodes() {
 }
 
 #[test]
+fn parser_parse_source_recovers_same_line_struct_fields_without_comma() {
+    let source = "struct Player { id: String level: i64 }";
+    let parse = parse_source_with_id(SourceId::new(13), source);
+    let tree = parse.tree();
+    let record = tree.structs().next().expect("struct item");
+    let fields = record
+        .field_list()
+        .expect("field list")
+        .fields()
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| field.name_text().expect("field name"))
+            .collect::<Vec<_>>(),
+        vec!["id", "level"]
+    );
+    assert_eq!(
+        fields
+            .iter()
+            .map(|field| {
+                field
+                    .type_hint()
+                    .expect("field type")
+                    .path_text()
+                    .expect("type path")
+            })
+            .collect::<Vec<_>>(),
+        vec!["String", "i64"]
+    );
+}
+
+#[test]
 fn parser_parse_source_structures_enum_variant_nodes() {
     let source = r#"enum QuestProgress {
     #[empty]
