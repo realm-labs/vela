@@ -1158,15 +1158,14 @@ fn parser_parse_source_keeps_malformed_fragments_in_cst() {
             .filter_map(|element| element.into_token())
             .any(|token| token.kind() == SyntaxKind::Unknown && token.text() == "@")
     );
-    assert_eq!(
-        parse
-            .diagnostics()
-            .iter()
-            .filter_map(|diagnostic| diagnostic.span)
-            .collect::<Vec<_>>(),
-        vec![
-            Span::new(SourceId::new(9), 12, 13),
-            Span::new(SourceId::new(9), 14, source.len() as u32),
-        ]
-    );
+    let diagnostics = parse.diagnostics();
+    let diagnostic_spans = diagnostics
+        .iter()
+        .filter_map(|diagnostic| diagnostic.span)
+        .collect::<Vec<_>>();
+    assert!(diagnostic_spans.contains(&Span::new(SourceId::new(9), 12, 13)));
+    assert!(diagnostic_spans.contains(&Span::new(SourceId::new(9), 14, source.len() as u32)));
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic.code.as_deref() == Some("E_PARSE") && diagnostic.message == "expected `}`"
+    }));
 }

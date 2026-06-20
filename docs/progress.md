@@ -213,7 +213,10 @@ their label tokens, label kinds, explicit colon tokens, nested pattern
 payloads, and shorthand classification. The
 rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,
 statement, expression, and pattern submodules so additional wrappers can land without
-growing the legacy owned-AST file; remaining pattern coverage, remaining
+growing the legacy owned-AST file. Language-service parse diagnostics and
+module-summary fingerprints now read from the rowan parse record, with CST
+missing-delimiter diagnostics preserving existing editor diagnostic behavior;
+remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 
 ## Milestone Snapshot

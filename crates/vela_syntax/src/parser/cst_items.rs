@@ -207,6 +207,7 @@ impl CstParser<'_, '_> {
         let Some(end) =
             self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
         else {
+            self.error_at(start, "expected `)`");
             self.node_range(list_kind, start, self.pos.saturating_add(1));
             return;
         };
@@ -270,6 +271,7 @@ impl CstParser<'_, '_> {
         let Some(end) =
             self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
         else {
+            self.error_at(start, "expected `}`");
             self.node_range(list_kind, start, self.pos.saturating_add(1));
             return;
         };

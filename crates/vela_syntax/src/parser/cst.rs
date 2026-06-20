@@ -52,6 +52,12 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             self.node_range(SyntaxKind::Block, start, end);
             return;
         }
+        if self
+            .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            .is_none()
+        {
+            self.error_at(start, "expected `}`");
+        }
 
         self.builder.start_node(SyntaxKind::Block);
         self.block_body(start, end);
@@ -450,6 +456,16 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             self.builder.token(token.kind, &token.text);
         }
         self.builder.finish_node();
+    }
+
+    fn error_at(&mut self, cursor: usize, message: impl Into<String>) {
+        if let Some(span) = self.tokens.get(cursor).map(|token| token.span) {
+            self.diagnostics.push(
+                Diagnostic::error(message)
+                    .with_code("E_PARSE")
+                    .with_span(span),
+            );
+        }
     }
 
     fn current_item(&self) -> Option<ItemBoundary> {

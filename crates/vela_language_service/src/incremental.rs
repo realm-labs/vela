@@ -9,10 +9,7 @@ use vela_analysis::registry::RegistryFacts;
 use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{
-    EnumVariantFields, FunctionItem, ImplKind, ItemKind, Param, SourceFile, StructField,
-    SyntaxSourceFile, TraitItem, TraitMethod, TypeHint, Visibility,
-};
+use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -20,6 +17,11 @@ use crate::{
     CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
     SourceVersion, SymbolRef, WorkspaceGeneration,
 };
+
+#[path = "incremental/parse_summary.rs"]
+mod parse_summary;
+
+use parse_summary::{ParseSummary, summarize_source};
 
 #[derive(Debug, Clone)]
 pub struct SourceRecord {
@@ -79,13 +81,6 @@ impl SourceDb {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct ParseSummary {
-    imports: BTreeSet<ModulePath>,
-    declaration_fingerprint: u64,
-    import_fingerprint: u64,
-}
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct ModuleFingerprint {
     declaration: u64,
@@ -135,7 +130,7 @@ impl ParseDb {
     pub fn parse_diagnostics(&self, document_id: &DocumentId) -> Option<&[Diagnostic]> {
         self.records
             .get(document_id)
-            .map(|record| record.parsed.diagnostics.as_slice())
+            .map(|record| record.syntax.diagnostics())
     }
 
     #[must_use]
@@ -190,7 +185,7 @@ impl ParseDb {
                 self.parse_count = self.parse_count.saturating_add(1);
                 let parsed = parse_legacy_source(source.source_id, source.text());
                 let syntax = parse_syntax_source(source.source_id, source.text());
-                let summary = summarize_source(&parsed);
+                let summary = summarize_source(&syntax);
                 ParseRecord {
                     source: source.source_id,
                     module_path: source.module_path.clone(),
@@ -960,189 +955,6 @@ fn source_records(project: &ProjectSources) -> BTreeMap<DocumentId, SourceRecord
             ))
         })
         .collect()
-}
-
-fn summarize_source(parsed: &SourceFile) -> ParseSummary {
-    let mut declarations = Vec::new();
-    let mut imports = BTreeSet::new();
-    let mut import_fingerprint_parts = Vec::new();
-
-    for item in &parsed.items {
-        match &item.kind {
-            ItemKind::Use(use_item) => {
-                if let Some((_, module_segments)) = use_item.path.split_last() {
-                    imports.insert(ModulePath::new(module_segments.iter().cloned()));
-                }
-                import_fingerprint_parts.push(format!(
-                    "use:{} as {}",
-                    use_item.path.join("::"),
-                    use_item.alias.as_deref().unwrap_or("")
-                ));
-            }
-            ItemKind::Const(inner) => declarations.push(format!(
-                "{} const {}:{}",
-                visibility(&item.visibility),
-                inner.name,
-                optional_hint(&inner.type_hint)
-            )),
-            ItemKind::Global(inner) => declarations.push(format!(
-                "{} global {}:{}",
-                visibility(&item.visibility),
-                inner.name,
-                hint_signature(&inner.type_hint)
-            )),
-            ItemKind::Function(function) => declarations.push(format!(
-                "{} {}",
-                visibility(&item.visibility),
-                function_signature(function)
-            )),
-            ItemKind::Struct(inner) => declarations.push(format!(
-                "{} struct {} {}",
-                visibility(&item.visibility),
-                inner.name,
-                fields_signature(&inner.fields)
-            )),
-            ItemKind::Enum(inner) => declarations.push(format!(
-                "{} enum {} {}",
-                visibility(&item.visibility),
-                inner.name,
-                inner
-                    .variants
-                    .iter()
-                    .map(|variant| {
-                        let fields = match &variant.fields {
-                            EnumVariantFields::Unit => String::new(),
-                            EnumVariantFields::Tuple(params) => params_signature(params),
-                            EnumVariantFields::Record(fields) => fields_signature(fields),
-                        };
-                        format!("{}({fields})", variant.name)
-                    })
-                    .collect::<Vec<_>>()
-                    .join("|")
-            )),
-            ItemKind::Trait(inner) => declarations.push(format!(
-                "{} {}",
-                visibility(&item.visibility),
-                trait_signature(inner)
-            )),
-            ItemKind::Impl(inner) => declarations.push(format!(
-                "{} {}",
-                visibility(&item.visibility),
-                impl_signature(inner)
-            )),
-        }
-    }
-    declarations.sort();
-    import_fingerprint_parts.sort();
-    ParseSummary {
-        imports,
-        declaration_fingerprint: stable_source_hash(&declarations.join("\n")),
-        import_fingerprint: stable_source_hash(&import_fingerprint_parts.join("\n")),
-    }
-}
-
-fn visibility(visibility: &Visibility) -> &'static str {
-    match visibility {
-        Visibility::Private => "private",
-        Visibility::Public => "public",
-    }
-}
-
-fn function_signature(function: &FunctionItem) -> String {
-    format!(
-        "fn {}({}) -> {}",
-        function.name,
-        params_signature(&function.params),
-        optional_hint(&function.return_type)
-    )
-}
-
-fn trait_signature(item: &TraitItem) -> String {
-    format!(
-        "trait {} {}",
-        item.name,
-        item.methods
-            .iter()
-            .map(trait_method_signature)
-            .collect::<Vec<_>>()
-            .join("|")
-    )
-}
-
-fn trait_method_signature(method: &TraitMethod) -> String {
-    format!(
-        "{}({}) -> {} default:{}",
-        method.name,
-        params_signature(&method.params),
-        optional_hint(&method.return_type),
-        method.has_default
-    )
-}
-
-fn impl_signature(item: &vela_syntax::ast::ImplItem) -> String {
-    let owner = item.target_path.join("::");
-    let kind = match &item.kind {
-        ImplKind::Inherent => "impl".to_owned(),
-        ImplKind::Trait { trait_path } => format!("impl {}", trait_path.join("::")),
-    };
-    format!(
-        "{kind} for {owner} {}",
-        item.methods
-            .iter()
-            .map(|method| function_signature(&method.function))
-            .collect::<Vec<_>>()
-            .join("|")
-    )
-}
-
-fn params_signature(params: &[Param]) -> String {
-    params
-        .iter()
-        .map(|param| {
-            format!(
-                "{}:{}={}",
-                param.name,
-                optional_hint(&param.type_hint),
-                param.default_value.is_some()
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
-fn fields_signature(fields: &[StructField]) -> String {
-    fields
-        .iter()
-        .map(|field| {
-            format!(
-                "{}:{}={}",
-                field.name,
-                optional_hint(&field.type_hint),
-                field.default_value.is_some()
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(",")
-}
-
-fn optional_hint(hint: &Option<TypeHint>) -> String {
-    hint.as_ref().map_or_else(String::new, hint_signature)
-}
-
-fn hint_signature(hint: &TypeHint) -> String {
-    if hint.args.is_empty() {
-        hint.path.join("::")
-    } else {
-        format!(
-            "{}<{}>",
-            hint.path.join("::"),
-            hint.args
-                .iter()
-                .map(hint_signature)
-                .collect::<Vec<_>>()
-                .join(",")
-        )
-    }
 }
 
 #[cfg(test)]
