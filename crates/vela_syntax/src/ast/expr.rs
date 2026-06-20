@@ -414,6 +414,11 @@ impl SyntaxArgList {
     pub fn arguments(&self) -> AstChildren<SyntaxArgument> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
 }
 
 impl AstNode for SyntaxArgList {
@@ -492,6 +497,11 @@ impl SyntaxArrayExpr {
     pub fn expressions(&self) -> AstChildren<SyntaxExpression> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
 }
 
 impl AstNode for SyntaxArrayExpr {
@@ -527,6 +537,11 @@ impl SyntaxMapExpr {
     #[must_use]
     pub fn entries(&self) -> AstChildren<SyntaxMapEntry> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
     }
 }
 
@@ -635,6 +650,11 @@ impl SyntaxRecordExprFieldList {
     #[must_use]
     pub fn fields(&self) -> AstChildren<SyntaxRecordExprField> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
     }
 }
 
@@ -990,6 +1010,14 @@ fn token_before(
         .filter_map(|element| element.into_token())
         .take_while(|token| token.kind() != before)
         .find(|token| token.kind() == wanted)
+}
+
+fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == wanted)
+        .collect()
 }
 
 fn first_significant_token(parent: &SyntaxNode) -> Option<SyntaxToken> {

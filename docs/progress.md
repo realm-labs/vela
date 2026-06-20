@@ -184,9 +184,10 @@ and exact source text for boolean, null, numeric, quoted, bytes, and
 interpolated literals.
 Container and callable expression structure now exposes array elements, map
 entries, record literal fields, lambda parameter lists, and lambda
-expression/block bodies. Array, map, and record expression field lists now
-expose their delimiter tokens; lambda parameter lists expose their pipe
-tokens. Map entries now expose explicit key/value accessors and colon tokens.
+expression/block bodies. Array, map, record expression field lists, call
+argument lists, and parameter lists now expose delimiter/list separator
+tokens; lambda parameter lists expose their pipe tokens. Map entries now
+expose explicit key/value accessors and colon tokens.
 Record literal fields now expose label tokens, label kinds, explicit colon
 tokens, value expressions, and shorthand classification.
 Bare braced expressions now keep the existing

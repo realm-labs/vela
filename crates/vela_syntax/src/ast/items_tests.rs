@@ -170,6 +170,10 @@ fn ast_function_item_exposes_signature_and_body_children() {
     builder.start_node(SyntaxKind::Param);
     builder.token(SyntaxKind::Ident, "ctx");
     builder.finish_node();
+    builder.token(SyntaxKind::Comma, ",");
+    builder.start_node(SyntaxKind::Param);
+    builder.token(SyntaxKind::Ident, "event");
+    builder.finish_node();
     builder.token(SyntaxKind::RParen, ")");
     builder.finish_node();
     builder.start_node(SyntaxKind::Block);
@@ -189,10 +193,18 @@ fn ast_function_item_exposes_signature_and_body_children() {
             .params()
             .map(|param| param.syntax().text().to_string())
             .collect::<Vec<_>>(),
-        vec!["ctx"]
+        vec!["ctx", "event"]
     );
     assert_eq!(param_list.l_paren_token().expect("open paren").text(), "(");
     assert_eq!(param_list.r_paren_token().expect("close paren").text(), ")");
+    assert_eq!(
+        param_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
     assert!(param_list.pipe_tokens().is_empty());
     assert_eq!(
         function.body().expect("body").syntax().text().to_string(),

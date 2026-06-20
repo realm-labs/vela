@@ -287,6 +287,11 @@ impl SyntaxParamList {
     pub fn params(&self) -> AstChildren<SyntaxParam> {
         AstChildren::new(&self.syntax)
     }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
+    }
 }
 
 impl AstNode for SyntaxParamList {
@@ -837,6 +842,14 @@ fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Op
             }
             seen_after && token.kind() == wanted
         })
+}
+
+fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| token.kind() == wanted)
+        .collect()
 }
 
 fn significant_token_text(parent: &SyntaxNode) -> Option<String> {

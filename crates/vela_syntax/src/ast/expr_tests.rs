@@ -319,9 +319,9 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
     let indexed = items[index + 1];
     let attempted = grant()?;
     let array = [count, index + 1];
-    let map = { "count": count };
-    let record = Reward { amount: count };
-    let lambda = |item: i64| item + 1;
+    let map = { "count": count, index: index };
+    let record = Reward { amount: count, bonus };
+    let lambda = |item: i64, extra| item + extra;
 }
 "#;
     let parse = parse_source(source);
@@ -357,6 +357,14 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
     let arg_list = call.arg_list().expect("argument list");
     assert_eq!(arg_list.l_paren_token().expect("call open").text(), "(");
     assert_eq!(arg_list.r_paren_token().expect("call close").text(), ")");
+    assert_eq!(
+        arg_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
 
     let index = SyntaxIndexExpr::cast(initializers[2].syntax().clone()).expect("index expr");
     assert_eq!(
@@ -383,6 +391,14 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
         array.r_bracket_token().expect("array close").kind(),
         SyntaxKind::RBracket
     );
+    assert_eq!(
+        array
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
 
     let map = SyntaxMapExpr::cast(initializers[5].syntax().clone()).expect("map expr");
     assert_eq!(
@@ -392,6 +408,13 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
     assert_eq!(
         map.r_brace_token().expect("map close").kind(),
         SyntaxKind::RBrace
+    );
+    assert_eq!(
+        map.separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
     );
 
     let record = SyntaxRecordExpr::cast(initializers[6].syntax().clone()).expect("record expr");
@@ -409,6 +432,14 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
             .expect("record field close")
             .kind(),
         SyntaxKind::RBrace
+    );
+    assert_eq!(
+        record_fields
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
     );
 
     let lambda = SyntaxLambdaExpr::cast(initializers[7].syntax().clone()).expect("lambda expr");
@@ -428,6 +459,14 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
         SyntaxKind::Pipe
     );
     assert_eq!(lambda_params.pipe_tokens().len(), 2);
+    assert_eq!(
+        lambda_params
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
     assert!(lambda_params.l_paren_token().is_none());
     assert!(lambda_params.r_paren_token().is_none());
 }
