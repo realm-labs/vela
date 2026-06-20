@@ -29,11 +29,14 @@ pub(super) struct SyntaxModuleSummary {
 
 impl SyntaxModuleSummary {
     pub(super) fn from_parse(source: SourceId, parsed: &SyntaxParse<SyntaxSourceFile>) -> Self {
-        let items = parsed.tree().items().collect::<Vec<_>>();
-        let item_headers = items
-            .iter()
-            .filter_map(|item| SyntaxItemHeader::from_item(source, item))
-            .collect::<Vec<_>>();
+        let (items, item_headers): (Vec<_>, Vec<_>) = parsed
+            .tree()
+            .items()
+            .filter_map(|item| {
+                let header = SyntaxItemHeader::from_item(source, &item)?;
+                Some((item, header))
+            })
+            .unzip();
         let module_span = item_headers
             .first()
             .map_or_else(|| Span::new(source, 0, 0), SyntaxItemHeader::span);

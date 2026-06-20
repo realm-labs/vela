@@ -377,6 +377,53 @@ fn grant(amount = BASE, bonus = amount + 1) {
                 .is_some_and(|binding| binding.name == "amount"))
     }));
 }
+
+#[test]
+fn malformed_cst_items_do_not_shift_following_metadata() {
+    let mut graph = ModuleGraph::new();
+    let module = graph.add_source(source(
+        1,
+        "game::rewards",
+        r#"
+fn () {}
+fn grant(amount: i64) -> i64 {
+    return amount;
+}
+"#,
+    ));
+
+    let declarations = graph.module(module).expect("module declarations");
+    let grant = declarations.get("grant").expect("grant declaration");
+    let signature = graph.function_signature(grant).expect("grant signature");
+
+    assert!(
+        graph
+            .diagnostics()
+            .iter()
+            .any(|diagnostic| diagnostic.code.as_deref() == Some("E_PARSE")),
+        "{:?}",
+        graph.diagnostics()
+    );
+    assert_eq!(signature.params.len(), 1);
+    assert_eq!(signature.params[0].name, "amount");
+    assert_eq!(
+        signature.params[0]
+            .type_hint
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("i64")
+    );
+    assert_eq!(
+        signature
+            .return_type
+            .as_ref()
+            .map(HirTypeHint::display)
+            .as_deref(),
+        Some("i64")
+    );
+}
+
 #[test]
 fn rejects_side_effecting_const_initializers() {
     let mut graph = ModuleGraph::new();
