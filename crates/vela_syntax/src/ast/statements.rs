@@ -89,6 +89,44 @@ impl AstNode for SyntaxReturnStmt {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxBreakStmt {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxBreakStmt {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::BreakStmt
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SyntaxContinueStmt {
+    syntax: SyntaxNode,
+}
+
+impl AstNode for SyntaxContinueStmt {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ContinueStmt
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        Self::can_cast(syntax.kind()).then_some(Self { syntax })
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxExprStmt {
     syntax: SyntaxNode,
 }

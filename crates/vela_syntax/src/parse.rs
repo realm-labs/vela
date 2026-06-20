@@ -83,9 +83,10 @@ mod tests {
     use vela_common::{SourceId, Span};
 
     use crate::ast::{
-        AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxCallExpr, SyntaxExprStmt, SyntaxForStmt,
-        SyntaxIfExpr, SyntaxIndexExpr, SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr,
-        SyntaxRecordExpr, SyntaxRecordPattern, SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern,
+        AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBreakStmt, SyntaxCallExpr,
+        SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxIndexExpr,
+        SyntaxLambdaExpr, SyntaxMapExpr, SyntaxMatchExpr, SyntaxRecordExpr, SyntaxRecordPattern,
+        SyntaxReturnStmt, SyntaxTryExpr, SyntaxTuplePattern,
     };
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
@@ -494,6 +495,12 @@ impl Rewardable for Player {
                 .collect::<Vec<_>>(),
             vec![SyntaxKind::LetStmt, SyntaxKind::ContinueStmt]
         );
+        let continue_stmt = for_body
+            .syntax()
+            .children()
+            .find_map(SyntaxContinueStmt::cast)
+            .expect("continue statement");
+        assert_eq!(continue_stmt.syntax().text().to_string(), "continue;");
         assert_eq!(
             for_body
                 .let_statements()
@@ -516,6 +523,13 @@ impl Rewardable for Player {
             if_expr.condition().expect("if condition").syntax().kind(),
             SyntaxKind::BinaryExpr
         );
+        let if_block = if_expr.blocks().next().expect("if block");
+        let break_stmt = if_block
+            .syntax()
+            .children()
+            .find_map(SyntaxBreakStmt::cast)
+            .expect("break statement");
+        assert_eq!(break_stmt.syntax().text().to_string(), "break;");
         assert_eq!(if_expr.blocks().count(), 1);
         let else_if = if_expr.else_if().expect("else-if expression");
         assert_eq!(

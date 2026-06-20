@@ -145,8 +145,9 @@ declarations now expose typed method CST wrappers with parameter-list,
 return-type, and optional body accessors. Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
 hints, for-loop binding patterns, for-loop iterable expressions, for-loop
-bodies, if/else-if condition expressions, and nested if/else block structure.
-Statement values now expose initial expression CST wrappers for let
+bodies, break/continue statement wrappers, if/else-if condition expressions,
+and nested if/else block structure. Statement values now expose initial
+expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary/unary
 expressions, field access, calls, argument lists, paths, and literals. Postfix
 expression structure now also preserves method-call-over-field ordering and

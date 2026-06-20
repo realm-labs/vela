@@ -20,7 +20,8 @@ pub use patterns::{
     SyntaxPattern, SyntaxRecordPattern, SyntaxRecordPatternField, SyntaxTuplePattern,
 };
 pub use statements::{
-    SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr, SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
+    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxExprStmt, SyntaxForStmt, SyntaxIfExpr,
+    SyntaxLetStmt, SyntaxReturnStmt, SyntaxStatement,
 };
 pub use syntax::{
     AstChildren, AstNode, SyntaxBlock, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList,
