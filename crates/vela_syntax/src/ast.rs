@@ -7,6 +7,9 @@ mod control;
 #[path = "ast/expr.rs"]
 mod expr;
 #[cfg(test)]
+#[path = "ast/expr_path_tests.rs"]
+mod expr_path_tests;
+#[cfg(test)]
 #[path = "ast/expr_tests.rs"]
 mod expr_tests;
 #[path = "ast/items.rs"]

@@ -209,6 +209,11 @@ impl SyntaxPathExpr {
     }
 
     #[must_use]
+    pub fn path_separator_tokens(&self) -> Vec<SyntaxToken> {
+        path_separator_tokens_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn self_token(&self) -> Option<SyntaxToken> {
         let mut tokens = self.path_tokens().into_iter();
         let token = tokens.next()?;
@@ -891,6 +896,14 @@ fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
         .iter()
         .filter(|token| token.kind() == SyntaxKind::Ident)
         .map(|token| token.text().to_owned())
+        .collect()
+}
+
+fn path_separator_tokens_from_tokens(tokens: &[SyntaxToken]) -> Vec<SyntaxToken> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::ColonColon)
+        .cloned()
         .collect()
 }
 
