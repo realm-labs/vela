@@ -25,7 +25,6 @@ use self::body_binding::FunctionBodySource;
 use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::ids::{HirDeclId, HirNodeId, ModuleId};
-use crate::top_level::validate_const_initializer;
 #[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
@@ -207,7 +206,11 @@ impl ModuleGraph {
                         syntax_metadata::attrs(syntax_summary.as_ref(), item_index, &item.attrs),
                     );
                     self.diagnostics
-                        .extend(validate_const_initializer(const_item));
+                        .extend(syntax_metadata::const_initializer_diagnostics(
+                            syntax_summary.as_ref(),
+                            item_index,
+                            const_item,
+                        ));
                 }
                 ItemKind::Global(global_item) => {
                     let (name, visibility, span) = declaration_or(

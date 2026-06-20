@@ -1,10 +1,11 @@
-use vela_common::Span;
+use vela_common::{Diagnostic, Span};
 use vela_syntax::ast::{
     Attribute, ConstItem, EnumItem, FunctionItem, GlobalItem, ImplItem, StructItem, TraitItem,
 };
 
 use crate::attributes::{HirAttribute, attrs_from_syntax};
 use crate::ids::HirNodeId;
+use crate::top_level::validate_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, FunctionSignature, GlobalMetadata, HirTypeHint, ImplMetadata,
     ParamHint, StructFieldHint, StructShape, TraitShape,
@@ -32,6 +33,16 @@ pub(super) fn const_metadata(
         || ConstMetadata::from_syntax(item),
         |summary| summary.const_metadata_or(index, ConstMetadata::from_syntax(item)),
     )
+}
+
+pub(super) fn const_initializer_diagnostics(
+    summary: Option<&SyntaxModuleSummary>,
+    index: usize,
+    item: &ConstItem,
+) -> Vec<Diagnostic> {
+    summary
+        .and_then(|summary| summary.const_initializer_diagnostics(index))
+        .unwrap_or_else(|| validate_const_initializer(item))
 }
 
 pub(super) fn global_metadata(

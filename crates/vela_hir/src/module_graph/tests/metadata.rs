@@ -387,6 +387,7 @@ fn rejects_side_effecting_const_initializers() {
 const SAFE_LIMIT: i64 = 10 + 5;
 const BAD_CALL = register_event("monster.kill");
 const BAD_ASSIGN = { global_counter += 1; 0 };
+const BAD_INTERP = f"{register_event("monster.spawn")}";
 fn main() { return SAFE_LIMIT; }
 "#,
     ));
@@ -395,7 +396,7 @@ fn main() { return SAFE_LIMIT; }
         .iter()
         .filter(|diagnostic| diagnostic.code.as_deref() == Some("hir::top_level_side_effect"))
         .collect::<Vec<_>>();
-    assert_eq!(diagnostics.len(), 2, "{:?}", graph.diagnostics());
+    assert_eq!(diagnostics.len(), 3, "{:?}", graph.diagnostics());
     assert!(
         diagnostics
             .iter()
@@ -405,6 +406,11 @@ fn main() { return SAFE_LIMIT; }
         diagnostics
             .iter()
             .any(|diagnostic| diagnostic.message.contains("BAD_ASSIGN"))
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message.contains("BAD_INTERP"))
     );
     assert!(
         diagnostics

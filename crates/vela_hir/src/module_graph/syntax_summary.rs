@@ -1,4 +1,4 @@
-use vela_common::{SourceId, Span};
+use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
     AstChildren, AstNode, SyntaxAttribute, SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant,
     SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxImplMethod, SyntaxItem,
@@ -9,6 +9,7 @@ use vela_syntax::{Parse as SyntaxParse, SyntaxKind, TextRange};
 
 use crate::attributes::HirAttribute;
 use crate::ids::HirNodeId;
+use crate::top_level::validate_syntax_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, EnumVariantFieldsHint, EnumVariantHint, FunctionSignature,
     GlobalMetadata, HirTypeHint, ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint,
@@ -59,6 +60,12 @@ impl SyntaxModuleSummary {
         self.item(index, SyntaxKind::ConstItem)
             .and_then(|item| SyntaxConstItem::cast(item.syntax().clone()))
             .map_or(fallback, |item| const_metadata(self.source, &item))
+    }
+
+    pub(super) fn const_initializer_diagnostics(&self, index: usize) -> Option<Vec<Diagnostic>> {
+        self.item(index, SyntaxKind::ConstItem)
+            .and_then(|item| SyntaxConstItem::cast(item.syntax().clone()))
+            .map(|item| validate_syntax_const_initializer(self.source, &item))
     }
 
     pub(super) fn global_metadata_or(
