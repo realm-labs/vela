@@ -49,6 +49,8 @@ fn ast_block_exposes_statement_children() {
         .body()
         .expect("body");
 
+    assert_eq!(body.l_brace_token().expect("block open").text(), "{");
+    assert_eq!(body.r_brace_token().expect("block close").text(), "}");
     assert_eq!(
         body.statements()
             .map(|statement| statement.syntax().kind())
@@ -71,10 +73,14 @@ fn ast_block_exposes_statement_children() {
         .children()
         .find_map(SyntaxForStmt::cast)
         .expect("for statement");
+    let for_body = for_stmt.body().expect("for body");
+    assert_eq!(for_body.l_brace_token().expect("for body open").text(), "{");
     assert_eq!(
-        for_stmt
-            .body()
-            .expect("for body")
+        for_body.r_brace_token().expect("for body close").text(),
+        "}"
+    );
+    assert_eq!(
+        for_body
             .statements()
             .map(|statement| statement.syntax().kind())
             .collect::<Vec<_>>(),
@@ -200,6 +206,24 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         .expect("if expression");
     assert_eq!(if_expr.if_token().expect("if token").text(), "if");
     assert_eq!(if_expr.else_token().expect("else token").text(), "else");
+    assert_eq!(
+        if_expr
+            .then_block()
+            .expect("then block")
+            .l_brace_token()
+            .expect("then open")
+            .kind(),
+        SyntaxKind::LBrace
+    );
+    assert_eq!(
+        if_expr
+            .then_block()
+            .expect("then block")
+            .r_brace_token()
+            .expect("then close")
+            .kind(),
+        SyntaxKind::RBrace
+    );
     let else_if = if_expr.else_if().expect("else-if");
     assert_eq!(else_if.if_token().expect("else-if token").text(), "if");
     assert_eq!(

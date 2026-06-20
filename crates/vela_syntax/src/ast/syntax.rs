@@ -200,6 +200,16 @@ pub struct SyntaxBlock {
 
 impl SyntaxBlock {
     #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
+    #[must_use]
     pub fn statements(&self) -> AstChildren<SyntaxStatement> {
         AstChildren::new(&self.syntax)
     }
