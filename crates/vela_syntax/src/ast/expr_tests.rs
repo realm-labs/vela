@@ -788,13 +788,49 @@ fn ast_record_expression_fields_expose_labels_and_shorthand() {
         .initializer()
         .expect("record initializer");
     let record = SyntaxRecordExpr::cast(initializer.syntax().clone()).expect("record expr");
-    let fields = record
-        .field_list()
-        .expect("record field list")
-        .fields()
-        .collect::<Vec<_>>();
+    let field_list = record.field_list().expect("record field list");
+    let fields = record.fields();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(record.path_text().as_deref(), Some("Reward"));
+    assert_eq!(
+        record
+            .path_tokens()
+            .iter()
+            .map(|token| (token.kind(), token.text().to_owned()))
+            .collect::<Vec<_>>(),
+        vec![(SyntaxKind::Ident, "Reward".to_owned())]
+    );
+    assert_eq!(
+        record
+            .l_brace_token()
+            .expect("record expression open")
+            .kind(),
+        SyntaxKind::LBrace
+    );
+    assert_eq!(
+        record
+            .r_brace_token()
+            .expect("record expression close")
+            .kind(),
+        SyntaxKind::RBrace
+    );
+    assert_eq!(
+        record
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![",", ","]
+    );
+    assert_eq!(
+        field_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![",", ","]
+    );
     assert_eq!(fields.len(), 2);
     assert_eq!(fields[0].label_kind(), Some(SyntaxKind::Ident));
     assert_eq!(fields[0].label_text().as_deref(), Some("amount"));

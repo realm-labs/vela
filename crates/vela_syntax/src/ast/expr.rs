@@ -777,8 +777,46 @@ impl SyntaxRecordExpr {
     }
 
     #[must_use]
+    pub fn path_tokens(&self) -> Vec<SyntaxToken> {
+        self.path()
+            .map(|path| path.path_tokens())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn path_text(&self) -> Option<String> {
+        self.path().and_then(|path| path.path_text())
+    }
+
+    #[must_use]
     pub fn field_list(&self) -> Option<SyntaxRecordExprFieldList> {
         child(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        self.field_list()
+            .and_then(|field_list| field_list.l_brace_token())
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        self.field_list()
+            .and_then(|field_list| field_list.r_brace_token())
+    }
+
+    #[must_use]
+    pub fn fields(&self) -> Vec<SyntaxRecordExprField> {
+        self.field_list()
+            .map(|field_list| field_list.fields().collect())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        self.field_list()
+            .map(|field_list| field_list.separator_tokens())
+            .unwrap_or_default()
     }
 }
 
