@@ -478,7 +478,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         match kind {
             SyntaxKind::LetStmt => self.let_statement_body(start, end),
             SyntaxKind::ReturnStmt => self.return_statement_body(start, end),
-            SyntaxKind::ForStmt => self.statement_with_body_block(start, end),
+            SyntaxKind::ForStmt => self.for_statement_body(start, end),
             SyntaxKind::IfExpr => self.if_expression_body(start, end),
             SyntaxKind::MatchExpr => self.match_expression_body(start, end),
             SyntaxKind::ExprStmt => self.expr_statement_body(start, end),
@@ -523,6 +523,45 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     fn expr_statement_body(&mut self, start: usize, end: usize) {
         let expression_end = self.statement_expression_end(start, end);
         self.expression_range(start, expression_end);
+        self.emit_until(end);
+    }
+
+    fn for_statement_body(&mut self, start: usize, end: usize) {
+        let Some(in_kw) = self.find_root_kind_before(SyntaxKind::InKw, start, end) else {
+            self.statement_with_body_block(start, end);
+            return;
+        };
+        let Some(body_start) = self.find_for_body_start(in_kw + 1, end) else {
+            self.emit_until(end);
+            return;
+        };
+
+        let pattern_start = self.skip_trivia(start + 1);
+        let pattern_end = self.trim_trailing_trivia(pattern_start, in_kw);
+        self.emit_until(pattern_start);
+        if pattern_start < pattern_end {
+            if let Some(comma) =
+                self.find_root_kind_before(SyntaxKind::Comma, pattern_start, pattern_end)
+            {
+                self.pattern_range(pattern_start, comma);
+                self.emit_until(comma + 1);
+                let value_pattern_start = self.skip_trivia(comma + 1);
+                self.pattern_range(value_pattern_start, pattern_end);
+            } else {
+                self.pattern_range(pattern_start, pattern_end);
+            }
+        }
+
+        self.emit_until(in_kw + 1);
+        let iterable_start = self.skip_trivia(in_kw + 1);
+        self.emit_until(iterable_start);
+        if iterable_start < body_start {
+            self.expression_range(iterable_start, body_start);
+        }
+
+        self.emit_until(body_start);
+        let body_end = self.find_matching_brace_end(body_start).min(end);
+        self.block_range(body_start, body_end);
         self.emit_until(end);
     }
 
@@ -619,7 +658,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     fn find_statement_end(&self, kind: SyntaxKind, start: usize, end: usize) -> usize {
         match kind {
             SyntaxKind::ForStmt => self
-                .find_root_kind_before(SyntaxKind::LBrace, start, end)
+                .find_root_kind_before(SyntaxKind::InKw, start, end)
+                .and_then(|in_kw| self.find_for_body_start(in_kw + 1, end))
                 .map(|body| self.find_matching_brace_end(body).min(end))
                 .unwrap_or_else(|| self.find_statement_term_end(start, end)),
             SyntaxKind::IfExpr => self.find_if_expression_end(start, end),
@@ -652,6 +692,39 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         } else {
             self.find_statement_term_end(else_body, end)
         }
+    }
+
+    fn find_for_body_start(&self, start: usize, end: usize) -> Option<usize> {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() && current == SyntaxKind::LBrace {
+                let body_end = self.find_matching_brace_end(cursor).min(end);
+                let next = self.skip_trivia(body_end);
+                if next >= end || self.at_explicit_statement_start(next) {
+                    return Some(cursor);
+                }
+            }
+            depth.bump(current);
+        }
+        None
+    }
+
+    fn at_explicit_statement_start(&self, cursor: usize) -> bool {
+        matches!(
+            self.kind_at(cursor),
+            Some(
+                SyntaxKind::LetKw
+                    | SyntaxKind::ReturnKw
+                    | SyntaxKind::BreakKw
+                    | SyntaxKind::ContinueKw
+                    | SyntaxKind::ForKw
+                    | SyntaxKind::IfKw
+                    | SyntaxKind::MatchKw
+            )
+        )
     }
 
     fn find_root_newline_before(&self, start: usize, end: usize) -> Option<usize> {

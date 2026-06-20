@@ -873,6 +873,66 @@ impl Rewardable for Player {
     }
 
     #[test]
+    fn parser_parse_source_structures_for_statement_pattern_and_iterable_nodes() {
+        let source = r#"fn update(rewards) {
+    for index, Reward::Grant { amount: value, item } in rewards.filter(|reward| reward.active) {
+        total += index + value;
+    }
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(21), source);
+        let tree = parse.tree();
+        let body = tree
+            .functions()
+            .next()
+            .expect("function item")
+            .body()
+            .expect("function body");
+        let for_stmt = body
+            .syntax()
+            .children()
+            .find_map(SyntaxForStmt::cast)
+            .expect("for statement");
+        let patterns = for_stmt.patterns().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(patterns.len(), 2);
+        assert_eq!(patterns[0].syntax().text().to_string(), "index");
+
+        let record_pattern =
+            SyntaxRecordPattern::cast(patterns[1].syntax().clone()).expect("record pattern");
+        let fields = record_pattern.fields().collect::<Vec<_>>();
+        assert_eq!(fields.len(), 2);
+        assert_eq!(
+            fields[0]
+                .pattern()
+                .expect("explicit field pattern")
+                .syntax()
+                .text()
+                .to_string(),
+            "value"
+        );
+        assert!(fields[1].pattern().is_none());
+        assert_eq!(
+            for_stmt
+                .iterable()
+                .expect("iterable expression")
+                .syntax()
+                .kind(),
+            SyntaxKind::CallExpr
+        );
+        assert_eq!(
+            for_stmt
+                .body()
+                .expect("for body")
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ExprStmt]
+        );
+    }
+
+    #[test]
     fn parser_parse_source_keeps_malformed_fragments_in_cst() {
         let source = "fn main() { @ \"unterminated";
         let parse = parse_source_with_id(SourceId::new(9), source);

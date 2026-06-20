@@ -340,7 +340,7 @@ impl CstParser<'_, '_> {
         self.builder.finish_node();
     }
 
-    fn pattern_range(&mut self, start: usize, end: usize) {
+    pub(super) fn pattern_range(&mut self, start: usize, end: usize) {
         let pattern_start = self.skip_trivia(start);
         let pattern_end = self.trim_trailing_trivia(pattern_start, end);
         self.emit_until(pattern_start);

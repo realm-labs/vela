@@ -1,5 +1,5 @@
 use super::expr::SyntaxExpression;
-use super::{AstChildren, AstNode, SyntaxBlock, SyntaxTypeHint};
+use super::{AstChildren, AstNode, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -120,6 +120,16 @@ pub struct SyntaxForStmt {
 }
 
 impl SyntaxForStmt {
+    #[must_use]
+    pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn iterable(&self) -> Option<SyntaxExpression> {
+        child(&self.syntax)
+    }
+
     #[must_use]
     pub fn body(&self) -> Option<SyntaxBlock> {
         child(&self.syntax)

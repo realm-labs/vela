@@ -144,13 +144,14 @@ lists and record variant payloads structured as field lists. Trait and impl
 declarations now expose typed method CST wrappers with parameter-list,
 return-type, and optional body accessors. Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
-hints, for-loop bodies, and nested if/else block structure. Statement values
-now expose initial expression CST wrappers for let initializers, return values,
-expression statements, assignments, binary/unary expressions, field access,
-calls, argument lists, paths, and literals. Postfix expression structure now
-also preserves method-call-over-field ordering and exposes index and try
-expression wrappers. Container and callable expression structure now exposes
-array elements, map entries, record literal fields, lambda parameter lists, and
+hints, for-loop binding patterns, for-loop iterable expressions, for-loop
+bodies, and nested if/else block structure. Statement values now expose initial
+expression CST wrappers for let initializers, return values, expression
+statements, assignments, binary/unary expressions, field access, calls,
+argument lists, paths, and literals. Postfix expression structure now also
+preserves method-call-over-field ordering and exposes index and try expression
+wrappers. Container and callable expression structure now exposes array
+elements, map entries, record literal fields, lambda parameter lists, and
 lambda expression/block bodies. Match expressions now expose scrutinees, arm
 lists, guarded arm expressions, expression or block arm bodies, tuple-variant
 patterns, record-variant pattern fields, and wildcard/basic pattern nodes. The
