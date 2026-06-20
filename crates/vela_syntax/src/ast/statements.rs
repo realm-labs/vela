@@ -200,8 +200,21 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn then_block(&self) -> Option<SyntaxBlock> {
+        self.blocks().next()
+    }
+
+    #[must_use]
     pub fn blocks(&self) -> AstChildren<SyntaxBlock> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn else_block(&self) -> Option<SyntaxBlock> {
+        if self.else_if().is_some() {
+            return None;
+        }
+        self.blocks().nth(1)
     }
 
     #[must_use]

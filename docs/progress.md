@@ -146,7 +146,8 @@ return-type, and optional body accessors. Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
 hints, for-loop binding patterns, for-loop iterable expressions, for-loop
 bodies, break/continue statement wrappers, if/else-if condition expressions,
-and nested if/else block structure. Statement values now expose initial
+explicit then/else block accessors, and nested if/else block structure.
+Statement values now expose initial
 expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary/unary
 expressions, field access, calls, argument lists, paths, and literals. Postfix

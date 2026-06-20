@@ -523,6 +523,16 @@ impl Rewardable for Player {
             if_expr.condition().expect("if condition").syntax().kind(),
             SyntaxKind::BinaryExpr
         );
+        assert_eq!(
+            if_expr
+                .then_block()
+                .expect("if then block")
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::BreakStmt]
+        );
+        assert!(if_expr.else_block().is_none());
         let if_block = if_expr.blocks().next().expect("if block");
         let break_stmt = if_block
             .syntax()
@@ -541,6 +551,24 @@ impl Rewardable for Player {
             SyntaxKind::BinaryExpr
         );
         assert_eq!(else_if.blocks().count(), 2);
+        assert_eq!(
+            else_if
+                .then_block()
+                .expect("else-if then block")
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ReturnStmt]
+        );
+        assert_eq!(
+            else_if
+                .else_block()
+                .expect("else block")
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::ExprStmt]
+        );
     }
 
     #[test]
