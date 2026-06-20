@@ -353,6 +353,23 @@ mod tests {
     }
 
     fn wait_for_ready_task_results(state: &GlobalState) {
+        let mut formatting_ended = false;
+        let mut worker_ended = false;
+        while !(formatting_ended && worker_ended) {
+            let event = state
+                .task_scheduler()
+                .lifecycle_events()
+                .recv_timeout(Duration::from_secs(1))
+                .expect("task lifecycle should finish");
+            if event.kind() == TaskLifecycleKind::Ended {
+                match event.lane() {
+                    TaskLane::Formatting => formatting_ended = true,
+                    TaskLane::Worker => worker_ended = true,
+                    TaskLane::Main | TaskLane::Latency => {}
+                }
+            }
+        }
+
         let deadline = Instant::now() + Duration::from_secs(1);
         while Instant::now() < deadline {
             if !state.task_scheduler().formatting_results().is_empty()
@@ -360,7 +377,7 @@ mod tests {
             {
                 return;
             }
-            thread::sleep(Duration::from_millis(1));
+            thread::yield_now();
         }
         panic!("formatting and worker task results should be ready");
     }

@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use vela_bytecode::UnlinkedProgram;
 use vela_common::SourceId;
@@ -27,7 +29,7 @@ fn fs_read_requires_io_read_capability() {
     let root = temp_root("fs_read_requires_io_read_capability");
     let engine = Engine::builder()
         .with_standard_natives()
-        .with_fs_io(&root)
+        .with_fs_io(root.path())
         .build()
         .expect("engine should build");
     let program = engine
@@ -57,7 +59,7 @@ fn fs_read_and_write_use_sandboxed_paths() {
         .with_standard_natives()
         .capability(Capability::IoRead)
         .capability(Capability::IoWrite)
-        .with_fs_io(&root)
+        .with_fs_io(root.path())
         .build()
         .expect("engine should build");
     let program = engine
@@ -81,13 +83,14 @@ fn main() {
 #[test]
 fn runtime_new_links_stdio_and_fs_io_programs() {
     let root = temp_root("runtime_new_links_stdio_and_fs_io_programs");
-    std::fs::write(root.join("input.txt"), "hello from fs").expect("input fixture should write");
+    std::fs::write(root.path().join("input.txt"), "hello from fs")
+        .expect("input fixture should write");
     let engine = Engine::builder()
         .with_standard_natives()
         .capability(Capability::IoRead)
         .capability(Capability::IoWrite)
         .with_stdio()
-        .with_fs_io(&root)
+        .with_fs_io(root.path())
         .build()
         .expect("engine should build");
     let program = engine
@@ -118,7 +121,7 @@ fn main() {
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(13)))
     );
     assert_eq!(
-        std::fs::read_to_string(root.join("output.txt")).expect("output should exist"),
+        std::fs::read_to_string(root.path().join("output.txt")).expect("output should exist"),
         "done"
     );
 }
@@ -129,7 +132,7 @@ fn fs_rejects_parent_directory_escape() {
     let engine = Engine::builder()
         .with_standard_natives()
         .capability(Capability::IoRead)
-        .with_fs_io(&root)
+        .with_fs_io(root.path())
         .build()
         .expect("engine should build");
     let program = engine
@@ -154,7 +157,7 @@ fn io_stdlib_registers_metadata() {
     let root = temp_root("io_stdlib_registers_metadata");
     let engine = Engine::builder()
         .with_stdio()
-        .with_fs_io(&root)
+        .with_fs_io(root.path())
         .build()
         .expect("engine should build");
     let registry = engine.registry();
@@ -217,10 +220,35 @@ fn io_stdlib_registers_metadata() {
     );
 }
 
-fn temp_root(name: &str) -> PathBuf {
+struct TestDir(PathBuf);
+
+impl TestDir {
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn temp_root(name: &str) -> TestDir {
+    static NEXT_TEST_DIR: AtomicU64 = AtomicU64::new(0);
+
     let mut root = std::env::temp_dir();
-    root.push(format!("vela_engine_{name}_{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&root);
+    let sequence = NEXT_TEST_DIR.fetch_add(1, Ordering::Relaxed);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time should be after unix epoch")
+        .as_nanos();
+    root.push(format!(
+        "vela_engine_{name}_{}_{}_{}",
+        std::process::id(),
+        nanos,
+        sequence
+    ));
     std::fs::create_dir_all(&root).expect("temp root should be created");
-    root
+    TestDir(root)
 }
