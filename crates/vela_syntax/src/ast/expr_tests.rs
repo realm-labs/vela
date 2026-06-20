@@ -3,7 +3,7 @@ use crate::ast::{
     AstNode, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr, SyntaxBlock, SyntaxCallExpr,
     SyntaxExprStmt, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaBody,
     SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapExpr, SyntaxMatchArmBody, SyntaxMatchExpr,
-    SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
+    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 use crate::parse::parse_source;
 
@@ -57,6 +57,7 @@ fn ast_expression_exposes_typed_variant_helpers() {
     let source = r#"fn variants(value, account, items, ready, state) {
     let literal = 1;
     let path = value;
+    let paren = (value);
     let unary = -value;
     let binary = value + 1;
     let assign = value = 1;
@@ -95,6 +96,7 @@ fn ast_expression_exposes_typed_variant_helpers() {
         vec![
             SyntaxExpressionKind::Literal,
             SyntaxExpressionKind::Path,
+            SyntaxExpressionKind::Paren,
             SyntaxExpressionKind::Unary,
             SyntaxExpressionKind::Binary,
             SyntaxExpressionKind::Assign,
@@ -113,21 +115,56 @@ fn ast_expression_exposes_typed_variant_helpers() {
     );
     assert!(expressions[0].as_literal().is_some());
     assert!(expressions[1].as_path().is_some());
-    assert!(expressions[2].as_unary().is_some());
-    assert!(expressions[3].as_binary().is_some());
-    assert!(expressions[4].as_assign().is_some());
-    assert!(expressions[5].as_field().is_some());
-    assert!(expressions[6].as_call().is_some());
-    assert!(expressions[7].as_index().is_some());
-    assert!(expressions[8].as_try().is_some());
-    assert!(expressions[9].as_array().is_some());
-    assert!(expressions[10].as_map().is_some());
-    assert!(expressions[11].as_record().is_some());
-    assert!(expressions[12].as_lambda().is_some());
-    assert!(expressions[13].as_block().is_some());
-    assert!(expressions[14].as_if().is_some());
-    assert!(expressions[15].as_match().is_some());
+    assert!(expressions[2].as_paren().is_some());
+    assert!(expressions[3].as_unary().is_some());
+    assert!(expressions[4].as_binary().is_some());
+    assert!(expressions[5].as_assign().is_some());
+    assert!(expressions[6].as_field().is_some());
+    assert!(expressions[7].as_call().is_some());
+    assert!(expressions[8].as_index().is_some());
+    assert!(expressions[9].as_try().is_some());
+    assert!(expressions[10].as_array().is_some());
+    assert!(expressions[11].as_map().is_some());
+    assert!(expressions[12].as_record().is_some());
+    assert!(expressions[13].as_lambda().is_some());
+    assert!(expressions[14].as_block().is_some());
+    assert!(expressions[15].as_if().is_some());
+    assert!(expressions[16].as_match().is_some());
     assert!(expressions[0].as_match().is_none());
+}
+
+#[test]
+fn ast_parenthesized_expression_exposes_parens_and_inner_expression() {
+    let source = r#"fn update(value) {
+    let grouped = (value + 1);
+}
+"#;
+    let parse = parse_source(source);
+    let initializer = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body")
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let grouped = SyntaxParenExpr::cast(initializer.syntax().clone()).expect("paren expr");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(initializer.expression_kind(), SyntaxExpressionKind::Paren);
+    assert_eq!(grouped.l_paren_token().expect("open paren").text(), "(");
+    assert_eq!(grouped.r_paren_token().expect("close paren").text(), ")");
+    assert_eq!(
+        grouped
+            .expression()
+            .expect("inner expression")
+            .expression_kind(),
+        SyntaxExpressionKind::Binary
+    );
 }
 
 #[test]

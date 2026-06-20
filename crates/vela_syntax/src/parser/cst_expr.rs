@@ -17,6 +17,7 @@ impl CstParser<'_, '_> {
             SyntaxKind::AssignExpr => {
                 self.assignment_expression_body(expression_start, expression_end);
             }
+            SyntaxKind::ParenExpr => self.paren_expression_body(expression_start, expression_end),
             SyntaxKind::BinaryExpr => self.binary_expression_body(expression_start, expression_end),
             SyntaxKind::UnaryExpr => self.unary_expression_body(expression_start, expression_end),
             SyntaxKind::FieldExpr => self.field_expression_body(expression_start, expression_end),
@@ -75,6 +76,14 @@ impl CstParser<'_, '_> {
         self.emit_until(start + 1);
         let operand_start = self.skip_trivia(start + 1);
         self.expression_range(operand_start, end);
+    }
+
+    fn paren_expression_body(&mut self, start: usize, end: usize) {
+        self.emit_until(start + 1);
+        let close = end.saturating_sub(1);
+        let value_start = self.skip_trivia(start + 1);
+        self.expression_range(value_start, close);
+        self.emit_until(end);
     }
 
     fn field_expression_body(&mut self, start: usize, end: usize) {
@@ -504,6 +513,12 @@ impl CstParser<'_, '_> {
         }
         if self.at_kind(start, SyntaxKind::LBrace) {
             return self.braced_expression_kind(start, end);
+        }
+        if self.at_kind(start, SyntaxKind::LParen)
+            && self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+                == Some(end)
+        {
+            return SyntaxKind::ParenExpr;
         }
         if self.can_start_record_expression(start)
             && self

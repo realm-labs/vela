@@ -30,8 +30,8 @@ pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxExpressionKind, SyntaxFieldExpr, SyntaxIndexExpr,
     SyntaxLambdaBody, SyntaxLambdaExpr, SyntaxLiteral, SyntaxMapEntry, SyntaxMapExpr,
-    SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField, SyntaxRecordExprFieldList,
-    SyntaxTryExpr, SyntaxUnaryExpr,
+    SyntaxParenExpr, SyntaxPathExpr, SyntaxRecordExpr, SyntaxRecordExprField,
+    SyntaxRecordExprFieldList, SyntaxTryExpr, SyntaxUnaryExpr,
 };
 pub use items::{
     SyntaxConstItem, SyntaxEnumItem, SyntaxEnumVariant, SyntaxEnumVariantList, SyntaxFunctionItem,

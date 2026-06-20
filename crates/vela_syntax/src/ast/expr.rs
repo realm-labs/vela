@@ -3,6 +3,11 @@ use super::statements::SyntaxIfExpr;
 use super::{AstChildren, AstNode, SyntaxBlock, SyntaxParamList};
 use crate::{SyntaxKind, SyntaxNode, SyntaxToken};
 
+#[path = "expr/paren.rs"]
+mod paren;
+
+pub use paren::SyntaxParenExpr;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxExpression {
     syntax: SyntaxNode,
@@ -28,6 +33,7 @@ impl SyntaxExpression {
         match self.syntax.kind() {
             SyntaxKind::Literal => SyntaxExpressionKind::Literal,
             SyntaxKind::PathExpr => SyntaxExpressionKind::Path,
+            SyntaxKind::ParenExpr => SyntaxExpressionKind::Paren,
             SyntaxKind::UnaryExpr => SyntaxExpressionKind::Unary,
             SyntaxKind::BinaryExpr => SyntaxExpressionKind::Binary,
             SyntaxKind::AssignExpr => SyntaxExpressionKind::Assign,
@@ -54,6 +60,11 @@ impl SyntaxExpression {
     #[must_use]
     pub fn as_path(&self) -> Option<SyntaxPathExpr> {
         SyntaxPathExpr::cast(self.syntax.clone())
+    }
+
+    #[must_use]
+    pub fn as_paren(&self) -> Option<SyntaxParenExpr> {
+        SyntaxParenExpr::cast(self.syntax.clone())
     }
 
     #[must_use]
@@ -131,6 +142,7 @@ impl SyntaxExpression {
 pub enum SyntaxExpressionKind {
     Literal,
     Path,
+    Paren,
     Unary,
     Binary,
     Assign,
@@ -1026,6 +1038,7 @@ fn expression_kind(kind: SyntaxKind) -> bool {
         kind,
         SyntaxKind::Literal
             | SyntaxKind::PathExpr
+            | SyntaxKind::ParenExpr
             | SyntaxKind::UnaryExpr
             | SyntaxKind::BinaryExpr
             | SyntaxKind::AssignExpr
