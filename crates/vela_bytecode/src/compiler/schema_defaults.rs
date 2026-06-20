@@ -3,11 +3,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::ModuleGraph;
-use vela_syntax::ast::{Argument, EnumVariantFields, Expr, ItemKind, RecordField, SourceFile};
+use vela_hir::type_hint::EnumVariantFieldsHint;
+use vela_syntax::ast::{
+    Argument, EnumVariantFields as SyntaxEnumVariantFields, Expr, ItemKind, RecordField,
+    SourceFile, StructField,
+};
 
 use crate::Constant;
 
-use super::type_hints::hir_type_hint_from_syntax;
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -141,27 +144,28 @@ pub(super) fn source_schema_defaults(
     for item in &parsed.items {
         match &item.kind {
             ItemKind::Struct(record) => {
-                let Some(type_name) = declarations
-                    .get(&record.name)
-                    .and_then(|declaration| type_symbols.get(&declaration))
-                    .cloned()
-                else {
+                let Some(declaration) = declarations.get(&record.name) else {
                     continue;
                 };
-                let fields = record
+                let Some(type_name) = type_symbols.get(&declaration).cloned() else {
+                    continue;
+                };
+                let Some(shape) = graph.struct_shape(declaration) else {
+                    continue;
+                };
+                let syntax_fields = record.fields.as_slice();
+                let fields = shape
                     .fields
                     .iter()
                     .map(|field| ConstructorField {
                         name: field.name.clone(),
                         argument_name: field.name.clone(),
-                        value_type: field.type_hint.as_ref().and_then(|hint| {
-                            type_hint_value_type(&hir_type_hint_from_syntax(hint))
-                        }),
-                        default: field.default_value.clone().map(|value| SchemaFieldDefault {
-                            name: field.name.clone(),
-                            value,
-                            constants: constants.clone(),
-                        }),
+                        value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
+                        default: struct_field_default_value(syntax_fields, &field.name).map(
+                            |value| {
+                                schema_field_default(field.name.clone(), value, constants.clone())
+                            },
+                        ),
                     })
                     .collect::<Vec<_>>();
                 defaults
@@ -169,20 +173,28 @@ pub(super) fn source_schema_defaults(
                     .insert(type_name, ConstructorShape::new(fields));
             }
             ItemKind::Enum(enumeration) => {
-                let Some(type_name) = declarations
-                    .get(&enumeration.name)
-                    .and_then(|declaration| type_symbols.get(&declaration))
-                    .cloned()
-                else {
+                let Some(declaration) = declarations.get(&enumeration.name) else {
                     continue;
                 };
-                for variant in &enumeration.variants {
+                let Some(type_name) = type_symbols.get(&declaration).cloned() else {
+                    continue;
+                };
+                let Some(shape) = graph.enum_shape(declaration) else {
+                    continue;
+                };
+                for variant in &shape.variants {
                     defaults
                         .enum_variants
                         .entry(type_name.clone())
                         .or_default()
                         .insert(variant.name.clone());
-                    let fields = enum_variant_fields(&variant.fields, constants.clone());
+                    let syntax_fields = enumeration
+                        .variants
+                        .iter()
+                        .find(|syntax_variant| syntax_variant.name == variant.name)
+                        .map(|syntax_variant| &syntax_variant.fields);
+                    let fields =
+                        enum_variant_fields(&variant.fields, syntax_fields, constants.clone());
                     defaults.enum_shapes.insert(
                         (type_name.clone(), variant.name.clone()),
                         ConstructorShape::new(fields),
@@ -194,6 +206,47 @@ pub(super) fn source_schema_defaults(
     }
 
     defaults
+}
+
+fn struct_field_default_value(fields: &[StructField], name: &str) -> Option<Expr> {
+    fields
+        .iter()
+        .find(|field| field.name == name)
+        .and_then(|field| field.default_value.clone())
+}
+
+fn enum_tuple_default_value(
+    fields: Option<&SyntaxEnumVariantFields>,
+    index: usize,
+) -> Option<Expr> {
+    let Some(SyntaxEnumVariantFields::Tuple(fields)) = fields else {
+        return None;
+    };
+    fields
+        .get(index)
+        .and_then(|field| field.default_value.clone())
+}
+
+fn enum_record_default_value(fields: Option<&SyntaxEnumVariantFields>, name: &str) -> Option<Expr> {
+    let Some(SyntaxEnumVariantFields::Record(fields)) = fields else {
+        return None;
+    };
+    fields
+        .iter()
+        .find(|field| field.name == name)
+        .and_then(|field| field.default_value.clone())
+}
+
+fn schema_field_default(
+    name: String,
+    value: Expr,
+    constants: BTreeMap<String, Constant>,
+) -> SchemaFieldDefault {
+    SchemaFieldDefault {
+        name,
+        value,
+        constants,
+    }
 }
 
 pub(super) fn record_constructor_diagnostics(
@@ -426,41 +479,31 @@ fn missing_field_diagnostic(type_name: &str, field: &str, span: Span) -> Diagnos
 }
 
 fn enum_variant_fields(
-    fields: &EnumVariantFields,
+    fields: &EnumVariantFieldsHint,
+    syntax_fields: Option<&SyntaxEnumVariantFields>,
     constants: BTreeMap<String, Constant>,
 ) -> Vec<ConstructorField> {
     match fields {
-        EnumVariantFields::Unit => Vec::new(),
-        EnumVariantFields::Tuple(fields) => fields
+        EnumVariantFieldsHint::Unit => Vec::new(),
+        EnumVariantFieldsHint::Tuple(fields) => fields
             .iter()
             .enumerate()
             .map(|(index, field)| ConstructorField {
                 name: index.to_string(),
                 argument_name: field.name.clone(),
-                value_type: field
-                    .type_hint
-                    .as_ref()
-                    .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint))),
-                default: field.default_value.clone().map(|value| SchemaFieldDefault {
-                    name: index.to_string(),
-                    value,
-                    constants: constants.clone(),
-                }),
+                value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
+                default: enum_tuple_default_value(syntax_fields, index)
+                    .map(|value| schema_field_default(index.to_string(), value, constants.clone())),
             })
             .collect(),
-        EnumVariantFields::Record(fields) => fields
+        EnumVariantFieldsHint::Record(fields) => fields
             .iter()
             .map(|field| ConstructorField {
                 name: field.name.clone(),
                 argument_name: field.name.clone(),
-                value_type: field
-                    .type_hint
-                    .as_ref()
-                    .and_then(|hint| type_hint_value_type(&hir_type_hint_from_syntax(hint))),
-                default: field.default_value.clone().map(|value| SchemaFieldDefault {
-                    name: field.name.clone(),
-                    value,
-                    constants: constants.clone(),
+                value_type: field.type_hint.as_ref().and_then(type_hint_value_type),
+                default: enum_record_default_value(syntax_fields, &field.name).map(|value| {
+                    schema_field_default(field.name.clone(), value, constants.clone())
                 }),
             })
             .collect(),
