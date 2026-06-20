@@ -397,6 +397,14 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         if_expr.condition().expect("if condition").syntax().kind(),
         SyntaxKind::FieldExpr
     );
+    assert_eq!(
+        if_expr
+            .then_as_expression()
+            .expect("then as expression")
+            .syntax()
+            .kind(),
+        SyntaxKind::Block
+    );
     assert_eq!(if_expr.else_token().expect("else token").text(), "else");
     assert_eq!(
         if_expr
@@ -406,6 +414,14 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
         "else"
     );
     assert!(if_expr.else_block_else_token().is_none());
+    assert_eq!(
+        if_expr
+            .else_as_expression()
+            .expect("else-if as expression")
+            .syntax()
+            .kind(),
+        SyntaxKind::IfExpr
+    );
     match if_expr.else_branch().expect("else-if branch") {
         SyntaxElseBranch::If(branch) => {
             assert_eq!(
@@ -433,6 +449,14 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     assert_eq!(else_if.if_token().expect("else-if token").text(), "if");
     assert!(else_if.else_if_else_token().is_none());
     assert_eq!(
+        else_if
+            .then_as_expression()
+            .expect("else-if then as expression")
+            .syntax()
+            .kind(),
+        SyntaxKind::Block
+    );
+    assert_eq!(
         else_if.else_token().expect("else-if else token").text(),
         "else"
     );
@@ -442,6 +466,14 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
             .expect("else-block else token")
             .text(),
         "else"
+    );
+    assert_eq!(
+        else_if
+            .else_as_expression()
+            .expect("else block as expression")
+            .syntax()
+            .kind(),
+        SyntaxKind::Block
     );
     match else_if.else_branch().expect("else block branch") {
         SyntaxElseBranch::Block(block) => {

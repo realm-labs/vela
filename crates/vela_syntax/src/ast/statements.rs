@@ -471,6 +471,11 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn then_as_expression(&self) -> Option<SyntaxExpression> {
+        SyntaxExpression::cast(self.then_block()?.syntax().clone())
+    }
+
+    #[must_use]
     pub fn blocks(&self) -> AstChildren<SyntaxBlock> {
         AstChildren::new(&self.syntax)
     }
@@ -489,6 +494,14 @@ impl SyntaxIfExpr {
             return Some(SyntaxElseBranch::If(if_expr));
         }
         self.else_block().map(SyntaxElseBranch::Block)
+    }
+
+    #[must_use]
+    pub fn else_as_expression(&self) -> Option<SyntaxExpression> {
+        match self.else_branch()? {
+            SyntaxElseBranch::If(branch) => SyntaxExpression::cast(branch.syntax().clone()),
+            SyntaxElseBranch::Block(block) => SyntaxExpression::cast(block.syntax().clone()),
+        }
     }
 
     #[must_use]
