@@ -18,6 +18,11 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) bindings: &'ast BindingMap,
 }
 
+struct MethodBodyPayload<'ast> {
+    default_values: Vec<Option<Expr>>,
+    body: &'ast Block,
+}
+
 pub(super) fn source_methods<'ast>(
     parsed: &'ast SourceFile,
     graph: &'ast ModuleGraph,
@@ -32,9 +37,7 @@ pub(super) fn source_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let Some(item) = syntax_impl_item(parsed, impl_metadata) else {
-                return Vec::new();
-            };
+            let method_payloads = impl_method_payloads(parsed, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata
                 .trait_path()
@@ -43,13 +46,13 @@ pub(super) fn source_methods<'ast>(
                 .zip(
                     impl_metadata
                         .trait_path()
-                        .and_then(|trait_path| syntax_trait_item(parsed, trait_path)),
+                        .map(|trait_path| trait_default_method_payloads(parsed, trait_path)),
                 );
             collect_methods(
                 graph,
                 module_path,
                 impl_metadata,
-                item,
+                &method_payloads,
                 trait_item,
                 target_type,
             )
@@ -72,29 +75,40 @@ pub(super) fn module_methods<'ast>(
             let Some(source) = parsed.get(&declaration.module) else {
                 return Vec::new();
             };
-            let Some(item) = syntax_impl_item(source, impl_metadata) else {
-                return Vec::new();
-            };
+            let method_payloads = impl_method_payloads(source, impl_metadata);
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
-                return collect_methods(graph, module_path, impl_metadata, item, None, target_type);
+                return collect_methods(
+                    graph,
+                    module_path,
+                    impl_metadata,
+                    &method_payloads,
+                    None,
+                    target_type,
+                );
             };
             let Some(trait_declaration) = trait_declaration(graph, declaration.module, trait_path)
             else {
-                return collect_methods(graph, module_path, impl_metadata, item, None, target_type);
+                return collect_methods(
+                    graph,
+                    module_path,
+                    impl_metadata,
+                    &method_payloads,
+                    None,
+                    target_type,
+                );
             };
             let trait_item = graph
                 .declaration(trait_declaration)
                 .and_then(|declaration| parsed.get(&declaration.module))
-                .and_then(|source| syntax_trait_item(source, trait_path))
-                .zip(graph.trait_shape(trait_declaration))
-                .map(|(item, shape)| (shape, item));
+                .map(|source| trait_default_method_payloads(source, trait_path))
+                .zip(graph.trait_shape(trait_declaration));
             collect_methods(
                 graph,
                 module_path,
                 impl_metadata,
-                item,
-                trait_item,
+                &method_payloads,
+                trait_item.map(|(payloads, shape)| (shape, payloads)),
                 target_type,
             )
         })
@@ -105,20 +119,23 @@ fn collect_methods<'ast>(
     graph: &'ast ModuleGraph,
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
-    item: &'ast ImplItem,
-    trait_item: Option<(&'ast vela_hir::type_hint::TraitShape, &'ast TraitItem)>,
+    method_payloads: &[MethodBodyPayload<'ast>],
+    trait_item: Option<(
+        &'ast vela_hir::type_hint::TraitShape,
+        Vec<Option<MethodBodyPayload<'ast>>>,
+    )>,
     target_type: String,
 ) -> Vec<ScriptImplMethod<'ast>> {
-    let explicit_names = item
+    let explicit_names = impl_metadata
         .methods
         .iter()
-        .map(|method| method.function.name.clone())
+        .map(|method| method.name.clone())
         .collect::<BTreeSet<_>>();
-    let mut methods = item
+    let mut methods = impl_metadata
         .methods
         .iter()
-        .zip(&impl_metadata.methods)
-        .filter_map(|(method, method_metadata)| {
+        .zip(method_payloads)
+        .filter_map(|(method_metadata, payload)| {
             let bindings = graph.impl_method_bindings(method_metadata.node)?;
             let symbol = method_symbol(
                 module_path,
@@ -132,20 +149,20 @@ fn collect_methods<'ast>(
                 method_name: method_metadata.name.clone(),
                 method_id,
                 symbol,
-                default_values: default_values(&method.function.params),
-                body: &method.function.body,
+                default_values: payload.default_values.clone(),
+                body: payload.body,
                 signature: &method_metadata.signature,
                 bindings,
             })
         })
         .collect::<Vec<_>>();
-    if let Some((trait_shape, trait_item)) = trait_item {
+    if let Some((trait_shape, trait_payloads)) = trait_item {
         methods.extend(collect_default_methods(
             graph,
             module_path,
             impl_metadata,
             trait_shape,
-            trait_item,
+            &trait_payloads,
             &target_type,
             &explicit_names,
         ));
@@ -158,20 +175,20 @@ fn collect_default_methods<'ast>(
     module_path: Option<&'ast ModulePath>,
     impl_metadata: &'ast ImplMetadata,
     trait_shape: &'ast vela_hir::type_hint::TraitShape,
-    trait_item: &'ast TraitItem,
+    trait_payloads: &[Option<MethodBodyPayload<'ast>>],
     target_type: &str,
     explicit_names: &BTreeSet<String>,
 ) -> Vec<ScriptImplMethod<'ast>> {
-    trait_item
+    trait_shape
         .methods
         .iter()
-        .zip(&trait_shape.methods)
-        .filter_map(|(method, method_metadata)| {
+        .zip(trait_payloads)
+        .filter_map(|(method_metadata, payload)| {
             if explicit_names.contains(&method_metadata.name) {
                 return None;
             }
-            let body = method.default_body.as_ref()?;
             let node = method_metadata.default_body_node?;
+            let payload = payload.as_ref()?;
             let bindings = graph.trait_default_method_bindings(node)?;
             let symbol = method_symbol(
                 module_path,
@@ -185,8 +202,8 @@ fn collect_default_methods<'ast>(
                 method_name: method_metadata.name.clone(),
                 method_id,
                 symbol,
-                default_values: default_values(&method.params),
-                body,
+                default_values: payload.default_values.clone(),
+                body: payload.body,
                 signature: &method_metadata.signature,
                 bindings,
             })
@@ -199,6 +216,42 @@ fn default_values(params: &[vela_syntax::ast::Param]) -> Vec<Option<Expr>> {
         .iter()
         .map(|param| param.default_value.clone())
         .collect()
+}
+
+fn impl_method_payloads<'ast>(
+    parsed: &'ast SourceFile,
+    metadata: &ImplMetadata,
+) -> Vec<MethodBodyPayload<'ast>> {
+    syntax_impl_item(parsed, metadata)
+        .map(|item| {
+            item.methods
+                .iter()
+                .map(|method| MethodBodyPayload {
+                    default_values: default_values(&method.function.params),
+                    body: &method.function.body,
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn trait_default_method_payloads<'ast>(
+    parsed: &'ast SourceFile,
+    path: &[String],
+) -> Vec<Option<MethodBodyPayload<'ast>>> {
+    syntax_trait_item(parsed, path)
+        .map(|item| {
+            item.methods
+                .iter()
+                .map(|method| {
+                    method.default_body.as_ref().map(|body| MethodBodyPayload {
+                        default_values: default_values(&method.params),
+                        body,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn syntax_impl_item<'ast>(

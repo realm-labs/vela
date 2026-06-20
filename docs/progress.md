@@ -246,8 +246,12 @@ parameter default flags now read HIR function signatures, leaving legacy owned
 AST parameters in that path only as the temporary default-expression payload
 carrier. Bytecode const value discovery now reads HIR const declarations in
 source order, leaving the legacy owned AST in that path only as the temporary
-initializer expression payload carrier. The rowan parse boundary now validates
-restricted builtin type arguments and non-keyable `Map`/`Set` contracts, and the
+initializer expression payload carrier. Bytecode script impl method records now
+read names, signatures, explicit/default method metadata, and stable dispatch
+identity from HIR impl and trait shapes, leaving the legacy owned AST in that
+path only as the temporary method body and default-expression payload carrier.
+The rowan parse boundary now validates restricted builtin type arguments and
+non-keyable `Map`/`Set` contracts, and the
 bytecode semantic parse gate uses CST parse diagnostics before falling back to
 the legacy owned AST only as a temporary compiler body/expression carrier.
 Bytecode compilation and remaining downstream lowering still consume the old
