@@ -216,6 +216,14 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     assert_eq!(if_expr.else_token().expect("else token").text(), "else");
     assert_eq!(
         if_expr
+            .else_if_else_token()
+            .expect("else-if else token")
+            .text(),
+        "else"
+    );
+    assert!(if_expr.else_block_else_token().is_none());
+    assert_eq!(
+        if_expr
             .then_block()
             .expect("then block")
             .l_brace_token()
@@ -234,8 +242,16 @@ fn ast_statements_expose_keyword_and_binding_tokens() {
     );
     let else_if = if_expr.else_if().expect("else-if");
     assert_eq!(else_if.if_token().expect("else-if token").text(), "if");
+    assert!(else_if.else_if_else_token().is_none());
     assert_eq!(
         else_if.else_token().expect("else-if else token").text(),
+        "else"
+    );
+    assert_eq!(
+        else_if
+            .else_block_else_token()
+            .expect("else-block else token")
+            .text(),
         "else"
     );
 

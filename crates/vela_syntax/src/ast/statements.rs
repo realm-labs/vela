@@ -309,6 +309,16 @@ impl SyntaxIfExpr {
     }
 
     #[must_use]
+    pub fn else_if_else_token(&self) -> Option<SyntaxToken> {
+        self.else_if().and_then(|_| self.else_token())
+    }
+
+    #[must_use]
+    pub fn else_block_else_token(&self) -> Option<SyntaxToken> {
+        self.else_block().and_then(|_| self.else_token())
+    }
+
+    #[must_use]
     pub fn condition(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }

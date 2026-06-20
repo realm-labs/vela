@@ -163,7 +163,8 @@ hints, block brace delimiter tokens, let binding name token/text accessors,
 for-loop binding patterns with explicit index/value pattern accessors,
 for-loop iterable expressions, for-loop bodies, keyword tokens for
 let/return/break/continue/for/in/if/else, if/else-if condition expressions,
-explicit then/else block accessors, and nested if/else block structure.
+explicit then/else block accessors, branch-specific else token accessors,
+and nested if/else block structure.
 Statement values now expose initial expression CST wrappers for let
 initializers, return values, expression statements, assignments, binary
 expressions, unary operands, field access, calls, argument lists, named
