@@ -142,10 +142,12 @@ type-argument-list accessors. Enum declarations now expose typed variant-list
 and variant CST wrappers, with tuple variant payloads structured as parameter
 lists and record variant payloads structured as field lists. Trait and impl
 declarations now expose typed method CST wrappers with parameter-list,
-return-type, and optional body accessors. The rowan-backed typed AST wrapper
-layer now lives in a focused syntax submodule so additional wrappers can land
-without growing the legacy owned-AST file; deeper expression, pattern,
-statement, and downstream migration remain open.
+return-type, and optional body accessors. Function and method bodies now expose
+typed block and direct statement CST wrappers, including let-statement type
+hints, for-loop bodies, and nested if/else block structure. The rowan-backed
+typed AST wrapper layer now lives in a focused syntax submodule so additional
+wrappers can land without growing the legacy owned-AST file; deeper expression,
+pattern, and downstream migration remain open.
 
 ## Milestone Snapshot
 

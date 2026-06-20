@@ -82,7 +82,7 @@ impl Parse<SyntaxSourceFile> {
 mod tests {
     use vela_common::{SourceId, Span};
 
-    use crate::ast::AstNode;
+    use crate::ast::{AstNode, SyntaxForStmt, SyntaxIfExpr};
     use crate::parse::parse_source_with_id;
     use crate::{SyntaxKind, TextRange, TextSize};
 
@@ -420,6 +420,97 @@ impl Rewardable for Player {
                 .to_string(),
             "Result<String, String>"
         );
+    }
+
+    #[test]
+    fn parser_parse_source_structures_block_statement_nodes() {
+        let source = r#"fn update(ctx: Context) {
+    let score: i64 = 1;
+    return score;
+    for item in items {
+        let nested: String = "gold";
+        continue;
+    }
+    if score > 1 {
+        break;
+    } else if score == 1 {
+        return score;
+    } else {
+        score += 1;
+    }
+    match score {
+        _ => score,
+    }
+    score += 1;
+}
+"#;
+        let parse = parse_source_with_id(SourceId::new(16), source);
+        let tree = parse.tree();
+        let function = tree.functions().next().expect("function item");
+        let body = function.body().expect("function body");
+        let statements = body.statements().collect::<Vec<_>>();
+
+        assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+        assert_eq!(function.syntax().text().to_string(), source.trim_end());
+        assert_eq!(
+            statements
+                .iter()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![
+                SyntaxKind::LetStmt,
+                SyntaxKind::ReturnStmt,
+                SyntaxKind::ForStmt,
+                SyntaxKind::IfExpr,
+                SyntaxKind::MatchExpr,
+                SyntaxKind::ExprStmt,
+            ]
+        );
+        let let_stmt = body.let_statements().next().expect("let statement");
+        assert_eq!(
+            let_stmt
+                .type_hint()
+                .expect("let type hint")
+                .syntax()
+                .text()
+                .to_string(),
+            "i64"
+        );
+
+        let for_stmt = body
+            .syntax()
+            .children()
+            .find_map(SyntaxForStmt::cast)
+            .expect("for statement");
+        let for_body = for_stmt.body().expect("for body");
+        assert_eq!(
+            for_body
+                .statements()
+                .map(|statement| statement.syntax().kind())
+                .collect::<Vec<_>>(),
+            vec![SyntaxKind::LetStmt, SyntaxKind::ContinueStmt]
+        );
+        assert_eq!(
+            for_body
+                .let_statements()
+                .next()
+                .expect("nested let")
+                .type_hint()
+                .expect("nested let type")
+                .syntax()
+                .text()
+                .to_string(),
+            "String"
+        );
+
+        let if_expr = body
+            .syntax()
+            .children()
+            .find_map(SyntaxIfExpr::cast)
+            .expect("if expression");
+        assert_eq!(if_expr.blocks().count(), 1);
+        let else_if = if_expr.else_if().expect("else-if expression");
+        assert_eq!(else_if.blocks().count(), 2);
     }
 
     #[test]

@@ -82,7 +82,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         if let Some(body_start) = body {
             self.emit_until(body_start);
             let body_end = self.find_matching_brace_end(body_start).min(end);
-            self.node_range(SyntaxKind::Block, body_start, body_end);
+            self.block_range(body_start, body_end);
         }
 
         while self.pos < end {
@@ -405,7 +405,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         if let Some(body_start) = body {
             self.emit_until(body_start);
             let body_end = self.find_matching_brace_end(body_start).min(end);
-            self.node_range(SyntaxKind::Block, body_start, body_end);
+            self.block_range(body_start, body_end);
         }
 
         self.emit_until(end);
@@ -434,6 +434,101 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
         self.emit_until(end);
         self.builder.finish_node();
+    }
+
+    fn block_range(&mut self, start: usize, end: usize) {
+        self.pos = start;
+        if self.kind_at(start) != Some(SyntaxKind::LBrace) {
+            self.node_range(SyntaxKind::Block, start, end);
+            return;
+        }
+
+        self.builder.start_node(SyntaxKind::Block);
+        self.emit_current_token();
+        let close = end.saturating_sub(1);
+        while self.pos < close {
+            let statement_start = self.skip_trivia(self.pos);
+            self.emit_until(statement_start);
+            if statement_start >= close {
+                break;
+            }
+
+            if let Some(kind) = self.statement_kind_at(statement_start, close) {
+                let statement_end = self.find_statement_end(kind, statement_start, close);
+                self.statement_range(kind, statement_start, statement_end);
+            } else {
+                self.emit_current_token();
+            }
+        }
+        self.emit_until(end);
+        self.builder.finish_node();
+    }
+
+    fn statement_range(&mut self, kind: SyntaxKind, start: usize, end: usize) {
+        self.pos = start;
+        if !self.has_significant_tokens(start, end) {
+            self.emit_tokens(start, end);
+            return;
+        }
+
+        self.builder.start_node(kind);
+        match kind {
+            SyntaxKind::LetStmt => self.let_statement_body(start, end),
+            SyntaxKind::ForStmt => self.statement_with_body_block(start, end),
+            SyntaxKind::IfExpr => self.if_expression_body(start, end),
+            _ => self.emit_until(end),
+        }
+        self.builder.finish_node();
+    }
+
+    fn let_statement_body(&mut self, start: usize, end: usize) {
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
+            let value_end = self
+                .find_root_kind_before(SyntaxKind::Equal, colon + 1, end)
+                .unwrap_or(end);
+            let type_start = self.skip_trivia(colon + 1);
+            let type_end = self.trim_trailing_trivia(type_start, value_end);
+            if type_start < type_end {
+                self.emit_until(type_start);
+                self.type_hint_range(type_start, type_end);
+            }
+        }
+        self.emit_until(end);
+    }
+
+    fn statement_with_body_block(&mut self, start: usize, end: usize) {
+        if let Some(body_start) = self.find_root_kind_before(SyntaxKind::LBrace, start, end) {
+            self.emit_until(body_start);
+            let body_end = self.find_matching_brace_end(body_start).min(end);
+            self.block_range(body_start, body_end);
+        }
+        self.emit_until(end);
+    }
+
+    fn if_expression_body(&mut self, start: usize, end: usize) {
+        let Some(body_start) = self.find_root_kind_before(SyntaxKind::LBrace, start, end) else {
+            self.emit_until(end);
+            return;
+        };
+        self.emit_until(body_start);
+        let body_end = self.find_matching_brace_end(body_start).min(end);
+        self.block_range(body_start, body_end);
+
+        let else_start = self.skip_trivia(body_end);
+        if else_start < end && self.at_kind(else_start, SyntaxKind::ElseKw) {
+            let else_body = self.skip_trivia(else_start + 1);
+            if else_body < end && self.at_kind(else_body, SyntaxKind::IfKw) {
+                self.emit_until(else_body);
+                let else_if_end = self.find_if_expression_end(else_body, end);
+                self.statement_range(SyntaxKind::IfExpr, else_body, else_if_end);
+            } else if else_body < end && self.at_kind(else_body, SyntaxKind::LBrace) {
+                self.emit_until(else_body);
+                let else_block_end = self.find_matching_brace_end(else_body).min(end);
+                self.block_range(else_body, else_block_end);
+            }
+        }
+
+        self.emit_until(end);
     }
 
     fn type_hint_range(&mut self, start: usize, end: usize) {
@@ -470,6 +565,63 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             depth.bump(current);
         }
         None
+    }
+
+    fn find_statement_term_end(&self, start: usize, end: usize) -> usize {
+        let mut depth = DelimiterDepth::default();
+        for cursor in start..end {
+            let Some(current) = self.kind_at(cursor) else {
+                break;
+            };
+            if depth.is_root() {
+                if current == SyntaxKind::Semicolon {
+                    return cursor + 1;
+                }
+                if current.is_trivia() && self.tokens[cursor].text.contains('\n') {
+                    return cursor;
+                }
+            }
+            depth.bump(current);
+        }
+        end
+    }
+
+    fn find_statement_end(&self, kind: SyntaxKind, start: usize, end: usize) -> usize {
+        match kind {
+            SyntaxKind::ForStmt => self
+                .find_root_kind_before(SyntaxKind::LBrace, start, end)
+                .map(|body| self.find_matching_brace_end(body).min(end))
+                .unwrap_or_else(|| self.find_statement_term_end(start, end)),
+            SyntaxKind::IfExpr => self.find_if_expression_end(start, end),
+            SyntaxKind::MatchExpr => self
+                .find_root_kind_before(SyntaxKind::LBrace, start, end)
+                .map(|body| self.find_matching_brace_end(body).min(end))
+                .unwrap_or_else(|| self.find_statement_term_end(start, end)),
+            _ => self.find_statement_term_end(start, end),
+        }
+    }
+
+    fn find_if_expression_end(&self, start: usize, end: usize) -> usize {
+        let Some(body_start) = self.find_root_kind_before(SyntaxKind::LBrace, start, end) else {
+            return self.find_statement_term_end(start, end);
+        };
+        let body_end = self.find_matching_brace_end(body_start).min(end);
+        let else_start = self.skip_trivia(body_end);
+        if else_start >= end || !self.at_kind(else_start, SyntaxKind::ElseKw) {
+            return body_end;
+        }
+
+        let else_body = self.skip_trivia(else_start + 1);
+        if else_body >= end {
+            return else_start + 1;
+        }
+        if self.at_kind(else_body, SyntaxKind::IfKw) {
+            self.find_if_expression_end(else_body, end)
+        } else if self.at_kind(else_body, SyntaxKind::LBrace) {
+            self.find_matching_brace_end(else_body).min(end)
+        } else {
+            self.find_statement_term_end(else_body, end)
+        }
     }
 
     fn find_root_newline_before(&self, start: usize, end: usize) -> Option<usize> {
@@ -746,6 +898,32 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 start
             };
         }
+    }
+
+    fn statement_kind_at(&self, start: usize, end: usize) -> Option<SyntaxKind> {
+        let mut cursor = start;
+        loop {
+            cursor = self.skip_trivia(cursor);
+            if cursor >= end {
+                return None;
+            }
+            if self.at_attribute_start(cursor) {
+                cursor = self.skip_attribute(cursor);
+                continue;
+            }
+            break;
+        }
+
+        Some(match self.kind_at(cursor)? {
+            SyntaxKind::LetKw => SyntaxKind::LetStmt,
+            SyntaxKind::ReturnKw => SyntaxKind::ReturnStmt,
+            SyntaxKind::BreakKw => SyntaxKind::BreakStmt,
+            SyntaxKind::ContinueKw => SyntaxKind::ContinueStmt,
+            SyntaxKind::ForKw => SyntaxKind::ForStmt,
+            SyntaxKind::IfKw => SyntaxKind::IfExpr,
+            SyntaxKind::MatchKw => SyntaxKind::MatchExpr,
+            _ => SyntaxKind::ExprStmt,
+        })
     }
 
     fn method_keyword_pos(&self, start: usize, end: usize) -> Option<usize> {
