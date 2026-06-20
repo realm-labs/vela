@@ -440,6 +440,32 @@ impl SyntaxCallExpr {
     pub fn arg_list(&self) -> Option<SyntaxArgList> {
         child(&self.syntax)
     }
+
+    #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        self.arg_list()
+            .and_then(|arg_list| arg_list.l_paren_token())
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        self.arg_list()
+            .and_then(|arg_list| arg_list.r_paren_token())
+    }
+
+    #[must_use]
+    pub fn arguments(&self) -> Vec<SyntaxArgument> {
+        self.arg_list()
+            .map(|arg_list| arg_list.arguments().collect())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        self.arg_list()
+            .map(|arg_list| arg_list.separator_tokens())
+            .unwrap_or_default()
+    }
 }
 
 impl AstNode for SyntaxCallExpr {

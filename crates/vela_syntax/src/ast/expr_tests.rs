@@ -340,13 +340,22 @@ fn ast_call_arguments_expose_names_and_values() {
         .expression()
         .expect("call expression");
     let call = SyntaxCallExpr::cast(expression.syntax().clone()).expect("call expr");
-    let arguments = call
-        .arg_list()
-        .expect("argument list")
-        .arguments()
-        .collect::<Vec<_>>();
+    let arguments = call.arguments();
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(call.l_paren_token().expect("call open").text(), "(");
+    assert_eq!(call.r_paren_token().expect("call close").text(), ")");
+    assert_eq!(
+        call.separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![",", ","]
+    );
+    assert_eq!(
+        call.callee().expect("callee").syntax().kind(),
+        SyntaxKind::PathExpr
+    );
     assert_eq!(arguments.len(), 3);
     assert!(arguments[0].name_token().is_none());
     assert!(arguments[0].name_text().is_none());
@@ -434,6 +443,16 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
 
     let call = SyntaxCallExpr::cast(initializers[1].syntax().clone()).expect("call expr");
     let arg_list = call.arg_list().expect("argument list");
+    assert_eq!(call.l_paren_token().expect("call open").text(), "(");
+    assert_eq!(call.r_paren_token().expect("call close").text(), ")");
+    assert_eq!(
+        call.separator_tokens()
+            .iter()
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
+    assert_eq!(call.arguments().len(), 2);
     assert_eq!(arg_list.l_paren_token().expect("call open").text(), "(");
     assert_eq!(arg_list.r_paren_token().expect("call close").text(), ")");
     assert_eq!(
