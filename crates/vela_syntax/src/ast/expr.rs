@@ -222,6 +222,18 @@ impl SyntaxPathExpr {
         }
         (!text.is_empty()).then_some(text)
     }
+
+    #[must_use]
+    pub fn self_token(&self) -> Option<SyntaxToken> {
+        let mut tokens = self.path_tokens().into_iter();
+        let token = tokens.next()?;
+        (tokens.next().is_none() && token.kind() == SyntaxKind::SelfKw).then_some(token)
+    }
+
+    #[must_use]
+    pub fn is_self(&self) -> bool {
+        self.self_token().is_some()
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

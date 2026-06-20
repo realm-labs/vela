@@ -550,6 +550,48 @@ fn ast_path_and_delimited_expressions_expose_source_tokens() {
 }
 
 #[test]
+fn ast_self_path_expression_exposes_self_token() {
+    let source = r#"fn build() {
+    let receiver = self;
+    let member = self.score;
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializers = body
+        .let_statements()
+        .map(|statement| statement.initializer().expect("initializer"))
+        .collect::<Vec<_>>();
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+
+    let receiver = initializers[0].as_path().expect("self path expression");
+    assert!(receiver.is_self());
+    assert_eq!(receiver.self_token().expect("self token").text(), "self");
+    assert_eq!(receiver.path_text().as_deref(), Some("self"));
+
+    let field = initializers[1].as_field().expect("self field expression");
+    let field_receiver = field
+        .receiver()
+        .and_then(|expression| expression.as_path())
+        .expect("field receiver path");
+    assert!(field_receiver.is_self());
+    assert_eq!(
+        field_receiver
+            .self_token()
+            .expect("field self token")
+            .kind(),
+        SyntaxKind::SelfKw
+    );
+}
+
+#[test]
 fn ast_field_expression_exposes_receiver_and_member_name() {
     let source = r#"fn update(account) {
     let balance = account.balance;
