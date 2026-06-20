@@ -1,5 +1,5 @@
 use super::expr::SyntaxExpression;
-use super::{AstChildren, AstNode, SyntaxBlock, SyntaxTypeHint};
+use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode, TextRange};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -11,6 +11,11 @@ impl SyntaxItem {
     #[must_use]
     pub fn text_range(&self) -> TextRange {
         self.syntax.text_range()
+    }
+
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
     }
 }
 
@@ -44,6 +49,11 @@ pub struct SyntaxUseItem {
 }
 
 impl SyntaxUseItem {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn path(&self) -> Option<SyntaxUsePath> {
         child(&self.syntax)
@@ -90,6 +100,11 @@ pub struct SyntaxConstItem {
 
 impl SyntaxConstItem {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
@@ -121,6 +136,11 @@ pub struct SyntaxGlobalItem {
 
 impl SyntaxGlobalItem {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
@@ -146,6 +166,11 @@ pub struct SyntaxFunctionItem {
 }
 
 impl SyntaxFunctionItem {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn param_list(&self) -> Option<SyntaxParamList> {
         child(&self.syntax)
@@ -235,6 +260,11 @@ pub struct SyntaxStructItem {
 
 impl SyntaxStructItem {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn field_list(&self) -> Option<SyntaxStructFieldList> {
         child(&self.syntax)
     }
@@ -287,6 +317,11 @@ pub struct SyntaxStructField {
 
 impl SyntaxStructField {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
     }
@@ -312,6 +347,11 @@ pub struct SyntaxEnumItem {
 }
 
 impl SyntaxEnumItem {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn variant_list(&self) -> Option<SyntaxEnumVariantList> {
         child(&self.syntax)
@@ -364,6 +404,11 @@ pub struct SyntaxEnumVariant {
 }
 
 impl SyntaxEnumVariant {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn tuple_field_list(&self) -> Option<SyntaxTupleFieldList> {
         child(&self.syntax)
@@ -448,6 +493,11 @@ pub struct SyntaxTraitItem {
 
 impl SyntaxTraitItem {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn methods(&self) -> AstChildren<SyntaxTraitMethod> {
         AstChildren::new(&self.syntax)
     }
@@ -473,6 +523,11 @@ pub struct SyntaxTraitMethod {
 }
 
 impl SyntaxTraitMethod {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn param_list(&self) -> Option<SyntaxParamList> {
         child(&self.syntax)
@@ -510,6 +565,11 @@ pub struct SyntaxImplItem {
 
 impl SyntaxImplItem {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn methods(&self) -> AstChildren<SyntaxImplMethod> {
         AstChildren::new(&self.syntax)
     }
@@ -535,6 +595,11 @@ pub struct SyntaxImplMethod {
 }
 
 impl SyntaxImplMethod {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn param_list(&self) -> Option<SyntaxParamList> {
         child(&self.syntax)

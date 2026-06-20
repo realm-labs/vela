@@ -119,6 +119,8 @@ mod tests {
         let source = "# [event(\"tick\")]\npub fn tick() {}\nuse game::state;\nstruct Player { level: i64 }\n";
         let parse = parse_source_with_id(SourceId::new(11), source);
         let tree = parse.tree();
+        let function = tree.functions().next().expect("function item");
+        let attributes = function.attributes().collect::<Vec<_>>();
 
         assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
         assert_eq!(tree.syntax().text().to_string(), source);
@@ -132,6 +134,13 @@ mod tests {
                 SyntaxKind::StructItem,
             ]
         );
+        assert_eq!(attributes.len(), 1);
+        assert_eq!(attributes[0].syntax().kind(), SyntaxKind::Attribute);
+        assert_eq!(
+            attributes[0].syntax().text().to_string(),
+            "# [event(\"tick\")]"
+        );
+        assert_eq!(attributes[0].path_text().as_deref(), Some("event"));
     }
 
     #[test]
@@ -299,6 +308,9 @@ global current_player: Player;
                 "tags: Array<String>",
             ]
         );
+        let field_attrs = fields[0].attributes().collect::<Vec<_>>();
+        assert_eq!(field_attrs.len(), 1);
+        assert_eq!(field_attrs[0].path_text().as_deref(), Some("doc"));
         assert_eq!(
             fields[0]
                 .type_hint()
@@ -652,6 +664,7 @@ impl Rewardable for Player {
     let penalty = -score;
     let ready = !done;
     return score;
+    #[trace]
     player.level += award(score, 1);
 }
 "#;
@@ -737,6 +750,15 @@ impl Rewardable for Player {
             .children()
             .find_map(SyntaxExprStmt::cast)
             .expect("expression statement");
+        assert_eq!(
+            expr_stmt
+                .attributes()
+                .next()
+                .expect("expr statement attribute")
+                .path_text()
+                .as_deref(),
+            Some("trace")
+        );
         let assignment =
             SyntaxAssignExpr::cast(expr_stmt.expression().expect("expr").syntax().clone())
                 .expect("assignment expression");

@@ -146,7 +146,10 @@ expose typed variant-list
 and variant CST wrappers, with tuple variant payloads structured as parameter
 lists and record variant payloads structured as field lists. Trait and impl
 declarations now expose typed method CST wrappers with parameter-list,
-return-type, and optional body accessors. Function and method bodies now expose
+return-type, and optional body accessors. Leading item, field, variant, method,
+and statement attributes now preserve their exact source as `Attribute` child
+CST nodes and expose typed attribute iteration plus path-text accessors.
+Function and method bodies now expose
 typed block and direct statement CST wrappers, including let-statement type
 hints, for-loop binding patterns, for-loop iterable expressions, for-loop
 bodies, break/continue statement wrappers, if/else-if condition expressions,
@@ -162,8 +165,8 @@ expression/block bodies. Match expressions now expose scrutinees, arm lists,
 explicit guard and expression/block body accessors, tuple-variant
 pattern paths, record-variant pattern paths and fields, field labels, binding
 names, literal patterns, and wildcard/basic pattern nodes. The
-rowan-backed typed AST wrapper layer now has focused syntax, item, statement,
-expression, and pattern submodules so additional wrappers can land without
+rowan-backed typed AST wrapper layer now has focused syntax, attribute, item,
+statement, expression, and pattern submodules so additional wrappers can land without
 growing the legacy owned-AST file; remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 

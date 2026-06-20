@@ -1,5 +1,7 @@
 use vela_common::Span;
 
+#[path = "ast/attributes.rs"]
+mod attributes;
 #[path = "ast/expr.rs"]
 mod expr;
 #[path = "ast/items.rs"]
@@ -11,6 +13,7 @@ mod statements;
 #[path = "ast/syntax.rs"]
 mod syntax;
 
+pub use attributes::SyntaxAttribute;
 pub use expr::{
     SyntaxArgList, SyntaxArgument, SyntaxArrayExpr, SyntaxAssignExpr, SyntaxBinaryExpr,
     SyntaxCallExpr, SyntaxExpression, SyntaxFieldExpr, SyntaxIndexExpr, SyntaxLambdaExpr,

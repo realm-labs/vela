@@ -1,5 +1,5 @@
 use super::expr::SyntaxExpression;
-use super::{AstChildren, AstNode, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
+use super::{AstChildren, AstNode, SyntaxAttribute, SyntaxBlock, SyntaxPattern, SyntaxTypeHint};
 use crate::{SyntaxKind, SyntaxNode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -31,12 +31,24 @@ impl AstNode for SyntaxStatement {
     }
 }
 
+impl SyntaxStatement {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxLetStmt {
     syntax: SyntaxNode,
 }
 
 impl SyntaxLetStmt {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn type_hint(&self) -> Option<SyntaxTypeHint> {
         child(&self.syntax)
@@ -69,6 +81,11 @@ pub struct SyntaxReturnStmt {
 
 impl SyntaxReturnStmt {
     #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
     }
@@ -93,6 +110,13 @@ pub struct SyntaxBreakStmt {
     syntax: SyntaxNode,
 }
 
+impl SyntaxBreakStmt {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+}
+
 impl AstNode for SyntaxBreakStmt {
     fn can_cast(kind: SyntaxKind) -> bool {
         kind == SyntaxKind::BreakStmt
@@ -110,6 +134,13 @@ impl AstNode for SyntaxBreakStmt {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SyntaxContinueStmt {
     syntax: SyntaxNode,
+}
+
+impl SyntaxContinueStmt {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
 }
 
 impl AstNode for SyntaxContinueStmt {
@@ -132,6 +163,11 @@ pub struct SyntaxExprStmt {
 }
 
 impl SyntaxExprStmt {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)
@@ -158,6 +194,11 @@ pub struct SyntaxForStmt {
 }
 
 impl SyntaxForStmt {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn patterns(&self) -> AstChildren<SyntaxPattern> {
         AstChildren::new(&self.syntax)
@@ -194,6 +235,11 @@ pub struct SyntaxIfExpr {
 }
 
 impl SyntaxIfExpr {
+    #[must_use]
+    pub fn attributes(&self) -> AstChildren<SyntaxAttribute> {
+        AstChildren::new(&self.syntax)
+    }
+
     #[must_use]
     pub fn condition(&self) -> Option<SyntaxExpression> {
         child(&self.syntax)

@@ -82,6 +82,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         }
 
         self.builder.start_node(kind);
+        self.emit_leading_attributes(end);
         match kind {
             SyntaxKind::LetStmt => self.let_statement_body(start, end),
             SyntaxKind::ReturnStmt => self.return_statement_body(start, end),
@@ -127,9 +128,10 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.emit_until(end);
     }
 
-    fn expr_statement_body(&mut self, start: usize, end: usize) {
-        let expression_end = self.statement_expression_end(start, end);
-        self.expression_range(start, expression_end);
+    fn expr_statement_body(&mut self, _start: usize, end: usize) {
+        let expression_start = self.skip_trivia(self.pos);
+        let expression_end = self.statement_expression_end(expression_start, end);
+        self.expression_range(expression_start, expression_end);
         self.emit_until(end);
     }
 
@@ -232,7 +234,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn find_statement_term_end(&self, start: usize, end: usize) -> usize {
         let mut depth = DelimiterDepth::default();
-        for cursor in start..end {
+        for cursor in self.skip_leading_attributes(start, end)..end {
             let Some(current) = self.kind_at(cursor) else {
                 break;
             };
@@ -562,6 +564,33 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
     fn at_attribute_start(&self, hash: usize) -> bool {
         self.at_kind(hash, SyntaxKind::Hash)
             && self.at_kind(self.skip_trivia(hash + 1), SyntaxKind::LBracket)
+    }
+
+    fn emit_leading_attributes(&mut self, end: usize) {
+        loop {
+            let candidate = self.skip_trivia(self.pos);
+            self.emit_until(candidate);
+            if candidate >= end || !self.at_attribute_start(candidate) {
+                break;
+            }
+            let attribute_end = self.skip_attribute(candidate).min(end);
+            self.attribute_range(candidate, attribute_end);
+        }
+    }
+
+    fn attribute_range(&mut self, start: usize, end: usize) {
+        self.node_range(SyntaxKind::Attribute, start, end);
+    }
+
+    fn skip_leading_attributes(&self, start: usize, end: usize) -> usize {
+        let mut cursor = start;
+        loop {
+            cursor = self.skip_trivia(cursor);
+            if cursor >= end || !self.at_attribute_start(cursor) {
+                return cursor;
+            }
+            cursor = self.skip_attribute(cursor);
+        }
     }
 
     fn next_significant_starts_item(&self, cursor: usize) -> bool {

@@ -18,6 +18,7 @@ impl CstParser<'_, '_> {
 
     fn raw_item(&mut self, kind: SyntaxKind, end: usize) {
         self.builder.start_node(kind);
+        self.emit_leading_attributes(end);
         while self.pos < end {
             self.emit_current_token();
         }
@@ -26,6 +27,7 @@ impl CstParser<'_, '_> {
 
     fn use_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::UseItem);
+        self.emit_leading_attributes(end);
         if let Some(keyword) = self.find_first_kind_before(SyntaxKind::UseKw, self.pos, end) {
             let path_start = self.skip_trivia(keyword + 1);
             let path_end = self
@@ -50,6 +52,7 @@ impl CstParser<'_, '_> {
 
     fn const_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::ConstItem);
+        self.emit_leading_attributes(end);
         let initializer = self.find_root_kind_before(SyntaxKind::Equal, self.pos, end);
         let declaration_end = initializer
             .or_else(|| self.find_root_kind_before(SyntaxKind::Semicolon, self.pos, end))
@@ -67,6 +70,7 @@ impl CstParser<'_, '_> {
 
     fn global_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::GlobalItem);
+        self.emit_leading_attributes(end);
         let initializer = self.find_root_kind_before(SyntaxKind::Equal, self.pos, end);
         let declaration_end = initializer
             .or_else(|| self.find_root_kind_before(SyntaxKind::Semicolon, self.pos, end))
@@ -95,6 +99,7 @@ impl CstParser<'_, '_> {
 
     fn function_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::FunctionItem);
+        self.emit_leading_attributes(end);
         let param_list = self.find_first_kind_before(SyntaxKind::LParen, self.pos, end);
         let param_list_end = param_list
             .and_then(|start| {
@@ -126,6 +131,7 @@ impl CstParser<'_, '_> {
 
     fn struct_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::StructItem);
+        self.emit_leading_attributes(end);
         let field_list = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
 
         if let Some(field_list_start) = field_list {
@@ -141,6 +147,7 @@ impl CstParser<'_, '_> {
 
     fn enum_item(&mut self, end: usize) {
         self.builder.start_node(SyntaxKind::EnumItem);
+        self.emit_leading_attributes(end);
         let variant_list = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
 
         if let Some(variant_list_start) = variant_list {
@@ -164,6 +171,7 @@ impl CstParser<'_, '_> {
 
     fn method_owner_item(&mut self, item_kind: SyntaxKind, method_kind: SyntaxKind, end: usize) {
         self.builder.start_node(item_kind);
+        self.emit_leading_attributes(end);
         let body = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
 
         if let Some(body_start) = body {
@@ -356,6 +364,7 @@ impl CstParser<'_, '_> {
             return;
         }
         self.builder.start_node(SyntaxKind::EnumVariant);
+        self.emit_leading_attributes(end);
 
         let name_end = self.member_name_end(start, end);
         let tuple_start = self.find_root_kind_before(SyntaxKind::LParen, name_end, end);
@@ -414,6 +423,7 @@ impl CstParser<'_, '_> {
             return;
         }
         self.builder.start_node(method_kind);
+        self.emit_leading_attributes(end);
 
         let signature_start = self.method_keyword_pos(start, end).unwrap_or(start);
         let param_list = self.find_first_kind_before(SyntaxKind::LParen, signature_start, end);
@@ -452,6 +462,7 @@ impl CstParser<'_, '_> {
             return;
         }
         self.builder.start_node(SyntaxKind::StructField);
+        self.emit_leading_attributes(end);
         let declaration_end = self
             .find_root_kind_before(SyntaxKind::Equal, start, end)
             .unwrap_or(end);
