@@ -88,6 +88,7 @@ struct Reward {
 enum Status {
     Pending,
     Active(count: i64),
+    Done { reward: String, xp: i64 },
 }
 trait Award {
     fn award(self, amount: i64);
@@ -150,11 +151,21 @@ impl Reward {
 
     let struct_item = tree.structs().next().expect("struct item");
     assert_eq!(struct_item.name_text().as_deref(), Some("Reward"));
-    let fields = struct_item
-        .field_list()
-        .expect("struct fields")
-        .fields()
-        .collect::<Vec<_>>();
+    let field_list = struct_item.field_list().expect("struct fields");
+    assert_eq!(field_list.l_brace_token().expect("struct open").text(), "{");
+    assert_eq!(
+        field_list.r_brace_token().expect("struct close").text(),
+        "}"
+    );
+    assert_eq!(
+        field_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![",", ","]
+    );
+    let fields = field_list.fields().collect::<Vec<_>>();
     assert_eq!(
         fields
             .iter()
@@ -169,25 +180,66 @@ impl Reward {
 
     let enum_item = tree.enums().next().expect("enum item");
     assert_eq!(enum_item.name_text().as_deref(), Some("Status"));
-    let variants = enum_item
-        .variant_list()
-        .expect("enum variants")
-        .variants()
-        .collect::<Vec<_>>();
+    let variant_list = enum_item.variant_list().expect("enum variants");
+    assert_eq!(variant_list.l_brace_token().expect("enum open").text(), "{");
+    assert_eq!(
+        variant_list.r_brace_token().expect("enum close").text(),
+        "}"
+    );
+    assert_eq!(
+        variant_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![",", ",", ","]
+    );
+    let variants = variant_list.variants().collect::<Vec<_>>();
     assert_eq!(
         variants
             .iter()
             .map(|variant| variant.name_text().expect("variant name"))
             .collect::<Vec<_>>(),
-        vec!["Pending", "Active"]
+        vec!["Pending", "Active", "Done"]
     );
-    let tuple_param = variants[1]
-        .tuple_field_list()
-        .expect("tuple fields")
-        .params()
-        .next()
-        .expect("tuple field");
+    let tuple_field_list = variants[1].tuple_field_list().expect("tuple fields");
+    assert_eq!(
+        tuple_field_list.l_paren_token().expect("tuple open").text(),
+        "("
+    );
+    assert_eq!(
+        tuple_field_list
+            .r_paren_token()
+            .expect("tuple close")
+            .text(),
+        ")"
+    );
+    assert!(tuple_field_list.separator_tokens().is_empty());
+    let tuple_param = tuple_field_list.params().next().expect("tuple field");
     assert_eq!(tuple_param.name_text().as_deref(), Some("count"));
+    let record_field_list = variants[2].record_field_list().expect("record fields");
+    assert_eq!(
+        record_field_list
+            .l_brace_token()
+            .expect("record open")
+            .text(),
+        "{"
+    );
+    assert_eq!(
+        record_field_list
+            .r_brace_token()
+            .expect("record close")
+            .text(),
+        "}"
+    );
+    assert_eq!(
+        record_field_list
+            .separator_tokens()
+            .iter()
+            .map(|token| token.text())
+            .collect::<Vec<_>>(),
+        vec![","]
+    );
 
     let trait_item = tree.traits().next().expect("trait item");
     assert_eq!(trait_item.name_text().as_deref(), Some("Award"));

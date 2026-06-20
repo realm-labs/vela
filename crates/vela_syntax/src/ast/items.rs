@@ -473,8 +473,23 @@ pub struct SyntaxStructFieldList {
 
 impl SyntaxStructFieldList {
     #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
+    #[must_use]
     pub fn fields(&self) -> AstChildren<SyntaxStructField> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        item_member_separator_tokens(&self.syntax)
     }
 }
 
@@ -601,8 +616,23 @@ pub struct SyntaxEnumVariantList {
 
 impl SyntaxEnumVariantList {
     #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
+    #[must_use]
     pub fn variants(&self) -> AstChildren<SyntaxEnumVariant> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        item_member_separator_tokens(&self.syntax)
     }
 }
 
@@ -673,8 +703,23 @@ pub struct SyntaxTupleFieldList {
 
 impl SyntaxTupleFieldList {
     #[must_use]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LParen)
+    }
+
+    #[must_use]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RParen)
+    }
+
+    #[must_use]
     pub fn params(&self) -> AstChildren<SyntaxParam> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        separator_tokens(&self.syntax, SyntaxKind::Comma)
     }
 }
 
@@ -699,8 +744,23 @@ pub struct SyntaxRecordFieldList {
 
 impl SyntaxRecordFieldList {
     #[must_use]
+    pub fn l_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn r_brace_token(&self) -> Option<SyntaxToken> {
+        token(&self.syntax, SyntaxKind::RBrace)
+    }
+
+    #[must_use]
     pub fn fields(&self) -> AstChildren<SyntaxStructField> {
         AstChildren::new(&self.syntax)
+    }
+
+    #[must_use]
+    pub fn separator_tokens(&self) -> Vec<SyntaxToken> {
+        item_member_separator_tokens(&self.syntax)
     }
 }
 
@@ -1068,6 +1128,14 @@ fn separator_tokens(parent: &SyntaxNode, wanted: SyntaxKind) -> Vec<SyntaxToken>
         .children_with_tokens()
         .filter_map(|element| element.into_token())
         .filter(|token| token.kind() == wanted)
+        .collect()
+}
+
+fn item_member_separator_tokens(parent: &SyntaxNode) -> Vec<SyntaxToken> {
+    parent
+        .children_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| matches!(token.kind(), SyntaxKind::Comma | SyntaxKind::Semicolon))
         .collect()
 }
 
