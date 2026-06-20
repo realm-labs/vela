@@ -1,10 +1,11 @@
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
-    SyntaxSourceFile,
+    AstNode, Block, ElseBranch, Expr, ExprKind, FunctionItem, ItemKind, SourceFile, Stmt, StmtKind,
+    SyntaxMapEntry, SyntaxSourceFile,
 };
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
+use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
 
 use vela_common::{SourceId, Span};
 
@@ -175,7 +176,10 @@ pub fn cursor_context_at(
         );
     }
 
-    if parsed.is_some_and(|source| is_map_key_context(source, prefix_start)) {
+    if syntax_parse
+        .as_ref()
+        .is_some_and(|parse| is_map_key_context(&parse.tree(), prefix_start))
+    {
         return context(
             CursorContextKind::MapKey,
             prefix_start,
@@ -552,21 +556,42 @@ fn record_field_for_else_branch(branch: &ElseBranch, offset: u32) -> bool {
     }
 }
 
-fn is_map_key_context(source: &SourceFile, offset: usize) -> bool {
-    let Some(offset) = u32::try_from(offset).ok() else {
+fn is_map_key_context(source: &SyntaxSourceFile, offset: usize) -> bool {
+    let Some(offset) = syntax_offset(offset) else {
         return false;
     };
-    source.items.iter().any(|item| match &item.kind {
-        ItemKind::Const(item) => map_key_for_expr(&item.value, offset),
-        ItemKind::Function(item) => {
-            item.params
-                .iter()
-                .filter_map(|param| param.default_value.as_ref())
-                .any(|value| map_key_for_expr(value, offset))
-                || map_key_for_block(&item.body, offset)
+    let Some(token) = significant_token_at(source.syntax(), offset) else {
+        return false;
+    };
+    let Some(entry) = token.parent_ancestors().find_map(SyntaxMapEntry::cast) else {
+        return false;
+    };
+    entry
+        .key()
+        .is_some_and(|key| range_contains_syntax_offset(key.syntax().text_range(), offset))
+}
+
+fn significant_token_at(root: &SyntaxNode, offset: TextSize) -> Option<SyntaxToken> {
+    match root.token_at_offset(offset) {
+        TokenAtOffset::None => None,
+        TokenAtOffset::Single(token) => non_trivia_token(token),
+        TokenAtOffset::Between(left, right) => {
+            non_trivia_token(left).or_else(|| non_trivia_token(right))
         }
-        _ => false,
-    })
+    }
+}
+
+fn non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
+    (!token.kind().is_trivia()).then_some(token)
+}
+
+fn range_contains_syntax_offset(range: SyntaxTextRange, offset: TextSize) -> bool {
+    range.start() <= offset && offset <= range.end()
+}
+
+fn syntax_offset(offset: usize) -> Option<TextSize> {
+    let offset = u32::try_from(offset).ok()?;
+    Some(TextSize::from(offset))
 }
 
 fn member_receiver_for_source(source: &SourceFile, offset: usize) -> Option<TextRange> {
@@ -946,104 +971,6 @@ fn call_callee_ranges(callee: &Expr) -> Option<CallCalleeRanges> {
         callee: callee_range,
         member_receiver,
     })
-}
-
-fn map_key_for_block(block: &Block, offset: u32) -> bool {
-    block.span.contains(offset)
-        && block
-            .statements
-            .iter()
-            .any(|statement| map_key_for_statement(statement, offset))
-}
-
-fn map_key_for_statement(statement: &Stmt, offset: u32) -> bool {
-    if !statement.span.contains(offset) {
-        return false;
-    }
-    match &statement.kind {
-        StmtKind::Let { value, .. } => value
-            .as_ref()
-            .is_some_and(|value| map_key_for_expr(value, offset)),
-        StmtKind::Expr(value) | StmtKind::Return(Some(value)) => map_key_for_expr(value, offset),
-        StmtKind::For { iterable, body, .. } => {
-            map_key_for_expr(iterable, offset) || map_key_for_block(body, offset)
-        }
-        StmtKind::Block(block) => map_key_for_block(block, offset),
-        StmtKind::Return(None) | StmtKind::Break | StmtKind::Continue => false,
-    }
-}
-
-fn map_key_for_expr(expr: &Expr, offset: u32) -> bool {
-    if !expr.span.contains(offset) {
-        return false;
-    }
-    match &expr.kind {
-        ExprKind::Map(entries) => entries
-            .iter()
-            .any(|entry| entry.key.span.contains(offset) || map_key_for_expr(&entry.value, offset)),
-        ExprKind::Unary { expr, .. } | ExprKind::Try(expr) => map_key_for_expr(expr, offset),
-        ExprKind::Binary { left, right, .. }
-        | ExprKind::Assign {
-            target: left,
-            value: right,
-            ..
-        } => map_key_for_expr(left, offset) || map_key_for_expr(right, offset),
-        ExprKind::Field { base, .. } => map_key_for_expr(base, offset),
-        ExprKind::Call { callee, args } => {
-            map_key_for_expr(callee, offset)
-                || args.iter().any(|arg| map_key_for_expr(&arg.value, offset))
-        }
-        ExprKind::Index { base, index } => {
-            map_key_for_expr(base, offset) || map_key_for_expr(index, offset)
-        }
-        ExprKind::Array(values) => values.iter().any(|value| map_key_for_expr(value, offset)),
-        ExprKind::Record { fields, .. } => fields
-            .iter()
-            .filter_map(|field| field.value.as_ref())
-            .any(|value| map_key_for_expr(value, offset)),
-        ExprKind::Lambda { params, body } => {
-            params
-                .iter()
-                .filter_map(|param| param.default_value.as_ref())
-                .any(|value| map_key_for_expr(value, offset))
-                || map_key_for_expr(body, offset)
-        }
-        ExprKind::If(if_expr) => {
-            map_key_for_expr(&if_expr.condition, offset)
-                || map_key_for_block(&if_expr.then_branch, offset)
-                || if_expr
-                    .else_branch
-                    .as_ref()
-                    .is_some_and(|branch| map_key_for_else_branch(branch, offset))
-        }
-        ExprKind::Match(match_expr) => {
-            map_key_for_expr(&match_expr.scrutinee, offset)
-                || match_expr
-                    .arms
-                    .iter()
-                    .any(|arm| map_key_for_expr(&arm.body, offset))
-        }
-        ExprKind::Block(block) => map_key_for_block(block, offset),
-        ExprKind::Literal(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::Path(_)
-        | ExprKind::SelfValue
-        | ExprKind::Error => false,
-    }
-}
-
-fn map_key_for_else_branch(branch: &ElseBranch, offset: u32) -> bool {
-    match branch {
-        ElseBranch::Block(block) => map_key_for_block(block, offset),
-        ElseBranch::If(if_expr) => {
-            map_key_for_expr(&if_expr.condition, offset)
-                || map_key_for_block(&if_expr.then_branch, offset)
-                || if_expr
-                    .else_branch
-                    .as_ref()
-                    .is_some_and(|branch| map_key_for_else_branch(branch, offset))
-        }
-    }
 }
 
 fn is_statement_context(parsed: Option<&SourceFile>, prefix_start: usize) -> bool {
