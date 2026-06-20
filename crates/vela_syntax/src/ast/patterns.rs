@@ -104,6 +104,11 @@ impl SyntaxPattern {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn is_path(&self) -> bool {
         self.path_text().is_some()
     }
@@ -156,6 +161,11 @@ impl SyntaxTuplePattern {
     }
 
     #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
+    }
+
+    #[must_use]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> {
         token(&self.syntax, SyntaxKind::LParen)
     }
@@ -204,6 +214,11 @@ impl SyntaxRecordPattern {
     #[must_use]
     pub fn path_tokens(&self) -> Vec<SyntaxToken> {
         path_tokens_before(&self.syntax, SyntaxKind::LBrace)
+    }
+
+    #[must_use]
+    pub fn path_segments(&self) -> Vec<String> {
+        path_segments_from_tokens(&self.path_tokens())
     }
 
     #[must_use]
@@ -340,6 +355,14 @@ fn path_text_from_tokens(tokens: &[SyntaxToken]) -> Option<String> {
     (!path.is_empty()).then_some(path)
 }
 
+fn path_segments_from_tokens(tokens: &[SyntaxToken]) -> Vec<String> {
+    tokens
+        .iter()
+        .filter(|token| token.kind() == SyntaxKind::Ident)
+        .map(|token| token.text().to_owned())
+        .collect()
+}
+
 fn path_tokens_before(parent: &SyntaxNode, delimiter: SyntaxKind) -> Vec<SyntaxToken> {
     let mut tokens = Vec::new();
     for token in significant_tokens(parent) {
@@ -438,6 +461,10 @@ mod tests {
             ]
         );
         assert_eq!(
+            arms[0].pattern().expect("path pattern").path_segments(),
+            vec!["Option".to_owned(), "None".to_owned()]
+        );
+        assert_eq!(
             arms[1]
                 .pattern()
                 .expect("binding pattern")
@@ -460,6 +487,13 @@ mod tests {
                 .expect("binding pattern")
                 .path_text()
                 .is_none()
+        );
+        assert!(
+            arms[1]
+                .pattern()
+                .expect("binding pattern")
+                .path_segments()
+                .is_empty()
         );
         assert!(
             arms[2]
@@ -589,6 +623,10 @@ mod tests {
             .expect("typed tuple pattern");
         assert_eq!(tuple_pattern.path_text().as_deref(), Some("Option::Some"));
         assert_eq!(
+            tuple_pattern.path_segments(),
+            vec!["Option".to_owned(), "Some".to_owned()]
+        );
+        assert_eq!(
             tuple_pattern
                 .path_tokens()
                 .iter()
@@ -630,6 +668,10 @@ mod tests {
             .record_pattern()
             .expect("typed record pattern");
         assert_eq!(record_pattern.path_text().as_deref(), Some("Result::Err"));
+        assert_eq!(
+            record_pattern.path_segments(),
+            vec!["Result".to_owned(), "Err".to_owned()]
+        );
         assert_eq!(
             record_pattern
                 .path_tokens()
