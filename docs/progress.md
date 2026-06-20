@@ -162,9 +162,10 @@ argument labels, paths, and literals. Postfix expression structure now also
 preserves
 method-call-over-field ordering and exposes index and try expression wrappers.
 Binary expression wrappers now expose their operator tokens and kinds,
-including range operators such as `..` and `..=`.
+including range operators such as `..` and `..=`, plus explicit left and right
+operand accessors.
 Assignment expression wrappers now expose their operator tokens and kinds for
-plain and compound assignment.
+plain and compound assignment, plus explicit target and value accessors.
 Unary expression wrappers now expose their operator tokens and kinds for
 negation and logical inversion.
 Literal expression wrappers now expose their raw literal tokens, token kinds,

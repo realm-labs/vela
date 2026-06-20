@@ -4,6 +4,9 @@ use vela_common::Span;
 mod attributes;
 #[path = "ast/expr.rs"]
 mod expr;
+#[cfg(test)]
+#[path = "ast/expr_tests.rs"]
+mod expr_tests;
 #[path = "ast/items.rs"]
 mod items;
 #[path = "ast/patterns.rs"]
