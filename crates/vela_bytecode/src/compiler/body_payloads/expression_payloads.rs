@@ -407,10 +407,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                     InterpolatedStringPart::Text(_) => None,
                     InterpolatedStringPart::Expr(expr) => Some(expr),
                 })
-                .enumerate()
-                .map(|(index, fallback)| CompilerExpressionPayload {
+                .map(|fallback| CompilerExpressionPayload {
                     source: self.source,
-                    syntax: syntax_expressions.get(index).cloned(),
+                    syntax: syntax_expression_for_fallback(&syntax_expressions, fallback),
                     fallback,
                 })
                 .collect(),

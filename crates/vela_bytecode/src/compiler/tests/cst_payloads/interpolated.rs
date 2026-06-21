@@ -52,6 +52,46 @@ fn messages(input) {
         .expect("CST-backed interpolated string expressions should compile");
 }
 
+#[test]
+fn mismatched_interpolated_payloads_do_not_pair_expressions_by_index() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_value = 1;
+    let legacy_value = 2;
+    let cst_text = f"{cst_value}";
+    let legacy_text = f"{legacy_value}";
+}
+"#,
+        |_, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_interpolated = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST interpolated payload");
+            let legacy_interpolated = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy interpolated fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_interpolated
+                    .syntax_expression()
+                    .expect("CST interpolated expression")
+                    .clone(),
+                legacy_interpolated.fallback(),
+            );
+
+            let parts = mismatched_payload
+                .interpolated_expression_payloads()
+                .expect("interpolation expression payloads");
+            assert_eq!(parts.len(), 1);
+            assert!(
+                parts[0].syntax_expression().is_none(),
+                "mismatched spans must not receive index-based CST interpolation expressions"
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_interpolation_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
