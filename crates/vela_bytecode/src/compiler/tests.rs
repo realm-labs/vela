@@ -25,7 +25,7 @@ fn assert_cst_body(
     expected_source: SourceId,
     expected_text: &str,
 ) {
-    let payload = body.syntax_payload().expect("expected CST-backed body");
+    let payload = body.syntax_payload();
     assert_eq!(payload.source, expected_source);
     assert_eq!(payload.body.syntax().text().to_string(), expected_text);
 }

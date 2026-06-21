@@ -46,7 +46,7 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-use vela_syntax::ast::{Argument, Block, Expr, ExprKind, Param};
+use vela_syntax::ast::{Argument, Expr, ExprKind, Param};
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
@@ -844,7 +844,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         name: String,
         _lambda_span: Span,
         params: &[Param],
-        fallback_body: &'ast Block,
+        body: CompilerBodyPayload<'ast>,
         captures: &[LambdaCapture],
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
@@ -960,7 +960,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             param_defaults: vec![None; params.len()],
             return_type: None,
-            body: CompilerBodyPayload::legacy(fallback_body),
+            body,
             facts,
             loop_stack: Vec::new(),
         })

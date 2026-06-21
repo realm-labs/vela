@@ -18,7 +18,7 @@ pub(super) struct SyntaxBodyPayload {
 
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
-    syntax: Option<SyntaxBodyPayload>,
+    syntax: SyntaxBodyPayload,
     fallback: &'ast Block,
 }
 
@@ -81,14 +81,7 @@ pub(super) struct CompilerIfPayload<'ast> {
 impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
-            syntax: Some(SyntaxBodyPayload { source, body }),
-            fallback,
-        }
-    }
-
-    pub(super) fn legacy(fallback: &'ast Block) -> Self {
-        Self {
-            syntax: None,
+            syntax: SyntaxBodyPayload { source, body },
             fallback,
         }
     }
@@ -98,28 +91,23 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
-        let syntax_statements = self
-            .syntax
-            .as_ref()
-            .map(|payload| payload.body.statements().collect::<Vec<_>>());
+        let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
 
         self.fallback
             .statements
             .iter()
             .enumerate()
             .map(|(index, fallback)| CompilerStatementPayload {
-                source: self.syntax.as_ref().map(|payload| payload.source),
-                syntax: syntax_statements.as_ref().and_then(|statements| {
-                    syntax_statement_for_fallback(statements, index, fallback)
-                }),
+                source: Some(self.syntax.source),
+                syntax: syntax_statement_for_fallback(&syntax_statements, index, fallback),
                 fallback,
             })
             .collect()
     }
 
     #[cfg(test)]
-    pub(super) fn syntax_payload(&self) -> Option<&SyntaxBodyPayload> {
-        self.syntax.as_ref()
+    pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
+        &self.syntax
     }
 }
 

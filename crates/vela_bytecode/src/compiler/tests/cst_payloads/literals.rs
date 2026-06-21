@@ -98,12 +98,7 @@ fn main() -> bool {
     )
     .expect("CST source should parse");
     let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload
-        .body
-        .syntax_payload()
-        .expect("CST body payload")
-        .body
-        .clone();
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
 
     with_cst_payload_compiler(
         r#"
