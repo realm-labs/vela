@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
-use vela_syntax::ast::{Argument, Expr, ExprKind};
+use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
@@ -492,6 +492,7 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
         let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
+        let has_callee_payload = callee_payload.is_some();
         let path = match &callee.kind {
             ExprKind::Field { base, name }
                 if callee_field_name_matches(callee_payload, name, "push") =>
@@ -500,7 +501,12 @@ impl Compiler<'_, '_> {
                 self.host_field_path_with_payload(base, base_payload.as_ref())
             }
             ExprKind::Path(parts)
-                if callee_path_last_matches(cst_path.as_deref(), parts, "push") =>
+                if callee_path_last_matches(
+                    cst_path.as_deref(),
+                    has_callee_payload,
+                    parts,
+                    "push",
+                ) =>
             {
                 let parts = cst_path.as_deref().unwrap_or(parts);
                 self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
@@ -535,6 +541,7 @@ impl Compiler<'_, '_> {
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
         let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
+        let has_callee_payload = callee_payload.is_some();
         let path = match &callee.kind {
             ExprKind::Field { base, name }
                 if callee_field_name_matches(callee_payload, name, "remove") =>
@@ -543,7 +550,12 @@ impl Compiler<'_, '_> {
                 self.host_field_path_with_payload(base, base_payload.as_ref())
             }
             ExprKind::Path(parts)
-                if callee_path_last_matches(cst_path.as_deref(), parts, "remove") =>
+                if callee_path_last_matches(
+                    cst_path.as_deref(),
+                    has_callee_payload,
+                    parts,
+                    "remove",
+                ) =>
             {
                 let parts = cst_path.as_deref().unwrap_or(parts);
                 self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
@@ -776,19 +788,31 @@ fn callee_field_name_matches(
     fallback_name: &str,
     expected: &str,
 ) -> bool {
-    payload
-        .and_then(CompilerExpressionPayload::syntax_field_name)
-        .as_deref()
-        .unwrap_or(fallback_name)
-        == expected
+    match payload {
+        Some(payload) => match payload.kind() {
+            Some(SyntaxExpressionKind::Field) => {
+                payload
+                    .syntax_field_name()
+                    .as_deref()
+                    .unwrap_or(fallback_name)
+                    == expected
+            }
+            Some(SyntaxExpressionKind::Path) | None => fallback_name == expected,
+            Some(_) => false,
+        },
+        None => fallback_name == expected,
+    }
 }
 
 fn callee_path_last_matches(
     cst_path: Option<&[String]>,
+    has_payload: bool,
     fallback_path: &[String],
     expected: &str,
 ) -> bool {
-    let path = cst_path.unwrap_or(fallback_path);
+    let Some(path) = cst_path.or_else(|| (!has_payload).then_some(fallback_path)) else {
+        return false;
+    };
     path.last().is_some_and(|name| name == expected)
 }
 

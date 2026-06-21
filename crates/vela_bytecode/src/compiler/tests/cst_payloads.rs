@@ -50,6 +50,14 @@ fn cst_payload_compiler_for_function<'ast>(
 }
 
 fn cst_payload_compiler_facts(semantic: &semantic::SemanticSource) -> CompilerFacts<'static> {
+    cst_payload_compiler_facts_with_options(semantic, CompilerOptions::default(), None)
+}
+
+fn cst_payload_compiler_facts_with_options<'registry>(
+    semantic: &semantic::SemanticSource,
+    options: CompilerOptions,
+    registry: Option<vela_registry::RegistryCompileView<'registry>>,
+) -> CompilerFacts<'registry> {
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
@@ -72,8 +80,8 @@ fn cst_payload_compiler_facts(semantic: &semantic::SemanticSource) -> CompilerFa
         global_slots,
         global_type_symbols,
         const_values,
-        options: CompilerOptions::default(),
-        registry: None,
+        options,
+        registry,
     }
 }
 

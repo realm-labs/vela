@@ -329,6 +329,126 @@ fn main() {
     );
 }
 
+#[test]
+fn host_path_push_with_non_field_cst_callee_does_not_use_legacy_method_name() {
+    let inventory = FieldId::new(3);
+    let rewards = FieldId::new(4);
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player host type should register");
+    let inventory_type = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "Inventory",
+            ))
+            .host_runtime_id(78),
+        )
+        .expect("Inventory host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "inventory"),
+                player,
+            )
+            .host_runtime_id(inventory.get())
+            .writable(true)
+            .type_hint(Some("Inventory".to_owned())),
+        )
+        .expect("Player inventory field should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Inventory", "rewards"),
+                inventory_type,
+            )
+            .host_runtime_id(rewards.get())
+            .writable(true),
+        )
+        .expect("Inventory rewards field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(player: Player) {
+    let callable = |value| value;
+    let cst_call = ({
+        let selected = callable;
+        selected
+    })("silver");
+    let legacy_call = player.inventory.rewards.push("gold");
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let cst_call = statements[1]
+        .let_initializer_expression_payload()
+        .expect("CST call payload");
+    let legacy_call = statements[2]
+        .let_initializer_expression_payload()
+        .expect("legacy host push call fallback");
+    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_call
+            .syntax_expression()
+            .expect("CST expression")
+            .clone(),
+        legacy_call.fallback(),
+    );
+    let mut compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    compiler
+        .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+        .expect("mismatched host push fallback should compile as a callable expression");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::HostMutate {
+                    op: vela_host::resolved::HostMutationOp::Push,
+                    ..
+                }
+            )),
+        "mismatched non-field CST callee must not use the legacy host push name"
+    );
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::CallClosure { .. }
+            )),
+        "mismatched non-field CST callee should fall through to callable expression lowering"
+    );
+}
+
 fn assert_cst_let_initializer_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
