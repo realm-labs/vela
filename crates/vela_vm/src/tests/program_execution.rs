@@ -784,6 +784,29 @@ fn main() {
 }
 
 #[test]
+fn runs_index_parameter_default_expressions() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn defaults(first = [10, 20][1], second = { "key": 7 }["key"], third = [[1], [2]][1][0]) {
+    return first + second + third;
+}
+
+fn main() {
+    return defaults();
+}
+"#,
+    )
+    .expect("index parameter defaults should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(29)))
+    );
+}
+
+#[test]
 fn runs_entrypoint_parameter_defaults() {
     let code = compile_function_source(
         SourceId::new(1),

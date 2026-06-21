@@ -179,10 +179,25 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_param_default_if(source, expression, &if_expr)
             }
+            SyntaxExpressionKind::Index => {
+                let Some(index) = expression.as_index() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(receiver) = index.receiver() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(index) = index.index() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let base = self.compile_param_default_expression(source, &receiver)?;
+                let index = self.compile_param_default_expression(source, &index)?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+                Ok(dst)
+            }
             SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Call
-            | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
@@ -497,10 +512,17 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
         SyntaxExpressionKind::If => expression
             .as_if()
             .is_some_and(|if_expr| param_default_if_cst_lowering_covers(&if_expr)),
+        SyntaxExpressionKind::Index => expression.as_index().is_some_and(|index| {
+            index
+                .receiver()
+                .is_some_and(|receiver| param_default_cst_lowering_covers(&receiver))
+                && index
+                    .index()
+                    .is_some_and(|index| param_default_cst_lowering_covers(&index))
+        }),
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
-        | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
         | SyntaxExpressionKind::Match => false,
@@ -897,6 +919,55 @@ fn cst(first = expensive()) {
                 "unsupported if defaults still require the temporary legacy fallback"
             );
         }
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_index_expressions() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = [10, 20][1]) { return value; }"),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = { \"key\": 7 }[\"key\"]) { return value; }",
+                ),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = [[1], [2]][1][0]) { return value; }",
+                ),
+            }),
+        ];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert_eq!(defaults.len(), 3);
+        for default in defaults {
+            assert!(
+                default.expect("direct CST default").fallback.is_none(),
+                "index defaults with supported operands should lower directly from CST"
+            );
+        }
+    }
+
+    #[test]
+    fn param_default_cst_lowering_keeps_unsupported_index_fallbacks() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default("fn cst(value = values()[0]) { return value; }"),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert!(
+            defaults[0].is_none(),
+            "index defaults still require the temporary legacy fallback when an operand is unsupported"
+        );
     }
 
     fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
