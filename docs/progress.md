@@ -321,6 +321,9 @@ Record constructor field lowering now prefers rowan CST record-field labels
 for explicit field names, expected field contracts, shorthand local lookup,
 and emitted record field names before falling back to the temporary legacy
 record-field expression.
+Record constructor diagnostics now prefer rowan CST record-field labels for
+duplicate, unknown, and required-field checks before falling back to the
+temporary legacy record-field expression.
 Call argument lowering now prefers rowan CST argument labels for named
 argument resolution, unsupported named-argument checks, and dynamic method
 argument preservation before falling back to the temporary legacy argument

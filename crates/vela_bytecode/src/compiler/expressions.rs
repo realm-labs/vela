@@ -11,7 +11,7 @@ use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
-use super::constructors::schema_default_fields;
+use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{
@@ -410,10 +410,12 @@ impl Compiler<'_, '_> {
                 ]));
             }
             let shape = self.enum_constructor_shape(&enum_name, &variant);
+            let field_names = record_field_names(fields, payloads);
             self.reject_constructor_diagnostics(record_constructor_diagnostics(
                 &format!("{enum_name}::{variant}"),
                 shape.as_ref(),
                 fields,
+                field_names.as_deref(),
                 expr.span,
             ))?;
             let defaults = schema_default_fields(shape.as_ref());
@@ -429,10 +431,12 @@ impl Compiler<'_, '_> {
                 .type_symbol_at_span(expr.span)
                 .unwrap_or_else(|| path.join("::"));
             let shape = self.record_constructor_shape(&type_name);
+            let field_names = record_field_names(fields, payloads);
             self.reject_constructor_diagnostics(record_constructor_diagnostics(
                 &type_name,
                 shape.as_ref(),
                 fields,
+                field_names.as_deref(),
                 expr.span,
             ))?;
             let defaults = schema_default_fields(shape.as_ref());

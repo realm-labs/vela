@@ -19,6 +19,25 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
+pub(super) fn record_field_names(
+    fields: &[vela_syntax::ast::RecordField],
+    payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+) -> Option<Vec<Option<String>>> {
+    payloads?;
+    Some(
+        fields
+            .iter()
+            .enumerate()
+            .map(|(index, field)| {
+                payloads
+                    .and_then(|payloads| payloads.get(index))
+                    .and_then(CompilerRecordFieldPayload::syntax_label_name)
+                    .or_else(|| Some(field.name.clone()))
+            })
+            .collect(),
+    )
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_tuple_variant_fields(
         &mut self,

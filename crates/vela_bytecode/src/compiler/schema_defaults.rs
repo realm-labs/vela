@@ -343,22 +343,25 @@ pub(super) fn record_constructor_diagnostics(
     type_name: &str,
     shape: Option<&ConstructorShape>,
     fields: &[RecordField],
+    field_names: Option<&[Option<String>]>,
     constructor_span: Span,
 ) -> Vec<Diagnostic> {
-    let mut diagnostics = duplicate_record_field_diagnostics(fields);
+    let mut diagnostics = duplicate_record_field_diagnostics(fields, field_names);
     let Some(shape) = shape else {
         return diagnostics;
     };
     let explicit = fields
         .iter()
-        .map(|field| field.name.as_str())
+        .enumerate()
+        .map(|(index, field)| record_field_name(field_names, index, field).to_owned())
         .collect::<BTreeSet<_>>();
 
-    for field in fields {
-        if !shape.contains_field(&field.name) {
+    for (index, field) in fields.iter().enumerate() {
+        let field_name = record_field_name(field_names, index, field);
+        if !shape.contains_field(field_name) {
             diagnostics.push(unknown_field_diagnostic(
                 type_name,
-                &field.name,
+                field_name,
                 field.span,
                 shape.field_names(),
             ));
@@ -366,7 +369,7 @@ pub(super) fn record_constructor_diagnostics(
     }
 
     for field in shape.required_fields() {
-        if !explicit.contains(field.name.as_str()) {
+        if !explicit.contains(&field.name) {
             diagnostics.push(missing_field_diagnostic(
                 type_name,
                 &field.name,
@@ -467,19 +470,34 @@ pub(super) fn unknown_enum_variant_diagnostic(
         .with_label(span, "variant is not declared on this enum")
 }
 
-fn duplicate_record_field_diagnostics(fields: &[RecordField]) -> Vec<Diagnostic> {
+fn duplicate_record_field_diagnostics(
+    fields: &[RecordField],
+    field_names: Option<&[Option<String>]>,
+) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut seen = BTreeMap::<&str, Span>::new();
-    for field in fields {
-        if let Some(previous_span) = seen.insert(&field.name, field.span) {
+    for (index, field) in fields.iter().enumerate() {
+        let field_name = record_field_name(field_names, index, field);
+        if let Some(previous_span) = seen.insert(field_name, field.span) {
             diagnostics.push(duplicate_constructor_field_diagnostic(
-                &field.name,
+                field_name,
                 previous_span,
                 field.span,
             ));
         }
     }
     diagnostics
+}
+
+fn record_field_name<'field>(
+    field_names: Option<&'field [Option<String>]>,
+    index: usize,
+    field: &'field RecordField,
+) -> &'field str {
+    field_names
+        .and_then(|names| names.get(index))
+        .and_then(|name| name.as_deref())
+        .unwrap_or(field.name.as_str())
 }
 
 fn tuple_argument_index(
