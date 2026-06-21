@@ -15,7 +15,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 pub(super) struct ParamDefaultValue {
     pub(super) source: SourceId,
     pub(super) expression: SyntaxExpression,
-    fallback: Expr,
+    fallback: Option<Expr>,
 }
 
 pub(super) fn param_default_values(
@@ -27,17 +27,25 @@ pub(super) fn param_default_values(
         .enumerate()
         .map(|(index, syntax_default)| {
             let syntax_default = syntax_default.clone()?;
-            let fallback = legacy_defaults.get(index).copied().flatten()?;
-            if !syntax_range_overlaps_span(
-                syntax_default.expression.syntax().text_range(),
-                fallback.span,
-            ) {
+            let fallback = legacy_defaults
+                .get(index)
+                .copied()
+                .flatten()
+                .filter(|fallback| {
+                    syntax_range_overlaps_span(
+                        syntax_default.expression.syntax().text_range(),
+                        fallback.span,
+                    )
+                })
+                .cloned();
+            if fallback.is_none() && !param_default_cst_lowering_covers(&syntax_default.expression)
+            {
                 return None;
             }
             Some(ParamDefaultValue {
                 source: syntax_default.source,
                 expression: syntax_default.expression,
-                fallback: fallback.clone(),
+                fallback,
             })
         })
         .collect()
@@ -51,12 +59,15 @@ impl Compiler<'_, '_> {
         if param_default_cst_lowering_covers(&default.expression) {
             return self.compile_param_default_expression(default.source, &default.expression);
         }
-        let payload = CompilerExpressionPayload::syntax(
-            default.source,
-            default.expression.clone(),
-            &default.fallback,
-        );
-        self.compile_expr_with_payload(&default.fallback, Some(&payload))
+        let Some(fallback) = default.fallback.as_ref() else {
+            return Err(param_default_unsupported(
+                default.source,
+                &default.expression,
+            ));
+        };
+        let payload =
+            CompilerExpressionPayload::syntax(default.source, default.expression.clone(), fallback);
+        self.compile_expr_with_payload(fallback, Some(&payload))
     }
 
     fn compile_param_default_expression(
@@ -542,7 +553,7 @@ fn cst(first = 1) {
     fn mismatched_param_defaults_do_not_pair_by_index() {
         let source = SourceId::new(1);
         let text = r#"
-fn cst(first = 1) {
+fn cst(first = expensive()) {
     return first;
 }
 "#;
@@ -571,7 +582,25 @@ fn cst(first = 1) {
         assert_eq!(defaults.len(), 1);
         assert!(
             defaults[0].is_none(),
-            "mismatched default spans must not receive index-based CST params"
+            "unsupported defaults must not receive mismatched legacy fallbacks by index"
+        );
+    }
+
+    #[test]
+    fn directly_lowered_param_defaults_do_not_require_legacy_fallbacks() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default("fn cst(value = 1 + 2) { return value; }"),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        let default = defaults[0].as_ref().expect("direct CST default");
+        assert_eq!(default.expression.syntax().text().to_string(), "1 + 2");
+        assert!(
+            default.fallback.is_none(),
+            "directly lowered CST defaults should not depend on a legacy expression"
         );
     }
 
