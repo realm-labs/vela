@@ -4,7 +4,7 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{Argument, Expr, RecordField, SyntaxExpression};
+use vela_syntax::ast::{Argument, AstNode, Expr, RecordField, SyntaxExpression};
 
 use crate::Constant;
 
@@ -130,11 +130,15 @@ pub(super) struct SchemaFieldDefault {
 pub(super) struct SchemaDefaultValue {
     source: SourceId,
     syntax: SyntaxExpression,
-    legacy: Expr,
+    legacy: Option<Expr>,
 }
 
 impl SchemaDefaultValue {
-    pub(super) const fn new(source: SourceId, syntax: SyntaxExpression, legacy: Expr) -> Self {
+    pub(super) const fn new(
+        source: SourceId,
+        syntax: SyntaxExpression,
+        legacy: Option<Expr>,
+    ) -> Self {
         Self {
             source,
             syntax,
@@ -150,12 +154,13 @@ impl SchemaDefaultValue {
         &self.syntax
     }
 
-    pub(super) const fn legacy(&self) -> &Expr {
-        &self.legacy
+    pub(super) fn legacy(&self) -> Option<&Expr> {
+        self.legacy.as_ref()
     }
 
-    pub(super) const fn span(&self) -> Span {
-        self.legacy.span
+    pub(super) fn span(&self) -> Span {
+        let range = self.syntax.syntax().text_range();
+        Span::new(self.source, range.start().into(), range.end().into())
     }
 }
 

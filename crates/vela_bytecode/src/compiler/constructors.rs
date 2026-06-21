@@ -222,7 +222,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_schema_default_fields(
+    pub(super) fn compile_schema_default_fields(
         &mut self,
         fields: &mut Vec<(String, Register)>,
         explicit_names: &BTreeSet<String>,
@@ -247,11 +247,6 @@ impl Compiler<'_, '_> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
-        let payload = CompilerExpressionPayload::syntax(
-            default.value.source(),
-            default.value.syntax().clone(),
-            default.value.legacy(),
-        );
         if let Some(value) = evaluate_syntax_const_expr(
             default.value.source(),
             default.value.syntax(),
@@ -269,8 +264,19 @@ impl Compiler<'_, '_> {
             }
             return self.emit_constant(value);
         }
+        let legacy = default.value.legacy().ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "non-constant CST schema default expression",
+            ))
+            .with_span(default.value.span())
+        })?;
+        let payload = CompilerExpressionPayload::syntax(
+            default.value.source(),
+            default.value.syntax().clone(),
+            legacy,
+        );
         self.compile_expr_with_optional_expected_type_and_payload(
-            default.value.legacy(),
+            legacy,
             expected,
             TypeContractContext::Field {
                 name: default.name.clone(),

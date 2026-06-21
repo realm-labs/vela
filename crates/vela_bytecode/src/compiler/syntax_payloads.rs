@@ -50,11 +50,12 @@ pub(super) fn schema_default_payloads(
             let Some(value) = field.default_value() else {
                 continue;
             };
-            let Some(legacy_value) =
-                graph_struct_field_default_expr(graph, module, &legacy, &type_name, &field_name)
+            let Some(default_span) =
+                graph_struct_field_default_span(graph, module, &type_name, &field_name)
             else {
                 continue;
             };
+            let legacy_value = legacy.get(&default_span).cloned();
             payloads.insert_struct_field(
                 type_name.clone(),
                 field_name,
@@ -79,16 +80,16 @@ pub(super) fn schema_default_payloads(
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(legacy_value) = graph_enum_tuple_field_default_expr(
+                    let Some(default_span) = graph_enum_tuple_field_default_span(
                         graph,
                         module,
-                        &legacy,
                         &type_name,
                         &variant_name,
                         index,
                     ) else {
                         continue;
                     };
+                    let legacy_value = legacy.get(&default_span).cloned();
                     payloads.insert_enum_tuple_field(
                         type_name.clone(),
                         variant_name.clone(),
@@ -105,16 +106,16 @@ pub(super) fn schema_default_payloads(
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(legacy_value) = graph_enum_record_field_default_expr(
+                    let Some(default_span) = graph_enum_record_field_default_span(
                         graph,
                         module,
-                        &legacy,
                         &type_name,
                         &variant_name,
                         &field_name,
                     ) else {
                         continue;
                     };
+                    let legacy_value = legacy.get(&default_span).cloned();
                     payloads.insert_enum_record_field(
                         type_name.clone(),
                         variant_name.clone(),
@@ -167,49 +168,46 @@ fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, Expr> {
     defaults
 }
 
-fn graph_struct_field_default_expr(
+fn graph_struct_field_default_span(
     graph: &ModuleGraph,
     module: ModuleId,
-    legacy: &HashMap<Span, Expr>,
     type_name: &str,
     field_name: &str,
-) -> Option<Expr> {
+) -> Option<Span> {
     let declaration = graph_schema_declaration(graph, module, type_name, DeclarationKind::Struct)?;
     let shape = graph.struct_shape(declaration)?;
     let field = shape.fields.iter().find(|field| field.name == field_name)?;
-    legacy.get(&field.default_value_span?).cloned()
+    field.default_value_span
 }
 
-fn graph_enum_tuple_field_default_expr(
+fn graph_enum_tuple_field_default_span(
     graph: &ModuleGraph,
     module: ModuleId,
-    legacy: &HashMap<Span, Expr>,
     type_name: &str,
     variant_name: &str,
     index: usize,
-) -> Option<Expr> {
+) -> Option<Span> {
     let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
     let EnumVariantFieldsHint::Tuple(fields) = fields else {
         return None;
     };
     let field = fields.get(index)?;
-    legacy.get(&field.default_value_span?).cloned()
+    field.default_value_span
 }
 
-fn graph_enum_record_field_default_expr(
+fn graph_enum_record_field_default_span(
     graph: &ModuleGraph,
     module: ModuleId,
-    legacy: &HashMap<Span, Expr>,
     type_name: &str,
     variant_name: &str,
     field_name: &str,
-) -> Option<Expr> {
+) -> Option<Span> {
     let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
     let EnumVariantFieldsHint::Record(fields) = fields else {
         return None;
     };
     let field = fields.iter().find(|field| field.name == field_name)?;
-    legacy.get(&field.default_value_span?).cloned()
+    field.default_value_span
 }
 
 fn graph_enum_variant_fields<'graph>(
