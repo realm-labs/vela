@@ -39,9 +39,12 @@ impl Compiler<'_, '_> {
             condition_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
         let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
         let right_payload = operand_payloads.as_ref().map(|(_, right)| right);
-        let Some(op) =
-            condition_operator_for_fallback(condition_operator, condition).and_then(i64_compare_op)
-        else {
+        let Some(op) = condition_operator_for_fallback(
+            condition_operator,
+            condition_payload.is_some(),
+            condition,
+        )
+        .and_then(i64_compare_op) else {
             return Ok(None);
         };
         if self.value_type_for_expr_with_payload(left, left_payload)

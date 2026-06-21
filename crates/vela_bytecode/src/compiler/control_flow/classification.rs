@@ -106,10 +106,15 @@ fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
 
 pub(super) fn condition_operator_for_fallback(
     syntax_operator: Option<BinaryOp>,
+    has_payload: bool,
     expr: &Expr,
 ) -> Option<BinaryOp> {
     if matches!(expr.kind, ExprKind::Binary { .. }) {
-        syntax_operator.or_else(|| legacy_condition_operator(expr))
+        match (syntax_operator, has_payload) {
+            (Some(op), _) => Some(op),
+            (None, false) => legacy_condition_operator(expr),
+            (None, true) => None,
+        }
     } else {
         None
     }
