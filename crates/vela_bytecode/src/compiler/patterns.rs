@@ -1,6 +1,6 @@
 use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
-use vela_syntax::ast::{Pattern, RecordPatternField};
+use vela_syntax::ast::{Literal, Pattern, RecordPatternField};
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -40,6 +40,30 @@ fn record_pattern_field_name(
     payload
         .and_then(CompilerRecordPatternFieldPayload::syntax_label_name)
         .unwrap_or_else(|| field.name.clone())
+}
+
+fn pattern_literal_payload(
+    payload: Option<&CompilerPatternPayload<'_>>,
+    fallback: &Literal,
+) -> Literal {
+    payload
+        .and_then(CompilerPatternPayload::literal)
+        .unwrap_or_else(|| fallback.clone())
+}
+
+fn pattern_path_segments(
+    payload: Option<&CompilerPatternPayload<'_>>,
+    fallback: &[String],
+) -> Vec<String> {
+    payload
+        .and_then(CompilerPatternPayload::path_segments)
+        .unwrap_or_else(|| fallback.to_vec())
+}
+
+fn pattern_binding_name(payload: Option<&CompilerPatternPayload<'_>>, fallback: &str) -> String {
+    payload
+        .and_then(CompilerPatternPayload::binding_name)
+        .unwrap_or_else(|| fallback.to_owned())
 }
 
 pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
@@ -101,7 +125,8 @@ impl Compiler<'_, '_> {
         match pattern {
             Pattern::Wildcard | Pattern::Binding(_) => Ok(Vec::new()),
             Pattern::Literal(literal) => {
-                let pattern = self.compile_literal(None, literal)?;
+                let literal = pattern_literal_payload(payload, literal);
+                let pattern = self.compile_literal(None, &literal)?;
                 let condition = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Equal {
                     dst: condition,
@@ -110,9 +135,13 @@ impl Compiler<'_, '_> {
                 });
                 Ok(vec![self.emit_jump_if_false(condition)])
             }
-            Pattern::Path(path) => self.compile_variant_tag_pattern(scrutinee, path),
+            Pattern::Path(path) => {
+                let path = pattern_path_segments(payload, path);
+                self.compile_variant_tag_pattern(scrutinee, &path)
+            }
             Pattern::RecordVariant { path, fields } => {
-                let mut jumps = self.compile_variant_tag_pattern(scrutinee, path)?;
+                let path = pattern_path_segments(payload, path);
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -124,7 +153,7 @@ impl Compiler<'_, '_> {
                         .and_then(|payloads| payloads.get(index));
                     let field_name = record_pattern_field_name(field_payload, field);
                     let field_value =
-                        self.emit_enum_pattern_field_read(scrutinee, path, field_name)?;
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name)?;
                     jumps.extend(
                         self.compile_match_pattern(
                             field_value,
@@ -138,7 +167,8 @@ impl Compiler<'_, '_> {
                 Ok(jumps)
             }
             Pattern::TupleVariant { path, fields } => {
-                let mut jumps = self.compile_variant_tag_pattern(scrutinee, path)?;
+                let path = pattern_path_segments(payload, path);
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -150,7 +180,7 @@ impl Compiler<'_, '_> {
                         .and_then(|payloads| payloads.get(index));
                     let field_value = self.emit_enum_pattern_field_read(
                         scrutinee,
-                        path,
+                        &path,
                         tuple_variant_field_name(index),
                     )?;
                     jumps.extend(self.compile_match_pattern(field_value, field, field_payload)?);
@@ -197,10 +227,12 @@ impl Compiler<'_, '_> {
                     dst,
                     src: scrutinee,
                 });
-                self.bind_pattern_local(binding, dst, body_span, facts, kind);
+                let binding = pattern_binding_name(payload, binding);
+                self.bind_pattern_local(&binding, dst, body_span, facts, kind);
                 Ok(())
             }
             Pattern::RecordVariant { path, fields } => {
+                let path = pattern_path_segments(payload, path);
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -212,11 +244,11 @@ impl Compiler<'_, '_> {
                         .and_then(|payloads| payloads.get(index));
                     let field_name = record_pattern_field_name(field_payload, field);
                     let dst =
-                        self.emit_enum_pattern_field_read(scrutinee, path, field_name.clone())?;
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
                     let field_facts = PatternBindingFacts::value(
-                        self.enum_variant_field_value_type(path, &field_name),
+                        self.enum_variant_field_value_type(&path, &field_name),
                     )
-                    .with_script(self.enum_variant_field_fact(path, &field_name));
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
                     match &field.pattern {
                         Some(pattern) => self.bind_pattern_locals(
                             dst,
@@ -236,6 +268,7 @@ impl Compiler<'_, '_> {
                 Ok(())
             }
             Pattern::TupleVariant { path, fields } => {
+                let path = pattern_path_segments(payload, path);
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -247,11 +280,11 @@ impl Compiler<'_, '_> {
                         .and_then(|payloads| payloads.get(index));
                     let field_name = tuple_variant_field_name(index);
                     let field_value =
-                        self.emit_enum_pattern_field_read(scrutinee, path, field_name.clone())?;
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
                     let field_facts = PatternBindingFacts::value(
-                        self.enum_variant_field_value_type(path, &field_name),
+                        self.enum_variant_field_value_type(&path, &field_name),
                     )
-                    .with_script(self.enum_variant_field_fact(path, &field_name));
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
                     self.bind_pattern_locals(
                         field_value,
                         field,

@@ -268,6 +268,77 @@ fn classify(result) {
     compile_program_source(source, text).expect("CST-backed match arm patterns should compile");
 }
 
+#[test]
+fn semantic_function_basic_match_arm_patterns_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum State {
+    Ready
+    Waiting
+}
+
+fn classify(state) {
+    return match state {
+        0 => 0,
+        State::Ready => 1,
+        value => value,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("classify").expect("classify function");
+    let arm_payloads = payload
+        .body
+        .statement_payloads()
+        .iter()
+        .flat_map(|statement| {
+            statement
+                .return_value_match_arm_payloads()
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(arm_payloads.len(), 3);
+
+    let literal_pattern = arm_payloads[0].pattern_payload();
+    assert_eq!(
+        literal_pattern.literal(),
+        Some(vela_syntax::ast::Literal::integer("0"))
+    );
+    assert_eq!(
+        literal_pattern
+            .syntax_pattern()
+            .and_then(|pattern| pattern.literal_text())
+            .as_deref(),
+        Some("0")
+    );
+
+    let path_pattern = arm_payloads[1].pattern_payload();
+    assert_eq!(
+        path_pattern.path_segments().as_deref(),
+        Some(&["State".to_owned(), "Ready".to_owned()][..])
+    );
+    assert_eq!(
+        path_pattern
+            .syntax_pattern()
+            .and_then(|pattern| pattern.path_text())
+            .as_deref(),
+        Some("State::Ready")
+    );
+
+    let binding_pattern = arm_payloads[2].pattern_payload();
+    assert_eq!(binding_pattern.binding_name().as_deref(), Some("value"));
+    assert_eq!(
+        binding_pattern
+            .syntax_pattern()
+            .and_then(|pattern| pattern.binding_name())
+            .as_deref(),
+        Some("value")
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed basic match arm patterns should compile");
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
