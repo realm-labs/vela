@@ -222,9 +222,22 @@ Downstream ownership should become:
 
 ## 6. Phased Execution Plan
 
+Checklist rule: a phase is complete only when every item in its checkpoint
+checklist is checked. Keep these items updated as each small commit lands, even
+when the phase-level task remains open.
+
 ### Phase 1: Add rowan syntax foundation
 
 - [x] Task: Add the syntax tree primitives without changing production parsing yet.
+
+Checkpoint checklist:
+
+- [x] Add `rowan` to the workspace and `vela_syntax`.
+- [x] Define `SyntaxKind` for node, token, trivia, EOF, error, and unknown kinds.
+- [x] Define `VelaLanguage` and raw rowan kind conversion.
+- [x] Add `SyntaxNode`, `SyntaxToken`, `SyntaxElement`, and text-range aliases.
+- [x] Add a minimal `Parse<T>` green-tree shell.
+- [x] Cover syntax kind classification and raw kind round trips with tests.
 
 Expected behavior:
 
@@ -249,6 +262,16 @@ cargo test -p vela_syntax parser
 ### Phase 2: Replace lexer with lossless tokenization
 
 - [x] Task: Make lexical output preserve all source text.
+
+Checkpoint checklist:
+
+- [x] Keep a parser-facing significant-token stream for existing parsing.
+- [x] Add a lossless token stream that preserves whitespace.
+- [x] Preserve line comments, block comments, and shebangs.
+- [x] Preserve unknown characters and malformed token fragments as source text.
+- [x] Preserve exact literal spelling for later AST/lowering accessors.
+- [x] Preserve existing lexical diagnostics.
+- [x] Prove lossless token text can reconstruct the original source.
 
 Expected behavior:
 
@@ -275,6 +298,52 @@ cargo test -p vela_syntax parser
 ### Phase 3: Build rowan parser and typed AST wrappers
 
 - [ ] Task: Replace the parser output with a lossless CST and rowan-backed AST views.
+
+Checkpoint checklist:
+
+- [x] Add a rowan `parse_source` path returning a source-file root.
+- [x] Preserve lexical diagnostics in the rowan parse record.
+- [x] Add a typed `SyntaxSourceFile` wrapper.
+- [x] Add source-file item iteration.
+- [x] Wrap top-level declarations as item CST nodes.
+- [x] Add typed wrappers for `use`, `const`, `global`, and function items.
+- [x] Expose use paths, use-path text, aliases, and alias tokens.
+- [x] Expose const/global names, type hints, and const value expressions.
+- [x] Expose function names, parameter lists, parameter names, type hints,
+  type arguments, defaults, return types, and body blocks.
+- [x] Expose struct field lists, field names, type hints, and defaults.
+- [x] Expose type-hint path text, nested type arguments, and delimiter tokens.
+- [x] Expose enum variant lists, tuple payloads, record payloads, and defaults.
+- [x] Expose trait and impl method headers, signatures, and optional bodies.
+- [x] Preserve leading item, field, variant, method, and statement attributes.
+- [x] Expose typed block and direct statement wrappers.
+- [x] Expose let, return, break, continue, for, if, and else statement tokens.
+- [x] Expose for-loop index/value patterns, iterable expressions, and bodies.
+- [x] Expose if/else-if condition expressions and branch blocks.
+- [x] Expose expression wrappers for let initializers, return values,
+  expression statements, and assignments.
+- [x] Expose binary, unary, field, call, argument-list, named-argument, path,
+  literal, postfix, index, and try-expression wrappers.
+- [x] Expose operator tokens/kinds for binary, range, assignment, and unary
+  expressions.
+- [x] Expose array, map, record, lambda, argument, and parameter list
+  delimiters and separators.
+- [x] Expose map-entry and record-field labels, values, colons, and shorthand
+  classification.
+- [x] Keep the rowan map-vs-block split for bare braced expressions.
+- [x] Expose match expressions, arm lists, guards, separators, and arm bodies.
+- [x] Expose wildcard, literal, binding, path, tuple-variant, and
+  record-variant pattern wrappers.
+- [x] Expose record pattern fields, labels, nested patterns, colons, and
+  shorthand classification.
+- [x] Split rowan-backed typed wrappers into focused syntax, attribute, item,
+  statement, expression, and pattern modules.
+- [ ] Close the remaining pattern coverage called out in `docs/progress.md`.
+- [ ] Close the remaining control-flow expression coverage called out in
+  `docs/progress.md`.
+- [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
+  output after downstream callers are migrated.
+- [ ] Ensure no production parser path returns the old owned AST.
 
 Expected behavior:
 
@@ -306,6 +375,27 @@ cargo test -p vela_syntax ast
 
 - [ ] Task: Move HIR/module graph construction from owned AST to typed CST wrappers.
 
+Checkpoint checklist:
+
+- [x] Add a `ModuleSource`-based module graph insertion API.
+- [x] Make HIR `add_source` consume rowan parse records directly.
+- [x] Lower module spans, imports, and top-level declaration indexes from CST
+  item headers.
+- [x] Lower declaration attributes from CST wrappers.
+- [x] Lower const/global metadata from CST/HIR declarations.
+- [x] Lower function signatures and parameter defaults from CST wrappers.
+- [x] Lower struct fields and enum variants from CST wrappers.
+- [x] Lower trait and impl method metadata from CST wrappers.
+- [x] Bind function and method bodies from CST statement/expression wrappers.
+- [x] Bind local scopes and pattern names from CST pattern wrappers.
+- [x] Route top-level const initializer diagnostics through the CST summary.
+- [x] Remove old HIR type and attribute conversion helpers.
+- [x] Stop reparsing module graph sources through the old owned `SourceFile`
+  API.
+- [ ] Audit remaining HIR-facing tests and helpers for direct old-parser usage.
+- [ ] Keep this phase open until compiler and analysis migration no longer
+  require old AST body fallbacks.
+
 Expected behavior:
 
 - `vela_hir` consumes rowan-backed typed AST wrappers.
@@ -332,6 +422,50 @@ cargo test -p vela_language_service module
 - [ ] Task: Update bytecode compilation and analysis to consume the new syntax/HIR
 shape.
 
+Checkpoint checklist:
+
+- [x] Make the bytecode semantic parse gate read CST parse diagnostics first.
+- [x] Read typed-let contracts from HIR local binding type hints.
+- [x] Read schema type, variant, constructor, field fact, and default-presence
+  metadata from HIR/CST declarations.
+- [x] Discover schema default-expression payloads from rowan struct/enum field
+  wrappers.
+- [x] Evaluate constant defaults from rowan CST expressions where supported.
+- [x] Read function and method signatures/default flags from HIR metadata.
+- [x] Discover function, method, and trait-default parameter default payloads
+  from rowan parameter lists.
+- [x] Introduce a shared compiler body payload carrying rowan CST bodies plus
+  a temporary legacy fallback.
+- [x] Route top-level statement dispatch through rowan statement categories
+  when payloads align.
+- [x] Route expression statement, assignment, call, let, and return payloads
+  through rowan expression categories when payloads align.
+- [x] Route array, map, record, literal, path, field, index, unary, binary,
+  try, call, and block value payloads through CST-aware lowering where covered.
+- [x] Route for, if, block, and match statement bodies through nested rowan body
+  payloads where covered.
+- [x] Route match and for-loop pattern payloads through rowan pattern wrappers
+  where covered.
+- [x] Prefer rowan labels/paths for record constructors, named arguments,
+  tuple enum constructors, method calls, host paths, and host index checks
+  where covered.
+- [x] Prefer rowan expression payloads for script type/fact extraction, value
+  type inference, shape inference, and binary comparison checks where covered.
+- [x] Route language-service analysis diagnostics for unknown members,
+  non-exhaustive matches, and missing record fields through the CST parse
+  record.
+- [ ] Remove `crates/vela_bytecode/src/compiler/legacy_payloads.rs`.
+- [ ] Remove temporary old-AST body and runtime default-expression fallbacks.
+- [ ] Remove production imports of old `Expr`, `ExprKind`, `ItemKind`, and
+  `SourceFile` from `vela_bytecode`.
+- [ ] Remove production imports of old expression AST types from
+  `vela_analysis`.
+- [ ] Close remaining pattern lowering coverage in compiler and analysis.
+- [ ] Close remaining control-flow expression lowering coverage in compiler
+  and analysis.
+- [ ] Prove compile-dir and checked examples pass with CST/HIR-only syntax
+  inputs.
+
 Expected behavior:
 
 - `vela_bytecode` no longer depends on old owned AST types.
@@ -356,6 +490,29 @@ cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
 ### Phase 6: Migrate language service features
 
 - [ ] Task: Make editor features use CST, typed AST wrappers, HIR, and analysis facts.
+
+Checkpoint checklist:
+
+- [x] Store rowan parse records in the language-service parse/index layer.
+- [x] Read parse diagnostics from the CST parse record.
+- [x] Read module-summary fingerprints from CST traversal.
+- [x] Remove the legacy owned `SourceFile` from parse database records.
+- [x] Preserve missing-delimiter diagnostics through CST parse diagnostics.
+- [x] Serve unknown-member diagnostics from CST-backed analysis.
+- [x] Serve non-exhaustive-match diagnostics from CST-backed analysis.
+- [x] Serve missing-record-constructor-field diagnostics from CST-backed
+  analysis.
+- [x] Remove the old owned-AST aggregate analysis diagnostics facade.
+- [x] Use syntax pointers/typed wrappers for map-key and record-field
+  completion contexts where already migrated.
+- [x] Use syntax parse records for formatting range selection.
+- [ ] Audit completion, hover, definition, references, rename, semantic
+  tokens, inlay hints, selection range, folding range, document symbols, and
+  code actions after old AST deletion.
+- [ ] Remove remaining editor test/helper usage of the old parser when it is
+  not intentionally testing the legacy removal boundary.
+- [ ] Prove native LSP protocol behavior remains unchanged after old AST
+  deletion.
 
 Expected behavior:
 
@@ -384,6 +541,32 @@ cargo test -p vela_lsp_server completion semantic_tokens lifecycle
 
 - [ ] Task: Delete the token-gap formatter and build formatting from the CST/typed AST
 layout model.
+
+Checkpoint checklist:
+
+- [x] Feed formatter input from the rowan CST token/trivia stream.
+- [x] Preserve explicit EOF as formatter state.
+- [x] Remove old lexer-gap reconstruction from the production formatting input
+  boundary.
+- [x] Preserve compact container type hints such as `Map<String, i64>` and
+  `Array<i64>`.
+- [x] Preserve comments, shebang trivia, spans, blank-line groups, and final
+  newline insertion through the current formatter path.
+- [x] Serve full-document formatting through the native language-service/LSP
+  boundary.
+- [x] Serve conservative range formatting for selected top-level items and
+  selected impl/trait methods.
+- [x] Serve on-type reflow for top-level items, impl/trait methods, and enum
+  record variants.
+- [ ] Replace the remaining layout state machine with CST/typed-AST layout
+  rules.
+- [ ] Delete obsolete `extract_format_elements`, token-gap `Formatter`, and
+  related production paths.
+- [ ] Add CST-rule coverage for item, statement, expression, pattern, type,
+  trivia, and error-recovery formatting decisions.
+- [ ] Prove full-document, range, and on-type formatting are all CST-rule
+  backed.
+- [ ] Prove formatting diagnostics and skipped-error behavior are explicit.
 
 Expected behavior:
 
@@ -414,6 +597,26 @@ cargo test -p vela_lsp_server formatting
 ### Phase 8: Remove obsolete APIs and close out docs
 
 - [ ] Task: Finish the breaking cleanup and document the new syntax architecture.
+
+Checkpoint checklist:
+
+- [ ] Delete the old owned AST production structs after all call sites migrate.
+- [ ] Delete the old non-lossless parser production API after all call sites
+  migrate.
+- [ ] Delete transitional CST-to-owned fallback helpers.
+- [ ] Delete the token-gap formatter production path.
+- [ ] Audit public `vela_syntax` exports and remove re-exports that are not a
+  deliberate scoped public API.
+- [ ] Audit import paths touched by this track for the "no more than one
+  `super`" rule.
+- [ ] Audit touched active source/test files for the 1200-line rule and split
+  by ownership when needed.
+- [ ] Update `docs/architecture.md` and subsystem architecture docs only for
+  durable architecture changes.
+- [ ] Update `docs/progress.md` when milestone state changes.
+- [ ] Update `docs/decisions.md` for durable syntax architecture decisions.
+- [ ] Run focused syntax/downstream validation.
+- [ ] Run full formatting, clippy, and workspace tests when practical.
 
 Expected behavior:
 
@@ -499,6 +702,14 @@ LSP/editor package behavior or needs a VSIX verification pass.
 
 - [x] Task 1: Add rowan syntax primitives.
 
+Checklist:
+
+- [x] Add the `rowan` dependency.
+- [x] Define syntax kind values and classifiers.
+- [x] Define rowan language glue and syntax aliases.
+- [x] Add the first `Parse<T>` shell.
+- [x] Add syntax primitive tests.
+
 Context: This establishes `SyntaxKind`, `VelaLanguage`, aliases, and `Parse<T>`
 without migrating callers.
 
@@ -509,6 +720,14 @@ cargo test -p vela_syntax syntax
 ```
 
 - [x] Task 2: Make lexer output lossless.
+
+Checklist:
+
+- [x] Keep the existing significant-token stream available for old callers.
+- [x] Add lossless tokens for whitespace, comments, shebangs, unknown text, and
+  malformed fragments.
+- [x] Preserve exact token text and lexical diagnostics.
+- [x] Add token-text round-trip coverage.
 
 Context: The parser cannot become lossless until trivia and unknown text survive
 lexing.
@@ -522,6 +741,19 @@ cargo test -p vela_syntax parser
 
 - [ ] Task 3: Build source-file CST parsing and typed AST wrappers.
 
+Checklist:
+
+- [x] Build a rowan source-file root.
+- [x] Preserve lexical diagnostics in rowan parses.
+- [x] Add typed source-file and item wrappers.
+- [x] Add typed wrappers for declarations, attributes, signatures, type hints,
+  statements, expressions, containers, match arms, and common patterns.
+- [x] Split typed wrapper code into focused submodules.
+- [ ] Finish the remaining pattern wrapper/lowering coverage.
+- [ ] Finish the remaining control-flow expression wrapper/lowering coverage.
+- [ ] Delete the old owned parser output once downstream callers no longer need
+  it.
+
 Context: Replace the parser output for the root source file first, then migrate
 item/expression/type/pattern wrappers by call-site pressure.
 
@@ -532,19 +764,51 @@ cargo test -p vela_syntax parser
 cargo test -p vela_syntax ast
 ```
 
-- [ ] Task 4: Migrate parse summaries and HIR top-level discovery.
+- [ ] Task 4: Migrate parse summaries, HIR, analysis, and compiler callers.
 
-Context: Downstream crates should move through stable typed AST accessors rather
-than direct CST walking at every call site.
+Checklist:
+
+- [x] Read language-service parse diagnostics and module summaries from rowan
+  parse records.
+- [x] Move the HIR/module graph source entrypoint to rowan parse records.
+- [x] Lower top-level HIR metadata, signatures, attributes, and shapes from CST
+  wrappers.
+- [x] Bind HIR function/method bodies, local scopes, and pattern names from CST
+  wrappers.
+- [x] Move initial bytecode metadata and body-payload orchestration to HIR/CST.
+- [x] Prefer CST payloads for many statement, expression, pattern, host-path,
+  call, assignment, type-fact, and value-fact lowering paths.
+- [ ] Remove bytecode legacy payload fallbacks.
+- [ ] Remove old AST expression dependencies from production analysis code.
+- [ ] Prove bytecode and analysis no longer import old owned AST production
+  types.
+
+Context: Downstream crates should move through stable typed AST accessors,
+HIR, and analysis facts rather than direct CST walking at every call site.
 
 Tests:
 
 ```bash
 cargo test -p vela_hir
 cargo test -p vela_language_service module
+cargo test -p vela_analysis
+cargo test -p vela_bytecode
 ```
 
 - [ ] Task 5: Replace formatter with CST layout.
+
+Checklist:
+
+- [x] Feed formatter extraction from rowan token/trivia traversal.
+- [x] Preserve EOF, comments, shebangs, blank lines, and compact container type
+  hints through the current formatting path.
+- [x] Keep native full/range/on-type formatting wired through the
+  language-service and LSP boundaries.
+- [ ] Replace the remaining layout state machine with CST/typed-AST rules.
+- [ ] Delete `extract_format_elements`, token-gap `Formatter`, and related
+  production paths.
+- [ ] Add full/range/on-type CST formatting coverage for declarations,
+  expressions, patterns, types, trivia, and recovered syntax.
 
 Context: The concrete UX bug that motivated this track is formatting drift for
 container type hints and multiline collections.
