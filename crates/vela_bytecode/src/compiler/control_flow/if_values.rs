@@ -43,7 +43,11 @@ impl Compiler<'_, '_> {
                 payload.and_then(CompilerIfPayload::else_body),
                 dst,
             )?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if_value_to(if_expr, dst)?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if_value_with_payloads(
+                if_expr,
+                dst,
+                payload.and_then(CompilerIfPayload::else_if),
+            )?,
             None => {
                 self.emit_constant_to(dst, Constant::Null);
                 false

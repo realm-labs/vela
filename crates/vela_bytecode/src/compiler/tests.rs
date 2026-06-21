@@ -208,6 +208,64 @@ fn assert_cst_return_value_if_body_payloads(
     assert_eq!(else_actual, expected_statement_texts(expected_else));
 }
 
+fn assert_cst_let_initializer_else_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let nested = statements
+        .iter()
+        .filter_map(|statement| statement.let_initializer_if_payload())
+        .filter_map(|payload| {
+            let nested = payload.else_if()?;
+            Some((
+                nested.then_body().map(cst_statement_texts),
+                nested.else_body().map(cst_statement_texts),
+            ))
+        })
+        .collect::<Vec<_>>();
+    let then_actual = nested
+        .iter()
+        .filter_map(|(then, _)| then.clone())
+        .collect::<Vec<_>>();
+    let else_actual = nested
+        .iter()
+        .filter_map(|(_, else_body)| else_body.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
+fn assert_cst_return_value_else_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let nested = statements
+        .iter()
+        .filter_map(|statement| statement.return_value_if_payload())
+        .filter_map(|payload| {
+            let nested = payload.else_if()?;
+            Some((
+                nested.then_body().map(cst_statement_texts),
+                nested.else_body().map(cst_statement_texts),
+            ))
+        })
+        .collect::<Vec<_>>();
+    let then_actual = nested
+        .iter()
+        .filter_map(|(then, _)| then.clone())
+        .collect::<Vec<_>>();
+    let else_actual = nested
+        .iter()
+        .filter_map(|(_, else_body)| else_body.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
 fn assert_cst_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

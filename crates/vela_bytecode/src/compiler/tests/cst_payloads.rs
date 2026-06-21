@@ -224,6 +224,70 @@ fn choose() {
 }
 
 #[test]
+fn semantic_function_else_if_value_expressions_have_cst_body_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose() {
+    let value: i64 = 2;
+    let total = if value > 10 {
+        let high = value;
+        high
+    } else if value > 0 {
+        let mid = value + 1;
+        mid
+    } else {
+        let low = 0;
+        low
+    };
+    return if total > 10 {
+        total
+    } else if total > 0 {
+        let next = total + 1;
+        next
+    } else {
+        0
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+    assert_cst_let_initializer_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let high = value;"),
+            (SyntaxStatementKind::Expr, "high"),
+        ]],
+        &[],
+    );
+    assert_cst_let_initializer_else_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let mid = value + 1;"),
+            (SyntaxStatementKind::Expr, "mid"),
+        ]],
+        &[vec![
+            (SyntaxStatementKind::Let, "let low = 0;"),
+            (SyntaxStatementKind::Expr, "low"),
+        ]],
+    );
+    assert_cst_return_value_if_body_payloads(
+        &payload.body,
+        &[vec![(SyntaxStatementKind::Expr, "total")]],
+        &[],
+    );
+    assert_cst_return_value_else_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = total + 1;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed else-if value bodies should compile");
+}
+
+#[test]
 fn semantic_function_block_value_expressions_have_cst_body_payloads() {
     let source = SourceId::new(1);
     let text = r#"

@@ -321,9 +321,9 @@ rowan body payloads, letting block-value prefix and statement bodies reuse the
 CST-aware nested statement dispatcher while preserving legacy tail-expression
 fallbacks.
 Top-level let initializer and return-value if expressions now materialize
-rowan then/else block payloads, letting value-position if branch blocks reuse
-the CST-aware nested statement dispatcher while preserving legacy branch
-fallbacks when syntax alignment is unavailable.
+rowan then/else and nested else-if block payloads, letting value-position if
+branch blocks reuse the CST-aware nested statement dispatcher while preserving
+legacy branch fallbacks when syntax alignment is unavailable.
 Top-level let initializer and return-value match expressions now materialize
 rowan block-body payloads for match arms, letting value-position match arm
 blocks reuse the CST-aware nested statement dispatcher while preserving legacy

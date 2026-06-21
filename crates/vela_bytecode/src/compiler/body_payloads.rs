@@ -34,6 +34,7 @@ pub(super) struct CompilerIfPayload<'ast> {
     condition_operator: Option<BinaryOp>,
     then_body: Option<CompilerBodyPayload<'ast>>,
     else_body: Option<CompilerBodyPayload<'ast>>,
+    else_if: Option<Box<CompilerIfPayload<'ast>>>,
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
@@ -154,10 +155,18 @@ fn if_payload_for_fallback<'ast>(
             .map(|body| CompilerBodyPayload::syntax(source, body, block)),
         Some(ElseBranch::If(_)) | None => None,
     };
+    let else_if = match fallback.else_branch.as_ref() {
+        Some(ElseBranch::If(if_expr)) => {
+            let syntax_if = syntax.else_if()?;
+            if_payload_for_fallback(Some(source), syntax_if, if_expr).map(Box::new)
+        }
+        Some(ElseBranch::Block(_)) | None => None,
+    };
     Some(CompilerIfPayload {
         condition_operator,
         then_body,
         else_body,
+        else_if,
     })
 }
 
@@ -420,5 +429,9 @@ impl<'ast> CompilerIfPayload<'ast> {
 
     pub(super) fn else_body(&self) -> Option<&CompilerBodyPayload<'ast>> {
         self.else_body.as_ref()
+    }
+
+    pub(super) fn else_if(&self) -> Option<&CompilerIfPayload<'ast>> {
+        self.else_if.as_deref()
     }
 }
