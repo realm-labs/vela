@@ -807,7 +807,11 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn emit_truthy_to_bool(&mut self, dst: Register, src: Register) -> CompileResult<()> {
+    pub(super) fn emit_truthy_to_bool(
+        &mut self,
+        dst: Register,
+        src: Register,
+    ) -> CompileResult<()> {
         self.emit(UnlinkedInstructionKind::Truthy { dst, src });
         Ok(())
     }

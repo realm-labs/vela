@@ -105,6 +105,9 @@ impl Compiler<'_, '_> {
                 let Some(op) = binary.operator() else {
                     return Err(param_default_unsupported(source, expression));
                 };
+                if matches!(op, BinaryOp::Or | BinaryOp::And) {
+                    return self.compile_param_default_logical_chain(source, expression, op);
+                }
                 let Some(left) = binary.lhs() else {
                     return Err(param_default_unsupported(source, expression));
                 };
@@ -194,10 +197,7 @@ impl Compiler<'_, '_> {
         left: &SyntaxExpression,
         right: &SyntaxExpression,
     ) -> CompileResult<Register> {
-        if matches!(
-            op,
-            BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And
-        ) {
+        if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
             return Err(param_default_unsupported(source, expression));
         }
         let lhs = self.compile_param_default_expression(source, left)?;
@@ -224,6 +224,81 @@ impl Compiler<'_, '_> {
             }
         };
         self.emit_spanned(instruction, span_for(source, expression));
+        Ok(dst)
+    }
+
+    fn compile_param_default_logical_chain(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        op: BinaryOp,
+    ) -> CompileResult<Register> {
+        let Some(operands) = logical_chain_syntax_operands(expression, op) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        match op {
+            BinaryOp::And => self.compile_param_default_logical_and_chain(source, &operands),
+            BinaryOp::Or => self.compile_param_default_logical_or_chain(source, &operands),
+            _ => unreachable!("logical chain only supports && and ||"),
+        }
+    }
+
+    fn compile_param_default_logical_and_chain(
+        &mut self,
+        source: SourceId,
+        operands: &[SyntaxExpression],
+    ) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, true);
+            return Ok(dst);
+        };
+
+        let mut false_branches = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let value = self.compile_param_default_expression(source, operand)?;
+            false_branches.push(self.emit_jump_if_false(value));
+        }
+
+        let last = self.compile_param_default_expression(source, last)?;
+        self.emit_truthy_to_bool(dst, last)?;
+        let end = self.emit_jump();
+
+        for false_branch in false_branches {
+            self.patch_jump(false_branch, self.current_offset())?;
+        }
+        self.emit_bool_constant_to(dst, false);
+        self.patch_jump(end, self.current_offset())?;
+
+        Ok(dst)
+    }
+
+    fn compile_param_default_logical_or_chain(
+        &mut self,
+        source: SourceId,
+        operands: &[SyntaxExpression],
+    ) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, false);
+            return Ok(dst);
+        };
+
+        let mut end_jumps = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let value = self.compile_param_default_expression(source, operand)?;
+            let next_operand = self.emit_jump_if_false(value);
+            self.emit_bool_constant_to(dst, true);
+            end_jumps.push(self.emit_jump());
+            self.patch_jump(next_operand, self.current_offset())?;
+        }
+
+        let last = self.compile_param_default_expression(source, last)?;
+        self.emit_truthy_to_bool(dst, last)?;
+        for end in end_jumps {
+            self.patch_jump(end, self.current_offset())?;
+        }
+
         Ok(dst)
     }
 
@@ -273,10 +348,15 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
             let Some(op) = binary.operator() else {
                 return false;
             };
-            !matches!(
-                op,
-                BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And
-            ) && binary
+            if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
+                return false;
+            }
+            if matches!(op, BinaryOp::Or | BinaryOp::And) {
+                return logical_chain_syntax_operands(expression, op).is_some_and(|operands| {
+                    operands.iter().all(param_default_cst_lowering_covers)
+                });
+            }
+            binary
                 .lhs()
                 .is_some_and(|left| param_default_cst_lowering_covers(&left))
                 && binary
@@ -309,6 +389,32 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
         | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match => false,
     }
+}
+
+fn logical_chain_syntax_operands(
+    expression: &SyntaxExpression,
+    op: BinaryOp,
+) -> Option<Vec<SyntaxExpression>> {
+    fn collect(
+        expression: SyntaxExpression,
+        op: BinaryOp,
+        operands: &mut Vec<SyntaxExpression>,
+    ) -> Option<()> {
+        if let Some(binary) = expression.as_binary()
+            && binary.operator() == Some(op)
+        {
+            collect(binary.lhs()?, op, operands)?;
+            collect(binary.rhs()?, op, operands)?;
+            return Some(());
+        }
+
+        operands.push(expression);
+        Some(())
+    }
+
+    let mut operands = Vec::new();
+    collect(expression.clone(), op, &mut operands)?;
+    Some(operands)
 }
 
 fn syntax_map_key_supported(key: &SyntaxExpression) -> bool {
@@ -387,7 +493,7 @@ mod tests {
 
     use crate::compiler::syntax_payloads::ParamDefaultExpression;
 
-    use super::param_default_values;
+    use super::{param_default_cst_lowering_covers, param_default_values};
 
     #[test]
     fn param_default_values_keep_cst_expression_payloads() {
@@ -467,5 +573,42 @@ fn cst(first = 1) {
             defaults[0].is_none(),
             "mismatched default spans must not receive index-based CST params"
         );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_logical_chains() {
+        assert!(
+            param_default_cst_lowering_covers(&first_param_default(
+                "fn cst(value = true || false || (1 < 2)) { return value; }"
+            )),
+            "logical defaults with supported operands should lower from CST"
+        );
+        assert!(
+            param_default_cst_lowering_covers(&first_param_default(
+                "fn cst(value = false && true && (2 > 1)) { return value; }"
+            )),
+            "logical defaults with parenthesized supported operands should lower from CST"
+        );
+        assert!(
+            !param_default_cst_lowering_covers(&first_param_default(
+                "fn cst(value = true || expensive()) { return value; }"
+            )),
+            "logical defaults keep the fallback when an operand is not CST-lowered yet"
+        );
+    }
+
+    fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
+        parse_syntax_source(SourceId::new(1), text)
+            .tree()
+            .functions()
+            .next()
+            .expect("function")
+            .param_list()
+            .expect("parameter list")
+            .params()
+            .next()
+            .expect("parameter")
+            .default_value()
+            .expect("default expression")
     }
 }

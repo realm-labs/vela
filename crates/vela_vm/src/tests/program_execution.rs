@@ -706,6 +706,32 @@ fn main() {
 }
 
 #[test]
+fn runs_logical_parameter_default_expressions() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn defaults(any_true = true || (1 / 0 == 0), all_false = false && (1 / 0 == 0)) {
+    if any_true && !all_false {
+        return 7;
+    }
+    return 0;
+}
+
+fn main() {
+    return defaults();
+}
+"#,
+    )
+    .expect("logical parameter defaults should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
+    );
+}
+
+#[test]
 fn runs_entrypoint_parameter_defaults() {
     let code = compile_function_source(
         SourceId::new(1),

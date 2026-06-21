@@ -280,8 +280,9 @@ payload boundary, so script impl lowering consumes the temporary fallback
 wrapper without directly traversing old owned-AST impl or trait items. Function,
 method, and trait default parameter-expression discovery now lives in the
 rowan syntax payload boundary and keys CST payloads from HIR signature spans;
-parameter default lowering now compiles supported literal, path, unary, binary,
-array, and map defaults directly from rowan CST payloads and keeps the
+parameter default lowering now compiles supported literal, path, unary,
+ordinary/logical binary, array, and map defaults directly from rowan CST
+payloads and keeps the
 temporary legacy owned-AST fallback only for default expression forms that do
 not yet have direct CST lowering. Schema default-expression payload
 matching now stays on rowan CST field and variant wrappers, so semantic
