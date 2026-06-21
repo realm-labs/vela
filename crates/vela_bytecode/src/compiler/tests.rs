@@ -24,6 +24,16 @@ fn assert_cst_param_default(
     assert_eq!(expression.syntax().text().to_string(), expected_text);
 }
 
+fn assert_cst_body(
+    actual_source: SourceId,
+    body: &vela_syntax::ast::SyntaxBlock,
+    expected_source: SourceId,
+    expected_text: &str,
+) {
+    assert_eq!(actual_source, expected_source);
+    assert_eq!(body.syntax().text().to_string(), expected_text);
+}
+
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -63,6 +73,12 @@ fn grant(base, amount = 10, bonus = amount + 1) {
     )
     .expect("source should parse");
     let (payload, _, _) = semantic.function("grant").expect("grant function");
+    assert_cst_body(
+        payload.source,
+        &payload.syntax_body,
+        source,
+        "{\n    return base + amount + bonus;\n}",
+    );
     assert!(payload.param_defaults[0].is_none());
     assert_cst_param_default(&payload.param_defaults[1], source, "10");
     assert_cst_param_default(&payload.param_defaults[2], source, "amount + 1");
@@ -88,6 +104,12 @@ impl Counter {
         .iter()
         .find(|method| method.method_name == "add")
         .expect("script method");
+    assert_cst_body(
+        method.source,
+        &method.syntax_body,
+        source,
+        "{\n        self.value += amount;\n    }",
+    );
     assert!(method.default_values[0].is_none());
     assert_cst_param_default(&method.default_values[1], source, "1");
 }

@@ -254,16 +254,20 @@ Bytecode script function lookup and parameter default flags now read HIR functio
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload
 association now starts from the matching rowan CST function header before
-attaching the temporary legacy owned-AST body/default-expression fallback.
+attaching the temporary legacy owned-AST body/default-expression fallback, and
+the function payload carries the matching rowan CST body block for the next
+body-lowering migration slice.
 Bytecode script-method parameter default flags now read HIR method signatures,
 and script method/default trait method parameter default-expression payloads are
 discovered from rowan CST parameter lists while method body/default association
-is keyed by HIR method metadata. Bytecode const value discovery now reads HIR
-const declarations in source order and evaluates initializer expression payloads
-from the rowan CST. Bytecode script impl method records now read names,
-signatures, explicit/default method metadata, and stable dispatch identity from
-HIR impl and trait shapes, leaving the legacy owned AST only as the temporary
-method body and runtime default-expression compiler fallback.
+is keyed by HIR method metadata, with script method payloads carrying rowan CST
+body blocks alongside the temporary legacy owned-AST fallback. Bytecode const
+value discovery now reads HIR const declarations in source order and evaluates
+initializer expression payloads from the rowan CST. Bytecode script impl method
+records now read names, signatures, explicit/default method metadata, and stable
+dispatch identity from HIR impl and trait shapes, leaving the legacy owned AST
+only as the temporary method body and runtime default-expression compiler
+fallback.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and runtime default-expression fallback behind a dedicated
 compiler payload boundary, keeping semantic orchestration on HIR/CST diagnostics
