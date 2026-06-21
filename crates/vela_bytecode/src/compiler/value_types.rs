@@ -737,6 +737,7 @@ fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
 }
 
 impl super::Compiler<'_, '_> {
+    #[cfg(test)]
     pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
         self.value_type_for_expr_with_payload(expr, None)
     }

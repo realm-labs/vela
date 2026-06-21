@@ -213,6 +213,50 @@ fn logical_values() {
     compile_program_source(source, text).expect("CST-backed logical operands should compile");
 }
 
+#[test]
+fn identity_comparison_diagnostics_prefer_cst_operand_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_binary = true === false;
+    let legacy_binary = 1 === 2;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_binary = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST binary payload");
+            let legacy_binary = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy binary fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_binary
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_binary.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+                .expect_err("static scalar identity comparison should be rejected");
+            let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+                panic!("expected semantic diagnostics");
+            };
+            let diagnostic = diagnostics
+                .iter()
+                .find(|diagnostic| {
+                    diagnostic.code.as_deref() == Some("compiler::invalid_identity_comparison")
+                })
+                .expect("identity comparison diagnostic");
+            assert!(diagnostic.message.contains("type `bool`"), "{diagnostic:?}");
+            assert!(!diagnostic.message.contains("type `i64`"), "{diagnostic:?}");
+        },
+    );
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
