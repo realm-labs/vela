@@ -412,6 +412,9 @@ Call path dispatch now prefers rowan CST callee path segments for local path
 method classification, path-root checks, and fallback callable names.
 Record assignment target lowering now prefers rowan CST path segments and
 field names before falling back to temporary legacy target names.
+Host path resolution now prefers rowan CST field names and index operand
+payloads for aligned host field/index chains before falling back to temporary
+legacy host path expressions.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -103,9 +103,7 @@ impl Compiler<'_, '_> {
         expr: &'ast Expr,
         payload: Option<&CompilerExpressionPayload<'ast>>,
     ) -> Option<ResolvedHostPath<'ast>> {
-        let mut resolved = self.resolve_host_path(expr)?;
-        attach_host_path_payloads(expr, payload.cloned(), &mut resolved.path, &mut 0);
-        Some(resolved)
+        self.resolve_host_path_with_owned_payload(expr, payload.cloned())
     }
 
     pub(super) fn resolve_host_path<'ast>(
@@ -151,6 +149,63 @@ impl Compiler<'_, '_> {
         }
     }
 
+    fn resolve_host_path_with_owned_payload<'ast>(
+        &self,
+        expr: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        match &expr.kind {
+            ExprKind::Field { base, name } => {
+                let base_payload = payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::field_base_payload);
+                let mut receiver = self.resolve_host_path_receiver_with_payload(base, base_payload);
+                let name = payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::field_name)
+                    .unwrap_or_else(|| name.clone());
+                let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
+                receiver.path.segments.push(field.part);
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: field.type_hint,
+                })
+            }
+            ExprKind::Path(_) => self.resolve_host_path(expr),
+            ExprKind::Index { base, index } => {
+                let operands = payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::index_operand_payloads);
+                let (base_payload, index_payload) =
+                    operands.map_or((None, None), |(base, index)| (Some(base), Some(index)));
+                let mut receiver =
+                    self.resolve_host_path_index_receiver_with_payload(base, base_payload)?;
+                let dynamic_kind = receiver
+                    .type_name
+                    .as_deref()
+                    .and_then(|type_name| self.facts.options.host_index_capability(type_name))
+                    .and_then(|capability| capability.key_type.as_deref())
+                    .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
+                receiver.path.segments.push(HostPathPart::Value {
+                    expr: index,
+                    payload: index_payload,
+                    dynamic_kind,
+                });
+                let value_type = receiver.type_name.as_deref().and_then(|type_name| {
+                    self.facts
+                        .options
+                        .host_index_capability(type_name)
+                        .and_then(|capability| capability.value_type.clone())
+                });
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: value_type,
+                })
+            }
+            _ => None,
+        }
+    }
+
     fn resolve_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         match &receiver.kind {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self
@@ -175,12 +230,45 @@ impl Compiler<'_, '_> {
         }
     }
 
+    fn resolve_host_path_receiver_with_payload<'ast>(
+        &self,
+        receiver: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    ) -> ResolvedHostPath<'ast> {
+        match &receiver.kind {
+            ExprKind::Field { .. } | ExprKind::Index { .. } => self
+                .resolve_host_path_with_owned_payload(receiver, payload.clone())
+                .unwrap_or_else(|| self.expr_host_path_receiver_with_payload(receiver, payload)),
+            ExprKind::Path(_) => self
+                .resolve_host_path(receiver)
+                .unwrap_or_else(|| self.expr_host_path_receiver_with_payload(receiver, payload)),
+            _ => self.expr_host_path_receiver_with_payload(receiver, payload),
+        }
+    }
+
     fn expr_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         ResolvedHostPath {
             path: HostPath {
                 root: HostPathRoot::Expr {
                     expr: receiver,
                     payload: None,
+                },
+                segments: Vec::new(),
+            },
+            type_name: self.script_type_for_expr(receiver),
+        }
+    }
+
+    fn expr_host_path_receiver_with_payload<'ast>(
+        &self,
+        receiver: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    ) -> ResolvedHostPath<'ast> {
+        ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::Expr {
+                    expr: receiver,
+                    payload,
                 },
                 segments: Vec::new(),
             },
@@ -196,6 +284,22 @@ impl Compiler<'_, '_> {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self.resolve_host_path(receiver),
             ExprKind::Path(path) => self
                 .host_field_path_parts(receiver.span, path)
+                .or_else(|| self.host_index_root_path(receiver.span, path)),
+            _ => None,
+        }
+    }
+
+    fn resolve_host_path_index_receiver_with_payload<'ast>(
+        &self,
+        receiver: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        match &receiver.kind {
+            ExprKind::Field { .. } | ExprKind::Index { .. } => {
+                self.resolve_host_path_with_owned_payload(receiver, payload)
+            }
+            ExprKind::Path(path) => self
+                .resolve_host_path(receiver)
                 .or_else(|| self.host_index_root_path(receiver.span, path)),
             _ => None,
         }
