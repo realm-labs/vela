@@ -253,7 +253,6 @@ fn impl_method_payloads<'ast>(
     let Some(syntax_item) = syntax_impl_item(syntax, metadata) else {
         return BTreeMap::new();
     };
-    let legacy_methods = legacy.impl_methods_by_body_span();
     metadata
         .methods
         .iter()
@@ -262,7 +261,7 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let legacy_method = legacy_methods.get(&method_metadata.body_span)?;
+            let fallback_body = legacy.body_by_span(method_metadata.body_span)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -271,7 +270,7 @@ fn impl_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, fallback_body),
                 },
             ))
         })
@@ -288,13 +287,12 @@ fn trait_default_method_payloads<'ast>(
     let Some(syntax_item) = syntax_trait_item(syntax, path) else {
         return BTreeMap::new();
     };
-    let legacy_methods = legacy.trait_default_methods_by_body_span();
     shape
         .methods
         .iter()
         .filter_map(|method_metadata| {
             let span = method_metadata.default_body_span?;
-            let legacy_method = legacy_methods.get(&span)?;
+            let fallback_body = legacy.body_by_span(span)?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
@@ -307,7 +305,7 @@ fn trait_default_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, fallback_body),
                 },
             ))
         })
