@@ -248,16 +248,34 @@ fn param_default_cst_lowering_covers_simple_match_expressions() {
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_payload_match_pattern_fallbacks() {
-    let default = param_default_at(
-        "fn cst(kind, value = match kind { Option::Some(inner) => inner, _ => 0 }) { return value; }",
-        1,
-    );
+fn param_default_cst_lowering_covers_payload_match_patterns() {
+    let source = SourceId::new(1);
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: param_default_at(
+                "fn cst(kind, value = match kind { Option::Some(inner) => inner, _ => 0 }) { return value; }",
+                1,
+            ),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: param_default_at(
+                "fn cst(kind, value = match kind { Result::Err { code, message: _ } => code, _ => 0 }) { return value; }",
+                1,
+            ),
+        }),
+    ];
 
-    assert!(
-        !param_default_cst_lowering_covers(&default),
-        "payload match patterns still need the temporary fallback until pattern lowering is complete"
-    );
+    let defaults = param_default_values(&syntax_defaults, &[]);
+
+    assert_eq!(defaults.len(), 2);
+    for default in defaults {
+        assert!(
+            default.expect("direct CST default").fallback.is_none(),
+            "payload match pattern defaults should lower directly from CST"
+        );
+    }
 }
 
 #[test]

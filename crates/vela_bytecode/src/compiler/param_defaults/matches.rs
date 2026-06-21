@@ -8,7 +8,7 @@ use vela_syntax::ast::{
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
 use crate::compiler::const_eval::compile_literal_constant;
-use crate::compiler::patterns::{PatternBindingFacts, enum_variant_path};
+use crate::compiler::patterns::{PatternBindingFacts, enum_variant_path, tuple_variant_field_name};
 use crate::compiler::value_types::StaticExprType;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
@@ -123,9 +123,68 @@ impl Compiler<'_, '_> {
                 }
                 self.compile_variant_tag_pattern(scrutinee, &path)
             }
-            Some(SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant) | None => {
-                Err(param_default_pattern_unsupported(source, pattern))
+            Some(SyntaxPatternKind::TupleVariant) => {
+                let Some(tuple) = pattern.as_tuple_variant() else {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                };
+                let path = tuple.path_segments();
+                if enum_variant_path(&path).is_none() {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                }
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                for (index, field_pattern) in tuple.patterns().enumerate() {
+                    if matches!(
+                        field_pattern.pattern_kind(),
+                        Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding)
+                    ) {
+                        continue;
+                    }
+                    let field_value = self.emit_enum_pattern_field_read(
+                        scrutinee,
+                        &path,
+                        tuple_variant_field_name(index),
+                    )?;
+                    jumps.extend(self.compile_param_default_match_pattern(
+                        source,
+                        field_value,
+                        &field_pattern,
+                    )?);
+                }
+                Ok(jumps)
             }
+            Some(SyntaxPatternKind::RecordVariant) => {
+                let Some(record) = pattern.as_record_variant() else {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                };
+                let path = record.path_segments();
+                if enum_variant_path(&path).is_none() {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                }
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                for field in record.fields() {
+                    let Some(field_pattern) = field.pattern() else {
+                        continue;
+                    };
+                    if matches!(
+                        field_pattern.pattern_kind(),
+                        Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding)
+                    ) {
+                        continue;
+                    }
+                    let Some(field_name) = field.label_text() else {
+                        return Err(param_default_pattern_unsupported(source, pattern));
+                    };
+                    let field_value =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name)?;
+                    jumps.extend(self.compile_param_default_match_pattern(
+                        source,
+                        field_value,
+                        &field_pattern,
+                    )?);
+                }
+                Ok(jumps)
+            }
+            None => Err(param_default_pattern_unsupported(source, pattern)),
         }
     }
 
@@ -137,14 +196,6 @@ impl Compiler<'_, '_> {
         arm: &SyntaxMatchArm,
         facts: PatternBindingFacts,
     ) -> CompileResult<()> {
-        let Some(name) = pattern.binding_name() else {
-            return Ok(());
-        };
-        let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::Move {
-            dst,
-            src: scrutinee,
-        });
         let span = arm
             .body_as_expression()
             .map(|body| span_for(source, &body))
@@ -153,7 +204,101 @@ impl Compiler<'_, '_> {
                     .map(|block| span_for_range(source, block.syntax().text_range()))
             })
             .unwrap_or_else(|| span_for_range(source, arm.syntax().text_range()));
-        self.bind_param_default_pattern_local(&name, dst, span, facts);
+        self.bind_param_default_match_pattern_locals_at_span(
+            source, scrutinee, pattern, span, facts,
+        )
+    }
+
+    fn bind_param_default_match_pattern_locals_at_span(
+        &mut self,
+        source: SourceId,
+        scrutinee: Register,
+        pattern: &SyntaxPattern,
+        span: Span,
+        facts: PatternBindingFacts,
+    ) -> CompileResult<()> {
+        match pattern.pattern_kind() {
+            Some(SyntaxPatternKind::Binding) => {
+                let Some(name) = pattern.binding_name() else {
+                    return Ok(());
+                };
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst,
+                    src: scrutinee,
+                });
+                self.bind_param_default_pattern_local(&name, dst, span, facts);
+            }
+            Some(SyntaxPatternKind::TupleVariant) => {
+                let Some(tuple) = pattern.as_tuple_variant() else {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                };
+                let path = tuple.path_segments();
+                for (index, field_pattern) in tuple.patterns().enumerate() {
+                    if !param_default_pattern_declares_locals(&field_pattern) {
+                        continue;
+                    }
+                    let field_name = tuple_variant_field_name(index);
+                    let field_value =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
+                    let field_facts = PatternBindingFacts::value(
+                        self.enum_variant_field_value_type(&path, &field_name),
+                    )
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
+                    self.bind_param_default_match_pattern_locals_at_span(
+                        source,
+                        field_value,
+                        &field_pattern,
+                        span,
+                        field_facts,
+                    )?;
+                }
+            }
+            Some(SyntaxPatternKind::RecordVariant) => {
+                let Some(record) = pattern.as_record_variant() else {
+                    return Err(param_default_pattern_unsupported(source, pattern));
+                };
+                let path = record.path_segments();
+                for field in record.fields() {
+                    let Some(field_name) = field.label_text() else {
+                        return Err(param_default_pattern_unsupported(source, pattern));
+                    };
+                    let nested_pattern = field.pattern();
+                    if nested_pattern
+                        .as_ref()
+                        .is_some_and(|pattern| !param_default_pattern_declares_locals(pattern))
+                    {
+                        continue;
+                    }
+                    let field_value =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
+                    let field_facts = PatternBindingFacts::value(
+                        self.enum_variant_field_value_type(&path, &field_name),
+                    )
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
+                    if let Some(nested_pattern) = nested_pattern {
+                        self.bind_param_default_match_pattern_locals_at_span(
+                            source,
+                            field_value,
+                            &nested_pattern,
+                            span,
+                            field_facts,
+                        )?;
+                    } else {
+                        self.bind_param_default_pattern_local(
+                            &field_name,
+                            field_value,
+                            span,
+                            field_facts,
+                        );
+                    }
+                }
+            }
+            Some(
+                SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Path,
+            )
+            | None => {}
+        }
         Ok(())
     }
 
@@ -244,7 +389,48 @@ fn param_default_pattern_cst_lowering_covers(pattern: &SyntaxPattern) -> bool {
         Some(SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding) => true,
         Some(SyntaxPatternKind::Literal) => pattern.literal().is_some(),
         Some(SyntaxPatternKind::Path) => enum_variant_path(&pattern.path_segments()).is_some(),
-        Some(SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant) | None => false,
+        Some(SyntaxPatternKind::TupleVariant) => pattern.as_tuple_variant().is_some_and(|tuple| {
+            enum_variant_path(&tuple.path_segments()).is_some()
+                && tuple
+                    .patterns()
+                    .all(|pattern| param_default_pattern_cst_lowering_covers(&pattern))
+        }),
+        Some(SyntaxPatternKind::RecordVariant) => {
+            pattern.as_record_variant().is_some_and(|record| {
+                enum_variant_path(&record.path_segments()).is_some()
+                    && record.fields().all(|field| {
+                        field.label_text().is_some()
+                            && field.pattern().is_none_or(|pattern| {
+                                param_default_pattern_cst_lowering_covers(&pattern)
+                            })
+                    })
+            })
+        }
+        None => false,
+    }
+}
+
+fn param_default_pattern_declares_locals(pattern: &SyntaxPattern) -> bool {
+    match pattern.pattern_kind() {
+        Some(SyntaxPatternKind::Binding) => true,
+        Some(SyntaxPatternKind::TupleVariant) => pattern.as_tuple_variant().is_some_and(|tuple| {
+            tuple
+                .patterns()
+                .any(|pattern| param_default_pattern_declares_locals(&pattern))
+        }),
+        Some(SyntaxPatternKind::RecordVariant) => {
+            pattern.as_record_variant().is_some_and(|record| {
+                record.fields().any(|field| {
+                    field
+                        .pattern()
+                        .is_none_or(|pattern| param_default_pattern_declares_locals(&pattern))
+                })
+            })
+        }
+        Some(
+            SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Path,
+        )
+        | None => false,
     }
 }
 

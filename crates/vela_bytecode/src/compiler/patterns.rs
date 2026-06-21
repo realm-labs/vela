@@ -117,7 +117,7 @@ impl PatternBindingFacts {
         self.value_shape.clone()
     }
 
-    fn with_script(mut self, script: Option<ScriptTypeFact>) -> Self {
+    pub(super) fn with_script(mut self, script: Option<ScriptTypeFact>) -> Self {
         self.script = script;
         self
     }
@@ -344,7 +344,11 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn enum_variant_field_fact(&self, path: &[String], field: &str) -> Option<ScriptTypeFact> {
+    pub(in crate::compiler) fn enum_variant_field_fact(
+        &self,
+        path: &[String],
+        field: &str,
+    ) -> Option<ScriptTypeFact> {
         let (_, variant) = enum_variant_path(path)?;
         let enum_name = self.type_symbol_for_pattern(path)?;
         self.facts
@@ -352,7 +356,7 @@ impl Compiler<'_, '_> {
             .enum_variant_field_fact(&enum_name, &variant, field)
     }
 
-    fn enum_variant_field_value_type(
+    pub(in crate::compiler) fn enum_variant_field_value_type(
         &self,
         path: &[String],
         field: &str,
@@ -364,7 +368,7 @@ impl Compiler<'_, '_> {
             .enum_variant_field_value_type(&enum_name, &variant, field)
     }
 
-    fn emit_enum_pattern_field_read(
+    pub(in crate::compiler) fn emit_enum_pattern_field_read(
         &mut self,
         scrutinee: Register,
         path: &[String],

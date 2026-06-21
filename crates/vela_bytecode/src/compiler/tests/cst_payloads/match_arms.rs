@@ -343,6 +343,27 @@ fn classify(state) {
 }
 
 #[test]
+fn payload_match_parameter_defaults_compile_from_cst() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Result {
+    Err { code: i64, detail: String }
+    Ok(i64)
+}
+
+fn classify(result, code = match result {
+    Result::Err { code, detail: _ } => code,
+    Result::Ok(value) => value,
+}) {
+    return code;
+}
+"#;
+
+    compile_program_source(source, text)
+        .expect("payload match parameter defaults should compile from CST");
+}
+
+#[test]
 fn mismatched_match_pattern_payloads_do_not_pair_children_by_index_or_label() {
     let source = SourceId::new(1);
     let text = r#"
