@@ -268,7 +268,7 @@ fn impl_method_payloads<'ast>(
                     default_values: syntax_param_default_values(
                         source,
                         syntax_method.param_list(),
-                        legacy_method.params,
+                        &legacy_method.param_defaults,
                         method_metadata.signature.params.len(),
                     ),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
@@ -305,7 +305,7 @@ fn trait_default_method_payloads<'ast>(
                     default_values: syntax_param_default_values(
                         source,
                         syntax_method.param_list(),
-                        legacy_method.params,
+                        &legacy_method.param_defaults,
                         method_metadata.signature.params.len(),
                     ),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),

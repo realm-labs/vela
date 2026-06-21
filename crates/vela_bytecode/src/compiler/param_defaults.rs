@@ -1,5 +1,5 @@
 use vela_common::{SourceId, Span};
-use vela_syntax::ast::{AstNode, Expr, Param, SyntaxExpression, SyntaxParamList};
+use vela_syntax::ast::{AstNode, Expr, SyntaxExpression, SyntaxParamList};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
@@ -25,7 +25,7 @@ impl<'ast> ParamDefaultValue<'ast> {
 pub(super) fn syntax_param_default_values<'ast>(
     source: SourceId,
     params: Option<SyntaxParamList>,
-    legacy_params: &'ast [Param],
+    legacy_defaults: &[Option<&'ast Expr>],
     param_count: usize,
 ) -> Vec<Option<ParamDefaultValue<'ast>>> {
     let syntax_params = params
@@ -33,9 +33,7 @@ pub(super) fn syntax_param_default_values<'ast>(
         .unwrap_or_default();
     (0..param_count)
         .map(|index| {
-            let legacy = legacy_params
-                .get(index)
-                .and_then(|param| param.default_value.as_ref())?;
+            let legacy = legacy_defaults.get(index).copied().flatten()?;
             let expression = syntax_default_expression_for_fallback(&syntax_params, legacy)?;
             Some(ParamDefaultValue {
                 source,
@@ -67,7 +65,7 @@ fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool
 #[cfg(test)]
 mod tests {
     use vela_common::{SourceId, Span};
-    use vela_syntax::ast::{Expr, ExprKind, Param};
+    use vela_syntax::ast::{Expr, ExprKind};
     use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
     use super::syntax_param_default_values;
@@ -86,21 +84,17 @@ fn cst(first = 1) {
             .functions()
             .find(|function| function.name_text().as_deref() == Some("cst"))
             .expect("CST function");
-        let fallback_params = vec![Param {
-            name: "first".to_owned(),
-            span: Span::new(source, 0, 0),
-            type_hint: None,
-            default_value: Some(Expr {
-                kind: ExprKind::Error,
-                span: Span::new(source, 1000, 1001),
-            }),
-        }];
+        let fallback_expr = Expr {
+            kind: ExprKind::Error,
+            span: Span::new(source, 1000, 1001),
+        };
+        let fallback_defaults = vec![Some(&fallback_expr)];
 
         let defaults = syntax_param_default_values(
             source,
             cst_function.param_list(),
-            &fallback_params,
-            fallback_params.len(),
+            &fallback_defaults,
+            fallback_defaults.len(),
         );
 
         assert_eq!(defaults.len(), 1);
