@@ -889,7 +889,10 @@ fn compiler_lowers_host_path_push_calls() {
         SourceId::new(1),
         r#"
 fn main(player: Player) {
-    player.inventory.rewards.push("gold");
+    player.inventory.rewards.push({
+        let reward = "gold";
+        reward
+    });
     return 1;
 }
 "#,

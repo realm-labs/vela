@@ -7,6 +7,7 @@ use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructi
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
+use super::call_args::CallArgumentSyntax;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -328,6 +329,7 @@ impl Compiler<'_, '_> {
         &mut self,
         callee: &Expr,
         args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
         let path = match &callee.kind {
             ExprKind::Field { base, name } if name == "push" => self.host_field_path(base),
@@ -349,7 +351,7 @@ impl Compiler<'_, '_> {
             )));
         };
         let root = self.compile_host_path_root(path.root)?;
-        let value = self.compile_expr(&arg.value)?;
+        let value = self.compile_call_argument_value(arg, arg_syntax)?;
         self.emit_host_mutate(root, path, HostMutationOp::Push, value, callee.span)?;
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);

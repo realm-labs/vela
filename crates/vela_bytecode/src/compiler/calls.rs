@@ -96,7 +96,7 @@ impl Compiler<'_, '_> {
             return Ok(remove);
         }
 
-        if let Some(push) = self.host_path_push_call(callee, args)? {
+        if let Some(push) = self.host_path_push_call(callee, args, arg_syntax)? {
             return Ok(push);
         }
 
