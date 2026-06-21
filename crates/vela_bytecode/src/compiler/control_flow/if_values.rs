@@ -13,7 +13,7 @@ impl Compiler<'_, '_> {
         self.compile_if_value_with_payloads(if_expr, dst, None)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_if_value_with_payloads(
+    pub(in crate::compiler) fn compile_if_value_with_payloads(
         &mut self,
         if_expr: &IfExpr,
         dst: Register,

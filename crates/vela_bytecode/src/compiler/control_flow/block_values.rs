@@ -37,7 +37,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    pub(in crate::compiler::control_flow) fn compile_block_payload_value_to(
+    pub(in crate::compiler) fn compile_block_payload_value_to(
         &mut self,
         body: &CompilerBodyPayload<'_>,
         dst: Register,

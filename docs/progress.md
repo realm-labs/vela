@@ -286,6 +286,10 @@ Top-level expression statement payloads now also expose rowan
 `SyntaxExpressionKind`, letting assignment statements dispatch through the CST
 expression category while preserving legacy fallback for temporary association
 mismatches.
+Top-level assignment expression statements now expose rowan RHS expression
+kinds and block/if/match body payloads, letting assignment values reuse the
+CST-aware nested statement dispatcher while preserving checked legacy
+expression fallback where record-field type contracts require it.
 Top-level let statement payloads now expose rowan initializer expression kinds,
 letting block/if/match initializer lowering dispatch through aligned CST
 expression categories while preserving legacy fallback for temporary

@@ -93,6 +93,84 @@ fn assign() {
 }
 
 #[test]
+fn semantic_function_assignment_value_expressions_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn assign_values() {
+    let total = 0;
+    total = {
+        let start = 1;
+        start + 1
+    };
+    total = if total > 0 {
+        let next = total + 1;
+        next
+    } else {
+        0
+    };
+    total = match total {
+        0 => {
+            let zero = 1;
+            zero
+        },
+        _ => {
+            total
+        },
+    };
+    return total;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("assign_values")
+        .expect("assign_values function");
+    assert_cst_assignment_values(
+        &payload.body,
+        &[
+            (
+                SyntaxExpressionKind::Block,
+                "{\n        let start = 1;\n        start + 1\n    }",
+            ),
+            (
+                SyntaxExpressionKind::If,
+                "if total > 0 {\n        let next = total + 1;\n        next\n    } else {\n        0\n    }",
+            ),
+            (
+                SyntaxExpressionKind::Match,
+                "match total {\n        0 => {\n            let zero = 1;\n            zero\n        },\n        _ => {\n            total\n        },\n    }",
+            ),
+        ],
+    );
+    assert_cst_assignment_value_block_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let start = 1;"),
+            (SyntaxStatementKind::Expr, "start + 1"),
+        ]],
+    );
+    assert_cst_assignment_value_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = total + 1;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+    );
+    assert_cst_assignment_value_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let zero = 1;"),
+                (SyntaxStatementKind::Expr, "zero"),
+            ],
+            vec![(SyntaxStatementKind::Expr, "total")],
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed assignment values should compile");
+}
+
+#[test]
 fn semantic_function_let_initializer_expression_is_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

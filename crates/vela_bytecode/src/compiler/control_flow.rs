@@ -11,6 +11,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
+use super::assignments::{AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerIfPayload, CompilerMatchArmPayload, CompilerStatementPayload,
 };
@@ -192,7 +193,20 @@ impl Compiler<'_, '_> {
             return self.compile_expr_statement(expr);
         }
         if kind == SyntaxExpressionKind::Assign {
-            self.compile_assignment(expr)?;
+            let value_body = stmt.assignment_value_block_body_payload();
+            let value_if = stmt.assignment_value_if_payload();
+            let value_match_arms = stmt.assignment_value_match_arm_payloads();
+            self.compile_assignment_with_value_payloads(
+                expr,
+                AssignmentValueSyntax::new(
+                    stmt.assignment_value_kind(),
+                    AssignmentValuePayloads::new(
+                        value_body.as_ref(),
+                        value_if.as_ref(),
+                        value_match_arms.as_deref(),
+                    ),
+                ),
+            )?;
             Ok(false)
         } else {
             self.compile_expr(expr)?;
@@ -1068,7 +1082,7 @@ impl Compiler<'_, '_> {
         self.compile_match_value_with_payloads(match_expr, dst, None)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_match_value_with_payloads(
+    pub(in crate::compiler) fn compile_match_value_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
         dst: Register,

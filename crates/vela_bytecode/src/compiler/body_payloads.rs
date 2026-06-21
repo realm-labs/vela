@@ -374,6 +374,68 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }
 
+    fn assignment_value_expression(&self) -> Option<SyntaxExpression> {
+        self.expression()?.as_assign()?.value()
+    }
+
+    pub(super) fn assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.assignment_value_expression()
+            .map(|expression| expression.expression_kind())
+    }
+
+    pub(super) fn assignment_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Assign { value, .. } = &expr.kind else {
+            return None;
+        };
+        let ExprKind::Block(block) = &value.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.assignment_value_expression()?.as_block()?,
+            block,
+        ))
+    }
+
+    pub(super) fn assignment_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Assign { value, .. } = &expr.kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &value.kind else {
+            return None;
+        };
+        if_payload_for_fallback(
+            self.source,
+            self.assignment_value_expression()?.as_if()?,
+            if_expr,
+        )
+    }
+
+    pub(super) fn assignment_value_match_arm_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Assign { value, .. } = &expr.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &value.kind else {
+            return None;
+        };
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.assignment_value_expression()?.as_match()?,
+            match_expr,
+        ))
+    }
+
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;

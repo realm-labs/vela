@@ -2,10 +2,11 @@ use vela_common::{Diagnostic, Span};
 use vela_hir::binding::BindingResolution;
 use vela_hir::ids::HirLocalId;
 use vela_host::resolved::HostMutationOp;
-use vela_syntax::ast::{AssignOp, Expr, ExprKind};
+use vela_syntax::ast::{AssignOp, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
+use super::body_payloads::{CompilerBodyPayload, CompilerIfPayload, CompilerMatchArmPayload};
 use super::expressions::literal_string;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
@@ -13,6 +14,13 @@ use super::record_shapes::RecordShape;
 use super::script_types::ScriptTypeFact;
 use super::value_types::{RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LocalAssignmentTarget {
+    target_span: Span,
+    name: String,
+    local: Option<HirLocalId>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RecordFieldAssignmentTarget {
@@ -44,14 +52,89 @@ struct LocalAssignmentFacts {
     value_shape: Option<super::record_shapes::ValueShape>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct NestedRecordFieldAssignmentTarget {
+    root: Register,
+    fields: Vec<String>,
+    shape: Option<RecordShape>,
+    value_type: Option<RuntimeTypeFact>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RecordFieldAssignmentRoot<'field> {
+    root: Register,
+    field: &'field str,
+    slot: Option<usize>,
+    value_type: Option<RuntimeTypeFact>,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
+    block_body: Option<&'payload CompilerBodyPayload<'ast>>,
+    if_expr: Option<&'payload CompilerIfPayload<'ast>>,
+    match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+}
+
+impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
+    pub(in crate::compiler) fn new(
+        block_body: Option<&'payload CompilerBodyPayload<'ast>>,
+        if_expr: Option<&'payload CompilerIfPayload<'ast>>,
+        match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+    ) -> Self {
+        Self {
+            block_body,
+            if_expr,
+            match_arms,
+        }
+    }
+
+    fn none() -> Self {
+        Self {
+            block_body: None,
+            if_expr: None,
+            match_arms: None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
+    kind: Option<SyntaxExpressionKind>,
+    payloads: AssignmentValuePayloads<'payload, 'ast>,
+}
+
+impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
+    pub(in crate::compiler) fn new(
+        kind: Option<SyntaxExpressionKind>,
+        payloads: AssignmentValuePayloads<'payload, 'ast>,
+    ) -> Self {
+        Self { kind, payloads }
+    }
+
+    fn none() -> Self {
+        Self {
+            kind: None,
+            payloads: AssignmentValuePayloads::none(),
+        }
+    }
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
+        self.compile_assignment_with_value_payloads(expr, AssignmentValueSyntax::none())
+    }
+
+    pub(in crate::compiler) fn compile_assignment_with_value_payloads(
+        &mut self,
+        expr: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
+    ) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment statement",
             )));
         };
-        if let Some((name, local)) = self.local_assignment_target(target) {
+        if let Some(local_target) = self.local_assignment_target(target) {
             let target_value_type = self.value_type_for_expr(target);
             let assigned_value_type = match op {
                 AssignOp::Set => self.value_type_for_expr(value),
@@ -78,7 +161,7 @@ impl Compiler<'_, '_> {
                 value_shape,
             };
             let assigned =
-                self.compile_local_assignment(*op, target.span, name, local, value, facts)?;
+                self.compile_local_assignment(*op, local_target, value, facts, value_syntax)?;
             return Ok(assigned);
         }
         self.reject_read_only_host_assignment(target)?;
@@ -91,19 +174,19 @@ impl Compiler<'_, '_> {
             };
             self.reject_invalid_host_index_access(target, base, index, access)?;
             if self.host_field_path(target).is_none() {
-                return self.compile_index_assignment(*op, base, index, value);
+                return self.compile_index_assignment(*op, base, index, value, value_syntax);
             }
         }
         if let Some(target) = self.indexed_record_field_assignment_target(target) {
-            return self.compile_indexed_record_field_assignment(*op, target, value);
+            return self.compile_indexed_record_field_assignment(*op, target, value, value_syntax);
         }
         if let Some(target) = self.record_field_assignment_target(target)? {
-            return self.compile_record_field_assignment(*op, target, value);
+            return self.compile_record_field_assignment(*op, target, value, value_syntax);
         }
-        self.compile_host_assignment(*op, target, value)
+        self.compile_host_assignment(*op, target, value, value_syntax)
     }
 
-    fn local_assignment_target(&self, target: &Expr) -> Option<(String, Option<HirLocalId>)> {
+    fn local_assignment_target(&self, target: &Expr) -> Option<LocalAssignmentTarget> {
         let ExprKind::Path(path) = &target.kind else {
             return None;
         };
@@ -115,18 +198,26 @@ impl Compiler<'_, '_> {
             _ if self.locals.contains_key(name) => None,
             _ => return None,
         };
-        Some((name.clone(), local))
+        Some(LocalAssignmentTarget {
+            target_span: target.span,
+            name: name.clone(),
+            local,
+        })
     }
 
     fn compile_local_assignment(
         &mut self,
         op: AssignOp,
-        target_span: Span,
-        name: String,
-        local: Option<HirLocalId>,
+        local_target: LocalAssignmentTarget,
         value: &Expr,
         facts: LocalAssignmentFacts,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
+        let LocalAssignmentTarget {
+            target_span,
+            name,
+            local,
+        } = local_target;
         let target = self.local_register_at_span(target_span, &name)?;
         if let Some(local) = local {
             self.hir_locals.insert(local, target);
@@ -144,12 +235,12 @@ impl Compiler<'_, '_> {
         }
         let assigned = match op {
             AssignOp::Set => {
-                let src = self.compile_expr(value)?;
+                let src = self.compile_assignment_value(value, None, value_syntax)?;
                 self.emit(UnlinkedInstructionKind::Move { dst: target, src });
                 src
             }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
-                let rhs = self.compile_expr(value)?;
+                let rhs = self.compile_assignment_value(value, None, value_syntax)?;
                 let dst = self.alloc_register()?;
                 let instruction = if facts.value_type
                     == Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
@@ -178,14 +269,15 @@ impl Compiler<'_, '_> {
         base: &Expr,
         index: &Expr,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let base = self.compile_expr(base)?;
         if let Some(key) = literal_string(index) {
-            return self.compile_string_key_index_assignment(op, base, key, value);
+            return self.compile_string_key_index_assignment(op, base, key, value, value_syntax);
         }
         let index = self.compile_expr(index)?;
         let assigned = match op {
-            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Set => self.compile_assignment_value(value, None, value_syntax)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::GetIndex {
@@ -193,7 +285,7 @@ impl Compiler<'_, '_> {
                     base,
                     index,
                 });
-                let rhs = self.compile_expr(value)?;
+                let rhs = self.compile_assignment_value(value, None, value_syntax)?;
                 let dst = self.alloc_register()?;
                 self.emit(compound_assignment_instruction_or_error(
                     op, dst, current, rhs,
@@ -215,12 +307,13 @@ impl Compiler<'_, '_> {
         base: Register,
         key: &str,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let key = self
             .code
             .push_constant(crate::Constant::String(key.to_owned()));
         let assigned = match op {
-            AssignOp::Set => self.compile_expr(value)?,
+            AssignOp::Set => self.compile_assignment_value(value, None, value_syntax)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::GetStringKeyIndex {
@@ -228,7 +321,7 @@ impl Compiler<'_, '_> {
                     base,
                     key,
                 });
-                let rhs = self.compile_expr(value)?;
+                let rhs = self.compile_assignment_value(value, None, value_syntax)?;
                 let dst = self.alloc_register()?;
                 self.emit(compound_assignment_instruction_or_error(
                     op, dst, current, rhs,
@@ -339,15 +432,19 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         target: RecordFieldAssignmentTarget,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         if target.fields.len() > 1 {
             return self.compile_nested_record_field_assignment(
                 op,
-                target.root,
-                target.fields,
-                target.shape,
-                target.value_type,
+                NestedRecordFieldAssignmentTarget {
+                    root: target.root,
+                    fields: target.fields,
+                    shape: target.shape,
+                    value_type: target.value_type,
+                },
                 value,
+                value_syntax,
             );
         }
         let [field] = target.fields.as_slice() else {
@@ -357,37 +454,43 @@ impl Compiler<'_, '_> {
         };
         self.compile_record_field_assignment_at_root(
             op,
-            target.root,
-            field,
-            target.slot,
-            target.value_type,
+            RecordFieldAssignmentRoot {
+                root: target.root,
+                field,
+                slot: target.slot,
+                value_type: target.value_type,
+            },
             value,
+            value_syntax,
         )
     }
 
     fn compile_record_field_assignment_at_root(
         &mut self,
         op: AssignOp,
-        root: Register,
-        field: &str,
-        slot: Option<usize>,
-        value_type: Option<RuntimeTypeFact>,
+        target: RecordFieldAssignmentRoot<'_>,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
+        let RecordFieldAssignmentRoot {
+            root,
+            field,
+            slot,
+            value_type,
+        } = target;
         let assigned = match op {
-            AssignOp::Set => {
-                if let Some(expected) = value_type {
-                    self.compile_expr_with_expected_type(
-                        value,
+            AssignOp::Set => self.compile_assignment_value(
+                value,
+                value_type.map(|expected| {
+                    (
                         expected,
                         TypeContractContext::Field {
                             name: field.to_owned(),
                         },
-                    )?
-                } else {
-                    self.compile_expr(value)?
-                }
-            }
+                    )
+                }),
+                value_syntax,
+            )?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 if let Some(slot) = slot {
@@ -404,7 +507,7 @@ impl Compiler<'_, '_> {
                         field: field.to_owned(),
                     });
                 }
-                let rhs = self.compile_expr(value)?;
+                let rhs = self.compile_assignment_value(value, None, value_syntax)?;
                 let dst = self.alloc_register()?;
                 self.emit(compound_assignment_instruction_or_error(
                     op, dst, current, rhs,
@@ -434,6 +537,7 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         target: IndexedRecordFieldAssignmentTarget<'_>,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let collection = self.compile_expr(target.collection)?;
         let index = self.compile_expr(target.index)?;
@@ -447,11 +551,14 @@ impl Compiler<'_, '_> {
         let assigned = if target.fields.len() > 1 {
             self.compile_nested_record_field_assignment(
                 op,
-                record,
-                target.fields,
-                target.element_shape,
-                None,
+                NestedRecordFieldAssignmentTarget {
+                    root: record,
+                    fields: target.fields,
+                    shape: target.element_shape,
+                    value_type: None,
+                },
                 value,
+                value_syntax,
             )?
         } else {
             let [field] = target.fields.as_slice() else {
@@ -463,7 +570,17 @@ impl Compiler<'_, '_> {
                 .element_shape
                 .as_ref()
                 .and_then(|shape| shape.field_slot(field));
-            self.compile_record_field_assignment_at_root(op, record, field, slot, None, value)?
+            self.compile_record_field_assignment_at_root(
+                op,
+                RecordFieldAssignmentRoot {
+                    root: record,
+                    field,
+                    slot,
+                    value_type: None,
+                },
+                value,
+                value_syntax,
+            )?
         };
 
         self.emit(UnlinkedInstructionKind::SetIndex {
@@ -477,12 +594,16 @@ impl Compiler<'_, '_> {
     fn compile_nested_record_field_assignment(
         &mut self,
         op: AssignOp,
-        root: Register,
-        fields: Vec<String>,
-        shape: Option<RecordShape>,
-        value_type: Option<RuntimeTypeFact>,
+        target: NestedRecordFieldAssignmentTarget,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
+        let NestedRecordFieldAssignmentTarget {
+            root,
+            fields,
+            shape,
+            value_type,
+        } = target;
         let mut records = vec![root];
         let mut shapes = vec![shape];
         for field in fields.iter().take(fields.len().saturating_sub(1)) {
@@ -521,19 +642,18 @@ impl Compiler<'_, '_> {
             .expect("nested record assignment has at least one field")
             .clone();
         let assigned = match op {
-            AssignOp::Set => {
-                if let Some(expected) = value_type {
-                    self.compile_expr_with_expected_type(
-                        value,
+            AssignOp::Set => self.compile_assignment_value(
+                value,
+                value_type.map(|expected| {
+                    (
                         expected,
                         TypeContractContext::Field {
                             name: leaf_field.clone(),
                         },
-                    )?
-                } else {
-                    self.compile_expr(value)?
-                }
-            }
+                    )
+                }),
+                value_syntax,
+            )?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let current = self.alloc_register()?;
                 let leaf_slot = shapes
@@ -554,7 +674,7 @@ impl Compiler<'_, '_> {
                         field: leaf_field.clone(),
                     });
                 }
-                let rhs = self.compile_expr(value)?;
+                let rhs = self.compile_assignment_value(value, None, value_syntax)?;
                 let dst = self.alloc_register()?;
                 self.emit(compound_assignment_instruction_or_error(
                     op, dst, current, rhs,
@@ -632,11 +752,12 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         target: &Expr,
         value: &Expr,
+        value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let path = self.compile_host_assignment_target(target)?;
         let root_path = path.root;
         let root = self.compile_host_path_root(root_path)?;
-        let src = self.compile_expr(value)?;
+        let src = self.compile_assignment_value(value, None, value_syntax)?;
         let path = HostPath {
             root: root_path,
             segments: path.segments,
@@ -660,6 +781,66 @@ impl Compiler<'_, '_> {
             }
         }
         Ok(src)
+    }
+
+    fn compile_assignment_value(
+        &mut self,
+        value: &Expr,
+        expected: Option<(RuntimeTypeFact, TypeContractContext)>,
+        syntax: AssignmentValueSyntax<'_, '_>,
+    ) -> CompileResult<Register> {
+        if let Some((expected, context)) = expected {
+            return self.compile_expr_with_expected_type(value, expected, context);
+        }
+        if let Some(kind) = syntax.kind
+            && assignment_value_kind_matches(kind, value)
+        {
+            return self.compile_assignment_value_with_syntax_kind(value, kind, syntax.payloads);
+        }
+        self.compile_expr(value)
+    }
+
+    fn compile_assignment_value_with_syntax_kind(
+        &mut self,
+        value: &Expr,
+        kind: SyntaxExpressionKind,
+        syntax_payloads: AssignmentValuePayloads<'_, '_>,
+    ) -> CompileResult<Register> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                let ExprKind::Block(block) = &value.kind else {
+                    unreachable!("validated CST block assignment value kind");
+                };
+                let dst = self.alloc_register()?;
+                if let Some(body_payload) = syntax_payloads.block_body {
+                    self.compile_block_payload_value_to(body_payload, dst)?;
+                } else {
+                    self.compile_block_value_to(block, dst)?;
+                }
+                Ok(dst)
+            }
+            SyntaxExpressionKind::If => {
+                let ExprKind::If(if_expr) = &value.kind else {
+                    unreachable!("validated CST if assignment value kind");
+                };
+                let dst = self.alloc_register()?;
+                self.compile_if_value_with_payloads(if_expr, dst, syntax_payloads.if_expr)?;
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Match => {
+                let ExprKind::Match(match_expr) = &value.kind else {
+                    unreachable!("validated CST match assignment value kind");
+                };
+                let dst = self.alloc_register()?;
+                self.compile_match_value_with_payloads(
+                    match_expr,
+                    dst,
+                    syntax_payloads.match_arms,
+                )?;
+                Ok(dst)
+            }
+            _ => self.compile_expr(value),
+        }
     }
 
     fn compile_host_assignment_target<'expr>(
@@ -731,6 +912,18 @@ fn expressions_are_i64(left: Option<RuntimeTypeFact>, right: Option<RuntimeTypeF
             Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
         )
     )
+}
+
+fn assignment_value_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+    match kind {
+        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
+        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
+        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        _ => !matches!(
+            expr.kind,
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+        ),
+    }
 }
 
 fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {

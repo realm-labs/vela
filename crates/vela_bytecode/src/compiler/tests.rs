@@ -71,6 +71,28 @@ fn assert_cst_expr_statements(
     );
 }
 
+fn assert_cst_assignment_values(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxExpressionKind, &str)],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            let value = syntax.as_expr()?.expression()?.as_assign()?.value()?;
+            Some((value.expression_kind(), value.syntax().text().to_string()))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|(kind, text)| (*kind, (*text).to_owned()))
+            .collect::<Vec<_>>()
+    );
+}
+
 fn assert_cst_block_statement_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -380,6 +402,64 @@ fn assert_cst_return_value_block_body_payloads(
         .iter()
         .filter_map(|statement| statement.return_value_block_body_payload())
         .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_block_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| statement.assignment_value_block_body_payload())
+        .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let payloads = statements
+        .iter()
+        .filter_map(|statement| statement.assignment_value_if_payload())
+        .collect::<Vec<_>>();
+    let then_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::then_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    let else_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::else_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
+fn assert_cst_assignment_value_match_arm_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .flat_map(|statement| {
+            statement
+                .assignment_value_match_arm_payloads()
+                .unwrap_or_default()
+        })
+        .filter_map(|arm| {
+            let _syntax_arm = arm.syntax_arm()?;
+            let body = arm.body_block_payload()?;
+            Some(cst_statement_texts(&body))
+        })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
 }
