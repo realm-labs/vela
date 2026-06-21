@@ -56,6 +56,7 @@ pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
+    condition: Option<CompilerExpressionPayload<'ast>>,
     condition_operator: Option<BinaryOp>,
     then_body: Option<CompilerBodyPayload<'ast>>,
     else_body: Option<CompilerBodyPayload<'ast>>,
@@ -167,10 +168,16 @@ fn if_payload_for_fallback<'ast>(
     fallback: &'ast IfExpr,
 ) -> Option<CompilerIfPayload<'ast>> {
     let source = source?;
-    let condition_operator = syntax
-        .condition()
+    let condition_syntax = syntax.condition();
+    let condition_operator = condition_syntax
+        .as_ref()
         .and_then(|condition| condition.as_binary())
         .and_then(|condition| condition.operator());
+    let condition = Some(CompilerExpressionPayload {
+        source: Some(source),
+        syntax: condition_syntax,
+        fallback: &fallback.condition,
+    });
     let then_body = syntax
         .then_block()
         .map(|body| CompilerBodyPayload::syntax(source, body, &fallback.then_branch));
@@ -188,6 +195,7 @@ fn if_payload_for_fallback<'ast>(
         Some(ElseBranch::Block(_)) | None => None,
     };
     Some(CompilerIfPayload {
+        condition,
         condition_operator,
         then_body,
         else_body,
@@ -927,6 +935,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 }
 
 impl<'ast> CompilerIfPayload<'ast> {
+    pub(super) fn condition_payload(&self) -> Option<&CompilerExpressionPayload<'ast>> {
+        self.condition.as_ref()
+    }
+
     pub(super) fn condition_operator(&self) -> Option<BinaryOp> {
         self.condition_operator
     }

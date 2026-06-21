@@ -1,13 +1,14 @@
 mod block_values;
 mod classification;
+mod condition_jumps;
 mod if_values;
 mod value_syntax;
 
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, Literal, MatchExpr, Pattern, Stmt,
-    StmtKind, SyntaxExpressionKind, SyntaxStatementKind,
+    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    SyntaxExpressionKind, SyntaxStatementKind,
 };
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
@@ -17,8 +18,6 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
     CompilerStatementPayload,
 };
-use super::const_eval::compile_literal_constant_for_type;
-use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -26,10 +25,9 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    condition_operator_for_fallback, cst_range_iterable, expression_statement_kind_matches,
-    i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape, legacy_range_iterable,
-    legacy_statement_kind, merge_type_hint_and_value_fact, statement_kind_matches,
-    value_expression_kind_matches,
+    cst_range_iterable, expression_statement_kind_matches, i64_pattern_facts,
+    is_map_or_set_type_hint, iterable_item_shape, legacy_range_iterable, legacy_statement_kind,
+    merge_type_hint_and_value_fact, statement_kind_matches, value_expression_kind_matches,
 };
 use value_syntax::ValueSyntaxPayloads;
 
@@ -926,6 +924,7 @@ impl Compiler<'_, '_> {
         let jump_to_else = self.emit_condition_jump_if_false(
             &if_expr.condition,
             payload.and_then(CompilerIfPayload::condition_operator),
+            payload.and_then(CompilerIfPayload::condition_payload),
         )?;
 
         let then_returned = self.compile_if_block(
@@ -968,67 +967,6 @@ impl Compiler<'_, '_> {
         } else {
             self.compile_statements(&block.statements)
         }
-    }
-
-    fn emit_condition_jump_if_false(
-        &mut self,
-        condition: &Expr,
-        condition_operator: Option<BinaryOp>,
-    ) -> CompileResult<usize> {
-        if let Some(jump) =
-            self.try_emit_i64_immediate_jump_if_false(condition, condition_operator)?
-        {
-            return Ok(jump);
-        }
-        let condition = self.compile_expr(condition)?;
-        Ok(self.emit_jump_if_false(condition))
-    }
-
-    fn try_emit_i64_immediate_jump_if_false(
-        &mut self,
-        condition: &Expr,
-        condition_operator: Option<BinaryOp>,
-    ) -> CompileResult<Option<usize>> {
-        let ExprKind::Binary { left, right, .. } = &condition.kind else {
-            return Ok(None);
-        };
-        let Some(op) =
-            condition_operator_for_fallback(condition_operator, condition).and_then(i64_compare_op)
-        else {
-            return Ok(None);
-        };
-        if self.value_type_for_expr(left)
-            != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
-        {
-            return Ok(None);
-        }
-        let Some(imm) = self.i64_literal_value(right)? else {
-            return Ok(None);
-        };
-        let lhs = self.compile_expr(left)?;
-        let offset = self.current_offset();
-        self.emit(UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
-            op,
-            lhs,
-            imm,
-            target: InstructionOffset(usize::MAX),
-        });
-        Ok(Some(offset))
-    }
-
-    fn i64_literal_value(&self, expr: &Expr) -> CompileResult<Option<i64>> {
-        let ExprKind::Literal(Literal::Integer(value)) = &expr.kind else {
-            return Ok(None);
-        };
-        let Some(Constant::Scalar(vela_common::ScalarValue::I64(value))) =
-            compile_literal_constant_for_type(
-                &Literal::Integer(value.clone()),
-                vela_common::PrimitiveTag::I64,
-            )?
-        else {
-            return Ok(None);
-        };
-        Ok(Some(value))
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {

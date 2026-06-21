@@ -22,6 +22,7 @@ impl Compiler<'_, '_> {
         let jump_to_else = self.emit_condition_jump_if_false(
             &if_expr.condition,
             payload.and_then(CompilerIfPayload::condition_operator),
+            payload.and_then(CompilerIfPayload::condition_payload),
         )?;
 
         let then_returned = self.compile_if_value_block_to(
