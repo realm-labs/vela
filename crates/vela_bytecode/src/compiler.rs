@@ -1021,7 +1021,9 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             let skip_default = self.emit_jump_if_not_missing(param);
-            let value = self.compile_expr(default_value.fallback())?;
+            let default_payload = default_value.compiler_payload();
+            let value =
+                self.compile_expr_with_payload(default_value.fallback(), default_payload.as_ref())?;
             self.emit(UnlinkedInstructionKind::Move {
                 dst: param,
                 src: value,

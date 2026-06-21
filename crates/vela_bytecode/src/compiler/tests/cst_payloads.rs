@@ -15,15 +15,12 @@ mod wrappers;
 #[test]
 fn semantic_function_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
-    let semantic = parse_semantic_source(
-        source,
-        r#"
+    let text = r#"
 fn grant(base, amount = 10, bonus = amount + 1) {
     return base + amount + bonus;
 }
-"#,
-    )
-    .expect("source should parse");
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("grant").expect("grant function");
     assert_cst_body(
         &payload.body,
@@ -37,6 +34,23 @@ fn grant(base, amount = 10, bonus = amount + 1) {
     assert!(payload.param_defaults[0].is_none());
     assert_cst_param_default(&payload.param_defaults[1], source, "10");
     assert_cst_param_default(&payload.param_defaults[2], source, "amount + 1");
+    let bonus_default = payload.param_defaults[2]
+        .as_ref()
+        .expect("bonus default payload");
+    let compiler_payload = bonus_default
+        .compiler_payload()
+        .expect("CST-backed default should produce compiler payload");
+    assert_eq!(
+        compiler_payload
+            .syntax_expression()
+            .expect("default compiler payload syntax")
+            .syntax()
+            .text()
+            .to_string(),
+        "amount + 1",
+    );
+
+    compile_program_source(source, text).expect("CST-backed defaults should compile");
 }
 
 #[test]

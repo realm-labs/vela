@@ -1,6 +1,8 @@
 use vela_common::SourceId;
 use vela_syntax::ast::{Expr, Param, SyntaxExpression, SyntaxParamList};
 
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum ParamDefaultValue {
     Syntax {
@@ -16,6 +18,22 @@ impl ParamDefaultValue {
     pub(super) fn fallback(&self) -> &Expr {
         match self {
             Self::Syntax { fallback, .. } | Self::Legacy(fallback) => fallback,
+        }
+    }
+
+    #[must_use]
+    pub(super) fn compiler_payload(&self) -> Option<CompilerExpressionPayload<'_>> {
+        match self {
+            Self::Syntax {
+                source,
+                expression,
+                fallback,
+            } => Some(CompilerExpressionPayload::syntax(
+                *source,
+                expression.clone(),
+                fallback,
+            )),
+            Self::Legacy(_) => None,
         }
     }
 }
