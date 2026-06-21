@@ -286,6 +286,10 @@ Top-level expression statement payloads now also expose rowan
 `SyntaxExpressionKind`, letting assignment statements dispatch through the CST
 expression category while preserving legacy fallback for temporary association
 mismatches.
+Top-level let statement payloads now expose rowan initializer expression kinds,
+letting block/if/match initializer lowering dispatch through aligned CST
+expression categories while preserving legacy fallback for temporary
+association mismatches.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

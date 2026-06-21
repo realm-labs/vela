@@ -104,6 +104,14 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.syntax
+            .as_ref()?
+            .as_let()?
+            .initializer()
+            .map(|expression| expression.expression_kind())
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }

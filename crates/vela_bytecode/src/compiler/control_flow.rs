@@ -92,6 +92,8 @@ impl Compiler<'_, '_> {
         };
         if !statement_kind_matches(kind, stmt.fallback()) {
             self.compile_statement(stmt.fallback())
+        } else if kind == SyntaxStatementKind::Let {
+            self.compile_let_statement(stmt.fallback(), stmt.let_initializer_kind())
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
@@ -140,100 +142,7 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
     ) -> CompileResult<bool> {
         match kind {
-            SyntaxStatementKind::Let => {
-                let StmtKind::Let {
-                    name,
-                    type_hint: _,
-                    value,
-                } = &stmt.kind
-                else {
-                    return self.compile_statement(stmt);
-                };
-                let local_binding = self
-                    .bindings
-                    .local_named_at(name, LocalBindingKind::Let, stmt.span)
-                    .and_then(|local| {
-                        self.bindings
-                            .local(local)
-                            .map(|binding| (local, binding.type_hint.clone()))
-                    });
-                let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
-                let hinted_script_fact = hir_type_hint.and_then(|hint| {
-                    let known_type_names = self.facts.known_type_names();
-                    type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
-                });
-                let value_script_fact = value
-                    .as_ref()
-                    .and_then(|value| self.script_fact_for_expr(value));
-                let script_hint_proven = hinted_script_fact
-                    .as_ref()
-                    .zip(value_script_fact.as_ref())
-                    .is_some_and(|(hint, value)| hint == value);
-                let script_fact =
-                    merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
-                let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
-                let value_type = value
-                    .as_ref()
-                    .and_then(|value| self.value_type_for_expr(value));
-                let value_type = hinted_value_type.clone().or(value_type);
-                let value_shape = value
-                    .as_ref()
-                    .and_then(|value| self.value_shape_for_expr(value));
-                let (register, returned) = if let Some(value) = value {
-                    self.compile_let_initializer(
-                        value,
-                        hinted_value_type.clone(),
-                        TypeContractContext::TypedLet { name: name.clone() },
-                    )?
-                } else {
-                    (self.emit_constant(Constant::Null)?, false)
-                };
-                if let (Some(value), Some(hint), None) =
-                    (value.as_ref(), hir_type_hint, hinted_value_type.as_ref())
-                    && is_map_or_set_type_hint(hint)
-                    && !script_hint_proven
-                    && let Some(guard) = super::type_guard_for_hint(
-                        hint,
-                        crate::GuardLocation::Local,
-                        name,
-                        &self.facts,
-                    )
-                {
-                    self.emit_spanned(
-                        UnlinkedInstructionKind::GuardType {
-                            src: register,
-                            guard,
-                        },
-                        value.span,
-                    );
-                }
-                self.locals.insert(name.clone(), register);
-                if let Some((local, _)) = local_binding {
-                    self.hir_locals.insert(local, register);
-                    self.record_frame_slot(
-                        name.clone(),
-                        register,
-                        frame_slot_kind(LocalBindingKind::Let),
-                        Some(local),
-                        Some(stmt.span),
-                    );
-                    self.script_types.set_local_fact(local, name, script_fact);
-                    self.value_types.set_local(local, name, value_type);
-                    self.value_shapes.set_local(local, name, value_shape);
-                } else {
-                    self.record_frame_slot(
-                        name.clone(),
-                        register,
-                        frame_slot_kind(LocalBindingKind::Let),
-                        None,
-                        Some(stmt.span),
-                    );
-                    self.script_types.set_name_fact(name, script_fact);
-                    self.value_types.set_name(name, value_type);
-                    self.value_shapes.set_name(name, value_shape);
-                }
-                Ok(returned)
-            }
+            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None),
             SyntaxStatementKind::Return => {
                 let StmtKind::Return(value) = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -299,6 +208,101 @@ impl Compiler<'_, '_> {
         }
     }
 
+    fn compile_let_statement(
+        &mut self,
+        stmt: &Stmt,
+        initializer_kind: Option<SyntaxExpressionKind>,
+    ) -> CompileResult<bool> {
+        let StmtKind::Let {
+            name,
+            type_hint: _,
+            value,
+        } = &stmt.kind
+        else {
+            return self.compile_statement(stmt);
+        };
+        let local_binding = self
+            .bindings
+            .local_named_at(name, LocalBindingKind::Let, stmt.span)
+            .and_then(|local| {
+                self.bindings
+                    .local(local)
+                    .map(|binding| (local, binding.type_hint.clone()))
+            });
+        let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
+        let hinted_script_fact = hir_type_hint.and_then(|hint| {
+            let known_type_names = self.facts.known_type_names();
+            type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
+        });
+        let value_script_fact = value
+            .as_ref()
+            .and_then(|value| self.script_fact_for_expr(value));
+        let script_hint_proven = hinted_script_fact
+            .as_ref()
+            .zip(value_script_fact.as_ref())
+            .is_some_and(|(hint, value)| hint == value);
+        let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
+        let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
+        let value_type = value
+            .as_ref()
+            .and_then(|value| self.value_type_for_expr(value));
+        let value_type = hinted_value_type.clone().or(value_type);
+        let value_shape = value
+            .as_ref()
+            .and_then(|value| self.value_shape_for_expr(value));
+        let (register, returned) = if let Some(value) = value {
+            self.compile_let_initializer(
+                value,
+                hinted_value_type.clone(),
+                TypeContractContext::TypedLet { name: name.clone() },
+                initializer_kind,
+            )?
+        } else {
+            (self.emit_constant(Constant::Null)?, false)
+        };
+        if let (Some(value), Some(hint), None) =
+            (value.as_ref(), hir_type_hint, hinted_value_type.as_ref())
+            && is_map_or_set_type_hint(hint)
+            && !script_hint_proven
+            && let Some(guard) =
+                super::type_guard_for_hint(hint, crate::GuardLocation::Local, name, &self.facts)
+        {
+            self.emit_spanned(
+                UnlinkedInstructionKind::GuardType {
+                    src: register,
+                    guard,
+                },
+                value.span,
+            );
+        }
+        self.locals.insert(name.clone(), register);
+        if let Some((local, _)) = local_binding {
+            self.hir_locals.insert(local, register);
+            self.record_frame_slot(
+                name.clone(),
+                register,
+                frame_slot_kind(LocalBindingKind::Let),
+                Some(local),
+                Some(stmt.span),
+            );
+            self.script_types.set_local_fact(local, name, script_fact);
+            self.value_types.set_local(local, name, value_type);
+            self.value_shapes.set_local(local, name, value_shape);
+        } else {
+            self.record_frame_slot(
+                name.clone(),
+                register,
+                frame_slot_kind(LocalBindingKind::Let),
+                None,
+                Some(stmt.span),
+            );
+            self.script_types.set_name_fact(name, script_fact);
+            self.value_types.set_name(name, value_type);
+            self.value_shapes.set_name(name, value_shape);
+        }
+        Ok(returned)
+    }
+
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
             return self.compile_if(if_expr);
@@ -315,6 +319,66 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_let_initializer(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+        syntax_kind: Option<SyntaxExpressionKind>,
+    ) -> CompileResult<(Register, bool)> {
+        if let Some(kind) = syntax_kind
+            && let_initializer_kind_matches(kind, value)
+        {
+            return self.compile_let_initializer_with_syntax_kind(value, expected, context, kind);
+        }
+        self.compile_let_initializer_legacy(value, expected, context)
+    }
+
+    fn compile_let_initializer_with_syntax_kind(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<(Register, bool)> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::Block(block) = &value.kind else {
+                    unreachable!("validated CST block initializer kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
+                Ok((dst, returned))
+            }
+            SyntaxExpressionKind::If => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::If(if_expr) = &value.kind else {
+                    unreachable!("validated CST if initializer kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_if_value_to(if_expr, dst)?;
+                Ok((dst, returned))
+            }
+            SyntaxExpressionKind::Match => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::Match(match_expr) = &value.kind else {
+                    unreachable!("validated CST match initializer kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_match_value_to(match_expr, dst)?;
+                Ok((dst, returned))
+            }
+            _ => self.compile_let_initializer_legacy(value, expected, context),
+        }
+    }
+
+    fn compile_let_initializer_legacy(
         &mut self,
         value: &Expr,
         expected: Option<super::value_types::RuntimeTypeFact>,
@@ -860,6 +924,18 @@ fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> bool {
 
 fn expression_statement_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     matches!(kind, SyntaxExpressionKind::Assign) == matches!(expr.kind, ExprKind::Assign { .. })
+}
+
+fn let_initializer_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+    match kind {
+        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
+        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
+        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        _ => !matches!(
+            expr.kind,
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+        ),
+    }
 }
 
 fn merge_type_hint_and_value_fact(

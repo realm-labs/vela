@@ -71,6 +71,31 @@ fn assert_cst_expr_statements(
     );
 }
 
+fn assert_cst_let_initializers(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxExpressionKind, &str)],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            let initializer = syntax.as_let()?.initializer()?;
+            Some((
+                initializer.expression_kind(),
+                initializer.syntax().text().to_string(),
+            ))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|(kind, text)| (*kind, (*text).to_owned()))
+            .collect::<Vec<_>>()
+    );
+}
+
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -187,6 +212,42 @@ fn assign() {
     );
 
     compile_program_source(source, text).expect("CST-backed assignment body should compile");
+}
+
+#[test]
+fn semantic_function_let_initializer_expression_is_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose() {
+    let total = if true {
+        1
+    } else {
+        2
+    };
+    return total;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (
+                SyntaxStatementKind::Let,
+                "let total = if true {\n        1\n    } else {\n        2\n    };",
+            ),
+            (SyntaxStatementKind::Return, "return total;"),
+        ],
+    );
+    assert_cst_let_initializers(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::If,
+            "if true {\n        1\n    } else {\n        2\n    }",
+        )],
+    );
+
+    compile_program_source(source, text).expect("CST-backed let initializer body should compile");
 }
 
 #[test]
