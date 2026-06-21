@@ -79,10 +79,41 @@ impl Compiler<'_, '_> {
         arm: &vela_syntax::ast::MatchArm,
         payload: Option<&CompilerMatchArmPayload<'_>>,
     ) -> CompileResult<bool> {
-        if let Some(body) = payload.and_then(CompilerMatchArmPayload::body_block_payload) {
-            let statements = body.statement_payloads();
-            return self.compile_statement_payloads(&statements);
+        if let Some(payload) = payload
+            && let Some(kind) = payload.body_expression_kind()
+            && value_expression_kind_matches(kind, &arm.body)
+        {
+            return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
         }
+        self.compile_legacy_match_arm_statement(arm, payload)
+    }
+
+    fn compile_match_arm_statement_with_syntax_kind(
+        &mut self,
+        arm: &vela_syntax::ast::MatchArm,
+        payload: &CompilerMatchArmPayload<'_>,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<bool> {
+        if kind == SyntaxExpressionKind::Block {
+            let ExprKind::Block(block) = &arm.body.kind else {
+                unreachable!("validated CST match arm statement block kind");
+            };
+            if let Some(body) = payload.body_block_payload() {
+                let statements = body.statement_payloads();
+                return self.compile_statement_payloads(&statements);
+            }
+            return self.compile_statements(&block.statements);
+        }
+        let body_payload = payload.body_expression_payload();
+        self.compile_expr_with_payload(&arm.body, Some(&body_payload))?;
+        Ok(false)
+    }
+
+    fn compile_legacy_match_arm_statement(
+        &mut self,
+        arm: &vela_syntax::ast::MatchArm,
+        payload: Option<&CompilerMatchArmPayload<'_>>,
+    ) -> CompileResult<bool> {
         match &arm.body.kind {
             ExprKind::Block(block) => self.compile_statements(&block.statements),
             _ => {
