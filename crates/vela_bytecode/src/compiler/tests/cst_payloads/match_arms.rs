@@ -455,6 +455,115 @@ fn legacy_record(value) {
     ));
 }
 
+#[test]
+fn mismatched_basic_match_pattern_payloads_do_not_use_legacy_payload_data() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum State {
+    Ready
+    Waiting
+}
+
+fn cst_literal(value) {
+    return match value {
+        0 => 0,
+        _ => value,
+    };
+}
+
+fn legacy_literal(value) {
+    return match value {
+        1 => 1,
+        _ => value,
+    };
+}
+
+fn cst_path(value) {
+    return match value {
+        State::Waiting => 0,
+        _ => value,
+    };
+}
+
+fn legacy_path(value) {
+    return match value {
+        State::Ready => 1,
+        _ => value,
+    };
+}
+
+fn legacy_binding(value) {
+    return match value {
+        fallback_binding => fallback_binding,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_literal_payload, _, _) = semantic.function("cst_literal").expect("cst literal");
+    let (legacy_literal_payload, _, _) =
+        semantic.function("legacy_literal").expect("legacy literal");
+    let (cst_path_payload, _, _) = semantic.function("cst_path").expect("cst path");
+    let (legacy_path_payload, _, _) = semantic.function("legacy_path").expect("legacy path");
+    let (legacy_binding_payload, _, _) =
+        semantic.function("legacy_binding").expect("legacy binding");
+
+    let cst_literal_syntax = first_return_match_pattern_syntax(&cst_literal_payload.body);
+    let cst_path_syntax = first_return_match_pattern_syntax(&cst_path_payload.body);
+    let legacy_literal_pattern =
+        first_return_match_fallback_pattern(legacy_literal_payload.body.fallback());
+    let legacy_path_pattern =
+        first_return_match_fallback_pattern(legacy_path_payload.body.fallback());
+    let legacy_binding_pattern =
+        first_return_match_fallback_pattern(legacy_binding_payload.body.fallback());
+
+    let mismatched_literal =
+        body_payloads::CompilerPatternPayload::syntax(cst_path_syntax, legacy_literal_pattern);
+    let mismatched_path = body_payloads::CompilerPatternPayload::syntax(
+        cst_literal_syntax.clone(),
+        legacy_path_pattern,
+    );
+    let mismatched_binding =
+        body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax, legacy_binding_pattern);
+
+    let (mut literal_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_literal");
+    let literal_err = literal_compiler
+        .compile_match_pattern(
+            Register(0),
+            legacy_literal_pattern,
+            Some(&mismatched_literal),
+        )
+        .expect_err("mismatched literal payload should not use legacy literal");
+    assert!(matches!(
+        literal_err.kind,
+        CompileErrorKind::UnsupportedSyntax("literal pattern")
+    ));
+
+    let (mut path_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_path");
+    let path_err = path_compiler
+        .compile_match_pattern(Register(0), legacy_path_pattern, Some(&mismatched_path))
+        .expect_err("mismatched path payload should not use legacy path");
+    assert!(matches!(
+        path_err.kind,
+        CompileErrorKind::UnsupportedSyntax("path pattern")
+    ));
+
+    let (mut binding_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_binding");
+    let binding_err = binding_compiler
+        .bind_pattern_locals(
+            Register(0),
+            legacy_binding_pattern,
+            Some(&mismatched_binding),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("mismatched binding payload should not use legacy binding");
+    assert!(matches!(
+        binding_err.kind,
+        CompileErrorKind::UnsupportedSyntax("binding pattern")
+    ));
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],

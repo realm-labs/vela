@@ -48,25 +48,37 @@ fn record_pattern_field_name(
 fn pattern_literal_payload(
     payload: Option<&CompilerPatternPayload<'_>>,
     fallback: &Literal,
-) -> Literal {
+) -> CompileResult<Literal> {
+    let Some(payload) = payload else {
+        return Ok(fallback.clone());
+    };
     payload
-        .and_then(CompilerPatternPayload::syntax_literal)
-        .unwrap_or_else(|| fallback.clone())
+        .syntax_literal()
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("literal pattern")))
 }
 
 fn pattern_path_segments(
     payload: Option<&CompilerPatternPayload<'_>>,
     fallback: &[String],
-) -> Vec<String> {
+) -> CompileResult<Vec<String>> {
+    let Some(payload) = payload else {
+        return Ok(fallback.to_vec());
+    };
     payload
-        .and_then(CompilerPatternPayload::syntax_path_segments)
-        .unwrap_or_else(|| fallback.to_vec())
+        .syntax_path_segments()
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("path pattern")))
 }
 
-fn pattern_binding_name(payload: Option<&CompilerPatternPayload<'_>>, fallback: &str) -> String {
+fn pattern_binding_name(
+    payload: Option<&CompilerPatternPayload<'_>>,
+    fallback: &str,
+) -> CompileResult<String> {
+    let Some(payload) = payload else {
+        return Ok(fallback.to_owned());
+    };
     payload
-        .and_then(CompilerPatternPayload::syntax_binding_name)
-        .unwrap_or_else(|| fallback.to_owned())
+        .syntax_binding_name()
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern")))
 }
 
 pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
@@ -136,7 +148,7 @@ impl Compiler<'_, '_> {
         match pattern {
             Pattern::Wildcard | Pattern::Binding(_) => Ok(Vec::new()),
             Pattern::Literal(literal) => {
-                let literal = pattern_literal_payload(payload, literal);
+                let literal = pattern_literal_payload(payload, literal)?;
                 let pattern = self.compile_literal(None, &literal)?;
                 let condition = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::Equal {
@@ -147,11 +159,11 @@ impl Compiler<'_, '_> {
                 Ok(vec![self.emit_jump_if_false(condition)])
             }
             Pattern::Path(path) => {
-                let path = pattern_path_segments(payload, path);
+                let path = pattern_path_segments(payload, path)?;
                 self.compile_variant_tag_pattern(scrutinee, &path)
             }
             Pattern::RecordVariant { path, fields } => {
-                let path = pattern_path_segments(payload, path);
+                let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
@@ -178,7 +190,7 @@ impl Compiler<'_, '_> {
                 Ok(jumps)
             }
             Pattern::TupleVariant { path, fields } => {
-                let path = pattern_path_segments(payload, path);
+                let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
@@ -238,12 +250,12 @@ impl Compiler<'_, '_> {
                     dst,
                     src: scrutinee,
                 });
-                let binding = pattern_binding_name(payload, binding);
+                let binding = pattern_binding_name(payload, binding)?;
                 self.bind_pattern_local(&binding, dst, body_span, facts, kind);
                 Ok(())
             }
             Pattern::RecordVariant { path, fields } => {
-                let path = pattern_path_segments(payload, path);
+                let path = pattern_path_segments(payload, path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -279,7 +291,7 @@ impl Compiler<'_, '_> {
                 Ok(())
             }
             Pattern::TupleVariant { path, fields } => {
-                let path = pattern_path_segments(payload, path);
+                let path = pattern_path_segments(payload, path)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
