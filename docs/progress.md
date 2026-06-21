@@ -253,9 +253,9 @@ contracts now read HIR local binding type hints, and schema-default type and
 variant discovery, constructor shapes, field type facts, and default presence
 now read HIR struct and enum declarations/shapes. Schema default-expression
 payload discovery now walks rowan CST struct/enum field wrappers, and constant
-default evaluation uses rowan CST expressions, leaving the legacy owned AST in
-that path only as the temporary runtime expression compiler fallback for
-non-constant defaults.
+default evaluation uses rowan CST expressions, including simple constant block
+defaults with local `let` bindings, so schema defaults no longer carry a legacy
+owned-AST runtime expression fallback.
 Constructor schema lowering now consumes explicit default-expression payload
 maps instead of traversing legacy source files inside the schema-default logic.
 Bytecode script function lookup and parameter default flags now read HIR function
@@ -281,12 +281,12 @@ payload boundary, so script impl lowering consumes the temporary fallback
 wrapper without directly traversing old owned-AST impl or trait items, and
 parameter-default matching consumes fallback expressions without depending on
 old owned-AST parameter nodes outside that boundary. Schema default-expression
-fallback matching also enters through the bytecode legacy payload boundary, so
-semantic orchestration no longer requests the temporary owned parsed source
-directly and the CST syntax payload module no longer imports the old owned
+payload matching now stays on rowan CST field and variant wrappers, so semantic
+orchestration no longer requests temporary owned parsed source data for schema
+defaults and the CST syntax payload module no longer imports the old owned
 source model for schema default matching.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
-function body and runtime default-expression fallback behind a dedicated
+function body and parameter default-expression fallback behind a dedicated
 compiler payload boundary. Top-level functions, script methods, and trait
 default methods now enter bytecode compilation through a shared
 `CompilerBodyPayload` that carries the rowan CST body block plus the temporary

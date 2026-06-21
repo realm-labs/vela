@@ -62,7 +62,7 @@ fn main() {
         .next()
         .expect("amount field should carry a default");
     let value_without_legacy =
-        SchemaDefaultValue::new(default.value.source(), default.value.syntax().clone(), None);
+        SchemaDefaultValue::new(default.value.source(), default.value.syntax().clone());
     let synthetic_default = SchemaFieldDefault {
         name: default.name.clone(),
         value: value_without_legacy,
@@ -79,6 +79,53 @@ fn main() {
                 None,
             )
             .expect("constant CST default should compile without legacy fallback");
+        assert_eq!(fields.len(), 1);
+    });
+}
+
+#[test]
+fn constant_block_schema_defaults_compile_from_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct Reward {
+    amount: i64 = {
+        let base = 6;
+        base + 1
+    }
+}
+
+fn main() {
+    return Reward {};
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let type_symbols = semantic.type_symbols();
+    let const_values = semantic.const_values().expect("const values should lower");
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let reward = schema_defaults
+        .record("Reward")
+        .expect("Reward constructor shape");
+    let default = reward
+        .defaults()
+        .next()
+        .expect("amount field should carry a default");
+    let value = SchemaDefaultValue::new(default.value.source(), default.value.syntax().clone());
+    let synthetic_default = SchemaFieldDefault {
+        name: default.name.clone(),
+        value,
+        constants: default.constants.clone(),
+    };
+    with_cst_payload_compiler(text, |compiler, _| {
+        let mut fields = Vec::new();
+        let explicit_names = std::collections::BTreeSet::new();
+        compiler
+            .compile_schema_default_fields(
+                &mut fields,
+                &explicit_names,
+                vec![synthetic_default],
+                None,
+            )
+            .expect("constant block CST default should compile without legacy fallback");
         assert_eq!(fields.len(), 1);
     });
 }

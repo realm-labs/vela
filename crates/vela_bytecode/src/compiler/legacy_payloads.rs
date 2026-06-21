@@ -6,8 +6,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    AstNode, Block, EnumVariantFields, Expr, FunctionItem, ItemKind, Param, SourceFile,
-    SyntaxBlock, SyntaxSourceFile,
+    AstNode, Block, Expr, FunctionItem, ItemKind, Param, SourceFile, SyntaxBlock, SyntaxSourceFile,
 };
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -69,14 +68,13 @@ impl LegacySourceFallback {
         methods
     }
 
-    pub(super) fn schema_default_payloads<'ast>(
-        &'ast self,
+    pub(super) fn schema_default_payloads(
+        &self,
         source: SourceId,
         syntax: &SyntaxParse<SyntaxSourceFile>,
         graph: &ModuleGraph,
         module: ModuleId,
-    ) -> SchemaDefaultPayloads<'ast> {
-        let legacy = legacy_default_exprs_by_span(&self.parsed);
+    ) -> SchemaDefaultPayloads {
         let mut payloads = SchemaDefaultPayloads::default();
         for item in syntax.tree().structs() {
             let Some(type_name) = item.name_text() else {
@@ -92,16 +90,15 @@ impl LegacySourceFallback {
                 let Some(value) = field.default_value() else {
                     continue;
                 };
-                let Some(default_span) =
+                let Some(_default_span) =
                     graph_struct_field_default_span(graph, module, &type_name, &field_name)
                 else {
                     continue;
                 };
-                let legacy_value = legacy.get(&default_span).copied();
                 payloads.insert_struct_field(
                     type_name.clone(),
                     field_name,
-                    SchemaDefaultValue::new(source, value, legacy_value),
+                    SchemaDefaultValue::new(source, value),
                 );
             }
         }
@@ -122,7 +119,7 @@ impl LegacySourceFallback {
                         let Some(value) = field.default_value() else {
                             continue;
                         };
-                        let Some(default_span) = graph_enum_tuple_field_default_span(
+                        let Some(_default_span) = graph_enum_tuple_field_default_span(
                             graph,
                             module,
                             &type_name,
@@ -131,12 +128,11 @@ impl LegacySourceFallback {
                         ) else {
                             continue;
                         };
-                        let legacy_value = legacy.get(&default_span).copied();
                         payloads.insert_enum_tuple_field(
                             type_name.clone(),
                             variant_name.clone(),
                             index,
-                            SchemaDefaultValue::new(source, value, legacy_value),
+                            SchemaDefaultValue::new(source, value),
                         );
                     }
                 }
@@ -148,7 +144,7 @@ impl LegacySourceFallback {
                         let Some(value) = field.default_value() else {
                             continue;
                         };
-                        let Some(default_span) = graph_enum_record_field_default_span(
+                        let Some(_default_span) = graph_enum_record_field_default_span(
                             graph,
                             module,
                             &type_name,
@@ -157,12 +153,11 @@ impl LegacySourceFallback {
                         ) else {
                             continue;
                         };
-                        let legacy_value = legacy.get(&default_span).copied();
                         payloads.insert_enum_record_field(
                             type_name.clone(),
                             variant_name.clone(),
                             field_name,
-                            SchemaDefaultValue::new(source, value, legacy_value),
+                            SchemaDefaultValue::new(source, value),
                         );
                     }
                 }
@@ -230,44 +225,6 @@ fn legacy_param_defaults(params: &[Param]) -> Vec<Option<&Expr>> {
         .iter()
         .map(|param| param.default_value.as_ref())
         .collect()
-}
-
-fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, &Expr> {
-    let mut defaults = HashMap::new();
-    for item in &parsed.items {
-        match &item.kind {
-            ItemKind::Struct(record) => {
-                for field in &record.fields {
-                    if let Some(default_value) = field.default_value.as_ref() {
-                        defaults.insert(default_value.span, default_value);
-                    }
-                }
-            }
-            ItemKind::Enum(enumeration) => {
-                for variant in &enumeration.variants {
-                    match &variant.fields {
-                        EnumVariantFields::Unit => {}
-                        EnumVariantFields::Tuple(fields) => {
-                            for field in fields {
-                                if let Some(default_value) = field.default_value.as_ref() {
-                                    defaults.insert(default_value.span, default_value);
-                                }
-                            }
-                        }
-                        EnumVariantFields::Record(fields) => {
-                            for field in fields {
-                                if let Some(default_value) = field.default_value.as_ref() {
-                                    defaults.insert(default_value.span, default_value);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    defaults
 }
 
 fn graph_struct_field_default_span(

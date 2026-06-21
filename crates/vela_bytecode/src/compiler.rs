@@ -69,14 +69,14 @@ use semantic::{parse_semantic_modules, parse_semantic_source};
 use value_types::{RuntimeTypeFact, StandardRuntimeType, ValueTypeFlow, type_hint_value_type};
 
 #[derive(Clone, Debug)]
-struct CompilerFacts<'ast, 'registry> {
+struct CompilerFacts<'registry> {
     script_function_symbols: BTreeMap<HirDeclId, String>,
     script_function_signatures: BTreeMap<HirDeclId, Vec<ParamHint>>,
     script_method_ids: BTreeMap<(String, String), MethodId>,
     script_method_signatures: BTreeMap<(String, String), Vec<ParamHint>>,
     derived_operator_traits: BTreeMap<String, BTreeSet<String>>,
     script_field_slots: ScriptFieldSlots,
-    schema_defaults: ScriptSchemaDefaults<'ast>,
+    schema_defaults: ScriptSchemaDefaults,
     type_symbols: BTreeMap<HirDeclId, String>,
     global_symbols: BTreeMap<HirDeclId, String>,
     global_slots: BTreeMap<String, GlobalSlot>,
@@ -86,7 +86,7 @@ struct CompilerFacts<'ast, 'registry> {
     registry: Option<RegistryCompileView<'registry>>,
 }
 
-impl CompilerFacts<'_, '_> {
+impl CompilerFacts<'_> {
     fn known_type_names(&self) -> Vec<String> {
         let mut names = self.type_symbols.values().cloned().collect::<Vec<_>>();
         if let Some(registry) = self.registry {
@@ -443,7 +443,7 @@ fn derived_operator_traits(
 fn insert_script_impl_methods(
     program: &mut UnlinkedProgram,
     methods: Vec<script_impls::ScriptImplMethod<'_>>,
-    facts: &CompilerFacts<'_, '_>,
+    facts: &CompilerFacts<'_>,
 ) -> CompileResult<()> {
     for method in methods {
         program.insert_script_method(
@@ -500,7 +500,7 @@ fn type_guard_for_hint(
     hint: &HirTypeHint,
     location: GuardLocation,
     debug_name: impl Into<String>,
-    facts: &CompilerFacts<'_, '_>,
+    facts: &CompilerFacts<'_>,
 ) -> Option<UnlinkedTypeGuard> {
     let plan = type_guard_plan_for_hint_inner(hint, facts)?;
     Some(UnlinkedTypeGuard::new(
@@ -511,7 +511,7 @@ fn type_guard_for_hint(
 
 fn type_guard_plan_for_hint_inner(
     hint: &HirTypeHint,
-    facts: &CompilerFacts<'_, '_>,
+    facts: &CompilerFacts<'_>,
 ) -> Option<UnlinkedTypeGuardPlan> {
     let [name] = hint.path.as_slice() else {
         return None;
@@ -618,7 +618,7 @@ fn type_guard_plan_for_hint_inner(
 
 fn script_record_shape_guard_plan(
     type_name: &str,
-    facts: &CompilerFacts<'_, '_>,
+    facts: &CompilerFacts<'_>,
 ) -> Option<UnlinkedTypeGuardPlan> {
     let (type_name, shape_id) = facts.script_field_slots.record_shape_id(type_name)?;
     Some(UnlinkedTypeGuardPlan::Shape {
@@ -707,7 +707,7 @@ struct Compiler<'ast, 'registry> {
     param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
     return_type: Option<RuntimeTypeFact>,
     body: CompilerBodyPayload<'ast>,
-    facts: CompilerFacts<'ast, 'registry>,
+    facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
 }
 
@@ -718,7 +718,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
-        facts: CompilerFacts<'ast, 'registry>,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         Self::new_body(code_name, param_defaults, signature, body, bindings, facts)
     }
@@ -729,7 +729,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
-        facts: CompilerFacts<'ast, 'registry>,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let param_count = u16::try_from(signature.params.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;
@@ -830,7 +830,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
         receiver_type: &str,
-        facts: CompilerFacts<'ast, 'registry>,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let mut compiler =
             Self::new_body(code_name, param_defaults, signature, body, bindings, facts)?;
@@ -847,7 +847,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         body: CompilerBodyPayload<'ast>,
         captures: &[LambdaCapture],
         bindings: &'ast BindingMap,
-        facts: CompilerFacts<'ast, 'registry>,
+        facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
         let capture_count = u16::try_from(captures.len())
             .map_err(|_| CompileError::new(CompileErrorKind::RegisterOverflow))?;

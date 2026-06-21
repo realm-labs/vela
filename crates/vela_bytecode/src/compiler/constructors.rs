@@ -120,8 +120,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     pub(super) fn compile_record_fields(
         &mut self,
         fields: &[vela_syntax::ast::RecordField],
-        defaults: Vec<SchemaFieldDefault<'ast>>,
-        shape: Option<&ConstructorShape<'ast>>,
+        defaults: Vec<SchemaFieldDefault>,
+        shape: Option<&ConstructorShape>,
         payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
@@ -143,10 +143,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(compiled)
     }
 
-    pub(super) fn record_constructor_shape(
-        &self,
-        type_name: &str,
-    ) -> Option<ConstructorShape<'ast>> {
+    pub(super) fn record_constructor_shape(&self, type_name: &str) -> Option<ConstructorShape> {
         self.facts.schema_defaults.record(type_name).cloned()
     }
 
@@ -154,7 +151,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         &self,
         type_name: &str,
         variant: &str,
-    ) -> Option<ConstructorShape<'ast>> {
+    ) -> Option<ConstructorShape> {
         self.facts
             .schema_defaults
             .enum_variant(type_name, variant)
@@ -229,8 +226,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         &mut self,
         fields: &mut Vec<(String, Register)>,
         explicit_names: &BTreeSet<String>,
-        defaults: Vec<SchemaFieldDefault<'ast>>,
-        shape: Option<&ConstructorShape<'ast>>,
+        defaults: Vec<SchemaFieldDefault>,
+        shape: Option<&ConstructorShape>,
     ) -> CompileResult<()> {
         for default in defaults {
             if explicit_names.contains(&default.name) {
@@ -247,7 +244,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile_schema_field_default(
         &mut self,
-        default: &SchemaFieldDefault<'ast>,
+        default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
         if let Some(value) = evaluate_syntax_const_expr(
@@ -267,25 +264,10 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             }
             return self.emit_constant(value);
         }
-        let legacy = default.value.legacy().ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "non-constant CST schema default expression",
-            ))
-            .with_span(default.value.span())
-        })?;
-        let payload = CompilerExpressionPayload::syntax(
-            default.value.source(),
-            default.value.syntax().clone(),
-            legacy,
-        );
-        self.compile_expr_with_optional_expected_type_and_payload(
-            legacy,
-            expected,
-            TypeContractContext::Field {
-                name: default.name.clone(),
-            },
-            Some(&payload),
-        )
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "non-constant CST schema default expression",
+        ))
+        .with_span(default.value.span()))
     }
 }
 
@@ -327,9 +309,7 @@ fn argument_name(
         .or_else(|| arg.name.clone())
 }
 
-pub(super) fn schema_default_fields<'ast>(
-    shape: Option<&ConstructorShape<'ast>>,
-) -> Vec<SchemaFieldDefault<'ast>> {
+pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
     shape.map_or_else(Vec::new, ConstructorShape::default_fields)
 }
 

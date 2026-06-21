@@ -5,7 +5,8 @@ use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_syntax::TextRange;
 use vela_syntax::ast::{
     AstNode, BinaryOp, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix, Literal,
-    SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry, UnaryOp,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry, SyntaxStatementKind,
+    UnaryOp,
 };
 
 use crate::Constant;
@@ -148,6 +149,12 @@ pub(super) fn evaluate_syntax_const_expr(
                 .collect::<CompileResult<Option<Vec<_>>>>()
                 .map(|entries| entries.map(Constant::Map))
         }
+        SyntaxExpressionKind::Block => {
+            let Some(block) = expr.as_block() else {
+                return Ok(None);
+            };
+            evaluate_syntax_const_block(source, &block, values_by_name)
+        }
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
@@ -155,10 +162,73 @@ pub(super) fn evaluate_syntax_const_expr(
         | SyntaxExpressionKind::Try
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::Block
         | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match => Ok(None),
     }
+}
+
+fn evaluate_syntax_const_block(
+    source: SourceId,
+    block: &SyntaxBlock,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<Constant>> {
+    let mut local_values = values_by_name.clone();
+    let mut tail_value = None;
+    for statement in block.statements() {
+        match statement.statement_kind() {
+            SyntaxStatementKind::Let => {
+                let Some(statement) = statement.as_let() else {
+                    return Ok(None);
+                };
+                let Some(name) = statement.name_text() else {
+                    return Ok(None);
+                };
+                let Some(initializer) = statement.initializer() else {
+                    return Ok(None);
+                };
+                let Some(value) = evaluate_syntax_const_expr(source, &initializer, &local_values)?
+                else {
+                    return Ok(None);
+                };
+                local_values.insert(name, value);
+                tail_value = None;
+            }
+            SyntaxStatementKind::Return => {
+                let Some(statement) = statement.as_return() else {
+                    return Ok(None);
+                };
+                let Some(value) = statement.expression() else {
+                    return Ok(Some(Constant::Null));
+                };
+                return evaluate_syntax_const_expr(source, &value, &local_values);
+            }
+            SyntaxStatementKind::Expr => {
+                let Some(statement) = statement.as_expr() else {
+                    return Ok(None);
+                };
+                let Some(value) = statement.expression() else {
+                    return Ok(None);
+                };
+                tail_value = if statement.semicolon_token().is_some() {
+                    None
+                } else {
+                    evaluate_syntax_const_expr(source, &value, &local_values)?
+                };
+            }
+            SyntaxStatementKind::Block => {
+                let Some(statement) = statement.as_block() else {
+                    return Ok(None);
+                };
+                tail_value = evaluate_syntax_const_block(source, &statement, &local_values)?;
+            }
+            SyntaxStatementKind::Break
+            | SyntaxStatementKind::Continue
+            | SyntaxStatementKind::For
+            | SyntaxStatementKind::If
+            | SyntaxStatementKind::Match => return Ok(None),
+        }
+    }
+    Ok(tail_value)
 }
 
 fn evaluate_syntax_map_entry(

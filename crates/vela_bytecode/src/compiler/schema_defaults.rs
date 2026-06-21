@@ -4,20 +4,20 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{Argument, AstNode, Expr, RecordField, SyntaxExpression};
+use vela_syntax::ast::{Argument, AstNode, RecordField, SyntaxExpression};
 
 use crate::Constant;
 
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(super) struct ScriptSchemaDefaults<'ast> {
-    record_shapes: BTreeMap<String, ConstructorShape<'ast>>,
-    enum_shapes: BTreeMap<(String, String), ConstructorShape<'ast>>,
+pub(super) struct ScriptSchemaDefaults {
+    record_shapes: BTreeMap<String, ConstructorShape>,
+    enum_shapes: BTreeMap<(String, String), ConstructorShape>,
     enum_variants: BTreeMap<String, BTreeSet<String>>,
 }
 
-impl<'ast> ScriptSchemaDefaults<'ast> {
+impl ScriptSchemaDefaults {
     pub(super) fn merge(&mut self, other: Self) {
         self.record_shapes.extend(other.record_shapes);
         self.enum_shapes.extend(other.enum_shapes);
@@ -29,15 +29,11 @@ impl<'ast> ScriptSchemaDefaults<'ast> {
         }
     }
 
-    pub(super) fn record(&self, type_name: &str) -> Option<&ConstructorShape<'ast>> {
+    pub(super) fn record(&self, type_name: &str) -> Option<&ConstructorShape> {
         self.record_shapes.get(type_name)
     }
 
-    pub(super) fn enum_variant(
-        &self,
-        type_name: &str,
-        variant: &str,
-    ) -> Option<&ConstructorShape<'ast>> {
+    pub(super) fn enum_variant(&self, type_name: &str, variant: &str) -> Option<&ConstructorShape> {
         self.enum_shapes
             .get(&(type_name.to_owned(), variant.to_owned()))
     }
@@ -50,22 +46,22 @@ impl<'ast> ScriptSchemaDefaults<'ast> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct ConstructorShape<'ast> {
-    fields: Vec<ConstructorField<'ast>>,
+pub(super) struct ConstructorShape {
+    fields: Vec<ConstructorField>,
 }
 
-impl<'ast> ConstructorShape<'ast> {
-    fn new(fields: Vec<ConstructorField<'ast>>) -> Self {
+impl ConstructorShape {
+    fn new(fields: Vec<ConstructorField>) -> Self {
         Self { fields }
     }
 
-    pub(super) fn defaults(&self) -> impl Iterator<Item = &SchemaFieldDefault<'ast>> {
+    pub(super) fn defaults(&self) -> impl Iterator<Item = &SchemaFieldDefault> {
         self.fields
             .iter()
             .filter_map(|field| field.default.as_ref())
     }
 
-    pub(super) fn default_fields(&self) -> Vec<SchemaFieldDefault<'ast>> {
+    pub(super) fn default_fields(&self) -> Vec<SchemaFieldDefault> {
         self.defaults().cloned().collect()
     }
 
@@ -90,7 +86,7 @@ impl<'ast> ConstructorShape<'ast> {
         self.fields.iter().any(|field| field.name == name)
     }
 
-    fn required_fields(&self) -> impl Iterator<Item = &ConstructorField<'ast>> {
+    fn required_fields(&self) -> impl Iterator<Item = &ConstructorField> {
         self.fields.iter().filter(|field| field.default.is_none())
     }
 
@@ -120,38 +116,29 @@ impl<'ast> ConstructorShape<'ast> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct ConstructorField<'ast> {
+struct ConstructorField {
     name: String,
     argument_name: String,
     value_type: Option<RuntimeTypeFact>,
-    default: Option<SchemaFieldDefault<'ast>>,
+    default: Option<SchemaFieldDefault>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct SchemaFieldDefault<'ast> {
+pub(super) struct SchemaFieldDefault {
     pub(super) name: String,
-    pub(super) value: SchemaDefaultValue<'ast>,
+    pub(super) value: SchemaDefaultValue,
     pub(super) constants: BTreeMap<String, Constant>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct SchemaDefaultValue<'ast> {
+pub(super) struct SchemaDefaultValue {
     source: SourceId,
     syntax: SyntaxExpression,
-    legacy: Option<&'ast Expr>,
 }
 
-impl<'ast> SchemaDefaultValue<'ast> {
-    pub(super) const fn new(
-        source: SourceId,
-        syntax: SyntaxExpression,
-        legacy: Option<&'ast Expr>,
-    ) -> Self {
-        Self {
-            source,
-            syntax,
-            legacy,
-        }
+impl SchemaDefaultValue {
+    pub(super) const fn new(source: SourceId, syntax: SyntaxExpression) -> Self {
+        Self { source, syntax }
     }
 
     pub(super) const fn source(&self) -> SourceId {
@@ -162,23 +149,19 @@ impl<'ast> SchemaDefaultValue<'ast> {
         &self.syntax
     }
 
-    pub(super) fn legacy(&self) -> Option<&'ast Expr> {
-        self.legacy
-    }
-
     pub(super) fn span(&self) -> Span {
         let range = self.syntax.syntax().text_range();
         Span::new(self.source, range.start().into(), range.end().into())
     }
 }
 
-pub(super) fn source_schema_defaults<'ast>(
-    default_payloads: &SchemaDefaultPayloads<'ast>,
+pub(super) fn source_schema_defaults(
+    default_payloads: &SchemaDefaultPayloads,
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
     constants: BTreeMap<String, Constant>,
-) -> ScriptSchemaDefaults<'ast> {
+) -> ScriptSchemaDefaults {
     let mut defaults = ScriptSchemaDefaults::default();
 
     for declaration in module_schema_declarations(graph, module) {
@@ -269,18 +252,18 @@ fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirD
 }
 
 #[derive(Default)]
-pub(super) struct SchemaDefaultPayloads<'ast> {
-    struct_fields: BTreeMap<(String, String), SchemaDefaultValue<'ast>>,
-    enum_tuple_fields: BTreeMap<(String, String, usize), SchemaDefaultValue<'ast>>,
-    enum_record_fields: BTreeMap<(String, String, String), SchemaDefaultValue<'ast>>,
+pub(super) struct SchemaDefaultPayloads {
+    struct_fields: BTreeMap<(String, String), SchemaDefaultValue>,
+    enum_tuple_fields: BTreeMap<(String, String, usize), SchemaDefaultValue>,
+    enum_record_fields: BTreeMap<(String, String, String), SchemaDefaultValue>,
 }
 
-impl<'ast> SchemaDefaultPayloads<'ast> {
+impl SchemaDefaultPayloads {
     pub(super) fn insert_struct_field(
         &mut self,
         type_name: String,
         field_name: String,
-        value: SchemaDefaultValue<'ast>,
+        value: SchemaDefaultValue,
     ) {
         self.struct_fields.insert((type_name, field_name), value);
     }
@@ -290,7 +273,7 @@ impl<'ast> SchemaDefaultPayloads<'ast> {
         type_name: String,
         variant_name: String,
         index: usize,
-        value: SchemaDefaultValue<'ast>,
+        value: SchemaDefaultValue,
     ) {
         self.enum_tuple_fields
             .insert((type_name, variant_name, index), value);
@@ -301,13 +284,13 @@ impl<'ast> SchemaDefaultPayloads<'ast> {
         type_name: String,
         variant_name: String,
         field_name: String,
-        value: SchemaDefaultValue<'ast>,
+        value: SchemaDefaultValue,
     ) {
         self.enum_record_fields
             .insert((type_name, variant_name, field_name), value);
     }
 
-    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<SchemaDefaultValue<'ast>> {
+    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<SchemaDefaultValue> {
         self.struct_fields
             .get(&(type_name.to_owned(), field_name.to_owned()))
             .cloned()
@@ -318,7 +301,7 @@ impl<'ast> SchemaDefaultPayloads<'ast> {
         type_name: &str,
         variant_name: &str,
         index: usize,
-    ) -> Option<SchemaDefaultValue<'ast>> {
+    ) -> Option<SchemaDefaultValue> {
         self.enum_tuple_fields
             .get(&(type_name.to_owned(), variant_name.to_owned(), index))
             .cloned()
@@ -329,7 +312,7 @@ impl<'ast> SchemaDefaultPayloads<'ast> {
         type_name: &str,
         variant_name: &str,
         field_name: &str,
-    ) -> Option<SchemaDefaultValue<'ast>> {
+    ) -> Option<SchemaDefaultValue> {
         self.enum_record_fields
             .get(&(
                 type_name.to_owned(),
@@ -340,11 +323,11 @@ impl<'ast> SchemaDefaultPayloads<'ast> {
     }
 }
 
-fn schema_field_default<'ast>(
+fn schema_field_default(
     name: String,
-    value: SchemaDefaultValue<'ast>,
+    value: SchemaDefaultValue,
     constants: BTreeMap<String, Constant>,
-) -> SchemaFieldDefault<'ast> {
+) -> SchemaFieldDefault {
     SchemaFieldDefault {
         name,
         value,
@@ -354,7 +337,7 @@ fn schema_field_default<'ast>(
 
 pub(super) fn record_constructor_diagnostics(
     type_name: &str,
-    shape: Option<&ConstructorShape<'_>>,
+    shape: Option<&ConstructorShape>,
     fields: &[RecordField],
     field_names: Option<&[Option<String>]>,
     constructor_span: Span,
@@ -397,7 +380,7 @@ pub(super) fn record_constructor_diagnostics(
 pub(super) fn tuple_constructor_diagnostics(
     type_name: &str,
     variant: &str,
-    shape: Option<&ConstructorShape<'_>>,
+    shape: Option<&ConstructorShape>,
     args: &[Argument],
     arg_names: Option<&[Option<String>]>,
     constructor_span: Span,
@@ -413,7 +396,7 @@ pub(super) fn tuple_constructor_diagnostics(
 }
 
 pub(super) fn resolve_tuple_constructor_arguments<'ast>(
-    shape: &ConstructorShape<'_>,
+    shape: &ConstructorShape,
     owner: &str,
     args: &'ast [Argument],
     arg_names: Option<&[Option<String>]>,
@@ -514,7 +497,7 @@ fn record_field_name<'field>(
 }
 
 fn tuple_argument_index(
-    shape: &ConstructorShape<'_>,
+    shape: &ConstructorShape,
     arg_name: Option<&str>,
     arg_span: Span,
     next_positional: &mut usize,
@@ -605,13 +588,13 @@ fn missing_field_diagnostic(type_name: &str, field: &str, span: Span) -> Diagnos
     .with_label(span, "required field is not provided and has no default")
 }
 
-fn enum_variant_fields<'ast>(
+fn enum_variant_fields(
     enum_name: &str,
     variant_name: &str,
     fields: &EnumVariantFieldsHint,
-    default_payloads: &SchemaDefaultPayloads<'ast>,
+    default_payloads: &SchemaDefaultPayloads,
     constants: BTreeMap<String, Constant>,
-) -> Vec<ConstructorField<'ast>> {
+) -> Vec<ConstructorField> {
     match fields {
         EnumVariantFieldsHint::Unit => Vec::new(),
         EnumVariantFieldsHint::Tuple(fields) => fields
