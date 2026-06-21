@@ -339,6 +339,82 @@ fn classify(state) {
         .expect("CST-backed basic match arm patterns should compile");
 }
 
+#[test]
+fn mismatched_match_pattern_payloads_do_not_pair_children_by_index_or_label() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64, right: i64)
+    Named { first: i64, second: i64 }
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Pair(cst_left, cst_right) => cst_left,
+        _ => value,
+    };
+}
+
+fn legacy_tuple(value) {
+    return match value {
+        Shape::Pair(legacy_left, legacy_right) => legacy_left,
+        _ => value,
+    };
+}
+
+fn cst_record(value) {
+    return match value {
+        Shape::Named { first: cst_field } => cst_field,
+        _ => value,
+    };
+}
+
+fn legacy_record(value) {
+    return match value {
+        Shape::Named { second: legacy_field } => legacy_field,
+        _ => value,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_tuple_payload, _, _) = semantic.function("cst_tuple").expect("cst tuple");
+    let (legacy_tuple_payload, _, _) = semantic.function("legacy_tuple").expect("legacy tuple");
+    let (cst_record_payload, _, _) = semantic.function("cst_record").expect("cst record");
+    let (legacy_record_payload, _, _) = semantic.function("legacy_record").expect("legacy record");
+
+    let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
+    let legacy_tuple_pattern =
+        first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
+    let mismatched_tuple =
+        body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
+    let tuple_fields = mismatched_tuple
+        .tuple_pattern_payloads()
+        .expect("tuple pattern should expose field payloads");
+    assert_eq!(tuple_fields.len(), 2);
+    assert!(
+        tuple_fields
+            .iter()
+            .all(|field| field.syntax_pattern().is_none()),
+        "mismatched tuple fields must not receive index-based CST patterns"
+    );
+
+    let cst_record_syntax = first_return_match_pattern_syntax(&cst_record_payload.body);
+    let legacy_record_pattern =
+        first_return_match_fallback_pattern(legacy_record_payload.body.fallback());
+    let mismatched_record =
+        body_payloads::CompilerPatternPayload::syntax(cst_record_syntax, legacy_record_pattern);
+    let record_fields = mismatched_record
+        .record_field_payloads()
+        .expect("record pattern should expose field payloads");
+    assert_eq!(record_fields.len(), 1);
+    assert!(
+        record_fields
+            .iter()
+            .all(|field| field.syntax_label_name().is_none()),
+        "mismatched record fields must not receive label or index fallback CST fields"
+    );
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
@@ -355,6 +431,32 @@ fn assert_scrutinee_block_payload(
         cst_statement_texts(&body),
         expected_statement_texts(&[expected.to_vec()])[0]
     );
+}
+
+fn first_return_match_pattern_syntax(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> vela_syntax::ast::SyntaxPattern {
+    let statements = body.statement_payloads();
+    statements[0]
+        .return_value_match_arm_payloads()
+        .expect("return match")[0]
+        .pattern_payload()
+        .syntax_pattern()
+        .expect("CST pattern")
+        .clone()
+}
+
+fn first_return_match_fallback_pattern(
+    body: &vela_syntax::ast::Block,
+) -> &vela_syntax::ast::Pattern {
+    let statement = body.statements.first().expect("return statement");
+    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+        panic!("expected return statement");
+    };
+    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+        panic!("expected return match expression");
+    };
+    &match_expr.arms[0].pattern
 }
 
 fn assert_match_guard_payload(

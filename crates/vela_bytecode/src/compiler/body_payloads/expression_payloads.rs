@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, RecordPatternField,
-    SyntaxExpression, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
+    AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, SyntaxExpression,
+    SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
 
@@ -11,7 +11,8 @@ use super::{
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
     match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
     syntax_argument_for_fallback, syntax_expression_for_fallback, syntax_map_entry_for_fallback,
-    syntax_record_field_for_fallback,
+    syntax_pattern_for_fallback, syntax_record_field_for_fallback,
+    syntax_record_pattern_field_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -547,13 +548,8 @@ impl<'ast> CompilerPatternPayload<'ast> {
         Some(
             fields
                 .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerRecordPatternFieldPayload {
-                    syntax: syntax_record_pattern_field_for_fallback(
-                        &syntax_fields,
-                        index,
-                        fallback,
-                    ),
+                .map(|fallback| CompilerRecordPatternFieldPayload {
+                    syntax: syntax_record_pattern_field_for_fallback(&syntax_fields, fallback),
                     fallback,
                 })
                 .collect(),
@@ -575,9 +571,8 @@ impl<'ast> CompilerPatternPayload<'ast> {
         Some(
             fields
                 .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerPatternPayload {
-                    syntax: syntax_fields.get(index).cloned(),
+                .map(|fallback| CompilerPatternPayload {
+                    syntax: syntax_pattern_for_fallback(&syntax_fields, fallback),
                     fallback,
                 })
                 .collect(),
@@ -585,21 +580,20 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     #[cfg(test)]
+    pub(in crate::compiler) fn syntax(
+        syntax: vela_syntax::ast::SyntaxPattern,
+        fallback: &'ast Pattern,
+    ) -> Self {
+        Self {
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_pattern(&self) -> Option<&vela_syntax::ast::SyntaxPattern> {
         self.syntax.as_ref()
     }
-}
-
-fn syntax_record_pattern_field_for_fallback(
-    fields: &[SyntaxRecordPatternField],
-    fallback_index: usize,
-    fallback: &RecordPatternField,
-) -> Option<SyntaxRecordPatternField> {
-    fields
-        .iter()
-        .find(|field| field.label_text().as_deref() == Some(fallback.name.as_str()))
-        .cloned()
-        .or_else(|| fields.get(fallback_index).cloned())
 }
 
 impl<'ast> CompilerRecordPatternFieldPayload<'ast> {

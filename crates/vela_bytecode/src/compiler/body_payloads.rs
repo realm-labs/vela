@@ -176,6 +176,43 @@ fn syntax_record_field_for_fallback(
         .cloned()
 }
 
+fn syntax_pattern_for_fallback(
+    patterns: &[SyntaxPattern],
+    fallback: &Pattern,
+) -> Option<SyntaxPattern> {
+    patterns
+        .iter()
+        .find(|pattern| syntax_pattern_matches_fallback(pattern, fallback))
+        .cloned()
+}
+
+fn syntax_pattern_matches_fallback(pattern: &SyntaxPattern, fallback: &Pattern) -> bool {
+    match fallback {
+        Pattern::Wildcard => pattern.is_wildcard(),
+        Pattern::Literal(literal) => pattern
+            .literal()
+            .is_some_and(|syntax_literal| &syntax_literal == literal),
+        Pattern::Binding(name) => pattern.binding_name().as_deref() == Some(name.as_str()),
+        Pattern::Path(path) => pattern.path_segments().as_slice() == path.as_slice(),
+        Pattern::TupleVariant { path, .. } => pattern
+            .tuple_pattern()
+            .is_some_and(|pattern| pattern.path_segments().as_slice() == path.as_slice()),
+        Pattern::RecordVariant { path, .. } => pattern
+            .record_pattern()
+            .is_some_and(|pattern| pattern.path_segments().as_slice() == path.as_slice()),
+    }
+}
+
+fn syntax_record_pattern_field_for_fallback(
+    fields: &[SyntaxRecordPatternField],
+    fallback: &RecordPatternField,
+) -> Option<SyntaxRecordPatternField> {
+    fields
+        .iter()
+        .find(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
+        .cloned()
+}
+
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
     let start = u32::from(range.start());
     let end = u32::from(range.end());
