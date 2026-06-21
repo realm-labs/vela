@@ -122,14 +122,11 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         match &expr.kind {
             ExprKind::Field { base, name } => {
+                let name = host_path_field_name(payload.as_ref(), name)?;
                 let base_payload = payload
                     .as_ref()
                     .and_then(CompilerExpressionPayload::field_base_payload);
                 let mut receiver = self.resolve_host_path_receiver_with_payload(base, base_payload);
-                let name = payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::syntax_field_name)
-                    .unwrap_or_else(|| name.clone());
                 let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
                 receiver.path.segments.push(field.part);
                 Some(ResolvedHostPath {
@@ -801,6 +798,24 @@ fn callee_field_name_matches(
             Some(_) => false,
         },
         None => fallback_name == expected,
+    }
+}
+
+fn host_path_field_name(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    fallback_name: &str,
+) -> Option<String> {
+    match payload {
+        Some(payload) => match payload.kind() {
+            Some(SyntaxExpressionKind::Field) => Some(
+                payload
+                    .syntax_field_name()
+                    .unwrap_or_else(|| fallback_name.to_owned()),
+            ),
+            None => Some(fallback_name.to_owned()),
+            Some(_) => None,
+        },
+        None => Some(fallback_name.to_owned()),
     }
 }
 
