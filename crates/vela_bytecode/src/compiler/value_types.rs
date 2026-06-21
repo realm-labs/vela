@@ -445,12 +445,22 @@ fn static_syntax_expr_type(
         SyntaxExpressionKind::Lambda => Some(StaticExprType::Exact(RuntimeTypeFact::standard(
             StandardRuntimeType::Closure,
         ))),
+        SyntaxExpressionKind::Binary => {
+            let binary = expression.as_binary()?;
+            let op = binary.operator()?;
+            let left = binary.lhs().and_then(|value| {
+                syntax_expression_value_type(&value, source, local_type_at_span, local_type_named)
+            });
+            let right = binary.rhs().and_then(|value| {
+                syntax_expression_value_type(&value, source, local_type_at_span, local_type_named)
+            });
+            i64_binary_result_type(op, left.as_ref(), right.as_ref()).map(StaticExprType::Exact)
+        }
         SyntaxExpressionKind::Block
         | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match
         | SyntaxExpressionKind::Paren
         | SyntaxExpressionKind::Unary
-        | SyntaxExpressionKind::Binary
         | SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call

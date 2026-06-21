@@ -257,6 +257,45 @@ fn main() {
     );
 }
 
+#[test]
+fn binary_value_type_inference_prefers_cst_payload_operands() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_sum = 1 + 2;
+    let legacy_bool = true;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_sum = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST binary payload");
+            let legacy_bool = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy literal fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_sum
+                    .syntax_expression()
+                    .expect("CST binary expression")
+                    .clone(),
+                legacy_bool.fallback(),
+            );
+
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::I64,
+                ))
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
