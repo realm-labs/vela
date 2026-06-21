@@ -3,10 +3,11 @@ use std::collections::BTreeSet;
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::Argument;
+use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{CallArgument, ScriptCallMode};
 
+use super::body_payloads::CompilerArgumentPayload;
 use super::value_types::{ExpectedTypeOutcome, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -16,12 +17,36 @@ pub(super) struct ScriptCallArgs {
     pub(super) mode: ScriptCallMode,
 }
 
+#[derive(Clone, Copy)]
+pub(in crate::compiler) struct CallArgumentSyntax<'payload, 'ast> {
+    args: &'payload [Argument],
+    payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
+}
+
+impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
+    pub(in crate::compiler) fn new(
+        args: &'payload [Argument],
+        payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
+    ) -> Self {
+        Self { args, payloads }
+    }
+
+    fn payload_for(self, arg: &Argument) -> Option<&'payload CompilerArgumentPayload<'ast>> {
+        let index = self
+            .args
+            .iter()
+            .position(|candidate| std::ptr::eq(candidate, arg))?;
+        self.payloads?.get(index)
+    }
+}
+
 impl Compiler<'_, '_> {
-    pub(super) fn compile_script_call_args(
+    pub(in crate::compiler) fn compile_script_call_args_with_payloads(
         &mut self,
         declaration: HirDeclId,
         args: &[Argument],
         call_span: Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<ScriptCallArgs> {
         let params = self
             .facts
@@ -41,7 +66,7 @@ impl Compiler<'_, '_> {
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
                     let (register, requires_guard) =
-                        self.compile_argument_for_param(&arg.value, &param)?;
+                        self.compile_argument_for_param_with_payloads(arg, &param, arg_syntax)?;
                     if requires_guard {
                         mode = ScriptCallMode::Checked;
                     }
@@ -59,13 +84,17 @@ impl Compiler<'_, '_> {
         Ok(ScriptCallArgs { args, mode })
     }
 
-    pub(super) fn compile_argument_for_param(
+    pub(in crate::compiler) fn compile_argument_for_param_with_payloads(
         &mut self,
-        value: &vela_syntax::ast::Expr,
+        arg: &Argument,
         param: &ParamHint,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<(crate::Register, bool)> {
+        let value = &arg.value;
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
-            return self.compile_expr(value).map(|register| (register, false));
+            return self
+                .compile_call_argument_value(arg, arg_syntax)
+                .map(|register| (register, false));
         };
         let context = TypeContractContext::FunctionParameter {
             name: param.name.clone(),
@@ -74,6 +103,74 @@ impl Compiler<'_, '_> {
         let requires_guard = matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_));
         self.compile_expr_with_expected_type(value, expected, context)
             .map(|register| (register, requires_guard))
+    }
+
+    pub(in crate::compiler) fn compile_call_argument_value(
+        &mut self,
+        arg: &Argument,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
+    ) -> CompileResult<crate::Register> {
+        let value = &arg.value;
+        if let Some(payload) = arg_syntax.payload_for(arg)
+            && let Some(kind) = payload.value_kind()
+            && call_argument_value_kind_matches(kind, value)
+        {
+            return self.compile_call_argument_value_with_payload(value, payload, kind);
+        }
+        self.compile_expr(value)
+    }
+
+    fn compile_call_argument_value_with_payload(
+        &mut self,
+        value: &Expr,
+        payload: &CompilerArgumentPayload<'_>,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<crate::Register> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                let ExprKind::Block(block) = &value.kind else {
+                    unreachable!("validated CST block argument value kind");
+                };
+                let dst = self.alloc_register()?;
+                if let Some(body_payload) = payload.value_block_body_payload() {
+                    self.compile_block_payload_value_to(&body_payload, dst)?;
+                } else {
+                    self.compile_block_value_to(block, dst)?;
+                }
+                Ok(dst)
+            }
+            SyntaxExpressionKind::If => {
+                let ExprKind::If(if_expr) = &value.kind else {
+                    unreachable!("validated CST if argument value kind");
+                };
+                let dst = self.alloc_register()?;
+                let if_payload = payload.value_if_payload();
+                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())?;
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Match => {
+                let ExprKind::Match(match_expr) = &value.kind else {
+                    unreachable!("validated CST match argument value kind");
+                };
+                let dst = self.alloc_register()?;
+                let arm_payloads = payload.value_match_arm_payloads();
+                self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())?;
+                Ok(dst)
+            }
+            _ => self.compile_expr(value),
+        }
+    }
+}
+
+fn call_argument_value_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+    match kind {
+        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
+        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
+        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        _ => !matches!(
+            expr.kind,
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+        ),
     }
 }
 

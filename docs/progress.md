@@ -290,6 +290,10 @@ Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy
 expression fallback where record-field type contracts require it.
+Top-level call expression statements now expose rowan argument expression kinds
+and block/if/match body payloads, letting script, native, method, dynamic, and
+closure call argument values reuse CST-aware nested statement lowering while
+typed parameter contracts keep their existing checked fallback path.
 Top-level let statement payloads now expose rowan initializer expression kinds,
 letting block/if/match initializer lowering dispatch through aligned CST
 expression categories while preserving legacy fallback for temporary

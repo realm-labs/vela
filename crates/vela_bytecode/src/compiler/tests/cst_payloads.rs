@@ -171,6 +171,88 @@ fn assign_values() {
 }
 
 #[test]
+fn semantic_function_call_argument_values_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn take(first, second, third) {
+    return first;
+}
+
+fn call_values() {
+    take(
+        {
+            let start = 1;
+            start
+        },
+        if true {
+            let next = 2;
+            next
+        } else {
+            0
+        },
+        match 0 {
+            0 => {
+                let zero = 1;
+                zero
+            },
+            _ => {
+                2
+            },
+        },
+    );
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("call_values")
+        .expect("call_values function");
+    assert_cst_call_argument_values(
+        &payload.body,
+        &[
+            (
+                SyntaxExpressionKind::Block,
+                "{\n            let start = 1;\n            start\n        }",
+            ),
+            (
+                SyntaxExpressionKind::If,
+                "if true {\n            let next = 2;\n            next\n        } else {\n            0\n        }",
+            ),
+            (
+                SyntaxExpressionKind::Match,
+                "match 0 {\n            0 => {\n                let zero = 1;\n                zero\n            },\n            _ => {\n                2\n            },\n        }",
+            ),
+        ],
+    );
+    assert_cst_call_argument_block_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let start = 1;"),
+            (SyntaxStatementKind::Expr, "start"),
+        ]],
+    );
+    assert_cst_call_argument_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = 2;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+    );
+    assert_cst_call_argument_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let zero = 1;"),
+                (SyntaxStatementKind::Expr, "zero"),
+            ],
+            vec![(SyntaxStatementKind::Expr, "2")],
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed call argument values should compile");
+}
+
+#[test]
 fn semantic_function_let_initializer_expression_is_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

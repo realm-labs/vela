@@ -2,7 +2,8 @@ use vela_syntax::ast::{Argument, Expr, ExprKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
-use super::call_args::resolve_script_call_arguments;
+use super::body_payloads::CompilerArgumentPayload;
+use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -12,6 +13,22 @@ use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
 use vela_registry::{ParamDef, TypeHintDef};
 
+#[derive(Clone, Copy)]
+struct MethodCallFacts<'facts> {
+    receiver_type: Option<&'facts str>,
+    value_receiver_type: Option<&'facts RuntimeTypeFact>,
+    receiver_shape: Option<&'facts ValueShape>,
+}
+
+#[derive(Clone, Copy)]
+struct MethodArgContext<'facts> {
+    receiver_type: Option<&'facts RuntimeTypeFact>,
+    receiver_shape: Option<&'facts ValueShape>,
+    method: &'facts str,
+    param_name: &'facts str,
+    position: usize,
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn compile_call_expr(
         &mut self,
@@ -19,6 +36,17 @@ impl Compiler<'_, '_> {
         callee: &Expr,
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
+        self.compile_call_expr_with_arg_payloads(expr, callee, args, None)
+    }
+
+    pub(in crate::compiler) fn compile_call_expr_with_arg_payloads(
+        &mut self,
+        expr: &Expr,
+        callee: &Expr,
+        args: &[Argument],
+        arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+    ) -> CompileResult<crate::Register> {
+        let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
             let fields =
                 self.compile_tuple_variant_fields(callee.span, &enum_name, &variant, args)?;
@@ -41,7 +69,8 @@ impl Compiler<'_, '_> {
             path_root_is_local,
         ) {
             let root = self.compile_host_path_root(call.receiver)?;
-            let arg_registers = self.compile_host_method_call_args(call.method, args, expr.span)?;
+            let arg_registers =
+                self.compile_host_method_call_args(call.method, args, expr.span, arg_syntax)?;
             let dst = self.alloc_register()?;
             self.emit_host_call(
                 Some(dst),
@@ -66,15 +95,27 @@ impl Compiler<'_, '_> {
         }
 
         if let ExprKind::Field { base, name } = &callee.kind {
-            return self.compile_script_method_call(expr, base, name, args);
+            return self.compile_script_method_call(expr, base, name, args, arg_syntax);
         }
         if let Some((method, receiver_path)) = local_path_method_call(callee, &self.locals) {
-            return self.compile_script_path_method_call(expr, callee, receiver_path, method, args);
+            return self.compile_script_path_method_call(
+                expr,
+                callee,
+                receiver_path,
+                method,
+                args,
+                arg_syntax,
+            );
         }
 
         let dst = self.alloc_register()?;
         if let Some((declaration, name)) = self.script_function_call(callee) {
-            let call_args = self.compile_script_call_args(declaration, args, callee.span)?;
+            let call_args = self.compile_script_call_args_with_payloads(
+                declaration,
+                args,
+                callee.span,
+                arg_syntax,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
@@ -90,7 +131,7 @@ impl Compiler<'_, '_> {
             let callee = self.compile_expr(callee)?;
             let args = args
                 .iter()
-                .map(|arg| self.compile_expr(&arg.value))
+                .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
                 .collect::<CompileResult<Vec<_>>>()?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallClosure { dst, callee, args },
@@ -112,7 +153,7 @@ impl Compiler<'_, '_> {
                         ],
                     )));
                 }
-                let src = self.compile_expr(&args[0].value)?;
+                let src = self.compile_call_argument_value(&args[0], arg_syntax)?;
                 self.emit_spanned(
                     UnlinkedInstructionKind::MakeSetFromArray { dst, src },
                     expr.span,
@@ -120,8 +161,13 @@ impl Compiler<'_, '_> {
                 return Ok(dst);
             }
             let native = self.resolve_native_function_id(&fallback_name, callee.span)?;
-            let arg_registers =
-                self.compile_native_call_args(&fallback_name, native, args, callee.span)?;
+            let arg_registers = self.compile_native_call_args(
+                &fallback_name,
+                native,
+                args,
+                callee.span,
+                arg_syntax,
+            )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallNative {
                     dst: Some(dst),
@@ -141,6 +187,7 @@ impl Compiler<'_, '_> {
         method: HostMethodId,
         args: &[Argument],
         call_span: Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<crate::Register>> {
         let has_named_args = args.iter().any(|arg| arg.name.is_some());
         let registry_params = self
@@ -151,17 +198,17 @@ impl Compiler<'_, '_> {
             reject_named_args(args, "host method call")?;
             return args
                 .iter()
-                .map(|arg| self.compile_expr(&arg.value))
+                .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
                 .collect();
         };
         if !has_named_args {
             return args
                 .iter()
-                .map(|arg| self.compile_expr(&arg.value))
+                .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
                 .collect();
         }
         let params = registry_param_hints(params, call_span);
-        self.compile_metadata_register_args(&params, args, call_span)
+        self.compile_metadata_register_args(&params, args, call_span, arg_syntax)
     }
 
     fn compile_script_method_call(
@@ -170,6 +217,7 @@ impl Compiler<'_, '_> {
         base: &Expr,
         name: &str,
         args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr(base);
         let receiver_shape = self.value_shape_for_expr(base);
@@ -196,12 +244,15 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             let arg_registers = self.compile_script_method_call_args(
-                receiver_type.as_deref(),
-                value_receiver_type.as_ref(),
-                receiver_shape.as_ref(),
+                MethodCallFacts {
+                    receiver_type: receiver_type.as_deref(),
+                    value_receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                },
                 name,
                 args,
                 expr.span,
+                arg_syntax,
             )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
@@ -215,12 +266,15 @@ impl Compiler<'_, '_> {
             );
         } else if let Some(method_id) = value_method_id {
             let arg_registers = self.compile_script_method_call_args(
-                receiver_type.as_deref(),
-                value_receiver_type.as_ref(),
-                receiver_shape.as_ref(),
+                MethodCallFacts {
+                    receiver_type: receiver_type.as_deref(),
+                    value_receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                },
                 name,
                 args,
                 expr.span,
+                arg_syntax,
             )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
@@ -235,7 +289,7 @@ impl Compiler<'_, '_> {
         } else if receiver_type.is_some() || value_receiver_methods_known {
             return Err(unresolved_static_method_error(name, expr.span));
         } else {
-            let args = self.compile_dynamic_method_call_args(args)?;
+            let args = self.compile_dynamic_method_call_args(args, arg_syntax)?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallDynamicMethod {
                     dst,
@@ -256,6 +310,7 @@ impl Compiler<'_, '_> {
         receiver_path: &[String],
         method: &str,
         args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_receiver_path(receiver_path);
         let receiver_shape = self.value_shape_for_receiver_path(receiver_path);
@@ -282,12 +337,15 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             let arg_registers = self.compile_script_method_call_args(
-                receiver_type.as_deref(),
-                value_receiver_type.as_ref(),
-                receiver_shape.as_ref(),
+                MethodCallFacts {
+                    receiver_type: receiver_type.as_deref(),
+                    value_receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                },
                 method,
                 args,
                 expr.span,
+                arg_syntax,
             )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
@@ -301,12 +359,15 @@ impl Compiler<'_, '_> {
             );
         } else if let Some(method_id) = value_method_id {
             let arg_registers = self.compile_script_method_call_args(
-                receiver_type.as_deref(),
-                value_receiver_type.as_ref(),
-                receiver_shape.as_ref(),
+                MethodCallFacts {
+                    receiver_type: receiver_type.as_deref(),
+                    value_receiver_type: value_receiver_type.as_ref(),
+                    receiver_shape: receiver_shape.as_ref(),
+                },
                 method,
                 args,
                 expr.span,
+                arg_syntax,
             )?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallMethodId {
@@ -321,7 +382,7 @@ impl Compiler<'_, '_> {
         } else if receiver_type.is_some() || value_receiver_methods_known {
             return Err(unresolved_static_method_error(method, expr.span));
         } else {
-            let args = self.compile_dynamic_method_call_args(args)?;
+            let args = self.compile_dynamic_method_call_args(args, arg_syntax)?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallDynamicMethod {
                     dst,
@@ -337,29 +398,30 @@ impl Compiler<'_, '_> {
 
     fn compile_script_method_call_args(
         &mut self,
-        receiver_type: Option<&str>,
-        value_receiver_type: Option<&RuntimeTypeFact>,
-        receiver_shape: Option<&ValueShape>,
+        facts: MethodCallFacts<'_>,
         method: &str,
         args: &[Argument],
         call_span: vela_common::Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<CallArgument>> {
-        let Some(receiver_type) = receiver_type else {
+        let Some(receiver_type) = facts.receiver_type else {
             return self.compile_value_method_call_args(
-                value_receiver_type,
-                receiver_shape,
+                facts.value_receiver_type,
+                facts.receiver_shape,
                 method,
                 args,
                 call_span,
+                arg_syntax,
             );
         };
         let Some(params) = self.script_method_params(receiver_type, method) else {
             return self.compile_value_method_call_args(
-                value_receiver_type,
-                receiver_shape,
+                facts.value_receiver_type,
+                facts.receiver_shape,
                 method,
                 args,
                 call_span,
+                arg_syntax,
             );
         };
         let params = params.into_iter().skip(1).collect::<Vec<_>>();
@@ -373,7 +435,7 @@ impl Compiler<'_, '_> {
             .zip(params)
             .map(|(slot, param)| {
                 if let Some(arg) = slot {
-                    self.compile_argument_for_param(&arg.value, &param)
+                    self.compile_argument_for_param_with_payloads(arg, &param, arg_syntax)
                         .map(|(register, _)| CallArgument::Register(register))
                 } else if param.default_value_span.is_some() {
                     Ok(CallArgument::Missing)
@@ -387,12 +449,13 @@ impl Compiler<'_, '_> {
     fn compile_dynamic_method_call_args(
         &mut self,
         args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<DynamicCallArgument>> {
         args.iter()
             .map(|arg| {
                 Ok(DynamicCallArgument {
                     name: arg.name.clone(),
-                    value: self.compile_expr(&arg.value)?,
+                    value: self.compile_call_argument_value(arg, arg_syntax)?,
                 })
             })
             .collect()
@@ -405,6 +468,7 @@ impl Compiler<'_, '_> {
         method: &str,
         args: &[Argument],
         call_span: Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<CallArgument>> {
         let registry_params = self.registry_value_method_params(receiver_type, method);
         let Some(params) = registry_params else {
@@ -414,6 +478,7 @@ impl Compiler<'_, '_> {
                 receiver_shape,
                 method,
                 args,
+                arg_syntax,
             );
         };
         if !args.iter().any(|arg| arg.name.is_some()) {
@@ -422,6 +487,7 @@ impl Compiler<'_, '_> {
                 receiver_shape,
                 method,
                 args,
+                arg_syntax,
             );
         }
         let params = registry_param_hints(params, call_span);
@@ -434,12 +500,15 @@ impl Compiler<'_, '_> {
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
                 registers.push(CallArgument::Register(self.compile_method_arg(
-                    receiver_type,
-                    receiver_shape,
-                    method,
-                    param.name.as_str(),
-                    registers.len(),
+                    MethodArgContext {
+                        receiver_type,
+                        receiver_shape,
+                        method,
+                        param_name: param.name.as_str(),
+                        position: registers.len(),
+                    },
                     arg,
+                    arg_syntax,
                 )?));
             } else if param.default_value_span.is_none() {
                 unreachable!("call argument resolver rejects missing required arguments");
@@ -454,46 +523,63 @@ impl Compiler<'_, '_> {
         receiver_shape: Option<&ValueShape>,
         method: &str,
         args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<CallArgument>> {
         args.iter()
             .enumerate()
             .map(|(index, arg)| {
-                self.compile_method_arg(receiver_type, receiver_shape, method, "", index, arg)
-                    .map(CallArgument::Register)
+                self.compile_method_arg(
+                    MethodArgContext {
+                        receiver_type,
+                        receiver_shape,
+                        method,
+                        param_name: "",
+                        position: index,
+                    },
+                    arg,
+                    arg_syntax,
+                )
+                .map(CallArgument::Register)
             })
             .collect()
     }
 
     fn compile_method_arg(
         &mut self,
-        receiver_type: Option<&RuntimeTypeFact>,
-        receiver_shape: Option<&ValueShape>,
-        method: &str,
-        param_name: &str,
-        position: usize,
+        context: MethodArgContext<'_>,
         arg: &Argument,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
-        if let Some(expected) =
-            typed_container_mutation_arg_contract(receiver_type, method, param_name, position)
-        {
+        if let Some(expected) = typed_container_mutation_arg_contract(
+            context.receiver_type,
+            context.method,
+            context.param_name,
+            context.position,
+        ) {
             return self.compile_expr_with_expected_type(
                 &arg.value,
                 expected,
                 TypeContractContext::NativeParameter {
-                    function: method.to_owned(),
-                    name: mutation_arg_debug_name(method, param_name, position),
-                    index: u16::try_from(position).unwrap_or(u16::MAX),
+                    function: context.method.to_owned(),
+                    name: mutation_arg_debug_name(
+                        context.method,
+                        context.param_name,
+                        context.position,
+                    ),
+                    index: u16::try_from(context.position).unwrap_or(u16::MAX),
                 },
             );
         }
         let ExprKind::Lambda { params, body } = &arg.value.kind else {
-            return self.compile_expr(&arg.value);
+            return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let Some(receiver_shape) = receiver_shape else {
-            return self.compile_expr(&arg.value);
+        let Some(receiver_shape) = context.receiver_shape else {
+            return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let Some(param_shapes) = callback_param_shapes(receiver_shape, method, params.len()) else {
-            return self.compile_expr(&arg.value);
+        let Some(param_shapes) =
+            callback_param_shapes(receiver_shape, context.method, params.len())
+        else {
+            return self.compile_call_argument_value(arg, arg_syntax);
         };
         self.compile_lambda_with_callback_shapes(&arg.value, params, body, &param_shapes)
     }
@@ -503,6 +589,7 @@ impl Compiler<'_, '_> {
         params: &[ParamHint],
         args: &[Argument],
         call_span: Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<crate::Register>> {
         let slots =
             resolve_script_call_arguments(params, args, call_span).map_err(|diagnostics| {
@@ -512,7 +599,10 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
             if let Some(arg) = slot {
-                registers.push(self.compile_argument_for_param(&arg.value, param)?.0);
+                registers.push(
+                    self.compile_argument_for_param_with_payloads(arg, param, arg_syntax)?
+                        .0,
+                );
             } else if param.default_value_span.is_none() {
                 unreachable!("call argument resolver rejects missing required arguments");
             }
@@ -526,6 +616,7 @@ impl Compiler<'_, '_> {
         native: FunctionId,
         args: &[Argument],
         call_span: vela_common::Span,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<crate::Register>> {
         let registry_params = self
             .facts
@@ -535,7 +626,7 @@ impl Compiler<'_, '_> {
             reject_named_args(args, "native call")?;
             return args
                 .iter()
-                .map(|arg| self.compile_expr(&arg.value))
+                .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
                 .collect();
         };
         let params = params
@@ -559,11 +650,12 @@ impl Compiler<'_, '_> {
                         self.compile_native_argument_for_param(
                             name,
                             u16::try_from(index).unwrap_or(u16::MAX),
-                            &arg.value,
+                            arg,
                             param,
+                            arg_syntax,
                         )
                     } else {
-                        self.compile_expr(&arg.value)
+                        self.compile_call_argument_value(arg, arg_syntax)
                     }
                 })
                 .collect();
@@ -580,8 +672,9 @@ impl Compiler<'_, '_> {
                 registers.push(self.compile_native_argument_for_param(
                     name,
                     u16::try_from(index).unwrap_or(u16::MAX),
-                    &arg.value,
+                    arg,
                     param,
+                    arg_syntax,
                 )?);
             } else {
                 unreachable!("native call argument resolver rejects missing required arguments");
@@ -594,11 +687,13 @@ impl Compiler<'_, '_> {
         &mut self,
         function: &str,
         index: u16,
-        value: &Expr,
+        arg: &Argument,
         param: &ParamHint,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
+        let value = &arg.value;
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
-            return self.compile_expr(value);
+            return self.compile_call_argument_value(arg, arg_syntax);
         };
         self.compile_expr_with_expected_type(
             value,

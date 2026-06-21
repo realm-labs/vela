@@ -1,9 +1,9 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Stmt, StmtKind,
-    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMatchArm,
-    SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
+    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Stmt,
+    StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
+    SyntaxMatchArm, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -28,6 +28,12 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
     fallback: &'ast MatchArm,
+}
+
+pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
+    source: Option<SourceId>,
+    syntax: Option<SyntaxArgument>,
+    fallback: &'ast Argument,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
@@ -436,6 +442,28 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(in crate::compiler) fn call_argument_payloads(
+        &self,
+    ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Call { args, .. } = &expr.kind else {
+            return None;
+        };
+        let syntax_args = self.expression()?.as_call()?.arguments();
+        Some(
+            args.iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerArgumentPayload {
+                    source: self.source,
+                    syntax: syntax_args.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;
@@ -488,6 +516,57 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn syntax_statement(&self) -> Option<&SyntaxStatement> {
+        self.syntax.as_ref()
+    }
+}
+
+impl<'ast> CompilerArgumentPayload<'ast> {
+    pub(in crate::compiler) fn value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.syntax
+            .as_ref()?
+            .expression()
+            .map(|expression| expression.expression_kind())
+    }
+
+    pub(in crate::compiler) fn value_block_body_payload(
+        &self,
+    ) -> Option<CompilerBodyPayload<'ast>> {
+        let ExprKind::Block(block) = &self.fallback.value.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.expression()?.as_block()?,
+            block,
+        ))
+    }
+
+    pub(in crate::compiler) fn value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+        let ExprKind::If(if_expr) = &self.fallback.value.kind else {
+            return None;
+        };
+        if_payload_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.expression()?.as_if()?,
+            if_expr,
+        )
+    }
+
+    pub(in crate::compiler) fn value_match_arm_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let ExprKind::Match(match_expr) = &self.fallback.value.kind else {
+            return None;
+        };
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.expression()?.as_match()?,
+            match_expr,
+        ))
+    }
+
+    #[cfg(test)]
+    pub(super) fn syntax_argument(&self) -> Option<&SyntaxArgument> {
         self.syntax.as_ref()
     }
 }

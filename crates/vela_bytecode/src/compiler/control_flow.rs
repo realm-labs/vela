@@ -208,6 +208,18 @@ impl Compiler<'_, '_> {
                 ),
             )?;
             Ok(false)
+        } else if kind == SyntaxExpressionKind::Call {
+            let ExprKind::Call { callee, args } = &expr.kind else {
+                return self.compile_expr_statement(expr);
+            };
+            let argument_payloads = stmt.call_argument_payloads();
+            self.compile_call_expr_with_arg_payloads(
+                expr,
+                callee,
+                args,
+                argument_payloads.as_deref(),
+            )?;
+            Ok(false)
         } else {
             self.compile_expr(expr)?;
             Ok(false)
