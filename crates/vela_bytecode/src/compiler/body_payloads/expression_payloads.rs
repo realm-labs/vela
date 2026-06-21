@@ -1,7 +1,7 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, SyntaxExpression,
-    SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
+    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
 
@@ -492,6 +492,13 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),
             fallback: &self.fallback.pattern,
         }
+    }
+
+    pub(in crate::compiler) fn body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.syntax
+            .as_ref()?
+            .body_as_expression()
+            .map(|body| body.expression_kind())
     }
 
     pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {

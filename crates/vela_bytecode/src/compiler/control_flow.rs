@@ -1156,9 +1156,70 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerMatchArmPayload<'_>>,
         dst: Register,
     ) -> CompileResult<bool> {
-        if let Some(body) = payload.and_then(CompilerMatchArmPayload::body_block_payload) {
-            return self.compile_block_payload_value_to(&body, dst);
+        if let Some(payload) = payload
+            && let Some(kind) = payload.body_expression_kind()
+            && value_expression_kind_matches(kind, body)
+        {
+            return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
         }
+        self.compile_legacy_match_arm_value_to(body, payload, dst)
+    }
+
+    fn compile_match_arm_value_with_syntax_kind(
+        &mut self,
+        body: &Expr,
+        payload: &CompilerMatchArmPayload<'_>,
+        kind: SyntaxExpressionKind,
+        dst: Register,
+    ) -> CompileResult<bool> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                let ExprKind::Block(block) = &body.kind else {
+                    unreachable!("validated CST match arm block body kind");
+                };
+                if let Some(body) = payload.body_block_payload() {
+                    self.compile_block_payload_value_to(&body, dst)
+                } else {
+                    self.compile_block_value_to(block, dst)
+                }
+            }
+            SyntaxExpressionKind::If => {
+                let ExprKind::If(if_expr) = &body.kind else {
+                    unreachable!("validated CST match arm if body kind");
+                };
+                let body_payload = payload.body_expression_payload();
+                let if_payload = body_payload.if_payload();
+                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())
+            }
+            SyntaxExpressionKind::Match => {
+                let ExprKind::Match(match_expr) = &body.kind else {
+                    unreachable!("validated CST match arm match body kind");
+                };
+                let body_payload = payload.body_expression_payload();
+                let scrutinee_payload = body_payload.match_scrutinee_payload();
+                let arm_payloads = body_payload.match_arm_payloads();
+                self.compile_match_value_with_payloads(
+                    match_expr,
+                    dst,
+                    scrutinee_payload.as_ref(),
+                    arm_payloads.as_deref(),
+                )
+            }
+            _ => {
+                let body_payload = payload.body_expression_payload();
+                let value = self.compile_expr_with_payload(body, Some(&body_payload))?;
+                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+                Ok(false)
+            }
+        }
+    }
+
+    fn compile_legacy_match_arm_value_to(
+        &mut self,
+        body: &Expr,
+        payload: Option<&CompilerMatchArmPayload<'_>>,
+        dst: Register,
+    ) -> CompileResult<bool> {
         match &body.kind {
             ExprKind::Block(block) => self.compile_block_value_to(block, dst),
             _ => {
