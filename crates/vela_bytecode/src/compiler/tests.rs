@@ -634,6 +634,84 @@ fn assert_cst_call_argument_array_element_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected_block));
 }
 
+fn assert_cst_let_initializer_map_entry_value_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_block: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_match: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let values = statements
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .map(|entry| entry.value_expression_payload())
+        .collect::<Vec<_>>();
+    assert_cst_array_element_body_payloads(
+        &values,
+        expected_block,
+        expected_then,
+        expected_else,
+        expected_match,
+    );
+}
+
+fn assert_cst_assignment_value_map_entry_value_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_block: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .map(|entry| entry.value_expression_payload())
+        .filter_map(|value| {
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected_block));
+}
+
+fn assert_cst_return_value_map_entry_value_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_block: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| statement.return_value_expression_payload())
+        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .map(|entry| entry.value_expression_payload())
+        .filter_map(|value| {
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected_block));
+}
+
+fn assert_cst_call_argument_map_entry_value_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_block: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .map(|entry| entry.value_expression_payload())
+        .filter_map(|value| {
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected_block));
+}
+
 fn assert_cst_array_element_body_payloads(
     elements: &[body_payloads::CompilerExpressionPayload<'_>],
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],

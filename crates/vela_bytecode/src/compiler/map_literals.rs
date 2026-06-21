@@ -2,15 +2,22 @@ use vela_syntax::ast::{Expr, ExprKind, Literal, MapEntry};
 
 use crate::Register;
 
+use super::body_payloads::CompilerMapEntryPayload;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_map_entry(
         &mut self,
         entry: &MapEntry,
+        payload: Option<&CompilerMapEntryPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
         let key = map_key_name(&entry.key)?;
-        let value = self.compile_expr(&entry.value)?;
+        let value = if let Some(payload) = payload {
+            let value_payload = payload.value_expression_payload();
+            self.compile_expr_with_payload(&entry.value, Some(&value_payload))?
+        } else {
+            self.compile_expr(&entry.value)?
+        };
         Ok((key, value))
     }
 }

@@ -306,6 +306,10 @@ Let initializer, assignment value, return value, and call argument expression
 payloads now share CST-aware array literal lowering, so block/if/match array
 element values reuse rowan body and arm payloads while checked type-contract
 paths keep their existing fallback.
+The same CST-aware expression payload path now covers map literals in those
+value contexts, so map entry values can reuse rowan block, if, and match body
+payloads while non-CST and checked type-contract paths keep their existing
+fallback.
 Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or

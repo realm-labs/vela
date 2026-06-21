@@ -804,7 +804,10 @@ impl Compiler<'_, '_> {
         if let Some(kind) = syntax.kind
             && assignment_value_kind_matches(kind, value)
         {
-            if kind == SyntaxExpressionKind::Array {
+            if matches!(
+                kind,
+                SyntaxExpressionKind::Array | SyntaxExpressionKind::Map
+            ) {
                 return self.compile_expr_with_payload(value, syntax.expression);
             }
             return self.compile_assignment_value_with_syntax_kind(value, kind, syntax.payloads);

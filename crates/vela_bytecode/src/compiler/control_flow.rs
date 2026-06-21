@@ -551,7 +551,7 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok((dst, returned))
             }
-            SyntaxExpressionKind::Array => match expected {
+            SyntaxExpressionKind::Array | SyntaxExpressionKind::Map => match expected {
                 Some(expected) => self
                     .compile_expr_with_expected_type(value, expected, context)
                     .map(|register| (register, false)),
@@ -716,7 +716,7 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok((dst, returned))
             }
-            SyntaxExpressionKind::Array => match expected {
+            SyntaxExpressionKind::Array | SyntaxExpressionKind::Map => match expected {
                 Some(expected) => self
                     .compile_expr_with_expected_type(value, expected, context)
                     .map(|register| (register, false)),

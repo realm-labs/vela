@@ -364,6 +364,117 @@ fn return_values() {
 }
 
 #[test]
+fn semantic_function_map_entry_values_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn take(values) {
+    return values;
+}
+
+fn map_values() {
+    let values = {
+        start: {
+            let start = 1;
+            start
+        },
+        next: if true {
+            let next = 2;
+            next
+        } else {
+            0
+        },
+        matched: match 0 {
+            0 => {
+                let zero = 1;
+                zero
+            },
+            _ => {
+                2
+            },
+        },
+    };
+    values = {
+        assigned: {
+            let assigned = 3;
+            assigned
+        },
+    };
+    take({
+        arg: {
+            let arg = 4;
+            arg
+        },
+    });
+}
+
+fn return_map() {
+    return {
+        ret: {
+            let ret = 5;
+            ret
+        },
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("map_values")
+        .expect("map_values function");
+    assert_cst_let_initializers(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Map,
+            "{\n        start: {\n            let start = 1;\n            start\n        },\n        next: if true {\n            let next = 2;\n            next\n        } else {\n            0\n        },\n        matched: match 0 {\n            0 => {\n                let zero = 1;\n                zero\n            },\n            _ => {\n                2\n            },\n        },\n    }",
+        )],
+    );
+    assert_cst_let_initializer_map_entry_value_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let start = 1;"),
+            (SyntaxStatementKind::Expr, "start"),
+        ]],
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = 2;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let zero = 1;"),
+                (SyntaxStatementKind::Expr, "zero"),
+            ],
+            vec![(SyntaxStatementKind::Expr, "2")],
+        ],
+    );
+    assert_cst_assignment_value_map_entry_value_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let assigned = 3;"),
+            (SyntaxStatementKind::Expr, "assigned"),
+        ]],
+    );
+    assert_cst_call_argument_map_entry_value_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let arg = 4;"),
+            (SyntaxStatementKind::Expr, "arg"),
+        ]],
+    );
+    let (return_payload, _, _) = semantic
+        .function("return_map")
+        .expect("return_map function");
+    assert_cst_return_value_map_entry_value_body_payloads(
+        &return_payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let ret = 5;"),
+            (SyntaxStatementKind::Expr, "ret"),
+        ]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed map entry values should compile");
+}
+
+#[test]
 fn semantic_function_let_initializer_expression_is_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

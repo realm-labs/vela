@@ -86,6 +86,13 @@ impl Compiler<'_, '_> {
                 let element_payloads = payload.array_element_payloads();
                 self.compile_array(items, element_payloads.as_deref())
             }
+            SyntaxExpressionKind::Map => {
+                let ExprKind::Map(entries) = &expr.kind else {
+                    unreachable!("validated CST map expression payload kind");
+                };
+                let entry_payloads = payload.map_entry_payloads();
+                self.compile_map(entries, entry_payloads.as_deref())
+            }
             _ => self.compile_expr(expr),
         }
     }
@@ -228,15 +235,7 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             ExprKind::Array(items) => self.compile_array(items, None),
-            ExprKind::Map(entries) => {
-                let entries = entries
-                    .iter()
-                    .map(|entry| self.compile_map_entry(entry))
-                    .collect::<CompileResult<Vec<_>>>()?;
-                let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
-                Ok(dst)
-            }
+            ExprKind::Map(entries) => self.compile_map(entries, None),
             ExprKind::Record { path, fields } => {
                 let dst = self.alloc_register()?;
                 if let Some((enum_name, variant)) = enum_variant_path(path) {
@@ -320,6 +319,23 @@ impl Compiler<'_, '_> {
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
+        Ok(dst)
+    }
+
+    fn compile_map(
+        &mut self,
+        entries: &[vela_syntax::ast::MapEntry],
+        payloads: Option<&[super::body_payloads::CompilerMapEntryPayload<'_>]>,
+    ) -> CompileResult<Register> {
+        let entries = entries
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| {
+                self.compile_map_entry(entry, payloads.and_then(|payloads| payloads.get(index)))
+            })
+            .collect::<CompileResult<Vec<_>>>()?;
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
         Ok(dst)
     }
 
@@ -852,9 +868,14 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
+        SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         _ => !matches!(
             expr.kind,
-            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_) | ExprKind::Array(_)
+            ExprKind::Block(_)
+                | ExprKind::If(_)
+                | ExprKind::Match(_)
+                | ExprKind::Array(_)
+                | ExprKind::Map(_)
         ),
     }
 }

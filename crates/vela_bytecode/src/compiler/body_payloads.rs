@@ -1,9 +1,10 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Stmt,
-    StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
-    SyntaxMatchArm, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
+    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
+    MatchExpr, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxStatement,
+    SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -40,6 +41,12 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
     fallback: &'ast vela_syntax::ast::Expr,
+}
+
+pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
+    source: Option<SourceId>,
+    syntax: Option<SyntaxMapEntry>,
+    fallback: &'ast MapEntry,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
@@ -647,6 +654,41 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 })
                 .collect(),
         )
+    }
+
+    pub(in crate::compiler) fn map_entry_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMapEntryPayload<'ast>>> {
+        let ExprKind::Map(entries) = &self.fallback.kind else {
+            return None;
+        };
+        let syntax_entries = self
+            .syntax
+            .as_ref()?
+            .as_map()?
+            .entries()
+            .collect::<Vec<_>>();
+        Some(
+            entries
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerMapEntryPayload {
+                    source: self.source,
+                    syntax: syntax_entries.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+}
+
+impl<'ast> CompilerMapEntryPayload<'ast> {
+    pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref().and_then(SyntaxMapEntry::value),
+            fallback: &self.fallback.value,
+        }
     }
 }
 
