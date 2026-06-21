@@ -33,13 +33,15 @@ pub(super) fn host_method_call<'ast>(
             })
         }
         ExprKind::Path(path) => {
-            if path.len() < 2 {
+            let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
+            let lookup_path = cst_path.as_deref().unwrap_or(path);
+            if lookup_path.len() < 2 {
                 return None;
             }
-            if compiler.is_native_module_root(&path[0]) && !path_root_is_local {
+            if compiler.is_native_module_root(&lookup_path[0]) && !path_root_is_local {
                 return None;
             }
-            let method_name = path.last()?;
+            let method_name = lookup_path.last()?;
             let receiver = host_method_path_receiver(compiler, callee, &path[..path.len() - 1])?;
             let method = compiler
                 .host_method_id(receiver_type.or(receiver.type_name.as_deref()), method_name)?;
