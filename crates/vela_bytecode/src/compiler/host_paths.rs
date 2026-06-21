@@ -16,10 +16,16 @@ pub(super) struct HostPath<'ast> {
     pub(super) segments: Vec<HostPathPart<'ast>>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) enum HostPathRoot<'ast> {
-    Expr(&'ast Expr),
-    LocalPath { name: &'ast str, span: Span },
+    Expr {
+        expr: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    },
+    LocalPath {
+        name: &'ast str,
+        span: Span,
+    },
 }
 
 pub(super) enum HostPathPart<'ast> {
@@ -54,9 +60,8 @@ impl Compiler<'_, '_> {
         expr: &'ast Expr,
         payload: Option<&CompilerExpressionPayload<'ast>>,
     ) -> Option<HostPath<'ast>> {
-        let mut path = self.host_field_path(expr)?;
-        attach_dynamic_host_path_payloads(expr, payload.cloned(), &mut path.segments, &mut 0);
-        Some(path)
+        self.resolve_host_path_with_payload(expr, payload)
+            .map(|resolved| resolved.path)
     }
 
     pub(super) fn host_field_path_with_index_payloads<'ast>(
@@ -70,12 +75,7 @@ impl Compiler<'_, '_> {
             return Some(path);
         };
         let mut next_segment = 0;
-        attach_dynamic_host_path_payloads(
-            base,
-            base_payload.cloned(),
-            &mut path.segments,
-            &mut next_segment,
-        );
+        attach_host_path_payloads(base, base_payload.cloned(), &mut path, &mut next_segment);
         attach_next_dynamic_host_path_payload(
             index.as_ref(),
             index_payload.cloned(),
@@ -94,8 +94,18 @@ impl Compiler<'_, '_> {
         let ExprKind::Field { base, .. } = &expr.kind else {
             return Some(path);
         };
-        attach_dynamic_host_path_payloads(base, base_payload.cloned(), &mut path.segments, &mut 0);
+        attach_host_path_payloads(base, base_payload.cloned(), &mut path, &mut 0);
         Some(path)
+    }
+
+    pub(super) fn resolve_host_path_with_payload<'ast>(
+        &self,
+        expr: &'ast Expr,
+        payload: Option<&CompilerExpressionPayload<'ast>>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        let mut resolved = self.resolve_host_path(expr)?;
+        attach_host_path_payloads(expr, payload.cloned(), &mut resolved.path, &mut 0);
+        Some(resolved)
     }
 
     pub(super) fn resolve_host_path<'ast>(
@@ -168,7 +178,10 @@ impl Compiler<'_, '_> {
     fn expr_host_path_receiver<'ast>(&self, receiver: &'ast Expr) -> ResolvedHostPath<'ast> {
         ResolvedHostPath {
             path: HostPath {
-                root: HostPathRoot::Expr(receiver),
+                root: HostPathRoot::Expr {
+                    expr: receiver,
+                    payload: None,
+                },
                 segments: Vec::new(),
             },
             type_name: self.script_type_for_expr(receiver),
@@ -378,11 +391,15 @@ impl Compiler<'_, '_> {
     pub(super) fn host_path_push_call(
         &mut self,
         callee: &Expr,
+        callee_payload: Option<&CompilerExpressionPayload<'_>>,
         args: &[Argument],
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "push" => self.host_field_path(base),
+            ExprKind::Field { base, name } if name == "push" => {
+                let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
+                self.host_field_path_with_payload(base, base_payload.as_ref())
+            }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => self
                 .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
                 .map(|resolved| resolved.path),
@@ -400,7 +417,7 @@ impl Compiler<'_, '_> {
                 "host path push arity",
             )));
         };
-        let root = self.compile_host_path_root(path.root)?;
+        let root = self.compile_host_path_root(&path.root)?;
         let value = self.compile_call_argument_value(arg, arg_syntax)?;
         self.emit_host_mutate(root, path, HostMutationOp::Push, value, callee.span)?;
         let dst = self.alloc_register()?;
@@ -411,10 +428,14 @@ impl Compiler<'_, '_> {
     pub(super) fn host_path_remove_call(
         &mut self,
         callee: &Expr,
+        callee_payload: Option<&CompilerExpressionPayload<'_>>,
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "remove" => self.host_field_path(base),
+            ExprKind::Field { base, name } if name == "remove" => {
+                let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
+                self.host_field_path_with_payload(base, base_payload.as_ref())
+            }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => self
                 .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
                 .map(|resolved| resolved.path),
@@ -437,7 +458,7 @@ impl Compiler<'_, '_> {
         {
             self.reject_terminal_host_index_access(base, HostIndexAccessKind::Remove)?;
         }
-        let root = self.compile_host_path_root(path.root)?;
+        let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_remove(root, path, callee.span)?;
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
@@ -446,11 +467,13 @@ impl Compiler<'_, '_> {
 
     pub(super) fn compile_host_path_root<'expr>(
         &mut self,
-        root: HostPathRoot<'expr>,
+        root: &HostPathRoot<'expr>,
     ) -> CompileResult<Register> {
         match root {
-            HostPathRoot::Expr(expr) => self.compile_expr(expr),
-            HostPathRoot::LocalPath { name, span } => self.local_register_at_span(span, name),
+            HostPathRoot::Expr { expr, payload } => {
+                self.compile_expr_with_payload(expr, payload.as_ref())
+            }
+            HostPathRoot::LocalPath { name, span } => self.local_register_at_span(*span, name),
         }
     }
 
@@ -509,7 +532,7 @@ impl Compiler<'_, '_> {
 
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
-            HostPathRoot::Expr(expr) => self.script_type_for_expr(expr),
+            HostPathRoot::Expr { expr, .. } => self.script_type_for_expr(expr),
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
         }
     }
@@ -602,18 +625,18 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn attach_dynamic_host_path_payloads<'ast>(
+fn attach_host_path_payloads<'ast>(
     expr: &'ast Expr,
     payload: Option<CompilerExpressionPayload<'ast>>,
-    segments: &mut [HostPathPart<'ast>],
+    path: &mut HostPath<'ast>,
     next_segment: &mut usize,
 ) {
     match &expr.kind {
         ExprKind::Field { base, .. } => {
-            attach_dynamic_host_path_payloads(
+            attach_host_path_payloads(
                 base,
                 payload.and_then(|payload| payload.field_base_payload()),
-                segments,
+                path,
                 next_segment,
             );
         }
@@ -621,15 +644,32 @@ fn attach_dynamic_host_path_payloads<'ast>(
             let operands = payload.and_then(|payload| payload.index_operand_payloads());
             let (base_payload, index_payload) =
                 operands.map_or((None, None), |(base, index)| (Some(base), Some(index)));
-            attach_dynamic_host_path_payloads(base, base_payload, segments, next_segment);
+            attach_host_path_payloads(base, base_payload, path, next_segment);
             attach_next_dynamic_host_path_payload(
                 index.as_ref(),
                 index_payload,
-                segments,
+                &mut path.segments,
                 next_segment,
             );
         }
-        _ => {}
+        _ => attach_host_path_root_payload(expr, payload, &mut path.root),
+    }
+}
+
+fn attach_host_path_root_payload<'ast>(
+    expr: &'ast Expr,
+    expr_payload: Option<CompilerExpressionPayload<'ast>>,
+    root: &mut HostPathRoot<'ast>,
+) {
+    let HostPathRoot::Expr {
+        expr: root_expr,
+        payload,
+    } = root
+    else {
+        return;
+    };
+    if std::ptr::eq::<Expr>(*root_expr, expr) {
+        *payload = expr_payload;
     }
 }
 

@@ -71,10 +71,11 @@ impl Compiler<'_, '_> {
         if let Some(call) = host_method_call(
             self,
             callee,
+            callee_payload,
             host_receiver_type.as_deref(),
             path_root_is_local,
         ) {
-            let root = self.compile_host_path_root(call.receiver)?;
+            let root = self.compile_host_path_root(&call.receiver)?;
             let arg_registers =
                 self.compile_host_method_call_args(call.method, args, expr.span, arg_syntax)?;
             let dst = self.alloc_register()?;
@@ -92,11 +93,11 @@ impl Compiler<'_, '_> {
             return Ok(dst);
         }
 
-        if let Some(remove) = self.host_path_remove_call(callee, args)? {
+        if let Some(remove) = self.host_path_remove_call(callee, callee_payload, args)? {
             return Ok(remove);
         }
 
-        if let Some(push) = self.host_path_push_call(callee, args, arg_syntax)? {
+        if let Some(push) = self.host_path_push_call(callee, callee_payload, args, arg_syntax)? {
             return Ok(push);
         }
 

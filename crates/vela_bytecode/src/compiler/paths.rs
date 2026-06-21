@@ -114,7 +114,7 @@ impl Compiler<'_, '_> {
             .map(|resolved| resolved.path)
             && host_path.requires_path_instruction()
         {
-            let root = self.compile_host_path_root(host_path.root)?;
+            let root = self.compile_host_path_root(&host_path.root)?;
             let dst = self.alloc_register()?;
             self.emit_host_read(dst, root, host_path, span)?;
             return Ok(dst);

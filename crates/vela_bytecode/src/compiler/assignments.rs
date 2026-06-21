@@ -861,13 +861,8 @@ impl Compiler<'_, '_> {
         value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let path = self.compile_host_assignment_target(target, target_syntax.expression)?;
-        let root_path = path.root;
-        let root = self.compile_host_path_root(root_path)?;
+        let root = self.compile_host_path_root(&path.root)?;
         let src = self.compile_assignment_value(value, None, value_syntax)?;
-        let path = HostPath {
-            root: root_path,
-            segments: path.segments,
-        };
         match op {
             AssignOp::Set => self.emit_host_write(root, path, src, target.span)?,
             AssignOp::Add => {

@@ -290,7 +290,7 @@ impl Compiler<'_, '_> {
             if let Some(path) = self.host_field_path_with_field_base_payload(expr, base_payload)
                 && path.requires_path_instruction()
             {
-                let root = self.compile_host_path_root(path.root)?;
+                let root = self.compile_host_path_root(&path.root)?;
                 let dst = self.alloc_register()?;
                 self.emit_host_read(dst, root, path, expr.span)?;
                 return Ok(dst);
@@ -303,7 +303,10 @@ impl Compiler<'_, '_> {
                 .map(|field| field.id)
             {
                 let path = HostPath {
-                    root: super::host_paths::HostPathRoot::Expr(base),
+                    root: super::host_paths::HostPathRoot::Expr {
+                        expr: base,
+                        payload: base_payload.cloned(),
+                    },
                     segments: vec![super::host_paths::HostPathPart::Field(field)],
                 };
                 self.emit_host_read(dst, root, path, expr.span)?;
@@ -331,7 +334,7 @@ impl Compiler<'_, '_> {
             && !path.segments.is_empty()
         {
             self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;
-            let root = self.compile_host_path_root(path.root)?;
+            let root = self.compile_host_path_root(&path.root)?;
             let dst = self.alloc_register()?;
             self.emit_host_read(dst, root, path, expr.span)?;
             return Ok(dst);

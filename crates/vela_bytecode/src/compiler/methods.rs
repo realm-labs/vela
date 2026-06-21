@@ -1,6 +1,7 @@
 use vela_common::HostMethodId;
 use vela_syntax::ast::{Expr, ExprKind};
 
+use super::body_payloads::CompilerExpressionPayload;
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot, ResolvedHostPath};
 
 pub(super) struct HostMethodCall<'ast> {
@@ -12,12 +13,14 @@ pub(super) struct HostMethodCall<'ast> {
 pub(super) fn host_method_call<'ast>(
     compiler: &super::Compiler<'_, '_>,
     callee: &'ast Expr,
+    callee_payload: Option<&CompilerExpressionPayload<'ast>>,
     receiver_type: Option<&str>,
     path_root_is_local: bool,
 ) -> Option<HostMethodCall<'ast>> {
     match &callee.kind {
         ExprKind::Field { base, name } => {
-            let receiver = host_method_receiver_path(compiler, base)?;
+            let receiver_payload = callee_payload.and_then(|payload| payload.field_base_payload());
+            let receiver = host_method_receiver_path(compiler, base, receiver_payload.as_ref())?;
             let method =
                 compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), name)?;
             Some(HostMethodCall {
@@ -50,16 +53,22 @@ pub(super) fn host_method_call<'ast>(
 fn host_method_receiver_path<'ast>(
     compiler: &super::Compiler<'_, '_>,
     receiver: &'ast Expr,
+    receiver_payload: Option<&CompilerExpressionPayload<'ast>>,
 ) -> Option<ResolvedHostPath<'ast>> {
-    compiler.resolve_host_path(receiver).or_else(|| {
-        Some(ResolvedHostPath {
-            path: HostPath {
-                root: HostPathRoot::Expr(receiver),
-                segments: Vec::new(),
-            },
-            type_name: compiler.script_type_for_expr(receiver),
+    compiler
+        .resolve_host_path_with_payload(receiver, receiver_payload)
+        .or_else(|| {
+            Some(ResolvedHostPath {
+                path: HostPath {
+                    root: HostPathRoot::Expr {
+                        expr: receiver,
+                        payload: receiver_payload.cloned(),
+                    },
+                    segments: Vec::new(),
+                },
+                type_name: compiler.script_type_for_expr(receiver),
+            })
         })
-    })
 }
 
 fn host_method_path_receiver<'ast>(
