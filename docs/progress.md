@@ -424,6 +424,9 @@ lookup before falling back to temporary legacy receiver expressions.
 Host index key validation now uses rowan CST index operand payloads for
 payload-aware read, write, and compound mutation checks before falling back to
 temporary legacy index expressions.
+Host index receiver-type validation now also uses rowan CST base operand
+payloads for payload-aware read, write, and compound mutation checks before
+falling back to temporary legacy receiver expressions.
 Host path `push` and `remove` lowering now also prefers rowan CST callee field
 names and path segments before falling back to temporary legacy callee names.
 Path-style host method lookup now prefers rowan CST callee path segments for

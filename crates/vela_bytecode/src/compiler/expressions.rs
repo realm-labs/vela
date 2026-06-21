@@ -357,13 +357,25 @@ impl Compiler<'_, '_> {
             self.host_field_path_with_index_payloads(expr, base_payload, index_payload)
             && !path.segments.is_empty()
         {
-            self.reject_invalid_host_index_read_with_payload(expr, base, index, index_payload)?;
+            self.reject_invalid_host_index_read_with_payload(
+                expr,
+                base,
+                index,
+                base_payload,
+                index_payload,
+            )?;
             let root = self.compile_host_path_root(&path.root)?;
             let dst = self.alloc_register()?;
             self.emit_host_read(dst, root, path, expr.span)?;
             return Ok(dst);
         }
-        self.reject_invalid_host_index_read_with_payload(expr, base, index, index_payload)?;
+        self.reject_invalid_host_index_read_with_payload(
+            expr,
+            base,
+            index,
+            base_payload,
+            index_payload,
+        )?;
         let base = self.compile_expr_with_payload(base, base_payload)?;
         let dst = self.alloc_register()?;
         if let Some(key) = literal_string(index) {

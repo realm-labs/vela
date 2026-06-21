@@ -317,6 +317,130 @@ fn main() {
     );
 }
 
+#[test]
+fn host_index_validation_prefers_cst_receiver_payloads() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "CstMap",
+            ))
+            .host_runtime_id(77),
+        )
+        .expect("CstMap host type should register");
+    registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "LegacyMap",
+            ))
+            .host_runtime_id(78),
+        )
+        .expect("LegacyMap host type should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(cst: CstMap, legacy: LegacyMap) {
+    let cst_value = cst[1];
+    let legacy_value = legacy[false];
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
+    let global_type_symbols = semantic.global_type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let const_values = semantic.const_values().expect("const values should lower");
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let facts = CompilerFacts {
+        script_function_symbols,
+        script_function_signatures,
+        script_method_ids: std::collections::BTreeMap::new(),
+        script_method_signatures: std::collections::BTreeMap::new(),
+        derived_operator_traits: std::collections::BTreeMap::new(),
+        script_field_slots,
+        schema_defaults,
+        type_symbols,
+        global_symbols,
+        global_slots,
+        global_type_symbols,
+        const_values,
+        options: CompilerOptions::new()
+            .with_host_index_capability(
+                "CstMap",
+                crate::compiler::options::HostIndexCapabilityInfo {
+                    readable: true,
+                    writable: true,
+                    addable: true,
+                    removable: true,
+                    key_type: Some("i64".to_owned()),
+                    value_type: Some("i64".to_owned()),
+                },
+            )
+            .with_host_index_capability(
+                "LegacyMap",
+                crate::compiler::options::HostIndexCapabilityInfo {
+                    readable: true,
+                    writable: true,
+                    addable: true,
+                    removable: true,
+                    key_type: Some("bool".to_owned()),
+                    value_type: Some("i64".to_owned()),
+                },
+            ),
+        registry: Some(registry.compile_view()),
+    };
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let cst_index = statements[0]
+        .let_initializer_expression_payload()
+        .expect("CST index initializer");
+    let legacy_index = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy index initializer");
+    let mismatched_index = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_index
+            .syntax_expression()
+            .expect("CST index syntax")
+            .clone(),
+        legacy_index.fallback(),
+    );
+    let (base_payload, index_payload) = mismatched_index
+        .index_operand_payloads()
+        .expect("mismatched index payloads");
+    let ExprKind::Index { base, index } = &mismatched_index.fallback().kind else {
+        panic!("expected legacy index fallback");
+    };
+    let compiler = Compiler::new(
+        payload.function.name.clone(),
+        payload.function,
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    compiler
+        .reject_invalid_host_index_read_with_payload(
+            mismatched_index.fallback(),
+            base,
+            index,
+            Some(&base_payload),
+            Some(&index_payload),
+        )
+        .expect("CST receiver payload should select CstMap key contract");
+}
+
 fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

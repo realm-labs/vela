@@ -251,6 +251,7 @@ impl Compiler<'_, '_> {
         self.reject_read_only_host_assignment(target)?;
         if let ExprKind::Index { base, index } = &target.kind {
             let operand_payloads = target_syntax.index_operand_payloads();
+            let base_payload = operand_payloads.as_ref().map(|(base, _)| base);
             let index_payload = operand_payloads.as_ref().map(|(_, index)| index);
             let access = match op {
                 AssignOp::Set => HostIndexAccessKind::Write,
@@ -263,6 +264,7 @@ impl Compiler<'_, '_> {
                 base,
                 index,
                 access,
+                base_payload,
                 index_payload,
             )?;
             if self.host_field_path(target).is_none() {

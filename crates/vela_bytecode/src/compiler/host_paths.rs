@@ -300,10 +300,35 @@ impl Compiler<'_, '_> {
                 self.resolve_host_path_with_owned_payload(receiver, payload)
             }
             ExprKind::Path(path) => self
-                .resolve_host_path(receiver)
+                .host_index_payload_root_path(receiver, payload.clone())
+                .or_else(|| self.resolve_host_path(receiver))
                 .or_else(|| self.host_index_root_path(receiver.span, path)),
             _ => None,
         }
+    }
+
+    fn host_index_payload_root_path<'ast>(
+        &self,
+        receiver: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        let payload = payload?;
+        let cst_path = payload.path_segments()?;
+        if cst_path.len() != 1 {
+            return None;
+        }
+        let type_name = self.script_type_for_expr_with_payload(receiver, Some(&payload))?;
+        self.facts.options.host_index_capability(&type_name)?;
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::Expr {
+                    expr: receiver,
+                    payload: Some(payload),
+                },
+                segments: Vec::new(),
+            },
+            type_name: Some(type_name),
+        })
     }
 
     fn host_index_root_path<'ast>(
@@ -673,7 +698,7 @@ impl Compiler<'_, '_> {
         index: &Expr,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        self.reject_invalid_host_index_access_with_payload(expr, base, index, kind, None)
+        self.reject_invalid_host_index_access_with_payload(expr, base, index, kind, None, None)
     }
 
     pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
@@ -682,9 +707,10 @@ impl Compiler<'_, '_> {
         base: &Expr,
         index: &Expr,
         kind: HostIndexAccessKind,
+        base_payload: Option<&CompilerExpressionPayload<'_>>,
         index_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<()> {
-        let Some(receiver_type) = self.host_index_receiver_type_name(base) else {
+        let Some(receiver_type) = self.host_index_receiver_type_name(base, base_payload) else {
             return Ok(());
         };
         let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
@@ -741,6 +767,7 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         base: &Expr,
         index: &Expr,
+        base_payload: Option<&CompilerExpressionPayload<'_>>,
         index_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<()> {
         self.reject_invalid_host_index_access_with_payload(
@@ -748,6 +775,7 @@ impl Compiler<'_, '_> {
             base,
             index,
             HostIndexAccessKind::Read,
+            base_payload,
             index_payload,
         )
     }
@@ -763,11 +791,15 @@ impl Compiler<'_, '_> {
         self.reject_invalid_host_index_access(expr, base, index, kind)
     }
 
-    fn host_index_receiver_type_name(&self, receiver: &Expr) -> Option<String> {
-        self.resolve_host_path_index_receiver(receiver)
+    fn host_index_receiver_type_name(
+        &self,
+        receiver: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<String> {
+        self.resolve_host_path_index_receiver_with_payload(receiver, payload.cloned())
             .and_then(|resolved| resolved.type_name)
             .or_else(|| {
-                let type_name = self.script_type_for_expr(receiver)?;
+                let type_name = self.script_type_for_expr_with_payload(receiver, payload)?;
                 self.host_runtime_type_id(&type_name).map(|_| type_name)
             })
     }
