@@ -775,7 +775,7 @@ impl super::Compiler<'_, '_> {
             &|name| self.value_types.name(name),
         ) {
             StaticExprType::Dynamic => self
-                .record_field_value_type_for_expr(expr)
+                .record_field_value_type_for_expr_with_payload(expr, payload)
                 .map(StaticExprType::Exact)
                 .unwrap_or(StaticExprType::Dynamic),
             known => known,

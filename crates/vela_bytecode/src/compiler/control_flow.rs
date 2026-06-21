@@ -260,22 +260,22 @@ impl Compiler<'_, '_> {
             let known_type_names = self.facts.known_type_names();
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
-        let value_script_fact = value
-            .as_ref()
-            .and_then(|value| self.script_fact_for_expr(value));
+        let value_script_fact = value.as_ref().and_then(|value| {
+            self.script_fact_for_expr_with_payload(value, initializer_expression.as_ref())
+        });
         let script_hint_proven = hinted_script_fact
             .as_ref()
             .zip(value_script_fact.as_ref())
             .is_some_and(|(hint, value)| hint == value);
         let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
-        let value_type = value
-            .as_ref()
-            .and_then(|value| self.value_type_for_expr(value));
+        let value_type = value.as_ref().and_then(|value| {
+            self.value_type_for_expr_with_payload(value, initializer_expression.as_ref())
+        });
         let value_type = hinted_value_type.clone().or(value_type);
-        let value_shape = value
-            .as_ref()
-            .and_then(|value| self.value_shape_for_expr(value));
+        let value_shape = value.as_ref().and_then(|value| {
+            self.value_shape_for_expr_with_payload(value, initializer_expression.as_ref())
+        });
         let (register, returned) = if let Some(value) = value {
             self.compile_let_initializer(
                 value,
@@ -741,8 +741,11 @@ impl Compiler<'_, '_> {
             i64_pattern_facts()
         } else {
             PatternBindingFacts::value_shape(
-                self.value_shape_for_expr(parts.iterable)
-                    .and_then(iterable_item_shape),
+                self.value_shape_for_expr_with_payload(
+                    parts.iterable,
+                    parts.iterable_payload.as_ref(),
+                )
+                .and_then(iterable_item_shape),
             )
         };
         let loop_iterable = if let Some((start, end, inclusive)) = range_iterable {

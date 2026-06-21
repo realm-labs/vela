@@ -5,6 +5,8 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, RecordField};
 
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+
 use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
 
@@ -995,6 +997,31 @@ pub(super) fn callback_param_shapes(
 
 impl super::Compiler<'_, '_> {
     pub(super) fn value_shape_for_expr(&self, expr: &Expr) -> Option<ValueShape> {
+        self.value_shape_for_expr_with_payload(expr, None)
+    }
+
+    pub(in crate::compiler) fn value_shape_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<ValueShape> {
+        match &expr.kind {
+            ExprKind::Path(path) => self.value_shape_for_path_expr(expr.span, path, payload),
+            ExprKind::Field { base, name } => {
+                let field_name = payload
+                    .and_then(CompilerExpressionPayload::field_name)
+                    .unwrap_or_else(|| name.clone());
+                let base_payload = payload.and_then(CompilerExpressionPayload::field_base_payload);
+                self.value_shape_for_expr_with_payload(base, base_payload.as_ref())?
+                    .as_record()?
+                    .field_value_shape(&field_name)
+                    .cloned()
+            }
+            _ => self.value_shape_for_expr_legacy(expr),
+        }
+    }
+
+    fn value_shape_for_expr_legacy(&self, expr: &Expr) -> Option<ValueShape> {
         expression_value_shape(
             expr,
             &|span| {
@@ -1022,7 +1049,17 @@ impl super::Compiler<'_, '_> {
     }
 
     pub(super) fn record_shape_for_expr(&self, expr: &Expr) -> Option<RecordShape> {
-        self.value_shape_for_expr(expr)?.as_record().cloned()
+        self.record_shape_for_expr_with_payload(expr, None)
+    }
+
+    pub(in crate::compiler) fn record_shape_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<RecordShape> {
+        self.value_shape_for_expr_with_payload(expr, payload)?
+            .as_record()
+            .cloned()
     }
 
     pub(super) fn record_shape_for_path_root(&self, span: Span, root: &str) -> Option<RecordShape> {
@@ -1054,11 +1091,43 @@ impl super::Compiler<'_, '_> {
         self.record_shape_for_expr(receiver)?.field_slot(field)
     }
 
-    pub(super) fn record_field_value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
+    pub(in crate::compiler) fn record_field_value_type_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<RuntimeTypeFact> {
         let ExprKind::Field { base, name } = &expr.kind else {
             return None;
         };
-        self.record_shape_for_expr(base)?.field_value_type(name)
+        let field_name = payload
+            .and_then(CompilerExpressionPayload::field_name)
+            .unwrap_or_else(|| name.clone());
+        let base_payload = payload.and_then(CompilerExpressionPayload::field_base_payload);
+        self.record_shape_for_expr_with_payload(base, base_payload.as_ref())?
+            .field_value_type(&field_name)
+    }
+
+    fn value_shape_for_path_expr(
+        &self,
+        span: Span,
+        legacy_path: &[String],
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<ValueShape> {
+        let local_shape = self.value_shapes.local_at_span(self.bindings, span);
+        let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
+        let path = cst_path.as_deref().unwrap_or(legacy_path);
+        let [root] = path else {
+            return local_shape;
+        };
+        local_shape
+            .or_else(|| self.value_shapes.name(root))
+            .or_else(|| {
+                self.script_types
+                    .name(root)
+                    .or_else(|| self.global_type_named(root))
+                    .and_then(|type_name| self.record_shape_for_type(&type_name))
+                    .map(ValueShape::Record)
+            })
     }
 
     pub(super) fn value_shape_for_receiver_path(
