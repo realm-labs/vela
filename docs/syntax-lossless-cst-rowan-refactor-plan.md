@@ -463,7 +463,7 @@ Checkpoint checklist:
 - [ ] Remove temporary old-AST body and runtime default-expression fallbacks.
 - [ ] Remove production imports of old `Expr`, `ExprKind`, `ItemKind`, and
   `SourceFile` from `vela_bytecode`.
-- [ ] Remove production imports of old expression AST types from
+- [x] Remove production imports of old expression AST types from
   `vela_analysis`.
 - [ ] Close remaining pattern lowering coverage in compiler and analysis.
 - [ ] Close remaining control-flow expression lowering coverage in compiler
