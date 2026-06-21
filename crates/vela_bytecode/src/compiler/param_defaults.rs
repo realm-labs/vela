@@ -1,7 +1,7 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, Literal, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxMapEntry, UnaryOp,
+    AstNode, BinaryOp, Expr, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
@@ -173,15 +173,67 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_param_default_block(source, &block)
             }
+            SyntaxExpressionKind::If => {
+                let Some(if_expr) = expression.as_if() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_if(source, expression, &if_expr)
+            }
             SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Lambda
-            | SyntaxExpressionKind::If
             | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
         }
+    }
+
+    fn compile_param_default_if(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        if_expr: &SyntaxIfExpr,
+    ) -> CompileResult<Register> {
+        let Some(condition) = if_expr.condition() else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let Some(then_block) = if_expr.then_block() else {
+            return Err(param_default_unsupported(source, expression));
+        };
+
+        let condition = self.compile_param_default_expression(source, &condition)?;
+        let dst = self.alloc_register()?;
+        let jump_to_else = self.emit_jump_if_false(condition);
+
+        let then_value = self.compile_param_default_block(source, &then_block)?;
+        self.emit(UnlinkedInstructionKind::Move {
+            dst,
+            src: then_value,
+        });
+        let jump_to_end = self.emit_jump();
+
+        self.patch_jump(jump_to_else, self.current_offset())?;
+        match if_expr.else_branch() {
+            Some(SyntaxElseBranch::If(else_if)) => {
+                let else_value = self.compile_param_default_if(source, expression, &else_if)?;
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst,
+                    src: else_value,
+                });
+            }
+            Some(SyntaxElseBranch::Block(block)) => {
+                let else_value = self.compile_param_default_block(source, &block)?;
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst,
+                    src: else_value,
+                });
+            }
+            None => self.emit_constant_to(dst, crate::Constant::Null),
+        }
+        self.patch_jump(jump_to_end, self.current_offset())?;
+
+        Ok(dst)
     }
 
     fn compile_param_default_block(
@@ -442,14 +494,36 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
         SyntaxExpressionKind::Block => expression
             .as_block()
             .is_some_and(|block| param_default_block_cst_lowering_covers(&block)),
+        SyntaxExpressionKind::If => expression
+            .as_if()
+            .is_some_and(|if_expr| param_default_if_cst_lowering_covers(&if_expr)),
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match => false,
+    }
+}
+
+fn param_default_if_cst_lowering_covers(if_expr: &SyntaxIfExpr) -> bool {
+    if !if_expr
+        .condition()
+        .is_some_and(|condition| param_default_cst_lowering_covers(&condition))
+    {
+        return false;
+    }
+    if !if_expr
+        .then_block()
+        .is_some_and(|block| param_default_block_cst_lowering_covers(&block))
+    {
+        return false;
+    }
+    match if_expr.else_branch() {
+        Some(SyntaxElseBranch::If(else_if)) => param_default_if_cst_lowering_covers(&else_if),
+        Some(SyntaxElseBranch::Block(block)) => param_default_block_cst_lowering_covers(&block),
+        None => true,
     }
 }
 
@@ -761,6 +835,68 @@ fn cst(first = expensive()) {
             defaults[0].is_none(),
             "multi-statement block defaults still require the temporary legacy fallback"
         );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_simple_if_expressions() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = if true { 1 } else { 2 }) { return value; }",
+                ),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = if false { 1 } else if true { 2 } else { 3 }) { return value; }",
+                ),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = if false { 1 }) { return value; }"),
+            }),
+        ];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert_eq!(defaults.len(), 3);
+        for default in defaults {
+            assert!(
+                default.expect("direct CST default").fallback.is_none(),
+                "simple if defaults should be directly lowerable from CST"
+            );
+        }
+    }
+
+    #[test]
+    fn param_default_cst_lowering_keeps_unsupported_if_fallbacks() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = if expensive() { 1 } else { 2 }) { return value; }",
+                ),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default(
+                    "fn cst(value = if true { let x = 1; x } else { 2 }) { return value; }",
+                ),
+            }),
+        ];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert_eq!(defaults.len(), 2);
+        for default in defaults {
+            assert!(
+                default.is_none(),
+                "unsupported if defaults still require the temporary legacy fallback"
+            );
+        }
     }
 
     fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
