@@ -386,6 +386,19 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .operator()
     }
 
+    pub(super) fn for_iterable_expression_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::For { iterable, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_for()?.iterable(),
+            fallback: iterable,
+        })
+    }
+
     pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;

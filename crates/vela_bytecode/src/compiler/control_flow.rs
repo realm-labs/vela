@@ -57,6 +57,7 @@ struct ForStatementParts<'ast> {
     pattern: &'ast Pattern,
     iterable: &'ast Expr,
     body: &'ast Block,
+    iterable_payload: Option<CompilerExpressionPayload<'ast>>,
     iterable_operator: Option<BinaryOp>,
     body_payload: Option<CompilerBodyPayload<'ast>>,
 }
@@ -134,6 +135,7 @@ impl Compiler<'_, '_> {
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(
                 stmt.fallback(),
+                stmt.for_iterable_expression_payload(),
                 stmt.for_iterable_binary_operator(),
                 stmt.for_body_payload(),
             )
@@ -247,7 +249,7 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_continue()
             }
-            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None),
+            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None, None),
             SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
@@ -410,6 +412,7 @@ impl Compiler<'_, '_> {
     fn compile_for_statement<'ast>(
         &mut self,
         stmt: &'ast Stmt,
+        iterable_payload: Option<CompilerExpressionPayload<'ast>>,
         iterable_operator: Option<BinaryOp>,
         body_payload: Option<CompilerBodyPayload<'ast>>,
     ) -> CompileResult<bool> {
@@ -428,6 +431,7 @@ impl Compiler<'_, '_> {
             pattern,
             iterable,
             body,
+            iterable_payload,
             iterable_operator,
             body_payload,
         })
@@ -753,6 +757,10 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
+        let iterable_operand_payloads = parts
+            .iterable_payload
+            .as_ref()
+            .and_then(CompilerExpressionPayload::binary_operand_payloads);
         let range_iterable = parts
             .iterable_operator
             .and_then(|operator| cst_range_iterable(operator, parts.iterable))
@@ -766,8 +774,12 @@ impl Compiler<'_, '_> {
             )
         };
         let loop_iterable = if let Some((start, end, inclusive)) = range_iterable {
-            let cursor = self.compile_expr(start)?;
-            let end = self.compile_expr(end)?;
+            let (start_payload, end_payload) = iterable_operand_payloads
+                .as_ref()
+                .map(|(start_payload, end_payload)| (Some(start_payload), Some(end_payload)))
+                .unwrap_or((None, None));
+            let cursor = self.compile_expr_with_payload(start, start_payload)?;
+            let end = self.compile_expr_with_payload(end, end_payload)?;
             let done = self.alloc_register()?;
             self.emit_bool_constant_to(done, false);
             LoopIterable::Range {
@@ -777,7 +789,8 @@ impl Compiler<'_, '_> {
                 inclusive,
             }
         } else {
-            let iterable_register = self.compile_expr(parts.iterable)?;
+            let iterable_register =
+                self.compile_expr_with_payload(parts.iterable, parts.iterable_payload.as_ref())?;
             let iterator = self.alloc_register()?;
             self.emit_spanned(
                 UnlinkedInstructionKind::IterInit {

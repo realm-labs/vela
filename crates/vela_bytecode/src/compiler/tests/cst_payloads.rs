@@ -4,6 +4,7 @@ mod binary;
 mod calls;
 mod containers;
 mod field_index;
+mod for_iterables;
 mod if_conditions;
 mod interpolated;
 mod lambdas;
