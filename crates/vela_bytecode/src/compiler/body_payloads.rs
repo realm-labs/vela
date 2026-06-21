@@ -715,6 +715,18 @@ impl<'ast> CompilerArgumentPayload<'ast> {
 }
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn syntax(
+        source: SourceId,
+        syntax: SyntaxExpression,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
     }

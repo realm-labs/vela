@@ -214,6 +214,11 @@ impl Compiler<'_, '_> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
+        let payload = CompilerExpressionPayload::syntax(
+            default.value.source(),
+            default.value.syntax().clone(),
+            default.value.legacy(),
+        );
         if let Some(value) = evaluate_syntax_const_expr(
             default.value.source(),
             default.value.syntax(),
@@ -231,16 +236,14 @@ impl Compiler<'_, '_> {
             }
             return self.emit_constant(value);
         }
-        if let Some(expected) = expected {
-            return self.compile_expr_with_expected_type(
-                default.value.legacy(),
-                expected,
-                TypeContractContext::Field {
-                    name: default.name.clone(),
-                },
-            );
-        }
-        self.compile_expr(default.value.legacy())
+        self.compile_expr_with_optional_expected_type_and_payload(
+            default.value.legacy(),
+            expected,
+            TypeContractContext::Field {
+                name: default.name.clone(),
+            },
+            Some(&payload),
+        )
     }
 }
 
