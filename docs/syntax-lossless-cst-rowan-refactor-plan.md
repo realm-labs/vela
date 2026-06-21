@@ -31,6 +31,11 @@ verifiable task that advances the earliest incomplete phase in this plan. This
 track is allowed to be a breaking internal refactor: remove the old owned AST,
 old non-lossless parser API, old token-gap formatter, and transitional
 compatibility shims instead of keeping two syntax stacks alive.
+Temporary names used only to distinguish the new CST path from the old fallback
+path during migration must not become the final API. At close-out, delete the
+old fallback API completely, then rename the new syntax structures and
+functions to concise canonical names that make sense when there is only one
+syntax stack left.
 
 Use the local rust-analyzer checkout at ~/CLionProjects/rust-analyzer as the
 main architecture reference when it is available. Inspect the relevant files
@@ -604,6 +609,10 @@ Checkpoint checklist:
 - [ ] Delete the old non-lossless parser production API after all call sites
   migrate.
 - [ ] Delete transitional CST-to-owned fallback helpers.
+- [ ] Delete or rename migration-only identifiers such as `legacy_*`,
+  `parse_syntax_*`, and verbose new-vs-old disambiguation names.
+- [ ] Rename the final CST API to concise canonical names after old fallbacks
+  are gone.
 - [ ] Delete the token-gap formatter production path.
 - [ ] Audit public `vela_syntax` exports and remove re-exports that are not a
   deliberate scoped public API.
@@ -622,6 +631,10 @@ Expected behavior:
 
 - No production code imports old owned AST structs.
 - No production code uses the old parser output or token-gap formatter.
+- No public or production API keeps migration-only naming that existed only to
+  distinguish the new CST path from the old fallback path.
+- Final syntax structures and functions use concise canonical names appropriate
+  for a single production syntax stack.
 - Public `vela_syntax` API exposes a deliberate scoped syntax facade.
 - Module layout follows the file-size, scope, `super`, and re-export constraints
   from the Codex goal.
@@ -652,6 +665,9 @@ cargo test --workspace
 - Parsing invalid or incomplete source always returns a source-file root plus
   diagnostics.
 - Old owned AST structs and old non-lossless parser production APIs are removed.
+- Migration-only fallback naming is removed from final public and production
+  APIs; the surviving CST API uses concise canonical structure and function
+  names.
 - HIR, analysis, compiler, language service, and LSP tests pass against the new
   syntax API.
 - Formatting is CST/typed-AST based and no production path uses the old
