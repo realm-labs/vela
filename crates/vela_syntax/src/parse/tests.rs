@@ -10,6 +10,8 @@ use crate::ast::{
 use crate::parse::parse_source_with_id;
 use crate::{SyntaxKind, TextRange, TextSize};
 
+mod item_boundaries;
+
 #[test]
 fn parser_parse_source_builds_lossless_source_file_root() {
     let source = "#!/usr/bin/env vela\n// hello\nfn main() { return 1; }\n";

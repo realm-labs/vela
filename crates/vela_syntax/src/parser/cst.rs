@@ -567,13 +567,15 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
 
     fn find_braced_item_end(&self, start: usize) -> usize {
         let mut cursor = start;
+        let mut depth = DelimiterDepth::default();
         while let Some(kind) = self.kind_at(cursor) {
             if kind == SyntaxKind::Eof {
                 return cursor;
             }
-            if kind == SyntaxKind::LBrace {
+            if kind == SyntaxKind::LBrace && depth.is_root() {
                 return self.find_matching_brace_end(cursor);
             }
+            depth.bump(kind);
             cursor += 1;
         }
         self.tokens.len()

@@ -732,6 +732,32 @@ fn main() {
 }
 
 #[test]
+fn runs_simple_block_parameter_default_expressions() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn defaults(value = { 1 + 2 }, empty = {}, semicolon = { 9; }) {
+    if empty == null && semicolon == null {
+        return value;
+    }
+    return 0;
+}
+
+fn main() {
+    return defaults();
+}
+"#,
+    )
+    .expect("simple block parameter defaults should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))
+    );
+}
+
+#[test]
 fn runs_entrypoint_parameter_defaults() {
     let code = compile_function_source(
         SourceId::new(1),

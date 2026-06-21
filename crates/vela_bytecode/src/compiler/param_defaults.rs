@@ -1,7 +1,7 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
-    UnaryOp,
+    AstNode, BinaryOp, Expr, Literal, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxMapEntry, UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
@@ -167,15 +167,46 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
                 Ok(dst)
             }
+            SyntaxExpressionKind::Block => {
+                let Some(block) = expression.as_block() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_block(source, &block)
+            }
             SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Lambda
-            | SyntaxExpressionKind::Block
             | SyntaxExpressionKind::If
             | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
+        }
+    }
+
+    fn compile_param_default_block(
+        &mut self,
+        source: SourceId,
+        block: &SyntaxBlock,
+    ) -> CompileResult<Register> {
+        let statements = block.statements().collect::<Vec<_>>();
+        match statements.as_slice() {
+            [] => self.emit_constant(crate::Constant::Null),
+            [statement] => {
+                let Some(expr_stmt) = statement.as_expr() else {
+                    return Err(param_default_block_unsupported(source, block));
+                };
+                let Some(expression) = expr_stmt.expression() else {
+                    return Err(param_default_block_unsupported(source, block));
+                };
+                let value = self.compile_param_default_expression(source, &expression)?;
+                if expr_stmt.semicolon_token().is_some() {
+                    self.emit_constant(crate::Constant::Null)
+                } else {
+                    Ok(value)
+                }
+            }
+            _ => Err(param_default_block_unsupported(source, block)),
         }
     }
 
@@ -408,15 +439,29 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
             .as_try()
             .and_then(|try_expr| try_expr.expression())
             .is_some_and(|operand| param_default_cst_lowering_covers(&operand)),
+        SyntaxExpressionKind::Block => expression
+            .as_block()
+            .is_some_and(|block| param_default_block_cst_lowering_covers(&block)),
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::Block
         | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match => false,
+    }
+}
+
+fn param_default_block_cst_lowering_covers(block: &SyntaxBlock) -> bool {
+    let statements = block.statements().collect::<Vec<_>>();
+    match statements.as_slice() {
+        [] => true,
+        [statement] => statement
+            .as_expr()
+            .and_then(|statement| statement.expression())
+            .is_some_and(|expression| param_default_cst_lowering_covers(&expression)),
+        _ => false,
     }
 }
 
@@ -498,6 +543,13 @@ fn param_default_unsupported(source: SourceId, expression: &SyntaxExpression) ->
         "parameter default expression",
     ))
     .with_span(span_for(source, expression))
+}
+
+fn param_default_block_unsupported(source: SourceId, block: &SyntaxBlock) -> CompileError {
+    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        "parameter default block expression",
+    ))
+    .with_span(span_for_range(source, block.syntax().text_range()))
 }
 
 fn span_for(source: SourceId, expression: &SyntaxExpression) -> Span {
@@ -663,6 +715,51 @@ fn cst(first = expensive()) {
         assert!(
             default.fallback.is_none(),
             "try defaults should be directly lowerable from CST"
+        );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_simple_block_expressions() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = {}) { return value; }"),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = { 1 + 2 }) { return value; }"),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = { maybe?; }) { return value; }"),
+            }),
+        ];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert_eq!(defaults.len(), 3);
+        for default in defaults {
+            assert!(
+                default.expect("direct CST default").fallback.is_none(),
+                "simple block defaults should be directly lowerable from CST"
+            );
+        }
+    }
+
+    #[test]
+    fn param_default_cst_lowering_keeps_complex_block_fallbacks() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default("fn cst(value = { let x = 1; x }) { return value; }"),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert!(
+            defaults[0].is_none(),
+            "multi-statement block defaults still require the temporary legacy fallback"
         );
     }
 
