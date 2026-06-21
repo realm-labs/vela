@@ -111,9 +111,17 @@ impl Compiler<'_, '_> {
         if !statement_kind_matches(kind, stmt.fallback()) {
             self.compile_statement(stmt.fallback())
         } else if kind == SyntaxStatementKind::Let {
-            self.compile_let_statement(stmt.fallback(), stmt.let_initializer_kind())
+            self.compile_let_statement(
+                stmt.fallback(),
+                stmt.let_initializer_kind(),
+                stmt.let_initializer_block_body_payload(),
+            )
         } else if kind == SyntaxStatementKind::Return {
-            self.compile_return_statement(stmt.fallback(), stmt.return_value_kind())
+            self.compile_return_statement(
+                stmt.fallback(),
+                stmt.return_value_kind(),
+                stmt.return_value_block_body_payload(),
+            )
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(
                 stmt.fallback(),
@@ -190,8 +198,8 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
     ) -> CompileResult<bool> {
         match kind {
-            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None),
-            SyntaxStatementKind::Return => self.compile_return_statement(stmt, None),
+            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None, None),
+            SyntaxStatementKind::Return => self.compile_return_statement(stmt, None, None),
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -234,6 +242,7 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &Stmt,
         initializer_kind: Option<SyntaxExpressionKind>,
+        initializer_body: Option<CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Let {
             name,
@@ -278,6 +287,7 @@ impl Compiler<'_, '_> {
                 hinted_value_type.clone(),
                 TypeContractContext::TypedLet { name: name.clone() },
                 initializer_kind,
+                initializer_body.as_ref(),
             )?
         } else {
             (self.emit_constant(Constant::Null)?, false)
@@ -329,12 +339,13 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &Stmt,
         value_kind: Option<SyntaxExpressionKind>,
+        value_body: Option<CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Return(value) = &stmt.kind else {
             return self.compile_statement(stmt);
         };
         let (register, returned) =
-            self.compile_return_value(stmt.span, value.as_ref(), value_kind)?;
+            self.compile_return_value(stmt.span, value.as_ref(), value_kind, value_body.as_ref())?;
         if !returned {
             self.emit(UnlinkedInstructionKind::Return { src: register });
         }
@@ -418,11 +429,18 @@ impl Compiler<'_, '_> {
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
         syntax_kind: Option<SyntaxExpressionKind>,
+        body_payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<(Register, bool)> {
         if let Some(kind) = syntax_kind
             && value_expression_kind_matches(kind, value)
         {
-            return self.compile_let_initializer_with_syntax_kind(value, expected, context, kind);
+            return self.compile_let_initializer_with_syntax_kind(
+                value,
+                expected,
+                context,
+                kind,
+                body_payload,
+            );
         }
         self.compile_let_initializer_legacy(value, expected, context)
     }
@@ -433,6 +451,7 @@ impl Compiler<'_, '_> {
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
         kind: SyntaxExpressionKind,
+        body_payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<(Register, bool)> {
         match kind {
             SyntaxExpressionKind::Block => {
@@ -443,7 +462,11 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST block initializer kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
+                let returned = if let Some(body_payload) = body_payload {
+                    self.compile_block_payload_value_to(body_payload, dst)?
+                } else {
+                    self.compile_block_value_to(block, dst)?
+                };
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {
@@ -517,6 +540,7 @@ impl Compiler<'_, '_> {
         span: Span,
         value: Option<&Expr>,
         syntax_kind: Option<SyntaxExpressionKind>,
+        body_payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<(Register, bool)> {
         match (value, self.return_type.clone()) {
             (Some(value), Some(expected)) => self.compile_return_expr(
@@ -524,10 +548,15 @@ impl Compiler<'_, '_> {
                 Some(expected),
                 TypeContractContext::Return,
                 syntax_kind,
+                body_payload,
             ),
-            (Some(value), None) => {
-                self.compile_return_expr(value, None, TypeContractContext::Return, syntax_kind)
-            }
+            (Some(value), None) => self.compile_return_expr(
+                value,
+                None,
+                TypeContractContext::Return,
+                syntax_kind,
+                body_payload,
+            ),
             (None, Some(expected)) => {
                 check_expected_type(
                     StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -552,11 +581,18 @@ impl Compiler<'_, '_> {
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
         syntax_kind: Option<SyntaxExpressionKind>,
+        body_payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<(Register, bool)> {
         if let Some(kind) = syntax_kind
             && value_expression_kind_matches(kind, value)
         {
-            return self.compile_return_expr_with_syntax_kind(value, expected, context, kind);
+            return self.compile_return_expr_with_syntax_kind(
+                value,
+                expected,
+                context,
+                kind,
+                body_payload,
+            );
         }
         self.compile_return_expr_legacy(value, expected, context)
     }
@@ -567,6 +603,7 @@ impl Compiler<'_, '_> {
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
         kind: SyntaxExpressionKind,
+        body_payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<(Register, bool)> {
         match kind {
             SyntaxExpressionKind::Block => {
@@ -577,7 +614,11 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST block return value kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
+                let returned = if let Some(body_payload) = body_payload {
+                    self.compile_block_payload_value_to(body_payload, dst)?
+                } else {
+                    self.compile_block_value_to(block, dst)?
+                };
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {
@@ -806,6 +847,37 @@ impl Compiler<'_, '_> {
             }
             BlockValue::Statements(statements) => {
                 let returned = self.compile_statements(statements)?;
+                if !returned {
+                    self.emit_constant_to(dst, Constant::Null);
+                }
+                Ok(returned)
+            }
+        }
+    }
+
+    fn compile_block_payload_value_to(
+        &mut self,
+        body: &CompilerBodyPayload<'_>,
+        dst: Register,
+    ) -> CompileResult<bool> {
+        let statements = body.statement_payloads();
+        match block_value(body.fallback()) {
+            BlockValue::Empty => {
+                self.emit_constant_to(dst, Constant::Null);
+                Ok(false)
+            }
+            BlockValue::TailExpr { prefix, expr } => {
+                for stmt in statements.iter().take(prefix.len()) {
+                    if self.compile_statement_payload(stmt)? {
+                        return Ok(true);
+                    }
+                }
+                let value = self.compile_expr(expr)?;
+                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+                Ok(false)
+            }
+            BlockValue::Statements(_) => {
+                let returned = self.compile_statement_payloads(&statements)?;
                 if !returned {
                     self.emit_constant_to(dst, Constant::Null);
                 }

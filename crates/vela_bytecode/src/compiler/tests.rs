@@ -177,6 +177,32 @@ fn assert_cst_match_arm_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
+fn assert_cst_let_initializer_block_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| statement.let_initializer_block_body_payload())
+        .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_return_value_block_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| statement.return_value_block_body_payload())
+        .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
 fn cst_statement_texts(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> Vec<(SyntaxStatementKind, String)> {
@@ -485,6 +511,57 @@ fn choose() {
     );
 
     compile_program_source(source, text).expect("CST-backed return value body should compile");
+}
+
+#[test]
+fn semantic_function_block_value_expressions_have_cst_body_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_values() {
+    let total = {
+        let start = 1;
+        start + 1
+    };
+    return {
+        let value = total;
+        value
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("block_values")
+        .expect("block_values function");
+    assert_cst_let_initializers(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Block,
+            "{\n        let start = 1;\n        start + 1\n    }",
+        )],
+    );
+    assert_cst_return_values(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Block,
+            "{\n        let value = total;\n        value\n    }",
+        )],
+    );
+    assert_cst_let_initializer_block_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let start = 1;"),
+            (SyntaxStatementKind::Expr, "start + 1"),
+        ]],
+    );
+    assert_cst_return_value_block_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let value = total;"),
+            (SyntaxStatementKind::Expr, "value"),
+        ]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed block value bodies should compile");
 }
 
 #[test]

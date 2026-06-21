@@ -132,12 +132,47 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Let {
+            value: Some(value), ..
+        } = &self.fallback.kind
+        else {
+            return None;
+        };
+        let ExprKind::Block(block) = &value.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
+            block,
+        ))
+    }
+
     pub(super) fn return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
             .as_return()?
             .expression()
             .map(|expression| expression.expression_kind())
+    }
+
+    pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Return(Some(value)) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Block(block) = &value.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax
+                .as_ref()?
+                .as_return()?
+                .expression()?
+                .as_block()?,
+            block,
+        ))
     }
 
     pub(super) fn for_iterable_binary_operator(&self) -> Option<BinaryOp> {
