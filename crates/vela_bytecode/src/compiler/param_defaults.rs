@@ -364,7 +364,12 @@ impl Compiler<'_, '_> {
         right: &SyntaxExpression,
     ) -> CompileResult<Register> {
         if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
-            return Err(param_default_unsupported(source, expression));
+            return self.compile_param_default_range(
+                source,
+                left,
+                right,
+                op == BinaryOp::RangeInclusive,
+            );
         }
         let lhs = self.compile_param_default_expression(source, left)?;
         let rhs = self.compile_param_default_expression(source, right)?;
@@ -390,6 +395,25 @@ impl Compiler<'_, '_> {
             }
         };
         self.emit_spanned(instruction, span_for(source, expression));
+        Ok(dst)
+    }
+
+    fn compile_param_default_range(
+        &mut self,
+        source: SourceId,
+        left: &SyntaxExpression,
+        right: &SyntaxExpression,
+        inclusive: bool,
+    ) -> CompileResult<Register> {
+        let start = self.compile_param_default_expression(source, left)?;
+        let end = self.compile_param_default_expression(source, right)?;
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::MakeRange {
+            dst,
+            start,
+            end,
+            inclusive,
+        });
         Ok(dst)
     }
 
@@ -518,9 +542,6 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
             let Some(op) = binary.operator() else {
                 return false;
             };
-            if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
-                return false;
-            }
             if matches!(op, BinaryOp::Or | BinaryOp::And) {
                 return logical_chain_syntax_operands(expression, op).is_some_and(|operands| {
                     operands.iter().all(param_default_cst_lowering_covers)
@@ -858,6 +879,31 @@ fn cst(first = expensive()) {
             )),
             "logical defaults keep the fallback when an operand is not CST-lowered yet"
         );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_range_expressions() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = 1..4) { return value; }"),
+            }),
+            Some(ParamDefaultExpression {
+                source,
+                expression: first_param_default("fn cst(value = 1..=4) { return value; }"),
+            }),
+        ];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert_eq!(defaults.len(), 2);
+        for default in defaults {
+            assert!(
+                default.expect("direct CST default").fallback.is_none(),
+                "range defaults should be directly lowerable from CST"
+            );
+        }
     }
 
     #[test]

@@ -1106,3 +1106,30 @@ fn main() {
         Ok(OwnedValue::String("hello Ada".into()))
     );
 }
+
+#[test]
+fn managed_heap_execution_runs_range_parameter_defaults() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn sum(values = 2..=4) {
+    let total = 0;
+    for value in values {
+        total += value;
+    }
+    return total;
+}
+
+fn main() {
+    return sum();
+}
+"#,
+    )
+    .expect("compile range parameter defaults");
+    let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))
+    );
+}
