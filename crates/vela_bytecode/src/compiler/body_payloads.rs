@@ -1,19 +1,12 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, Stmt, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    AstNode, BinaryOp, Block, Stmt, StmtKind, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
     SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST body payload is consumed by the upcoming body lowering migration"
-        )
-    )]
     pub(super) source: SourceId,
     pub(super) body: SyntaxBlock,
 }
@@ -25,6 +18,7 @@ pub(super) struct CompilerBodyPayload<'ast> {
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
+    source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
     fallback: &'ast Stmt,
 }
@@ -59,6 +53,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .iter()
             .enumerate()
             .map(|(index, fallback)| CompilerStatementPayload {
+                source: self.syntax.as_ref().map(|payload| payload.source),
                 syntax: syntax_statements.as_ref().and_then(|statements| {
                     syntax_statement_for_fallback(statements, index, fallback)
                 }),
@@ -136,6 +131,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .condition()?
             .as_binary()?
             .operator()
+    }
+
+    pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Block(fallback) = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.as_block()?,
+            fallback,
+        ))
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {

@@ -71,6 +71,41 @@ fn assert_cst_expr_statements(
     );
 }
 
+fn assert_cst_block_statement_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let block = statement.block_body_payload()?;
+            let statements = block.statement_payloads();
+            Some(
+                statements
+                    .iter()
+                    .filter_map(|statement| {
+                        let syntax = statement.syntax_statement()?;
+                        Some((syntax.statement_kind(), syntax.syntax().text().to_string()))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|block| {
+                block
+                    .iter()
+                    .map(|(kind, text)| (*kind, (*text).to_owned()))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    );
+}
+
 fn assert_cst_let_initializers(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
@@ -440,6 +475,36 @@ fn check() {
             ..
         }
     )));
+}
+
+#[test]
+fn semantic_function_block_statement_body_is_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn scoped() {
+    let total = 0;
+    {
+        total += 1;
+    }
+    return total;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("scoped").expect("scoped function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (SyntaxStatementKind::Let, "let total = 0;"),
+            (SyntaxStatementKind::Block, "{\n        total += 1;\n    }"),
+            (SyntaxStatementKind::Return, "return total;"),
+        ],
+    );
+    assert_cst_block_statement_payloads(
+        &payload.body,
+        &[vec![(SyntaxStatementKind::Expr, "total += 1;")]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed block statement body should compile");
 }
 
 #[test]

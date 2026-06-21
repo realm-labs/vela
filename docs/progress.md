@@ -302,6 +302,10 @@ Top-level if statement payloads now expose rowan condition binary operators,
 letting i64 immediate compare-jump lowering dispatch through aligned CST
 condition operators while preserving the legacy condition fallback for
 non-CST or mismatched payloads.
+Top-level block statement payloads now materialize nested rowan body payloads,
+letting explicit block-statement bodies reuse the CST-aware statement
+dispatcher while preserving the legacy block fallback when syntax alignment is
+unavailable.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

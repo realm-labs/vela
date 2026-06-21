@@ -100,11 +100,24 @@ impl Compiler<'_, '_> {
             self.compile_for_statement(stmt.fallback(), stmt.for_iterable_binary_operator())
         } else if kind == SyntaxStatementKind::If {
             self.compile_if_statement(stmt.fallback(), stmt.if_condition_binary_operator())
+        } else if kind == SyntaxStatementKind::Block {
+            self.compile_block_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
             self.compile_statement_as(kind, stmt.fallback())
         }
+    }
+
+    fn compile_block_statement_payload(
+        &mut self,
+        stmt: &CompilerStatementPayload<'_>,
+    ) -> CompileResult<bool> {
+        let Some(body) = stmt.block_body_payload() else {
+            return self.compile_statement_as(SyntaxStatementKind::Block, stmt.fallback());
+        };
+        let statements = body.statement_payloads();
+        self.compile_statement_payloads(&statements)
     }
 
     fn compile_expr_statement_payload(
