@@ -1,4 +1,4 @@
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, SyntaxExpression,
     SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
@@ -78,6 +78,33 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         };
         let segments = self.syntax.as_ref()?.as_path()?.path_segments();
         (!segments.is_empty()).then_some(segments)
+    }
+
+    pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
+        Some(syntax_expression_span(self.source?, self.syntax.as_ref()?))
+    }
+
+    pub(in crate::compiler) fn syntax_path_segments(&self) -> Option<Vec<String>> {
+        let segments = self.syntax.as_ref()?.as_path()?.path_segments();
+        (!segments.is_empty()).then_some(segments)
+    }
+
+    pub(in crate::compiler) fn syntax_record_path_segments(&self) -> Option<Vec<String>> {
+        let segments = self.syntax.as_ref()?.as_record()?.path_segments();
+        (!segments.is_empty()).then_some(segments)
+    }
+
+    pub(in crate::compiler) fn syntax_call_callee_path_segments(&self) -> Option<Vec<String>> {
+        let callee = self.syntax.as_ref()?.as_call()?.callee()?;
+        let segments = callee.as_path()?.path_segments();
+        (!segments.is_empty()).then_some(segments)
+    }
+
+    pub(in crate::compiler) fn syntax_call_callee_span(&self) -> Option<Span> {
+        Some(syntax_expression_span(
+            self.source?,
+            &self.syntax.as_ref()?.as_call()?.callee()?,
+        ))
     }
 
     pub(in crate::compiler) fn literal(&self) -> Option<Literal> {
@@ -415,6 +442,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .collect(),
         )
     }
+}
+
+fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
+    let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 impl<'ast> CompilerMapEntryPayload<'ast> {

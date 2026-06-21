@@ -121,6 +121,17 @@ pub(super) fn expression_script_fact_with_payload(
     local_fact_at_span: impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
+    if let Some(fact) = payload.and_then(|payload| {
+        expression_script_fact_from_payload(
+            payload,
+            &type_symbol_at_span,
+            &local_fact_at_span,
+            &local_fact_named,
+        )
+    }) {
+        return Some(fact);
+    }
+
     match &expr.kind {
         ExprKind::Record { path, .. } => {
             let cst_path = payload.and_then(CompilerExpressionPayload::record_path_segments);
@@ -167,6 +178,48 @@ pub(super) fn expression_script_fact_with_payload(
         ExprKind::SelfValue => local_fact_at_span(expr.span).or_else(|| local_fact_named("self")),
         _ => None,
     }
+}
+
+fn expression_script_fact_from_payload(
+    payload: &CompilerExpressionPayload<'_>,
+    type_symbol_at_span: &impl Fn(Span) -> Option<String>,
+    local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
+    local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
+) -> Option<ScriptTypeFact> {
+    if let Some(path) = payload.syntax_record_path_segments() {
+        if let Some((enum_path, variant)) = enum_variant_path(&path) {
+            let type_name = payload
+                .syntax_span()
+                .and_then(type_symbol_at_span)
+                .unwrap_or(enum_path);
+            return Some(ScriptTypeFact::enum_variant(type_name, variant));
+        }
+        let type_name = payload
+            .syntax_span()
+            .and_then(type_symbol_at_span)
+            .unwrap_or_else(|| path.join("::"));
+        return Some(ScriptTypeFact::new(type_name));
+    }
+
+    if let Some(path) = payload.syntax_call_callee_path_segments() {
+        let (_, variant) = enum_variant_path(&path)?;
+        let type_name = payload
+            .syntax_call_callee_span()
+            .and_then(type_symbol_at_span)?;
+        return Some(ScriptTypeFact::enum_variant(type_name, variant));
+    }
+
+    if let Some(path) = payload.syntax_path_segments() {
+        if let Some(fact) = path
+            .first()
+            .and_then(|name| (path.len() == 1).then(|| local_fact_named(name)).flatten())
+        {
+            return Some(fact);
+        }
+        return payload.syntax_span().and_then(local_fact_at_span);
+    }
+
+    None
 }
 
 pub(super) fn expression_script_type_with_payload(

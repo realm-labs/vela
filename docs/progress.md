@@ -450,9 +450,10 @@ Path-style host method lookup now prefers rowan CST callee path segments for
 native-root filtering and method-name resolution before falling back to
 temporary legacy path vectors.
 Script type/fact extraction now also accepts rowan CST expression payloads for
-record constructors, enum constructor calls, and path locals, and payload-aware
-local assignment, script method receiver, and match scrutinee lowering use that
-route before falling back to temporary legacy expression spelling.
+record constructors, enum constructor calls, and path locals, dispatches from
+the rowan payload shape before consulting temporary legacy expression spelling,
+and payload-aware local assignment, script method receiver, and match scrutinee
+lowering use that route before falling back to the legacy boundary.
 Value type inference now also accepts rowan CST expression payloads for arrays,
 maps, binary/try operands, and path locals, and payload-aware assignment, call
 argument, method receiver, binary lowering, and condition-jump paths use that
