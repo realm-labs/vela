@@ -310,6 +310,9 @@ The same CST-aware expression payload path now covers map literals in those
 value contexts, so map entry values can reuse rowan block, if, and match body
 payloads while non-CST and checked type-contract paths keep their existing
 fallback.
+Map literal key lowering now prefers rowan CST map-entry key payloads for the
+supported literal/path key families before falling back to the temporary legacy
+key expression.
 Record literals now share that CST-aware expression payload path in untyped
 value contexts, so explicit record field values can reuse rowan block, if, and
 match body payloads while field type-contract paths keep their existing

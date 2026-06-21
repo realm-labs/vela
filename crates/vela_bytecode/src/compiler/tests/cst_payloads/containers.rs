@@ -175,6 +175,18 @@ fn return_map() {
             "{\n        start: {\n            let start = 1;\n            start\n        },\n        next: if true {\n            let next = 2;\n            next\n        } else {\n            0\n        },\n        matched: match 0 {\n            0 => {\n                let zero = 1;\n                zero\n            },\n            _ => {\n                2\n            },\n        },\n    }",
         )],
     );
+    let map_entries = payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .collect::<Vec<_>>();
+    let map_keys = map_entries
+        .iter()
+        .filter_map(|entry| entry.syntax_key_name())
+        .collect::<Vec<_>>();
+    assert_eq!(map_keys, ["start", "next", "matched"]);
     assert_cst_let_initializer_map_entry_value_body_payloads(
         &payload.body,
         &[vec![
