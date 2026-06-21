@@ -167,6 +167,13 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
                 Ok(dst)
             }
+            SyntaxExpressionKind::Literal => {
+                if let ExprKind::InterpolatedString(parts) = &expr.kind {
+                    let part_payloads = payload.interpolated_expression_payloads();
+                    return self.compile_interpolated_string(parts, part_payloads.as_deref());
+                }
+                self.compile_expr(expr)
+            }
             _ => self.compile_expr(expr),
         }
     }
@@ -174,7 +181,7 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(Some(expr.span), literal),
-            ExprKind::InterpolatedString(parts) => self.compile_interpolated_string(parts),
+            ExprKind::InterpolatedString(parts) => self.compile_interpolated_string(parts, None),
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => {
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
@@ -812,8 +819,10 @@ impl Compiler<'_, '_> {
     fn compile_interpolated_string(
         &mut self,
         parts: &[InterpolatedStringPart],
+        payloads: Option<&[CompilerExpressionPayload<'_>]>,
     ) -> CompileResult<Register> {
         let mut compiled = Vec::with_capacity(parts.len());
+        let mut expression_index = 0;
         for part in parts {
             match part {
                 InterpolatedStringPart::Text(value) => {
@@ -823,7 +832,11 @@ impl Compiler<'_, '_> {
                     compiled.push(FormatStringPart::Text(constant));
                 }
                 InterpolatedStringPart::Expr(expr) => {
-                    compiled.push(FormatStringPart::Value(self.compile_expr(expr)?));
+                    let payload = payloads.and_then(|payloads| payloads.get(expression_index));
+                    expression_index += 1;
+                    compiled.push(FormatStringPart::Value(
+                        self.compile_expr_with_payload(expr, payload)?,
+                    ));
                 }
             }
         }

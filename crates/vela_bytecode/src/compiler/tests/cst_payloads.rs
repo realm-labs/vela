@@ -4,6 +4,7 @@ mod binary;
 mod calls;
 mod containers;
 mod field_index;
+mod interpolated;
 mod lambdas;
 mod wrappers;
 

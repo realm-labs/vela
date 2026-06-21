@@ -1,10 +1,10 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
-    MatchExpr, RecordField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm,
-    SyntaxMatchExpr, SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
+    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, InterpolatedStringPart,
+    MapEntry, MatchArm, MatchExpr, RecordField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLambdaBody, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxMatchExpr, SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -847,6 +847,35 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, fallback)| CompilerRecordFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
+    pub(in crate::compiler) fn interpolated_expression_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
+            return None;
+        };
+        let syntax_expressions = self
+            .syntax
+            .as_ref()?
+            .as_literal()?
+            .interpolation_expressions()
+            .collect::<Vec<_>>();
+        Some(
+            parts
+                .iter()
+                .filter_map(|part| match part {
+                    InterpolatedStringPart::Text(_) => None,
+                    InterpolatedStringPart::Expr(expr) => Some(expr),
+                })
+                .enumerate()
+                .map(|(index, fallback)| CompilerExpressionPayload {
+                    source: self.source,
+                    syntax: syntax_expressions.get(index).cloned(),
                     fallback,
                 })
                 .collect(),
