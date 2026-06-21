@@ -1,6 +1,6 @@
 use vela_common::SourceId;
 use vela_common::diagnostic_render::{DiagnosticSource, render_diagnostic};
-use vela_syntax::parser::parse_source;
+use vela_syntax::parse::parse_source_with_id;
 
 const GENERIC_TYPE_HINT: &str =
     include_str!("../../../tests/fixtures/diagnostics/generic_type_hint.vela");
@@ -10,11 +10,11 @@ const GENERIC_TYPE_HINT_EXPECTED: &str =
 #[test]
 fn parser_generic_type_hint_fixture_renders_span_and_hint() {
     let source = normalized_fixture(GENERIC_TYPE_HINT);
-    let parsed = parse_source(SourceId::new(1), &source);
+    let parsed = parse_source_with_id(SourceId::new(1), &source);
 
-    assert_eq!(parsed.diagnostics.len(), 1);
+    assert_eq!(parsed.diagnostics().len(), 1);
     let rendered = render_diagnostic(
-        &parsed.diagnostics[0],
+        &parsed.diagnostics()[0],
         [diagnostic_source("generic_type_hint.vela", source)],
     )
     .join("\n");
