@@ -45,6 +45,16 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         Some(self.payload_for(arg)?.value_expression_payload())
     }
+
+    pub(in crate::compiler) fn name_for(self, arg: &Argument) -> Option<String> {
+        self.payload_for(arg)
+            .and_then(CompilerArgumentPayload::syntax_name)
+            .or_else(|| arg.name.clone())
+    }
+
+    pub(in crate::compiler) fn has_named_args(self) -> bool {
+        self.args.iter().any(|arg| self.name_for(arg).is_some())
+    }
 }
 
 impl Compiler<'_, '_> {
@@ -61,10 +71,9 @@ impl Compiler<'_, '_> {
             .get(&declaration)
             .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
             .clone();
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
+        let slots = resolve_script_call_arguments(&params, args, call_span, arg_syntax).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
 
         let mut mode = ScriptCallMode::Unchecked;
         let args = slots
@@ -130,6 +139,7 @@ pub(super) fn resolve_script_call_arguments<'ast>(
     params: &[ParamHint],
     args: &'ast [Argument],
     call_span: Span,
+    arg_syntax: CallArgumentSyntax<'_, 'ast>,
 ) -> Result<Vec<Option<&'ast Argument>>, Vec<Diagnostic>> {
     let mut slots = vec![None; params.len()];
     let mut slot_spans = vec![None; params.len()];
@@ -139,9 +149,10 @@ pub(super) fn resolve_script_call_arguments<'ast>(
 
     for arg in args {
         let arg_span = arg.value.span;
+        let arg_name = arg_syntax.name_for(arg);
         let Some(index) = argument_index(
             params,
-            arg,
+            arg_name.as_deref(),
             arg_span,
             &mut next_positional,
             &mut seen_named,
@@ -177,15 +188,15 @@ pub(super) fn resolve_script_call_arguments<'ast>(
 
 fn argument_index(
     params: &[ParamHint],
-    arg: &Argument,
+    arg_name: Option<&str>,
     arg_span: Span,
     next_positional: &mut usize,
     seen_named: &mut bool,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<usize> {
-    if let Some(name) = &arg.name {
+    if let Some(name) = arg_name {
         *seen_named = true;
-        return match params.iter().position(|param| param.name == *name) {
+        return match params.iter().position(|param| param.name == name) {
             Some(index) => Some(index),
             None => {
                 diagnostics.push(unknown_named_argument_diagnostic(

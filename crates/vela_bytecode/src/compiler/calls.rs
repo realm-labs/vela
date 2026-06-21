@@ -7,7 +7,7 @@ use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
-use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
@@ -143,7 +143,7 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else if self.local_callee(callee).is_some() || !matches!(callee.kind, ExprKind::Path(_)) {
-            reject_named_args(args, "closure call")?;
+            reject_named_call_args(arg_syntax, "closure call")?;
             let callee = self.compile_expr_with_payload(callee, callee_payload)?;
             let args = args
                 .iter()
@@ -156,7 +156,7 @@ impl Compiler<'_, '_> {
         } else {
             let fallback_name = callable_name(callee)?;
             if fallback_name == "set::from_array" {
-                reject_named_args(args, "set::from_array")?;
+                reject_named_call_args(arg_syntax, "set::from_array")?;
                 if args.len() != 1 {
                     return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
                         vec![
@@ -205,13 +205,13 @@ impl Compiler<'_, '_> {
         call_span: Span,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<crate::Register>> {
-        let has_named_args = args.iter().any(|arg| arg.name.is_some());
+        let has_named_args = arg_syntax.has_named_args();
         let registry_params = self
             .facts
             .registry
             .and_then(|registry| registry.host_method_params_by_runtime_id(method.get()));
         let Some(params) = registry_params else {
-            reject_named_args(args, "host method call")?;
+            reject_named_call_args(arg_syntax, "host method call")?;
             return args
                 .iter()
                 .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
@@ -442,10 +442,9 @@ impl Compiler<'_, '_> {
             );
         };
         let params = params.into_iter().skip(1).collect::<Vec<_>>();
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
+        let slots = resolve_script_call_arguments(&params, args, call_span, arg_syntax).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
 
         slots
             .into_iter()
@@ -471,7 +470,7 @@ impl Compiler<'_, '_> {
         args.iter()
             .map(|arg| {
                 Ok(DynamicCallArgument {
-                    name: arg.name.clone(),
+                    name: arg_syntax.name_for(arg),
                     value: self.compile_call_argument_value(arg, arg_syntax)?,
                 })
             })
@@ -489,7 +488,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Vec<CallArgument>> {
         let registry_params = self.registry_value_method_params(receiver_type, method);
         let Some(params) = registry_params else {
-            reject_named_args(args, "script method call")?;
+            reject_named_call_args(arg_syntax, "script method call")?;
             return self.compile_positional_method_args(
                 receiver_type,
                 receiver_shape,
@@ -498,7 +497,7 @@ impl Compiler<'_, '_> {
                 arg_syntax,
             );
         };
-        if !args.iter().any(|arg| arg.name.is_some()) {
+        if !arg_syntax.has_named_args() {
             return self.compile_positional_method_args(
                 receiver_type,
                 receiver_shape,
@@ -508,10 +507,9 @@ impl Compiler<'_, '_> {
             );
         }
         let params = registry_param_hints(params, call_span);
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
+        let slots = resolve_script_call_arguments(&params, args, call_span, arg_syntax).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
 
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
@@ -619,10 +617,9 @@ impl Compiler<'_, '_> {
         call_span: Span,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Vec<crate::Register>> {
-        let slots =
-            resolve_script_call_arguments(params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
+        let slots = resolve_script_call_arguments(params, args, call_span, arg_syntax).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
 
         let mut registers = Vec::new();
         for (slot, param) in slots.into_iter().zip(params) {
@@ -651,7 +648,7 @@ impl Compiler<'_, '_> {
             .registry
             .and_then(|registry| registry.function_params(native));
         let Some(params) = registry_params else {
-            reject_named_args(args, "native call")?;
+            reject_named_call_args(arg_syntax, "native call")?;
             return args
                 .iter()
                 .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
@@ -669,7 +666,7 @@ impl Compiler<'_, '_> {
                 default_value_span: None,
             })
             .collect::<Vec<_>>();
-        if !args.iter().any(|arg| arg.name.is_some()) {
+        if !arg_syntax.has_named_args() {
             return args
                 .iter()
                 .enumerate()
@@ -689,10 +686,9 @@ impl Compiler<'_, '_> {
                 .collect();
         }
 
-        let slots =
-            resolve_script_call_arguments(&params, args, call_span).map_err(|diagnostics| {
-                CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
-            })?;
+        let slots = resolve_script_call_arguments(&params, args, call_span, arg_syntax).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
 
         let mut registers = Vec::new();
         for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
@@ -1060,6 +1056,18 @@ fn callable_name(callee: &Expr) -> CompileResult<String> {
             "callable expression",
         ))),
     }
+}
+
+fn reject_named_call_args(
+    arg_syntax: CallArgumentSyntax<'_, '_>,
+    context: &'static str,
+) -> CompileResult<()> {
+    if arg_syntax.has_named_args() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            context,
+        )));
+    }
+    Ok(())
 }
 
 fn unresolved_static_method_error(method: &str, span: Span) -> CompileError {

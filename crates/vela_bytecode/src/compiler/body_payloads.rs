@@ -702,6 +702,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
 }
 
 impl<'ast> CompilerArgumentPayload<'ast> {
+    pub(in crate::compiler) fn syntax_name(&self) -> Option<String> {
+        self.syntax.as_ref().and_then(SyntaxArgument::name_text)
+    }
+
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload {
             source: self.source,

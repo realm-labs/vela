@@ -37,6 +37,10 @@ fn call_values() {
         let nested = 3;
         nested
     }));
+    let named = take_typed(value = {
+        let named_value = 8;
+        named_value
+    });
     outer(take_typed({
         let typed = 6;
         typed
@@ -62,6 +66,10 @@ fn call_values() {
             vec![
                 (SyntaxStatementKind::Let, "let enum_value = 5;"),
                 (SyntaxStatementKind::Expr, "enum_value"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let named_value = 8;"),
+                (SyntaxStatementKind::Expr, "named_value"),
             ],
         ],
     );
@@ -92,6 +100,7 @@ fn call_values() {
             (SyntaxStatementKind::Expr, "returned"),
         ]],
     );
+    assert_cst_call_argument_names(&payload.body, &["value"]);
 
     compile_program_source(source, text).expect("CST-backed value call arguments should compile");
 }
@@ -147,6 +156,20 @@ fn assert_cst_return_value_call_argument_body_payloads(
         .flat_map(call_argument_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_call_argument_names(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&str],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .flat_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(|payload| payload.call_argument_payloads().unwrap_or_default())
+        .filter_map(|argument| argument.syntax_name())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected);
 }
 
 fn call_argument_block_payloads(
