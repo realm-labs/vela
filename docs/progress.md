@@ -222,8 +222,8 @@ for unknown member access, non-exhaustive matches, unknown match pattern
 variants, and missing record constructor fields, so its parse database no
 longer stores the legacy owned `SourceFile`. The old owned-AST aggregate
 analysis diagnostics facade, duplicate record-constructor walker, and duplicate
-match-pattern variant walker have been removed; editor diagnostics now exercise
-the active CST-backed path directly.
+match-pattern exhaustiveness and variant walkers have been removed; editor
+diagnostics now exercise the active CST-backed path directly.
 HIR `add_source` now uses rowan CST item headers for module spans, imports, and
 top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,

@@ -18,6 +18,25 @@ fn project(files: &[SourceFileSnapshot]) -> crate::ProjectSources {
     assemble_project_sources(&config, files, &Workspace::new().snapshot())
 }
 
+fn quest_state_schema() -> RegistryFacts {
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Finished",
+        TypeFact::enum_type("QuestState", Some("Finished")),
+    );
+    schema
+}
+
 #[test]
 fn syntax_diagnostics_map_to_document_ranges() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
@@ -242,23 +261,8 @@ pub fn main(maybe: Option<i64>) {
 #[test]
 fn analysis_diagnostics_report_schema_enum_match_pattern_variants() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut schema = RegistryFacts::default();
-    schema.insert_type(
-        "QuestState",
-        TypeFact::enum_type("QuestState", None::<String>),
-    );
-    schema.insert_variant(
-        "QuestState",
-        "Active",
-        TypeFact::enum_type("QuestState", Some("Active")),
-    );
-    schema.insert_variant(
-        "QuestState",
-        "Finished",
-        TypeFact::enum_type("QuestState", Some("Finished")),
-    );
     let mut db = LanguageServiceDatabases::new();
-    db.set_schema_facts(schema);
+    db.set_schema_facts(quest_state_schema());
     db.update(&project(&[file(
         document.as_str(),
         "\
@@ -288,23 +292,8 @@ pub fn main(quest: QuestState) {
 #[test]
 fn analysis_diagnostics_ignore_different_match_pattern_owners() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut schema = RegistryFacts::default();
-    schema.insert_type(
-        "QuestState",
-        TypeFact::enum_type("QuestState", None::<String>),
-    );
-    schema.insert_variant(
-        "QuestState",
-        "Active",
-        TypeFact::enum_type("QuestState", Some("Active")),
-    );
-    schema.insert_variant(
-        "QuestState",
-        "Finished",
-        TypeFact::enum_type("QuestState", Some("Finished")),
-    );
     let mut db = LanguageServiceDatabases::new();
-    db.set_schema_facts(schema);
+    db.set_schema_facts(quest_state_schema());
     db.update(&project(&[file(
         document.as_str(),
         "\
@@ -324,6 +313,141 @@ pub fn main(quest: QuestState) {
             .diagnostics()
             .iter()
             .all(|diagnostic| diagnostic.code() != Some("analysis::unknown_variant")),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_report_non_exhaustive_schema_enum_matches() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.set_schema_facts(quest_state_schema());
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(quest: QuestState) {
+    match quest {
+        QuestState::Active => 1,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::non_exhaustive_match")
+                && diagnostic.message().contains("QuestState")
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("Finished"))
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_treat_wildcard_match_arms_as_exhaustive() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.set_schema_facts(quest_state_schema());
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(quest: QuestState) {
+    match quest {
+        QuestState::Active => 1,
+        _ => 0,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.code() != Some("analysis::non_exhaustive_match")),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_ignore_guarded_arms_for_exhaustiveness() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.set_schema_facts(quest_state_schema());
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(quest: QuestState, ok: bool) {
+    match quest {
+        QuestState::Active if ok => 1,
+        QuestState::Finished => 0,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::non_exhaustive_match")
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("Active"))
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_report_non_exhaustive_option_and_result_matches() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(maybe_reward: Option<String>, outcome: Result<i64, String>) {
+    match maybe_reward {
+        Option::Some(value) => value,
+    }
+    match outcome {
+        Result::Err(reason) => reason,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::non_exhaustive_match")
+                && diagnostic.message().contains("Option")
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("None"))
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::non_exhaustive_match")
+                && diagnostic.message().contains("Result")
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("Ok"))
+        }),
         "{:?}",
         diagnostics.diagnostics()
     );
