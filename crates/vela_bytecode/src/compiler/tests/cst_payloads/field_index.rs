@@ -441,6 +441,141 @@ fn main(cst: CstMap, legacy: LegacyMap) {
         .expect("CST receiver payload should select CstMap key contract");
 }
 
+#[test]
+fn read_only_host_assignment_prefers_cst_target_payloads() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let readonly = registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "ReadOnlyHost",
+            ))
+            .host_runtime_id(77),
+        )
+        .expect("ReadOnlyHost host type should register");
+    let writable = registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "WritableHost",
+            ))
+            .host_runtime_id(78),
+        )
+        .expect("WritableHost host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                vela_def::DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "ReadOnlyHost",
+                    "amount",
+                ),
+                readonly,
+            )
+            .host_runtime_id(vela_def::FieldId::new(3).get())
+            .writable(false),
+        )
+        .expect("ReadOnlyHost amount field should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                vela_def::DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "WritableHost",
+                    "amount",
+                ),
+                writable,
+            )
+            .host_runtime_id(vela_def::FieldId::new(4).get())
+            .writable(true),
+        )
+        .expect("WritableHost amount field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(readonly: ReadOnlyHost, writable: WritableHost) {
+    readonly.amount = 1;
+    writable.amount = 2;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
+    let global_type_symbols = semantic.global_type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let const_values = semantic.const_values().expect("const values should lower");
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let facts = CompilerFacts {
+        script_function_symbols,
+        script_function_signatures,
+        script_method_ids: std::collections::BTreeMap::new(),
+        script_method_signatures: std::collections::BTreeMap::new(),
+        derived_operator_traits: std::collections::BTreeMap::new(),
+        script_field_slots,
+        schema_defaults,
+        type_symbols,
+        global_symbols,
+        global_slots,
+        global_type_symbols,
+        const_values,
+        options: CompilerOptions::default(),
+        registry: Some(registry.compile_view()),
+    };
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let readonly_target = statements[0]
+        .assignment_target_expression_payload()
+        .expect("CST read-only assignment target");
+    let writable_target = statements[1]
+        .assignment_target_expression_payload()
+        .expect("legacy writable assignment target");
+    let writable_statement = statements[1]
+        .expression_payload()
+        .expect("legacy writable assignment expression");
+    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        readonly_target
+            .syntax_expression()
+            .expect("CST read-only target syntax")
+            .clone(),
+        writable_target.fallback(),
+    );
+    let mut compiler = Compiler::new(
+        payload.function.name.clone(),
+        payload.function,
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    let error = compiler
+        .compile_assignment_with_payloads(
+            writable_statement.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                None,
+                None,
+                crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
+            ),
+        )
+        .expect_err("CST read-only assignment target should be rejected");
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["analysis::field_not_writable"]
+    );
+}
+
 fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

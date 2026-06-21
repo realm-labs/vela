@@ -248,7 +248,7 @@ impl Compiler<'_, '_> {
                 self.compile_local_assignment(*op, local_target, value, facts, value_syntax)?;
             return Ok(assigned);
         }
-        self.reject_read_only_host_assignment(target)?;
+        self.reject_read_only_host_assignment(target, target_syntax)?;
         if let ExprKind::Index { base, index } = &target.kind {
             let operand_payloads = target_syntax.index_operand_payloads();
             let base_payload = operand_payloads.as_ref().map(|(base, _)| base);
@@ -1007,8 +1007,13 @@ impl Compiler<'_, '_> {
         Ok(path)
     }
 
-    fn reject_read_only_host_assignment(&self, target: &Expr) -> CompileResult<()> {
-        let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(target) else {
+    fn reject_read_only_host_assignment(
+        &self,
+        target: &Expr,
+        syntax: AssignmentTargetSyntax<'_, '_>,
+    ) -> CompileResult<()> {
+        let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(target, syntax)
+        else {
             return Ok(());
         };
         let Some(access) = self.host_field_info(Some(receiver_type.as_str()), field.as_str())
@@ -1034,13 +1039,28 @@ impl Compiler<'_, '_> {
         )))
     }
 
-    fn host_assignment_receiver_and_field(&self, target: &Expr) -> Option<(String, String)> {
+    fn host_assignment_receiver_and_field(
+        &self,
+        target: &Expr,
+        syntax: AssignmentTargetSyntax<'_, '_>,
+    ) -> Option<(String, String)> {
         match &target.kind {
             ExprKind::Field { base, name } => {
-                Some((self.script_type_for_expr(base)?, name.clone()))
+                let base_payload = syntax.field_base_payload();
+                let receiver_type =
+                    self.script_type_for_expr_with_payload(base, base_payload.as_ref())?;
+                let field = syntax
+                    .expression
+                    .and_then(CompilerExpressionPayload::field_name)
+                    .unwrap_or_else(|| name.clone());
+                Some((receiver_type, field))
             }
             ExprKind::Path(path) => {
-                let (field, receiver_path) = path.split_last()?;
+                let cst_path = syntax
+                    .expression
+                    .and_then(CompilerExpressionPayload::path_segments);
+                let lookup_path = cst_path.as_deref().unwrap_or(path);
+                let (field, receiver_path) = lookup_path.split_last()?;
                 let [receiver] = receiver_path else {
                     return None;
                 };

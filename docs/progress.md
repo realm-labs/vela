@@ -449,6 +449,9 @@ legacy operand expressions.
 Record-field assignment target analysis now prefers rowan CST root payloads
 for root script type, field value contracts, record shape, and slot selection
 before falling back to temporary legacy target expressions.
+Read-only host field assignment validation now prefers rowan CST target
+payloads for receiver type and field-name lookup before falling back to
+temporary legacy assignment target expressions.
 Value shape inference now accepts rowan CST expression payloads for local paths
 and field receivers, and payload-aware local assignment, let binding, method
 receiver, for-iterable, and field-value type fallback paths use that route
