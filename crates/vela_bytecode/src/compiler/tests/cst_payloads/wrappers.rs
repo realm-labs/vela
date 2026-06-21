@@ -102,6 +102,11 @@ fn paren_values() {
         let inner = 1;
         inner
     });
+    let assigned = 0;
+    assigned = ({
+        let updated = 2;
+        updated
+    });
     return value;
 }
 "#;
@@ -114,6 +119,13 @@ fn paren_values() {
         &[vec![
             (SyntaxStatementKind::Let, "let inner = 1;"),
             (SyntaxStatementKind::Expr, "inner"),
+        ]],
+    );
+    assert_cst_assignment_value_paren_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let updated = 2;"),
+            (SyntaxStatementKind::Expr, "updated"),
         ]],
     );
 
@@ -216,6 +228,24 @@ fn assert_cst_let_initializer_paren_body_payloads(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
+        .filter_map(|payload| payload.paren_inner_payload())
+        .filter_map(|inner| {
+            let body = inner.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_paren_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
         .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
         .filter_map(|payload| payload.paren_inner_payload())
         .filter_map(|inner| {

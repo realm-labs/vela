@@ -9,6 +9,7 @@ use crate::{Register, UnlinkedInstructionKind};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
+use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::expressions::literal_string;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
@@ -802,21 +803,21 @@ impl Compiler<'_, '_> {
             return self.compile_expr_with_expected_type(value, expected, context);
         }
         if let Some(kind) = syntax.kind
-            && assignment_value_kind_matches(kind, value)
+            && expression_payload_kind_matches(kind, value)
         {
             if matches!(
                 kind,
-                SyntaxExpressionKind::Array
-                    | SyntaxExpressionKind::Map
-                    | SyntaxExpressionKind::Record
-                    | SyntaxExpressionKind::Binary
-                    | SyntaxExpressionKind::Call
-                    | SyntaxExpressionKind::Unary
-                    | SyntaxExpressionKind::Try
+                SyntaxExpressionKind::Block
+                    | SyntaxExpressionKind::If
+                    | SyntaxExpressionKind::Match
             ) {
-                return self.compile_expr_with_payload(value, syntax.expression);
+                return self.compile_assignment_value_with_syntax_kind(
+                    value,
+                    kind,
+                    syntax.payloads,
+                );
             }
-            return self.compile_assignment_value_with_syntax_kind(value, kind, syntax.payloads);
+            return self.compile_expr_with_payload(value, syntax.expression);
         }
         self.compile_expr(value)
     }
@@ -933,24 +934,6 @@ fn expressions_are_i64(left: Option<RuntimeTypeFact>, right: Option<RuntimeTypeF
             Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
         )
     )
-}
-
-fn assignment_value_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
-    match kind {
-        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
-        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
-        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
-        SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
-        SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
-        _ => !matches!(
-            expr.kind,
-            ExprKind::Block(_)
-                | ExprKind::If(_)
-                | ExprKind::Match(_)
-                | ExprKind::Binary { .. }
-                | ExprKind::Call { .. }
-        ),
-    }
 }
 
 fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {

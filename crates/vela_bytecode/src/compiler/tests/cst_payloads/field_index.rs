@@ -28,6 +28,18 @@ fn field_and_index_values() {
         let offset = 0;
         offset
     }].value;
+    let assigned = 0;
+    assigned = make_counter({
+        let assigned_current = 4;
+        assigned_current
+    }).value;
+    assigned = make_counters({
+        let assigned_all = 5;
+        assigned_all
+    })[{
+        let assigned_offset = 0;
+        assigned_offset
+    }].value;
     return field + indexed;
 }
 "#;
@@ -66,6 +78,36 @@ fn field_and_index_values() {
             ],
         ],
     );
+    assert_cst_assignment_value_field_base_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let assigned_current = 4;"),
+                (SyntaxStatementKind::Expr, "assigned_current"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let assigned_all = 5;"),
+                (SyntaxStatementKind::Expr, "assigned_all"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let assigned_offset = 0;"),
+                (SyntaxStatementKind::Expr, "assigned_offset"),
+            ],
+        ],
+    );
+    assert_cst_assignment_value_index_operand_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let assigned_all = 5;"),
+                (SyntaxStatementKind::Expr, "assigned_all"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let assigned_offset = 0;"),
+                (SyntaxStatementKind::Expr, "assigned_offset"),
+            ],
+        ],
+    );
 
     compile_program_source(source, text).expect("CST-backed field/index operands should compile");
 }
@@ -91,6 +133,32 @@ fn assert_cst_let_initializer_index_operand_body_payloads(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(index_block_operand_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_field_base_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .flat_map(field_base_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_index_operand_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
         .flat_map(index_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));

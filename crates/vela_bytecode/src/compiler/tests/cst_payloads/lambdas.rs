@@ -10,6 +10,11 @@ fn lambda_values() {
         let next = value + 1;
         next
     };
+    let assigned = |value| value;
+    assigned = |value| {
+        let assigned_next = value + 2;
+        assigned_next
+    };
     values.map(|value| {
         let doubled = value * 2;
         doubled
@@ -27,6 +32,13 @@ fn lambda_values() {
         &[vec![
             (SyntaxStatementKind::Let, "let next = value + 1;"),
             (SyntaxStatementKind::Expr, "next"),
+        ]],
+    );
+    assert_cst_assignment_value_lambda_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let assigned_next = value + 2;"),
+            (SyntaxStatementKind::Expr, "assigned_next"),
         ]],
     );
     assert_cst_call_argument_lambda_body_payloads(
@@ -48,6 +60,19 @@ fn assert_cst_let_initializer_lambda_body_payloads(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(lambda_body_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_value_lambda_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
         .flat_map(lambda_body_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
