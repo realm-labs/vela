@@ -388,6 +388,9 @@ arm fallbacks when syntax alignment is unavailable.
 Match arm payloads now expose rowan pattern payloads for tuple and record
 variants, letting enum record-pattern field reads and bindings prefer CST
 field labels before falling back to the temporary legacy pattern fields.
+For statement payloads now expose rowan index and value pattern payloads,
+letting loop pattern matching and local binding reuse CST-backed tuple and
+record pattern labels before falling back to temporary legacy pattern fields.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -426,6 +426,26 @@ impl<'ast> CompilerStatementPayload<'ast> {
         })
     }
 
+    pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+        let StmtKind::For { index_pattern, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerPatternPayload {
+            syntax: self.syntax.as_ref()?.as_for()?.index_pattern(),
+            fallback: index_pattern.as_ref()?,
+        })
+    }
+
+    pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+        let StmtKind::For { pattern, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerPatternPayload {
+            syntax: self.syntax.as_ref()?.as_for()?.value_pattern(),
+            fallback: pattern,
+        })
+    }
+
     pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;

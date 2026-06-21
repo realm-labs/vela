@@ -2,12 +2,13 @@ mod block_values;
 mod classification;
 mod condition_jumps;
 mod if_values;
+mod loops;
 mod value_syntax;
 
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, MatchExpr, Stmt, StmtKind,
     SyntaxExpressionKind, SyntaxStatementKind,
 };
 
@@ -16,7 +17,7 @@ use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
-    CompilerStatementPayload,
+    CompilerPatternPayload, CompilerStatementPayload,
 };
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -29,68 +30,9 @@ use classification::{
     is_map_or_set_type_hint, iterable_item_shape, legacy_range_iterable, legacy_statement_kind,
     merge_type_hint_and_value_fact, statement_kind_matches, value_expression_kind_matches,
 };
+pub(super) use loops::LoopContext;
+use loops::{ForStatementParts, LoopIterable};
 use value_syntax::ValueSyntaxPayloads;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct LoopContext {
-    continue_target: usize,
-    break_jumps: Vec<usize>,
-    continue_jumps: Vec<usize>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum LoopIterable {
-    Generic {
-        iterator: Register,
-    },
-    Range {
-        cursor: Register,
-        end: Register,
-        done: Register,
-        inclusive: bool,
-    },
-}
-
-struct ForStatementParts<'ast> {
-    stmt_span: Span,
-    index_pattern: Option<&'ast Pattern>,
-    pattern: &'ast Pattern,
-    iterable: &'ast Expr,
-    body: &'ast Block,
-    iterable_payload: Option<CompilerExpressionPayload<'ast>>,
-    iterable_operator: Option<BinaryOp>,
-    body_payload: Option<CompilerBodyPayload<'ast>>,
-}
-
-impl LoopContext {
-    pub(super) fn new(continue_target: usize) -> Self {
-        Self {
-            continue_target,
-            break_jumps: Vec::new(),
-            continue_jumps: Vec::new(),
-        }
-    }
-
-    pub(super) fn continue_target(&self) -> usize {
-        self.continue_target
-    }
-
-    pub(super) fn break_jumps(&self) -> &[usize] {
-        &self.break_jumps
-    }
-
-    pub(super) fn continue_jumps(&self) -> &[usize] {
-        &self.continue_jumps
-    }
-
-    pub(super) fn push_break(&mut self, offset: usize) {
-        self.break_jumps.push(offset);
-    }
-
-    pub(super) fn push_continue(&mut self, offset: usize) {
-        self.continue_jumps.push(offset);
-    }
-}
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_statement_payloads(
@@ -138,6 +80,8 @@ impl Compiler<'_, '_> {
                 stmt.for_iterable_expression_payload(),
                 stmt.for_iterable_binary_operator(),
                 stmt.for_body_payload(),
+                stmt.for_index_pattern_payload(),
+                stmt.for_value_pattern_payload(),
             )
         } else if kind == SyntaxStatementKind::If {
             self.compile_if_statement(stmt.fallback(), stmt.if_payload())
@@ -257,7 +201,9 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_continue()
             }
-            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None, None),
+            SyntaxStatementKind::For => {
+                self.compile_for_statement(stmt, None, None, None, None, None)
+            }
             SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
@@ -423,6 +369,8 @@ impl Compiler<'_, '_> {
         iterable_payload: Option<CompilerExpressionPayload<'ast>>,
         iterable_operator: Option<BinaryOp>,
         body_payload: Option<CompilerBodyPayload<'ast>>,
+        index_pattern_payload: Option<CompilerPatternPayload<'ast>>,
+        pattern_payload: Option<CompilerPatternPayload<'ast>>,
     ) -> CompileResult<bool> {
         let StmtKind::For {
             index_pattern,
@@ -439,6 +387,8 @@ impl Compiler<'_, '_> {
             pattern,
             iterable,
             body,
+            index_pattern_payload,
+            pattern_payload,
             iterable_payload,
             iterable_operator,
             body_payload,
@@ -871,22 +821,26 @@ impl Compiler<'_, '_> {
             mismatch_jumps.extend(self.compile_match_pattern(
                 index_register,
                 index_pattern,
-                None,
+                parts.index_pattern_payload.as_ref(),
             )?);
             self.bind_pattern_locals(
                 index_register,
                 index_pattern,
-                None,
+                parts.index_pattern_payload.as_ref(),
                 parts.stmt_span,
                 i64_pattern_facts(),
                 LocalBindingKind::For,
             )?;
         }
-        mismatch_jumps.extend(self.compile_match_pattern(item_register, parts.pattern, None)?);
+        mismatch_jumps.extend(self.compile_match_pattern(
+            item_register,
+            parts.pattern,
+            parts.pattern_payload.as_ref(),
+        )?);
         self.bind_pattern_locals(
             item_register,
             parts.pattern,
-            None,
+            parts.pattern_payload.as_ref(),
             parts.stmt_span,
             item_facts,
             LocalBindingKind::For,
