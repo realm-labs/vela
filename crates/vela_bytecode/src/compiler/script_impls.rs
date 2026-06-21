@@ -12,6 +12,7 @@ use vela_syntax::ast::{
 };
 
 use super::body_payloads::CompilerBodyPayload;
+use super::legacy_payloads::LegacySourceFallback;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 
 pub(super) struct ScriptImplMethod<'ast> {
@@ -73,7 +74,7 @@ pub(super) fn source_methods<'ast>(
 }
 
 pub(super) fn module_methods<'ast>(
-    parsed: &'ast BTreeMap<ModuleId, SourceFile>,
+    legacy: &'ast BTreeMap<ModuleId, LegacySourceFallback>,
     syntax: &BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
     source_ids: &BTreeMap<ModuleId, vela_common::SourceId>,
     graph: &'ast ModuleGraph,
@@ -86,7 +87,7 @@ pub(super) fn module_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let Some(source) = parsed.get(&declaration.module) else {
+            let Some(fallback) = legacy.get(&declaration.module) else {
                 return Vec::new();
             };
             let Some(syntax_source) = syntax.get(&declaration.module) else {
@@ -96,7 +97,7 @@ pub(super) fn module_methods<'ast>(
                 return Vec::new();
             };
             let method_payloads =
-                impl_method_payloads(source, syntax_source, source_id, impl_metadata);
+                impl_method_payloads(fallback.parsed(), syntax_source, source_id, impl_metadata);
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
                 return collect_methods(
@@ -121,7 +122,7 @@ pub(super) fn module_methods<'ast>(
             };
             let trait_item = graph
                 .declaration(trait_declaration)
-                .and_then(|declaration| parsed.get(&declaration.module))
+                .and_then(|declaration| legacy.get(&declaration.module))
                 .zip(
                     graph
                         .declaration(trait_declaration)
@@ -133,12 +134,16 @@ pub(super) fn module_methods<'ast>(
                         .and_then(|declaration| source_ids.get(&declaration.module))
                         .copied(),
                 )
-                .and_then(|((source, syntax), source_id)| {
+                .and_then(|((fallback, syntax), source_id)| {
                     graph.trait_shape(trait_declaration).map(|shape| {
                         (
                             shape,
                             trait_default_method_payloads(
-                                source, syntax, source_id, trait_path, shape,
+                                fallback.parsed(),
+                                syntax,
+                                source_id,
+                                trait_path,
+                                shape,
                             ),
                         )
                     })

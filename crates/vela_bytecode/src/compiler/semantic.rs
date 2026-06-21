@@ -8,16 +8,15 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SourceFile, SyntaxSourceFile};
+use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
-use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use crate::Constant;
 
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::legacy_payloads::{FunctionBodyPayload, function_body_payload};
+use super::legacy_payloads::{FunctionBodyPayload, LegacySourceFallback, function_body_payload};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
@@ -26,14 +25,14 @@ pub(super) struct SemanticSource {
     source: SourceId,
     text: String,
     syntax: SyntaxParse<SyntaxSourceFile>,
-    parsed: SourceFile,
+    legacy: LegacySourceFallback,
     graph: ModuleGraph,
     module: ModuleId,
 }
 
 pub(super) struct SemanticModules {
     syntax: BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
-    parsed: BTreeMap<ModuleId, SourceFile>,
+    legacy: BTreeMap<ModuleId, LegacySourceFallback>,
     source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
@@ -62,7 +61,7 @@ impl SemanticSource {
         let payload = function_body_payload(
             self.source,
             &self.syntax,
-            &self.parsed,
+            &self.legacy,
             metadata.name.as_str(),
             signature,
         )?;
@@ -170,7 +169,7 @@ impl SemanticSource {
                 &self.syntax,
                 &self.graph,
                 self.module,
-                &self.parsed,
+                self.legacy.parsed(),
             ),
             &self.graph,
             self.module,
@@ -197,7 +196,7 @@ impl SemanticSource {
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
         script_impls::source_methods(
-            &self.parsed,
+            self.legacy.parsed(),
             &self.syntax,
             self.source,
             &self.graph,
@@ -238,11 +237,11 @@ impl SemanticModules {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
-        let parsed = self.parsed.get(&metadata.module)?;
+        let legacy = self.legacy.get(&metadata.module)?;
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
         let payload =
-            function_body_payload(source, syntax, parsed, metadata.name.as_str(), signature)?;
+            function_body_payload(source, syntax, legacy, metadata.name.as_str(), signature)?;
         Some((payload, signature, bindings))
     }
 
@@ -359,14 +358,14 @@ impl SemanticModules {
             let Some(syntax) = self.syntax.get(module) else {
                 continue;
             };
-            let Some(parsed) = self.parsed.get(module) else {
+            let Some(legacy) = self.legacy.get(module) else {
                 continue;
             };
             let Some(source) = self.source_ids.get(module).copied() else {
                 continue;
             };
             defaults.merge(source_schema_defaults(
-                &schema_default_payloads(source, syntax, &self.graph, *module, parsed),
+                &schema_default_payloads(source, syntax, &self.graph, *module, legacy.parsed()),
                 &self.graph,
                 *module,
                 type_symbols,
@@ -418,7 +417,7 @@ impl SemanticModules {
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::module_methods(&self.parsed, &self.syntax, &self.source_ids, &self.graph)
+        script_impls::module_methods(&self.legacy, &self.syntax, &self.source_ids, &self.graph)
     }
 
     fn const_values_by_name(
@@ -490,7 +489,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             syntax.diagnostics().to_vec(),
         )));
     }
-    let parsed = parse_legacy_source(source, text);
+    let legacy = LegacySourceFallback::parse(source, text);
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(ModuleSource::new(
         source,
@@ -503,7 +502,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             source,
             text: text.to_owned(),
             syntax,
-            parsed,
+            legacy,
             graph,
             module,
         })
@@ -530,16 +529,16 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     }
 
     let mut syntax = BTreeMap::new();
-    let mut parsed = BTreeMap::new();
+    let mut legacy = BTreeMap::new();
     let mut source_ids = BTreeMap::new();
     let mut graph = ModuleGraph::new();
     let mut modules = Vec::new();
 
     for (source, syntax_file) in syntax_sources {
         let module = graph.add_source(source.clone());
-        let source_file = parse_legacy_source(source.id, &source.text);
+        let fallback = LegacySourceFallback::parse(source.id, &source.text);
         syntax.insert(module, syntax_file);
-        parsed.insert(module, source_file);
+        legacy.insert(module, fallback);
         source_ids.insert(module, source.id);
         modules.push(module);
     }
@@ -548,7 +547,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     if graph.diagnostics().is_empty() {
         Ok(SemanticModules {
             syntax,
-            parsed,
+            legacy,
             source_ids,
             graph,
             modules,

@@ -4,9 +4,26 @@ use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     AstNode, FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile,
 };
+use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
+
+pub(super) struct LegacySourceFallback {
+    parsed: SourceFile,
+}
+
+impl LegacySourceFallback {
+    pub(super) fn parse(source: SourceId, text: &str) -> Self {
+        Self {
+            parsed: parse_legacy_source(source, text),
+        }
+    }
+
+    pub(super) const fn parsed(&self) -> &SourceFile {
+        &self.parsed
+    }
+}
 
 pub(super) struct FunctionBodyPayload<'ast> {
     pub(super) name: String,
@@ -17,7 +34,7 @@ pub(super) struct FunctionBodyPayload<'ast> {
 pub(super) fn function_body_payload<'ast>(
     source: SourceId,
     syntax: &SyntaxParse<SyntaxSourceFile>,
-    parsed: &'ast SourceFile,
+    legacy: &'ast LegacySourceFallback,
     name: &str,
     signature: &FunctionSignature,
 ) -> Option<FunctionBodyPayload<'ast>> {
@@ -26,7 +43,7 @@ pub(super) fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let function = legacy_function_body(parsed, syntax_body_span(source, &syntax_body))?;
+    let function = legacy_function_body(legacy.parsed(), syntax_body_span(source, &syntax_body))?;
     let param_defaults = syntax_param_default_values(
         source,
         syntax_function.param_list(),
