@@ -101,6 +101,10 @@ fn call_values() {
         ]],
     );
     assert_cst_call_argument_names(&payload.body, &["value"]);
+    assert_cst_let_initializer_call_callee_path_segments(
+        &payload.body,
+        &[&["take"], &["Boxed", "Value"], &["take_typed"]],
+    );
 
     compile_program_source(source, text).expect("CST-backed value call arguments should compile");
 }
@@ -170,6 +174,20 @@ fn assert_cst_call_argument_names(
         .filter_map(|argument| argument.syntax_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
+}
+
+fn assert_cst_let_initializer_call_callee_path_segments(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&[&str]],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter_map(|payload| payload.call_callee_payload())
+        .filter_map(|callee| callee.path_segments())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_path_segments(expected));
 }
 
 fn call_argument_block_payloads(
@@ -277,6 +295,13 @@ fn call_method_name(payload: body_payloads::CompilerExpressionPayload<'_>) -> Op
 
 fn expected_strings(expected: &[&str]) -> Vec<String> {
     expected.iter().map(|name| (*name).to_owned()).collect()
+}
+
+fn expected_path_segments(expected: &[&[&str]]) -> Vec<Vec<String>> {
+    expected
+        .iter()
+        .map(|path| path.iter().map(|segment| (*segment).to_owned()).collect())
+        .collect()
 }
 
 fn call_callee_block_payloads(

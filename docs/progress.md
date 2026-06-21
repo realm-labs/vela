@@ -408,6 +408,8 @@ Record expression lowering now prefers rowan CST constructor paths for aligned
 payloads before falling back to temporary legacy path vectors.
 Method call lowering now prefers rowan CST field names for aligned callee
 payloads before falling back to temporary legacy method names.
+Call path dispatch now prefers rowan CST callee path segments for local path
+method classification, path-root checks, and fallback callable names.
 Record assignment target lowering now prefers rowan CST path segments and
 field names before falling back to temporary legacy target names.
 Formatter element extraction now walks the rowan CST token/trivia stream and
