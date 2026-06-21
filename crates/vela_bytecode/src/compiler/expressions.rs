@@ -51,6 +51,10 @@ impl Compiler<'_, '_> {
         kind: SyntaxExpressionKind,
     ) -> CompileResult<Register> {
         match kind {
+            SyntaxExpressionKind::Paren => {
+                let inner_payload = payload.paren_inner_payload();
+                self.compile_expr_with_payload(expr, inner_payload.as_ref())
+            }
             SyntaxExpressionKind::Block => {
                 let ExprKind::Block(block) = &expr.kind else {
                     unreachable!("validated CST block expression payload kind");

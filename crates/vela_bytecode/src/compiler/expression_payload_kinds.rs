@@ -2,6 +2,7 @@ use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
+        SyntaxExpressionKind::Paren => true,
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),

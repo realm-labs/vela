@@ -93,6 +93,34 @@ fn wrapper_values() {
     compile_program_source(source, text).expect("CST-backed wrapper operands should compile");
 }
 
+#[test]
+fn semantic_function_parenthesized_values_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn paren_values() {
+    let value = ({
+        let inner = 1;
+        inner
+    });
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("paren_values")
+        .expect("paren_values function");
+    assert_cst_let_initializer_paren_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let inner = 1;"),
+            (SyntaxStatementKind::Expr, "inner"),
+        ]],
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed parenthesized expression should compile");
+}
+
 fn assert_cst_let_initializer_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -174,6 +202,24 @@ fn assert_cst_return_value_try_operand_body_payloads(
         .filter_map(|payload| payload.try_operand_payload())
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_let_initializer_paren_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
+        .filter_map(|payload| payload.paren_inner_payload())
+        .filter_map(|inner| {
+            let body = inner.block_body_payload()?;
             Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
