@@ -124,6 +124,61 @@ fn main() {
 }
 
 #[test]
+fn range_for_loop_does_not_use_legacy_operator_without_cst_operator() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let items = [1, 2, 3];
+    let total = 0;
+    for value in items {
+        total += value;
+    }
+    return total;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let items = [1, 2, 3];
+    let total = 0;
+    for value in 1..3 {
+        total += value;
+    }
+    return total;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("mismatched CST iterable should compile through generic iteration");
+
+            assert!(
+                !compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::I64RangeNext { .. }
+                    )),
+                "range loop must not use a legacy fallback iterable operator"
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_function_for_patterns_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

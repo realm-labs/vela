@@ -745,7 +745,11 @@ impl Compiler<'_, '_> {
             .iterable_payload
             .as_ref()
             .and_then(CompilerExpressionPayload::binary_operand_payloads);
-        let range_iterable = range_iterable_for_payload(parts.iterable_operator, parts.iterable);
+        let range_iterable = range_iterable_for_payload(
+            parts.iterable_operator,
+            parts.iterable_payload.is_some(),
+            parts.iterable,
+        );
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {

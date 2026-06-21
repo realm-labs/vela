@@ -75,16 +75,17 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
 
 pub(super) fn range_iterable_for_payload(
     syntax_operator: Option<BinaryOp>,
+    has_payload: bool,
     expr: &Expr,
 ) -> Option<(&Expr, &Expr, bool)> {
     let ExprKind::Binary { left, right, .. } = &expr.kind else {
         return None;
     };
-    match syntax_operator {
-        Some(BinaryOp::Range) => Some((left.as_ref(), right.as_ref(), false)),
-        Some(BinaryOp::RangeInclusive) => Some((left.as_ref(), right.as_ref(), true)),
-        Some(_) => None,
-        None => legacy_range_iterable(expr),
+    match (syntax_operator, has_payload) {
+        (Some(BinaryOp::Range), _) => Some((left.as_ref(), right.as_ref(), false)),
+        (Some(BinaryOp::RangeInclusive), _) => Some((left.as_ref(), right.as_ref(), true)),
+        (Some(_), _) | (None, true) => None,
+        (None, false) => legacy_range_iterable(expr),
     }
 }
 
