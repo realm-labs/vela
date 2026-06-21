@@ -144,6 +144,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::For { body, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.as_for()?.body()?,
+            body,
+        ))
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }

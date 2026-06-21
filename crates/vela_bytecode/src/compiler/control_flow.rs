@@ -8,7 +8,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
-use super::body_payloads::CompilerStatementPayload;
+use super::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
 use super::const_eval::compile_literal_constant_for_type;
 use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
@@ -38,6 +38,16 @@ enum LoopIterable {
         done: Register,
         inclusive: bool,
     },
+}
+
+struct ForStatementParts<'ast> {
+    stmt_span: Span,
+    index_pattern: Option<&'ast Pattern>,
+    pattern: &'ast Pattern,
+    iterable: &'ast Expr,
+    body: &'ast Block,
+    iterable_operator: Option<BinaryOp>,
+    body_payload: Option<CompilerBodyPayload<'ast>>,
 }
 
 impl LoopContext {
@@ -97,7 +107,11 @@ impl Compiler<'_, '_> {
         } else if kind == SyntaxStatementKind::Return {
             self.compile_return_statement(stmt.fallback(), stmt.return_value_kind())
         } else if kind == SyntaxStatementKind::For {
-            self.compile_for_statement(stmt.fallback(), stmt.for_iterable_binary_operator())
+            self.compile_for_statement(
+                stmt.fallback(),
+                stmt.for_iterable_binary_operator(),
+                stmt.for_body_payload(),
+            )
         } else if kind == SyntaxStatementKind::If {
             self.compile_if_statement(stmt.fallback(), stmt.if_condition_binary_operator())
         } else if kind == SyntaxStatementKind::Block {
@@ -175,7 +189,7 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_continue()
             }
-            SyntaxStatementKind::For => self.compile_for_statement(stmt, None),
+            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None),
             SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
@@ -312,10 +326,11 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    fn compile_for_statement(
+    fn compile_for_statement<'ast>(
         &mut self,
-        stmt: &Stmt,
+        stmt: &'ast Stmt,
         iterable_operator: Option<BinaryOp>,
+        body_payload: Option<CompilerBodyPayload<'ast>>,
     ) -> CompileResult<bool> {
         let StmtKind::For {
             index_pattern,
@@ -326,14 +341,15 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_statement(stmt);
         };
-        self.compile_for(
-            stmt.span,
-            index_pattern.as_ref(),
+        self.compile_for(ForStatementParts {
+            stmt_span: stmt.span,
+            index_pattern: index_pattern.as_ref(),
             pattern,
             iterable,
             body,
             iterable_operator,
-        )
+            body_payload,
+        })
     }
 
     fn compile_if_statement(
@@ -573,23 +589,16 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_for(
-        &mut self,
-        stmt_span: Span,
-        index_pattern: Option<&Pattern>,
-        pattern: &Pattern,
-        iterable: &Expr,
-        body: &Block,
-        iterable_operator: Option<BinaryOp>,
-    ) -> CompileResult<bool> {
-        let range_iterable = iterable_operator
-            .and_then(|operator| cst_range_iterable(operator, iterable))
-            .or_else(|| legacy_range_iterable(iterable));
+    fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
+        let range_iterable = parts
+            .iterable_operator
+            .and_then(|operator| cst_range_iterable(operator, parts.iterable))
+            .or_else(|| legacy_range_iterable(parts.iterable));
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {
             PatternBindingFacts::value_shape(
-                self.value_shape_for_expr(iterable)
+                self.value_shape_for_expr(parts.iterable)
                     .and_then(iterable_item_shape),
             )
         };
@@ -605,20 +614,20 @@ impl Compiler<'_, '_> {
                 inclusive,
             }
         } else {
-            let iterable_register = self.compile_expr(iterable)?;
+            let iterable_register = self.compile_expr(parts.iterable)?;
             let iterator = self.alloc_register()?;
             self.emit_spanned(
                 UnlinkedInstructionKind::IterInit {
                     dst: iterator,
                     iterable: iterable_register,
                 },
-                iterable.span,
+                parts.iterable.span,
             );
             LoopIterable::Generic { iterator }
         };
 
         let item_register = self.alloc_register()?;
-        let loop_index = if index_pattern.is_some() {
+        let loop_index = if parts.index_pattern.is_some() {
             let counter = self.alloc_register()?;
             self.emit_constant_to(counter, Constant::Scalar(vela_common::ScalarValue::I64(0)));
             Some((
@@ -628,7 +637,7 @@ impl Compiler<'_, '_> {
         } else {
             None
         };
-        let index_register = if index_pattern.is_some() {
+        let index_register = if parts.index_pattern.is_some() {
             Some(self.alloc_register()?)
         } else {
             None
@@ -661,26 +670,31 @@ impl Compiler<'_, '_> {
             });
         }
         let mut mismatch_jumps = Vec::new();
-        if let (Some(index_pattern), Some(index_register)) = (index_pattern, index_register) {
+        if let (Some(index_pattern), Some(index_register)) = (parts.index_pattern, index_register) {
             mismatch_jumps.extend(self.compile_match_pattern(index_register, index_pattern)?);
             self.bind_pattern_locals(
                 index_register,
                 index_pattern,
-                stmt_span,
+                parts.stmt_span,
                 i64_pattern_facts(),
                 LocalBindingKind::For,
             )?;
         }
-        mismatch_jumps.extend(self.compile_match_pattern(item_register, pattern)?);
+        mismatch_jumps.extend(self.compile_match_pattern(item_register, parts.pattern)?);
         self.bind_pattern_locals(
             item_register,
-            pattern,
-            stmt_span,
+            parts.pattern,
+            parts.stmt_span,
             item_facts,
             LocalBindingKind::For,
         )?;
         self.loop_stack.push(LoopContext::new(loop_start));
-        let body_returned = self.compile_statements(&body.statements)?;
+        let body_returned = if let Some(body_payload) = parts.body_payload {
+            let statements = body_payload.statement_payloads();
+            self.compile_statement_payloads(&statements)?
+        } else {
+            self.compile_statements(&parts.body.statements)?
+        };
         let loop_context = self
             .loop_stack
             .pop()

@@ -106,6 +106,40 @@ fn assert_cst_block_statement_payloads(
     );
 }
 
+fn assert_cst_for_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let body = statement.for_body_payload()?;
+            let statements = body.statement_payloads();
+            Some(
+                statements
+                    .iter()
+                    .filter_map(|statement| {
+                        let syntax = statement.syntax_statement()?;
+                        Some((syntax.statement_kind(), syntax.syntax().text().to_string()))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|body| {
+                body.iter()
+                    .map(|(kind, text)| (*kind, (*text).to_owned()))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    );
+}
+
 fn assert_cst_let_initializers(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
@@ -419,6 +453,10 @@ fn sum() {
     assert_cst_for_iterables(
         &payload.body,
         &[(SyntaxExpressionKind::Binary, Some(BinaryOp::Range), "0..3")],
+    );
+    assert_cst_for_body_payloads(
+        &payload.body,
+        &[vec![(SyntaxStatementKind::Expr, "total += value;")]],
     );
 
     let program =
