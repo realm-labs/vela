@@ -140,6 +140,51 @@ fn assert_cst_for_body_payloads(
     );
 }
 
+fn assert_cst_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let then_actual = statements
+        .iter()
+        .filter_map(|statement| statement.if_then_body_payload())
+        .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    let else_actual = statements
+        .iter()
+        .filter_map(|statement| statement.if_else_body_payload())
+        .map(|body| cst_statement_texts(&body))
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
+fn cst_statement_texts(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> Vec<(SyntaxStatementKind, String)> {
+    body.statement_payloads()
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            Some((syntax.statement_kind(), syntax.syntax().text().to_string()))
+        })
+        .collect()
+}
+
+fn expected_statement_texts(
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    expected
+        .iter()
+        .map(|body| {
+            body.iter()
+                .map(|(kind, text)| (*kind, (*text).to_owned()))
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>()
+}
+
 fn assert_cst_let_initializers(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxExpressionKind, &str)],
@@ -476,8 +521,9 @@ fn check() {
     let value: i64 = 10;
     if value > 5 {
         return 1;
+    } else {
+        return 0;
     }
-    return 0;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -488,9 +534,8 @@ fn check() {
             (SyntaxStatementKind::Let, "let value: i64 = 10;"),
             (
                 SyntaxStatementKind::If,
-                "if value > 5 {\n        return 1;\n    }",
+                "if value > 5 {\n        return 1;\n    } else {\n        return 0;\n    }",
             ),
-            (SyntaxStatementKind::Return, "return 0;"),
         ],
     );
     assert_cst_if_conditions(
@@ -500,6 +545,11 @@ fn check() {
             Some(BinaryOp::Greater),
             "value > 5",
         )],
+    );
+    assert_cst_if_body_payloads(
+        &payload.body,
+        &[vec![(SyntaxStatementKind::Return, "return 1;")]],
+        &[vec![(SyntaxStatementKind::Return, "return 0;")]],
     );
 
     let program =

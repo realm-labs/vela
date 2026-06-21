@@ -113,7 +113,12 @@ impl Compiler<'_, '_> {
                 stmt.for_body_payload(),
             )
         } else if kind == SyntaxStatementKind::If {
-            self.compile_if_statement(stmt.fallback(), stmt.if_condition_binary_operator())
+            self.compile_if_statement(
+                stmt.fallback(),
+                stmt.if_condition_binary_operator(),
+                stmt.if_then_body_payload(),
+                stmt.if_else_body_payload(),
+            )
         } else if kind == SyntaxStatementKind::Block {
             self.compile_block_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Expr {
@@ -190,7 +195,7 @@ impl Compiler<'_, '_> {
                 self.compile_continue()
             }
             SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None),
-            SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
+            SyntaxStatementKind::If => self.compile_if_statement(stmt, None, None, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -356,6 +361,8 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &Stmt,
         condition_operator: Option<BinaryOp>,
+        then_payload: Option<CompilerBodyPayload<'_>>,
+        else_payload: Option<CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Expr(expr) = &stmt.kind else {
             return self.compile_statement(stmt);
@@ -363,12 +370,12 @@ impl Compiler<'_, '_> {
         let ExprKind::If(if_expr) = &expr.kind else {
             return self.compile_statement(stmt);
         };
-        self.compile_if(if_expr, condition_operator)
+        self.compile_if(if_expr, condition_operator, then_payload, else_payload)
     }
 
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
-            return self.compile_if(if_expr, None);
+            return self.compile_if(if_expr, None, None, None);
         }
         if let ExprKind::Match(match_expr) = &expr.kind {
             return self.compile_match(match_expr);
@@ -787,11 +794,13 @@ impl Compiler<'_, '_> {
         &mut self,
         if_expr: &IfExpr,
         condition_operator: Option<BinaryOp>,
+        then_payload: Option<CompilerBodyPayload<'_>>,
+        else_payload: Option<CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         let jump_to_else =
             self.emit_condition_jump_if_false(&if_expr.condition, condition_operator)?;
 
-        let then_returned = self.compile_statements(&if_expr.then_branch.statements)?;
+        let then_returned = self.compile_if_block(&if_expr.then_branch, then_payload)?;
         let jump_to_end = if then_returned {
             None
         } else {
@@ -801,8 +810,8 @@ impl Compiler<'_, '_> {
         self.patch_jump(jump_to_else, self.current_offset())?;
 
         let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => self.compile_statements(&block.statements)?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr, None)?,
+            Some(ElseBranch::Block(block)) => self.compile_if_block(block, else_payload)?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr, None, None, None)?,
             None => false,
         };
 
@@ -811,6 +820,19 @@ impl Compiler<'_, '_> {
         }
 
         Ok(then_returned && else_returned)
+    }
+
+    fn compile_if_block(
+        &mut self,
+        block: &Block,
+        payload: Option<CompilerBodyPayload<'_>>,
+    ) -> CompileResult<bool> {
+        if let Some(payload) = payload {
+            let statements = payload.statement_payloads();
+            self.compile_statement_payloads(&statements)
+        } else {
+            self.compile_statements(&block.statements)
+        }
     }
 
     pub(super) fn compile_if_value_to(

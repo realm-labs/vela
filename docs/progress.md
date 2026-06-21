@@ -309,6 +309,9 @@ unavailable.
 Top-level for statement payloads now materialize nested rowan body payloads,
 letting loop bodies reuse the CST-aware statement dispatcher while preserving
 the legacy loop-body fallback when syntax alignment is unavailable.
+Top-level if statement payloads now materialize nested rowan then/else block
+payloads, letting branch bodies reuse the CST-aware statement dispatcher while
+preserving legacy branch fallbacks when syntax alignment is unavailable.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

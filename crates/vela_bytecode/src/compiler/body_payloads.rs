@@ -1,8 +1,8 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, Stmt, StmtKind, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxStatement, SyntaxStatementKind,
+    AstNode, BinaryOp, Block, ElseBranch, ExprKind, Stmt, StmtKind, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -131,6 +131,37 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .condition()?
             .as_binary()?
             .operator()
+    }
+
+    pub(super) fn if_then_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &expr.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.as_if()?.then_block()?,
+            &if_expr.then_branch,
+        ))
+    }
+
+    pub(super) fn if_else_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &expr.kind else {
+            return None;
+        };
+        let ElseBranch::Block(block) = if_expr.else_branch.as_ref()? else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.as_if()?.else_block()?,
+            block,
+        ))
     }
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
