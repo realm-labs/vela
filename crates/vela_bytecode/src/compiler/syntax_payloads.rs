@@ -27,13 +27,13 @@ pub(super) fn const_value_payloads(
     payloads
 }
 
-pub(super) fn schema_default_payloads(
+pub(super) fn schema_default_payloads<'ast>(
     source: SourceId,
     parsed: &SyntaxParse<SyntaxSourceFile>,
     graph: &ModuleGraph,
     module: ModuleId,
-    legacy: &SourceFile,
-) -> SchemaDefaultPayloads {
+    legacy: &'ast SourceFile,
+) -> SchemaDefaultPayloads<'ast> {
     let legacy = legacy_default_exprs_by_span(legacy);
     let mut payloads = SchemaDefaultPayloads::default();
     for item in parsed.tree().structs() {
@@ -55,7 +55,7 @@ pub(super) fn schema_default_payloads(
             else {
                 continue;
             };
-            let legacy_value = legacy.get(&default_span).cloned();
+            let legacy_value = legacy.get(&default_span).copied();
             payloads.insert_struct_field(
                 type_name.clone(),
                 field_name,
@@ -89,7 +89,7 @@ pub(super) fn schema_default_payloads(
                     ) else {
                         continue;
                     };
-                    let legacy_value = legacy.get(&default_span).cloned();
+                    let legacy_value = legacy.get(&default_span).copied();
                     payloads.insert_enum_tuple_field(
                         type_name.clone(),
                         variant_name.clone(),
@@ -115,7 +115,7 @@ pub(super) fn schema_default_payloads(
                     ) else {
                         continue;
                     };
-                    let legacy_value = legacy.get(&default_span).cloned();
+                    let legacy_value = legacy.get(&default_span).copied();
                     payloads.insert_enum_record_field(
                         type_name.clone(),
                         variant_name.clone(),
@@ -130,13 +130,13 @@ pub(super) fn schema_default_payloads(
     payloads
 }
 
-fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, Expr> {
+fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, &Expr> {
     let mut defaults = HashMap::new();
     for item in &parsed.items {
         match &item.kind {
             ItemKind::Struct(record) => {
                 for field in &record.fields {
-                    if let Some(default_value) = field.default_value.clone() {
+                    if let Some(default_value) = field.default_value.as_ref() {
                         defaults.insert(default_value.span, default_value);
                     }
                 }
@@ -147,14 +147,14 @@ fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, Expr> {
                         EnumVariantFields::Unit => {}
                         EnumVariantFields::Tuple(fields) => {
                             for field in fields {
-                                if let Some(default_value) = field.default_value.clone() {
+                                if let Some(default_value) = field.default_value.as_ref() {
                                     defaults.insert(default_value.span, default_value);
                                 }
                             }
                         }
                         EnumVariantFields::Record(fields) => {
                             for field in fields {
-                                if let Some(default_value) = field.default_value.clone() {
+                                if let Some(default_value) = field.default_value.as_ref() {
                                     defaults.insert(default_value.span, default_value);
                                 }
                             }

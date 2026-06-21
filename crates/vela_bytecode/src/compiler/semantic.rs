@@ -163,7 +163,7 @@ impl SemanticSource {
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
         const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> ScriptSchemaDefaults {
+    ) -> ScriptSchemaDefaults<'_> {
         source_schema_defaults(
             &schema_default_payloads(
                 self.source,
@@ -353,7 +353,7 @@ impl SemanticModules {
         &self,
         type_symbols: &BTreeMap<HirDeclId, String>,
         const_values: &BTreeMap<HirDeclId, Constant>,
-    ) -> ScriptSchemaDefaults {
+    ) -> ScriptSchemaDefaults<'_> {
         let mut defaults = ScriptSchemaDefaults::default();
         for module in &self.modules {
             let Some(syntax) = self.syntax.get(module) else {

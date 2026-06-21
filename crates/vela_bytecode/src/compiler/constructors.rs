@@ -38,7 +38,7 @@ pub(super) fn record_field_names(
     )
 }
 
-impl Compiler<'_, '_> {
+impl<'ast, 'registry> Compiler<'ast, 'registry> {
     pub(super) fn compile_tuple_variant_fields(
         &mut self,
         constructor_span: Span,
@@ -120,8 +120,8 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_record_fields(
         &mut self,
         fields: &[vela_syntax::ast::RecordField],
-        defaults: Vec<SchemaFieldDefault>,
-        shape: Option<&ConstructorShape>,
+        defaults: Vec<SchemaFieldDefault<'ast>>,
+        shape: Option<&ConstructorShape<'ast>>,
         payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
@@ -143,7 +143,10 @@ impl Compiler<'_, '_> {
         Ok(compiled)
     }
 
-    pub(super) fn record_constructor_shape(&self, type_name: &str) -> Option<ConstructorShape> {
+    pub(super) fn record_constructor_shape(
+        &self,
+        type_name: &str,
+    ) -> Option<ConstructorShape<'ast>> {
         self.facts.schema_defaults.record(type_name).cloned()
     }
 
@@ -151,7 +154,7 @@ impl Compiler<'_, '_> {
         &self,
         type_name: &str,
         variant: &str,
-    ) -> Option<ConstructorShape> {
+    ) -> Option<ConstructorShape<'ast>> {
         self.facts
             .schema_defaults
             .enum_variant(type_name, variant)
@@ -226,8 +229,8 @@ impl Compiler<'_, '_> {
         &mut self,
         fields: &mut Vec<(String, Register)>,
         explicit_names: &BTreeSet<String>,
-        defaults: Vec<SchemaFieldDefault>,
-        shape: Option<&ConstructorShape>,
+        defaults: Vec<SchemaFieldDefault<'ast>>,
+        shape: Option<&ConstructorShape<'ast>>,
     ) -> CompileResult<()> {
         for default in defaults {
             if explicit_names.contains(&default.name) {
@@ -244,7 +247,7 @@ impl Compiler<'_, '_> {
 
     fn compile_schema_field_default(
         &mut self,
-        default: &SchemaFieldDefault,
+        default: &SchemaFieldDefault<'ast>,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
         if let Some(value) = evaluate_syntax_const_expr(
@@ -324,8 +327,10 @@ fn argument_name(
         .or_else(|| arg.name.clone())
 }
 
-pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
-    shape.map_or_else(Vec::new, |shape| shape.defaults().cloned().collect())
+pub(super) fn schema_default_fields<'ast>(
+    shape: Option<&ConstructorShape<'ast>>,
+) -> Vec<SchemaFieldDefault<'ast>> {
+    shape.map_or_else(Vec::new, ConstructorShape::default_fields)
 }
 
 fn static_type_for_constant(value: &crate::Constant) -> StaticExprType {
