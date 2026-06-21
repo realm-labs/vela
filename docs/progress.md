@@ -252,8 +252,9 @@ Constructor schema lowering now consumes explicit default-expression payload
 maps instead of traversing legacy source files inside the schema-default logic.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
-discovered from rowan CST parameter lists, leaving the legacy owned AST only as
-the temporary function body and runtime default-expression compiler fallback.
+discovered from rowan CST parameter lists. Top-level function body payload
+association now starts from the matching rowan CST function header before
+attaching the temporary legacy owned-AST body/default-expression fallback.
 Bytecode script-method parameter default flags now read HIR method signatures,
 and script method/default trait method parameter default-expression payloads are
 discovered from rowan CST parameter lists while method body/default association
