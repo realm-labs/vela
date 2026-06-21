@@ -919,6 +919,13 @@ impl Compiler<'_, '_> {
         expected: Option<(RuntimeTypeFact, TypeContractContext)>,
         syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
+        if let Some(kind) = syntax.kind
+            && !expression_payload_kind_matches(kind, value)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST assignment value",
+            )));
+        }
         if let Some((expected, context)) = expected {
             return self.compile_expr_with_expected_type_and_payload(
                 value,
@@ -927,9 +934,7 @@ impl Compiler<'_, '_> {
                 syntax.expression,
             );
         }
-        if let Some(kind) = syntax.kind
-            && expression_payload_kind_matches(kind, value)
-        {
+        if let Some(kind) = syntax.kind {
             if matches!(
                 kind,
                 SyntaxExpressionKind::Block
