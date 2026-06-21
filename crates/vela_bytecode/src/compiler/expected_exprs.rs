@@ -1,4 +1,5 @@
-use vela_syntax::ast::{Expr, ExprKind};
+use vela_common::Span;
+use vela_syntax::ast::{Expr, ExprKind, Literal};
 
 use crate::{
     GuardKind, GuardLocation, Register, UnlinkedGuardContext, UnlinkedInstructionKind,
@@ -30,9 +31,9 @@ impl Compiler<'_, '_> {
         let outcome =
             self.expected_type_for_expr_with_payload(expr, expected, context.clone(), payload)?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let ExprKind::Literal(literal) = &expr.kind
-            && let Some(constant) = compile_literal_constant_for_type(literal, *tag)
-                .map_err(|error| error.with_span(expr.span))?
+            && let Some((literal, span)) = contextual_literal_payload(expr, payload)
+            && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
+                .map_err(|error| error.with_span(span))?
         {
             return self.emit_constant(constant);
         }
@@ -69,6 +70,21 @@ impl Compiler<'_, '_> {
             None => self.compile_expr_with_payload(expr, payload),
         }
     }
+}
+
+fn contextual_literal_payload(
+    expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> Option<(Literal, Span)> {
+    payload
+        .and_then(|payload| {
+            let literal = payload.literal()?;
+            Some((literal, payload.syntax_span().unwrap_or(expr.span)))
+        })
+        .or_else(|| match &expr.kind {
+            ExprKind::Literal(literal) => Some((literal.clone(), expr.span)),
+            _ => None,
+        })
 }
 
 fn guard_location_and_name(context: TypeContractContext) -> Option<(GuardLocation, String)> {

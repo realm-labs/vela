@@ -122,6 +122,49 @@ fn main() -> bool {
     );
 }
 
+#[test]
+fn typed_numeric_literal_constants_prefer_cst_payloads() {
+    let cst_semantic = parse_semantic_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let value: i8 = 12;
+}
+"#,
+    )
+    .expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value: i8 = true;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                SourceId::new(1),
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("typed numeric literal should use CST literal payload");
+
+            assert!(
+                compiler
+                    .code
+                    .constants
+                    .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12))),
+                "typed contextual constant should come from the CST literal"
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
