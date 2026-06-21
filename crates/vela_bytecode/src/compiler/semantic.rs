@@ -165,7 +165,13 @@ impl SemanticSource {
         const_values: &BTreeMap<HirDeclId, Constant>,
     ) -> ScriptSchemaDefaults {
         source_schema_defaults(
-            &schema_default_payloads(self.source, &self.syntax, &self.parsed),
+            &schema_default_payloads(
+                self.source,
+                &self.syntax,
+                &self.graph,
+                self.module,
+                &self.parsed,
+            ),
             &self.graph,
             self.module,
             type_symbols,
@@ -360,7 +366,7 @@ impl SemanticModules {
                 continue;
             };
             defaults.merge(source_schema_defaults(
-                &schema_default_payloads(source, syntax, parsed),
+                &schema_default_payloads(source, syntax, &self.graph, *module, parsed),
                 &self.graph,
                 *module,
                 type_symbols,

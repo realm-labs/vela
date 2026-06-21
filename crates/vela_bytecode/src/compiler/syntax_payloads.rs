@@ -1,6 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
+use vela_hir::ids::ModuleId;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::type_hint::EnumVariantFieldsHint;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
     EnumVariantFields, Expr, ItemKind, SourceFile, SyntaxExpression, SyntaxSourceFile,
@@ -27,9 +30,11 @@ pub(super) fn const_value_payloads(
 pub(super) fn schema_default_payloads(
     source: SourceId,
     parsed: &SyntaxParse<SyntaxSourceFile>,
+    graph: &ModuleGraph,
+    module: ModuleId,
     legacy: &SourceFile,
 ) -> SchemaDefaultPayloads {
-    let legacy = legacy_schema_default_payloads(legacy);
+    let legacy = legacy_default_exprs_by_span(legacy);
     let mut payloads = SchemaDefaultPayloads::default();
     for item in parsed.tree().structs() {
         let Some(type_name) = item.name_text() else {
@@ -45,7 +50,9 @@ pub(super) fn schema_default_payloads(
             let Some(value) = field.default_value() else {
                 continue;
             };
-            let Some(legacy_value) = legacy.struct_field(&type_name, &field_name) else {
+            let Some(legacy_value) =
+                graph_struct_field_default_expr(graph, module, &legacy, &type_name, &field_name)
+            else {
                 continue;
             };
             payloads.insert_struct_field(
@@ -72,9 +79,14 @@ pub(super) fn schema_default_payloads(
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(legacy_value) =
-                        legacy.enum_tuple_field(&type_name, &variant_name, index)
-                    else {
+                    let Some(legacy_value) = graph_enum_tuple_field_default_expr(
+                        graph,
+                        module,
+                        &legacy,
+                        &type_name,
+                        &variant_name,
+                        index,
+                    ) else {
                         continue;
                     };
                     payloads.insert_enum_tuple_field(
@@ -93,9 +105,14 @@ pub(super) fn schema_default_payloads(
                     let Some(value) = field.default_value() else {
                         continue;
                     };
-                    let Some(legacy_value) =
-                        legacy.enum_record_field(&type_name, &variant_name, &field_name)
-                    else {
+                    let Some(legacy_value) = graph_enum_record_field_default_expr(
+                        graph,
+                        module,
+                        &legacy,
+                        &type_name,
+                        &variant_name,
+                        &field_name,
+                    ) else {
                         continue;
                     };
                     payloads.insert_enum_record_field(
@@ -112,52 +129,14 @@ pub(super) fn schema_default_payloads(
     payloads
 }
 
-#[derive(Default)]
-struct LegacySchemaDefaultPayloads {
-    struct_fields: BTreeMap<(String, String), Expr>,
-    enum_tuple_fields: BTreeMap<(String, String, usize), Expr>,
-    enum_record_fields: BTreeMap<(String, String, String), Expr>,
-}
-
-impl LegacySchemaDefaultPayloads {
-    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<Expr> {
-        self.struct_fields
-            .get(&(type_name.to_owned(), field_name.to_owned()))
-            .cloned()
-    }
-
-    fn enum_tuple_field(&self, type_name: &str, variant_name: &str, index: usize) -> Option<Expr> {
-        self.enum_tuple_fields
-            .get(&(type_name.to_owned(), variant_name.to_owned(), index))
-            .cloned()
-    }
-
-    fn enum_record_field(
-        &self,
-        type_name: &str,
-        variant_name: &str,
-        field_name: &str,
-    ) -> Option<Expr> {
-        self.enum_record_fields
-            .get(&(
-                type_name.to_owned(),
-                variant_name.to_owned(),
-                field_name.to_owned(),
-            ))
-            .cloned()
-    }
-}
-
-fn legacy_schema_default_payloads(parsed: &SourceFile) -> LegacySchemaDefaultPayloads {
-    let mut payloads = LegacySchemaDefaultPayloads::default();
+fn legacy_default_exprs_by_span(parsed: &SourceFile) -> HashMap<Span, Expr> {
+    let mut defaults = HashMap::new();
     for item in &parsed.items {
         match &item.kind {
             ItemKind::Struct(record) => {
                 for field in &record.fields {
                     if let Some(default_value) = field.default_value.clone() {
-                        payloads
-                            .struct_fields
-                            .insert((record.name.clone(), field.name.clone()), default_value);
+                        defaults.insert(default_value.span, default_value);
                     }
                 }
             }
@@ -166,26 +145,16 @@ fn legacy_schema_default_payloads(parsed: &SourceFile) -> LegacySchemaDefaultPay
                     match &variant.fields {
                         EnumVariantFields::Unit => {}
                         EnumVariantFields::Tuple(fields) => {
-                            for (index, field) in fields.iter().enumerate() {
+                            for field in fields {
                                 if let Some(default_value) = field.default_value.clone() {
-                                    payloads.enum_tuple_fields.insert(
-                                        (enumeration.name.clone(), variant.name.clone(), index),
-                                        default_value,
-                                    );
+                                    defaults.insert(default_value.span, default_value);
                                 }
                             }
                         }
                         EnumVariantFields::Record(fields) => {
                             for field in fields {
                                 if let Some(default_value) = field.default_value.clone() {
-                                    payloads.enum_record_fields.insert(
-                                        (
-                                            enumeration.name.clone(),
-                                            variant.name.clone(),
-                                            field.name.clone(),
-                                        ),
-                                        default_value,
-                                    );
+                                    defaults.insert(default_value.span, default_value);
                                 }
                             }
                         }
@@ -195,5 +164,78 @@ fn legacy_schema_default_payloads(parsed: &SourceFile) -> LegacySchemaDefaultPay
             _ => {}
         }
     }
-    payloads
+    defaults
+}
+
+fn graph_struct_field_default_expr(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    legacy: &HashMap<Span, Expr>,
+    type_name: &str,
+    field_name: &str,
+) -> Option<Expr> {
+    let declaration = graph_schema_declaration(graph, module, type_name, DeclarationKind::Struct)?;
+    let shape = graph.struct_shape(declaration)?;
+    let field = shape.fields.iter().find(|field| field.name == field_name)?;
+    legacy.get(&field.default_value_span?).cloned()
+}
+
+fn graph_enum_tuple_field_default_expr(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    legacy: &HashMap<Span, Expr>,
+    type_name: &str,
+    variant_name: &str,
+    index: usize,
+) -> Option<Expr> {
+    let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
+    let EnumVariantFieldsHint::Tuple(fields) = fields else {
+        return None;
+    };
+    let field = fields.get(index)?;
+    legacy.get(&field.default_value_span?).cloned()
+}
+
+fn graph_enum_record_field_default_expr(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    legacy: &HashMap<Span, Expr>,
+    type_name: &str,
+    variant_name: &str,
+    field_name: &str,
+) -> Option<Expr> {
+    let fields = graph_enum_variant_fields(graph, module, type_name, variant_name)?;
+    let EnumVariantFieldsHint::Record(fields) = fields else {
+        return None;
+    };
+    let field = fields.iter().find(|field| field.name == field_name)?;
+    legacy.get(&field.default_value_span?).cloned()
+}
+
+fn graph_enum_variant_fields<'graph>(
+    graph: &'graph ModuleGraph,
+    module: ModuleId,
+    type_name: &str,
+    variant_name: &str,
+) -> Option<&'graph EnumVariantFieldsHint> {
+    let declaration = graph_schema_declaration(graph, module, type_name, DeclarationKind::Enum)?;
+    let shape = graph.enum_shape(declaration)?;
+    shape
+        .variants
+        .iter()
+        .find(|variant| variant.name == variant_name)
+        .map(|variant| &variant.fields)
+}
+
+fn graph_schema_declaration(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    type_name: &str,
+    kind: DeclarationKind,
+) -> Option<vela_hir::ids::HirDeclId> {
+    graph
+        .declarations_in_module(module)
+        .into_iter()
+        .find(|declaration| declaration.name == type_name && declaration.kind == kind)
+        .map(|declaration| declaration.id)
 }
