@@ -77,6 +77,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         (!segments.is_empty()).then_some(segments)
     }
 
+    pub(in crate::compiler) fn literal(&self) -> Option<Literal> {
+        let ExprKind::Literal(_) = &self.fallback.kind else {
+            return None;
+        };
+        self.syntax.as_ref()?.as_literal()?.literal()
+    }
+
     pub(in crate::compiler) fn paren_inner_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {

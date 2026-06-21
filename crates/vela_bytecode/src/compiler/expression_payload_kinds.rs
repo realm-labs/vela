@@ -7,6 +7,12 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
         SyntaxExpressionKind::Path => matches!(expr.kind, ExprKind::Path(_)),
+        SyntaxExpressionKind::Literal => {
+            matches!(
+                expr.kind,
+                ExprKind::Literal(_) | ExprKind::InterpolatedString(_)
+            )
+        }
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
@@ -23,6 +29,8 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
                 | ExprKind::If(_)
                 | ExprKind::Match(_)
                 | ExprKind::Path(_)
+                | ExprKind::Literal(_)
+                | ExprKind::InterpolatedString(_)
                 | ExprKind::Array(_)
                 | ExprKind::Map(_)
                 | ExprKind::Record { .. }

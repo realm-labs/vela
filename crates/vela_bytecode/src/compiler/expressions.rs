@@ -188,7 +188,11 @@ impl Compiler<'_, '_> {
                     let part_payloads = payload.interpolated_expression_payloads();
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }
-                self.compile_expr(expr)
+                let ExprKind::Literal(literal) = &expr.kind else {
+                    unreachable!("validated CST literal expression payload kind");
+                };
+                let literal = payload.literal().unwrap_or_else(|| literal.clone());
+                self.compile_literal(Some(expr.span), &literal)
             }
             _ => self.compile_expr(expr),
         }

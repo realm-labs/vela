@@ -10,6 +10,7 @@ mod for_iterables;
 mod if_conditions;
 mod interpolated;
 mod lambdas;
+mod literals;
 mod match_arms;
 mod path_expressions;
 mod wrappers;
