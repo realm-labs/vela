@@ -17,6 +17,7 @@ mod map_literals;
 mod methods;
 mod operators;
 pub mod options;
+mod param_defaults;
 mod paths;
 mod patterns;
 mod record_reflection_shapes;
@@ -54,6 +55,7 @@ use error::{CompileError, CompileErrorKind, CompileResult};
 use field_slots::ScriptFieldSlots;
 use lambdas::LambdaCapture;
 use options::CompilerOptions;
+use param_defaults::ParamDefaultValue;
 use patterns::enum_variant_path;
 use record_shapes::ValueShapeFlow;
 use schema_defaults::ScriptSchemaDefaults;
@@ -171,12 +173,20 @@ fn compile_function_source_inner<'registry>(
         options: options.clone(),
         registry,
     };
-    let (function, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
+    let (payload, signature, bindings) = semantic.function(function_name).ok_or_else(|| {
         CompileError::new(CompileErrorKind::FunctionNotFound(function_name.to_owned()))
     })?;
 
     verify_code_object(
-        Compiler::new(function.name.clone(), function, signature, bindings, facts)?.compile()?,
+        Compiler::new_with_param_defaults(
+            payload.function.name.clone(),
+            payload.function,
+            payload.param_defaults,
+            signature,
+            bindings,
+            facts,
+        )?
+        .compile()?,
     )
 }
 
@@ -256,13 +266,14 @@ fn compile_program_source_inner<'registry>(
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for name in &script_functions {
-        let (function, signature, bindings) = semantic
+        let (payload, signature, bindings) = semantic
             .function(name)
             .expect("HIR function declarations come from parsed function items");
         program.insert_function(
-            Compiler::new(
-                function.name.clone(),
-                function,
+            Compiler::new_with_param_defaults(
+                payload.function.name.clone(),
+                payload.function,
+                payload.param_defaults,
                 signature,
                 bindings,
                 facts.clone(),
@@ -343,7 +354,7 @@ fn compile_module_sources_inner<'registry>(
     program.set_global_layout(global_names(&facts.global_symbols));
 
     for declaration in script_functions {
-        let (function, signature, bindings) = semantic
+        let (payload, signature, bindings) = semantic
             .function(declaration)
             .expect("HIR function declaration comes from parsed function item");
         let code_name = facts
@@ -352,7 +363,15 @@ fn compile_module_sources_inner<'registry>(
             .expect("script function symbol exists for declaration")
             .clone();
         program.insert_function(
-            Compiler::new(code_name, function, signature, bindings, facts.clone())?.compile()?,
+            Compiler::new_with_param_defaults(
+                code_name,
+                payload.function,
+                payload.param_defaults,
+                signature,
+                bindings,
+                facts.clone(),
+            )?
+            .compile()?,
         );
     }
     insert_script_impl_methods(&mut program, script_impl_methods, &facts)?;
@@ -680,7 +699,7 @@ struct Compiler<'ast, 'registry> {
     value_shapes: ValueShapeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
-    param_defaults: Vec<Option<Expr>>,
+    param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
     body: &'ast Block,
     facts: CompilerFacts<'registry>,
@@ -688,6 +707,7 @@ struct Compiler<'ast, 'registry> {
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
+    #[cfg(test)]
     fn new(
         code_name: String,
         function: &'ast FunctionItem,
@@ -695,9 +715,36 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
+        let param_defaults = (0..signature.params.len())
+            .map(|index| {
+                function
+                    .params
+                    .get(index)
+                    .and_then(|param| param.default_value.clone())
+                    .map(ParamDefaultValue::Legacy)
+            })
+            .collect();
         Self::new_body(
             code_name,
-            param_default_values(&function.params, signature.params.len()),
+            param_defaults,
+            signature,
+            &function.body,
+            bindings,
+            facts,
+        )
+    }
+
+    fn new_with_param_defaults(
+        code_name: String,
+        function: &'ast FunctionItem,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
+        signature: &FunctionSignature,
+        bindings: &'ast BindingMap,
+        facts: CompilerFacts<'registry>,
+    ) -> CompileResult<Self> {
+        Self::new_body(
+            code_name,
+            param_defaults,
             signature,
             &function.body,
             bindings,
@@ -707,7 +754,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_body(
         code_name: String,
-        param_defaults: Vec<Option<Expr>>,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: &'ast Block,
         bindings: &'ast BindingMap,
@@ -807,7 +854,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_script_method_body(
         code_name: String,
-        param_defaults: Vec<Option<Expr>>,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: &'ast Block,
         bindings: &'ast BindingMap,
@@ -974,7 +1021,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             let skip_default = self.emit_jump_if_not_missing(param);
-            let value = self.compile_expr(&default_value)?;
+            let value = self.compile_expr(default_value.fallback())?;
             self.emit(UnlinkedInstructionKind::Move {
                 dst: param,
                 src: value,
@@ -1377,16 +1424,6 @@ fn param_default_flags(signature: &FunctionSignature) -> Vec<bool> {
         .params
         .iter()
         .map(|param| param.default_value_span.is_some())
-        .collect()
-}
-
-fn param_default_values(params: &[Param], param_count: usize) -> Vec<Option<Expr>> {
-    (0..param_count)
-        .map(|index| {
-            params
-                .get(index)
-                .and_then(|param| param.default_value.clone())
-        })
         .collect()
 }
 

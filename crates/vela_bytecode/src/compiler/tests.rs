@@ -5,6 +5,25 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
+use vela_syntax::ast::AstNode;
+
+fn assert_cst_param_default(
+    default: &Option<ParamDefaultValue>,
+    expected_source: SourceId,
+    expected_text: &str,
+) {
+    let Some(ParamDefaultValue::Syntax {
+        source,
+        expression,
+        fallback: _,
+    }) = default
+    else {
+        panic!("expected CST-backed parameter default");
+    };
+    assert_eq!(*source, expected_source);
+    assert_eq!(expression.syntax().text().to_string(), expected_text);
+}
+
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -29,6 +48,48 @@ fn stable_test_inherent_method_id(type_name: &str, method_name: &str) -> MethodI
         type_name,
         method_name,
     )))
+}
+
+#[test]
+fn semantic_function_defaults_are_cst_payloads() {
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn grant(base, amount = 10, bonus = amount + 1) {
+    return base + amount + bonus;
+}
+"#,
+    )
+    .expect("source should parse");
+    let (payload, _, _) = semantic.function("grant").expect("grant function");
+    assert!(payload.param_defaults[0].is_none());
+    assert_cst_param_default(&payload.param_defaults[1], source, "10");
+    assert_cst_param_default(&payload.param_defaults[2], source, "amount + 1");
+}
+
+#[test]
+fn semantic_script_method_defaults_are_cst_payloads() {
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+struct Counter { value: i64 }
+impl Counter {
+    fn add(self, amount = 1) {
+        self.value += amount;
+    }
+}
+"#,
+    )
+    .expect("source should parse");
+    let methods = semantic.script_impl_methods();
+    let method = methods
+        .iter()
+        .find(|method| method.method_name == "add")
+        .expect("script method");
+    assert!(method.default_values[0].is_none());
+    assert_cst_param_default(&method.default_values[1], source, "1");
 }
 
 #[test]

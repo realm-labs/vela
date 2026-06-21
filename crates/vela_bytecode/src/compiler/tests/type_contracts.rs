@@ -31,7 +31,8 @@ fn with_static_type_compiler(
         options: CompilerOptions::default(),
         registry: None,
     };
-    let (function, signature, bindings) = semantic.function("main").expect("main function");
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let function = payload.function;
     let mut compiler = Compiler::new(function.name.clone(), function, signature, bindings, facts)
         .expect("compiler should initialize");
     inspect(&mut compiler, function);

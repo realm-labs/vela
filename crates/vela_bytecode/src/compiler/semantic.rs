@@ -18,9 +18,15 @@ use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::legacy_payloads::function_body_payloads;
+use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
 use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
+
+pub(super) struct FunctionBodyPayload<'ast> {
+    pub(super) function: &'ast FunctionItem,
+    pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
+}
 
 pub(super) struct SemanticSource {
     source: SourceId,
@@ -54,14 +60,23 @@ impl SemanticSource {
     pub(super) fn function(
         &self,
         name: &str,
-    ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
+    ) -> Option<(FunctionBodyPayload<'_>, &FunctionSignature, &BindingMap)> {
         let declaration = self.function_declaration(name)?;
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let payloads = function_body_payloads(&self.parsed);
         let function = payloads.get(metadata.name.as_str()).copied()?;
-        Some((function, signature, bindings))
+        let param_defaults =
+            function_param_defaults(self.source, &self.syntax, function, signature);
+        Some((
+            FunctionBodyPayload {
+                function,
+                param_defaults,
+            },
+            signature,
+            bindings,
+        ))
     }
 
     pub(super) fn script_function_names(&self) -> BTreeSet<String> {
@@ -185,7 +200,13 @@ impl SemanticSource {
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::source_methods(&self.parsed, &self.graph, self.module)
+        script_impls::source_methods(
+            &self.parsed,
+            &self.syntax,
+            self.source,
+            &self.graph,
+            self.module,
+        )
     }
 
     fn const_values_by_name(
@@ -217,14 +238,24 @@ impl SemanticModules {
     pub(super) fn function(
         &self,
         declaration: HirDeclId,
-    ) -> Option<(&FunctionItem, &FunctionSignature, &BindingMap)> {
+    ) -> Option<(FunctionBodyPayload<'_>, &FunctionSignature, &BindingMap)> {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
         let parsed = self.parsed.get(&metadata.module)?;
+        let syntax = self.syntax.get(&metadata.module)?;
+        let source = self.source_ids.get(&metadata.module).copied()?;
         let payloads = function_body_payloads(parsed);
         let function = payloads.get(metadata.name.as_str()).copied()?;
-        Some((function, signature, bindings))
+        let param_defaults = function_param_defaults(source, syntax, function, signature);
+        Some((
+            FunctionBodyPayload {
+                function,
+                param_defaults,
+            },
+            signature,
+            bindings,
+        ))
     }
 
     pub(super) fn script_function_declarations(&self) -> BTreeSet<HirDeclId> {
@@ -399,7 +430,7 @@ impl SemanticModules {
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::module_methods(&self.parsed, &self.graph)
+        script_impls::module_methods(&self.parsed, &self.syntax, &self.source_ids, &self.graph)
     }
 
     fn const_values_by_name(
@@ -446,6 +477,24 @@ impl SemanticModules {
         }
         values
     }
+}
+
+fn function_param_defaults(
+    source: SourceId,
+    syntax: &SyntaxParse<SyntaxSourceFile>,
+    function: &FunctionItem,
+    signature: &FunctionSignature,
+) -> Vec<Option<ParamDefaultValue>> {
+    let syntax_function = syntax
+        .tree()
+        .functions()
+        .find(|item| item.name_text().as_deref() == Some(function.name.as_str()));
+    syntax_param_default_values(
+        source,
+        syntax_function.and_then(|function| function.param_list()),
+        &function.params,
+        signature.params.len(),
+    )
 }
 
 fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirDeclId, String)> {

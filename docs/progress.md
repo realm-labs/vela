@@ -251,18 +251,18 @@ non-constant defaults.
 Constructor schema lowering now consumes explicit default-expression payload
 maps instead of traversing legacy source files inside the schema-default logic.
 Bytecode script function lookup and parameter default flags now read HIR function
-declarations/signatures, leaving legacy owned AST function bodies and
-parameters in that path only as the temporary body/default-expression payload
-carrier. Bytecode script-method parameter default flags now read HIR method
-signatures, leaving legacy owned AST parameters in that path only as the
-temporary default-expression payload carrier. Bytecode const value discovery
-now reads HIR const declarations in source order and evaluates initializer
-expression payloads from the rowan CST. Bytecode script impl method records now
-read names, signatures, explicit/default method metadata, and stable dispatch
-identity from HIR impl and trait shapes, and method body/default payload
-association is keyed by HIR method metadata, leaving the legacy owned AST in
-that path only as the temporary method body and default-expression payload
-carrier.
+declarations/signatures, and function parameter default-expression payloads are
+discovered from rowan CST parameter lists, leaving the legacy owned AST only as
+the temporary function body and runtime default-expression compiler fallback.
+Bytecode script-method parameter default flags now read HIR method signatures,
+and script method/default trait method parameter default-expression payloads are
+discovered from rowan CST parameter lists while method body/default association
+is keyed by HIR method metadata. Bytecode const value discovery now reads HIR
+const declarations in source order and evaluates initializer expression payloads
+from the rowan CST. Bytecode script impl method records now read names,
+signatures, explicit/default method metadata, and stable dispatch identity from
+HIR impl and trait shapes, leaving the legacy owned AST only as the temporary
+method body and runtime default-expression compiler fallback.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and runtime default-expression fallback behind a dedicated
 compiler payload boundary, keeping semantic orchestration on HIR/CST diagnostics
