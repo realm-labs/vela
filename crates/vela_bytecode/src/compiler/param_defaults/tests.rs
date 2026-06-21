@@ -158,6 +158,36 @@ fn param_default_cst_lowering_covers_path_calls() {
 }
 
 #[test]
+fn param_default_cst_lowering_covers_record_expressions() {
+    let source = SourceId::new(1);
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                r#"fn cst(value = Reward { amount: 7, label: "xp" }) { return value; }"#,
+            ),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: param_default_at(
+                r#"fn cst(label, value = Reward { amount: 7, label }) { return value; }"#,
+                1,
+            ),
+        }),
+    ];
+
+    let defaults = param_default_values(&syntax_defaults, &[]);
+
+    assert_eq!(defaults.len(), 2);
+    for default in defaults {
+        assert!(
+            default.expect("direct CST default").fallback.is_none(),
+            "record defaults with supported fields should lower directly from CST"
+        );
+    }
+}
+
+#[test]
 fn param_default_cst_lowering_covers_range_expressions() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![
@@ -440,6 +470,10 @@ fn param_default_cst_lowering_keeps_unsupported_index_fallbacks() {
 }
 
 fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
+    param_default_at(text, 0)
+}
+
+fn param_default_at(text: &str, index: usize) -> vela_syntax::ast::SyntaxExpression {
     parse_syntax_source(SourceId::new(1), text)
         .tree()
         .functions()
@@ -448,7 +482,7 @@ fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
         .param_list()
         .expect("parameter list")
         .params()
-        .next()
+        .nth(index)
         .expect("parameter")
         .default_value()
         .expect("default expression")

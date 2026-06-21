@@ -10,6 +10,12 @@ use crate::Constant;
 
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct ConstructorFieldUse {
+    pub(super) name: String,
+    pub(super) span: Span,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct ScriptSchemaDefaults {
     record_shapes: BTreeMap<String, ConstructorShape>,
@@ -342,22 +348,37 @@ pub(super) fn record_constructor_diagnostics(
     field_names: Option<&[Option<String>]>,
     constructor_span: Span,
 ) -> Vec<Diagnostic> {
-    let mut diagnostics = duplicate_record_field_diagnostics(fields, field_names);
+    let fields = fields
+        .iter()
+        .enumerate()
+        .map(|(index, field)| ConstructorFieldUse {
+            name: record_field_name(field_names, index, field).to_owned(),
+            span: field.span,
+        })
+        .collect::<Vec<_>>();
+    record_constructor_field_diagnostics(type_name, shape, &fields, constructor_span)
+}
+
+pub(super) fn record_constructor_field_diagnostics(
+    type_name: &str,
+    shape: Option<&ConstructorShape>,
+    fields: &[ConstructorFieldUse],
+    constructor_span: Span,
+) -> Vec<Diagnostic> {
+    let mut diagnostics = duplicate_record_field_diagnostics(fields);
     let Some(shape) = shape else {
         return diagnostics;
     };
     let explicit = fields
         .iter()
-        .enumerate()
-        .map(|(index, field)| record_field_name(field_names, index, field).to_owned())
+        .map(|field| field.name.clone())
         .collect::<BTreeSet<_>>();
 
-    for (index, field) in fields.iter().enumerate() {
-        let field_name = record_field_name(field_names, index, field);
-        if !shape.contains_field(field_name) {
+    for field in fields {
+        if !shape.contains_field(&field.name) {
             diagnostics.push(unknown_field_diagnostic(
                 type_name,
-                field_name,
+                &field.name,
                 field.span,
                 shape.field_names(),
             ));
@@ -466,17 +487,13 @@ pub(super) fn unknown_enum_variant_diagnostic(
         .with_label(span, "variant is not declared on this enum")
 }
 
-fn duplicate_record_field_diagnostics(
-    fields: &[RecordField],
-    field_names: Option<&[Option<String>]>,
-) -> Vec<Diagnostic> {
+fn duplicate_record_field_diagnostics(fields: &[ConstructorFieldUse]) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let mut seen = BTreeMap::<&str, Span>::new();
-    for (index, field) in fields.iter().enumerate() {
-        let field_name = record_field_name(field_names, index, field);
-        if let Some(previous_span) = seen.insert(field_name, field.span) {
+    for field in fields {
+        if let Some(previous_span) = seen.insert(&field.name, field.span) {
             diagnostics.push(duplicate_constructor_field_diagnostic(
-                field_name,
+                &field.name,
                 previous_span,
                 field.span,
             ));

@@ -191,6 +191,46 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_record_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: i64
+    label: String = "xp"
+}
+
+fn grant(value, reward = Reward { amount: value }) {
+    return reward;
+}
+
+fn main() {
+    return grant(7);
+}
+"#,
+    )
+    .expect("CST-backed record default should compile");
+    let grant = program.function("grant").expect("grant function");
+
+    assert!(grant.instructions.iter().any(|instruction| {
+        matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::MakeRecord { type_name, fields, .. }
+                if type_name == "Reward"
+                    && fields.iter().any(|(name, _)| name == "amount")
+                    && fields.iter().any(|(name, _)| name == "label")
+        )
+    }));
+    assert!(
+        grant.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GuardType { .. }
+        )),
+        "dynamic record default field should keep schema type guard"
+    );
+}
+
+#[test]
 fn compiler_reports_typed_let_block_parameter_default_mismatches_from_cst() {
     let error = compile_program_source(
         SourceId::new(1),
