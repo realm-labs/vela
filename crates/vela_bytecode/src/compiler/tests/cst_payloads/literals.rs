@@ -123,6 +123,65 @@ fn main() -> bool {
 }
 
 #[test]
+fn typed_control_flow_values_use_cst_static_facts_without_guards() {
+    let cst_semantic = parse_semantic_source(
+        SourceId::new(1),
+        r#"
+fn main(input) -> bool {
+    let from_block: bool = { true };
+    let from_if: bool = if input { true } else { false };
+    let from_match: bool = match input {
+        true => true,
+        false => false,
+    };
+    return if input { true } else { false };
+}
+"#,
+    )
+    .expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main(input) -> bool {
+    let from_block: bool = { 1 };
+    let from_if: bool = if input { 1 } else { 2 };
+    let from_match: bool = match input {
+        true => 1,
+        false => 2,
+    };
+    return if input { 1 } else { 2 };
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                SourceId::new(1),
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("typed control-flow values should use CST static facts");
+
+            assert!(
+                !compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::GuardType { .. }
+                    )),
+                "CST-proven bool control-flow contracts should not emit runtime guards"
+            );
+        },
+    );
+}
+
+#[test]
 fn typed_numeric_literal_constants_prefer_cst_payloads() {
     let cst_semantic = parse_semantic_source(
         SourceId::new(1),

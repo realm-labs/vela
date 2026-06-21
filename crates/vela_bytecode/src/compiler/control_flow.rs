@@ -477,7 +477,7 @@ impl Compiler<'_, '_> {
         match kind {
             SyntaxExpressionKind::Block => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::Block(block) = &value.kind else {
                     unreachable!("validated CST block initializer kind");
@@ -492,7 +492,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::If(if_expr) = &value.kind else {
                     unreachable!("validated CST if initializer kind");
@@ -504,7 +504,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::Match(match_expr) = &value.kind else {
                     unreachable!("validated CST match initializer kind");
@@ -658,7 +658,7 @@ impl Compiler<'_, '_> {
         match kind {
             SyntaxExpressionKind::Block => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::Block(block) = &value.kind else {
                     unreachable!("validated CST block return value kind");
@@ -673,7 +673,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::If(if_expr) = &value.kind else {
                     unreachable!("validated CST if return value kind");
@@ -685,7 +685,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
+                    self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let ExprKind::Match(match_expr) = &value.kind else {
                     unreachable!("validated CST match return value kind");

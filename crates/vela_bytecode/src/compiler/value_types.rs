@@ -6,7 +6,8 @@ use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, Literal, SyntaxExpression, SyntaxExpressionKind,
+    AstNode, BinaryOp, Expr, ExprKind, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
+    SyntaxExpressionKind,
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
@@ -483,10 +484,55 @@ fn static_syntax_expr_type(
                     .unwrap_or(StaticExprType::Dynamic),
             )
         }
-        SyntaxExpressionKind::Block
-        | SyntaxExpressionKind::If
-        | SyntaxExpressionKind::Match
-        | SyntaxExpressionKind::Paren
+        SyntaxExpressionKind::Block => expression.as_block().map(|block| {
+            static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
+        }),
+        SyntaxExpressionKind::If => {
+            let if_expr = expression.as_if()?;
+            let then_type = if_expr.then_block().map(|block| {
+                static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
+            })?;
+            let else_type = match if_expr.else_branch() {
+                Some(SyntaxElseBranch::If(else_if)) => {
+                    SyntaxExpression::cast(else_if.syntax().clone())
+                        .and_then(|expression| {
+                            static_syntax_expr_type(
+                                &expression,
+                                source,
+                                local_type_at_span,
+                                local_type_named,
+                            )
+                        })
+                        .unwrap_or(StaticExprType::Dynamic)
+                }
+                Some(SyntaxElseBranch::Block(block)) => {
+                    static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
+                }
+                None => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+            };
+            Some(merge_branch_static_type(then_type, else_type))
+        }
+        SyntaxExpressionKind::Match => {
+            let match_expr = expression.as_match()?;
+            let mut arms = match_expr.arms().into_iter();
+            let Some(first) = arms.next() else {
+                return Some(StaticExprType::Dynamic);
+            };
+            let first =
+                static_syntax_match_arm_type(&first, source, local_type_at_span, local_type_named);
+            Some(arms.fold(first, |merged, arm| {
+                merge_branch_static_type(
+                    merged,
+                    static_syntax_match_arm_type(
+                        &arm,
+                        source,
+                        local_type_at_span,
+                        local_type_named,
+                    ),
+                )
+            }))
+        }
+        SyntaxExpressionKind::Paren
         | SyntaxExpressionKind::Unary
         | SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
@@ -494,6 +540,53 @@ fn static_syntax_expr_type(
         | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Try
         | SyntaxExpressionKind::Record => None,
+    }
+}
+
+fn static_syntax_block_type(
+    block: &SyntaxBlock,
+    source: Option<SourceId>,
+    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
+) -> StaticExprType {
+    let Some(tail) = block.statements().last() else {
+        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null));
+    };
+    let Some(expr_stmt) = tail.as_expr() else {
+        return StaticExprType::Dynamic;
+    };
+    if expr_stmt.semicolon_token().is_some() {
+        return StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null));
+    }
+    expr_stmt
+        .expression()
+        .and_then(|expression| {
+            static_syntax_expr_type(&expression, source, local_type_at_span, local_type_named)
+        })
+        .unwrap_or(StaticExprType::Dynamic)
+}
+
+fn static_syntax_match_arm_type(
+    arm: &vela_syntax::ast::SyntaxMatchArm,
+    source: Option<SourceId>,
+    local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
+    local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
+) -> StaticExprType {
+    if let Some(block) = arm.body_block() {
+        return static_syntax_block_type(&block, source, local_type_at_span, local_type_named);
+    }
+    arm.body_expression()
+        .and_then(|expression| {
+            static_syntax_expr_type(&expression, source, local_type_at_span, local_type_named)
+        })
+        .unwrap_or(StaticExprType::Dynamic)
+}
+
+fn merge_branch_static_type(left: StaticExprType, right: StaticExprType) -> StaticExprType {
+    if left == right {
+        left
+    } else {
+        StaticExprType::Dynamic
     }
 }
 
