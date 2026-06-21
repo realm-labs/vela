@@ -806,7 +806,9 @@ impl Compiler<'_, '_> {
         {
             if matches!(
                 kind,
-                SyntaxExpressionKind::Array | SyntaxExpressionKind::Map
+                SyntaxExpressionKind::Array
+                    | SyntaxExpressionKind::Map
+                    | SyntaxExpressionKind::Record
             ) {
                 return self.compile_expr_with_payload(value, syntax.expression);
             }

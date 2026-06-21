@@ -1,7 +1,8 @@
 use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::MethodId;
 use vela_syntax::ast::{
-    BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, SyntaxExpressionKind, UnaryOp,
+    BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, RecordField, SyntaxExpressionKind,
+    UnaryOp,
 };
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
-use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -92,6 +93,13 @@ impl Compiler<'_, '_> {
                 };
                 let entry_payloads = payload.map_entry_payloads();
                 self.compile_map(entries, entry_payloads.as_deref())
+            }
+            SyntaxExpressionKind::Record => {
+                let ExprKind::Record { path, fields } = &expr.kind else {
+                    unreachable!("validated CST record expression payload kind");
+                };
+                let field_payloads = payload.record_field_payloads();
+                self.compile_record(expr, path, fields, field_payloads.as_deref())
             }
             _ => self.compile_expr(expr),
         }
@@ -236,54 +244,7 @@ impl Compiler<'_, '_> {
             }
             ExprKind::Array(items) => self.compile_array(items, None),
             ExprKind::Map(entries) => self.compile_map(entries, None),
-            ExprKind::Record { path, fields } => {
-                let dst = self.alloc_register()?;
-                if let Some((enum_name, variant)) = enum_variant_path(path) {
-                    let resolved_enum_name = self.type_symbol_at_span(expr.span);
-                    let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
-                    if resolved_enum_name.is_some()
-                        && !self.enum_constructor_variant_exists(&enum_name, &variant)
-                    {
-                        return Err(self.constructor_diagnostics_error(vec![
-                            unknown_enum_variant_diagnostic(&enum_name, &variant, expr.span),
-                        ]));
-                    }
-                    let shape = self.enum_constructor_shape(&enum_name, &variant);
-                    self.reject_constructor_diagnostics(record_constructor_diagnostics(
-                        &format!("{enum_name}::{variant}"),
-                        shape.as_ref(),
-                        fields,
-                        expr.span,
-                    ))?;
-                    let defaults = schema_default_fields(shape.as_ref());
-                    let fields = self.compile_record_fields(fields, defaults, shape.as_ref())?;
-                    self.emit(UnlinkedInstructionKind::MakeEnum {
-                        dst,
-                        enum_name,
-                        variant,
-                        fields,
-                    });
-                } else {
-                    let type_name = self
-                        .type_symbol_at_span(expr.span)
-                        .unwrap_or_else(|| path.join("::"));
-                    let shape = self.record_constructor_shape(&type_name);
-                    self.reject_constructor_diagnostics(record_constructor_diagnostics(
-                        &type_name,
-                        shape.as_ref(),
-                        fields,
-                        expr.span,
-                    ))?;
-                    let defaults = schema_default_fields(shape.as_ref());
-                    let fields = self.compile_record_fields(fields, defaults, shape.as_ref())?;
-                    self.emit(UnlinkedInstructionKind::MakeRecord {
-                        dst,
-                        type_name,
-                        fields,
-                    });
-                }
-                Ok(dst)
-            }
+            ExprKind::Record { path, fields } => self.compile_record(expr, path, fields, None),
             ExprKind::If(if_expr) => {
                 let dst = self.alloc_register()?;
                 self.compile_if_value_to(if_expr, dst)?;
@@ -336,6 +297,61 @@ impl Compiler<'_, '_> {
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
+        Ok(dst)
+    }
+
+    fn compile_record(
+        &mut self,
+        expr: &Expr,
+        path: &[String],
+        fields: &[RecordField],
+        payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+    ) -> CompileResult<Register> {
+        let dst = self.alloc_register()?;
+        if let Some((enum_name, variant)) = enum_variant_path(path) {
+            let resolved_enum_name = self.type_symbol_at_span(expr.span);
+            let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
+            if resolved_enum_name.is_some()
+                && !self.enum_constructor_variant_exists(&enum_name, &variant)
+            {
+                return Err(self.constructor_diagnostics_error(vec![
+                    unknown_enum_variant_diagnostic(&enum_name, &variant, expr.span),
+                ]));
+            }
+            let shape = self.enum_constructor_shape(&enum_name, &variant);
+            self.reject_constructor_diagnostics(record_constructor_diagnostics(
+                &format!("{enum_name}::{variant}"),
+                shape.as_ref(),
+                fields,
+                expr.span,
+            ))?;
+            let defaults = schema_default_fields(shape.as_ref());
+            let fields = self.compile_record_fields(fields, defaults, shape.as_ref(), payloads)?;
+            self.emit(UnlinkedInstructionKind::MakeEnum {
+                dst,
+                enum_name,
+                variant,
+                fields,
+            });
+        } else {
+            let type_name = self
+                .type_symbol_at_span(expr.span)
+                .unwrap_or_else(|| path.join("::"));
+            let shape = self.record_constructor_shape(&type_name);
+            self.reject_constructor_diagnostics(record_constructor_diagnostics(
+                &type_name,
+                shape.as_ref(),
+                fields,
+                expr.span,
+            ))?;
+            let defaults = schema_default_fields(shape.as_ref());
+            let fields = self.compile_record_fields(fields, defaults, shape.as_ref(), payloads)?;
+            self.emit(UnlinkedInstructionKind::MakeRecord {
+                dst,
+                type_name,
+                fields,
+            });
+        }
         Ok(dst)
     }
 
@@ -869,6 +885,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
+        SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
         _ => !matches!(
             expr.kind,
             ExprKind::Block(_)
@@ -876,6 +893,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
                 | ExprKind::Match(_)
                 | ExprKind::Array(_)
                 | ExprKind::Map(_)
+                | ExprKind::Record { .. }
         ),
     }
 }

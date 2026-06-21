@@ -5,6 +5,7 @@ use vela_syntax::ast::Argument;
 
 use crate::Register;
 
+use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
 use super::const_eval::evaluate_syntax_const_expr;
 use super::patterns::tuple_variant_field_name;
 use super::schema_defaults::{
@@ -59,6 +60,7 @@ impl Compiler<'_, '_> {
                     &arg.value,
                     &name,
                     shape.field_value_type_at(index),
+                    None,
                 )?;
                 explicit_names.insert(name.clone());
                 fields.push((name, value));
@@ -86,14 +88,16 @@ impl Compiler<'_, '_> {
         fields: &[vela_syntax::ast::RecordField],
         defaults: Vec<SchemaFieldDefault>,
         shape: Option<&ConstructorShape>,
+        payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
-        for field in fields {
+        for (index, field) in fields.iter().enumerate() {
             explicit_names.insert(field.name.clone());
             compiled.push(self.compile_record_field(
                 field,
                 shape.and_then(|shape| shape.field_value_type(&field.name)),
+                payloads.and_then(|payloads| payloads.get(index)),
             )?);
         }
         self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults, shape)?;
@@ -143,9 +147,15 @@ impl Compiler<'_, '_> {
         &mut self,
         field: &vela_syntax::ast::RecordField,
         expected: Option<RuntimeTypeFact>,
+        payload: Option<&CompilerRecordFieldPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
-            self.compile_constructor_value(value, &field.name, expected)?
+            self.compile_constructor_value(
+                value,
+                &field.name,
+                expected,
+                payload.and_then(CompilerRecordFieldPayload::value_expression_payload),
+            )?
         } else {
             self.local_register_at_span(field.span, &field.name)?
         };
@@ -157,6 +167,7 @@ impl Compiler<'_, '_> {
         value: &vela_syntax::ast::Expr,
         field_name: &str,
         expected: Option<RuntimeTypeFact>,
+        payload: Option<CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         match expected {
             Some(expected) => self.compile_expr_with_expected_type(
@@ -166,7 +177,7 @@ impl Compiler<'_, '_> {
                     name: field_name.to_owned(),
                 },
             ),
-            None => self.compile_expr(value),
+            None => self.compile_expr_with_payload(value, payload.as_ref()),
         }
     }
 

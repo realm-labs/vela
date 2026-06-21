@@ -2,9 +2,9 @@ use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
     Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
-    MatchExpr, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxStatement,
-    SyntaxStatementKind,
+    MatchExpr, RecordField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
+    SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -47,6 +47,12 @@ pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
     fallback: &'ast MapEntry,
+}
+
+pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
+    source: Option<SourceId>,
+    syntax: Option<SyntaxRecordExprField>,
+    fallback: &'ast RecordField,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
@@ -693,6 +699,26 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .collect(),
         )
     }
+
+    pub(in crate::compiler) fn record_field_payloads(
+        &self,
+    ) -> Option<Vec<CompilerRecordFieldPayload<'ast>>> {
+        let ExprKind::Record { fields, .. } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax_fields = self.syntax.as_ref()?.as_record()?.fields();
+        Some(
+            fields
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerRecordFieldPayload {
+                    source: self.source,
+                    syntax: syntax_fields.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
 }
 
 impl<'ast> CompilerMapEntryPayload<'ast> {
@@ -702,6 +728,21 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
             syntax: self.syntax.as_ref().and_then(SyntaxMapEntry::value),
             fallback: &self.fallback.value,
         }
+    }
+}
+
+impl<'ast> CompilerRecordFieldPayload<'ast> {
+    pub(in crate::compiler) fn value_expression_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self
+                .syntax
+                .as_ref()
+                .and_then(SyntaxRecordExprField::expression),
+            fallback: self.fallback.value.as_ref()?,
+        })
     }
 }
 
