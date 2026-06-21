@@ -104,10 +104,13 @@ impl Compiler<'_, '_> {
         if let ExprKind::Field { base, name } = &callee.kind {
             let base_payload =
                 callee_payload.and_then(CompilerExpressionPayload::field_base_payload);
+            let name = callee_payload
+                .and_then(CompilerExpressionPayload::field_name)
+                .unwrap_or_else(|| name.to_owned());
             return self.compile_script_method_call(
                 expr,
                 base,
-                name,
+                &name,
                 args,
                 base_payload.as_ref(),
                 arg_syntax,

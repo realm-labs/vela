@@ -226,6 +226,7 @@ fn call_targets() {
             (SyntaxStatementKind::Expr, "label"),
         ]],
     );
+    assert_cst_let_initializer_method_names(&payload.body, &["len"]);
 
     compile_program_source(source, text)
         .expect("CST-backed call callees and method receivers should compile");
@@ -255,6 +256,27 @@ fn assert_cst_let_initializer_method_receiver_body_payloads(
         .flat_map(method_receiver_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_let_initializer_method_names(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&str],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter_map(call_method_name)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_strings(expected));
+}
+
+fn call_method_name(payload: body_payloads::CompilerExpressionPayload<'_>) -> Option<String> {
+    payload.call_callee_payload()?.field_name()
+}
+
+fn expected_strings(expected: &[&str]) -> Vec<String> {
+    expected.iter().map(|name| (*name).to_owned()).collect()
 }
 
 fn call_callee_block_payloads(
