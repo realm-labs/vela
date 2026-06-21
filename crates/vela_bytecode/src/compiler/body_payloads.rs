@@ -3,8 +3,8 @@ use vela_common::Span;
 use vela_syntax::ast::{
     Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, RecordField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm,
+    SyntaxMatchExpr, SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -754,6 +754,23 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 fallback: index,
             },
         ))
+    }
+
+    pub(in crate::compiler) fn lambda_body_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Lambda { body, .. } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax = match self.syntax.as_ref()?.as_lambda()?.body()? {
+            SyntaxLambdaBody::Expression(expression) => Some(expression),
+            SyntaxLambdaBody::Block(block) => SyntaxExpression::cast(block.syntax().clone()),
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax,
+            fallback: body,
+        })
     }
 
     pub(in crate::compiler) fn array_element_payloads(

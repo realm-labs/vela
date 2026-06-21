@@ -14,6 +14,7 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
         SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
         SyntaxExpressionKind::Field => matches!(expr.kind, ExprKind::Field { .. }),
         SyntaxExpressionKind::Index => matches!(expr.kind, ExprKind::Index { .. }),
+        SyntaxExpressionKind::Lambda => matches!(expr.kind, ExprKind::Lambda { .. }),
         _ => !matches!(
             expr.kind,
             ExprKind::Block(_)
@@ -28,6 +29,7 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
                 | ExprKind::Try(_)
                 | ExprKind::Field { .. }
                 | ExprKind::Index { .. }
+                | ExprKind::Lambda { .. }
         ),
     }
 }

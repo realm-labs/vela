@@ -7,7 +7,7 @@ use vela_syntax::ast::Argument;
 
 use crate::{CallArgument, ScriptCallMode};
 
-use super::body_payloads::CompilerArgumentPayload;
+use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::value_types::{ExpectedTypeOutcome, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -37,6 +37,13 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
             .iter()
             .position(|candidate| std::ptr::eq(candidate, arg))?;
         self.payloads?.get(index)
+    }
+
+    pub(in crate::compiler) fn value_expression_payload_for(
+        self,
+        arg: &Argument,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        Some(self.payload_for(arg)?.value_expression_payload())
     }
 }
 
@@ -111,8 +118,7 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let value = &arg.value;
-        if let Some(payload) = arg_syntax.payload_for(arg) {
-            let value_payload = payload.value_expression_payload();
+        if let Some(value_payload) = arg_syntax.value_expression_payload_for(arg) {
             return self.compile_expr_with_payload(value, Some(&value_payload));
         }
         self.compile_expr(value)

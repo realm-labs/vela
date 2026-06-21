@@ -9,6 +9,7 @@ use vela_syntax::ast::{
 
 use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
+use super::body_payloads::CompilerExpressionPayload;
 use super::record_shapes::ValueShape;
 use super::{CompileResult, Compiler};
 
@@ -35,8 +36,9 @@ impl Compiler<'_, '_> {
         lambda: &Expr,
         params: &[Param],
         body: &Expr,
+        body_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        self.compile_lambda_with_callback_shapes(lambda, params, body, &[])
+        self.compile_lambda_with_callback_shapes(lambda, params, body, body_payload, &[])
     }
 
     pub(super) fn compile_lambda_with_callback_shapes(
@@ -44,6 +46,7 @@ impl Compiler<'_, '_> {
         lambda: &Expr,
         params: &[Param],
         body: &Expr,
+        body_payload: Option<&CompilerExpressionPayload<'_>>,
         callback_shapes: &[Option<ValueShape>],
     ) -> CompileResult<Register> {
         let captures = collect_lambda_captures(self.bindings, &self.hir_locals, body);
@@ -110,7 +113,7 @@ impl Compiler<'_, '_> {
                     .set_name(&param.name, Some(shape.clone()));
             }
         }
-        let code = lambda_compiler.compile_lambda_body(body)?;
+        let code = lambda_compiler.compile_lambda_body(body, body_payload)?;
         let function = self.code.push_nested_function(code);
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeClosure {
@@ -121,18 +124,28 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_lambda_body(mut self, body: &Expr) -> CompileResult<UnlinkedCodeObject> {
+    fn compile_lambda_body(
+        mut self,
+        body: &Expr,
+        body_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
         match &body.kind {
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
+                let returned = if let Some(block_payload) =
+                    body_payload.and_then(CompilerExpressionPayload::block_body_payload)
+                {
+                    self.compile_block_payload_value_to(&block_payload, dst)?
+                } else {
+                    self.compile_block_value_to(block, dst)?
+                };
                 if !returned {
                     self.emit(UnlinkedInstructionKind::Return { src: dst });
                 }
             }
             _ => {
-                let value = self.compile_expr(body)?;
+                let value = self.compile_expr_with_payload(body, body_payload)?;
                 self.emit(UnlinkedInstructionKind::Return { src: value });
             }
         }

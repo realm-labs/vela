@@ -144,6 +144,13 @@ impl Compiler<'_, '_> {
                     .map_or((None, None), |(base, index)| (Some(base), Some(index)));
                 self.compile_index_expr(expr, base, index, base_payload, index_payload)
             }
+            SyntaxExpressionKind::Lambda => {
+                let ExprKind::Lambda { params, body } = &expr.kind else {
+                    unreachable!("validated CST lambda expression payload kind");
+                };
+                let body_payload = payload.lambda_body_payload();
+                self.compile_lambda(expr, params, body, body_payload.as_ref())
+            }
             SyntaxExpressionKind::Unary => {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
@@ -182,7 +189,7 @@ impl Compiler<'_, '_> {
                 self.compile_index_expr(expr, base, index, None, None)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
-            ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body),
+            ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body, None),
             ExprKind::Try(value) => {
                 let src = self.compile_expr(value)?;
                 let dst = self.alloc_register()?;

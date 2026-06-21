@@ -586,7 +586,16 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        self.compile_lambda_with_callback_shapes(&arg.value, params, body, &param_shapes)
+        let body_payload = arg_syntax
+            .value_expression_payload_for(arg)
+            .and_then(|payload| payload.lambda_body_payload());
+        self.compile_lambda_with_callback_shapes(
+            &arg.value,
+            params,
+            body,
+            body_payload.as_ref(),
+            &param_shapes,
+        )
     }
 
     fn compile_metadata_register_args(
