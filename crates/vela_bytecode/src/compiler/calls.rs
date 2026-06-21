@@ -50,6 +50,7 @@ impl Compiler<'_, '_> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
+        let has_callee_payload = callee_payload.is_some();
         if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
             let fields = self.compile_tuple_variant_fields(
                 callee.span,
@@ -69,7 +70,8 @@ impl Compiler<'_, '_> {
         }
 
         let host_receiver_type = self.host_method_receiver_type(callee);
-        let path_root_is_local = path_root_is_local(callee_path, callee, &self.locals);
+        let path_root_is_local =
+            path_root_is_local(callee_path, has_callee_payload, callee, &self.locals);
         if let Some(call) = host_method_call(
             self,
             callee,
@@ -119,7 +121,7 @@ impl Compiler<'_, '_> {
             );
         }
         if let Some((method, receiver_path)) =
-            local_path_method_call(callee_path, callee, &self.locals)
+            local_path_method_call(callee_path, has_callee_payload, callee, &self.locals)
         {
             return self.compile_script_path_method_call(
                 expr,
@@ -161,7 +163,7 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else {
-            let fallback_name = callable_name(callee_path, callee)?;
+            let fallback_name = callable_name(callee_path, has_callee_payload, callee)?;
             if fallback_name == "set::from_array" {
                 reject_named_call_args(arg_syntax, "set::from_array")?;
                 if args.len() != 1 {
@@ -1043,10 +1045,11 @@ fn registry_type_hint(hint: &TypeHintDef, span: Span) -> vela_hir::type_hint::Hi
 
 fn local_path_method_call<'expr>(
     cst_path: Option<&'expr [String]>,
+    has_payload: bool,
     callee: &'expr Expr,
     locals: &std::collections::HashMap<String, crate::Register>,
 ) -> Option<(&'expr str, &'expr [String])> {
-    let path = callee_path_segments(cst_path, callee)?;
+    let path = callee_path_segments(cst_path, has_payload, callee)?;
     let (method, receiver_path) = path.split_last()?;
     (!receiver_path.is_empty() && locals.contains_key(&receiver_path[0]))
         .then_some((method.as_str(), receiver_path))
@@ -1054,17 +1057,22 @@ fn local_path_method_call<'expr>(
 
 fn path_root_is_local(
     cst_path: Option<&[String]>,
+    has_payload: bool,
     callee: &Expr,
     locals: &std::collections::HashMap<String, crate::Register>,
 ) -> bool {
-    let Some(path) = callee_path_segments(cst_path, callee) else {
+    let Some(path) = callee_path_segments(cst_path, has_payload, callee) else {
         return false;
     };
     path.first().is_some_and(|root| locals.contains_key(root))
 }
 
-fn callable_name(cst_path: Option<&[String]>, callee: &Expr) -> CompileResult<String> {
-    let Some(path) = callee_path_segments(cst_path, callee) else {
+fn callable_name(
+    cst_path: Option<&[String]>,
+    has_payload: bool,
+    callee: &Expr,
+) -> CompileResult<String> {
+    let Some(path) = callee_path_segments(cst_path, has_payload, callee) else {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "callable expression",
         )));
@@ -1074,10 +1082,14 @@ fn callable_name(cst_path: Option<&[String]>, callee: &Expr) -> CompileResult<St
 
 fn callee_path_segments<'expr>(
     cst_path: Option<&'expr [String]>,
+    has_payload: bool,
     callee: &'expr Expr,
 ) -> Option<&'expr [String]> {
     if let Some(path) = cst_path {
         return Some(path);
+    }
+    if has_payload {
+        return None;
     }
     match &callee.kind {
         ExprKind::Path(path) => Some(path),

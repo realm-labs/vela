@@ -171,6 +171,51 @@ fn main() {
     );
 }
 
+#[test]
+fn path_call_with_non_path_cst_callee_does_not_use_legacy_callable_name() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let native = |value| value;
+    let cst_call = ({
+        let selected = native;
+        selected
+    })(1);
+    let legacy_call = external_native(1);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST call payload");
+            let legacy_call = statements[2]
+                .let_initializer_expression_payload()
+                .expect("legacy path call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_call
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+                .expect_err("mismatched non-path CST callee must not use the legacy callable name");
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("callable expression")
+                ),
+                "expected unsupported callable expression, got {error:?}"
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
