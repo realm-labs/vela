@@ -48,8 +48,13 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
-            let fields =
-                self.compile_tuple_variant_fields(callee.span, &enum_name, &variant, args)?;
+            let fields = self.compile_tuple_variant_fields(
+                callee.span,
+                &enum_name,
+                &variant,
+                args,
+                arg_payloads,
+            )?;
             let dst = self.alloc_register()?;
             self.emit(UnlinkedInstructionKind::MakeEnum {
                 dst,

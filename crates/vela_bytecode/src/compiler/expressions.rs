@@ -114,6 +114,18 @@ impl Compiler<'_, '_> {
                     .map_or((None, None), |(left, right)| (Some(left), Some(right)));
                 self.compile_binary(*op, expr.span, left, right, left_payload, right_payload)
             }
+            SyntaxExpressionKind::Call => {
+                let ExprKind::Call { callee, args } = &expr.kind else {
+                    unreachable!("validated CST call expression payload kind");
+                };
+                let arg_payloads = payload.call_argument_payloads();
+                self.compile_call_expr_with_arg_payloads(
+                    expr,
+                    callee,
+                    args,
+                    arg_payloads.as_deref(),
+                )
+            }
             SyntaxExpressionKind::Unary => {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
@@ -949,6 +961,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
         SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
+        SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
         SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
         SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
         _ => !matches!(
@@ -960,6 +973,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
                 | ExprKind::Map(_)
                 | ExprKind::Record { .. }
                 | ExprKind::Binary { .. }
+                | ExprKind::Call { .. }
                 | ExprKind::Unary { .. }
                 | ExprKind::Try(_)
         ),

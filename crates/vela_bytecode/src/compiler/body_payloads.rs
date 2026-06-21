@@ -700,6 +700,25 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    pub(in crate::compiler) fn call_argument_payloads(
+        &self,
+    ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {
+        let ExprKind::Call { args, .. } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
+        Some(
+            args.iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerArgumentPayload {
+                    source: self.source,
+                    syntax: syntax_args.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
     pub(in crate::compiler) fn array_element_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

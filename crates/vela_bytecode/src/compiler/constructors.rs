@@ -5,7 +5,9 @@ use vela_syntax::ast::Argument;
 
 use crate::Register;
 
-use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
+use super::body_payloads::{
+    CompilerArgumentPayload, CompilerExpressionPayload, CompilerRecordFieldPayload,
+};
 use super::const_eval::evaluate_syntax_const_expr;
 use super::patterns::tuple_variant_field_name;
 use super::schema_defaults::{
@@ -24,6 +26,7 @@ impl Compiler<'_, '_> {
         enum_name: &str,
         variant: &str,
         args: &[Argument],
+        arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         if !self.enum_constructor_variant_exists(enum_name, variant) {
             return Err(
@@ -56,11 +59,12 @@ impl Compiler<'_, '_> {
                     .field_name_at(index)
                     .map(str::to_owned)
                     .unwrap_or_else(|| tuple_variant_field_name(index));
+                let payload = argument_expression_payload(args, arg_payloads, arg);
                 let value = self.compile_constructor_value(
                     &arg.value,
                     &name,
                     shape.field_value_type_at(index),
-                    None,
+                    payload,
                 )?;
                 explicit_names.insert(name.clone());
                 fields.push((name, value));
@@ -73,7 +77,10 @@ impl Compiler<'_, '_> {
                     )));
                 }
                 let name = tuple_variant_field_name(index);
-                let value = self.compile_expr(&arg.value)?;
+                let payload = arg_payloads
+                    .and_then(|payloads| payloads.get(index))
+                    .map(CompilerArgumentPayload::value_expression_payload);
+                let value = self.compile_expr_with_payload(&arg.value, payload.as_ref())?;
                 explicit_names.insert(name.clone());
                 fields.push((name, value));
             }
@@ -234,6 +241,19 @@ impl Compiler<'_, '_> {
         }
         self.compile_expr(default.value.legacy())
     }
+}
+
+fn argument_expression_payload<'ast>(
+    args: &[Argument],
+    arg_payloads: Option<&[CompilerArgumentPayload<'ast>]>,
+    arg: &Argument,
+) -> Option<CompilerExpressionPayload<'ast>> {
+    let index = args
+        .iter()
+        .position(|candidate| std::ptr::eq(candidate, arg))?;
+    arg_payloads?
+        .get(index)
+        .map(CompilerArgumentPayload::value_expression_payload)
 }
 
 pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {

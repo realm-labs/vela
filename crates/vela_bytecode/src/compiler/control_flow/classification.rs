@@ -54,6 +54,7 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
         SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
+        SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
         SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
         SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
         _ => !matches!(
@@ -65,6 +66,7 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
                 | ExprKind::Map(_)
                 | ExprKind::Record { .. }
                 | ExprKind::Binary { .. }
+                | ExprKind::Call { .. }
                 | ExprKind::Unary { .. }
                 | ExprKind::Try(_)
         ),
