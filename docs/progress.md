@@ -282,6 +282,10 @@ lowering migrates.
 Top-level compiler statement dispatch now reads rowan `SyntaxStatementKind`
 from aligned payloads and falls back to the legacy statement category only when
 temporary CST-to-owned association still disagrees during expression lowering.
+Top-level expression statement payloads now also expose rowan
+`SyntaxExpressionKind`, letting assignment statements dispatch through the CST
+expression category while preserving legacy fallback for temporary association
+mismatches.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

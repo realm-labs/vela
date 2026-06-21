@@ -3,7 +3,7 @@ use vela_hir::binding::LocalBindingKind;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
     BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, Literal, MatchExpr, Pattern, Stmt,
-    StmtKind, SyntaxStatementKind,
+    StmtKind, SyntaxExpressionKind, SyntaxStatementKind,
 };
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
@@ -90,10 +90,34 @@ impl Compiler<'_, '_> {
         let Some(kind) = stmt.statement_kind() else {
             return self.compile_statement(stmt.fallback());
         };
-        if statement_kind_matches(kind, stmt.fallback()) {
-            self.compile_statement_as(kind, stmt.fallback())
-        } else {
+        if !statement_kind_matches(kind, stmt.fallback()) {
             self.compile_statement(stmt.fallback())
+        } else if kind == SyntaxStatementKind::Expr {
+            self.compile_expr_statement_payload(stmt)
+        } else {
+            self.compile_statement_as(kind, stmt.fallback())
+        }
+    }
+
+    fn compile_expr_statement_payload(
+        &mut self,
+        stmt: &CompilerStatementPayload<'_>,
+    ) -> CompileResult<bool> {
+        let StmtKind::Expr(expr) = &stmt.fallback().kind else {
+            return self.compile_statement(stmt.fallback());
+        };
+        let Some(kind) = stmt.expression_kind() else {
+            return self.compile_expr_statement(expr);
+        };
+        if !expression_statement_kind_matches(kind, expr) {
+            return self.compile_expr_statement(expr);
+        }
+        if kind == SyntaxExpressionKind::Assign {
+            self.compile_assignment(expr)?;
+            Ok(false)
+        } else {
+            self.compile_expr(expr)?;
+            Ok(false)
         }
     }
 
@@ -270,14 +294,24 @@ impl Compiler<'_, '_> {
                 let StmtKind::Expr(expr) = &stmt.kind else {
                     return self.compile_statement(stmt);
                 };
-                if let ExprKind::Assign { .. } = &expr.kind {
-                    self.compile_assignment(expr)?;
-                    return Ok(false);
-                }
-                self.compile_expr(expr)?;
-                Ok(false)
+                self.compile_expr_statement(expr)
             }
         }
+    }
+
+    fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
+        if let ExprKind::If(if_expr) = &expr.kind {
+            return self.compile_if(if_expr);
+        }
+        if let ExprKind::Match(match_expr) = &expr.kind {
+            return self.compile_match(match_expr);
+        }
+        if let ExprKind::Assign { .. } = &expr.kind {
+            self.compile_assignment(expr)?;
+            return Ok(false);
+        }
+        self.compile_expr(expr)?;
+        Ok(false)
     }
 
     fn compile_let_initializer(
@@ -822,6 +856,10 @@ fn legacy_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
 
 fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> bool {
     kind == legacy_statement_kind(stmt)
+}
+
+fn expression_statement_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+    matches!(kind, SyntaxExpressionKind::Assign) == matches!(expr.kind, ExprKind::Assign { .. })
 }
 
 fn merge_type_hint_and_value_fact(

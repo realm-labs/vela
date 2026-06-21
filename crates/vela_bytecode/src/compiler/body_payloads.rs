@@ -1,6 +1,9 @@
 use vela_common::SourceId;
 use vela_common::Span;
-use vela_syntax::ast::{AstNode, Block, Stmt, SyntaxBlock, SyntaxStatement, SyntaxStatementKind};
+use vela_syntax::ast::{
+    AstNode, Block, Stmt, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxStatement,
+    SyntaxStatementKind,
+};
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
@@ -94,6 +97,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
+    }
+
+    pub(super) fn expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.expression()
+            .map(|expression| expression.expression_kind())
+    }
+
+    fn expression(&self) -> Option<SyntaxExpression> {
+        self.syntax.as_ref()?.as_expr()?.expression()
     }
 
     #[cfg(test)]

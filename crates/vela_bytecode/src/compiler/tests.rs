@@ -5,7 +5,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
-use vela_syntax::ast::{AstNode, SyntaxStatementKind};
+use vela_syntax::ast::{AstNode, SyntaxExpressionKind, SyntaxStatementKind};
 
 fn assert_cst_param_default(
     default: &Option<ParamDefaultValue>,
@@ -47,6 +47,28 @@ fn assert_cst_statements(
         assert_eq!(syntax.statement_kind(), *expected_kind);
         assert_eq!(syntax.syntax().text().to_string(), *expected_text);
     }
+}
+
+fn assert_cst_expr_statements(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxExpressionKind, &str)],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            let expr = syntax.as_expr()?.expression()?;
+            Some((expr.expression_kind(), expr.syntax().text().to_string()))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|(kind, text)| (*kind, (*text).to_owned()))
+            .collect::<Vec<_>>()
+    );
 }
 
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -131,8 +153,40 @@ impl Counter {
         &method.body,
         &[(SyntaxStatementKind::Expr, "self.value += amount;")],
     );
+    assert_cst_expr_statements(
+        &method.body,
+        &[(SyntaxExpressionKind::Assign, "self.value += amount")],
+    );
     assert!(method.default_values[0].is_none());
     assert_cst_param_default(&method.default_values[1], source, "1");
+}
+
+#[test]
+fn semantic_function_assignment_statement_expression_is_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn assign() {
+    let total = 1;
+    total += 2;
+    return total;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("assign").expect("assign function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (SyntaxStatementKind::Let, "let total = 1;"),
+            (SyntaxStatementKind::Expr, "total += 2;"),
+            (SyntaxStatementKind::Return, "return total;"),
+        ],
+    );
+    assert_cst_expr_statements(
+        &payload.body,
+        &[(SyntaxExpressionKind::Assign, "total += 2")],
+    );
+
+    compile_program_source(source, text).expect("CST-backed assignment body should compile");
 }
 
 #[test]
