@@ -10,6 +10,8 @@ use crate::compiler::body_payloads::CompilerExpressionPayload;
 use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
 
+mod syntax_shapes;
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct ValueShapeFlow {
     locals: HashMap<HirLocalId, ValueShape>,
@@ -66,13 +68,10 @@ impl ValueShapeFlow {
 
     pub(super) fn set_name(&mut self, name: impl Into<String>, shape: Option<ValueShape>) {
         let name = name.into();
-        match shape {
-            Some(shape) => {
-                self.names.insert(name, shape);
-            }
-            None => {
-                self.names.remove(&name);
-            }
+        if let Some(shape) = shape {
+            self.names.insert(name, shape);
+        } else {
+            self.names.remove(&name);
         }
     }
 
@@ -83,15 +82,12 @@ impl ValueShapeFlow {
         shape: Option<ValueShape>,
     ) {
         let name = name.into();
-        match shape {
-            Some(shape) => {
-                self.locals.insert(local, shape.clone());
-                self.names.insert(name, shape);
-            }
-            None => {
-                self.locals.remove(&local);
-                self.names.remove(&name);
-            }
+        if let Some(shape) = shape {
+            self.locals.insert(local, shape.clone());
+            self.names.insert(name, shape);
+        } else {
+            self.locals.remove(&local);
+            self.names.remove(&name);
         }
     }
 }
@@ -1001,6 +997,11 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
+        if let Some(shape) =
+            payload.and_then(|payload| self.value_shape_for_syntax_payload(payload))
+        {
+            return Some(shape);
+        }
         match &expr.kind {
             ExprKind::Path(path) => self.value_shape_for_path_expr(expr.span, path, payload),
             ExprKind::Field { base, name } => {
