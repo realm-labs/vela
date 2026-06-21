@@ -225,7 +225,9 @@ analysis diagnostics facade, duplicate member-access walker, duplicate
 record-constructor walker, duplicate match-pattern exhaustiveness and variant
 walkers, unused effect diagnostic walker, and old owned-AST expression
 inference implementation have been removed; editor diagnostics and expression
-facts now exercise the active CST-backed paths directly.
+facts now exercise the active CST-backed paths directly. The analysis
+completion fixture now uses the rowan parse record for syntax sanity checks
+instead of importing the legacy owned parser.
 HIR `add_source` now uses rowan CST item headers for module spans, imports, and
 top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,

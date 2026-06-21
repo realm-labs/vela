@@ -1,12 +1,12 @@
 use vela_analysis::completion::{CompletionItem, CompletionKind, member_completions};
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{HostMethodId, SourceId};
+use vela_common::HostMethodId;
 use vela_def::{FieldId, TypeId};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry,
 };
-use vela_syntax::parser::parse_source;
+use vela_syntax::parse::parse_source;
 
 const HOST_MEMBER_SOURCE: &str =
     include_str!("../../../tests/fixtures/completion/host_member.vela");
@@ -15,8 +15,8 @@ const HOST_MEMBER_EXPECTED: &str =
 
 #[test]
 fn host_member_completion_fixture_suggests_registry_fields_and_methods() {
-    let parsed = parse_source(SourceId::new(1), &normalized_fixture(HOST_MEMBER_SOURCE));
-    assert_eq!(parsed.diagnostics, []);
+    let parsed = parse_source(&normalized_fixture(HOST_MEMBER_SOURCE));
+    assert_eq!(parsed.diagnostics(), []);
 
     let mut completions = member_completions(&registry_facts(), &TypeFact::host("Player"));
     completions.sort_by(|left, right| {
