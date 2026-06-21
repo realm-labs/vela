@@ -184,6 +184,16 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.expression_kind()
+            .or_else(|| match self.statement_kind()? {
+                SyntaxStatementKind::Block => Some(SyntaxExpressionKind::Block),
+                SyntaxStatementKind::If => Some(SyntaxExpressionKind::If),
+                SyntaxStatementKind::Match => Some(SyntaxExpressionKind::Match),
+                _ => None,
+            })
+    }
+
     pub(super) fn let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
@@ -362,6 +372,56 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
+    }
+
+    pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Block(block) = &expr.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.expression()
+                .and_then(|expression| expression.as_block())
+                .or_else(|| self.syntax.as_ref()?.as_block())?,
+            block,
+        ))
+    }
+
+    pub(super) fn expression_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &expr.kind else {
+            return None;
+        };
+        if_payload_for_fallback(
+            self.source,
+            self.expression()
+                .and_then(|expression| expression.as_if())
+                .or_else(|| self.syntax.as_ref()?.as_if())?,
+            if_expr,
+        )
+    }
+
+    pub(super) fn expression_match_arm_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return None;
+        };
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.expression()
+                .and_then(|expression| expression.as_match())
+                .or_else(|| self.syntax.as_ref()?.as_match())?,
+            match_expr,
+        ))
     }
 
     #[cfg(test)]

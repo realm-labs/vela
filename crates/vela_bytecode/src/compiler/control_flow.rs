@@ -1068,7 +1068,7 @@ impl Compiler<'_, '_> {
         self.compile_match_value_with_payloads(match_expr, dst, None)
     }
 
-    fn compile_match_value_with_payloads(
+    pub(in crate::compiler::control_flow) fn compile_match_value_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
         dst: Register,

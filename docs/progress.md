@@ -318,9 +318,9 @@ for match arms, letting statement-form match arms reuse the CST-aware nested
 statement dispatcher while preserving legacy arm fallbacks when syntax
 alignment is unavailable.
 Top-level let initializer and return-value block expressions now materialize
-rowan body payloads, letting block-value prefix and statement bodies reuse the
-CST-aware nested statement dispatcher while preserving legacy tail-expression
-fallbacks.
+rowan body payloads, letting block-value prefix statements and tail if/match
+expressions reuse the CST-aware nested statement dispatcher while preserving
+legacy tail-expression fallbacks when syntax alignment is unavailable.
 Top-level let initializer and return-value if expressions now materialize
 rowan then/else and nested else-if block payloads, letting value-position if
 branch blocks reuse the CST-aware nested statement dispatcher while preserving

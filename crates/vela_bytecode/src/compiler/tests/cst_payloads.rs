@@ -339,6 +339,66 @@ fn block_values() {
 }
 
 #[test]
+fn semantic_function_block_tail_control_flow_expressions_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_tail_values() {
+    let value = {
+        let seed = 1;
+        if seed > 0 {
+            let high = seed;
+            high
+        } else {
+            0
+        }
+    };
+    let matched = {
+        let input = value;
+        match input {
+            0 => {
+                let zero = 1;
+                zero
+            },
+            _ => {
+                let fallback = input;
+                fallback
+            },
+        }
+    };
+    return matched;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("block_tail_values")
+        .expect("block_tail_values function");
+    assert_cst_let_initializer_block_tail_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let high = seed;"),
+            (SyntaxStatementKind::Expr, "high"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+    );
+    assert_cst_let_initializer_block_tail_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let zero = 1;"),
+                (SyntaxStatementKind::Expr, "zero"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let fallback = input;"),
+                (SyntaxStatementKind::Expr, "fallback"),
+            ],
+        ],
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed block tail control-flow values should compile");
+}
+
+#[test]
 fn semantic_function_match_value_expressions_have_cst_arm_payloads() {
     let source = SourceId::new(1);
     let text = r#"
