@@ -134,7 +134,9 @@ impl Compiler<'_, '_> {
         }
 
         let dst = self.alloc_register()?;
-        if let Some((declaration, name)) = self.script_function_call(callee) {
+        let script_function_call = callee_path_segments(callee_path, has_callee_payload, callee)
+            .and_then(|_| self.script_function_call(callee));
+        if let Some((declaration, name)) = script_function_call {
             let call_args = self.compile_script_call_args_with_payloads(
                 declaration,
                 args,
