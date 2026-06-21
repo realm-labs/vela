@@ -288,36 +288,14 @@ fn static_expr_type_with_payload(
     local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
+    if let Some(literal) = payload.and_then(CompilerExpressionPayload::literal) {
+        return static_literal_type(&literal);
+    }
+
     match &expr.kind {
-        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
-            StaticExprType::UnsuffixedIntegerLiteral
-        }
-        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
-            StaticExprType::UnsuffixedFloatLiteral
-        }
-        ExprKind::Literal(Literal::Null) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null))
-        }
-        ExprKind::Literal(Literal::Bool(_)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool))
-        }
-        ExprKind::Literal(Literal::Char(_)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char))
-        }
-        ExprKind::Literal(Literal::Integer(value)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(integer_literal_tag(value)))
-        }
-        ExprKind::Literal(Literal::Float(value)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(float_literal_tag(value)))
-        }
-        ExprKind::Literal(Literal::String(_)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
-        }
+        ExprKind::Literal(literal) => static_literal_type(literal),
         ExprKind::InterpolatedString(_) => {
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
-        }
-        ExprKind::Literal(Literal::Bytes(_)) => {
-            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
         }
         ExprKind::Array(values) => {
             let payloads = payload.and_then(CompilerExpressionPayload::array_element_payloads);
@@ -401,6 +379,28 @@ fn static_expr_type_with_payload(
             .map(StaticExprType::Exact)
             .unwrap_or(StaticExprType::Dynamic),
         _ => StaticExprType::Dynamic,
+    }
+}
+
+fn static_literal_type(literal: &Literal) -> StaticExprType {
+    match literal {
+        Literal::Integer(value) if value.suffix.is_none() => {
+            StaticExprType::UnsuffixedIntegerLiteral
+        }
+        Literal::Float(value) if value.suffix.is_none() => StaticExprType::UnsuffixedFloatLiteral,
+        Literal::Null => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        Literal::Bool(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        Literal::Char(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
+        Literal::Integer(value) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(integer_literal_tag(value)))
+        }
+        Literal::Float(value) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(float_literal_tag(value)))
+        }
+        Literal::String(_) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
+        }
+        Literal::Bytes(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
     }
 }
 

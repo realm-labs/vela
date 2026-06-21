@@ -33,6 +33,58 @@ fn literal_values() {
     compile_program_source(source, text).expect("CST-backed literal expressions should compile");
 }
 
+#[test]
+fn static_literal_type_facts_prefer_cst_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_value = true;
+    let legacy_value = 1;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_literal = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST literal payload");
+            let legacy_literal = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy fallback literal");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_literal
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_literal.fallback(),
+            );
+
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::Bool,
+                ))
+            );
+            assert_eq!(
+                compiler
+                    .expected_type_for_expr_with_payload(
+                        mismatched_payload.fallback(),
+                        RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool),
+                        value_types::TypeContractContext::TypedLet {
+                            name: "cst_value".to_owned(),
+                        },
+                        Some(&mismatched_payload),
+                    )
+                    .expect("CST literal should satisfy bool contract"),
+                value_types::ExpectedTypeOutcome::Proven
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
