@@ -16,10 +16,17 @@ use crate::Constant;
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::legacy_payloads::{FunctionBodyPayload, LegacySourceFallback, function_body_payload};
+use super::function_payloads::FunctionBodyPayload;
+use super::legacy_payloads::{
+    LegacyFunctionBodyPayload, LegacySourceFallback,
+    function_body_payload as legacy_function_body_payload,
+};
+use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
-use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
+use super::syntax_payloads::{
+    const_value_payloads, param_default_expressions, schema_default_payloads,
+};
 
 pub(super) struct SemanticSource {
     source: SourceId,
@@ -473,6 +480,37 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
         .collect::<Vec<_>>();
     consts.sort_by_key(|(declaration, _)| *declaration);
     consts
+}
+
+fn function_body_payload<'ast>(
+    source: SourceId,
+    syntax: &SyntaxParse<SyntaxSourceFile>,
+    legacy: &'ast LegacySourceFallback,
+    name: &str,
+    signature: &FunctionSignature,
+) -> Option<FunctionBodyPayload<'ast>> {
+    let syntax_function = syntax
+        .tree()
+        .functions()
+        .find(|function| function.name_text().as_deref() == Some(name))?;
+    let syntax_body = syntax_function.body()?;
+    let LegacyFunctionBodyPayload { name, body } =
+        legacy_function_body_payload(source, legacy, name, syntax_body)?;
+    let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
+    Some(FunctionBodyPayload {
+        name,
+        body,
+        param_defaults,
+    })
+}
+
+fn function_param_defaults(
+    source: SourceId,
+    params: Option<vela_syntax::ast::SyntaxParamList>,
+    signature: &FunctionSignature,
+) -> Vec<Option<ParamDefaultValue>> {
+    let syntax_defaults = param_default_expressions(source, params, signature);
+    param_default_values(&syntax_defaults)
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {

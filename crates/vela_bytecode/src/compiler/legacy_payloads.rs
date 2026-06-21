@@ -1,16 +1,10 @@
 use std::collections::HashMap;
 
 use vela_common::{SourceId, Span};
-use vela_hir::type_hint::FunctionSignature;
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{
-    AstNode, Block, FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile,
-};
+use vela_syntax::ast::{AstNode, Block, FunctionItem, ItemKind, SourceFile, SyntaxBlock};
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use super::body_payloads::CompilerBodyPayload;
-use super::param_defaults::{ParamDefaultValue, param_default_values};
-use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct LegacySourceFallback {
     parsed: SourceFile,
@@ -64,32 +58,21 @@ pub(super) struct LegacyMethodFallback<'ast> {
     pub(super) body: &'ast Block,
 }
 
-pub(super) struct FunctionBodyPayload<'ast> {
+pub(super) struct LegacyFunctionBodyPayload<'ast> {
     pub(super) name: String,
     pub(super) body: CompilerBodyPayload<'ast>,
-    pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
 }
 
 pub(super) fn function_body_payload<'ast>(
     source: SourceId,
-    syntax: &SyntaxParse<SyntaxSourceFile>,
     legacy: &'ast LegacySourceFallback,
     name: &str,
-    signature: &FunctionSignature,
-) -> Option<FunctionBodyPayload<'ast>> {
-    let syntax_function = syntax
-        .tree()
-        .functions()
-        .find(|function| function.name_text().as_deref() == Some(name))?;
-    let syntax_body = syntax_function.body()?;
+    syntax_body: SyntaxBlock,
+) -> Option<LegacyFunctionBodyPayload<'ast>> {
     let function = legacy_function_body(&legacy.parsed, syntax_body_span(source, &syntax_body))?;
-    let syntax_defaults =
-        param_default_expressions(source, syntax_function.param_list(), signature);
-    let param_defaults = param_default_values(&syntax_defaults);
-    Some(FunctionBodyPayload {
+    Some(LegacyFunctionBodyPayload {
         name: name.to_owned(),
         body: CompilerBodyPayload::syntax(source, syntax_body, &function.body),
-        param_defaults,
     })
 }
 

@@ -20,7 +20,7 @@ fn with_cst_payload_compiler(
     source: &str,
     inspect: impl for<'ast> FnOnce(
         &mut Compiler<'ast, 'static>,
-        legacy_payloads::FunctionBodyPayload<'ast>,
+        function_payloads::FunctionBodyPayload<'ast>,
     ),
 ) {
     let semantic =
@@ -34,7 +34,7 @@ fn cst_payload_compiler_for_function<'ast>(
     function: &str,
 ) -> (
     Compiler<'ast, 'static>,
-    legacy_payloads::FunctionBodyPayload<'ast>,
+    function_payloads::FunctionBodyPayload<'ast>,
 ) {
     let facts = cst_payload_compiler_facts(semantic);
     let (payload, signature, bindings) = semantic.function(function).expect("script function");

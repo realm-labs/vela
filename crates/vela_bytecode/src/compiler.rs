@@ -14,6 +14,7 @@ mod expression_checks;
 mod expression_payload_kinds;
 mod expressions;
 mod field_slots;
+mod function_payloads;
 mod host_paths;
 mod lambdas;
 mod legacy_payloads;
