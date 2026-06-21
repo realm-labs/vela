@@ -88,6 +88,21 @@ impl Counter {
     );
     assert!(method.default_values[0].is_none());
     assert_cst_param_default(&method.default_values[1], source, "1");
+    let amount_default = method.default_values[1]
+        .as_ref()
+        .expect("amount default payload");
+    let compiler_payload = amount_default
+        .compiler_payload()
+        .expect("CST-backed method default should produce compiler payload");
+    assert_eq!(
+        compiler_payload
+            .syntax_expression()
+            .expect("method default compiler payload syntax")
+            .syntax()
+            .text()
+            .to_string(),
+        "1",
+    );
 }
 
 #[test]
