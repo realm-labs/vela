@@ -94,6 +94,8 @@ impl Compiler<'_, '_> {
             self.compile_statement(stmt.fallback())
         } else if kind == SyntaxStatementKind::Let {
             self.compile_let_statement(stmt.fallback(), stmt.let_initializer_kind())
+        } else if kind == SyntaxStatementKind::Return {
+            self.compile_return_statement(stmt.fallback(), stmt.return_value_kind())
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
@@ -143,14 +145,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxStatementKind::Let => self.compile_let_statement(stmt, None),
-            SyntaxStatementKind::Return => {
-                let StmtKind::Return(value) = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                let register = self.compile_return_value(stmt.span, value.as_ref())?;
-                self.emit(UnlinkedInstructionKind::Return { src: register });
-                Ok(true)
-            }
+            SyntaxStatementKind::Return => self.compile_return_statement(stmt, None),
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -303,6 +298,22 @@ impl Compiler<'_, '_> {
         Ok(returned)
     }
 
+    fn compile_return_statement(
+        &mut self,
+        stmt: &Stmt,
+        value_kind: Option<SyntaxExpressionKind>,
+    ) -> CompileResult<bool> {
+        let StmtKind::Return(value) = &stmt.kind else {
+            return self.compile_statement(stmt);
+        };
+        let (register, returned) =
+            self.compile_return_value(stmt.span, value.as_ref(), value_kind)?;
+        if !returned {
+            self.emit(UnlinkedInstructionKind::Return { src: register });
+        }
+        Ok(true)
+    }
+
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
             return self.compile_if(if_expr);
@@ -326,7 +337,7 @@ impl Compiler<'_, '_> {
         syntax_kind: Option<SyntaxExpressionKind>,
     ) -> CompileResult<(Register, bool)> {
         if let Some(kind) = syntax_kind
-            && let_initializer_kind_matches(kind, value)
+            && value_expression_kind_matches(kind, value)
         {
             return self.compile_let_initializer_with_syntax_kind(value, expected, context, kind);
         }
@@ -422,12 +433,18 @@ impl Compiler<'_, '_> {
         &mut self,
         span: Span,
         value: Option<&Expr>,
-    ) -> CompileResult<Register> {
+        syntax_kind: Option<SyntaxExpressionKind>,
+    ) -> CompileResult<(Register, bool)> {
         match (value, self.return_type.clone()) {
-            (Some(value), Some(expected)) => {
-                self.compile_expr_with_expected_type(value, expected, TypeContractContext::Return)
+            (Some(value), Some(expected)) => self.compile_return_expr(
+                value,
+                Some(expected),
+                TypeContractContext::Return,
+                syntax_kind,
+            ),
+            (Some(value), None) => {
+                self.compile_return_expr(value, None, TypeContractContext::Return, syntax_kind)
             }
-            (Some(value), None) => self.compile_expr(value),
             (None, Some(expected)) => {
                 check_expected_type(
                     StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -438,8 +455,85 @@ impl Compiler<'_, '_> {
                     TypeContractContext::Return,
                 )?;
                 self.emit_constant(Constant::Null)
+                    .map(|register| (register, false))
             }
-            (None, None) => self.emit_constant(Constant::Null),
+            (None, None) => self
+                .emit_constant(Constant::Null)
+                .map(|register| (register, false)),
+        }
+    }
+
+    fn compile_return_expr(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+        syntax_kind: Option<SyntaxExpressionKind>,
+    ) -> CompileResult<(Register, bool)> {
+        if let Some(kind) = syntax_kind
+            && value_expression_kind_matches(kind, value)
+        {
+            return self.compile_return_expr_with_syntax_kind(value, expected, context, kind);
+        }
+        self.compile_return_expr_legacy(value, expected, context)
+    }
+
+    fn compile_return_expr_with_syntax_kind(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<(Register, bool)> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::Block(block) = &value.kind else {
+                    unreachable!("validated CST block return value kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_block_value_to(block, dst)?;
+                Ok((dst, returned))
+            }
+            SyntaxExpressionKind::If => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::If(if_expr) = &value.kind else {
+                    unreachable!("validated CST if return value kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_if_value_to(if_expr, dst)?;
+                Ok((dst, returned))
+            }
+            SyntaxExpressionKind::Match => {
+                if let Some(expected) = expected {
+                    self.expected_type_for_expr(value, expected, context)?;
+                }
+                let ExprKind::Match(match_expr) = &value.kind else {
+                    unreachable!("validated CST match return value kind");
+                };
+                let dst = self.alloc_register()?;
+                let returned = self.compile_match_value_to(match_expr, dst)?;
+                Ok((dst, returned))
+            }
+            _ => self.compile_return_expr_legacy(value, expected, context),
+        }
+    }
+
+    fn compile_return_expr_legacy(
+        &mut self,
+        value: &Expr,
+        expected: Option<super::value_types::RuntimeTypeFact>,
+        context: TypeContractContext,
+    ) -> CompileResult<(Register, bool)> {
+        match expected {
+            Some(expected) => self
+                .compile_expr_with_expected_type(value, expected, context)
+                .map(|register| (register, false)),
+            None => self.compile_expr(value).map(|register| (register, false)),
         }
     }
 
@@ -926,7 +1020,7 @@ fn expression_statement_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) ->
     matches!(kind, SyntaxExpressionKind::Assign) == matches!(expr.kind, ExprKind::Assign { .. })
 }
 
-fn let_initializer_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),

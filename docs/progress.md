@@ -290,6 +290,10 @@ Top-level let statement payloads now expose rowan initializer expression kinds,
 letting block/if/match initializer lowering dispatch through aligned CST
 expression categories while preserving legacy fallback for temporary
 association mismatches.
+Top-level return statement payloads now expose rowan return-value expression
+kinds, letting block/if/match return-value lowering dispatch through aligned
+CST expression categories while preserving the legacy return expression
+fallback for non-CST or mismatched payloads.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

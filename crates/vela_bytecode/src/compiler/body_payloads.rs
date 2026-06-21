@@ -112,6 +112,14 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn return_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.syntax
+            .as_ref()?
+            .as_return()?
+            .expression()
+            .map(|expression| expression.expression_kind())
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }
