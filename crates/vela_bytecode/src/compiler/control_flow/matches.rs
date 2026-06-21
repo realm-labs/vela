@@ -212,6 +212,14 @@ impl Compiler<'_, '_> {
         let Some(guard) = guard else {
             return Ok(None);
         };
+        if let Some(payload) = payload.as_ref()
+            && let Some(kind) = payload.kind()
+            && !expression_payload_kind_matches(kind, guard)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match guard",
+            )));
+        }
         let condition = self.compile_expr_with_payload(guard, payload.as_ref())?;
         Ok(Some(self.emit_jump_if_false(condition)))
     }

@@ -564,6 +564,46 @@ fn legacy_binding(value) {
     ));
 }
 
+#[test]
+fn mismatched_match_guard_payloads_do_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_guard(value, cst_flag) {
+    return match value {
+        _ if {
+            let allowed = cst_flag;
+            allowed
+        } => 1,
+        _ => 0,
+    };
+}
+
+fn legacy_guard(value, legacy_flag) {
+    return match value {
+        _ if legacy_flag => 1,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_guard").expect("cst guard");
+    let (legacy_payload, _, _) = semantic.function("legacy_guard").expect("legacy guard");
+
+    let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
+    let legacy_match = first_return_match_expr(legacy_payload.body.fallback());
+    let mismatched_arm =
+        body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm, &legacy_match.arms[0]);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
+
+    let err = compiler
+        .compile_match_value_with_payloads(legacy_match, Register(0), None, Some(&[mismatched_arm]))
+        .expect_err("mismatched guard payload should not use legacy expression");
+    assert!(matches!(
+        err.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST match guard")
+    ));
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
@@ -606,6 +646,29 @@ fn first_return_match_fallback_pattern(
         panic!("expected return match expression");
     };
     &match_expr.arms[0].pattern
+}
+
+fn first_return_match_syntax_arm(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> vela_syntax::ast::SyntaxMatchArm {
+    let statements = body.statement_payloads();
+    statements[0]
+        .return_value_match_arm_payloads()
+        .expect("return match")[0]
+        .syntax_arm()
+        .expect("CST arm")
+        .clone()
+}
+
+fn first_return_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
+    let statement = body.statements.first().expect("return statement");
+    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+        panic!("expected return statement");
+    };
+    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+        panic!("expected return match expression");
+    };
+    match_expr
 }
 
 fn assert_match_guard_payload(

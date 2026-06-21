@@ -487,6 +487,19 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
 }
 
 impl<'ast> CompilerMatchArmPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax(
+        source: SourceId,
+        syntax: SyntaxMatchArm,
+        fallback: &'ast vela_syntax::ast::MatchArm,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload {
             syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),
