@@ -1,8 +1,9 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, ElseBranch, ExprKind, MatchArm, Stmt, StmtKind, SyntaxBlock,
-    SyntaxExpression, SyntaxExpressionKind, SyntaxMatchArm, SyntaxStatement, SyntaxStatementKind,
+    AstNode, BinaryOp, Block, ElseBranch, ExprKind, MatchArm, MatchExpr, Stmt, StmtKind,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxMatchArm, SyntaxMatchExpr,
+    SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -110,6 +111,24 @@ fn syntax_match_arm_for_fallback(
         .or_else(|| arms.get(fallback_index).cloned())
 }
 
+fn match_arm_payloads_for_fallback<'ast>(
+    source: Option<SourceId>,
+    syntax: SyntaxMatchExpr,
+    fallback: &'ast MatchExpr,
+) -> Vec<CompilerMatchArmPayload<'ast>> {
+    let syntax_arms = syntax.arms();
+    fallback
+        .arms
+        .iter()
+        .enumerate()
+        .map(|(index, fallback)| CompilerMatchArmPayload {
+            source,
+            syntax: syntax_match_arm_for_fallback(&syntax_arms, index, fallback),
+            fallback,
+        })
+        .collect()
+}
+
 impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
@@ -149,6 +168,25 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(super) fn let_initializer_match_arm_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let StmtKind::Let {
+            value: Some(value), ..
+        } = &self.fallback.kind
+        else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &value.kind else {
+            return None;
+        };
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_let()?.initializer()?.as_match()?,
+            match_expr,
+        ))
+    }
+
     pub(super) fn return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
@@ -172,6 +210,26 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .expression()?
                 .as_block()?,
             block,
+        ))
+    }
+
+    pub(super) fn return_value_match_arm_payloads(
+        &self,
+    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let StmtKind::Return(Some(value)) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &value.kind else {
+            return None;
+        };
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.syntax
+                .as_ref()?
+                .as_return()?
+                .expression()?
+                .as_match()?,
+            match_expr,
         ))
     }
 
@@ -253,19 +311,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return None;
         };
-        let syntax_arms = self.syntax.as_ref()?.as_match()?.arms();
-        Some(
-            match_expr
-                .arms
-                .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerMatchArmPayload {
-                    source: self.source,
-                    syntax: syntax_match_arm_for_fallback(&syntax_arms, index, fallback),
-                    fallback,
-                })
-                .collect(),
-        )
+        Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_match()?,
+            match_expr,
+        ))
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {

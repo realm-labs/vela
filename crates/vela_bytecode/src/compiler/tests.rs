@@ -177,6 +177,48 @@ fn assert_cst_match_arm_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
+fn assert_cst_let_initializer_match_arm_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .flat_map(|statement| {
+            statement
+                .let_initializer_match_arm_payloads()
+                .unwrap_or_default()
+        })
+        .filter_map(|arm| {
+            let _syntax_arm = arm.syntax_arm()?;
+            let body = arm.body_block_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_return_value_match_arm_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .flat_map(|statement| {
+            statement
+                .return_value_match_arm_payloads()
+                .unwrap_or_default()
+        })
+        .filter_map(|arm| {
+            let _syntax_arm = arm.syntax_arm()?;
+            let body = arm.body_block_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
 fn assert_cst_let_initializer_block_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -562,6 +604,75 @@ fn block_values() {
     );
 
     compile_program_source(source, text).expect("CST-backed block value bodies should compile");
+}
+
+#[test]
+fn semantic_function_match_value_expressions_have_cst_arm_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose(input) {
+    let total = match input {
+        0 => {
+            let base = 1;
+            base
+        },
+        _ => {
+            let fallback = input;
+            fallback
+        },
+    };
+    return match total {
+        1 => {
+            let next = total + 1;
+            next
+        },
+        _ => {
+            total
+        },
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+    assert_cst_let_initializers(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Match,
+            "match input {\n        0 => {\n            let base = 1;\n            base\n        },\n        _ => {\n            let fallback = input;\n            fallback\n        },\n    }",
+        )],
+    );
+    assert_cst_return_values(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Match,
+            "match total {\n        1 => {\n            let next = total + 1;\n            next\n        },\n        _ => {\n            total\n        },\n    }",
+        )],
+    );
+    assert_cst_let_initializer_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let base = 1;"),
+                (SyntaxStatementKind::Expr, "base"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let fallback = input;"),
+                (SyntaxStatementKind::Expr, "fallback"),
+            ],
+        ],
+    );
+    assert_cst_return_value_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let next = total + 1;"),
+                (SyntaxStatementKind::Expr, "next"),
+            ],
+            vec![(SyntaxStatementKind::Expr, "total")],
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed match value arms should compile");
 }
 
 #[test]

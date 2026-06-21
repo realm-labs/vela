@@ -115,12 +115,14 @@ impl Compiler<'_, '_> {
                 stmt.fallback(),
                 stmt.let_initializer_kind(),
                 stmt.let_initializer_block_body_payload(),
+                stmt.let_initializer_match_arm_payloads(),
             )
         } else if kind == SyntaxStatementKind::Return {
             self.compile_return_statement(
                 stmt.fallback(),
                 stmt.return_value_kind(),
                 stmt.return_value_block_body_payload(),
+                stmt.return_value_match_arm_payloads(),
             )
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(
@@ -198,8 +200,8 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
     ) -> CompileResult<bool> {
         match kind {
-            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None, None),
-            SyntaxStatementKind::Return => self.compile_return_statement(stmt, None, None),
+            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None, None, None),
+            SyntaxStatementKind::Return => self.compile_return_statement(stmt, None, None, None),
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -243,6 +245,7 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
         initializer_kind: Option<SyntaxExpressionKind>,
         initializer_body: Option<CompilerBodyPayload<'_>>,
+        initializer_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
     ) -> CompileResult<bool> {
         let StmtKind::Let {
             name,
@@ -288,6 +291,7 @@ impl Compiler<'_, '_> {
                 TypeContractContext::TypedLet { name: name.clone() },
                 initializer_kind,
                 initializer_body.as_ref(),
+                initializer_match_arms.as_deref(),
             )?
         } else {
             (self.emit_constant(Constant::Null)?, false)
@@ -340,12 +344,18 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
         value_kind: Option<SyntaxExpressionKind>,
         value_body: Option<CompilerBodyPayload<'_>>,
+        value_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
     ) -> CompileResult<bool> {
         let StmtKind::Return(value) = &stmt.kind else {
             return self.compile_statement(stmt);
         };
-        let (register, returned) =
-            self.compile_return_value(stmt.span, value.as_ref(), value_kind, value_body.as_ref())?;
+        let (register, returned) = self.compile_return_value(
+            stmt.span,
+            value.as_ref(),
+            value_kind,
+            value_body.as_ref(),
+            value_match_arms.as_deref(),
+        )?;
         if !returned {
             self.emit(UnlinkedInstructionKind::Return { src: register });
         }
@@ -430,6 +440,7 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         syntax_kind: Option<SyntaxExpressionKind>,
         body_payload: Option<&CompilerBodyPayload<'_>>,
+        match_arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<(Register, bool)> {
         if let Some(kind) = syntax_kind
             && value_expression_kind_matches(kind, value)
@@ -440,6 +451,7 @@ impl Compiler<'_, '_> {
                 context,
                 kind,
                 body_payload,
+                match_arm_payloads,
             );
         }
         self.compile_let_initializer_legacy(value, expected, context)
@@ -452,6 +464,7 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         kind: SyntaxExpressionKind,
         body_payload: Option<&CompilerBodyPayload<'_>>,
+        match_arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<(Register, bool)> {
         match kind {
             SyntaxExpressionKind::Block => {
@@ -488,7 +501,8 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match initializer kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = self.compile_match_value_to(match_expr, dst)?;
+                let returned =
+                    self.compile_match_value_with_payloads(match_expr, dst, match_arm_payloads)?;
                 Ok((dst, returned))
             }
             _ => self.compile_let_initializer_legacy(value, expected, context),
@@ -541,6 +555,7 @@ impl Compiler<'_, '_> {
         value: Option<&Expr>,
         syntax_kind: Option<SyntaxExpressionKind>,
         body_payload: Option<&CompilerBodyPayload<'_>>,
+        match_arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<(Register, bool)> {
         match (value, self.return_type.clone()) {
             (Some(value), Some(expected)) => self.compile_return_expr(
@@ -549,6 +564,7 @@ impl Compiler<'_, '_> {
                 TypeContractContext::Return,
                 syntax_kind,
                 body_payload,
+                match_arm_payloads,
             ),
             (Some(value), None) => self.compile_return_expr(
                 value,
@@ -556,6 +572,7 @@ impl Compiler<'_, '_> {
                 TypeContractContext::Return,
                 syntax_kind,
                 body_payload,
+                match_arm_payloads,
             ),
             (None, Some(expected)) => {
                 check_expected_type(
@@ -582,6 +599,7 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         syntax_kind: Option<SyntaxExpressionKind>,
         body_payload: Option<&CompilerBodyPayload<'_>>,
+        match_arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<(Register, bool)> {
         if let Some(kind) = syntax_kind
             && value_expression_kind_matches(kind, value)
@@ -592,6 +610,7 @@ impl Compiler<'_, '_> {
                 context,
                 kind,
                 body_payload,
+                match_arm_payloads,
             );
         }
         self.compile_return_expr_legacy(value, expected, context)
@@ -604,6 +623,7 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         kind: SyntaxExpressionKind,
         body_payload: Option<&CompilerBodyPayload<'_>>,
+        match_arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<(Register, bool)> {
         match kind {
             SyntaxExpressionKind::Block => {
@@ -640,7 +660,8 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match return value kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = self.compile_match_value_to(match_expr, dst)?;
+                let returned =
+                    self.compile_match_value_with_payloads(match_expr, dst, match_arm_payloads)?;
                 Ok((dst, returned))
             }
             _ => self.compile_return_expr_legacy(value, expected, context),
@@ -1043,13 +1064,22 @@ impl Compiler<'_, '_> {
         match_expr: &MatchExpr,
         dst: Register,
     ) -> CompileResult<bool> {
+        self.compile_match_value_with_payloads(match_expr, dst, None)
+    }
+
+    fn compile_match_value_with_payloads(
+        &mut self,
+        match_expr: &MatchExpr,
+        dst: Register,
+        arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
+    ) -> CompileResult<bool> {
         let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
         let mut has_catch_all = false;
 
-        for arm in &match_expr.arms {
+        for (index, arm) in match_expr.arms.iter().enumerate() {
             let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
@@ -1066,7 +1096,8 @@ impl Compiler<'_, '_> {
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
             }
-            let arm_returned = self.compile_match_arm_value_to(&arm.body, dst)?;
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let arm_returned = self.compile_match_arm_value_to(&arm.body, arm_payload, dst)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
@@ -1105,7 +1136,15 @@ impl Compiler<'_, '_> {
         Ok(Some(self.emit_jump_if_false(condition)))
     }
 
-    fn compile_match_arm_value_to(&mut self, body: &Expr, dst: Register) -> CompileResult<bool> {
+    fn compile_match_arm_value_to(
+        &mut self,
+        body: &Expr,
+        payload: Option<&CompilerMatchArmPayload<'_>>,
+        dst: Register,
+    ) -> CompileResult<bool> {
+        if let Some(body) = payload.and_then(CompilerMatchArmPayload::body_block_payload) {
+            return self.compile_block_payload_value_to(&body, dst);
+        }
         match &body.kind {
             ExprKind::Block(block) => self.compile_block_value_to(block, dst),
             _ => {
