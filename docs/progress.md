@@ -398,6 +398,8 @@ Generic expression statements now forward their rowan expression payloads into
 bytecode expression lowering, so non-call/non-assignment statement forms such
 as index, array, and interpolated literal expressions preserve nested CST body
 payloads instead of dropping to the old expression-only path.
+Path expression lowering now prefers rowan CST path segments for aligned
+expression payloads before falling back to temporary legacy path vectors.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -11,6 +11,7 @@ mod if_conditions;
 mod interpolated;
 mod lambdas;
 mod match_arms;
+mod path_expressions;
 mod wrappers;
 
 #[test]

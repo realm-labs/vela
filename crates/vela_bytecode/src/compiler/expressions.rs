@@ -86,6 +86,13 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok(dst)
             }
+            SyntaxExpressionKind::Path => {
+                let ExprKind::Path(path) = &expr.kind else {
+                    unreachable!("validated CST path expression payload kind");
+                };
+                let path = payload.path_segments().unwrap_or_else(|| path.to_owned());
+                self.compile_path_expr(expr.span, &path)
+            }
             SyntaxExpressionKind::Array => {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");

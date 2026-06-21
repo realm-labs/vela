@@ -69,6 +69,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    pub(in crate::compiler) fn path_segments(&self) -> Option<Vec<String>> {
+        let ExprKind::Path(_) = &self.fallback.kind else {
+            return None;
+        };
+        let segments = self.syntax.as_ref()?.as_path()?.path_segments();
+        (!segments.is_empty()).then_some(segments)
+    }
+
     pub(in crate::compiler) fn paren_inner_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
