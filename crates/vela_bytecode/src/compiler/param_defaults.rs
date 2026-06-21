@@ -1,51 +1,376 @@
 use vela_common::{SourceId, Span};
-use vela_syntax::ast::{AstNode, Expr, SyntaxExpression};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Expr, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
+    UnaryOp,
+};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
+use crate::{Register, UnlinkedInstructionKind};
+
+use super::const_eval::{compile_literal_constant, compile_negated_literal_constant};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct ParamDefaultValue<'ast> {
+pub(super) struct ParamDefaultValue {
     pub(super) source: SourceId,
     pub(super) expression: SyntaxExpression,
-    pub(super) fallback: &'ast Expr,
+    fallback: Expr,
 }
 
-impl<'ast> ParamDefaultValue<'ast> {
-    #[must_use]
-    pub(super) fn fallback(&self) -> &'ast Expr {
-        self.fallback
-    }
-
-    #[must_use]
-    pub(super) fn compiler_payload(&self) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::syntax(self.source, self.expression.clone(), self.fallback)
-    }
-}
-
-pub(super) fn attach_param_default_fallbacks<'ast>(
+pub(super) fn param_default_values(
     syntax_defaults: &[Option<ParamDefaultExpression>],
-    legacy_defaults: &[Option<&'ast Expr>],
-) -> Vec<Option<ParamDefaultValue<'ast>>> {
+    legacy_defaults: &[Option<&Expr>],
+) -> Vec<Option<ParamDefaultValue>> {
     syntax_defaults
         .iter()
         .enumerate()
         .map(|(index, syntax_default)| {
             let syntax_default = syntax_default.clone()?;
-            let legacy = legacy_defaults.get(index).copied().flatten()?;
+            let fallback = legacy_defaults.get(index).copied().flatten()?;
             if !syntax_range_overlaps_span(
                 syntax_default.expression.syntax().text_range(),
-                legacy.span,
+                fallback.span,
             ) {
                 return None;
             }
             Some(ParamDefaultValue {
                 source: syntax_default.source,
                 expression: syntax_default.expression,
-                fallback: legacy,
+                fallback: fallback.clone(),
             })
         })
         .collect()
+}
+
+impl Compiler<'_, '_> {
+    pub(super) fn compile_param_default_value(
+        &mut self,
+        default: &ParamDefaultValue,
+    ) -> CompileResult<Register> {
+        if param_default_cst_lowering_covers(&default.expression) {
+            return self.compile_param_default_expression(default.source, &default.expression);
+        }
+        let payload = CompilerExpressionPayload::syntax(
+            default.source,
+            default.expression.clone(),
+            &default.fallback,
+        );
+        self.compile_expr_with_payload(&default.fallback, Some(&payload))
+    }
+
+    fn compile_param_default_expression(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Register> {
+        match expression.expression_kind() {
+            SyntaxExpressionKind::Literal => {
+                let Some(literal) = expression
+                    .as_literal()
+                    .and_then(|literal| literal.literal())
+                else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_literal(source, expression, &literal)
+            }
+            SyntaxExpressionKind::Path => {
+                let Some(path) = expression.as_path() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_path_expr(span_for(source, expression), &path.path_segments())
+            }
+            SyntaxExpressionKind::Paren => {
+                let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_expression(source, &inner)
+            }
+            SyntaxExpressionKind::Unary => {
+                let Some(unary) = expression.as_unary() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(op) = unary.operator() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(operand) = unary.expression() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_unary(source, expression, op, &operand)
+            }
+            SyntaxExpressionKind::Binary => {
+                let Some(binary) = expression.as_binary() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(op) = binary.operator() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(left) = binary.lhs() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let Some(right) = binary.rhs() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_binary(source, expression, op, &left, &right)
+            }
+            SyntaxExpressionKind::Array => {
+                let Some(array) = expression.as_array() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let elements = array
+                    .expressions()
+                    .map(|element| self.compile_param_default_expression(source, &element))
+                    .collect::<CompileResult<Vec<_>>>()?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Map => {
+                let Some(map) = expression.as_map() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let entries = map
+                    .entries()
+                    .map(|entry| self.compile_param_default_map_entry(source, &entry))
+                    .collect::<CompileResult<Vec<_>>>()?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Assign
+            | SyntaxExpressionKind::Field
+            | SyntaxExpressionKind::Call
+            | SyntaxExpressionKind::Index
+            | SyntaxExpressionKind::Try
+            | SyntaxExpressionKind::Record
+            | SyntaxExpressionKind::Lambda
+            | SyntaxExpressionKind::Block
+            | SyntaxExpressionKind::If
+            | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
+        }
+    }
+
+    fn compile_param_default_literal(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        literal: &Literal,
+    ) -> CompileResult<Register> {
+        let span = span_for(source, expression);
+        let constant = compile_literal_constant(literal).map_err(|error| error.with_span(span))?;
+        self.emit_constant(constant)
+    }
+
+    fn compile_param_default_unary(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        op: UnaryOp,
+        operand: &SyntaxExpression,
+    ) -> CompileResult<Register> {
+        let span = span_for(source, expression);
+        if op == UnaryOp::Negate
+            && let Some(literal) = operand.as_literal().and_then(|literal| literal.literal())
+            && let Some(constant) = compile_negated_literal_constant(&literal)
+                .map_err(|error| error.with_span(span_for(source, operand)))?
+        {
+            return self.emit_constant(constant);
+        }
+        let src = self.compile_param_default_expression(source, operand)?;
+        let dst = self.alloc_register()?;
+        let instruction = match op {
+            UnaryOp::Not => UnlinkedInstructionKind::Not { dst, src },
+            UnaryOp::Negate => UnlinkedInstructionKind::Negate { dst, src },
+        };
+        self.emit_spanned(instruction, span);
+        Ok(dst)
+    }
+
+    fn compile_param_default_binary(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        op: BinaryOp,
+        left: &SyntaxExpression,
+        right: &SyntaxExpression,
+    ) -> CompileResult<Register> {
+        if matches!(
+            op,
+            BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And
+        ) {
+            return Err(param_default_unsupported(source, expression));
+        }
+        let lhs = self.compile_param_default_expression(source, left)?;
+        let rhs = self.compile_param_default_expression(source, right)?;
+        let dst = self.alloc_register()?;
+        let instruction = match op {
+            BinaryOp::Add => UnlinkedInstructionKind::Add { dst, lhs, rhs },
+            BinaryOp::Sub => UnlinkedInstructionKind::Sub { dst, lhs, rhs },
+            BinaryOp::Mul => UnlinkedInstructionKind::Mul { dst, lhs, rhs },
+            BinaryOp::Div => UnlinkedInstructionKind::Div { dst, lhs, rhs },
+            BinaryOp::Rem => UnlinkedInstructionKind::Rem { dst, lhs, rhs },
+            BinaryOp::Equal => UnlinkedInstructionKind::Equal { dst, lhs, rhs },
+            BinaryOp::NotEqual => UnlinkedInstructionKind::NotEqual { dst, lhs, rhs },
+            BinaryOp::IdentityEqual => UnlinkedInstructionKind::IdentityEqual { dst, lhs, rhs },
+            BinaryOp::IdentityNotEqual => {
+                UnlinkedInstructionKind::IdentityNotEqual { dst, lhs, rhs }
+            }
+            BinaryOp::Less => UnlinkedInstructionKind::Less { dst, lhs, rhs },
+            BinaryOp::LessEqual => UnlinkedInstructionKind::LessEqual { dst, lhs, rhs },
+            BinaryOp::Greater => UnlinkedInstructionKind::Greater { dst, lhs, rhs },
+            BinaryOp::GreaterEqual => UnlinkedInstructionKind::GreaterEqual { dst, lhs, rhs },
+            BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => {
+                unreachable!("unsupported binary operators were rejected before compiling operands")
+            }
+        };
+        self.emit_spanned(instruction, span_for(source, expression));
+        Ok(dst)
+    }
+
+    fn compile_param_default_map_entry(
+        &mut self,
+        source: SourceId,
+        entry: &SyntaxMapEntry,
+    ) -> CompileResult<(String, Register)> {
+        let Some(key) = entry.key() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "parameter default map key",
+            ))
+            .with_span(span_for_range(source, entry.syntax().text_range())));
+        };
+        let Some(value) = entry.value() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "parameter default map value",
+            ))
+            .with_span(span_for_range(source, entry.syntax().text_range())));
+        };
+        let key = syntax_map_key_name(source, &key)?;
+        let value = self.compile_param_default_expression(source, &value)?;
+        Ok((key, value))
+    }
+}
+
+fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
+    match expression.expression_kind() {
+        SyntaxExpressionKind::Literal | SyntaxExpressionKind::Path => true,
+        SyntaxExpressionKind::Paren => expression
+            .as_paren()
+            .and_then(|paren| paren.expression())
+            .is_some_and(|inner| param_default_cst_lowering_covers(&inner)),
+        SyntaxExpressionKind::Unary => {
+            let Some(unary) = expression.as_unary() else {
+                return false;
+            };
+            unary.operator().is_some()
+                && unary
+                    .expression()
+                    .is_some_and(|operand| param_default_cst_lowering_covers(&operand))
+        }
+        SyntaxExpressionKind::Binary => {
+            let Some(binary) = expression.as_binary() else {
+                return false;
+            };
+            let Some(op) = binary.operator() else {
+                return false;
+            };
+            !matches!(
+                op,
+                BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And
+            ) && binary
+                .lhs()
+                .is_some_and(|left| param_default_cst_lowering_covers(&left))
+                && binary
+                    .rhs()
+                    .is_some_and(|right| param_default_cst_lowering_covers(&right))
+        }
+        SyntaxExpressionKind::Array => expression.as_array().is_some_and(|array| {
+            array
+                .expressions()
+                .all(|element| param_default_cst_lowering_covers(&element))
+        }),
+        SyntaxExpressionKind::Map => expression.as_map().is_some_and(|map| {
+            map.entries().all(|entry| {
+                entry
+                    .key()
+                    .is_some_and(|key| syntax_map_key_supported(&key))
+                    && entry
+                        .value()
+                        .is_some_and(|value| param_default_cst_lowering_covers(&value))
+            })
+        }),
+        SyntaxExpressionKind::Assign
+        | SyntaxExpressionKind::Field
+        | SyntaxExpressionKind::Call
+        | SyntaxExpressionKind::Index
+        | SyntaxExpressionKind::Try
+        | SyntaxExpressionKind::Record
+        | SyntaxExpressionKind::Lambda
+        | SyntaxExpressionKind::Block
+        | SyntaxExpressionKind::If
+        | SyntaxExpressionKind::Match => false,
+    }
+}
+
+fn syntax_map_key_supported(key: &SyntaxExpression) -> bool {
+    match key.expression_kind() {
+        SyntaxExpressionKind::Literal => key
+            .as_literal()
+            .and_then(|literal| literal.literal())
+            .is_some_and(|literal| {
+                matches!(
+                    literal,
+                    Literal::String(_) | Literal::Char(_) | Literal::Integer(_) | Literal::Float(_)
+                )
+            }),
+        SyntaxExpressionKind::Path => key
+            .as_path()
+            .is_some_and(|path| !path.path_segments().is_empty()),
+        _ => false,
+    }
+}
+
+fn syntax_map_key_name(source: SourceId, key: &SyntaxExpression) -> CompileResult<String> {
+    match key.expression_kind() {
+        SyntaxExpressionKind::Literal => {
+            let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {
+                return Err(param_default_unsupported(source, key));
+            };
+            match literal {
+                Literal::String(value) => Ok(value),
+                Literal::Char(value) => Ok(value.to_string()),
+                Literal::Integer(value) => Ok(value.source_text_with_suffix()),
+                Literal::Float(value) => Ok(value.source_text_with_suffix()),
+                _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "parameter default map key",
+                ))
+                .with_span(span_for(source, key))),
+            }
+        }
+        SyntaxExpressionKind::Path => key
+            .as_path()
+            .map(|path| path.path_segments().join("::"))
+            .filter(|path| !path.is_empty())
+            .ok_or_else(|| param_default_unsupported(source, key)),
+        _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "parameter default map key",
+        ))
+        .with_span(span_for(source, key))),
+    }
+}
+
+fn param_default_unsupported(source: SourceId, expression: &SyntaxExpression) -> CompileError {
+    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        "parameter default expression",
+    ))
+    .with_span(span_for(source, expression))
+}
+
+fn span_for(source: SourceId, expression: &SyntaxExpression) -> Span {
+    span_for_range(source, expression.syntax().text_range())
+}
+
+fn span_for_range(source: SourceId, range: vela_syntax::TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
@@ -57,15 +382,15 @@ fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool
 #[cfg(test)]
 mod tests {
     use vela_common::{SourceId, Span};
-    use vela_syntax::ast::{Expr, ExprKind};
+    use vela_syntax::ast::{AstNode, Expr, ExprKind};
     use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
     use crate::compiler::syntax_payloads::ParamDefaultExpression;
 
-    use super::attach_param_default_fallbacks;
+    use super::param_default_values;
 
     #[test]
-    fn mismatched_param_defaults_do_not_pair_by_index() {
+    fn param_default_values_keep_cst_expression_payloads() {
         let source = SourceId::new(1);
         let text = r#"
 fn cst(first = 1) {
@@ -78,10 +403,6 @@ fn cst(first = 1) {
             .functions()
             .find(|function| function.name_text().as_deref() == Some("cst"))
             .expect("CST function");
-        let fallback_expr = Expr {
-            kind: ExprKind::Error,
-            span: Span::new(source, 1000, 1001),
-        };
         let syntax_expression = cst_function
             .param_list()
             .and_then(|params| params.params().next())
@@ -91,9 +412,55 @@ fn cst(first = 1) {
             source,
             expression: syntax_expression,
         })];
-        let fallback_defaults = vec![Some(&fallback_expr)];
+        let fallback_expr = Expr {
+            kind: ExprKind::Error,
+            span: Span::new(source, 16, 17),
+        };
 
-        let defaults = attach_param_default_fallbacks(&syntax_defaults, &fallback_defaults);
+        let defaults = param_default_values(&syntax_defaults, &[Some(&fallback_expr)]);
+
+        assert_eq!(defaults.len(), 1);
+        assert_eq!(
+            defaults[0]
+                .as_ref()
+                .expect("default")
+                .expression
+                .syntax()
+                .text()
+                .to_string(),
+            "1"
+        );
+    }
+
+    #[test]
+    fn mismatched_param_defaults_do_not_pair_by_index() {
+        let source = SourceId::new(1);
+        let text = r#"
+fn cst(first = 1) {
+    return first;
+}
+"#;
+        let parsed = parse_syntax_source(source, text);
+        let cst_function = parsed
+            .tree()
+            .functions()
+            .find(|function| function.name_text().as_deref() == Some("cst"))
+            .expect("CST function");
+        let syntax_expression = cst_function
+            .param_list()
+            .and_then(|params| params.params().next())
+            .and_then(|param| param.default_value())
+            .expect("default expression");
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: syntax_expression,
+        })];
+        let fallback_expr = Expr {
+            kind: ExprKind::Error,
+            span: Span::new(source, 1000, 1001),
+        };
+
+        let defaults = param_default_values(&syntax_defaults, &[Some(&fallback_expr)]);
 
         assert_eq!(defaults.len(), 1);
         assert!(

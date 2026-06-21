@@ -679,6 +679,33 @@ fn main() {
 }
 
 #[test]
+fn runs_complex_parameter_default_expressions() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn double(value) {
+    return value * 2;
+}
+
+fn grant(base, amount = double(base), bonus = amount + double(1)) {
+    return base + amount + bonus;
+}
+
+fn main() {
+    return grant(base = 4);
+}
+"#,
+    )
+    .expect("complex parameter default expressions should compile");
+    let mut budget = ExecutionBudget::unbounded();
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(22)))
+    );
+}
+
+#[test]
 fn runs_entrypoint_parameter_defaults() {
     let code = compile_function_source(
         SourceId::new(1),

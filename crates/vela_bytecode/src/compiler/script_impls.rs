@@ -10,7 +10,7 @@ use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::legacy_payloads::LegacySourceFallback;
-use super::param_defaults::{ParamDefaultValue, attach_param_default_fallbacks};
+use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct ScriptImplMethod<'ast> {
@@ -18,14 +18,14 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) method_name: String,
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
-    pub(super) default_values: Vec<Option<ParamDefaultValue<'ast>>>,
+    pub(super) default_values: Vec<Option<ParamDefaultValue>>,
     pub(super) body: CompilerBodyPayload<'ast>,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
 }
 
 struct MethodBodyPayload<'ast> {
-    default_values: Vec<Option<ParamDefaultValue<'ast>>>,
+    default_values: Vec<Option<ParamDefaultValue>>,
     body: CompilerBodyPayload<'ast>,
 }
 
@@ -266,7 +266,7 @@ fn impl_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: attach_param_default_fallbacks(
+                    default_values: param_default_values(
                         &param_default_expressions(
                             source,
                             syntax_method.param_list(),
@@ -305,7 +305,7 @@ fn trait_default_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: attach_param_default_fallbacks(
+                    default_values: param_default_values(
                         &param_default_expressions(
                             source,
                             syntax_method.param_list(),

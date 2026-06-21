@@ -120,14 +120,8 @@ fn grant(base, amount = 10, bonus = amount + 1) {
     let bonus_default = payload.param_defaults[2]
         .as_ref()
         .expect("bonus default payload");
-    let compiler_payload = bonus_default.compiler_payload();
     assert_eq!(
-        compiler_payload
-            .syntax_expression()
-            .expect("default compiler payload syntax")
-            .syntax()
-            .text()
-            .to_string(),
+        bonus_default.expression.syntax().text().to_string(),
         "amount + 1",
     );
 
@@ -172,16 +166,7 @@ impl Counter {
     let amount_default = method.default_values[1]
         .as_ref()
         .expect("amount default payload");
-    let compiler_payload = amount_default.compiler_payload();
-    assert_eq!(
-        compiler_payload
-            .syntax_expression()
-            .expect("method default compiler payload syntax")
-            .syntax()
-            .text()
-            .to_string(),
-        "1",
-    );
+    assert_eq!(amount_default.expression.syntax().text().to_string(), "1",);
 }
 
 #[test]

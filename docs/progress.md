@@ -274,24 +274,24 @@ body blocks alongside the temporary legacy owned-AST fallback. Bytecode const
 value discovery now reads HIR const declarations in source order and evaluates
 initializer expression payloads from the rowan CST. Bytecode script impl method
 records now read names, signatures, explicit/default method metadata, and stable
-dispatch identity from HIR impl and trait shapes, leaving the legacy owned AST
-only as the temporary method body and runtime default-expression compiler
-fallback.
+dispatch identity from HIR impl and trait shapes.
 Script impl fallback method extraction now lives behind the bytecode legacy
 payload boundary, so script impl lowering consumes the temporary fallback
 wrapper without directly traversing old owned-AST impl or trait items. Function,
 method, and trait default parameter-expression discovery now lives in the
 rowan syntax payload boundary and keys CST payloads from HIR signature spans;
-the legacy boundary only provides the temporary fallback expressions that are
-still span-checked before compilation. Schema default-expression payload
+parameter default lowering now compiles supported literal, path, unary, binary,
+array, and map defaults directly from rowan CST payloads and keeps the
+temporary legacy owned-AST fallback only for default expression forms that do
+not yet have direct CST lowering. Schema default-expression payload
 matching now stays on rowan CST field and variant wrappers, so semantic
 orchestration no longer requests temporary owned parsed source data for schema
 defaults and the legacy payload boundary no longer owns schema default
 matching.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
-function body and parameter default-expression fallback behind a dedicated
-compiler payload boundary. Top-level functions, script methods, and trait
-default methods now enter bytecode compilation through a shared
+function body and complex parameter default-expression fallback behind
+dedicated compiler payload boundaries. Top-level functions, script methods,
+and trait default methods now enter bytecode compilation through a shared
 `CompilerBodyPayload` that carries the rowan CST body block plus the temporary
 legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.

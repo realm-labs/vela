@@ -704,7 +704,7 @@ struct Compiler<'ast, 'registry> {
     value_shapes: ValueShapeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
-    param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
+    param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
     body: CompilerBodyPayload<'ast>,
     facts: CompilerFacts<'registry>,
@@ -715,7 +715,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn new_with_param_defaults(
         code_name: String,
         body: CompilerBodyPayload<'ast>,
-        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
@@ -725,7 +725,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_body(
         code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
@@ -825,7 +825,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_script_method_body(
         code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
+        param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
@@ -993,9 +993,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             );
             let skip_default = self.emit_jump_if_not_missing(param);
-            let default_payload = default_value.compiler_payload();
-            let value =
-                self.compile_expr_with_payload(default_value.fallback(), Some(&default_payload))?;
+            let value = self.compile_param_default_value(&default_value)?;
             self.emit(UnlinkedInstructionKind::Move {
                 dst: param,
                 src: value,
