@@ -15,9 +15,11 @@ impl Compiler<'_, '_> {
         condition_operator: Option<BinaryOp>,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
-        if let Some(jump) =
-            self.try_emit_i64_immediate_jump_if_false(condition, condition_operator)?
-        {
+        if let Some(jump) = self.try_emit_i64_immediate_jump_if_false(
+            condition,
+            condition_operator,
+            condition_payload,
+        )? {
             return Ok(jump);
         }
         let condition = self.compile_expr_with_payload(condition, condition_payload)?;
@@ -28,10 +30,14 @@ impl Compiler<'_, '_> {
         &mut self,
         condition: &Expr,
         condition_operator: Option<BinaryOp>,
+        condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<usize>> {
         let ExprKind::Binary { left, right, .. } = &condition.kind else {
             return Ok(None);
         };
+        let operand_payloads =
+            condition_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+        let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
         let Some(op) =
             condition_operator_for_fallback(condition_operator, condition).and_then(i64_compare_op)
         else {
@@ -45,7 +51,7 @@ impl Compiler<'_, '_> {
         let Some(imm) = self.i64_literal_value(right)? else {
             return Ok(None);
         };
-        let lhs = self.compile_expr(left)?;
+        let lhs = self.compile_expr_with_payload(left, left_payload)?;
         let offset = self.current_offset();
         self.emit(UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
             op,

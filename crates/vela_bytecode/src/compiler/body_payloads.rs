@@ -700,6 +700,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    #[cfg(test)]
+    pub(super) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
+        self.syntax.as_ref()
+    }
+
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let ExprKind::Block(block) = &self.fallback.kind else {
             return None;
