@@ -1,7 +1,9 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
-use crate::lexer::lex;
+use crate::ast::{FloatLiteral, IntegerLiteral};
+use crate::parse::parse_source_with_id;
 use crate::token::{Keyword, Symbol, TokenKind};
+use crate::{SyntaxKind, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormatElementStream {
@@ -69,25 +71,27 @@ impl TriviaKind {
 
 #[must_use]
 pub fn extract_format_elements(source: SourceId, text: &str) -> FormatElementStream {
-    let lexed = lex(source, text);
+    let parsed = parse_source_with_id(source, text);
     let mut elements = Vec::new();
-    let mut cursor = 0_usize;
-
-    for token in &lexed.tokens {
-        let token_start = token.span.start as usize;
-        let token_end = token.span.end as usize;
-        push_trivia_segments(source, text, cursor, token_start, &mut elements);
-        elements.push(FormatElement {
-            kind: FormatElementKind::Token(token.kind.clone()),
-            span: token.span,
-            text: slice(text, token_start, token_end).to_owned(),
-        });
-        cursor = token_end;
+    for token in parsed
+        .syntax_node()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+    {
+        if let Some(element) = format_element_for_token(source, &token) {
+            elements.push(element);
+        }
     }
+    let end = u32::try_from(text.len()).unwrap_or(u32::MAX);
+    elements.push(FormatElement {
+        kind: FormatElementKind::Token(TokenKind::Eof),
+        span: Span::new(source, end, end),
+        text: String::new(),
+    });
 
     FormatElementStream {
         elements,
-        diagnostics: lexed.diagnostics,
+        diagnostics: parsed.into_diagnostics(),
     }
 }
 
@@ -634,132 +638,122 @@ fn is_assignment_or_binary_symbol(symbol: Symbol) -> bool {
     )
 }
 
-fn push_trivia_segments(
-    source: SourceId,
-    text: &str,
-    mut cursor: usize,
-    end: usize,
-    elements: &mut Vec<FormatElement>,
-) {
-    while cursor < end {
-        let rest = slice(text, cursor, end);
-        if cursor == 0 && rest.starts_with("#!") {
-            let next = cursor + line_comment_len(rest);
-            push_trivia(source, text, cursor, next, TriviaKind::Shebang, elements);
-            cursor = next;
-        } else if rest.starts_with("//") {
-            let next = cursor + line_comment_len(rest);
-            push_trivia(
-                source,
-                text,
-                cursor,
-                next,
-                TriviaKind::LineComment,
-                elements,
-            );
-            cursor = next;
-        } else if rest.starts_with("/*") {
-            let next = cursor + block_comment_len(rest);
-            push_trivia(
-                source,
-                text,
-                cursor,
-                next,
-                TriviaKind::BlockComment,
-                elements,
-            );
-            cursor = next;
-        } else if let Some(ch) = rest.chars().next() {
-            let kind = if is_layout(ch) {
-                TriviaKind::Whitespace
-            } else {
-                TriviaKind::Unknown
-            };
-            let next = cursor + trivia_run_len(rest, kind);
-            push_trivia(source, text, cursor, next, kind, elements);
-            cursor = next;
-        } else {
-            break;
-        }
+fn format_element_for_token(source: SourceId, token: &SyntaxToken) -> Option<FormatElement> {
+    let kind = format_element_kind(token)?;
+    let range = token.text_range();
+    Some(FormatElement {
+        kind,
+        span: Span::new(source, range.start().into(), range.end().into()),
+        text: token.text().to_owned(),
+    })
+}
+
+fn format_element_kind(token: &SyntaxToken) -> Option<FormatElementKind> {
+    match token.kind() {
+        SyntaxKind::Whitespace => Some(FormatElementKind::Trivia(TriviaKind::Whitespace)),
+        SyntaxKind::LineComment => Some(FormatElementKind::Trivia(TriviaKind::LineComment)),
+        SyntaxKind::BlockComment => Some(FormatElementKind::Trivia(TriviaKind::BlockComment)),
+        SyntaxKind::Shebang => Some(FormatElementKind::Trivia(TriviaKind::Shebang)),
+        SyntaxKind::Unknown => Some(FormatElementKind::Trivia(TriviaKind::Unknown)),
+        SyntaxKind::Eof => Some(FormatElementKind::Token(TokenKind::Eof)),
+        SyntaxKind::Ident => Some(FormatElementKind::Token(TokenKind::Ident(
+            token.text().to_owned(),
+        ))),
+        SyntaxKind::Int => Some(FormatElementKind::Token(TokenKind::Int(
+            IntegerLiteral::unsuffixed(token.text()),
+        ))),
+        SyntaxKind::Float => Some(FormatElementKind::Token(TokenKind::Float(
+            FloatLiteral::unsuffixed(token.text()),
+        ))),
+        SyntaxKind::Char => Some(FormatElementKind::Token(TokenKind::Char('\0'))),
+        SyntaxKind::String => Some(FormatElementKind::Token(TokenKind::String(String::new()))),
+        SyntaxKind::InterpolatedString => Some(FormatElementKind::Token(
+            TokenKind::InterpolatedString(Vec::new()),
+        )),
+        SyntaxKind::Bytes => Some(FormatElementKind::Token(TokenKind::Bytes(Vec::new()))),
+        kind if kind.is_keyword() => keyword_for_syntax(kind)
+            .map(TokenKind::Keyword)
+            .map(FormatElementKind::Token),
+        kind if kind.is_symbol() => symbol_for_syntax(kind)
+            .map(TokenKind::Symbol)
+            .map(FormatElementKind::Token),
+        _ => None,
     }
 }
 
-fn push_trivia(
-    source: SourceId,
-    text: &str,
-    start: usize,
-    end: usize,
-    kind: TriviaKind,
-    elements: &mut Vec<FormatElement>,
-) {
-    elements.push(FormatElement {
-        kind: FormatElementKind::Trivia(kind),
-        span: span(source, start, end),
-        text: slice(text, start, end).to_owned(),
-    });
-}
-
-fn trivia_run_len(text: &str, kind: TriviaKind) -> usize {
+fn keyword_for_syntax(kind: SyntaxKind) -> Option<Keyword> {
     match kind {
-        TriviaKind::Whitespace => text
-            .char_indices()
-            .find_map(|(offset, ch)| (!is_layout(ch)).then_some(offset))
-            .unwrap_or(text.len()),
-        TriviaKind::Unknown => text
-            .char_indices()
-            .skip(1)
-            .find_map(|(offset, ch)| {
-                (is_layout(ch)
-                    || text[offset..].starts_with("//")
-                    || text[offset..].starts_with("/*"))
-                .then_some(offset)
-            })
-            .unwrap_or(text.len()),
-        TriviaKind::LineComment | TriviaKind::BlockComment | TriviaKind::Shebang => text.len(),
+        SyntaxKind::UseKw => Some(Keyword::Use),
+        SyntaxKind::PubKw => Some(Keyword::Pub),
+        SyntaxKind::ConstKw => Some(Keyword::Const),
+        SyntaxKind::GlobalKw => Some(Keyword::Global),
+        SyntaxKind::LetKw => Some(Keyword::Let),
+        SyntaxKind::FnKw => Some(Keyword::Fn),
+        SyntaxKind::StructKw => Some(Keyword::Struct),
+        SyntaxKind::EnumKw => Some(Keyword::Enum),
+        SyntaxKind::TraitKw => Some(Keyword::Trait),
+        SyntaxKind::ImplKw => Some(Keyword::Impl),
+        SyntaxKind::ForKw => Some(Keyword::For),
+        SyntaxKind::IfKw => Some(Keyword::If),
+        SyntaxKind::ElseKw => Some(Keyword::Else),
+        SyntaxKind::MatchKw => Some(Keyword::Match),
+        SyntaxKind::ReturnKw => Some(Keyword::Return),
+        SyntaxKind::BreakKw => Some(Keyword::Break),
+        SyntaxKind::ContinueKw => Some(Keyword::Continue),
+        SyntaxKind::TrueKw => Some(Keyword::True),
+        SyntaxKind::FalseKw => Some(Keyword::False),
+        SyntaxKind::NullKw => Some(Keyword::Null),
+        SyntaxKind::SelfKw => Some(Keyword::SelfValue),
+        SyntaxKind::InKw => Some(Keyword::In),
+        SyntaxKind::AsKw => Some(Keyword::As),
+        _ => None,
     }
 }
 
-fn line_comment_len(text: &str) -> usize {
-    text.find('\n').unwrap_or(text.len())
-}
-
-fn block_comment_len(text: &str) -> usize {
-    let mut depth = 0_u32;
-    let mut cursor = 0_usize;
-    while cursor < text.len() {
-        let rest = &text[cursor..];
-        if rest.starts_with("/*") {
-            depth = depth.saturating_add(1);
-            cursor += 2;
-        } else if rest.starts_with("*/") {
-            cursor += 2;
-            depth = depth.saturating_sub(1);
-            if depth == 0 {
-                return cursor;
-            }
-        } else if let Some(ch) = rest.chars().next() {
-            cursor += ch.len_utf8();
-        } else {
-            break;
-        }
+fn symbol_for_syntax(kind: SyntaxKind) -> Option<Symbol> {
+    match kind {
+        SyntaxKind::Hash => Some(Symbol::Hash),
+        SyntaxKind::LBracket => Some(Symbol::LBracket),
+        SyntaxKind::RBracket => Some(Symbol::RBracket),
+        SyntaxKind::LParen => Some(Symbol::LParen),
+        SyntaxKind::RParen => Some(Symbol::RParen),
+        SyntaxKind::LBrace => Some(Symbol::LBrace),
+        SyntaxKind::RBrace => Some(Symbol::RBrace),
+        SyntaxKind::Comma => Some(Symbol::Comma),
+        SyntaxKind::Dot => Some(Symbol::Dot),
+        SyntaxKind::DotDot => Some(Symbol::DotDot),
+        SyntaxKind::DotDotEqual => Some(Symbol::DotDotEqual),
+        SyntaxKind::Colon => Some(Symbol::Colon),
+        SyntaxKind::ColonColon => Some(Symbol::ColonColon),
+        SyntaxKind::Semicolon => Some(Symbol::Semicolon),
+        SyntaxKind::Arrow => Some(Symbol::Arrow),
+        SyntaxKind::FatArrow => Some(Symbol::FatArrow),
+        SyntaxKind::Equal => Some(Symbol::Equal),
+        SyntaxKind::PlusEqual => Some(Symbol::PlusEqual),
+        SyntaxKind::MinusEqual => Some(Symbol::MinusEqual),
+        SyntaxKind::StarEqual => Some(Symbol::StarEqual),
+        SyntaxKind::SlashEqual => Some(Symbol::SlashEqual),
+        SyntaxKind::PercentEqual => Some(Symbol::PercentEqual),
+        SyntaxKind::Plus => Some(Symbol::Plus),
+        SyntaxKind::Minus => Some(Symbol::Minus),
+        SyntaxKind::Star => Some(Symbol::Star),
+        SyntaxKind::Slash => Some(Symbol::Slash),
+        SyntaxKind::Percent => Some(Symbol::Percent),
+        SyntaxKind::Bang => Some(Symbol::Bang),
+        SyntaxKind::BangEqual => Some(Symbol::BangEqual),
+        SyntaxKind::BangEqualEqual => Some(Symbol::BangEqualEqual),
+        SyntaxKind::EqualEqual => Some(Symbol::EqualEqual),
+        SyntaxKind::EqualEqualEqual => Some(Symbol::EqualEqualEqual),
+        SyntaxKind::Less => Some(Symbol::Less),
+        SyntaxKind::LessEqual => Some(Symbol::LessEqual),
+        SyntaxKind::Greater => Some(Symbol::Greater),
+        SyntaxKind::GreaterEqual => Some(Symbol::GreaterEqual),
+        SyntaxKind::AndAnd => Some(Symbol::AndAnd),
+        SyntaxKind::OrOr => Some(Symbol::OrOr),
+        SyntaxKind::Pipe => Some(Symbol::Pipe),
+        SyntaxKind::Question => Some(Symbol::Question),
+        _ => None,
     }
-    text.len()
-}
-
-fn is_layout(ch: char) -> bool {
-    matches!(ch, ' ' | '\t' | '\r' | '\n')
-}
-
-fn span(source: SourceId, start: usize, end: usize) -> Span {
-    Span::new(source, to_u32(start), to_u32(end))
-}
-
-fn to_u32(value: usize) -> u32 {
-    u32::try_from(value).unwrap_or(u32::MAX)
-}
-
-fn slice(text: &str, start: usize, end: usize) -> &str {
-    text.get(start..end).unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -825,7 +819,7 @@ mod tests {
             stream.elements().first().map(FormatElement::kind),
             Some(FormatElementKind::Trivia(TriviaKind::Shebang))
         ));
-        assert_eq!(stream.elements()[0].span(), Span::new(source_id(), 0, 19));
+        assert_eq!(stream.elements()[0].span(), Span::new(source_id(), 0, 20));
         assert!(stream.elements().iter().any(|element| {
             matches!(
                 element.kind(),

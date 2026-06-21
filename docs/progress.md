@@ -264,6 +264,10 @@ Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and schema default-expression payload extraction behind a
 dedicated compiler payload boundary, keeping semantic orchestration on HIR/CST
 diagnostics while the final expression/body migration continues.
+Formatter element extraction now walks the rowan CST token/trivia stream and
+preserves explicit EOF as formatter state, removing the old lexer-gap
+reconstruction from the production formatting input boundary while the layout
+state machine remains to be replaced by CST/typed-AST formatting rules.
 The rowan parse boundary now validates restricted builtin type arguments and
 non-keyable `Map`/`Set` contracts, and the
 bytecode semantic parse gate uses CST parse diagnostics before falling back to

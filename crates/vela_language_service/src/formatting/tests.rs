@@ -526,9 +526,13 @@ fn formatting_ir_preserves_comments_and_blank_line_groups() {
         })
         .map(FormattingSegment::text)
         .collect::<Vec<_>>();
-    let preserves_blank_line_group = ir.segments().iter().any(|segment| {
-        segment.kind() == FormattingSegmentKind::Whitespace
-            && segment.text().matches('\n').count() >= 2
+    let preserves_blank_line_group = ir.segments().windows(2).any(|segments| {
+        segments[0].kind() == FormattingSegmentKind::Shebang
+            && segments[1].kind() == FormattingSegmentKind::Whitespace
+            && format!("{}{}", segments[0].text(), segments[1].text())
+                .matches('\n')
+                .count()
+                >= 2
     });
 
     assert_eq!(
