@@ -7,10 +7,11 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    Block, ImplItem, ImplKind, ItemKind, SourceFile, SyntaxBlock, SyntaxImplItem, SyntaxSourceFile,
-    SyntaxTraitItem, TraitItem,
+    ImplItem, ImplKind, ItemKind, SourceFile, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem,
+    TraitItem,
 };
 
+use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 
 pub(super) struct ScriptImplMethod<'ast> {
@@ -19,32 +20,14 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
     pub(super) default_values: Vec<Option<ParamDefaultValue>>,
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST body payload is consumed by the upcoming body lowering migration"
-        )
-    )]
-    pub(super) source: vela_common::SourceId,
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST body payload is consumed by the upcoming body lowering migration"
-        )
-    )]
-    pub(super) syntax_body: SyntaxBlock,
-    pub(super) body: &'ast Block,
+    pub(super) body: CompilerBodyPayload<'ast>,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
 }
 
 struct MethodBodyPayload<'ast> {
     default_values: Vec<Option<ParamDefaultValue>>,
-    source: vela_common::SourceId,
-    syntax_body: SyntaxBlock,
-    body: &'ast Block,
+    body: CompilerBodyPayload<'ast>,
 }
 
 pub(super) fn source_methods<'ast>(
@@ -196,9 +179,7 @@ fn collect_methods<'ast>(
                 method_id,
                 symbol,
                 default_values: payload.default_values.clone(),
-                source: payload.source,
-                syntax_body: payload.syntax_body.clone(),
-                body: payload.body,
+                body: payload.body.clone(),
                 signature: &method_metadata.signature,
                 bindings,
             })
@@ -250,9 +231,7 @@ fn collect_default_methods<'ast>(
                 method_id,
                 symbol,
                 default_values: payload.default_values.clone(),
-                source: payload.source,
-                syntax_body: payload.syntax_body.clone(),
-                body: payload.body,
+                body: payload.body.clone(),
                 signature: &method_metadata.signature,
                 bindings,
             })
@@ -287,9 +266,11 @@ fn impl_method_payloads<'ast>(
                                 &method.function.params,
                                 method.function.params.len(),
                             ),
-                            source,
-                            syntax_body,
-                            body: &method.function.body,
+                            body: CompilerBodyPayload::syntax(
+                                source,
+                                syntax_body,
+                                &method.function.body,
+                            ),
                         },
                     ))
                 })
@@ -326,9 +307,7 @@ fn trait_default_method_payloads<'ast>(
                                 &method.params,
                                 method.params.len(),
                             ),
-                            source,
-                            syntax_body,
-                            body,
+                            body: CompilerBodyPayload::syntax(source, syntax_body, body),
                         },
                     ))
                 })

@@ -1,6 +1,7 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
 mod assignments;
+mod body_payloads;
 mod cache_sites;
 mod call_args;
 mod calls;
@@ -42,13 +43,16 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-use vela_syntax::ast::{Argument, Block, Expr, ExprKind, FunctionItem, Param};
+#[cfg(test)]
+use vela_syntax::ast::FunctionItem;
+use vela_syntax::ast::{Argument, Block, Expr, ExprKind, Param};
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
     UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
     UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
+use body_payloads::CompilerBodyPayload;
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -180,7 +184,7 @@ fn compile_function_source_inner<'registry>(
     verify_code_object(
         Compiler::new_with_param_defaults(
             payload.function.name.clone(),
-            payload.function,
+            payload.body,
             payload.param_defaults,
             signature,
             bindings,
@@ -272,7 +276,7 @@ fn compile_program_source_inner<'registry>(
         program.insert_function(
             Compiler::new_with_param_defaults(
                 payload.function.name.clone(),
-                payload.function,
+                payload.body,
                 payload.param_defaults,
                 signature,
                 bindings,
@@ -365,7 +369,7 @@ fn compile_module_sources_inner<'registry>(
         program.insert_function(
             Compiler::new_with_param_defaults(
                 code_name,
-                payload.function,
+                payload.body,
                 payload.param_defaults,
                 signature,
                 bindings,
@@ -701,7 +705,7 @@ struct Compiler<'ast, 'registry> {
     next_register: u16,
     param_defaults: Vec<Option<ParamDefaultValue>>,
     return_type: Option<RuntimeTypeFact>,
-    body: &'ast Block,
+    body: CompilerBodyPayload<'ast>,
     facts: CompilerFacts<'registry>,
     loop_stack: Vec<LoopContext>,
 }
@@ -728,7 +732,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             code_name,
             param_defaults,
             signature,
-            &function.body,
+            CompilerBodyPayload::legacy(&function.body),
             bindings,
             facts,
         )
@@ -736,27 +740,20 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_with_param_defaults(
         code_name: String,
-        function: &'ast FunctionItem,
+        body: CompilerBodyPayload<'ast>,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
-        Self::new_body(
-            code_name,
-            param_defaults,
-            signature,
-            &function.body,
-            bindings,
-            facts,
-        )
+        Self::new_body(code_name, param_defaults, signature, body, bindings, facts)
     }
 
     fn new_body(
         code_name: String,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
-        body: &'ast Block,
+        body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
     ) -> CompileResult<Self> {
@@ -856,7 +853,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         code_name: String,
         param_defaults: Vec<Option<ParamDefaultValue>>,
         signature: &FunctionSignature,
-        body: &'ast Block,
+        body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
         receiver_type: &str,
         facts: CompilerFacts<'registry>,
@@ -989,7 +986,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 .ok_or_else(|| CompileError::new(CompileErrorKind::RegisterOverflow))?,
             param_defaults: vec![None; params.len()],
             return_type: None,
-            body: fallback_body,
+            body: CompilerBodyPayload::legacy(fallback_body),
             facts,
             loop_stack: Vec::new(),
         })
@@ -997,7 +994,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
-        let returned = self.compile_statements(&self.body.statements)?;
+        let returned = self.compile_statements(&self.body.fallback().statements)?;
         if !returned {
             let null = self.emit_constant(Constant::Null)?;
             self.emit(UnlinkedInstructionKind::Return { src: null });

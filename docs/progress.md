@@ -270,7 +270,10 @@ only as the temporary method body and runtime default-expression compiler
 fallback.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and runtime default-expression fallback behind a dedicated
-compiler payload boundary, keeping semantic orchestration on HIR/CST diagnostics
+compiler payload boundary. Top-level functions, script methods, and trait
+default methods now enter bytecode compilation through a shared
+`CompilerBodyPayload` that carries the rowan CST body block plus the temporary
+legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap

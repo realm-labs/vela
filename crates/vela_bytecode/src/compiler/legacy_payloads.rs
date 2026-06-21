@@ -1,27 +1,13 @@
 use vela_common::SourceId;
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile};
+use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile, SyntaxSourceFile};
 
+use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 
 pub(super) struct FunctionBodyPayload<'ast> {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST body payload is consumed by the upcoming body lowering migration"
-        )
-    )]
-    pub(super) source: SourceId,
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST body payload is consumed by the upcoming body lowering migration"
-        )
-    )]
-    pub(super) syntax_body: SyntaxBlock,
+    pub(super) body: CompilerBodyPayload<'ast>,
     pub(super) function: &'ast FunctionItem,
     pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
 }
@@ -46,8 +32,7 @@ pub(super) fn function_body_payload<'ast>(
         signature.params.len(),
     );
     Some(FunctionBodyPayload {
-        source,
-        syntax_body,
+        body: CompilerBodyPayload::syntax(source, syntax_body, &function.body),
         function,
         param_defaults,
     })

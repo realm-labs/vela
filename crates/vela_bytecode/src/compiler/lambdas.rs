@@ -55,7 +55,7 @@ impl Compiler<'_, '_> {
             format!("{}::<lambda@{}>", self.code.name, lambda.span.start),
             lambda.span,
             params,
-            self.body,
+            self.body.fallback(),
             &captures,
             self.bindings,
             self.facts.clone(),

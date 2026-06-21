@@ -25,13 +25,13 @@ fn assert_cst_param_default(
 }
 
 fn assert_cst_body(
-    actual_source: SourceId,
-    body: &vela_syntax::ast::SyntaxBlock,
+    body: &body_payloads::CompilerBodyPayload<'_>,
     expected_source: SourceId,
     expected_text: &str,
 ) {
-    assert_eq!(actual_source, expected_source);
-    assert_eq!(body.syntax().text().to_string(), expected_text);
+    let payload = body.syntax_payload().expect("expected CST-backed body");
+    assert_eq!(payload.source, expected_source);
+    assert_eq!(payload.body.syntax().text().to_string(), expected_text);
 }
 
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -74,8 +74,7 @@ fn grant(base, amount = 10, bonus = amount + 1) {
     .expect("source should parse");
     let (payload, _, _) = semantic.function("grant").expect("grant function");
     assert_cst_body(
-        payload.source,
-        &payload.syntax_body,
+        &payload.body,
         source,
         "{\n    return base + amount + bonus;\n}",
     );
@@ -105,8 +104,7 @@ impl Counter {
         .find(|method| method.method_name == "add")
         .expect("script method");
     assert_cst_body(
-        method.source,
-        &method.syntax_body,
+        &method.body,
         source,
         "{\n        self.value += amount;\n    }",
     );
