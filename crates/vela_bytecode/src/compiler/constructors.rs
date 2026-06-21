@@ -300,13 +300,15 @@ fn argument_name(
     arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     arg: &Argument,
 ) -> Option<String> {
+    let Some(arg_payloads) = arg_payloads else {
+        return arg.name.clone();
+    };
     let index = args
         .iter()
         .position(|candidate| std::ptr::eq(candidate, arg))?;
     arg_payloads
-        .and_then(|payloads| payloads.get(index))
+        .get(index)
         .and_then(CompilerArgumentPayload::syntax_name)
-        .or_else(|| arg.name.clone())
 }
 
 pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {

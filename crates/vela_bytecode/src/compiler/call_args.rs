@@ -54,9 +54,12 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     }
 
     pub(in crate::compiler) fn name_for(self, arg: &Argument) -> Option<String> {
-        self.payload_for(arg)
-            .and_then(CompilerArgumentPayload::syntax_name)
-            .or_else(|| arg.name.clone())
+        if self.payloads.is_some() {
+            self.payload_for(arg)
+                .and_then(CompilerArgumentPayload::syntax_name)
+        } else {
+            arg.name.clone()
+        }
     }
 
     pub(in crate::compiler) fn has_named_args(self) -> bool {

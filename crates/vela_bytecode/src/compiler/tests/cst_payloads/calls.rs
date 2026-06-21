@@ -154,6 +154,19 @@ fn main() {
                     .syntax_expression()
                     .is_none()
             );
+
+            let ExprKind::Call {
+                args: legacy_args, ..
+            } = &legacy_call.fallback().kind
+            else {
+                panic!("expected legacy call fallback");
+            };
+            let arg_syntax = call_args::CallArgumentSyntax::new(legacy_args, Some(&args));
+            assert_eq!(
+                arg_syntax.name_for(&legacy_args[0]),
+                None,
+                "mismatched argument payloads must not expose legacy argument names"
+            );
         },
     );
 }
