@@ -1,6 +1,7 @@
 use super::*;
 
 mod containers;
+mod wrappers;
 
 #[test]
 fn semantic_function_defaults_are_cst_payloads() {

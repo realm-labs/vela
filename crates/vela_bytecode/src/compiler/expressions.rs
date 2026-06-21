@@ -101,6 +101,23 @@ impl Compiler<'_, '_> {
                 let field_payloads = payload.record_field_payloads();
                 self.compile_record(expr, path, fields, field_payloads.as_deref())
             }
+            SyntaxExpressionKind::Unary => {
+                let ExprKind::Unary { op, expr: operand } = &expr.kind else {
+                    unreachable!("validated CST unary expression payload kind");
+                };
+                let operand_payload = payload.unary_operand_payload();
+                self.compile_unary(*op, operand.span, operand, operand_payload.as_ref())
+            }
+            SyntaxExpressionKind::Try => {
+                let ExprKind::Try(operand) = &expr.kind else {
+                    unreachable!("validated CST try expression payload kind");
+                };
+                let operand_payload = payload.try_operand_payload();
+                let src = self.compile_expr_with_payload(operand, operand_payload.as_ref())?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
+                Ok(dst)
+            }
             _ => self.compile_expr(expr),
         }
     }
@@ -116,7 +133,7 @@ impl Compiler<'_, '_> {
                 }
                 self.compile_binary(*op, expr.span, left, right)
             }
-            ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr),
+            ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr, None),
             ExprKind::Field { base, name } => {
                 let typed_record_slot = self
                     .script_record_field_slot_for_receiver(base, name)
@@ -777,7 +794,13 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_unary(&mut self, op: UnaryOp, span: Span, expr: &Expr) -> CompileResult<Register> {
+    fn compile_unary(
+        &mut self,
+        op: UnaryOp,
+        span: Span,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
         if op == UnaryOp::Not
             && let Some(register) = self.compile_negated_equality(span, expr)?
         {
@@ -791,7 +814,7 @@ impl Compiler<'_, '_> {
             return self.emit_constant(constant);
         }
 
-        let src = self.compile_expr(expr)?;
+        let src = self.compile_expr_with_payload(expr, payload)?;
         let dst = self.alloc_register()?;
         let instruction = match op {
             UnaryOp::Not => UnlinkedInstructionKind::Not { dst, src },
@@ -886,6 +909,8 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
+        SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
+        SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
         _ => !matches!(
             expr.kind,
             ExprKind::Block(_)
@@ -894,6 +919,8 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
                 | ExprKind::Array(_)
                 | ExprKind::Map(_)
                 | ExprKind::Record { .. }
+                | ExprKind::Unary { .. }
+                | ExprKind::Try(_)
         ),
     }
 }

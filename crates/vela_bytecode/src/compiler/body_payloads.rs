@@ -650,6 +650,32 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    pub(in crate::compiler) fn unary_operand_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Unary { expr, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_unary()?.expression(),
+            fallback: expr,
+        })
+    }
+
+    pub(in crate::compiler) fn try_operand_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Try(expr) = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_try()?.expression(),
+            fallback: expr,
+        })
+    }
+
     pub(in crate::compiler) fn array_element_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

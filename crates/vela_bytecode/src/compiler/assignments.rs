@@ -809,6 +809,8 @@ impl Compiler<'_, '_> {
                 SyntaxExpressionKind::Array
                     | SyntaxExpressionKind::Map
                     | SyntaxExpressionKind::Record
+                    | SyntaxExpressionKind::Unary
+                    | SyntaxExpressionKind::Try
             ) {
                 return self.compile_expr_with_payload(value, syntax.expression);
             }

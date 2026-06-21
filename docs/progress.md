@@ -319,6 +319,10 @@ path for non-control-flow values, so array, map, and record literals returned
 from CST-backed blocks preserve nested element, entry, and field body payloads
 before falling back to legacy expression lowering when syntax association is
 missing.
+Unary and try expressions now expose CST-aware operand payloads in untyped
+let, assignment, return, and call-argument value contexts, so nested block
+operands can reuse rowan body payloads before falling back to legacy
+expression lowering when syntax association is missing.
 Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or
