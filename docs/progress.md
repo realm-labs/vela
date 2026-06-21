@@ -415,6 +415,8 @@ field names before falling back to temporary legacy target names.
 Host path resolution now prefers rowan CST field names and index operand
 payloads for aligned host field/index chains before falling back to temporary
 legacy host path expressions.
+Host path `push` and `remove` lowering now also prefers rowan CST callee field
+names and path segments before falling back to temporary legacy callee names.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

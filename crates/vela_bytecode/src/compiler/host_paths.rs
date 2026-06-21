@@ -499,14 +499,21 @@ impl Compiler<'_, '_> {
         args: &[Argument],
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
+        let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "push" => {
+            ExprKind::Field { base, name }
+                if callee_field_name_matches(callee_payload, name, "push") =>
+            {
                 let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
                 self.host_field_path_with_payload(base, base_payload.as_ref())
             }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "push") => self
-                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                .map(|resolved| resolved.path),
+            ExprKind::Path(parts)
+                if callee_path_last_matches(cst_path.as_deref(), parts, "push") =>
+            {
+                let parts = cst_path.as_deref().unwrap_or(parts);
+                self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                    .map(|resolved| resolved.path)
+            }
             _ => None,
         };
         let Some(path) = path else {
@@ -535,14 +542,21 @@ impl Compiler<'_, '_> {
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
+        let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
         let path = match &callee.kind {
-            ExprKind::Field { base, name } if name == "remove" => {
+            ExprKind::Field { base, name }
+                if callee_field_name_matches(callee_payload, name, "remove") =>
+            {
                 let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
                 self.host_field_path_with_payload(base, base_payload.as_ref())
             }
-            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == "remove") => self
-                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                .map(|resolved| resolved.path),
+            ExprKind::Path(parts)
+                if callee_path_last_matches(cst_path.as_deref(), parts, "remove") =>
+            {
+                let parts = cst_path.as_deref().unwrap_or(parts);
+                self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                    .map(|resolved| resolved.path)
+            }
             _ => None,
         };
         let Some(path) = path else {
@@ -558,7 +572,7 @@ impl Compiler<'_, '_> {
             )));
         }
         if let ExprKind::Field { base, name } = &callee.kind
-            && name == "remove"
+            && callee_field_name_matches(callee_payload, name, "remove")
         {
             self.reject_terminal_host_index_access(base, HostIndexAccessKind::Remove)?;
         }
@@ -758,6 +772,27 @@ fn attach_host_path_payloads<'ast>(
         }
         _ => attach_host_path_root_payload(expr, payload, &mut path.root),
     }
+}
+
+fn callee_field_name_matches(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    fallback_name: &str,
+    expected: &str,
+) -> bool {
+    payload
+        .and_then(CompilerExpressionPayload::field_name)
+        .as_deref()
+        .unwrap_or(fallback_name)
+        == expected
+}
+
+fn callee_path_last_matches(
+    cst_path: Option<&[String]>,
+    fallback_path: &[String],
+    expected: &str,
+) -> bool {
+    let path = cst_path.unwrap_or(fallback_path);
+    path.last().is_some_and(|name| name == expected)
 }
 
 fn attach_host_path_root_payload<'ast>(
