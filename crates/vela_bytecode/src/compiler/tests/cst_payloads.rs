@@ -63,6 +63,39 @@ fn with_cst_payload_compiler(
 }
 
 #[test]
+fn mismatched_body_payloads_do_not_pair_statements_by_index() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    let cst_value = 1;
+    return cst_value;
+}
+
+fn legacy_body() {
+    let legacy_value = 2;
+    return legacy_value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (legacy_payload, _, _) = semantic.function("legacy_body").expect("legacy function");
+    let mismatched = body_payloads::CompilerBodyPayload::syntax(
+        source,
+        cst_payload.body.syntax_payload().body.clone(),
+        legacy_payload.body.fallback(),
+    );
+
+    let statements = mismatched.statement_payloads();
+    assert_eq!(statements.len(), 2);
+    assert!(
+        statements
+            .iter()
+            .all(|statement| statement.syntax_statement().is_none()),
+        "mismatched spans must not receive index-based CST statements"
+    );
+}
+
+#[test]
 fn semantic_function_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

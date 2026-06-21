@@ -96,10 +96,9 @@ impl<'ast> CompilerBodyPayload<'ast> {
         self.fallback
             .statements
             .iter()
-            .enumerate()
-            .map(|(index, fallback)| CompilerStatementPayload {
+            .map(|fallback| CompilerStatementPayload {
                 source: Some(self.syntax.source),
-                syntax: syntax_statement_for_fallback(&syntax_statements, index, fallback),
+                syntax: syntax_statement_for_fallback(&syntax_statements, fallback),
                 fallback,
             })
             .collect()
@@ -113,29 +112,30 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
 fn syntax_statement_for_fallback(
     statements: &[SyntaxStatement],
-    fallback_index: usize,
     fallback: &Stmt,
 ) -> Option<SyntaxStatement> {
     statements
         .iter()
         .find(|statement| syntax_statement_matches_span(statement, fallback.span))
         .cloned()
-        .or_else(|| statements.get(fallback_index).cloned())
 }
 
 fn syntax_statement_matches_span(statement: &SyntaxStatement, span: Span) -> bool {
-    let range = statement.syntax().text_range();
-    u32::from(range.start()) == span.start && u32::from(range.end()) == span.end
+    syntax_range_overlaps_span(statement.syntax().text_range(), span)
 }
 
 fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> bool {
-    let range = expression.syntax().text_range();
-    u32::from(range.start()) == span.start && u32::from(range.end()) == span.end
+    syntax_range_overlaps_span(expression.syntax().text_range(), span)
+}
+
+fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
+    let start = u32::from(range.start());
+    let end = u32::from(range.end());
+    start < span.end && span.start < end
 }
 
 fn syntax_match_arm_for_fallback(
     arms: &[SyntaxMatchArm],
-    fallback_index: usize,
     fallback: &MatchArm,
 ) -> Option<SyntaxMatchArm> {
     arms.iter()
@@ -144,7 +144,6 @@ fn syntax_match_arm_for_fallback(
                 .is_some_and(|body| syntax_expression_matches_span(&body, fallback.body.span))
         })
         .cloned()
-        .or_else(|| arms.get(fallback_index).cloned())
 }
 
 fn match_arm_payloads_for_fallback<'ast>(
@@ -156,10 +155,9 @@ fn match_arm_payloads_for_fallback<'ast>(
     fallback
         .arms
         .iter()
-        .enumerate()
-        .map(|(index, fallback)| CompilerMatchArmPayload {
+        .map(|fallback| CompilerMatchArmPayload {
             source,
-            syntax: syntax_match_arm_for_fallback(&syntax_arms, index, fallback),
+            syntax: syntax_match_arm_for_fallback(&syntax_arms, fallback),
             fallback,
         })
         .collect()
