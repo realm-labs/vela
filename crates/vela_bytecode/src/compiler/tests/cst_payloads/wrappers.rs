@@ -133,6 +133,46 @@ fn paren_values() {
         .expect("CST-backed parenthesized expression should compile");
 }
 
+#[test]
+fn block_tail_parenthesized_values_compile_with_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_tail_paren() {
+    let value = {
+        ({
+            let inner = 1;
+            inner
+        })
+    };
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("block_tail_paren")
+        .expect("block_tail_paren function");
+    let statements = payload.body.statement_payloads();
+    let block = statements[0]
+        .let_initializer_expression_payload()
+        .expect("let initializer should expose CST payload");
+    let block_body = block
+        .block_body_payload()
+        .expect("let initializer block should expose body payload");
+    let block_statements = block_body.statement_payloads();
+    let body_payloads::CompilerBlockValue::TailExpression { tail, .. } =
+        block_body.block_value(&block_statements)
+    else {
+        panic!("expected parenthesized block tail expression");
+    };
+    assert_eq!(
+        tail.value_expression_kind(),
+        Some(SyntaxExpressionKind::Paren)
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed parenthesized block tail should compile");
+}
+
 fn assert_cst_let_initializer_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
