@@ -250,13 +250,21 @@ impl Compiler<'_, '_> {
         }
         self.reject_read_only_host_assignment(target)?;
         if let ExprKind::Index { base, index } = &target.kind {
+            let operand_payloads = target_syntax.index_operand_payloads();
+            let index_payload = operand_payloads.as_ref().map(|(_, index)| index);
             let access = match op {
                 AssignOp::Set => HostIndexAccessKind::Write,
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                     HostIndexAccessKind::Mutate
                 }
             };
-            self.reject_invalid_host_index_access(target, base, index, access)?;
+            self.reject_invalid_host_index_access_with_payload(
+                target,
+                base,
+                index,
+                access,
+                index_payload,
+            )?;
             if self.host_field_path(target).is_none() {
                 return self.compile_index_assignment(
                     *op,

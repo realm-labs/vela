@@ -415,6 +415,9 @@ field names before falling back to temporary legacy target names.
 Host path resolution now prefers rowan CST field names and index operand
 payloads for aligned host field/index chains before falling back to temporary
 legacy host path expressions.
+Host index key validation now uses rowan CST index operand payloads for
+payload-aware read, write, and compound mutation checks before falling back to
+temporary legacy index expressions.
 Host path `push` and `remove` lowering now also prefers rowan CST callee field
 names and path segments before falling back to temporary legacy callee names.
 Path-style host method lookup now prefers rowan CST callee path segments for

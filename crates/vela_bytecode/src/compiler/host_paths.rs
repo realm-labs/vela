@@ -670,6 +670,17 @@ impl Compiler<'_, '_> {
         index: &Expr,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
+        self.reject_invalid_host_index_access_with_payload(expr, base, index, kind, None)
+    }
+
+    pub(in crate::compiler) fn reject_invalid_host_index_access_with_payload(
+        &self,
+        expr: &Expr,
+        base: &Expr,
+        index: &Expr,
+        kind: HostIndexAccessKind,
+        index_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<()> {
         let Some(receiver_type) = self.host_index_receiver_type_name(base) else {
             return Ok(());
         };
@@ -703,7 +714,7 @@ impl Compiler<'_, '_> {
             ));
         }
         if let Some(expected) = capability.key_type.as_deref()
-            && let Some(actual) = self.value_type_for_expr(index)
+            && let Some(actual) = self.value_type_for_expr_with_payload(index, index_payload)
             && actual.source_type_name() != expected
             && actual.std_type_name() != expected
         {
@@ -720,6 +731,22 @@ impl Compiler<'_, '_> {
             ));
         }
         Ok(())
+    }
+
+    pub(in crate::compiler) fn reject_invalid_host_index_read_with_payload(
+        &self,
+        expr: &Expr,
+        base: &Expr,
+        index: &Expr,
+        index_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<()> {
+        self.reject_invalid_host_index_access_with_payload(
+            expr,
+            base,
+            index,
+            HostIndexAccessKind::Read,
+            index_payload,
+        )
     }
 
     fn reject_terminal_host_index_access(

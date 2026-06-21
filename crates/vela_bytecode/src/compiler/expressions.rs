@@ -13,7 +13,7 @@ use super::const_eval::{
 };
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_payload_kinds::expression_payload_kind_matches;
-use super::host_paths::{HostIndexAccessKind, HostPath};
+use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
     i64_immediate_op_supported, non_logical_binary_instruction,
@@ -348,13 +348,13 @@ impl Compiler<'_, '_> {
             self.host_field_path_with_index_payloads(expr, base_payload, index_payload)
             && !path.segments.is_empty()
         {
-            self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;
+            self.reject_invalid_host_index_read_with_payload(expr, base, index, index_payload)?;
             let root = self.compile_host_path_root(&path.root)?;
             let dst = self.alloc_register()?;
             self.emit_host_read(dst, root, path, expr.span)?;
             return Ok(dst);
         }
-        self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;
+        self.reject_invalid_host_index_read_with_payload(expr, base, index, index_payload)?;
         let base = self.compile_expr_with_payload(base, base_payload)?;
         let dst = self.alloc_register()?;
         if let Some(key) = literal_string(index) {
