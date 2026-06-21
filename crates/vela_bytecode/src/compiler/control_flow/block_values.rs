@@ -1,6 +1,8 @@
-use vela_syntax::ast::{Block, Expr, ExprKind, SyntaxExpressionKind};
+use vela_syntax::ast::{Block, Expr, ExprKind, StmtKind, SyntaxExpressionKind};
 
-use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
+use crate::compiler::body_payloads::{
+    CompilerBlockValue, CompilerBodyPayload, CompilerStatementPayload,
+};
 use crate::compiler::control_flow::classification::value_expression_kind_matches;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
@@ -43,21 +45,24 @@ impl Compiler<'_, '_> {
         dst: Register,
     ) -> CompileResult<bool> {
         let statements = body.statement_payloads();
-        match block_value(body.fallback()) {
-            BlockValue::Empty => {
+        match body.block_value(&statements) {
+            CompilerBlockValue::Empty => {
                 self.emit_constant_to(dst, Constant::Null);
                 Ok(false)
             }
-            BlockValue::TailExpr { prefix, expr } => {
-                for stmt in statements.iter().take(prefix.len()) {
+            CompilerBlockValue::TailExpression { prefix, tail } => {
+                for stmt in prefix {
                     if self.compile_statement_payload(stmt)? {
                         return Ok(true);
                     }
                 }
-                self.compile_block_tail_expr_to(expr, statements.get(prefix.len()), dst)
+                let StmtKind::Expr(expr) = &tail.fallback().kind else {
+                    return self.compile_block_value_to(body.fallback(), dst);
+                };
+                self.compile_block_tail_expr_to(expr, Some(tail), dst)
             }
-            BlockValue::Statements(_) => {
-                let returned = self.compile_statement_payloads(&statements)?;
+            CompilerBlockValue::Statements(statements) => {
+                let returned = self.compile_statement_payloads(statements)?;
                 if !returned {
                     self.emit_constant_to(dst, Constant::Null);
                 }

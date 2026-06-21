@@ -78,6 +78,15 @@ pub(super) struct CompilerIfPayload<'ast> {
     else_if: Option<Box<CompilerIfPayload<'ast>>>,
 }
 
+pub(super) enum CompilerBlockValue<'payload, 'ast> {
+    Empty,
+    TailExpression {
+        prefix: &'payload [CompilerStatementPayload<'ast>],
+        tail: &'payload CompilerStatementPayload<'ast>,
+    },
+    Statements(&'payload [CompilerStatementPayload<'ast>]),
+}
+
 impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
@@ -102,6 +111,23 @@ impl<'ast> CompilerBodyPayload<'ast> {
                 fallback,
             })
             .collect()
+    }
+
+    pub(super) fn block_value<'payload>(
+        &self,
+        statements: &'payload [CompilerStatementPayload<'ast>],
+    ) -> CompilerBlockValue<'payload, 'ast> {
+        let Some((tail, prefix)) = statements.split_last() else {
+            return CompilerBlockValue::Empty;
+        };
+        if matches!(
+            tail.statement_kind(),
+            Some(SyntaxStatementKind::Expr | SyntaxStatementKind::If | SyntaxStatementKind::Match)
+        ) {
+            CompilerBlockValue::TailExpression { prefix, tail }
+        } else {
+            CompilerBlockValue::Statements(statements)
+        }
     }
 
     #[cfg(test)]
