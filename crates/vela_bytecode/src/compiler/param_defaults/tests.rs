@@ -254,12 +254,12 @@ fn param_default_cst_lowering_covers_payload_match_patterns() {
 }
 
 #[test]
-fn param_default_cst_lowering_rejects_path_field_defaults() {
+fn param_default_cst_lowering_covers_path_field_defaults() {
     let default = param_default_at("fn cst(player, value = player.level) { return value; }", 1);
 
     assert!(
-        !param_default_cst_lowering_covers(&default),
-        "path-rooted field defaults are unsupported until they lower directly from CST"
+        param_default_cst_lowering_covers(&default),
+        "path-rooted field defaults should lower directly from CST"
     );
 }
 

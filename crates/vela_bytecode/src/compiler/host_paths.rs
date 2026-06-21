@@ -26,6 +26,10 @@ pub(super) enum HostPathRoot<'ast> {
         name: &'ast str,
         span: Span,
     },
+    OwnedLocalPath {
+        name: String,
+        span: Span,
+    },
 }
 
 pub(super) enum HostPathPart<'ast> {
@@ -593,6 +597,7 @@ impl Compiler<'_, '_> {
                 self.compile_expr_with_payload(expr, payload.as_ref())
             }
             HostPathRoot::LocalPath { name, span } => self.local_register_at_span(*span, name),
+            HostPathRoot::OwnedLocalPath { name, span } => self.local_register_at_span(*span, name),
         }
     }
 
@@ -655,6 +660,7 @@ impl Compiler<'_, '_> {
                 self.script_type_for_expr_with_payload(expr, payload.as_ref())
             }
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
+            HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
     }
 

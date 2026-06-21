@@ -12,6 +12,7 @@ mod interpolated;
 mod lambdas;
 mod literals;
 mod match_arms;
+mod param_defaults;
 mod path_expressions;
 mod wrappers;
 
@@ -361,28 +362,6 @@ fn grant(amount = { let base: bool = 10; base }) {
         semantic_diagnostic_codes(error),
         ["compiler::type_contract_mismatch"]
     );
-}
-
-#[test]
-fn unsupported_parameter_defaults_error_without_legacy_fallback() {
-    let error = compile_program_source(
-        SourceId::new(1),
-        r#"
-fn grant(player, value = player.level) {
-    return value;
-}
-
-fn main(player) {
-    return grant(player);
-}
-"#,
-    )
-    .expect_err("unsupported CST parameter default should fail during default compilation");
-
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("parameter default expression")
-    ));
 }
 
 #[test]
