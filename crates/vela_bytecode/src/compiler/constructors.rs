@@ -100,11 +100,16 @@ impl Compiler<'_, '_> {
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for (index, field) in fields.iter().enumerate() {
-            explicit_names.insert(field.name.clone());
+            let payload = payloads.and_then(|payloads| payloads.get(index));
+            let field_name = payload
+                .and_then(CompilerRecordFieldPayload::syntax_label_name)
+                .unwrap_or_else(|| field.name.clone());
+            explicit_names.insert(field_name.clone());
             compiled.push(self.compile_record_field(
                 field,
-                shape.and_then(|shape| shape.field_value_type(&field.name)),
-                payloads.and_then(|payloads| payloads.get(index)),
+                &field_name,
+                shape.and_then(|shape| shape.field_value_type(&field_name)),
+                payload,
             )?);
         }
         self.compile_schema_default_fields(&mut compiled, &explicit_names, defaults, shape)?;
@@ -153,20 +158,21 @@ impl Compiler<'_, '_> {
     fn compile_record_field(
         &mut self,
         field: &vela_syntax::ast::RecordField,
+        field_name: &str,
         expected: Option<RuntimeTypeFact>,
         payload: Option<&CompilerRecordFieldPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
             self.compile_constructor_value(
                 value,
-                &field.name,
+                field_name,
                 expected,
                 payload.and_then(CompilerRecordFieldPayload::value_expression_payload),
             )?
         } else {
-            self.local_register_at_span(field.span, &field.name)?
+            self.local_register_at_span(field.span, field_name)?
         };
-        Ok((field.name.clone(), value))
+        Ok((field_name.to_owned(), value))
     }
 
     fn compile_constructor_value(

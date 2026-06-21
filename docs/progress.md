@@ -317,6 +317,10 @@ Record literals now share that CST-aware expression payload path in untyped
 value contexts, so explicit record field values can reuse rowan block, if, and
 match body payloads while field type-contract paths keep their existing
 checked fallback.
+Record constructor field lowering now prefers rowan CST record-field labels
+for explicit field names, expected field contracts, shorthand local lookup,
+and emitted record field names before falling back to the temporary legacy
+record-field expression.
 Block-value tail expressions now use the same CST-aware expression payload
 path for non-control-flow values, so array, map, and record literals returned
 from CST-backed blocks preserve nested element, entry, and field body payloads

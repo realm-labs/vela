@@ -412,6 +412,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
 }
 
 impl<'ast> CompilerRecordFieldPayload<'ast> {
+    pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
+        self.syntax
+            .as_ref()
+            .and_then(SyntaxRecordExprField::label_text)
+    }
+
     pub(in crate::compiler) fn value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {

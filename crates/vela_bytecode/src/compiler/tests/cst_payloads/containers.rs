@@ -314,6 +314,18 @@ fn return_record() {
             ),
         ],
     );
+    let record_fields = payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .collect::<Vec<_>>();
+    let record_field_names = record_fields
+        .iter()
+        .filter_map(|field| field.syntax_label_name())
+        .collect::<Vec<_>>();
+    assert_eq!(record_field_names, ["first", "second", "third"]);
     assert_cst_let_initializer_record_field_value_body_payloads(
         &payload.body,
         &[vec![
