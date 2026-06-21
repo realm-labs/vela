@@ -530,14 +530,14 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 }
 
 impl<'ast> CompilerPatternPayload<'ast> {
-    pub(in crate::compiler) fn literal(&self) -> Option<vela_syntax::ast::Literal> {
+    pub(in crate::compiler) fn syntax_literal(&self) -> Option<vela_syntax::ast::Literal> {
         let Pattern::Literal(_) = self.fallback else {
             return None;
         };
         self.syntax.as_ref()?.literal()
     }
 
-    pub(in crate::compiler) fn path_segments(&self) -> Option<Vec<String>> {
+    pub(in crate::compiler) fn syntax_path_segments(&self) -> Option<Vec<String>> {
         if !matches!(
             self.fallback,
             Pattern::Path(_) | Pattern::TupleVariant { .. } | Pattern::RecordVariant { .. }
@@ -548,7 +548,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
         (!segments.is_empty()).then_some(segments)
     }
 
-    pub(in crate::compiler) fn binding_name(&self) -> Option<String> {
+    pub(in crate::compiler) fn syntax_binding_name(&self) -> Option<String> {
         let Pattern::Binding(_) = self.fallback else {
             return None;
         };

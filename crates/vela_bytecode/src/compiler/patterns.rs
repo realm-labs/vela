@@ -47,7 +47,7 @@ fn pattern_literal_payload(
     fallback: &Literal,
 ) -> Literal {
     payload
-        .and_then(CompilerPatternPayload::literal)
+        .and_then(CompilerPatternPayload::syntax_literal)
         .unwrap_or_else(|| fallback.clone())
 }
 
@@ -56,13 +56,13 @@ fn pattern_path_segments(
     fallback: &[String],
 ) -> Vec<String> {
     payload
-        .and_then(CompilerPatternPayload::path_segments)
+        .and_then(CompilerPatternPayload::syntax_path_segments)
         .unwrap_or_else(|| fallback.to_vec())
 }
 
 fn pattern_binding_name(payload: Option<&CompilerPatternPayload<'_>>, fallback: &str) -> String {
     payload
-        .and_then(CompilerPatternPayload::binding_name)
+        .and_then(CompilerPatternPayload::syntax_binding_name)
         .unwrap_or_else(|| fallback.to_owned())
 }
 

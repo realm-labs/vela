@@ -301,7 +301,7 @@ fn classify(state) {
 
     let literal_pattern = arm_payloads[0].pattern_payload();
     assert_eq!(
-        literal_pattern.literal(),
+        literal_pattern.syntax_literal(),
         Some(vela_syntax::ast::Literal::integer("0"))
     );
     assert_eq!(
@@ -314,7 +314,7 @@ fn classify(state) {
 
     let path_pattern = arm_payloads[1].pattern_payload();
     assert_eq!(
-        path_pattern.path_segments().as_deref(),
+        path_pattern.syntax_path_segments().as_deref(),
         Some(&["State".to_owned(), "Ready".to_owned()][..])
     );
     assert_eq!(
@@ -326,7 +326,10 @@ fn classify(state) {
     );
 
     let binding_pattern = arm_payloads[2].pattern_payload();
-    assert_eq!(binding_pattern.binding_name().as_deref(), Some("value"));
+    assert_eq!(
+        binding_pattern.syntax_binding_name().as_deref(),
+        Some("value")
+    );
     assert_eq!(
         binding_pattern
             .syntax_pattern()
