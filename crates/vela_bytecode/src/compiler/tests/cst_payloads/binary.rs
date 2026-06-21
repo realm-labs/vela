@@ -116,6 +116,103 @@ fn binary_values() {
     compile_program_source(source, text).expect("CST-backed binary operands should compile");
 }
 
+#[test]
+fn semantic_function_logical_chain_operands_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn logical_values() {
+    let both = ({
+        let and_left = true;
+        and_left
+    }) && ({
+        let and_middle = true;
+        and_middle
+    }) && ({
+        let and_right = true;
+        and_right
+    });
+    let either = ({
+        let or_left = false;
+        or_left
+    }) || ({
+        let or_middle = false;
+        or_middle
+    }) || ({
+        let or_right = true;
+        or_right
+    });
+    return both || either;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("logical_values")
+        .expect("logical_values function");
+
+    let initializers = payload
+        .body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .collect::<Vec<_>>();
+
+    let and_payload = initializers
+        .iter()
+        .find(|payload| {
+            payload
+                .logical_chain_operand_payloads(BinaryOp::And)
+                .is_some_and(|operands| operands.len() == 3)
+        })
+        .expect("&& initializer should expose flattened logical operands");
+    assert_logical_chain_block_payloads(
+        and_payload,
+        BinaryOp::And,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let and_left = true;"),
+                (SyntaxStatementKind::Expr, "and_left"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let and_middle = true;"),
+                (SyntaxStatementKind::Expr, "and_middle"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let and_right = true;"),
+                (SyntaxStatementKind::Expr, "and_right"),
+            ],
+        ],
+    );
+
+    let or_payload = initializers
+        .iter()
+        .find(|payload| {
+            payload
+                .logical_chain_operand_payloads(BinaryOp::Or)
+                .is_some_and(|operands| operands.len() == 3)
+        })
+        .expect("|| initializer should expose flattened logical operands");
+    assert_logical_chain_block_payloads(
+        or_payload,
+        BinaryOp::Or,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let or_left = false;"),
+                (SyntaxStatementKind::Expr, "or_left"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let or_middle = false;"),
+                (SyntaxStatementKind::Expr, "or_middle"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let or_right = true;"),
+                (SyntaxStatementKind::Expr, "or_right"),
+            ],
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed logical operands should compile");
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -169,6 +266,20 @@ fn assert_cst_return_value_binary_operand_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
+fn assert_logical_chain_block_payloads(
+    payload: &body_payloads::CompilerExpressionPayload<'_>,
+    op: BinaryOp,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = payload
+        .logical_chain_operand_payloads(op)
+        .expect("logical chain should expose operand payloads")
+        .into_iter()
+        .flat_map(block_operand_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
 fn binary_block_operand_payloads(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
@@ -186,6 +297,9 @@ fn block_operand_payloads(
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
     if let Some(body) = payload.block_body_payload() {
         return vec![cst_statement_texts(&body)];
+    }
+    if let Some(operand) = payload.paren_inner_payload() {
+        return block_operand_payloads(operand);
     }
     if let Some(operand) = payload.unary_operand_payload() {
         return block_operand_payloads(operand);

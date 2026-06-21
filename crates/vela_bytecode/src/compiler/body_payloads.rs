@@ -788,6 +788,80 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    pub(in crate::compiler) fn logical_chain_operand_payloads(
+        &self,
+        op: BinaryOp,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        fn collect_fallback<'ast>(
+            fallback: &'ast vela_syntax::ast::Expr,
+            op: BinaryOp,
+            operands: &mut Vec<&'ast vela_syntax::ast::Expr>,
+        ) {
+            if let ExprKind::Binary {
+                op: expr_op,
+                left,
+                right,
+            } = &fallback.kind
+                && *expr_op == op
+            {
+                collect_fallback(left, op, operands);
+                collect_fallback(right, op, operands);
+            } else {
+                operands.push(fallback);
+            }
+        }
+
+        fn collect_syntax(
+            syntax: SyntaxExpression,
+            op: BinaryOp,
+            operands: &mut Vec<SyntaxExpression>,
+        ) -> Option<()> {
+            if let Some(binary) = syntax.as_binary()
+                && binary.operator() == Some(op)
+            {
+                collect_syntax(binary.lhs()?, op, operands)?;
+                collect_syntax(binary.rhs()?, op, operands)?;
+                return Some(());
+            }
+
+            operands.push(syntax);
+            Some(())
+        }
+
+        let ExprKind::Binary { op: expr_op, .. } = &self.fallback.kind else {
+            return None;
+        };
+        if *expr_op != op {
+            return None;
+        }
+
+        let mut fallback_operands = Vec::new();
+        collect_fallback(self.fallback, op, &mut fallback_operands);
+
+        let syntax_operands = if let Some(syntax) = self.syntax.clone() {
+            let mut syntax_operands = Vec::new();
+            collect_syntax(syntax, op, &mut syntax_operands)?;
+            if syntax_operands.len() != fallback_operands.len() {
+                return None;
+            }
+            syntax_operands.into_iter().map(Some).collect()
+        } else {
+            vec![None; fallback_operands.len()]
+        };
+
+        Some(
+            fallback_operands
+                .into_iter()
+                .zip(syntax_operands)
+                .map(|(fallback, syntax)| CompilerExpressionPayload {
+                    source: self.source,
+                    syntax,
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {

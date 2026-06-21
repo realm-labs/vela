@@ -112,7 +112,8 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST binary expression payload kind");
                 };
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    return self.compile_logical_chain(*op, expr);
+                    let operand_payloads = payload.logical_chain_operand_payloads(*op);
+                    return self.compile_logical_chain(*op, expr, operand_payloads.as_deref());
                 }
                 let operand_payloads = payload.binary_operand_payloads();
                 let (left_payload, right_payload) = operand_payloads
@@ -191,7 +192,7 @@ impl Compiler<'_, '_> {
             ExprKind::Path(path) => self.compile_path_expr(expr.span, path),
             ExprKind::Binary { op, left, right } => {
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    return self.compile_logical_chain(*op, expr);
+                    return self.compile_logical_chain(*op, expr, None);
                 }
                 self.compile_binary(*op, expr.span, left, right, None, None)
             }
@@ -757,16 +758,25 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_logical_chain(&mut self, op: BinaryOp, expr: &Expr) -> CompileResult<Register> {
+    fn compile_logical_chain(
+        &mut self,
+        op: BinaryOp,
+        expr: &Expr,
+        payloads: Option<&[CompilerExpressionPayload<'_>]>,
+    ) -> CompileResult<Register> {
         let operands = logical_chain_operands(op, expr);
         match op {
-            BinaryOp::And => self.compile_logical_and_chain(&operands),
-            BinaryOp::Or => self.compile_logical_or_chain(&operands),
+            BinaryOp::And => self.compile_logical_and_chain(&operands, payloads),
+            BinaryOp::Or => self.compile_logical_or_chain(&operands, payloads),
             _ => unreachable!("logical chain only supports && and ||"),
         }
     }
 
-    fn compile_logical_and_chain(&mut self, operands: &[&Expr]) -> CompileResult<Register> {
+    fn compile_logical_and_chain(
+        &mut self,
+        operands: &[&Expr],
+        payloads: Option<&[CompilerExpressionPayload<'_>]>,
+    ) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         let Some((last, prefix)) = operands.split_last() else {
             self.emit_bool_constant_to(dst, true);
@@ -774,12 +784,14 @@ impl Compiler<'_, '_> {
         };
 
         let mut false_branches = Vec::with_capacity(prefix.len());
-        for operand in prefix {
-            let value = self.compile_expr(operand)?;
+        for (index, operand) in prefix.iter().enumerate() {
+            let value =
+                self.compile_expr_with_payload(operand, payloads.and_then(|p| p.get(index)))?;
             false_branches.push(self.emit_jump_if_false(value));
         }
 
-        let last = self.compile_expr(last)?;
+        let last =
+            self.compile_expr_with_payload(last, payloads.and_then(|p| p.get(prefix.len())))?;
         self.emit_truthy_to_bool(dst, last)?;
         let end = self.emit_jump();
 
@@ -792,7 +804,11 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_logical_or_chain(&mut self, operands: &[&Expr]) -> CompileResult<Register> {
+    fn compile_logical_or_chain(
+        &mut self,
+        operands: &[&Expr],
+        payloads: Option<&[CompilerExpressionPayload<'_>]>,
+    ) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         let Some((last, prefix)) = operands.split_last() else {
             self.emit_bool_constant_to(dst, false);
@@ -800,15 +816,17 @@ impl Compiler<'_, '_> {
         };
 
         let mut end_jumps = Vec::with_capacity(prefix.len());
-        for operand in prefix {
-            let value = self.compile_expr(operand)?;
+        for (index, operand) in prefix.iter().enumerate() {
+            let value =
+                self.compile_expr_with_payload(operand, payloads.and_then(|p| p.get(index)))?;
             let next_operand = self.emit_jump_if_false(value);
             self.emit_bool_constant_to(dst, true);
             end_jumps.push(self.emit_jump());
             self.patch_jump(next_operand, self.current_offset())?;
         }
 
-        let last = self.compile_expr(last)?;
+        let last =
+            self.compile_expr_with_payload(last, payloads.and_then(|p| p.get(prefix.len())))?;
         self.emit_truthy_to_bool(dst, last)?;
         for end in end_jumps {
             self.patch_jump(end, self.current_offset())?;
