@@ -454,10 +454,12 @@ record constructors, enum constructor calls, and path locals, dispatches from
 the rowan payload shape before consulting temporary legacy expression spelling,
 and payload-aware local assignment, script method receiver, and match scrutinee
 lowering use that route before falling back to the legacy boundary.
-Value type inference now also accepts rowan CST expression payloads for arrays,
-maps, binary/try operands, and path locals, and payload-aware assignment, call
-argument, method receiver, binary lowering, and condition-jump paths use that
-route before falling back to temporary legacy expression spelling.
+Value type inference now also dispatches literals, arrays, maps, and lambdas
+from rowan CST expression payload shape before consulting temporary legacy
+expression spelling, while existing payload-aware path local, binary/try
+operand, assignment, call argument, method receiver, binary lowering, and
+condition-jump paths continue to use CST child payloads before falling back to
+the legacy boundary.
 Static literal type inference now prefers rowan CST literal payloads for
 typed-let and expected-type contracts before falling back to temporary legacy
 literal expression spelling.

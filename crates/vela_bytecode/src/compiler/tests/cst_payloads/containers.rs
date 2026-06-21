@@ -217,6 +217,71 @@ fn main() {
 }
 
 #[test]
+fn container_value_types_prefer_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_array = [true];
+    let legacy_array = [1];
+    let cst_map = { value: true };
+    let legacy_map = { value: 1 };
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_array = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST array payload");
+            let legacy_array = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy array fallback");
+            let mismatched_array = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_array
+                    .syntax_expression()
+                    .expect("CST array expression")
+                    .clone(),
+                legacy_array.fallback(),
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_array.fallback(),
+                    Some(&mismatched_array),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::array(
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool),
+                ))
+            );
+
+            let cst_map = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST map payload");
+            let legacy_map = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy map fallback");
+            let mismatched_map = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_map
+                    .syntax_expression()
+                    .expect("CST map expression")
+                    .clone(),
+                legacy_map.fallback(),
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_map.fallback(),
+                    Some(&mismatched_map),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::map(
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::String),
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool),
+                ))
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_function_map_entry_values_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

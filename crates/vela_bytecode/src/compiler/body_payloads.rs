@@ -827,14 +827,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.fallback
     }
 
+    pub(in crate::compiler) fn source(&self) -> Option<SourceId> {
+        self.source
+    }
+
     pub(in crate::compiler) fn kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()
             .map(|expression| expression.expression_kind())
     }
 
-    #[cfg(test)]
-    pub(super) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
+    pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
         self.syntax.as_ref()
     }
 }
