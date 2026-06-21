@@ -229,7 +229,7 @@ facts now exercise the active CST-backed paths directly. The analysis
 completion fixture now uses the rowan parse record for syntax sanity checks
 instead of importing the legacy owned parser. Syntax diagnostic fixtures now
 render parser spans from the rowan parse record, leaving old parser imports
-outside `vela_syntax` isolated to bytecode fallback scaffolding.
+outside `vela_syntax` isolated to bytecode semantic parsing.
 HIR `add_source` now uses rowan CST item headers for module spans, imports, and
 top-level declaration indexing, and rowan-backed top-level metadata lowering
 now covers declaration attributes, const/global metadata, function signatures,

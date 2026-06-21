@@ -66,10 +66,9 @@ fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool
 
 #[cfg(test)]
 mod tests {
-    use vela_common::SourceId;
-    use vela_syntax::ast::{FunctionItem, ItemKind};
+    use vela_common::{SourceId, Span};
+    use vela_syntax::ast::{Expr, ExprKind, Param};
     use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
-    use vela_syntax::parser::parse_source as parse_legacy_source;
 
     use super::syntax_param_default_values;
 
@@ -80,25 +79,28 @@ mod tests {
 fn cst(first = 1) {
     return first;
 }
-
-fn legacy(first = 2) {
-    return first;
-}
 "#;
         let syntax = parse_syntax_source(source, text);
-        let parsed = parse_legacy_source(source, text);
         let cst_function = syntax
             .tree()
             .functions()
             .find(|function| function.name_text().as_deref() == Some("cst"))
             .expect("CST function");
-        let legacy_function = legacy_function(&parsed, "legacy");
+        let fallback_params = vec![Param {
+            name: "first".to_owned(),
+            span: Span::new(source, 0, 0),
+            type_hint: None,
+            default_value: Some(Expr {
+                kind: ExprKind::Error,
+                span: Span::new(source, 1000, 1001),
+            }),
+        }];
 
         let defaults = syntax_param_default_values(
             source,
             cst_function.param_list(),
-            &legacy_function.params,
-            legacy_function.params.len(),
+            &fallback_params,
+            fallback_params.len(),
         );
 
         assert_eq!(defaults.len(), 1);
@@ -106,19 +108,5 @@ fn legacy(first = 2) {
             defaults[0].is_none(),
             "mismatched default spans must not receive index-based CST params"
         );
-    }
-
-    fn legacy_function<'ast>(
-        parsed: &'ast vela_syntax::ast::SourceFile,
-        name: &str,
-    ) -> &'ast FunctionItem {
-        parsed
-            .items
-            .iter()
-            .find_map(|item| match &item.kind {
-                ItemKind::Function(function) if function.name == name => Some(function),
-                _ => None,
-            })
-            .expect("legacy function")
     }
 }
