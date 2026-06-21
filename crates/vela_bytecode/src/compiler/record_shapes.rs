@@ -1048,10 +1048,6 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    pub(super) fn record_shape_for_expr(&self, expr: &Expr) -> Option<RecordShape> {
-        self.record_shape_for_expr_with_payload(expr, None)
-    }
-
     pub(in crate::compiler) fn record_shape_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -1081,14 +1077,6 @@ impl super::Compiler<'_, '_> {
         self.value_shape_for_expr(collection)?
             .array_element_record()
             .cloned()
-    }
-
-    pub(super) fn record_field_shape_slot_for_receiver(
-        &self,
-        receiver: &Expr,
-        field: &str,
-    ) -> Option<usize> {
-        self.record_shape_for_expr(receiver)?.field_slot(field)
     }
 
     pub(in crate::compiler) fn record_field_value_type_for_expr_with_payload(

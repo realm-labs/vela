@@ -257,10 +257,22 @@ impl Compiler<'_, '_> {
         name: &str,
         base_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        let typed_record_slot = self
-            .script_record_field_slot_for_receiver(base, name)
-            .or_else(|| self.record_field_shape_slot_for_receiver(base, name));
-        let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
+        let receiver_type = self.script_type_for_expr_with_payload(base, base_payload);
+        let typed_record_slot = receiver_type
+            .as_deref()
+            .and_then(|type_name| self.script_record_field_slot_for_type(type_name, name))
+            .or_else(|| {
+                self.record_shape_for_expr_with_payload(base, base_payload)
+                    .and_then(|shape| shape.field_slot(name))
+            });
+        let typed_enum_slot = self
+            .script_fact_for_expr_with_payload(base, base_payload)
+            .and_then(|fact| {
+                let variant = fact.enum_variant.as_deref()?;
+                self.facts
+                    .script_field_slots
+                    .enum_variant(&fact.type_name, variant, name)
+            });
         if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
             let root = self.compile_expr_with_payload(base, base_payload)?;
             let dst = self.alloc_register()?;
@@ -310,7 +322,6 @@ impl Compiler<'_, '_> {
             }
             let root = self.compile_expr_with_payload(base, base_payload)?;
             let dst = self.alloc_register()?;
-            let receiver_type = self.script_type_for_expr(base);
             if let Some(field) = self
                 .host_field_info(receiver_type.as_deref(), name)
                 .map(|field| field.id)

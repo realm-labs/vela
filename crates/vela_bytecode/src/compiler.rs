@@ -1113,19 +1113,6 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         }
     }
 
-    fn script_record_field_slot_for_receiver(&self, receiver: &Expr, field: &str) -> Option<usize> {
-        let type_name = self.script_type_for_expr(receiver)?;
-        self.script_record_field_slot_for_type(&type_name, field)
-    }
-
-    fn script_enum_field_slot_for_receiver(&self, receiver: &Expr, field: &str) -> Option<usize> {
-        let fact = self.script_fact_for_expr(receiver)?;
-        let variant = fact.enum_variant.as_deref()?;
-        self.facts
-            .script_field_slots
-            .enum_variant(&fact.type_name, variant, field)
-    }
-
     fn script_record_field_slot_for_type(&self, type_name: &str, field: &str) -> Option<usize> {
         self.facts.script_field_slots.record(type_name, field)
     }

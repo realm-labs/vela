@@ -404,6 +404,9 @@ Literal expression lowering now also prefers rowan CST literal values for
 aligned payloads before falling back to temporary legacy literal values.
 Field expression lowering now prefers rowan CST field names for aligned
 payloads before falling back to temporary legacy field names.
+Field expression slot and receiver-type analysis now also prefers rowan CST
+base expression payloads before falling back to temporary legacy receiver
+expressions.
 Record expression lowering now prefers rowan CST constructor paths for aligned
 payloads before falling back to temporary legacy path vectors.
 Method call lowering now prefers rowan CST field names for aligned callee

@@ -233,10 +233,6 @@ impl super::Compiler<'_, '_> {
         )
     }
 
-    pub(super) fn script_fact_for_expr(&self, expr: &Expr) -> Option<ScriptTypeFact> {
-        self.script_fact_for_expr_with_payload(expr, None)
-    }
-
     pub(super) fn script_fact_for_expr_with_payload(
         &self,
         expr: &Expr,

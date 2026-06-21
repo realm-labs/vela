@@ -173,6 +173,71 @@ fn assignment_targets() {
 }
 
 #[test]
+fn field_read_slots_prefer_cst_receiver_payloads() {
+    with_cst_payload_compiler(
+        r#"
+struct CstBox {
+    alpha: i64,
+    amount: i64,
+}
+
+struct LegacyBox {
+    amount: i64,
+    zed: i64,
+}
+
+fn main() {
+    let cst = CstBox { alpha: 0, amount: 1 };
+    let legacy = LegacyBox { amount: 2, zed: 3 };
+    let cst_amount = cst.amount;
+    let legacy_amount = legacy.amount;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst local should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy local should compile");
+            let cst_field = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST field payload");
+            let legacy_field = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy field fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_field
+                    .syntax_expression()
+                    .expect("CST field expression")
+                    .clone(),
+                legacy_field.fallback(),
+            );
+
+            compiler
+                .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+                .expect("CST-backed field read should compile");
+            let slot = compiler
+                .code
+                .instructions
+                .iter()
+                .rev()
+                .find_map(|instruction| {
+                    let UnlinkedInstructionKind::GetRecordSlot { field, slot, .. } =
+                        &instruction.kind
+                    else {
+                        return None;
+                    };
+                    (field == "amount").then_some(*slot)
+                });
+            assert_eq!(slot, Some(1));
+        },
+    );
+}
+
+#[test]
 fn record_field_assignment_target_facts_prefer_cst_root_payloads() {
     with_cst_payload_compiler(
         r#"
