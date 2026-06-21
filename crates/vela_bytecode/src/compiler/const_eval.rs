@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 use std::num::{ParseFloatError, ParseIntError};
 
-use vela_common::{PrimitiveTag, ScalarValue};
+use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
+use vela_syntax::TextRange;
 use vela_syntax::ast::{
-    BinaryOp, Expr, ExprKind, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix,
-    Literal, MapEntry, UnaryOp,
+    AstNode, BinaryOp, Expr, ExprKind, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral,
+    IntegerSuffix, Literal, MapEntry, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
+    UnaryOp,
 };
 
 use crate::Constant;
@@ -114,6 +116,155 @@ pub(super) fn evaluate_const_expr(
     }
 }
 
+pub(super) fn evaluate_syntax_const_expr(
+    source: SourceId,
+    expr: &SyntaxExpression,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<Constant>> {
+    match expr.expression_kind() {
+        SyntaxExpressionKind::Literal => {
+            let Some(literal) = expr.as_literal().and_then(|literal| literal.literal()) else {
+                return Ok(None);
+            };
+            compile_literal_constant(&literal)
+                .map(Some)
+                .map_err(|error| error.with_span(span_for(source, expr.syntax().text_range())))
+        }
+        SyntaxExpressionKind::Path => {
+            let Some(path) = expr.as_path() else {
+                return Ok(None);
+            };
+            let segments = path.path_segments();
+            let [name] = segments.as_slice() else {
+                return Ok(None);
+            };
+            Ok(values_by_name.get(name).cloned())
+        }
+        SyntaxExpressionKind::Paren => {
+            let Some(inner) = expr.as_paren().and_then(|paren| paren.expression()) else {
+                return Ok(None);
+            };
+            evaluate_syntax_const_expr(source, &inner, values_by_name)
+        }
+        SyntaxExpressionKind::Unary => {
+            let Some(unary) = expr.as_unary() else {
+                return Ok(None);
+            };
+            let Some(op) = unary.operator() else {
+                return Ok(None);
+            };
+            let Some(inner) = unary.expression() else {
+                return Ok(None);
+            };
+            if op == UnaryOp::Negate
+                && let Some(literal) = inner.as_literal().and_then(|literal| literal.literal())
+                && let Some(value) =
+                    compile_negated_literal_constant(&literal).map_err(|error| {
+                        error.with_span(span_for(source, inner.syntax().text_range()))
+                    })?
+            {
+                return Ok(Some(value));
+            }
+            let Some(value) = evaluate_syntax_const_expr(source, &inner, values_by_name)? else {
+                return Ok(None);
+            };
+            Ok(evaluate_unary_const(op, value))
+        }
+        SyntaxExpressionKind::Binary => {
+            let Some(binary) = expr.as_binary() else {
+                return Ok(None);
+            };
+            let Some(op) = binary.operator() else {
+                return Ok(None);
+            };
+            let Some(left_expr) = binary.lhs() else {
+                return Ok(None);
+            };
+            let Some(right_expr) = binary.rhs() else {
+                return Ok(None);
+            };
+            let Some(left) = evaluate_syntax_const_expr(source, &left_expr, values_by_name)? else {
+                return Ok(None);
+            };
+            let Some(right) = evaluate_syntax_const_expr(source, &right_expr, values_by_name)?
+            else {
+                return Ok(None);
+            };
+            Ok(evaluate_binary_const(op, left, right))
+        }
+        SyntaxExpressionKind::Array => {
+            let Some(array) = expr.as_array() else {
+                return Ok(None);
+            };
+            array
+                .expressions()
+                .map(|value| evaluate_syntax_const_expr(source, &value, values_by_name))
+                .collect::<CompileResult<Option<Vec<_>>>>()
+                .map(|values| values.map(Constant::Array))
+        }
+        SyntaxExpressionKind::Map => {
+            let Some(map) = expr.as_map() else {
+                return Ok(None);
+            };
+            map.entries()
+                .map(|entry| evaluate_syntax_map_entry(source, &entry, values_by_name))
+                .collect::<CompileResult<Option<Vec<_>>>>()
+                .map(|entries| entries.map(Constant::Map))
+        }
+        SyntaxExpressionKind::Assign
+        | SyntaxExpressionKind::Field
+        | SyntaxExpressionKind::Call
+        | SyntaxExpressionKind::Index
+        | SyntaxExpressionKind::Try
+        | SyntaxExpressionKind::Record
+        | SyntaxExpressionKind::Lambda
+        | SyntaxExpressionKind::Block
+        | SyntaxExpressionKind::If
+        | SyntaxExpressionKind::Match => Ok(None),
+    }
+}
+
+fn evaluate_syntax_map_entry(
+    source: SourceId,
+    entry: &SyntaxMapEntry,
+    values_by_name: &BTreeMap<String, Constant>,
+) -> CompileResult<Option<(String, Constant)>> {
+    let Some(value_expr) = entry.value() else {
+        return Ok(None);
+    };
+    let Some(value) = evaluate_syntax_const_expr(source, &value_expr, values_by_name)? else {
+        return Ok(None);
+    };
+    let Some(key_expr) = entry.key() else {
+        return Ok(None);
+    };
+    let Some(key) = syntax_const_map_key_name(&key_expr)? else {
+        return Ok(None);
+    };
+    Ok(Some((key, value)))
+}
+
+fn syntax_const_map_key_name(key: &SyntaxExpression) -> CompileResult<Option<String>> {
+    match key.expression_kind() {
+        SyntaxExpressionKind::Literal => {
+            let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {
+                return Ok(None);
+            };
+            match literal {
+                Literal::String(value) => Ok(Some(value)),
+                Literal::Integer(value) => Ok(Some(value.source_text_with_suffix())),
+                Literal::Float(value) => Ok(Some(value.source_text_with_suffix())),
+                _ => Ok(None),
+            }
+        }
+        SyntaxExpressionKind::Path => Ok(key
+            .as_path()
+            .map(|path| path.path_segments().join("::"))
+            .filter(|path| !path.is_empty())),
+        _ => Ok(None),
+    }
+}
+
 fn evaluate_map_entry(
     entry: &MapEntry,
     values_by_name: &BTreeMap<String, Constant>,
@@ -135,6 +286,10 @@ fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
         ExprKind::Path(path) => Ok(Some(path.join("::"))),
         _ => Ok(None),
     }
+}
+
+fn span_for(source: SourceId, range: TextRange) -> Span {
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn evaluate_unary_const(op: UnaryOp, value: Constant) -> Option<Constant> {

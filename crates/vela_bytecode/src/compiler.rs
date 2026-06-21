@@ -25,6 +25,7 @@ mod schema_defaults;
 mod script_impls;
 mod script_types;
 mod semantic;
+mod syntax_payloads;
 mod value_flow;
 mod value_types;
 

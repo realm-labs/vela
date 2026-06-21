@@ -1,19 +1,8 @@
 use std::collections::BTreeMap;
 
-use vela_syntax::ast::{EnumVariantFields, Expr, FunctionItem, ItemKind, SourceFile};
+use vela_syntax::ast::{EnumVariantFields, FunctionItem, ItemKind, SourceFile};
 
 use super::schema_defaults::SchemaDefaultPayloads;
-
-pub(super) fn const_value_payloads(parsed: &SourceFile) -> BTreeMap<&str, &Expr> {
-    let mut payloads = BTreeMap::new();
-    for (name, value) in parsed.items.iter().filter_map(|item| match &item.kind {
-        ItemKind::Const(item) => Some((item.name.as_str(), &item.value)),
-        _ => None,
-    }) {
-        payloads.entry(name).or_insert(value);
-    }
-    payloads
-}
 
 pub(super) fn function_body_payloads(parsed: &SourceFile) -> BTreeMap<&str, &FunctionItem> {
     let mut payloads = BTreeMap::new();

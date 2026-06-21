@@ -7,31 +7,34 @@ use vela_hir::module_graph::{
     DeclarationKind, ImportResolution, ModuleGraph, ModulePath, ModuleSource,
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
-use vela_syntax::ast::{FunctionItem, SourceFile};
+use vela_syntax::Parse as SyntaxParse;
+use vela_syntax::ast::{FunctionItem, SourceFile, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use crate::Constant;
 
-use super::const_eval::evaluate_const_expr;
+use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::legacy_payloads::{
-    const_value_payloads, function_body_payloads, schema_default_payloads,
-};
+use super::legacy_payloads::{function_body_payloads, schema_default_payloads};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
+use super::syntax_payloads::const_value_payloads;
 
 pub(super) struct SemanticSource {
     source: SourceId,
     text: String,
+    syntax: SyntaxParse<SyntaxSourceFile>,
     parsed: SourceFile,
     graph: ModuleGraph,
     module: ModuleId,
 }
 
 pub(super) struct SemanticModules {
+    syntax: BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
     parsed: BTreeMap<ModuleId, SourceFile>,
+    source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
 }
@@ -168,12 +171,12 @@ impl SemanticSource {
     pub(super) fn const_values(&self) -> CompileResult<BTreeMap<HirDeclId, Constant>> {
         let mut values_by_declaration = BTreeMap::new();
         let mut values_by_name = BTreeMap::new();
-        let payloads = const_value_payloads(&self.parsed);
+        let payloads = const_value_payloads(&self.syntax);
         for (declaration, name) in module_const_declarations(&self.graph, self.module) {
-            let Some(expr) = payloads.get(name.as_str()) else {
+            let Some(expr) = payloads.get(&name) else {
                 continue;
             };
-            if let Some(value) = evaluate_const_expr(expr, &values_by_name)? {
+            if let Some(value) = evaluate_syntax_const_expr(self.source, expr, &values_by_name)? {
                 values_by_declaration.insert(declaration, value.clone());
                 values_by_name.insert(name, value);
             }
@@ -354,7 +357,10 @@ impl SemanticModules {
             let mut progressed = false;
             for module in &self.modules {
                 let mut previous_values = BTreeMap::new();
-                let Some(parsed) = self.parsed.get(module) else {
+                let Some(parsed) = self.syntax.get(module) else {
+                    continue;
+                };
+                let Some(source) = self.source_ids.get(module).copied() else {
                     continue;
                 };
                 let payloads = const_value_payloads(parsed);
@@ -364,14 +370,15 @@ impl SemanticModules {
                         continue;
                     }
 
-                    let Some(expr) = payloads.get(name.as_str()) else {
+                    let Some(expr) = payloads.get(&name) else {
                         continue;
                     };
 
                     let mut values_by_name =
                         self.imported_const_values(*module, &values_by_declaration);
                     values_by_name.extend(previous_values.clone());
-                    if let Some(value) = evaluate_const_expr(expr, &values_by_name)? {
+                    if let Some(value) = evaluate_syntax_const_expr(source, expr, &values_by_name)?
+                    {
                         values_by_declaration.insert(declaration, value.clone());
                         previous_values.insert(name, value);
                         progressed = true;
@@ -452,10 +459,10 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
-    let syntax_diagnostics = cst_syntax_diagnostics(source, text);
-    if !syntax_diagnostics.is_empty() {
+    let syntax = parse_syntax_source(source, text);
+    if !syntax.diagnostics().is_empty() {
         return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
-            syntax_diagnostics,
+            syntax.diagnostics().to_vec(),
         )));
     }
     let parsed = parse_legacy_source(source, text);
@@ -470,6 +477,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
         Ok(SemanticSource {
             source,
             text: text.to_owned(),
+            syntax,
             parsed,
             graph,
             module,
@@ -482,9 +490,13 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
 }
 
 pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<SemanticModules> {
-    let syntax_diagnostics = sources
+    let syntax_sources = sources
         .iter()
-        .flat_map(|source| cst_syntax_diagnostics(source.id, &source.text))
+        .map(|source| (source, parse_syntax_source(source.id, &source.text)))
+        .collect::<Vec<_>>();
+    let syntax_diagnostics = syntax_sources
+        .iter()
+        .flat_map(|(_, parsed)| parsed.diagnostics().iter().cloned())
         .collect::<Vec<_>>();
     if !syntax_diagnostics.is_empty() {
         return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
@@ -492,21 +504,27 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
         )));
     }
 
+    let mut syntax = BTreeMap::new();
     let mut parsed = BTreeMap::new();
+    let mut source_ids = BTreeMap::new();
     let mut graph = ModuleGraph::new();
     let mut modules = Vec::new();
 
-    for source in sources {
+    for (source, syntax_file) in syntax_sources {
         let module = graph.add_source(source.clone());
         let source_file = parse_legacy_source(source.id, &source.text);
+        syntax.insert(module, syntax_file);
         parsed.insert(module, source_file);
+        source_ids.insert(module, source.id);
         modules.push(module);
     }
 
     graph.resolve_imports();
     if graph.diagnostics().is_empty() {
         Ok(SemanticModules {
+            syntax,
             parsed,
+            source_ids,
             graph,
             modules,
         })
@@ -515,8 +533,4 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
             graph.diagnostics().to_vec(),
         )))
     }
-}
-
-fn cst_syntax_diagnostics(source: SourceId, text: &str) -> Vec<vela_common::Diagnostic> {
-    parse_syntax_source(source, text).into_diagnostics()
 }
