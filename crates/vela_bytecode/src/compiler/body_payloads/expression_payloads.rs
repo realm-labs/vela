@@ -381,6 +381,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn record_path_segments(&self) -> Option<Vec<String>> {
+        let ExprKind::Record { .. } = &self.fallback.kind else {
+            return None;
+        };
+        let segments = self.syntax.as_ref()?.as_record()?.path_segments();
+        (!segments.is_empty()).then_some(segments)
+    }
+
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

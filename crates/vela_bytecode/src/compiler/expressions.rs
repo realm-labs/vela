@@ -112,7 +112,10 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST record expression payload kind");
                 };
                 let field_payloads = payload.record_field_payloads();
-                self.compile_record(expr, path, fields, field_payloads.as_deref())
+                let path = payload
+                    .record_path_segments()
+                    .unwrap_or_else(|| path.to_owned());
+                self.compile_record(expr, &path, fields, field_payloads.as_deref())
             }
             SyntaxExpressionKind::Binary => {
                 let ExprKind::Binary { op, left, right } = &expr.kind else {

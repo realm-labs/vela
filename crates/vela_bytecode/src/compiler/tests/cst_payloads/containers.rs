@@ -326,6 +326,7 @@ fn return_record() {
         .filter_map(|field| field.syntax_label_name())
         .collect::<Vec<_>>();
     assert_eq!(record_field_names, ["first", "second", "third"]);
+    assert_cst_let_initializer_record_paths(&payload.body, &[&["Pair"]]);
     assert_cst_let_initializer_record_field_value_body_payloads(
         &payload.body,
         &[vec![
@@ -371,6 +372,31 @@ fn return_record() {
     );
 
     compile_program_source(source, text).expect("CST-backed record field values should compile");
+}
+
+fn assert_cst_let_initializer_record_paths(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&[&str]],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter_map(|payload| payload.record_path_segments())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_segments(expected));
+}
+
+fn expected_segments(expected: &[&[&str]]) -> Vec<Vec<String>> {
+    expected
+        .iter()
+        .map(|segments| {
+            segments
+                .iter()
+                .map(|segment| (*segment).to_owned())
+                .collect()
+        })
+        .collect()
 }
 
 #[test]
