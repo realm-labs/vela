@@ -576,14 +576,14 @@ impl Compiler<'_, '_> {
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Unary
-            | SyntaxExpressionKind::Try => match expected {
-                Some(expected) => self
-                    .compile_expr_with_expected_type(value, expected, context)
-                    .map(|register| (register, false)),
-                None => self
-                    .compile_expr_with_payload(value, syntax_payloads.expression)
-                    .map(|register| (register, false)),
-            },
+            | SyntaxExpressionKind::Try => self
+                .compile_expr_with_optional_expected_type_and_payload(
+                    value,
+                    expected,
+                    context,
+                    syntax_payloads.expression,
+                )
+                .map(|register| (register, false)),
             _ => self.compile_let_initializer_legacy(value, expected, context),
         }
     }
@@ -751,14 +751,14 @@ impl Compiler<'_, '_> {
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Unary
-            | SyntaxExpressionKind::Try => match expected {
-                Some(expected) => self
-                    .compile_expr_with_expected_type(value, expected, context)
-                    .map(|register| (register, false)),
-                None => self
-                    .compile_expr_with_payload(value, syntax_payloads.expression)
-                    .map(|register| (register, false)),
-            },
+            | SyntaxExpressionKind::Try => self
+                .compile_expr_with_optional_expected_type_and_payload(
+                    value,
+                    expected,
+                    context,
+                    syntax_payloads.expression,
+                )
+                .map(|register| (register, false)),
             _ => self.compile_return_expr_legacy(value, expected, context),
         }
     }

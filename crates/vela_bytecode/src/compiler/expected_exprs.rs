@@ -53,6 +53,21 @@ impl Compiler<'_, '_> {
         }
         Ok(register)
     }
+
+    pub(super) fn compile_expr_with_optional_expected_type_and_payload(
+        &mut self,
+        expr: &Expr,
+        expected: Option<RuntimeTypeFact>,
+        context: TypeContractContext,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
+        match expected {
+            Some(expected) => {
+                self.compile_expr_with_expected_type_and_payload(expr, expected, context, payload)
+            }
+            None => self.compile_expr_with_payload(expr, payload),
+        }
+    }
 }
 
 fn guard_location_and_name(context: TypeContractContext) -> Option<(GuardLocation, String)> {
