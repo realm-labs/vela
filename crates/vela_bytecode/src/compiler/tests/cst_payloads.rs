@@ -3,6 +3,7 @@ use super::*;
 mod binary;
 mod calls;
 mod containers;
+mod field_index;
 mod wrappers;
 
 #[test]

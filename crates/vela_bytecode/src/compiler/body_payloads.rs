@@ -719,6 +719,43 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn field_base_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Field { base, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_field()?.receiver(),
+            fallback: base,
+        })
+    }
+
+    pub(in crate::compiler) fn index_operand_payloads(
+        &self,
+    ) -> Option<(
+        CompilerExpressionPayload<'ast>,
+        CompilerExpressionPayload<'ast>,
+    )> {
+        let ExprKind::Index { base, index } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax = self.syntax.as_ref()?.as_index()?;
+        Some((
+            CompilerExpressionPayload {
+                source: self.source,
+                syntax: syntax.receiver(),
+                fallback: base,
+            },
+            CompilerExpressionPayload {
+                source: self.source,
+                syntax: syntax.index(),
+                fallback: index,
+            },
+        ))
+    }
+
     pub(in crate::compiler) fn array_element_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

@@ -1,0 +1,151 @@
+use super::*;
+
+#[test]
+fn semantic_function_field_and_index_operands_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct Counter {
+    value: i64,
+}
+
+fn make_counter(value) {
+    return Counter { value: value };
+}
+
+fn make_counters(value) {
+    return [Counter { value: value }];
+}
+
+fn field_and_index_values() {
+    let field = make_counter({
+        let current = 2;
+        current
+    }).value;
+    let indexed = make_counters({
+        let all = 3;
+        all
+    })[{
+        let offset = 0;
+        offset
+    }].value;
+    return field + indexed;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("field_and_index_values")
+        .expect("field_and_index_values function");
+
+    assert_cst_let_initializer_field_base_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let current = 2;"),
+                (SyntaxStatementKind::Expr, "current"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let all = 3;"),
+                (SyntaxStatementKind::Expr, "all"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let offset = 0;"),
+                (SyntaxStatementKind::Expr, "offset"),
+            ],
+        ],
+    );
+    assert_cst_let_initializer_index_operand_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let all = 3;"),
+                (SyntaxStatementKind::Expr, "all"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let offset = 0;"),
+                (SyntaxStatementKind::Expr, "offset"),
+            ],
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed field/index operands should compile");
+}
+
+fn assert_cst_let_initializer_field_base_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(field_base_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_let_initializer_index_operand_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(index_block_operand_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn field_base_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    payload
+        .field_base_payload()
+        .map(nested_block_payloads)
+        .unwrap_or_default()
+}
+
+fn index_block_operand_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    let Some(field_base) = payload.field_base_payload() else {
+        return Vec::new();
+    };
+    let Some((base, index)) = field_base.index_operand_payloads() else {
+        return Vec::new();
+    };
+    [base, index]
+        .into_iter()
+        .flat_map(index_operand_block_payloads)
+        .collect()
+}
+
+fn index_operand_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    nested_block_payloads(payload)
+}
+
+fn nested_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    if let Some(body) = payload.block_body_payload() {
+        return vec![cst_statement_texts(&body)];
+    }
+    if let Some((base, index)) = payload.index_operand_payloads() {
+        return [base, index]
+            .into_iter()
+            .flat_map(nested_block_payloads)
+            .collect();
+    }
+    payload
+        .call_argument_payloads()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|argument| {
+            let value = argument.value_expression_payload();
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect()
+}

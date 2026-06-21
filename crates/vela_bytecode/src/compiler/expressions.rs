@@ -15,6 +15,7 @@ use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
 use super::constructors::schema_default_fields;
+use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -126,6 +127,23 @@ impl Compiler<'_, '_> {
                     arg_payloads.as_deref(),
                 )
             }
+            SyntaxExpressionKind::Field => {
+                let ExprKind::Field { base, name } = &expr.kind else {
+                    unreachable!("validated CST field expression payload kind");
+                };
+                let base_payload = payload.field_base_payload();
+                self.compile_field_expr(expr, base, name, base_payload.as_ref())
+            }
+            SyntaxExpressionKind::Index => {
+                let ExprKind::Index { base, index } = &expr.kind else {
+                    unreachable!("validated CST index expression payload kind");
+                };
+                let operand_payloads = payload.index_operand_payloads();
+                let (base_payload, index_payload) = operand_payloads
+                    .as_ref()
+                    .map_or((None, None), |(base, index)| (Some(base), Some(index)));
+                self.compile_index_expr(expr, base, index, base_payload, index_payload)
+            }
             SyntaxExpressionKind::Unary => {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
@@ -159,117 +177,9 @@ impl Compiler<'_, '_> {
                 self.compile_binary(*op, expr.span, left, right, None, None)
             }
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr, None),
-            ExprKind::Field { base, name } => {
-                let typed_record_slot = self
-                    .script_record_field_slot_for_receiver(base, name)
-                    .or_else(|| self.record_field_shape_slot_for_receiver(base, name));
-                let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
-                if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
-                    let root = self.compile_expr(base)?;
-                    let dst = self.alloc_register()?;
-                    match slot_kind {
-                        LiteralFieldSlotKind::Record => {
-                            self.emit(UnlinkedInstructionKind::GetRecordSlot {
-                                dst,
-                                record: root,
-                                field: name.clone(),
-                                slot,
-                            })
-                        }
-                        LiteralFieldSlotKind::Enum => {
-                            self.emit(UnlinkedInstructionKind::GetEnumSlot {
-                                dst,
-                                value: root,
-                                field: name.clone(),
-                                slot,
-                            })
-                        }
-                    }
-                    Ok(dst)
-                } else if let Some(slot) = typed_record_slot {
-                    let root = self.compile_expr(base)?;
-                    let dst = self.alloc_register()?;
-                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
-                        dst,
-                        record: root,
-                        field: name.clone(),
-                        slot,
-                    });
-                    Ok(dst)
-                } else if let Some(slot) = typed_enum_slot {
-                    let root = self.compile_expr(base)?;
-                    let dst = self.alloc_register()?;
-                    self.emit(UnlinkedInstructionKind::GetEnumSlot {
-                        dst,
-                        value: root,
-                        field: name.clone(),
-                        slot,
-                    });
-                    Ok(dst)
-                } else {
-                    if let Some(path) = self.host_field_path(expr)
-                        && path.requires_path_instruction()
-                    {
-                        let root = self.compile_host_path_root(path.root)?;
-                        let dst = self.alloc_register()?;
-                        self.emit_host_read(dst, root, path, expr.span)?;
-                        return Ok(dst);
-                    }
-                    let root = self.compile_expr(base)?;
-                    let dst = self.alloc_register()?;
-                    let receiver_type = self.script_type_for_expr(base);
-                    if let Some(field) = self
-                        .host_field_info(receiver_type.as_deref(), name)
-                        .map(|field| field.id)
-                    {
-                        let path = HostPath {
-                            root: super::host_paths::HostPathRoot::Expr(base),
-                            segments: vec![super::host_paths::HostPathPart::Field(field)],
-                        };
-                        self.emit_host_read(dst, root, path, expr.span)?;
-                    } else {
-                        self.emit(UnlinkedInstructionKind::GetRecordField {
-                            dst,
-                            record: root,
-                            field: name.clone(),
-                        });
-                    }
-                    Ok(dst)
-                }
-            }
+            ExprKind::Field { base, name } => self.compile_field_expr(expr, base, name, None),
             ExprKind::Index { base, index } => {
-                if let Some(path) = self.host_field_path(expr)
-                    && !path.segments.is_empty()
-                {
-                    self.reject_invalid_host_index_access(
-                        expr,
-                        base,
-                        index,
-                        HostIndexAccessKind::Read,
-                    )?;
-                    let root = self.compile_host_path_root(path.root)?;
-                    let dst = self.alloc_register()?;
-                    self.emit_host_read(dst, root, path, expr.span)?;
-                    return Ok(dst);
-                }
-                self.reject_invalid_host_index_access(
-                    expr,
-                    base,
-                    index,
-                    HostIndexAccessKind::Read,
-                )?;
-                let base = self.compile_expr(base)?;
-                let dst = self.alloc_register()?;
-                if let Some(key) = literal_string(index) {
-                    let key = self
-                        .code
-                        .push_constant(crate::Constant::String(key.to_owned()));
-                    self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
-                } else {
-                    let index = self.compile_expr(index)?;
-                    self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
-                }
-                Ok(dst)
+                self.compile_index_expr(expr, base, index, None, None)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
             ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body),
@@ -303,6 +213,119 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
         }
+    }
+
+    fn compile_field_expr(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        name: &str,
+        base_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
+        let typed_record_slot = self
+            .script_record_field_slot_for_receiver(base, name)
+            .or_else(|| self.record_field_shape_slot_for_receiver(base, name));
+        let typed_enum_slot = self.script_enum_field_slot_for_receiver(base, name);
+        if let Some((slot_kind, slot)) = record_literal_field_slot(base, name) {
+            let root = self.compile_expr_with_payload(base, base_payload)?;
+            let dst = self.alloc_register()?;
+            match slot_kind {
+                LiteralFieldSlotKind::Record => self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                    dst,
+                    record: root,
+                    field: name.to_owned(),
+                    slot,
+                }),
+                LiteralFieldSlotKind::Enum => self.emit(UnlinkedInstructionKind::GetEnumSlot {
+                    dst,
+                    value: root,
+                    field: name.to_owned(),
+                    slot,
+                }),
+            }
+            Ok(dst)
+        } else if let Some(slot) = typed_record_slot {
+            let root = self.compile_expr_with_payload(base, base_payload)?;
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                dst,
+                record: root,
+                field: name.to_owned(),
+                slot,
+            });
+            Ok(dst)
+        } else if let Some(slot) = typed_enum_slot {
+            let root = self.compile_expr_with_payload(base, base_payload)?;
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::GetEnumSlot {
+                dst,
+                value: root,
+                field: name.to_owned(),
+                slot,
+            });
+            Ok(dst)
+        } else {
+            if let Some(path) = self.host_field_path(expr)
+                && path.requires_path_instruction()
+            {
+                let root = self.compile_host_path_root(path.root)?;
+                let dst = self.alloc_register()?;
+                self.emit_host_read(dst, root, path, expr.span)?;
+                return Ok(dst);
+            }
+            let root = self.compile_expr_with_payload(base, base_payload)?;
+            let dst = self.alloc_register()?;
+            let receiver_type = self.script_type_for_expr(base);
+            if let Some(field) = self
+                .host_field_info(receiver_type.as_deref(), name)
+                .map(|field| field.id)
+            {
+                let path = HostPath {
+                    root: super::host_paths::HostPathRoot::Expr(base),
+                    segments: vec![super::host_paths::HostPathPart::Field(field)],
+                };
+                self.emit_host_read(dst, root, path, expr.span)?;
+            } else {
+                self.emit(UnlinkedInstructionKind::GetRecordField {
+                    dst,
+                    record: root,
+                    field: name.to_owned(),
+                });
+            }
+            Ok(dst)
+        }
+    }
+
+    fn compile_index_expr(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        index: &Expr,
+        base_payload: Option<&CompilerExpressionPayload<'_>>,
+        index_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
+        if let Some(path) = self.host_field_path(expr)
+            && !path.segments.is_empty()
+        {
+            self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;
+            let root = self.compile_host_path_root(path.root)?;
+            let dst = self.alloc_register()?;
+            self.emit_host_read(dst, root, path, expr.span)?;
+            return Ok(dst);
+        }
+        self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;
+        let base = self.compile_expr_with_payload(base, base_payload)?;
+        let dst = self.alloc_register()?;
+        if let Some(key) = literal_string(index) {
+            let key = self
+                .code
+                .push_constant(crate::Constant::String(key.to_owned()));
+            self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
+        } else {
+            let index = self.compile_expr_with_payload(index, index_payload)?;
+            self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+        }
+        Ok(dst)
     }
 
     fn compile_array(
@@ -949,34 +972,6 @@ fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
         | RuntimeTypeFact::Iterator(_)
         | RuntimeTypeFact::Option(_)
         | RuntimeTypeFact::Result { .. } => true,
-    }
-}
-
-fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
-    match kind {
-        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
-        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
-        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
-        SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
-        SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
-        SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
-        SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
-        SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
-        SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
-        SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
-        _ => !matches!(
-            expr.kind,
-            ExprKind::Block(_)
-                | ExprKind::If(_)
-                | ExprKind::Match(_)
-                | ExprKind::Array(_)
-                | ExprKind::Map(_)
-                | ExprKind::Record { .. }
-                | ExprKind::Binary { .. }
-                | ExprKind::Call { .. }
-                | ExprKind::Unary { .. }
-                | ExprKind::Try(_)
-        ),
     }
 }
 
