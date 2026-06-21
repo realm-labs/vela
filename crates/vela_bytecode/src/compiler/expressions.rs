@@ -149,7 +149,7 @@ impl Compiler<'_, '_> {
                 };
                 let base_payload = payload.field_base_payload();
                 let name = payload.field_name().unwrap_or_else(|| name.to_owned());
-                self.compile_field_expr(expr, base, &name, base_payload.as_ref())
+                self.compile_field_expr(expr, base, &name, base_payload.as_ref(), Some(payload))
             }
             SyntaxExpressionKind::Index => {
                 let ExprKind::Index { base, index } = &expr.kind else {
@@ -159,7 +159,14 @@ impl Compiler<'_, '_> {
                 let (base_payload, index_payload) = operand_payloads
                     .as_ref()
                     .map_or((None, None), |(base, index)| (Some(base), Some(index)));
-                self.compile_index_expr(expr, base, index, base_payload, index_payload)
+                self.compile_index_expr(
+                    expr,
+                    base,
+                    index,
+                    base_payload,
+                    index_payload,
+                    Some(payload),
+                )
             }
             SyntaxExpressionKind::Lambda => {
                 let ExprKind::Lambda { params, body } = &expr.kind else {
@@ -212,9 +219,9 @@ impl Compiler<'_, '_> {
                 self.compile_binary(*op, expr.span, left, right, None, None)
             }
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr, None),
-            ExprKind::Field { base, name } => self.compile_field_expr(expr, base, name, None),
+            ExprKind::Field { base, name } => self.compile_field_expr(expr, base, name, None, None),
             ExprKind::Index { base, index } => {
-                self.compile_index_expr(expr, base, index, None, None)
+                self.compile_index_expr(expr, base, index, None, None, None)
             }
             ExprKind::Call { callee, args } => self.compile_call_expr(expr, callee, args),
             ExprKind::Lambda { params, body } => self.compile_lambda(expr, params, body, None),
@@ -256,6 +263,7 @@ impl Compiler<'_, '_> {
         base: &Expr,
         name: &str,
         base_payload: Option<&CompilerExpressionPayload<'_>>,
+        expr_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         let receiver_type = self.script_type_for_expr_with_payload(base, base_payload);
         let typed_record_slot = receiver_type
@@ -312,7 +320,7 @@ impl Compiler<'_, '_> {
             });
             Ok(dst)
         } else {
-            if let Some(path) = self.host_field_path_with_field_base_payload(expr, base_payload)
+            if let Some(path) = self.host_field_path_with_payload(expr, expr_payload)
                 && path.requires_path_instruction()
             {
                 let root = self.compile_host_path_root(&path.root)?;
@@ -352,9 +360,9 @@ impl Compiler<'_, '_> {
         index: &Expr,
         base_payload: Option<&CompilerExpressionPayload<'_>>,
         index_payload: Option<&CompilerExpressionPayload<'_>>,
+        expr_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        if let Some(path) =
-            self.host_field_path_with_index_payloads(expr, base_payload, index_payload)
+        if let Some(path) = self.host_field_path_with_payload(expr, expr_payload)
             && !path.segments.is_empty()
         {
             self.reject_invalid_host_index_read_with_payload(

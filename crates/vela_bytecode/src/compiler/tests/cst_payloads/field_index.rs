@@ -501,7 +501,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
     let ExprKind::Index { base, index } = &mismatched_index.fallback().kind else {
         panic!("expected legacy index fallback");
     };
-    let compiler = Compiler::new_with_param_defaults(
+    let mut compiler = Compiler::new_with_param_defaults(
         payload.function.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
@@ -520,6 +520,28 @@ fn main(cst: CstMap, legacy: LegacyMap) {
             Some(&index_payload),
         )
         .expect("CST receiver payload should select CstMap key contract");
+    compiler
+        .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
+        .expect("CST-backed host index read should compile");
+    let target = compiler
+        .code
+        .instructions
+        .iter()
+        .rev()
+        .find_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
+            _ => None,
+        })
+        .expect("host index read should be emitted");
+    let plan = compiler
+        .code
+        .host_target(target)
+        .expect("host index read target should exist");
+    assert_eq!(plan.root_type, HostTypeId::new(77));
+    assert_eq!(
+        plan.parts.as_slice(),
+        [vela_host::target::HostPathPart::DynIndex { arg: 0 }]
+    );
 }
 
 #[test]

@@ -64,40 +64,6 @@ impl Compiler<'_, '_> {
             .map(|resolved| resolved.path)
     }
 
-    pub(super) fn host_field_path_with_index_payloads<'ast>(
-        &self,
-        expr: &'ast Expr,
-        base_payload: Option<&CompilerExpressionPayload<'ast>>,
-        index_payload: Option<&CompilerExpressionPayload<'ast>>,
-    ) -> Option<HostPath<'ast>> {
-        let mut path = self.host_field_path(expr)?;
-        let ExprKind::Index { base, index } = &expr.kind else {
-            return Some(path);
-        };
-        let mut next_segment = 0;
-        attach_host_path_payloads(base, base_payload.cloned(), &mut path, &mut next_segment);
-        attach_next_dynamic_host_path_payload(
-            index.as_ref(),
-            index_payload.cloned(),
-            &mut path.segments,
-            &mut next_segment,
-        );
-        Some(path)
-    }
-
-    pub(super) fn host_field_path_with_field_base_payload<'ast>(
-        &self,
-        expr: &'ast Expr,
-        base_payload: Option<&CompilerExpressionPayload<'ast>>,
-    ) -> Option<HostPath<'ast>> {
-        let mut path = self.host_field_path(expr)?;
-        let ExprKind::Field { base, .. } = &expr.kind else {
-            return Some(path);
-        };
-        attach_host_path_payloads(base, base_payload.cloned(), &mut path, &mut 0);
-        Some(path)
-    }
-
     pub(super) fn resolve_host_path_with_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -805,37 +771,6 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn attach_host_path_payloads<'ast>(
-    expr: &'ast Expr,
-    payload: Option<CompilerExpressionPayload<'ast>>,
-    path: &mut HostPath<'ast>,
-    next_segment: &mut usize,
-) {
-    match &expr.kind {
-        ExprKind::Field { base, .. } => {
-            attach_host_path_payloads(
-                base,
-                payload.and_then(|payload| payload.field_base_payload()),
-                path,
-                next_segment,
-            );
-        }
-        ExprKind::Index { base, index } => {
-            let operands = payload.and_then(|payload| payload.index_operand_payloads());
-            let (base_payload, index_payload) =
-                operands.map_or((None, None), |(base, index)| (Some(base), Some(index)));
-            attach_host_path_payloads(base, base_payload, path, next_segment);
-            attach_next_dynamic_host_path_payload(
-                index.as_ref(),
-                index_payload,
-                &mut path.segments,
-                next_segment,
-            );
-        }
-        _ => attach_host_path_root_payload(expr, payload, &mut path.root),
-    }
-}
-
 fn callee_field_name_matches(
     payload: Option<&CompilerExpressionPayload<'_>>,
     fallback_name: &str,
@@ -855,44 +790,6 @@ fn callee_path_last_matches(
 ) -> bool {
     let path = cst_path.unwrap_or(fallback_path);
     path.last().is_some_and(|name| name == expected)
-}
-
-fn attach_host_path_root_payload<'ast>(
-    expr: &'ast Expr,
-    expr_payload: Option<CompilerExpressionPayload<'ast>>,
-    root: &mut HostPathRoot<'ast>,
-) {
-    let HostPathRoot::Expr {
-        expr: root_expr,
-        payload,
-    } = root
-    else {
-        return;
-    };
-    if std::ptr::eq::<Expr>(*root_expr, expr) {
-        *payload = expr_payload;
-    }
-}
-
-fn attach_next_dynamic_host_path_payload<'ast>(
-    index: &'ast Expr,
-    index_payload: Option<CompilerExpressionPayload<'ast>>,
-    segments: &mut [HostPathPart<'ast>],
-    next_segment: &mut usize,
-) {
-    while let Some(segment) = segments.get_mut(*next_segment) {
-        *next_segment += 1;
-        if let HostPathPart::Value {
-            expr: segment_expr,
-            payload,
-            ..
-        } = segment
-            && std::ptr::eq::<Expr>(*segment_expr, index)
-        {
-            *payload = index_payload;
-            break;
-        }
-    }
 }
 
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
