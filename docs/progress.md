@@ -275,6 +275,10 @@ default methods now enter bytecode compilation through a shared
 `CompilerBodyPayload` that carries the rowan CST body block plus the temporary
 legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.
+The compiler body entry now walks `CompilerStatementPayload` values that pair
+rowan CST statements with temporary legacy fallback statements, so top-level
+raw body statement slices are confined to the payload boundary while statement
+lowering migrates.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -994,7 +994,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
-        let returned = self.compile_statements(&self.body.fallback().statements)?;
+        let statements = self.body.statement_payloads();
+        let returned = self.compile_statement_payloads(&statements)?;
         if !returned {
             let null = self.emit_constant(Constant::Null)?;
             self.emit(UnlinkedInstructionKind::Return { src: null });

@@ -5,7 +5,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
-use vela_syntax::ast::AstNode;
+use vela_syntax::ast::{AstNode, SyntaxStatementKind};
 
 fn assert_cst_param_default(
     default: &Option<ParamDefaultValue>,
@@ -32,6 +32,21 @@ fn assert_cst_body(
     let payload = body.syntax_payload().expect("expected CST-backed body");
     assert_eq!(payload.source, expected_source);
     assert_eq!(payload.body.syntax().text().to_string(), expected_text);
+}
+
+fn assert_cst_statements(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxStatementKind, &str)],
+) {
+    let statements = body.statement_payloads();
+    assert_eq!(statements.len(), expected.len());
+    for (statement, (expected_kind, expected_text)) in statements.iter().zip(expected) {
+        let syntax = statement
+            .syntax_statement()
+            .expect("expected CST-backed statement");
+        assert_eq!(syntax.statement_kind(), *expected_kind);
+        assert_eq!(syntax.syntax().text().to_string(), *expected_text);
+    }
 }
 
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
@@ -78,6 +93,10 @@ fn grant(base, amount = 10, bonus = amount + 1) {
         source,
         "{\n    return base + amount + bonus;\n}",
     );
+    assert_cst_statements(
+        &payload.body,
+        &[(SyntaxStatementKind::Return, "return base + amount + bonus;")],
+    );
     assert!(payload.param_defaults[0].is_none());
     assert_cst_param_default(&payload.param_defaults[1], source, "10");
     assert_cst_param_default(&payload.param_defaults[2], source, "amount + 1");
@@ -107,6 +126,10 @@ impl Counter {
         &method.body,
         source,
         "{\n        self.value += amount;\n    }",
+    );
+    assert_cst_statements(
+        &method.body,
+        &[(SyntaxStatementKind::Expr, "self.value += amount;")],
     );
     assert!(method.default_values[0].is_none());
     assert_cst_param_default(&method.default_values[1], source, "1");

@@ -8,6 +8,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
+use super::body_payloads::CompilerStatementPayload;
 use super::const_eval::compile_literal_constant_for_type;
 use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
@@ -70,6 +71,18 @@ impl LoopContext {
 }
 
 impl Compiler<'_, '_> {
+    pub(super) fn compile_statement_payloads(
+        &mut self,
+        statements: &[CompilerStatementPayload<'_>],
+    ) -> CompileResult<bool> {
+        for stmt in statements {
+            if self.compile_statement(stmt.fallback())? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     pub(super) fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
         for stmt in statements {
             if self.compile_statement(stmt)? {
