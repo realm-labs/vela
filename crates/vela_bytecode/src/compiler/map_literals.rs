@@ -11,10 +11,13 @@ impl Compiler<'_, '_> {
         entry: &MapEntry,
         payload: Option<&CompilerMapEntryPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
-        let key = payload
-            .and_then(CompilerMapEntryPayload::syntax_key_name)
-            .map(Ok)
-            .unwrap_or_else(|| map_key_name(&entry.key))?;
+        let key = if let Some(payload) = payload {
+            payload
+                .syntax_key_name()
+                .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("map key")))?
+        } else {
+            map_key_name(&entry.key)?
+        };
         let value = if let Some(payload) = payload {
             let value_payload = payload.value_expression_payload();
             self.compile_expr_with_payload(&entry.value, Some(&value_payload))?

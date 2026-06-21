@@ -128,7 +128,7 @@ fn main() {
     let legacy_record = Pair { first: 1 };
 }
 "#,
-        |_, payload| {
+        |compiler, payload| {
             let statements = payload.body.statement_payloads();
 
             let cst_array = statements[0]
@@ -181,6 +181,16 @@ fn main() {
                     .value_expression_payload()
                     .syntax_expression()
                     .is_none()
+            );
+            let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
+                panic!("expected legacy map fallback");
+            };
+            let err = compiler
+                .compile_map_entry(&legacy_entries[0], Some(&map_entries[0]))
+                .expect_err("mismatched CST map key should not use legacy fallback key");
+            assert!(
+                matches!(err.kind, CompileErrorKind::UnsupportedSyntax("map key")),
+                "expected unsupported map-key diagnostic for missing CST key, got {err:?}"
             );
 
             let cst_record = statements[4]
