@@ -17,10 +17,10 @@ use crate::Constant;
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
-use super::legacy_payloads::{function_body_payloads, schema_default_payloads};
+use super::legacy_payloads::function_body_payloads;
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
-use super::syntax_payloads::const_value_payloads;
+use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
 
 pub(super) struct SemanticSource {
     source: SourceId,
@@ -160,7 +160,7 @@ impl SemanticSource {
         const_values: &BTreeMap<HirDeclId, Constant>,
     ) -> ScriptSchemaDefaults {
         source_schema_defaults(
-            &schema_default_payloads(&self.parsed),
+            &schema_default_payloads(self.source, &self.syntax, &self.parsed),
             &self.graph,
             self.module,
             type_symbols,
@@ -337,11 +337,17 @@ impl SemanticModules {
     ) -> ScriptSchemaDefaults {
         let mut defaults = ScriptSchemaDefaults::default();
         for module in &self.modules {
+            let Some(syntax) = self.syntax.get(module) else {
+                continue;
+            };
             let Some(parsed) = self.parsed.get(module) else {
                 continue;
             };
+            let Some(source) = self.source_ids.get(module).copied() else {
+                continue;
+            };
             defaults.merge(source_schema_defaults(
-                &schema_default_payloads(parsed),
+                &schema_default_payloads(source, syntax, parsed),
                 &self.graph,
                 *module,
                 type_symbols,

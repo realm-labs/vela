@@ -243,8 +243,11 @@ no longer expose old owned-AST conversion helpers, and the bytecode compiler no
 longer carries an old-AST `TypeHint` conversion helper. Bytecode typed-let
 contracts now read HIR local binding type hints, and schema-default type and
 variant discovery, constructor shapes, field type facts, and default presence
-now read HIR struct and enum declarations/shapes, leaving the legacy owned AST
-in that path only as the temporary default-expression payload carrier.
+now read HIR struct and enum declarations/shapes. Schema default-expression
+payload discovery now walks rowan CST struct/enum field wrappers, and constant
+default evaluation uses rowan CST expressions, leaving the legacy owned AST in
+that path only as the temporary runtime expression compiler fallback for
+non-constant defaults.
 Constructor schema lowering now consumes explicit default-expression payload
 maps instead of traversing legacy source files inside the schema-default logic.
 Bytecode script function lookup and parameter default flags now read HIR function
@@ -261,9 +264,9 @@ association is keyed by HIR method metadata, leaving the legacy owned AST in
 that path only as the temporary method body and default-expression payload
 carrier.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
-function body and schema default-expression payload extraction behind a
-dedicated compiler payload boundary, keeping semantic orchestration on HIR/CST
-diagnostics while the final expression/body migration continues.
+function body and runtime default-expression fallback behind a dedicated
+compiler payload boundary, keeping semantic orchestration on HIR/CST diagnostics
+while the final expression/body migration continues.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

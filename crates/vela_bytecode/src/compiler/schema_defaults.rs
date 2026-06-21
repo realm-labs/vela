@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{Diagnostic, Span};
+use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{Argument, Expr, RecordField};
+use vela_syntax::ast::{Argument, Expr, RecordField, SyntaxExpression};
 
 use crate::Constant;
 
@@ -122,8 +122,41 @@ struct ConstructorField {
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct SchemaFieldDefault {
     pub(super) name: String,
-    pub(super) value: Expr,
+    pub(super) value: SchemaDefaultValue,
     pub(super) constants: BTreeMap<String, Constant>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct SchemaDefaultValue {
+    source: SourceId,
+    syntax: SyntaxExpression,
+    legacy: Expr,
+}
+
+impl SchemaDefaultValue {
+    pub(super) const fn new(source: SourceId, syntax: SyntaxExpression, legacy: Expr) -> Self {
+        Self {
+            source,
+            syntax,
+            legacy,
+        }
+    }
+
+    pub(super) const fn source(&self) -> SourceId {
+        self.source
+    }
+
+    pub(super) const fn syntax(&self) -> &SyntaxExpression {
+        &self.syntax
+    }
+
+    pub(super) const fn legacy(&self) -> &Expr {
+        &self.legacy
+    }
+
+    pub(super) const fn span(&self) -> Span {
+        self.legacy.span
+    }
 }
 
 pub(super) fn source_schema_defaults(
@@ -224,9 +257,9 @@ fn module_schema_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirD
 
 #[derive(Default)]
 pub(super) struct SchemaDefaultPayloads {
-    struct_fields: BTreeMap<(String, String), Expr>,
-    enum_tuple_fields: BTreeMap<(String, String, usize), Expr>,
-    enum_record_fields: BTreeMap<(String, String, String), Expr>,
+    struct_fields: BTreeMap<(String, String), SchemaDefaultValue>,
+    enum_tuple_fields: BTreeMap<(String, String, usize), SchemaDefaultValue>,
+    enum_record_fields: BTreeMap<(String, String, String), SchemaDefaultValue>,
 }
 
 impl SchemaDefaultPayloads {
@@ -234,7 +267,7 @@ impl SchemaDefaultPayloads {
         &mut self,
         type_name: String,
         field_name: String,
-        value: Expr,
+        value: SchemaDefaultValue,
     ) {
         self.struct_fields.insert((type_name, field_name), value);
     }
@@ -244,7 +277,7 @@ impl SchemaDefaultPayloads {
         type_name: String,
         variant_name: String,
         index: usize,
-        value: Expr,
+        value: SchemaDefaultValue,
     ) {
         self.enum_tuple_fields
             .insert((type_name, variant_name, index), value);
@@ -255,19 +288,24 @@ impl SchemaDefaultPayloads {
         type_name: String,
         variant_name: String,
         field_name: String,
-        value: Expr,
+        value: SchemaDefaultValue,
     ) {
         self.enum_record_fields
             .insert((type_name, variant_name, field_name), value);
     }
 
-    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<Expr> {
+    fn struct_field(&self, type_name: &str, field_name: &str) -> Option<SchemaDefaultValue> {
         self.struct_fields
             .get(&(type_name.to_owned(), field_name.to_owned()))
             .cloned()
     }
 
-    fn enum_tuple_field(&self, type_name: &str, variant_name: &str, index: usize) -> Option<Expr> {
+    fn enum_tuple_field(
+        &self,
+        type_name: &str,
+        variant_name: &str,
+        index: usize,
+    ) -> Option<SchemaDefaultValue> {
         self.enum_tuple_fields
             .get(&(type_name.to_owned(), variant_name.to_owned(), index))
             .cloned()
@@ -278,7 +316,7 @@ impl SchemaDefaultPayloads {
         type_name: &str,
         variant_name: &str,
         field_name: &str,
-    ) -> Option<Expr> {
+    ) -> Option<SchemaDefaultValue> {
         self.enum_record_fields
             .get(&(
                 type_name.to_owned(),
@@ -291,7 +329,7 @@ impl SchemaDefaultPayloads {
 
 fn schema_field_default(
     name: String,
-    value: Expr,
+    value: SchemaDefaultValue,
     constants: BTreeMap<String, Constant>,
 ) -> SchemaFieldDefault {
     SchemaFieldDefault {

@@ -5,7 +5,7 @@ use vela_syntax::ast::Argument;
 
 use crate::Register;
 
-use super::const_eval::evaluate_const_expr;
+use super::const_eval::evaluate_syntax_const_expr;
 use super::patterns::tuple_variant_field_name;
 use super::schema_defaults::{
     ConstructorShape, SchemaFieldDefault, resolve_tuple_constructor_arguments,
@@ -195,12 +195,16 @@ impl Compiler<'_, '_> {
         default: &SchemaFieldDefault,
         expected: Option<RuntimeTypeFact>,
     ) -> CompileResult<Register> {
-        if let Some(value) = evaluate_const_expr(&default.value, &default.constants)? {
+        if let Some(value) = evaluate_syntax_const_expr(
+            default.value.source(),
+            default.value.syntax(),
+            &default.constants,
+        )? {
             if let Some(expected) = expected {
                 check_expected_type(
                     static_type_for_constant(&value),
                     expected,
-                    default.value.span,
+                    default.value.span(),
                     TypeContractContext::Field {
                         name: default.name.clone(),
                     },
@@ -210,14 +214,14 @@ impl Compiler<'_, '_> {
         }
         if let Some(expected) = expected {
             return self.compile_expr_with_expected_type(
-                &default.value,
+                default.value.legacy(),
                 expected,
                 TypeContractContext::Field {
                     name: default.name.clone(),
                 },
             );
         }
-        self.compile_expr(&default.value)
+        self.compile_expr(default.value.legacy())
     }
 }
 

@@ -4,9 +4,8 @@ use std::num::{ParseFloatError, ParseIntError};
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_syntax::TextRange;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral,
-    IntegerSuffix, Literal, MapEntry, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
-    UnaryOp,
+    AstNode, BinaryOp, FloatLiteral, FloatSuffix, IntRadix, IntegerLiteral, IntegerSuffix, Literal,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry, UnaryOp,
 };
 
 use crate::Constant;
@@ -51,68 +50,6 @@ pub(super) fn compile_negated_literal_constant(
             parse_f64_scalar(value)?,
         )))),
         _ => Ok(None),
-    }
-}
-
-pub(super) fn evaluate_const_expr(
-    expr: &Expr,
-    values_by_name: &BTreeMap<String, Constant>,
-) -> CompileResult<Option<Constant>> {
-    match &expr.kind {
-        ExprKind::Literal(literal) => compile_literal_constant(literal)
-            .map(Some)
-            .map_err(|error| error.with_span(expr.span)),
-        ExprKind::Path(path) => {
-            let [name] = path.as_slice() else {
-                return Ok(None);
-            };
-            Ok(values_by_name.get(name).cloned())
-        }
-        ExprKind::Unary { op, expr } => {
-            if *op == UnaryOp::Negate
-                && let ExprKind::Literal(literal) = &expr.kind
-                && let Some(value) = compile_negated_literal_constant(literal)
-                    .map_err(|error| error.with_span(expr.span))?
-            {
-                return Ok(Some(value));
-            }
-            let Some(value) = evaluate_const_expr(expr, values_by_name)? else {
-                return Ok(None);
-            };
-            Ok(evaluate_unary_const(*op, value))
-        }
-        ExprKind::Binary { op, left, right } => {
-            let Some(left) = evaluate_const_expr(left, values_by_name)? else {
-                return Ok(None);
-            };
-            let Some(right) = evaluate_const_expr(right, values_by_name)? else {
-                return Ok(None);
-            };
-            Ok(evaluate_binary_const(*op, left, right))
-        }
-        ExprKind::Array(values) => values
-            .iter()
-            .map(|value| evaluate_const_expr(value, values_by_name))
-            .collect::<CompileResult<Option<Vec<_>>>>()
-            .map(|values| values.map(Constant::Array)),
-        ExprKind::Map(entries) => entries
-            .iter()
-            .map(|entry| evaluate_map_entry(entry, values_by_name))
-            .collect::<CompileResult<Option<Vec<_>>>>()
-            .map(|entries| entries.map(Constant::Map)),
-        ExprKind::Block(_)
-        | ExprKind::InterpolatedString(_)
-        | ExprKind::If(_)
-        | ExprKind::Match(_)
-        | ExprKind::SelfValue
-        | ExprKind::Assign { .. }
-        | ExprKind::Field { .. }
-        | ExprKind::Call { .. }
-        | ExprKind::Index { .. }
-        | ExprKind::Try(_)
-        | ExprKind::Record { .. }
-        | ExprKind::Lambda { .. }
-        | ExprKind::Error => Ok(None),
     }
 }
 
@@ -261,29 +198,6 @@ fn syntax_const_map_key_name(key: &SyntaxExpression) -> CompileResult<Option<Str
             .as_path()
             .map(|path| path.path_segments().join("::"))
             .filter(|path| !path.is_empty())),
-        _ => Ok(None),
-    }
-}
-
-fn evaluate_map_entry(
-    entry: &MapEntry,
-    values_by_name: &BTreeMap<String, Constant>,
-) -> CompileResult<Option<(String, Constant)>> {
-    let Some(value) = evaluate_const_expr(&entry.value, values_by_name)? else {
-        return Ok(None);
-    };
-    let Some(key) = const_map_key_name(&entry.key)? else {
-        return Ok(None);
-    };
-    Ok(Some((key, value)))
-}
-
-fn const_map_key_name(key: &Expr) -> CompileResult<Option<String>> {
-    match &key.kind {
-        ExprKind::Literal(Literal::String(value)) => Ok(Some(value.clone())),
-        ExprKind::Literal(Literal::Integer(value)) => Ok(Some(value.source_text_with_suffix())),
-        ExprKind::Literal(Literal::Float(value)) => Ok(Some(value.source_text_with_suffix())),
-        ExprKind::Path(path) => Ok(Some(path.join("::"))),
         _ => Ok(None),
     }
 }
