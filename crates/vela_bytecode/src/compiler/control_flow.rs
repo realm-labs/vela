@@ -522,7 +522,13 @@ impl Compiler<'_, '_> {
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Array
+            | SyntaxExpressionKind::Field
+            | SyntaxExpressionKind::Index
+            | SyntaxExpressionKind::Lambda
+            | SyntaxExpressionKind::Literal
             | SyntaxExpressionKind::Map
+            | SyntaxExpressionKind::Paren
+            | SyntaxExpressionKind::Path
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Call
@@ -697,7 +703,13 @@ impl Compiler<'_, '_> {
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Array
+            | SyntaxExpressionKind::Field
+            | SyntaxExpressionKind::Index
+            | SyntaxExpressionKind::Lambda
+            | SyntaxExpressionKind::Literal
             | SyntaxExpressionKind::Map
+            | SyntaxExpressionKind::Paren
+            | SyntaxExpressionKind::Path
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Call

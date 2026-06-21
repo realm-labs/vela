@@ -443,6 +443,10 @@ route before falling back to temporary legacy expression spelling.
 Static literal type inference now prefers rowan CST literal payloads for
 typed-let and expected-type contracts before falling back to temporary legacy
 literal expression spelling.
+Typed let initializer and return value compilation now route aligned rowan CST
+literal, path, paren, field, index, lambda, and other non-control-flow
+expression payloads through the payload-aware expression compiler before
+falling back to temporary legacy expression spelling.
 Binary identity/comparison semantic checks now use rowan CST operand payloads
 for value, shape, and script-type facts before falling back to temporary
 legacy operand expressions.

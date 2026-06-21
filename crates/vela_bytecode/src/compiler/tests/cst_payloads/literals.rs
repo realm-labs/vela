@@ -85,6 +85,48 @@ fn main() {
     );
 }
 
+#[test]
+fn typed_let_and_return_values_prefer_cst_literal_payloads() {
+    let cst_semantic = parse_semantic_source(
+        SourceId::new(1),
+        r#"
+fn main() -> bool {
+    let value: bool = true;
+    return true;
+}
+"#,
+    )
+    .expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload
+        .body
+        .syntax_payload()
+        .expect("CST body payload")
+        .body
+        .clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() -> bool {
+    let value: bool = 1;
+    return 1;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                SourceId::new(1),
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("typed let and return should use CST literal payloads");
+        },
+    );
+}
+
 fn assert_cst_let_initializer_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
