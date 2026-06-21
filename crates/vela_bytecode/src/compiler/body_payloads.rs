@@ -128,6 +128,20 @@ fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> 
     syntax_range_overlaps_span(expression.syntax().text_range(), span)
 }
 
+fn syntax_argument_for_fallback(
+    arguments: &[SyntaxArgument],
+    fallback: &Argument,
+) -> Option<SyntaxArgument> {
+    arguments
+        .iter()
+        .find(|argument| {
+            argument.expression().is_some_and(|expression| {
+                syntax_expression_matches_span(&expression, fallback.value.span)
+            })
+        })
+        .cloned()
+}
+
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
     let start = u32::from(range.start());
     let end = u32::from(range.end());
@@ -619,10 +633,9 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let syntax_args = self.expression()?.as_call()?.arguments();
         Some(
             args.iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerArgumentPayload {
+                .map(|fallback| CompilerArgumentPayload {
                     source: self.source,
-                    syntax: syntax_args.get(index).cloned(),
+                    syntax: syntax_argument_for_fallback(&syntax_args, fallback),
                     fallback,
                 })
                 .collect(),

@@ -109,6 +109,55 @@ fn call_values() {
     compile_program_source(source, text).expect("CST-backed value call arguments should compile");
 }
 
+#[test]
+fn mismatched_call_payloads_do_not_pair_arguments_by_index() {
+    with_cst_payload_compiler(
+        r#"
+fn take(value) {
+    return value;
+}
+
+fn main() {
+    let cst_call = take(value = true);
+    let legacy_call = take(value = 1);
+}
+"#,
+        |_, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_call = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST call payload");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_call
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            let args = mismatched_payload
+                .call_argument_payloads()
+                .expect("call argument payloads");
+            assert_eq!(args.len(), 1);
+            assert!(
+                args[0].syntax_argument().is_none(),
+                "mismatched spans must not receive index-based CST arguments"
+            );
+            assert!(args[0].syntax_name().is_none());
+            assert!(
+                args[0]
+                    .value_expression_payload()
+                    .syntax_expression()
+                    .is_none()
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

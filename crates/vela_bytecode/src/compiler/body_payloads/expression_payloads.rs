@@ -10,6 +10,7 @@ use super::{
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
     match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
+    syntax_argument_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -227,10 +228,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
         Some(
             args.iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerArgumentPayload {
+                .map(|fallback| CompilerArgumentPayload {
                     source: self.source,
-                    syntax: syntax_args.get(index).cloned(),
+                    syntax: syntax_argument_for_fallback(&syntax_args, fallback),
                     fallback,
                 })
                 .collect(),
