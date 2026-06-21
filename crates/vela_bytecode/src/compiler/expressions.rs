@@ -101,6 +101,19 @@ impl Compiler<'_, '_> {
                 let field_payloads = payload.record_field_payloads();
                 self.compile_record(expr, path, fields, field_payloads.as_deref())
             }
+            SyntaxExpressionKind::Binary => {
+                let ExprKind::Binary { op, left, right } = &expr.kind else {
+                    unreachable!("validated CST binary expression payload kind");
+                };
+                if matches!(op, BinaryOp::And | BinaryOp::Or) {
+                    return self.compile_logical_chain(*op, expr);
+                }
+                let operand_payloads = payload.binary_operand_payloads();
+                let (left_payload, right_payload) = operand_payloads
+                    .as_ref()
+                    .map_or((None, None), |(left, right)| (Some(left), Some(right)));
+                self.compile_binary(*op, expr.span, left, right, left_payload, right_payload)
+            }
             SyntaxExpressionKind::Unary => {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
@@ -131,7 +144,7 @@ impl Compiler<'_, '_> {
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
                     return self.compile_logical_chain(*op, expr);
                 }
-                self.compile_binary(*op, expr.span, left, right)
+                self.compile_binary(*op, expr.span, left, right, None, None)
             }
             ExprKind::Unary { op, expr } => self.compile_unary(*op, expr.span, expr, None),
             ExprKind::Field { base, name } => {
@@ -423,21 +436,34 @@ impl Compiler<'_, '_> {
         span: Span,
         left: &Expr,
         right: &Expr,
+        left_payload: Option<&CompilerExpressionPayload<'_>>,
+        right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         match op {
-            BinaryOp::Range => return self.compile_range(left, right, false),
-            BinaryOp::RangeInclusive => return self.compile_range(left, right, true),
+            BinaryOp::Range => {
+                return self.compile_range(left, right, false, left_payload, right_payload);
+            }
+            BinaryOp::RangeInclusive => {
+                return self.compile_range(left, right, true, left_payload, right_payload);
+            }
             _ => {}
         }
         self.reject_static_identity_comparison_operands(op, span, left, right)?;
         self.reject_static_comparison_without_trait(op, span, left)?;
 
-        if let Some(register) = self.compile_binary_with_inline_literal(op, span, left, right)? {
+        if let Some(register) = self.compile_binary_with_inline_literal(
+            op,
+            span,
+            left,
+            right,
+            left_payload,
+            right_payload,
+        )? {
             return Ok(register);
         }
 
-        let lhs = self.compile_expr(left)?;
-        let rhs = self.compile_expr(right)?;
+        let lhs = self.compile_expr_with_payload(left, left_payload)?;
+        let rhs = self.compile_expr_with_payload(right, right_payload)?;
         let dst = self.alloc_register()?;
         let instruction = if expressions_are_i64(
             self.value_type_for_expr(left),
@@ -548,12 +574,15 @@ impl Compiler<'_, '_> {
         span: Span,
         left: &Expr,
         right: &Expr,
+        left_payload: Option<&CompilerExpressionPayload<'_>>,
+        right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<Register>> {
         if let Some(literal) = unsuffixed_numeric_literal(left) {
             return self.compile_binary_literal_candidate(
                 op,
                 span,
                 right,
+                right_payload,
                 literal,
                 BinaryLiteralSide::Left,
             );
@@ -563,6 +592,7 @@ impl Compiler<'_, '_> {
                 op,
                 span,
                 left,
+                left_payload,
                 literal,
                 BinaryLiteralSide::Right,
             );
@@ -575,6 +605,7 @@ impl Compiler<'_, '_> {
         op: BinaryOp,
         span: Span,
         value_expr: &Expr,
+        value_payload: Option<&CompilerExpressionPayload<'_>>,
         literal: UnsuffixedNumericLiteral<'_>,
         side: BinaryLiteralSide,
     ) -> CompileResult<Option<Register>> {
@@ -584,7 +615,7 @@ impl Compiler<'_, '_> {
             && let Some(imm) = self.i64_immediate_literal(literal, span)?
             && i64_immediate_op_supported(op, imm)
         {
-            let value = self.compile_expr(value_expr)?;
+            let value = self.compile_expr_with_payload(value_expr, value_payload)?;
             let dst = self.alloc_register()?;
             let instruction = i64_immediate_instruction(op, dst, value, imm)
                 .expect("support was checked before compiling the value expression");
@@ -598,7 +629,7 @@ impl Compiler<'_, '_> {
         if let Some(RuntimeTypeFact::Primitive(tag)) = self.value_type_for_expr(value_expr)
             && literal.matches_primitive_tag(tag)
         {
-            let value = self.compile_expr(value_expr)?;
+            let value = self.compile_expr_with_payload(value_expr, value_payload)?;
             let literal = self.compile_inline_numeric_literal_as(literal, tag, span)?;
             let rhs_or_lhs = self.emit_constant(literal)?;
             let dst = self.alloc_register()?;
@@ -616,7 +647,7 @@ impl Compiler<'_, '_> {
         }
 
         if self.value_type_for_expr(value_expr).is_none() {
-            let value = self.compile_expr(value_expr)?;
+            let value = self.compile_expr_with_payload(value_expr, value_payload)?;
             let dst = self.alloc_register()?;
             match literal {
                 UnsuffixedNumericLiteral::Integer(text) => {
@@ -690,9 +721,11 @@ impl Compiler<'_, '_> {
         left: &Expr,
         right: &Expr,
         inclusive: bool,
+        left_payload: Option<&CompilerExpressionPayload<'_>>,
+        right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        let start = self.compile_expr(left)?;
-        let end = self.compile_expr(right)?;
+        let start = self.compile_expr_with_payload(left, left_payload)?;
+        let end = self.compile_expr_with_payload(right, right_payload)?;
         let dst = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::MakeRange {
             dst,
@@ -802,7 +835,7 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         if op == UnaryOp::Not
-            && let Some(register) = self.compile_negated_equality(span, expr)?
+            && let Some(register) = self.compile_negated_equality(span, expr, payload)?
         {
             return Ok(register);
         }
@@ -828,6 +861,7 @@ impl Compiler<'_, '_> {
         &mut self,
         span: Span,
         expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<Register>> {
         let ExprKind::Binary {
             op:
@@ -842,6 +876,10 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
 
+        let operand_payloads = payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+        let (left_payload, right_payload) = operand_payloads
+            .as_ref()
+            .map_or((None, None), |(left, right)| (Some(left), Some(right)));
         let inverse = match equality_op {
             BinaryOp::Equal => BinaryOp::NotEqual,
             BinaryOp::NotEqual => BinaryOp::Equal,
@@ -849,7 +887,8 @@ impl Compiler<'_, '_> {
             BinaryOp::IdentityNotEqual => BinaryOp::IdentityEqual,
             _ => unreachable!("binary equality was matched above"),
         };
-        self.compile_binary(inverse, span, left, right).map(Some)
+        self.compile_binary(inverse, span, left, right, left_payload, right_payload)
+            .map(Some)
     }
 }
 
@@ -909,6 +948,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
+        SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
         SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
         SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
         _ => !matches!(
@@ -919,6 +959,7 @@ fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> b
                 | ExprKind::Array(_)
                 | ExprKind::Map(_)
                 | ExprKind::Record { .. }
+                | ExprKind::Binary { .. }
                 | ExprKind::Unary { .. }
                 | ExprKind::Try(_)
         ),

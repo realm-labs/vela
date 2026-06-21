@@ -676,6 +676,30 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         })
     }
 
+    pub(in crate::compiler) fn binary_operand_payloads(
+        &self,
+    ) -> Option<(
+        CompilerExpressionPayload<'ast>,
+        CompilerExpressionPayload<'ast>,
+    )> {
+        let ExprKind::Binary { left, right, .. } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax = self.syntax.as_ref()?.as_binary()?;
+        Some((
+            CompilerExpressionPayload {
+                source: self.source,
+                syntax: syntax.lhs(),
+                fallback: left,
+            },
+            CompilerExpressionPayload {
+                source: self.source,
+                syntax: syntax.rhs(),
+                fallback: right,
+            },
+        ))
+    }
+
     pub(in crate::compiler) fn array_element_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

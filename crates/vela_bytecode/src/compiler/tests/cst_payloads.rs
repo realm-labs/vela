@@ -1,5 +1,6 @@
 use super::*;
 
+mod binary;
 mod containers;
 mod wrappers;
 

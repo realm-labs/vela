@@ -809,6 +809,7 @@ impl Compiler<'_, '_> {
                 SyntaxExpressionKind::Array
                     | SyntaxExpressionKind::Map
                     | SyntaxExpressionKind::Record
+                    | SyntaxExpressionKind::Binary
                     | SyntaxExpressionKind::Unary
                     | SyntaxExpressionKind::Try
             ) {
@@ -938,9 +939,10 @@ fn assignment_value_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> boo
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
         _ => !matches!(
             expr.kind,
-            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_) | ExprKind::Binary { .. }
         ),
     }
 }

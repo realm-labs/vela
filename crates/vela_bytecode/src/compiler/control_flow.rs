@@ -554,6 +554,7 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Array
             | SyntaxExpressionKind::Map
             | SyntaxExpressionKind::Record
+            | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Try => match expected {
                 Some(expected) => self
@@ -723,6 +724,7 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Array
             | SyntaxExpressionKind::Map
             | SyntaxExpressionKind::Record
+            | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Try => match expected {
                 Some(expected) => self
