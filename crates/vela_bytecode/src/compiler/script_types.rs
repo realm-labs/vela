@@ -146,15 +146,24 @@ pub(super) fn expression_script_fact_with_payload(
             let type_name = type_symbol_at_span(callee.span)?;
             Some(ScriptTypeFact::enum_variant(type_name, variant))
         }
-        ExprKind::Path(path) => local_fact_at_span(expr.span).or_else(|| {
+        ExprKind::Path(path) => {
             let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
-            let lookup_path = cst_path.as_deref().unwrap_or(path);
-            lookup_path.first().and_then(|name| {
-                (lookup_path.len() == 1)
-                    .then(|| local_fact_named(name))
-                    .flatten()
-            })
-        }),
+            cst_path
+                .as_deref()
+                .and_then(|lookup_path| {
+                    lookup_path.first().and_then(|name| {
+                        (lookup_path.len() == 1)
+                            .then(|| local_fact_named(name))
+                            .flatten()
+                    })
+                })
+                .or_else(|| local_fact_at_span(expr.span))
+                .or_else(|| {
+                    path.first().and_then(|name| {
+                        (path.len() == 1).then(|| local_fact_named(name)).flatten()
+                    })
+                })
+        }
         ExprKind::SelfValue => local_fact_at_span(expr.span).or_else(|| local_fact_named("self")),
         _ => None,
     }

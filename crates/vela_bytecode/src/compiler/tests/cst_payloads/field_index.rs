@@ -172,6 +172,86 @@ fn assignment_targets() {
     compile_program_source(source, text).expect("CST-backed assignment targets should compile");
 }
 
+#[test]
+fn record_field_assignment_target_facts_prefer_cst_root_payloads() {
+    with_cst_payload_compiler(
+        r#"
+struct CstBox {
+    amount: i64,
+}
+
+struct LegacyBox {
+    amount: bool,
+}
+
+fn main() {
+    let cst = CstBox { amount: 0 };
+    let legacy = LegacyBox { amount: false };
+    cst.amount = true;
+    legacy.amount = true;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst local should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy local should compile");
+            let cst_target = statements[2]
+                .assignment_target_expression_payload()
+                .expect("CST assignment target payload");
+            let legacy_statement = statements[3]
+                .expression_payload()
+                .expect("legacy assignment expression");
+            let legacy_target = statements[3]
+                .assignment_target_expression_payload()
+                .expect("legacy assignment target fallback");
+            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_target
+                    .syntax_expression()
+                    .expect("CST target expression")
+                    .clone(),
+                legacy_target.fallback(),
+            );
+
+            let error = compiler
+                .compile_assignment_with_payloads(
+                    legacy_statement.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
+                        &mismatched_target,
+                    )),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
+                        None,
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect_err("CST target amount expects i64, not bool");
+            let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+                panic!("expected semantic diagnostics: {:?}", error.kind);
+            };
+            let diagnostic = diagnostics
+                .iter()
+                .find(|diagnostic| {
+                    diagnostic.code.as_deref() == Some("compiler::type_contract_mismatch")
+                })
+                .expect("type contract mismatch diagnostic");
+            assert!(
+                diagnostic
+                    .labels
+                    .iter()
+                    .any(|label| label.message.contains("expected `i64`")),
+                "{diagnostic:?}"
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

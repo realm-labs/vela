@@ -437,6 +437,9 @@ literal expression spelling.
 Binary identity/comparison semantic checks now use rowan CST operand payloads
 for value, shape, and script-type facts before falling back to temporary
 legacy operand expressions.
+Record-field assignment target analysis now prefers rowan CST root payloads
+for root script type, field value contracts, record shape, and slot selection
+before falling back to temporary legacy target expressions.
 Value shape inference now accepts rowan CST expression payloads for local paths
 and field receivers, and payload-aware local assignment, let binding, method
 receiver, for-iterable, and field-value type fallback paths use that route

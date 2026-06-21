@@ -365,10 +365,15 @@ fn static_expr_type_with_payload(
             Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
             _ => StaticExprType::Dynamic,
         },
-        ExprKind::Path(path) => local_type_at_span(expr.span)
+        ExprKind::Path(path) => payload
+            .and_then(CompilerExpressionPayload::path_segments)
+            .as_deref()
+            .and_then(|path| {
+                path.first()
+                    .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
+            })
+            .or_else(|| local_type_at_span(expr.span))
             .or_else(|| {
-                let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
-                let path = cst_path.as_deref().unwrap_or(path.as_slice());
                 path.first()
                     .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
             })

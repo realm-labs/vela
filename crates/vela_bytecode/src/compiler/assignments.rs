@@ -510,7 +510,7 @@ impl Compiler<'_, '_> {
                     value_type,
                 }))
             }
-            ExprKind::Field { base, name } => {
+            ExprKind::Field { base: _, name } => {
                 if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
@@ -521,22 +521,28 @@ impl Compiler<'_, '_> {
                         "record field assignment target",
                     )));
                 };
-                let root_type = self.script_type_for_expr(parts.root);
-                let shape = self.record_shape_for_expr(parts.root).or_else(|| {
-                    root_type
-                        .as_deref()
-                        .and_then(|type_name| self.record_shape_for_type(type_name))
-                });
+                let root_payload = syntax.record_field_root_payload();
+                let root_type =
+                    self.script_type_for_expr_with_payload(parts.root, root_payload.as_ref());
+                let shape = root_type
+                    .as_deref()
+                    .and_then(|type_name| self.record_shape_for_type(type_name))
+                    .or_else(|| {
+                        self.record_shape_for_expr_with_payload(parts.root, root_payload.as_ref())
+                    });
                 let slot = (parts.fields.len() == 1)
                     .then(|| {
-                        let name = parts.fields.first().map_or(name.as_str(), String::as_str);
-                        self.script_record_field_slot_for_receiver(base, name)
-                            .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
+                        let field = parts.fields.first().map_or(name.as_str(), String::as_str);
+                        root_type
+                            .as_deref()
+                            .and_then(|type_name| {
+                                self.script_record_field_slot_for_type(type_name, field)
+                            })
+                            .or_else(|| shape.as_ref().and_then(|shape| shape.field_slot(field)))
                     })
                     .flatten();
                 let value_type =
                     self.schema_record_field_value_type(root_type.as_deref(), &parts.fields);
-                let root_payload = syntax.record_field_root_payload();
                 let root = self.compile_expr_with_payload(parts.root, root_payload.as_ref())?;
                 Ok(Some(RecordFieldAssignmentTarget {
                     root,
