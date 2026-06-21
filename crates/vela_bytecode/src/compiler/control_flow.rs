@@ -1,3 +1,4 @@
+mod block_values;
 mod classification;
 
 use vela_common::Span;
@@ -16,7 +17,6 @@ use super::const_eval::compile_literal_constant_for_type;
 use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
-use super::value_flow::{BlockValue, block_value};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
 };
@@ -823,67 +823,6 @@ impl Compiler<'_, '_> {
             .expect("loop stack checked above")
             .push_continue(jump);
         Ok(true)
-    }
-
-    pub(super) fn compile_block_value_to(
-        &mut self,
-        block: &Block,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        match block_value(block) {
-            BlockValue::Empty => {
-                self.emit_constant_to(dst, Constant::Null);
-                Ok(false)
-            }
-            BlockValue::TailExpr { prefix, expr } => {
-                for stmt in prefix {
-                    if self.compile_statement(stmt)? {
-                        return Ok(true);
-                    }
-                }
-                let value = self.compile_expr(expr)?;
-                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
-                Ok(false)
-            }
-            BlockValue::Statements(statements) => {
-                let returned = self.compile_statements(statements)?;
-                if !returned {
-                    self.emit_constant_to(dst, Constant::Null);
-                }
-                Ok(returned)
-            }
-        }
-    }
-
-    fn compile_block_payload_value_to(
-        &mut self,
-        body: &CompilerBodyPayload<'_>,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        let statements = body.statement_payloads();
-        match block_value(body.fallback()) {
-            BlockValue::Empty => {
-                self.emit_constant_to(dst, Constant::Null);
-                Ok(false)
-            }
-            BlockValue::TailExpr { prefix, expr } => {
-                for stmt in statements.iter().take(prefix.len()) {
-                    if self.compile_statement_payload(stmt)? {
-                        return Ok(true);
-                    }
-                }
-                let value = self.compile_expr(expr)?;
-                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
-                Ok(false)
-            }
-            BlockValue::Statements(_) => {
-                let returned = self.compile_statement_payloads(&statements)?;
-                if !returned {
-                    self.emit_constant_to(dst, Constant::Null);
-                }
-                Ok(returned)
-            }
-        }
     }
 
     fn compile_if(
