@@ -1,5 +1,0 @@
-fn main(player) {
-    if player != null {
-        player.levle;
-    }
-}
