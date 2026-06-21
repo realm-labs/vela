@@ -98,6 +98,8 @@ impl Compiler<'_, '_> {
             self.compile_return_statement(stmt.fallback(), stmt.return_value_kind())
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(stmt.fallback(), stmt.for_iterable_binary_operator())
+        } else if kind == SyntaxStatementKind::If {
+            self.compile_if_statement(stmt.fallback(), stmt.if_condition_binary_operator())
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
@@ -161,15 +163,7 @@ impl Compiler<'_, '_> {
                 self.compile_continue()
             }
             SyntaxStatementKind::For => self.compile_for_statement(stmt, None),
-            SyntaxStatementKind::If => {
-                let StmtKind::Expr(expr) = &stmt.kind else {
-                    return self.compile_statement(stmt);
-                };
-                let ExprKind::If(if_expr) = &expr.kind else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_if(if_expr)
-            }
+            SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -329,9 +323,23 @@ impl Compiler<'_, '_> {
         )
     }
 
+    fn compile_if_statement(
+        &mut self,
+        stmt: &Stmt,
+        condition_operator: Option<BinaryOp>,
+    ) -> CompileResult<bool> {
+        let StmtKind::Expr(expr) = &stmt.kind else {
+            return self.compile_statement(stmt);
+        };
+        let ExprKind::If(if_expr) = &expr.kind else {
+            return self.compile_statement(stmt);
+        };
+        self.compile_if(if_expr, condition_operator)
+    }
+
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
-            return self.compile_if(if_expr);
+            return self.compile_if(if_expr, None);
         }
         if let ExprKind::Match(match_expr) = &expr.kind {
             return self.compile_match(match_expr);
@@ -748,8 +756,13 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_if(&mut self, if_expr: &IfExpr) -> CompileResult<bool> {
-        let jump_to_else = self.emit_condition_jump_if_false(&if_expr.condition)?;
+    fn compile_if(
+        &mut self,
+        if_expr: &IfExpr,
+        condition_operator: Option<BinaryOp>,
+    ) -> CompileResult<bool> {
+        let jump_to_else =
+            self.emit_condition_jump_if_false(&if_expr.condition, condition_operator)?;
 
         let then_returned = self.compile_statements(&if_expr.then_branch.statements)?;
         let jump_to_end = if then_returned {
@@ -762,7 +775,7 @@ impl Compiler<'_, '_> {
 
         let else_returned = match &if_expr.else_branch {
             Some(ElseBranch::Block(block)) => self.compile_statements(&block.statements)?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr)?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr, None)?,
             None => false,
         };
 
@@ -778,7 +791,7 @@ impl Compiler<'_, '_> {
         if_expr: &IfExpr,
         dst: Register,
     ) -> CompileResult<bool> {
-        let jump_to_else = self.emit_condition_jump_if_false(&if_expr.condition)?;
+        let jump_to_else = self.emit_condition_jump_if_false(&if_expr.condition, None)?;
 
         let then_returned = self.compile_block_value_to(&if_expr.then_branch, dst)?;
         let jump_to_end = if then_returned {
@@ -805,8 +818,14 @@ impl Compiler<'_, '_> {
         Ok(then_returned && else_returned)
     }
 
-    fn emit_condition_jump_if_false(&mut self, condition: &Expr) -> CompileResult<usize> {
-        if let Some(jump) = self.try_emit_i64_immediate_jump_if_false(condition)? {
+    fn emit_condition_jump_if_false(
+        &mut self,
+        condition: &Expr,
+        condition_operator: Option<BinaryOp>,
+    ) -> CompileResult<usize> {
+        if let Some(jump) =
+            self.try_emit_i64_immediate_jump_if_false(condition, condition_operator)?
+        {
             return Ok(jump);
         }
         let condition = self.compile_expr(condition)?;
@@ -816,11 +835,14 @@ impl Compiler<'_, '_> {
     fn try_emit_i64_immediate_jump_if_false(
         &mut self,
         condition: &Expr,
+        condition_operator: Option<BinaryOp>,
     ) -> CompileResult<Option<usize>> {
-        let ExprKind::Binary { op, left, right } = &condition.kind else {
+        let ExprKind::Binary { left, right, .. } = &condition.kind else {
             return Ok(None);
         };
-        let Some(op) = i64_compare_op(*op) else {
+        let Some(op) =
+            condition_operator_for_fallback(condition_operator, condition).and_then(i64_compare_op)
+        else {
             return Ok(None);
         };
         if self.value_type_for_expr(left)
@@ -1065,6 +1087,29 @@ fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
         } => Some((left.as_ref(), right.as_ref(), true)),
         _ => None,
     }
+}
+
+fn condition_operator_for_fallback(
+    syntax_operator: Option<BinaryOp>,
+    expr: &Expr,
+) -> Option<BinaryOp> {
+    syntax_operator
+        .and_then(|operator| cst_condition_operator(operator, expr))
+        .or_else(|| legacy_condition_operator(expr))
+}
+
+fn cst_condition_operator(operator: BinaryOp, expr: &Expr) -> Option<BinaryOp> {
+    let ExprKind::Binary { op, .. } = &expr.kind else {
+        return None;
+    };
+    (operator == *op).then_some(operator)
+}
+
+fn legacy_condition_operator(expr: &Expr) -> Option<BinaryOp> {
+    let ExprKind::Binary { op, .. } = &expr.kind else {
+        return None;
+    };
+    Some(*op)
 }
 
 fn merge_type_hint_and_value_fact(

@@ -144,6 +144,32 @@ fn assert_cst_for_iterables(
     );
 }
 
+fn assert_cst_if_conditions(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxExpressionKind, Option<BinaryOp>, &str)],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            let condition = syntax.as_if()?.condition()?;
+            Some((
+                condition.expression_kind(),
+                condition.as_binary().and_then(|binary| binary.operator()),
+                condition.syntax().text().to_string(),
+            ))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|(kind, op, text)| (*kind, *op, (*text).to_owned()))
+            .collect::<Vec<_>>()
+    );
+}
+
 fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
     let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
         panic!("expected semantic diagnostics");
@@ -366,6 +392,53 @@ fn sum() {
     assert!(function.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::I64RangeNext { .. }
+    )));
+}
+
+#[test]
+fn semantic_function_if_condition_expression_is_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn check() {
+    let value: i64 = 10;
+    if value > 5 {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("check").expect("check function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (SyntaxStatementKind::Let, "let value: i64 = 10;"),
+            (
+                SyntaxStatementKind::If,
+                "if value > 5 {\n        return 1;\n    }",
+            ),
+            (SyntaxStatementKind::Return, "return 0;"),
+        ],
+    );
+    assert_cst_if_conditions(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Binary,
+            Some(BinaryOp::Greater),
+            "value > 5",
+        )],
+    );
+
+    let program =
+        compile_program_source(source, text).expect("CST-backed if condition should compile");
+    let function = program.function("check").expect("check bytecode");
+    assert!(function.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+            op: crate::I64CompareOp::Greater,
+            imm: 5,
+            ..
+        }
     )));
 }
 

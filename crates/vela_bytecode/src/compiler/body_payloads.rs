@@ -129,6 +129,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .operator()
     }
 
+    pub(super) fn if_condition_binary_operator(&self) -> Option<BinaryOp> {
+        self.syntax
+            .as_ref()?
+            .as_if()?
+            .condition()?
+            .as_binary()?
+            .operator()
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }

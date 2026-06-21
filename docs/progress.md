@@ -298,6 +298,10 @@ Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or
 mismatched payloads.
+Top-level if statement payloads now expose rowan condition binary operators,
+letting i64 immediate compare-jump lowering dispatch through aligned CST
+condition operators while preserving the legacy condition fallback for
+non-CST or mismatched payloads.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout
