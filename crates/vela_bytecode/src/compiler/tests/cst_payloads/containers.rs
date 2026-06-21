@@ -112,6 +112,111 @@ fn return_values() {
 }
 
 #[test]
+fn mismatched_container_payloads_do_not_pair_children_by_index() {
+    with_cst_payload_compiler(
+        r#"
+struct Pair {
+    first
+}
+
+fn main() {
+    let cst_array = [true];
+    let legacy_array = [1];
+    let cst_map = { value: true };
+    let legacy_map = { value: 1 };
+    let cst_record = Pair { first: true };
+    let legacy_record = Pair { first: 1 };
+}
+"#,
+        |_, payload| {
+            let statements = payload.body.statement_payloads();
+
+            let cst_array = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST array payload");
+            let legacy_array = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy array fallback");
+            let mismatched_array = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_array
+                    .syntax_expression()
+                    .expect("CST array expression")
+                    .clone(),
+                legacy_array.fallback(),
+            );
+            let array_elements = mismatched_array
+                .array_element_payloads()
+                .expect("array element payloads");
+            assert_eq!(array_elements.len(), 1);
+            assert!(
+                array_elements[0].syntax_expression().is_none(),
+                "mismatched spans must not receive index-based CST array elements"
+            );
+
+            let cst_map = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST map payload");
+            let legacy_map = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy map fallback");
+            let mismatched_map = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_map
+                    .syntax_expression()
+                    .expect("CST map expression")
+                    .clone(),
+                legacy_map.fallback(),
+            );
+            let map_entries = mismatched_map
+                .map_entry_payloads()
+                .expect("map entry payloads");
+            assert_eq!(map_entries.len(), 1);
+            assert!(
+                map_entries[0].syntax_key_name().is_none(),
+                "mismatched spans must not receive index-based CST map entries"
+            );
+            assert!(
+                map_entries[0]
+                    .value_expression_payload()
+                    .syntax_expression()
+                    .is_none()
+            );
+
+            let cst_record = statements[4]
+                .let_initializer_expression_payload()
+                .expect("CST record payload");
+            let legacy_record = statements[5]
+                .let_initializer_expression_payload()
+                .expect("legacy record fallback");
+            let mismatched_record = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_record
+                    .syntax_expression()
+                    .expect("CST record expression")
+                    .clone(),
+                legacy_record.fallback(),
+            );
+            let record_fields = mismatched_record
+                .record_field_payloads()
+                .expect("record field payloads");
+            assert_eq!(record_fields.len(), 1);
+            assert!(
+                record_fields[0].syntax_label_name().is_none(),
+                "mismatched spans must not receive index-based CST record fields"
+            );
+            assert!(
+                record_fields[0]
+                    .value_expression_payload()
+                    .expect("record field value payload")
+                    .syntax_expression()
+                    .is_none()
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_function_map_entry_values_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

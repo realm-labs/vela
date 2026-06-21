@@ -142,6 +142,40 @@ fn syntax_argument_for_fallback(
         .cloned()
 }
 
+fn syntax_expression_for_fallback(
+    expressions: &[SyntaxExpression],
+    fallback: &vela_syntax::ast::Expr,
+) -> Option<SyntaxExpression> {
+    expressions
+        .iter()
+        .find(|expression| syntax_expression_matches_span(expression, fallback.span))
+        .cloned()
+}
+
+fn syntax_map_entry_for_fallback(
+    entries: &[SyntaxMapEntry],
+    fallback: &MapEntry,
+) -> Option<SyntaxMapEntry> {
+    entries
+        .iter()
+        .find(|entry| {
+            entry
+                .value()
+                .is_some_and(|value| syntax_expression_matches_span(&value, fallback.value.span))
+        })
+        .cloned()
+}
+
+fn syntax_record_field_for_fallback(
+    fields: &[SyntaxRecordExprField],
+    fallback: &RecordField,
+) -> Option<SyntaxRecordExprField> {
+    fields
+        .iter()
+        .find(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
+        .cloned()
+}
+
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
     let start = u32::from(range.start());
     let end = u32::from(range.end());

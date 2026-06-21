@@ -10,7 +10,8 @@ use super::{
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
     match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
-    syntax_argument_for_fallback,
+    syntax_argument_for_fallback, syntax_expression_for_fallback, syntax_map_entry_for_fallback,
+    syntax_record_field_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -326,10 +327,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(
             items
                 .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerExpressionPayload {
+                .map(|fallback| CompilerExpressionPayload {
                     source: self.source,
-                    syntax: syntax_items.get(index).cloned(),
+                    syntax: syntax_expression_for_fallback(&syntax_items, fallback),
                     fallback,
                 })
                 .collect(),
@@ -351,10 +351,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(
             entries
                 .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerMapEntryPayload {
+                .map(|fallback| CompilerMapEntryPayload {
                     source: self.source,
-                    syntax: syntax_entries.get(index).cloned(),
+                    syntax: syntax_map_entry_for_fallback(&syntax_entries, fallback),
                     fallback,
                 })
                 .collect(),
@@ -371,10 +370,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(
             fields
                 .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerRecordFieldPayload {
+                .map(|fallback| CompilerRecordFieldPayload {
                     source: self.source,
-                    syntax: syntax_fields.get(index).cloned(),
+                    syntax: syntax_record_field_for_fallback(&syntax_fields, fallback),
                     fallback,
                 })
                 .collect(),
