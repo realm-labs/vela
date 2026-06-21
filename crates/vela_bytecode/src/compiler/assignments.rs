@@ -75,6 +75,7 @@ struct RecordFieldAssignmentRoot<'field> {
 pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
     block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     if_expr: Option<&'payload CompilerIfPayload<'ast>>,
+    match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
     match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
 }
 
@@ -82,11 +83,13 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
+        match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
         match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
     ) -> Self {
         Self {
             block_body,
             if_expr,
+            match_scrutinee,
             match_arms,
         }
     }
@@ -95,6 +98,7 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
         Self {
             block_body: None,
             if_expr: None,
+            match_scrutinee: None,
             match_arms: None,
         }
     }
@@ -862,6 +866,7 @@ impl Compiler<'_, '_> {
                 self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
+                    syntax_payloads.match_scrutinee,
                     syntax_payloads.match_arms,
                 )?;
                 Ok(dst)

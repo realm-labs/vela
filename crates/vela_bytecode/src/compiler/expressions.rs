@@ -76,8 +76,14 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match expression payload kind");
                 };
                 let dst = self.alloc_register()?;
+                let scrutinee_payload = payload.match_scrutinee_payload();
                 let arm_payloads = payload.match_arm_payloads();
-                self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())?;
+                self.compile_match_value_with_payloads(
+                    match_expr,
+                    dst,
+                    scrutinee_payload.as_ref(),
+                    arm_payloads.as_deref(),
+                )?;
                 Ok(dst)
             }
             SyntaxExpressionKind::Array => {

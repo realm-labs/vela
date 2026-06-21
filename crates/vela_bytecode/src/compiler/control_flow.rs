@@ -181,6 +181,9 @@ impl Compiler<'_, '_> {
             let value_if = stmt.assignment_value_if_payload();
             let value_match_arms = stmt.assignment_value_match_arm_payloads();
             let value_expression = stmt.assignment_value_expression_payload();
+            let value_match_scrutinee = value_expression
+                .as_ref()
+                .and_then(CompilerExpressionPayload::match_scrutinee_payload);
             self.compile_assignment_with_value_payloads(
                 expr,
                 AssignmentValueSyntax::new(
@@ -189,6 +192,7 @@ impl Compiler<'_, '_> {
                     AssignmentValuePayloads::new(
                         value_body.as_ref(),
                         value_if.as_ref(),
+                        value_match_scrutinee.as_ref(),
                         value_match_arms.as_deref(),
                     ),
                 ),
@@ -476,8 +480,13 @@ impl Compiler<'_, '_> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return self.compile_statement_as(SyntaxStatementKind::Match, stmt.fallback());
         };
+        let scrutinee_payload = stmt.match_scrutinee_payload();
         let arm_payloads = stmt.match_arm_payloads();
-        self.compile_match_with_payloads(match_expr, arm_payloads.as_deref())
+        self.compile_match_with_payloads(
+            match_expr,
+            scrutinee_payload.as_ref(),
+            arm_payloads.as_deref(),
+        )
     }
 
     fn compile_let_initializer(
@@ -546,9 +555,13 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match initializer kind");
                 };
                 let dst = self.alloc_register()?;
+                let scrutinee_payload = syntax_payloads
+                    .expression
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
                 let returned = self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
+                    scrutinee_payload.as_ref(),
                     syntax_payloads.match_arms,
                 )?;
                 Ok((dst, returned))
@@ -717,9 +730,13 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match return value kind");
                 };
                 let dst = self.alloc_register()?;
+                let scrutinee_payload = syntax_payloads
+                    .expression
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
                 let returned = self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
+                    scrutinee_payload.as_ref(),
                     syntax_payloads.match_arms,
                 )?;
                 Ok((dst, returned))
@@ -983,16 +1000,17 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {
-        self.compile_match_with_payloads(match_expr, None)
+        self.compile_match_with_payloads(match_expr, None, None)
     }
 
     fn compile_match_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
+        scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
         let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
-        let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
+        let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
 
@@ -1066,17 +1084,18 @@ impl Compiler<'_, '_> {
         match_expr: &MatchExpr,
         dst: Register,
     ) -> CompileResult<bool> {
-        self.compile_match_value_with_payloads(match_expr, dst, None)
+        self.compile_match_value_with_payloads(match_expr, dst, None, None)
     }
 
     pub(in crate::compiler) fn compile_match_value_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
         dst: Register,
+        scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
         let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
-        let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
+        let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
         let mut has_catch_all = false;

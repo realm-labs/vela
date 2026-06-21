@@ -162,6 +162,18 @@ fn match_arm_payloads_for_fallback<'ast>(
         .collect()
 }
 
+fn match_scrutinee_payload_for_fallback<'ast>(
+    source: Option<SourceId>,
+    syntax: SyntaxMatchExpr,
+    fallback: &'ast MatchExpr,
+) -> CompilerExpressionPayload<'ast> {
+    CompilerExpressionPayload {
+        source,
+        syntax: syntax.scrutinee(),
+        fallback: &fallback.scrutinee,
+    }
+}
+
 fn if_payload_for_fallback<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxIfExpr,
@@ -445,6 +457,20 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return None;
+        };
+        Some(match_scrutinee_payload_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_match()?,
+            match_expr,
+        ))
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }
@@ -612,6 +638,24 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(super) fn expression_match_scrutinee_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return None;
+        };
+        Some(match_scrutinee_payload_for_fallback(
+            self.source,
+            self.expression()
+                .and_then(|expression| expression.as_match())
+                .or_else(|| self.syntax.as_ref()?.as_match())?,
+            match_expr,
+        ))
+    }
+
     #[cfg(test)]
     pub(super) fn syntax_statement(&self) -> Option<&SyntaxStatement> {
         self.syntax.as_ref()
@@ -665,6 +709,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         Some(match_arm_payloads_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_match()?,
+            match_expr,
+        ))
+    }
+
+    pub(in crate::compiler) fn match_scrutinee_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+            return None;
+        };
+        Some(match_scrutinee_payload_for_fallback(
             self.source,
             self.syntax.as_ref()?.as_match()?,
             match_expr,

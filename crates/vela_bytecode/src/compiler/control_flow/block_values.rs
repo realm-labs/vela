@@ -110,8 +110,14 @@ impl Compiler<'_, '_> {
                 let ExprKind::Match(match_expr) = &expr.kind else {
                     unreachable!("validated CST match tail expression kind");
                 };
+                let scrutinee_payload = payload.expression_match_scrutinee_payload();
                 let arm_payloads = payload.expression_match_arm_payloads();
-                self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())
+                self.compile_match_value_with_payloads(
+                    match_expr,
+                    dst,
+                    scrutinee_payload.as_ref(),
+                    arm_payloads.as_deref(),
+                )
             }
             _ => {
                 let expression_payload = payload.expression_payload();
