@@ -222,6 +222,36 @@ fn main() {
                     .syntax_expression()
                     .is_none()
             );
+            let legacy_named_fields = vec![vela_syntax::ast::RecordField {
+                name: "legacy_only".to_owned(),
+                span: Span::new(SourceId::new(1), 0, 1),
+                value: None,
+            }];
+            assert_eq!(
+                crate::compiler::constructors::record_field_names(
+                    &legacy_named_fields,
+                    Some(&record_fields),
+                ),
+                Some(vec![None]),
+                "CST-backed record field names must not fall back to legacy labels"
+            );
+            let ExprKind::Record {
+                fields: legacy_fields,
+                ..
+            } = &legacy_record.fallback().kind
+            else {
+                panic!("expected legacy record fallback");
+            };
+            let err = compiler
+                .compile_record_fields(legacy_fields, Vec::new(), None, Some(&record_fields))
+                .expect_err("mismatched CST record field should not use legacy fallback label");
+            assert!(
+                matches!(
+                    err.kind,
+                    CompileErrorKind::UnsupportedSyntax("record field")
+                ),
+                "expected unsupported record-field diagnostic for missing CST label, got {err:?}"
+            );
         },
     );
 }

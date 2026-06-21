@@ -507,10 +507,13 @@ fn record_field_name<'field>(
     index: usize,
     field: &'field RecordField,
 ) -> &'field str {
+    let Some(field_names) = field_names else {
+        return field.name.as_str();
+    };
     field_names
-        .and_then(|names| names.get(index))
+        .get(index)
         .and_then(|name| name.as_deref())
-        .unwrap_or(field.name.as_str())
+        .unwrap_or("")
 }
 
 fn tuple_argument_index(

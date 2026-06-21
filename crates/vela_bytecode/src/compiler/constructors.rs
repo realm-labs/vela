@@ -23,16 +23,15 @@ pub(super) fn record_field_names(
     fields: &[vela_syntax::ast::RecordField],
     payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
 ) -> Option<Vec<Option<String>>> {
-    payloads?;
+    let payloads = payloads?;
     Some(
         fields
             .iter()
             .enumerate()
-            .map(|(index, field)| {
+            .map(|(index, _field)| {
                 payloads
-                    .and_then(|payloads| payloads.get(index))
+                    .get(index)
                     .and_then(CompilerRecordFieldPayload::syntax_label_name)
-                    .or_else(|| Some(field.name.clone()))
             })
             .collect(),
     )
@@ -128,9 +127,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         let mut explicit_names = BTreeSet::new();
         for (index, field) in fields.iter().enumerate() {
             let payload = payloads.and_then(|payloads| payloads.get(index));
-            let field_name = payload
-                .and_then(CompilerRecordFieldPayload::syntax_label_name)
-                .unwrap_or_else(|| field.name.clone());
+            let field_name = record_field_name(fields, payloads, field)?;
             explicit_names.insert(field_name.clone());
             compiled.push(self.compile_record_field(
                 field,
@@ -309,6 +306,24 @@ fn argument_name(
     arg_payloads
         .get(index)
         .and_then(CompilerArgumentPayload::syntax_name)
+}
+
+fn record_field_name(
+    fields: &[vela_syntax::ast::RecordField],
+    field_payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+    field: &vela_syntax::ast::RecordField,
+) -> CompileResult<String> {
+    let Some(field_payloads) = field_payloads else {
+        return Ok(field.name.clone());
+    };
+    let index = fields
+        .iter()
+        .position(|candidate| std::ptr::eq(candidate, field))
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("record field")))?;
+    field_payloads
+        .get(index)
+        .and_then(CompilerRecordFieldPayload::syntax_label_name)
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("record field")))
 }
 
 pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
