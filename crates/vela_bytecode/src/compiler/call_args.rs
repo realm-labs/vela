@@ -108,7 +108,8 @@ impl Compiler<'_, '_> {
         };
         let outcome = self.expected_type_for_expr(value, expected.clone(), context.clone())?;
         let requires_guard = matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_));
-        self.compile_expr_with_expected_type(value, expected, context)
+        let payload = arg_syntax.value_expression_payload_for(arg);
+        self.compile_expr_with_expected_type_and_payload(value, expected, context, payload.as_ref())
             .map(|register| (register, requires_guard))
     }
 

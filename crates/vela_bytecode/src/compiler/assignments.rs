@@ -800,7 +800,12 @@ impl Compiler<'_, '_> {
         syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         if let Some((expected, context)) = expected {
-            return self.compile_expr_with_expected_type(value, expected, context);
+            return self.compile_expr_with_expected_type_and_payload(
+                value,
+                expected,
+                context,
+                syntax.expression,
+            );
         }
         if let Some(kind) = syntax.kind
             && expression_payload_kind_matches(kind, value)

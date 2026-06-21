@@ -449,6 +449,16 @@ impl Compiler<'_, '_> {
         expected: RuntimeTypeFact,
         context: TypeContractContext,
     ) -> CompileResult<Register> {
+        self.compile_expr_with_expected_type_and_payload(expr, expected, context, None)
+    }
+
+    pub(super) fn compile_expr_with_expected_type_and_payload(
+        &mut self,
+        expr: &Expr,
+        expected: RuntimeTypeFact,
+        context: TypeContractContext,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
         let outcome = self.expected_type_for_expr(expr, expected, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let ExprKind::Literal(literal) = &expr.kind
@@ -457,7 +467,7 @@ impl Compiler<'_, '_> {
         {
             return self.emit_constant(constant);
         }
-        let register = self.compile_expr(expr)?;
+        let register = self.compile_expr_with_payload(expr, payload)?;
         if let ExpectedTypeOutcome::RequiresRuntimeGuard(expected) = &outcome
             && let Some((location, name)) = guard_location_and_name(context)
             && let Some(plan) = super::type_guard_plan_for_runtime_type(expected)

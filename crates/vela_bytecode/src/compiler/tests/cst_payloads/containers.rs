@@ -350,6 +350,45 @@ fn return_record() {
 }
 
 #[test]
+fn semantic_function_typed_record_field_values_keep_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct TypedPair {
+    first: i64
+    second
+}
+
+fn typed_record_values() {
+    let value = TypedPair {
+        first: {
+            let typed = 6;
+            typed
+        },
+        second: 0,
+    };
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("typed_record_values")
+        .expect("typed_record_values function");
+    assert_cst_let_initializer_record_field_value_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let typed = 6;"),
+            (SyntaxStatementKind::Expr, "typed"),
+        ]],
+        &[],
+        &[],
+        &[],
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed typed record field values should compile");
+}
+
+#[test]
 fn semantic_function_block_tail_container_expressions_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

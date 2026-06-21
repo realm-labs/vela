@@ -177,12 +177,13 @@ impl Compiler<'_, '_> {
         payload: Option<CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         match expected {
-            Some(expected) => self.compile_expr_with_expected_type(
+            Some(expected) => self.compile_expr_with_expected_type_and_payload(
                 value,
                 expected,
                 TypeContractContext::Field {
                     name: field_name.to_owned(),
                 },
+                payload.as_ref(),
             ),
             None => self.compile_expr_with_payload(value, payload.as_ref()),
         }

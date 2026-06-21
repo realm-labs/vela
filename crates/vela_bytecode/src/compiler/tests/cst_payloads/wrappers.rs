@@ -102,7 +102,7 @@ fn paren_values() {
         let inner = 1;
         inner
     });
-    let assigned = 0;
+    let assigned: i64 = 0;
     assigned = ({
         let updated = 2;
         updated

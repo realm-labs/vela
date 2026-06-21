@@ -8,6 +8,10 @@ fn take(value) {
     return value;
 }
 
+fn take_typed(value: i64) {
+    return value;
+}
+
 fn outer(value) {
     return value;
 }
@@ -32,6 +36,10 @@ fn call_values() {
     outer(take({
         let nested = 3;
         nested
+    }));
+    outer(take_typed({
+        let typed = 6;
+        typed
     }));
     return take({
         let returned = 4;
@@ -66,10 +74,16 @@ fn call_values() {
     );
     assert_cst_nested_call_argument_body_payloads(
         &payload.body,
-        &[vec![
-            (SyntaxStatementKind::Let, "let nested = 3;"),
-            (SyntaxStatementKind::Expr, "nested"),
-        ]],
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let nested = 3;"),
+                (SyntaxStatementKind::Expr, "nested"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let typed = 6;"),
+                (SyntaxStatementKind::Expr, "typed"),
+            ],
+        ],
     );
     assert_cst_return_value_call_argument_body_payloads(
         &payload.body,

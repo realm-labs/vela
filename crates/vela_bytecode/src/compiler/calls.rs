@@ -561,7 +561,8 @@ impl Compiler<'_, '_> {
             context.param_name,
             context.position,
         ) {
-            return self.compile_expr_with_expected_type(
+            let payload = arg_syntax.value_expression_payload_for(arg);
+            return self.compile_expr_with_expected_type_and_payload(
                 &arg.value,
                 expected,
                 TypeContractContext::NativeParameter {
@@ -573,6 +574,7 @@ impl Compiler<'_, '_> {
                     ),
                     index: u16::try_from(context.position).unwrap_or(u16::MAX),
                 },
+                payload.as_ref(),
             );
         }
         let ExprKind::Lambda { params, body } = &arg.value.kind else {
@@ -709,7 +711,8 @@ impl Compiler<'_, '_> {
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        self.compile_expr_with_expected_type(
+        let payload = arg_syntax.value_expression_payload_for(arg);
+        self.compile_expr_with_expected_type_and_payload(
             value,
             expected,
             TypeContractContext::NativeParameter {
@@ -717,6 +720,7 @@ impl Compiler<'_, '_> {
                 name: param.name.clone(),
                 index,
             },
+            payload.as_ref(),
         )
     }
 
