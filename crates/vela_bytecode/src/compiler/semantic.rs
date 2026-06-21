@@ -196,7 +196,7 @@ impl SemanticSource {
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
         script_impls::source_methods(
-            self.legacy.parsed(),
+            &self.legacy,
             &self.syntax,
             self.source,
             &self.graph,

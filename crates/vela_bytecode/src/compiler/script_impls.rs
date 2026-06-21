@@ -1,15 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::Span;
 use vela_def::MethodId;
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{
-    Block, ItemKind, Param, SourceFile, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem,
-};
+use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::legacy_payloads::LegacySourceFallback;
@@ -31,13 +28,8 @@ struct MethodBodyPayload<'ast> {
     body: CompilerBodyPayload<'ast>,
 }
 
-struct LegacyMethodFallback<'ast> {
-    params: &'ast [Param],
-    body: &'ast Block,
-}
-
 pub(super) fn source_methods<'ast>(
-    parsed: &'ast SourceFile,
+    legacy: &'ast LegacySourceFallback,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     graph: &'ast ModuleGraph,
@@ -52,13 +44,13 @@ pub(super) fn source_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let method_payloads = impl_method_payloads(parsed, syntax, source, impl_metadata);
+            let method_payloads = impl_method_payloads(legacy, syntax, source, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
                 let shape = graph.trait_shape(declaration)?;
                 let payloads =
-                    trait_default_method_payloads(parsed, syntax, source, trait_path, shape);
+                    trait_default_method_payloads(legacy, syntax, source, trait_path, shape);
                 Some((shape, payloads))
             });
             collect_methods(
@@ -97,7 +89,7 @@ pub(super) fn module_methods<'ast>(
                 return Vec::new();
             };
             let method_payloads =
-                impl_method_payloads(fallback.parsed(), syntax_source, source_id, impl_metadata);
+                impl_method_payloads(fallback, syntax_source, source_id, impl_metadata);
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
                 return collect_methods(
@@ -139,11 +131,7 @@ pub(super) fn module_methods<'ast>(
                         (
                             shape,
                             trait_default_method_payloads(
-                                fallback.parsed(),
-                                syntax,
-                                source_id,
-                                trait_path,
-                                shape,
+                                fallback, syntax, source_id, trait_path, shape,
                             ),
                         )
                     })
@@ -256,7 +244,7 @@ fn collect_default_methods<'ast>(
 }
 
 fn impl_method_payloads<'ast>(
-    parsed: &'ast SourceFile,
+    legacy: &'ast LegacySourceFallback,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     metadata: &ImplMetadata,
@@ -264,7 +252,7 @@ fn impl_method_payloads<'ast>(
     let Some(syntax_item) = syntax_impl_item(syntax, metadata) else {
         return BTreeMap::new();
     };
-    let legacy_methods = legacy_impl_methods_by_body_span(parsed);
+    let legacy_methods = legacy.impl_methods_by_body_span();
     metadata
         .methods
         .iter()
@@ -291,7 +279,7 @@ fn impl_method_payloads<'ast>(
 }
 
 fn trait_default_method_payloads<'ast>(
-    parsed: &'ast SourceFile,
+    legacy: &'ast LegacySourceFallback,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     path: &[String],
@@ -300,7 +288,7 @@ fn trait_default_method_payloads<'ast>(
     let Some(syntax_item) = syntax_trait_item(syntax, path) else {
         return BTreeMap::new();
     };
-    let legacy_methods = legacy_trait_default_methods_by_body_span(parsed);
+    let legacy_methods = legacy.trait_default_methods_by_body_span();
     shape
         .methods
         .iter()
@@ -327,27 +315,6 @@ fn trait_default_method_payloads<'ast>(
         .collect()
 }
 
-fn legacy_impl_methods_by_body_span(
-    parsed: &SourceFile,
-) -> HashMap<Span, LegacyMethodFallback<'_>> {
-    let mut methods = HashMap::new();
-    for item in &parsed.items {
-        let ItemKind::Impl(item) = &item.kind else {
-            continue;
-        };
-        for method in &item.methods {
-            methods.insert(
-                method.function.body.span,
-                LegacyMethodFallback {
-                    params: &method.function.params,
-                    body: &method.function.body,
-                },
-            );
-        }
-    }
-    methods
-}
-
 fn syntax_impl_item(
     parsed: &SyntaxParse<SyntaxSourceFile>,
     metadata: &ImplMetadata,
@@ -363,30 +330,6 @@ fn impl_kind_matches_syntax(item_trait: &[String], metadata: &ImplMetadataKind) 
         ImplMetadataKind::Inherent => item_trait.is_empty(),
         ImplMetadataKind::Trait { trait_path } => item_trait == trait_path,
     }
-}
-
-fn legacy_trait_default_methods_by_body_span(
-    parsed: &SourceFile,
-) -> HashMap<Span, LegacyMethodFallback<'_>> {
-    let mut methods = HashMap::new();
-    for item in &parsed.items {
-        let ItemKind::Trait(item) = &item.kind else {
-            continue;
-        };
-        for method in &item.methods {
-            let Some(body) = &method.default_body else {
-                continue;
-            };
-            methods.insert(
-                body.span,
-                LegacyMethodFallback {
-                    params: &method.params,
-                    body,
-                },
-            );
-        }
-    }
-    methods
 }
 
 fn syntax_trait_item(

@@ -276,6 +276,9 @@ records now read names, signatures, explicit/default method metadata, and stable
 dispatch identity from HIR impl and trait shapes, leaving the legacy owned AST
 only as the temporary method body and runtime default-expression compiler
 fallback.
+Script impl fallback method extraction now lives behind the bytecode legacy
+payload boundary, so script impl lowering consumes the temporary fallback
+wrapper without directly traversing old owned-AST impl or trait items.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and runtime default-expression fallback behind a dedicated
 compiler payload boundary. Top-level functions, script methods, and trait

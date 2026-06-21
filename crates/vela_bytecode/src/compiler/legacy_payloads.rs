@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use vela_common::{SourceId, Span};
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    AstNode, FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile,
+    AstNode, Block, FunctionItem, ItemKind, Param, SourceFile, SyntaxBlock, SyntaxSourceFile,
 };
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -23,6 +25,54 @@ impl LegacySourceFallback {
     pub(super) const fn parsed(&self) -> &SourceFile {
         &self.parsed
     }
+
+    pub(super) fn impl_methods_by_body_span(&self) -> HashMap<Span, LegacyMethodFallback<'_>> {
+        let mut methods = HashMap::new();
+        for item in &self.parsed.items {
+            let ItemKind::Impl(item) = &item.kind else {
+                continue;
+            };
+            for method in &item.methods {
+                methods.insert(
+                    method.function.body.span,
+                    LegacyMethodFallback {
+                        params: &method.function.params,
+                        body: &method.function.body,
+                    },
+                );
+            }
+        }
+        methods
+    }
+
+    pub(super) fn trait_default_methods_by_body_span(
+        &self,
+    ) -> HashMap<Span, LegacyMethodFallback<'_>> {
+        let mut methods = HashMap::new();
+        for item in &self.parsed.items {
+            let ItemKind::Trait(item) = &item.kind else {
+                continue;
+            };
+            for method in &item.methods {
+                let Some(body) = &method.default_body else {
+                    continue;
+                };
+                methods.insert(
+                    body.span,
+                    LegacyMethodFallback {
+                        params: &method.params,
+                        body,
+                    },
+                );
+            }
+        }
+        methods
+    }
+}
+
+pub(super) struct LegacyMethodFallback<'ast> {
+    pub(super) params: &'ast [Param],
+    pub(super) body: &'ast Block,
 }
 
 pub(super) struct FunctionBodyPayload<'ast> {
