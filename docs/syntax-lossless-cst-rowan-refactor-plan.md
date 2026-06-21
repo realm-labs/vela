@@ -397,7 +397,7 @@ Checkpoint checklist:
 - [x] Remove old HIR type and attribute conversion helpers.
 - [x] Stop reparsing module graph sources through the old owned `SourceFile`
   API.
-- [ ] Audit remaining HIR-facing tests and helpers for direct old-parser usage.
+- [x] Audit remaining HIR-facing tests and helpers for direct old-parser usage.
 - [ ] Keep this phase open until compiler and analysis migration no longer
   require old AST body fallbacks.
 
