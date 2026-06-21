@@ -261,6 +261,68 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_match_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+enum RewardKind {
+    Small
+    Large
+}
+
+fn grant(kind, amount = match kind {
+    RewardKind::Small => 1
+    RewardKind::Large => 2
+    _ => 0
+}) {
+    return amount;
+}
+
+fn main() {
+    return grant(null);
+}
+"#,
+    )
+    .expect("CST-backed match default should compile");
+    let grant = program.function("grant").expect("grant function");
+
+    assert!(grant.instructions.iter().any(|instruction| {
+        matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::EnumTagEqual { enum_name, variant, .. }
+                if enum_name == "RewardKind" && variant == "Small"
+        )
+    }));
+}
+
+#[test]
+fn compiler_lowers_binding_match_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn pick(value, copy = match value {
+    bound if bound > 0 => bound
+    _ => 0
+}) {
+    return copy;
+}
+
+fn main() {
+    return pick(7);
+}
+"#,
+    )
+    .expect("CST-backed binding match default should compile");
+    let pick = program.function("pick").expect("pick function");
+
+    assert!(
+        pick.frame
+            .slot("bound", crate::FrameSlotKind::PatternBinding)
+            .is_some()
+    );
+}
+
+#[test]
 fn compiler_reports_typed_let_block_parameter_default_mismatches_from_cst() {
     let error = compile_program_source(
         SourceId::new(1),

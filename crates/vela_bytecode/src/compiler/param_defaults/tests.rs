@@ -217,6 +217,50 @@ fn param_default_cst_lowering_covers_record_literal_field_expressions() {
 }
 
 #[test]
+fn param_default_cst_lowering_covers_simple_match_expressions() {
+    let source = SourceId::new(1);
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: param_default_at(
+                "fn cst(kind, value = match kind { RewardKind::Small => 1, RewardKind::Large => 2, _ => 0 }) { return value; }",
+                1,
+            ),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: param_default_at(
+                "fn cst(value, copy = match value { bound if bound > 0 => bound, _ => 0 }) { return copy; }",
+                1,
+            ),
+        }),
+    ];
+
+    let defaults = param_default_values(&syntax_defaults, &[]);
+
+    assert_eq!(defaults.len(), 2);
+    for default in defaults {
+        assert!(
+            default.expect("direct CST default").fallback.is_none(),
+            "simple match defaults should lower directly from CST"
+        );
+    }
+}
+
+#[test]
+fn param_default_cst_lowering_keeps_payload_match_pattern_fallbacks() {
+    let default = param_default_at(
+        "fn cst(kind, value = match kind { Option::Some(inner) => inner, _ => 0 }) { return value; }",
+        1,
+    );
+
+    assert!(
+        !param_default_cst_lowering_covers(&default),
+        "payload match patterns still need the temporary fallback until pattern lowering is complete"
+    );
+}
+
+#[test]
 fn param_default_cst_lowering_keeps_path_field_fallbacks() {
     let default = param_default_at("fn cst(player, value = player.level) { return value; }", 1);
 
