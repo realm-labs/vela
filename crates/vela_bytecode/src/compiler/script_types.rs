@@ -134,7 +134,7 @@ pub(super) fn expression_script_fact_with_payload(
 
     match &expr.kind {
         ExprKind::Record { path, .. } => {
-            let cst_path = payload.and_then(CompilerExpressionPayload::record_path_segments);
+            let cst_path = payload.and_then(CompilerExpressionPayload::syntax_record_path_segments);
             let lookup_path = cst_path.as_deref().unwrap_or(path);
             if let Some((enum_path, variant)) = enum_variant_path(lookup_path) {
                 let type_name = type_symbol_at_span(expr.span).unwrap_or(enum_path);
@@ -151,14 +151,14 @@ pub(super) fn expression_script_fact_with_payload(
             let callee_payload = payload.and_then(CompilerExpressionPayload::call_callee_payload);
             let cst_path = callee_payload
                 .as_ref()
-                .and_then(CompilerExpressionPayload::path_segments);
+                .and_then(|payload| payload.syntax_path_segments());
             let lookup_path = cst_path.as_deref().unwrap_or(path);
             let (_, variant) = enum_variant_path(lookup_path)?;
             let type_name = type_symbol_at_span(callee.span)?;
             Some(ScriptTypeFact::enum_variant(type_name, variant))
         }
         ExprKind::Path(path) => {
-            let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
+            let cst_path = payload.and_then(CompilerExpressionPayload::syntax_path_segments);
             cst_path
                 .as_deref()
                 .and_then(|lookup_path| {

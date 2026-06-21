@@ -48,7 +48,7 @@ impl Compiler<'_, '_> {
         arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
-        let callee_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
+        let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
             let fields = self.compile_tuple_variant_fields(

@@ -88,7 +88,9 @@ impl Compiler<'_, '_> {
                 let ExprKind::Path(path) = &expr.kind else {
                     unreachable!("validated CST path expression payload kind");
                 };
-                let path = payload.path_segments().unwrap_or_else(|| path.to_owned());
+                let path = payload
+                    .syntax_path_segments()
+                    .unwrap_or_else(|| path.to_owned());
                 self.compile_path_expr(expr.span, &path)
             }
             SyntaxExpressionKind::Array => {
@@ -111,7 +113,7 @@ impl Compiler<'_, '_> {
                 };
                 let field_payloads = payload.record_field_payloads();
                 let path = payload
-                    .record_path_segments()
+                    .syntax_record_path_segments()
                     .unwrap_or_else(|| path.to_owned());
                 self.compile_record(expr, &path, fields, field_payloads.as_deref())
             }

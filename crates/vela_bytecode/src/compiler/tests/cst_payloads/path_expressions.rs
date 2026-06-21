@@ -237,9 +237,9 @@ fn path_payload_segments(
             .syntax_expression()
             .and_then(|expression| expression.as_path())
             .map(|path| path.path_segments()),
-        payload.path_segments()
+        payload.syntax_path_segments()
     );
-    payload.path_segments()
+    payload.syntax_path_segments()
 }
 
 fn expected_segments(expected: &[&[&str]]) -> Vec<Vec<String>> {

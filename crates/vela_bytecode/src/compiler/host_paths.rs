@@ -279,7 +279,7 @@ impl Compiler<'_, '_> {
         payload: Option<CompilerExpressionPayload<'ast>>,
     ) -> Option<ResolvedHostPath<'ast>> {
         let payload = payload?;
-        let cst_path = payload.path_segments()?;
+        let cst_path = payload.syntax_path_segments()?;
         if cst_path.len() != 1 {
             return None;
         }
@@ -491,7 +491,7 @@ impl Compiler<'_, '_> {
         args: &[Argument],
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
-        let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
+        let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let path = match &callee.kind {
             ExprKind::Field { base, name }
                 if callee_field_name_matches(callee_payload, name, "push") =>
@@ -534,7 +534,7 @@ impl Compiler<'_, '_> {
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
-        let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
+        let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let path = match &callee.kind {
             ExprKind::Field { base, name }
                 if callee_field_name_matches(callee_payload, name, "remove") =>

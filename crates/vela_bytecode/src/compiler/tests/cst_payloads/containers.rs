@@ -653,7 +653,7 @@ fn assert_cst_let_initializer_record_paths(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .filter_map(|payload| payload.record_path_segments())
+        .filter_map(|payload| payload.syntax_record_path_segments())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_segments(expected));
 }

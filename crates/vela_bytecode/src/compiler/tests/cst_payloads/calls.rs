@@ -234,7 +234,7 @@ fn assert_cst_let_initializer_call_callee_path_segments(
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(|payload| payload.call_callee_payload())
-        .filter_map(|callee| callee.path_segments())
+        .filter_map(|callee| callee.syntax_path_segments())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_path_segments(expected));
 }

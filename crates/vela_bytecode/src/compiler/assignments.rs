@@ -480,7 +480,7 @@ impl Compiler<'_, '_> {
             ExprKind::Path(path) => {
                 let path = syntax
                     .expression
-                    .and_then(CompilerExpressionPayload::path_segments)
+                    .and_then(CompilerExpressionPayload::syntax_path_segments)
                     .unwrap_or_else(|| path.to_owned());
                 let Some((record, fields)) = record_path_parts(&path) else {
                     return Ok(None);
@@ -1060,7 +1060,7 @@ impl Compiler<'_, '_> {
             ExprKind::Path(path) => {
                 let cst_path = syntax
                     .expression
-                    .and_then(CompilerExpressionPayload::path_segments);
+                    .and_then(CompilerExpressionPayload::syntax_path_segments);
                 let lookup_path = cst_path.as_deref().unwrap_or(path);
                 let (field, receiver_path) = lookup_path.split_last()?;
                 let [receiver] = receiver_path else {

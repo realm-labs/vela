@@ -1100,7 +1100,7 @@ impl super::Compiler<'_, '_> {
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
         let local_shape = self.value_shapes.local_at_span(self.bindings, span);
-        let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
+        let cst_path = payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         if let Some([root]) = cst_path.as_deref() {
             let cst_shape = self.value_shapes.name(root).or_else(|| {
                 self.script_types

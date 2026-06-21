@@ -33,7 +33,7 @@ pub(super) fn host_method_call<'ast>(
             })
         }
         ExprKind::Path(path) => {
-            let cst_path = callee_payload.and_then(CompilerExpressionPayload::path_segments);
+            let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
             let lookup_path = cst_path.as_deref().unwrap_or(path);
             if lookup_path.len() < 2 {
                 return None;

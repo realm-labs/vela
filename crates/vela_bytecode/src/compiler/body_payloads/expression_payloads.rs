@@ -72,14 +72,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    pub(in crate::compiler) fn path_segments(&self) -> Option<Vec<String>> {
-        let ExprKind::Path(_) = &self.fallback.kind else {
-            return None;
-        };
-        let segments = self.syntax.as_ref()?.as_path()?.path_segments();
-        (!segments.is_empty()).then_some(segments)
-    }
-
     pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
         Some(syntax_expression_span(self.source?, self.syntax.as_ref()?))
     }
@@ -412,14 +404,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 })
                 .collect(),
         )
-    }
-
-    pub(in crate::compiler) fn record_path_segments(&self) -> Option<Vec<String>> {
-        let ExprKind::Record { .. } = &self.fallback.kind else {
-            return None;
-        };
-        let segments = self.syntax.as_ref()?.as_record()?.path_segments();
-        (!segments.is_empty()).then_some(segments)
     }
 
     pub(in crate::compiler) fn interpolated_expression_payloads(

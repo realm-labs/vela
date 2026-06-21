@@ -376,7 +376,7 @@ fn static_expr_type_with_payload(
             _ => StaticExprType::Dynamic,
         },
         ExprKind::Path(path) => payload
-            .and_then(CompilerExpressionPayload::path_segments)
+            .and_then(CompilerExpressionPayload::syntax_path_segments)
             .as_deref()
             .and_then(|path| {
                 path.first()
