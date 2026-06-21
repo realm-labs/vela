@@ -8,8 +8,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModulePath};
 use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, TraitShape};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    ImplMethod, ItemKind, SourceFile, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem,
-    TraitMethod,
+    Block, ItemKind, Param, SourceFile, SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem,
 };
 
 use super::body_payloads::CompilerBodyPayload;
@@ -29,6 +28,11 @@ pub(super) struct ScriptImplMethod<'ast> {
 struct MethodBodyPayload<'ast> {
     default_values: Vec<Option<ParamDefaultValue>>,
     body: CompilerBodyPayload<'ast>,
+}
+
+struct LegacyMethodFallback<'ast> {
+    params: &'ast [Param],
+    body: &'ast Block,
 }
 
 pub(super) fn source_methods<'ast>(
@@ -271,14 +275,10 @@ fn impl_method_payloads<'ast>(
                     default_values: syntax_param_default_values(
                         source,
                         syntax_method.param_list(),
-                        &legacy_method.function.params,
+                        legacy_method.params,
                         method_metadata.signature.params.len(),
                     ),
-                    body: CompilerBodyPayload::syntax(
-                        source,
-                        syntax_body,
-                        &legacy_method.function.body,
-                    ),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },
             ))
         })
@@ -302,7 +302,6 @@ fn trait_default_method_payloads<'ast>(
         .filter_map(|method_metadata| {
             let span = method_metadata.default_body_span?;
             let legacy_method = legacy_methods.get(&span)?;
-            let legacy_body = legacy_method.default_body.as_ref()?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
@@ -313,24 +312,32 @@ fn trait_default_method_payloads<'ast>(
                     default_values: syntax_param_default_values(
                         source,
                         syntax_method.param_list(),
-                        &legacy_method.params,
+                        legacy_method.params,
                         method_metadata.signature.params.len(),
                     ),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, legacy_body),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },
             ))
         })
         .collect()
 }
 
-fn legacy_impl_methods_by_body_span(parsed: &SourceFile) -> HashMap<Span, &ImplMethod> {
+fn legacy_impl_methods_by_body_span(
+    parsed: &SourceFile,
+) -> HashMap<Span, LegacyMethodFallback<'_>> {
     let mut methods = HashMap::new();
     for item in &parsed.items {
         let ItemKind::Impl(item) = &item.kind else {
             continue;
         };
         for method in &item.methods {
-            methods.insert(method.function.body.span, method);
+            methods.insert(
+                method.function.body.span,
+                LegacyMethodFallback {
+                    params: &method.function.params,
+                    body: &method.function.body,
+                },
+            );
         }
     }
     methods
@@ -353,7 +360,9 @@ fn impl_kind_matches_syntax(item_trait: &[String], metadata: &ImplMetadataKind) 
     }
 }
 
-fn legacy_trait_default_methods_by_body_span(parsed: &SourceFile) -> HashMap<Span, &TraitMethod> {
+fn legacy_trait_default_methods_by_body_span(
+    parsed: &SourceFile,
+) -> HashMap<Span, LegacyMethodFallback<'_>> {
     let mut methods = HashMap::new();
     for item in &parsed.items {
         let ItemKind::Trait(item) = &item.kind else {
@@ -363,7 +372,13 @@ fn legacy_trait_default_methods_by_body_span(parsed: &SourceFile) -> HashMap<Spa
             let Some(body) = &method.default_body else {
                 continue;
             };
-            methods.insert(body.span, method);
+            methods.insert(
+                body.span,
+                LegacyMethodFallback {
+                    params: &method.params,
+                    body,
+                },
+            );
         }
     }
     methods
