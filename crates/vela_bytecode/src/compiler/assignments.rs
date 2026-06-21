@@ -271,7 +271,7 @@ impl Compiler<'_, '_> {
         if let Some(target) = self.record_field_assignment_target(target, target_syntax)? {
             return self.compile_record_field_assignment(*op, target, value, value_syntax);
         }
-        self.compile_host_assignment(*op, target, value, value_syntax)
+        self.compile_host_assignment(*op, target, value, target_syntax, value_syntax)
     }
 
     fn local_assignment_target(&self, target: &Expr) -> Option<LocalAssignmentTarget> {
@@ -857,9 +857,10 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         target: &Expr,
         value: &Expr,
+        target_syntax: AssignmentTargetSyntax<'_, '_>,
         value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
-        let path = self.compile_host_assignment_target(target)?;
+        let path = self.compile_host_assignment_target(target, target_syntax.expression)?;
         let root_path = path.root;
         let root = self.compile_host_path_root(root_path)?;
         let src = self.compile_assignment_value(value, None, value_syntax)?;
@@ -969,8 +970,9 @@ impl Compiler<'_, '_> {
     fn compile_host_assignment_target<'expr>(
         &mut self,
         target: &'expr Expr,
+        target_payload: Option<&CompilerExpressionPayload<'expr>>,
     ) -> CompileResult<HostPath<'expr>> {
-        let Some(path) = self.host_field_path(target) else {
+        let Some(path) = self.host_field_path_with_payload(target, target_payload) else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "assignment target",
             )));

@@ -37,6 +37,7 @@ pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
     fallback: &'ast Argument,
 }
 
+#[derive(Clone)]
 pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,

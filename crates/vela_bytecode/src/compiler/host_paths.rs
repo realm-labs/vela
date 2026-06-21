@@ -7,32 +7,32 @@ use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructi
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
+use super::body_payloads::CompilerExpressionPayload;
 use super::call_args::CallArgumentSyntax;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct HostPath<'ast> {
     pub(super) root: HostPathRoot<'ast>,
     pub(super) segments: Vec<HostPathPart<'ast>>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub(super) enum HostPathRoot<'ast> {
     Expr(&'ast Expr),
     LocalPath { name: &'ast str, span: Span },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum HostPathPart<'ast> {
     Field(FieldId),
     VariantField(FieldId),
     Value {
         expr: &'ast Expr,
+        payload: Option<CompilerExpressionPayload<'ast>>,
         dynamic_kind: DynamicHostPathPart,
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub(super) enum DynamicHostPathPart {
     Index,
     Key,
@@ -47,6 +47,55 @@ impl HostPath<'_> {
 impl Compiler<'_, '_> {
     pub(super) fn host_field_path<'ast>(&self, expr: &'ast Expr) -> Option<HostPath<'ast>> {
         self.resolve_host_path(expr).map(|resolved| resolved.path)
+    }
+
+    pub(super) fn host_field_path_with_payload<'ast>(
+        &self,
+        expr: &'ast Expr,
+        payload: Option<&CompilerExpressionPayload<'ast>>,
+    ) -> Option<HostPath<'ast>> {
+        let mut path = self.host_field_path(expr)?;
+        attach_dynamic_host_path_payloads(expr, payload.cloned(), &mut path.segments, &mut 0);
+        Some(path)
+    }
+
+    pub(super) fn host_field_path_with_index_payloads<'ast>(
+        &self,
+        expr: &'ast Expr,
+        base_payload: Option<&CompilerExpressionPayload<'ast>>,
+        index_payload: Option<&CompilerExpressionPayload<'ast>>,
+    ) -> Option<HostPath<'ast>> {
+        let mut path = self.host_field_path(expr)?;
+        let ExprKind::Index { base, index } = &expr.kind else {
+            return Some(path);
+        };
+        let mut next_segment = 0;
+        attach_dynamic_host_path_payloads(
+            base,
+            base_payload.cloned(),
+            &mut path.segments,
+            &mut next_segment,
+        );
+        attach_next_dynamic_host_path_payload(
+            index.as_ref(),
+            index_payload.cloned(),
+            &mut path.segments,
+            &mut next_segment,
+        );
+        Some(path)
+    }
+
+    pub(super) fn host_field_path_with_field_base_payload<'ast>(
+        &self,
+        expr: &'ast Expr,
+        base_payload: Option<&CompilerExpressionPayload<'ast>>,
+    ) -> Option<HostPath<'ast>> {
+        let mut path = self.host_field_path(expr)?;
+        let ExprKind::Field { base, .. } = &expr.kind else {
+            return Some(path);
+        };
+        attach_dynamic_host_path_payloads(base, base_payload.cloned(), &mut path.segments, &mut 0);
+        Some(path)
     }
 
     pub(super) fn resolve_host_path<'ast>(
@@ -74,6 +123,7 @@ impl Compiler<'_, '_> {
                     .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
                 receiver.path.segments.push(HostPathPart::Value {
                     expr: index,
+                    payload: None,
                     dynamic_kind,
                 });
                 let value_type = receiver.type_name.as_deref().and_then(|type_name| {
@@ -419,7 +469,11 @@ impl Compiler<'_, '_> {
                 HostPathPart::VariantField(field) => {
                     plan = plan.variant_field(field);
                 }
-                HostPathPart::Value { expr, dynamic_kind } => {
+                HostPathPart::Value {
+                    expr,
+                    payload,
+                    dynamic_kind,
+                } => {
                     if let Some(arg) = const_host_path_arg(expr) {
                         plan = match arg {
                             ConstHostPathArg::Index(index) => plan.const_index(index),
@@ -432,7 +486,7 @@ impl Compiler<'_, '_> {
                             "host path dynamic argument count",
                         ))
                     })?;
-                    let register = self.compile_expr(expr)?;
+                    let register = self.compile_expr_with_payload(expr, payload.as_ref())?;
                     dynamic_args.push(register);
                     plan = match dynamic_kind {
                         DynamicHostPathPart::Index => plan.dyn_index(arg),
@@ -548,17 +602,67 @@ impl Compiler<'_, '_> {
     }
 }
 
+fn attach_dynamic_host_path_payloads<'ast>(
+    expr: &'ast Expr,
+    payload: Option<CompilerExpressionPayload<'ast>>,
+    segments: &mut [HostPathPart<'ast>],
+    next_segment: &mut usize,
+) {
+    match &expr.kind {
+        ExprKind::Field { base, .. } => {
+            attach_dynamic_host_path_payloads(
+                base,
+                payload.and_then(|payload| payload.field_base_payload()),
+                segments,
+                next_segment,
+            );
+        }
+        ExprKind::Index { base, index } => {
+            let operands = payload.and_then(|payload| payload.index_operand_payloads());
+            let (base_payload, index_payload) =
+                operands.map_or((None, None), |(base, index)| (Some(base), Some(index)));
+            attach_dynamic_host_path_payloads(base, base_payload, segments, next_segment);
+            attach_next_dynamic_host_path_payload(
+                index.as_ref(),
+                index_payload,
+                segments,
+                next_segment,
+            );
+        }
+        _ => {}
+    }
+}
+
+fn attach_next_dynamic_host_path_payload<'ast>(
+    index: &'ast Expr,
+    index_payload: Option<CompilerExpressionPayload<'ast>>,
+    segments: &mut [HostPathPart<'ast>],
+    next_segment: &mut usize,
+) {
+    while let Some(segment) = segments.get_mut(*next_segment) {
+        *next_segment += 1;
+        if let HostPathPart::Value {
+            expr: segment_expr,
+            payload,
+            ..
+        } = segment
+            && std::ptr::eq::<Expr>(*segment_expr, index)
+        {
+            *payload = index_payload;
+            break;
+        }
+    }
+}
+
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
     CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![diagnostic]))
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ResolvedHostPath<'ast> {
     pub(super) path: HostPath<'ast>,
     pub(super) type_name: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 struct ResolvedHostPathField<'ast> {
     part: HostPathPart<'ast>,
     type_hint: Option<String>,

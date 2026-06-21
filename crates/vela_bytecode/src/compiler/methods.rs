@@ -3,7 +3,6 @@ use vela_syntax::ast::{Expr, ExprKind};
 
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot, ResolvedHostPath};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct HostMethodCall<'ast> {
     pub(super) receiver: HostPathRoot<'ast>,
     pub(super) segments: Vec<HostPathPart<'ast>>,

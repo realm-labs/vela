@@ -287,7 +287,7 @@ impl Compiler<'_, '_> {
             });
             Ok(dst)
         } else {
-            if let Some(path) = self.host_field_path(expr)
+            if let Some(path) = self.host_field_path_with_field_base_payload(expr, base_payload)
                 && path.requires_path_instruction()
             {
                 let root = self.compile_host_path_root(path.root)?;
@@ -326,7 +326,8 @@ impl Compiler<'_, '_> {
         base_payload: Option<&CompilerExpressionPayload<'_>>,
         index_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        if let Some(path) = self.host_field_path(expr)
+        if let Some(path) =
+            self.host_field_path_with_index_payloads(expr, base_payload, index_payload)
             && !path.segments.is_empty()
         {
             self.reject_invalid_host_index_access(expr, base, index, HostIndexAccessKind::Read)?;

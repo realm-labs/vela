@@ -698,9 +698,15 @@ fn compiler_lowers_indexed_host_field_paths() {
     let code = compile_function_source_with_options_and_registry(
         SourceId::new(1),
         r#"
-fn main(player: Player, item_id) {
-    player.inventory.items[item_id].count += 1;
-    return player.inventory.items[item_id].count;
+fn main(player: Player) {
+    player.inventory.items[{
+        let item_id = "gold";
+        item_id
+    }].count += 1;
+    return player.inventory.items[{
+        let item_id = "gold";
+        item_id
+    }].count;
 }
 "#,
         "main",
