@@ -383,13 +383,14 @@ pub(super) fn tuple_constructor_diagnostics(
     variant: &str,
     shape: Option<&ConstructorShape>,
     args: &[Argument],
+    arg_names: Option<&[Option<String>]>,
     constructor_span: Span,
 ) -> Vec<Diagnostic> {
     let Some(shape) = shape else {
         return Vec::new();
     };
     let owner = format!("{type_name}::{variant}");
-    match resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
+    match resolve_tuple_constructor_arguments(shape, &owner, args, arg_names, constructor_span) {
         Ok(_) => Vec::new(),
         Err(diagnostics) => diagnostics,
     }
@@ -399,6 +400,7 @@ pub(super) fn resolve_tuple_constructor_arguments<'ast>(
     shape: &ConstructorShape,
     owner: &str,
     args: &'ast [Argument],
+    arg_names: Option<&[Option<String>]>,
     constructor_span: Span,
 ) -> Result<Vec<Option<&'ast Argument>>, Vec<Diagnostic>> {
     let mut diagnostics = Vec::new();
@@ -407,11 +409,15 @@ pub(super) fn resolve_tuple_constructor_arguments<'ast>(
     let mut next_positional = 0_usize;
     let mut seen_named = false;
 
-    for arg in args {
+    for (arg_index, arg) in args.iter().enumerate() {
         let arg_span = arg.value.span;
+        let arg_name = arg_names
+            .and_then(|names| names.get(arg_index))
+            .and_then(|name| name.as_deref())
+            .or(arg.name.as_deref());
         let Some(index) = tuple_argument_index(
             shape,
-            arg,
+            arg_name,
             arg_span,
             &mut next_positional,
             &mut seen_named,
@@ -478,14 +484,14 @@ fn duplicate_record_field_diagnostics(fields: &[RecordField]) -> Vec<Diagnostic>
 
 fn tuple_argument_index(
     shape: &ConstructorShape,
-    arg: &Argument,
+    arg_name: Option<&str>,
     arg_span: Span,
     next_positional: &mut usize,
     seen_named: &mut bool,
     diagnostics: &mut Vec<Diagnostic>,
     owner: &str,
 ) -> Option<usize> {
-    if let Some(name) = &arg.name {
+    if let Some(name) = arg_name {
         *seen_named = true;
         return match shape.argument_index(name) {
             Some(index) => Some(index),

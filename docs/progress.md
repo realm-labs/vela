@@ -325,6 +325,10 @@ Call argument lowering now prefers rowan CST argument labels for named
 argument resolution, unsupported named-argument checks, and dynamic method
 argument preservation before falling back to the temporary legacy argument
 name.
+Tuple enum constructor lowering now prefers rowan CST argument labels for
+schema-shaped named argument reordering and named-argument rejection on
+unshaped tuple variants before falling back to the temporary legacy argument
+name.
 Block-value tail expressions now use the same CST-aware expression payload
 path for non-control-flow values, so array, map, and record literals returned
 from CST-backed blocks preserve nested element, entry, and field body payloads

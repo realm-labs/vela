@@ -38,19 +38,27 @@ impl Compiler<'_, '_> {
             );
         }
         let shape = self.enum_constructor_shape(enum_name, variant);
+        let arg_names = argument_names(args, arg_payloads);
         self.reject_constructor_diagnostics(tuple_constructor_diagnostics(
             enum_name,
             variant,
             shape.as_ref(),
             args,
+            arg_names.as_deref(),
             constructor_span,
         ))?;
         let mut fields = Vec::new();
         let mut explicit_names = BTreeSet::new();
         if let Some(shape) = shape.as_ref() {
             let owner = format!("{enum_name}::{variant}");
-            let slots = resolve_tuple_constructor_arguments(shape, &owner, args, constructor_span)
-                .map_err(|diagnostics| self.constructor_diagnostics_error(diagnostics))?;
+            let slots = resolve_tuple_constructor_arguments(
+                shape,
+                &owner,
+                args,
+                arg_names.as_deref(),
+                constructor_span,
+            )
+            .map_err(|diagnostics| self.constructor_diagnostics_error(diagnostics))?;
             for (index, arg) in slots.into_iter().enumerate() {
                 let Some(arg) = arg else {
                     continue;
@@ -71,7 +79,7 @@ impl Compiler<'_, '_> {
             }
         } else {
             for (index, arg) in args.iter().enumerate() {
-                if arg.name.is_some() {
+                if argument_name(args, arg_payloads, arg).is_some() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "named tuple variant argument",
                     )));
@@ -264,6 +272,31 @@ fn argument_expression_payload<'ast>(
     arg_payloads?
         .get(index)
         .map(CompilerArgumentPayload::value_expression_payload)
+}
+
+fn argument_names(
+    args: &[Argument],
+    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+) -> Option<Vec<Option<String>>> {
+    arg_payloads.map(|_| {
+        args.iter()
+            .map(|arg| argument_name(args, arg_payloads, arg))
+            .collect()
+    })
+}
+
+fn argument_name(
+    args: &[Argument],
+    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+    arg: &Argument,
+) -> Option<String> {
+    let index = args
+        .iter()
+        .position(|candidate| std::ptr::eq(candidate, arg))?;
+    arg_payloads
+        .and_then(|payloads| payloads.get(index))
+        .and_then(CompilerArgumentPayload::syntax_name)
+        .or_else(|| arg.name.clone())
 }
 
 pub(super) fn schema_default_fields(shape: Option<&ConstructorShape>) -> Vec<SchemaFieldDefault> {
