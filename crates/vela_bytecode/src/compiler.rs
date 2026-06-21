@@ -9,6 +9,7 @@ mod const_eval;
 mod constructors;
 mod control_flow;
 pub mod error;
+mod expected_exprs;
 mod expression_payload_kinds;
 mod expressions;
 mod field_slots;
