@@ -190,6 +190,57 @@ fn build() {
 }
 
 #[test]
+fn tuple_constructor_with_non_path_cst_callee_does_not_use_legacy_constructor() {
+    with_cst_payload_compiler(
+        r#"
+enum Boxed {
+    Value(value)
+}
+
+fn main() {
+    let callable = |value| value;
+    let cst_call = ({
+        let selected = callable;
+        selected
+    })(1);
+    let legacy_call = Boxed::Value(1);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST call payload");
+            let legacy_call = statements[2]
+                .let_initializer_expression_payload()
+                .expect("legacy tuple constructor fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_call
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+                .expect_err(
+                    "mismatched non-path CST callee must not use the legacy tuple constructor",
+                );
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("callable expression")
+                ),
+                "expected unsupported callable expression, got {error:?}"
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_record_constructor_diagnostics_prefer_cst_payload_labels() {
     let source = SourceId::new(1);
     let text = r#"

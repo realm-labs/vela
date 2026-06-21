@@ -51,7 +51,11 @@ impl Compiler<'_, '_> {
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         let has_callee_payload = callee_payload.is_some();
-        if let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee) {
+        let has_authoritative_callee_path =
+            callee_path_segments(callee_path, has_callee_payload, callee).is_some();
+        if has_authoritative_callee_path
+            && let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee)
+        {
             let fields = self.compile_tuple_variant_fields(
                 callee.span,
                 &enum_name,
@@ -134,8 +138,9 @@ impl Compiler<'_, '_> {
         }
 
         let dst = self.alloc_register()?;
-        let script_function_call = callee_path_segments(callee_path, has_callee_payload, callee)
-            .and_then(|_| self.script_function_call(callee));
+        let script_function_call = has_authoritative_callee_path
+            .then(|| self.script_function_call(callee))
+            .flatten();
         if let Some((declaration, name)) = script_function_call {
             let call_args = self.compile_script_call_args_with_payloads(
                 declaration,
