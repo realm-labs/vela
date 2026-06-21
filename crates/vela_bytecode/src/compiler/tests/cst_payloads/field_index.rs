@@ -318,6 +318,86 @@ fn main() {
 }
 
 #[test]
+fn indexed_record_assignment_slots_prefer_cst_collection_payloads() {
+    with_cst_payload_compiler(
+        r#"
+struct CstBox {
+    alpha: i64,
+    amount: i64,
+}
+
+struct LegacyBox {
+    amount: i64,
+    zed: i64,
+}
+
+fn main() {
+    let cst_items = [CstBox { alpha: 0, amount: 1 }];
+    let legacy_items = [LegacyBox { amount: 2, zed: 3 }];
+    cst_items[0].amount = 10;
+    legacy_items[0].amount = 20;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst_items local should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy_items local should compile");
+            let cst_target = statements[2]
+                .assignment_target_expression_payload()
+                .expect("CST indexed assignment target");
+            let legacy_statement = statements[3]
+                .expression_payload()
+                .expect("legacy indexed assignment expression");
+            let legacy_target = statements[3]
+                .assignment_target_expression_payload()
+                .expect("legacy indexed assignment target");
+            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_target
+                    .syntax_expression()
+                    .expect("CST target expression")
+                    .clone(),
+                legacy_target.fallback(),
+            );
+
+            compiler
+                .compile_assignment_with_payloads(
+                    legacy_statement.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
+                        &mismatched_target,
+                    )),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
+                        None,
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect("CST-backed indexed assignment should compile");
+            let slot = compiler
+                .code
+                .instructions
+                .iter()
+                .rev()
+                .find_map(|instruction| {
+                    let UnlinkedInstructionKind::SetRecordSlot { field, slot, .. } =
+                        &instruction.kind
+                    else {
+                        return None;
+                    };
+                    (field == "amount").then_some(*slot)
+                });
+            assert_eq!(slot, Some(1));
+        },
+    );
+}
+
+#[test]
 fn host_index_validation_prefers_cst_receiver_payloads() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     registry

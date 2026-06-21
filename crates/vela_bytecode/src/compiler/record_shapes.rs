@@ -996,10 +996,6 @@ pub(super) fn callback_param_shapes(
 }
 
 impl super::Compiler<'_, '_> {
-    pub(super) fn value_shape_for_expr(&self, expr: &Expr) -> Option<ValueShape> {
-        self.value_shape_for_expr_with_payload(expr, None)
-    }
-
     pub(in crate::compiler) fn value_shape_for_expr_with_payload(
         &self,
         expr: &Expr,
@@ -1073,8 +1069,9 @@ impl super::Compiler<'_, '_> {
     pub(super) fn record_shape_for_index_collection(
         &self,
         collection: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<RecordShape> {
-        self.value_shape_for_expr(collection)?
+        self.value_shape_for_expr_with_payload(collection, payload)?
             .array_element_record()
             .cloned()
     }
@@ -1103,6 +1100,16 @@ impl super::Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let local_shape = self.value_shapes.local_at_span(self.bindings, span);
         let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
+        if let Some([root]) = cst_path.as_deref() {
+            let cst_shape = self.value_shapes.name(root).or_else(|| {
+                self.script_types
+                    .name(root)
+                    .or_else(|| self.global_type_named(root))
+                    .and_then(|type_name| self.record_shape_for_type(&type_name))
+                    .map(ValueShape::Record)
+            });
+            return cst_shape.or(local_shape);
+        }
         let path = cst_path.as_deref().unwrap_or(legacy_path);
         let [root] = path else {
             return local_shape;

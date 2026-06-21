@@ -453,6 +453,9 @@ legacy operand expressions.
 Record-field assignment target analysis now prefers rowan CST root payloads
 for root script type, field value contracts, record shape, and slot selection
 before falling back to temporary legacy target expressions.
+Indexed record-field assignment target analysis now also prefers rowan CST
+collection payloads for array element record-shape and slot selection before
+falling back to temporary legacy collection expressions.
 Read-only host field assignment validation now prefers rowan CST target
 payloads for receiver type and field-name lookup before falling back to
 temporary legacy assignment target expressions.

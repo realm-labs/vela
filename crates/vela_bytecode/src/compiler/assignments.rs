@@ -459,13 +459,15 @@ impl Compiler<'_, '_> {
                 let (collection, index) = payloads;
                 (Some(collection), Some(index))
             });
+        let element_shape =
+            self.record_shape_for_index_collection(collection, collection_payload.as_ref());
         Some(IndexedRecordFieldAssignmentTarget {
             collection,
             index,
             collection_payload,
             index_payload,
             fields,
-            element_shape: self.record_shape_for_index_collection(collection),
+            element_shape,
         })
     }
 
