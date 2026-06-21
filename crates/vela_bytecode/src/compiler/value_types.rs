@@ -382,17 +382,28 @@ fn static_expr_type_with_payload(
                 path.first()
                     .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
             })
-            .or_else(|| local_type_at_span(expr.span))
             .or_else(|| {
-                path.first()
-                    .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
+                payload_allows_legacy_path_fact(payload)
+                    .then(|| {
+                        local_type_at_span(expr.span).or_else(|| {
+                            path.first().and_then(|name| {
+                                (path.len() == 1).then(|| local_type_named(name)).flatten()
+                            })
+                        })
+                    })
+                    .flatten()
             })
             .map(StaticExprType::Exact)
             .unwrap_or(StaticExprType::Dynamic),
-        ExprKind::SelfValue => local_type_at_span(expr.span)
-            .or_else(|| local_type_named("self"))
-            .map(StaticExprType::Exact)
-            .unwrap_or(StaticExprType::Dynamic),
+        ExprKind::SelfValue => {
+            if !payload_allows_legacy_self(payload) {
+                return StaticExprType::Dynamic;
+            }
+            local_type_at_span(expr.span)
+                .or_else(|| local_type_named("self"))
+                .map(StaticExprType::Exact)
+                .unwrap_or(StaticExprType::Dynamic)
+        }
         _ => StaticExprType::Dynamic,
     }
 }
@@ -483,6 +494,24 @@ fn static_syntax_expr_type(
         | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Try
         | SyntaxExpressionKind::Record => None,
+    }
+}
+
+fn payload_allows_legacy_path_fact(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
+    match payload.and_then(CompilerExpressionPayload::kind) {
+        Some(SyntaxExpressionKind::Path | SyntaxExpressionKind::Binary) => true,
+        Some(_) => false,
+        None => true,
+    }
+}
+
+fn payload_allows_legacy_self(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
+    match payload.and_then(CompilerExpressionPayload::kind) {
+        Some(SyntaxExpressionKind::Path) => {
+            payload.is_some_and(CompilerExpressionPayload::syntax_is_self)
+        }
+        Some(_) => false,
+        None => true,
     }
 }
 

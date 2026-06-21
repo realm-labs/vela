@@ -150,6 +150,78 @@ fn legacy_call(legacy) {
 }
 
 #[test]
+fn static_value_type_facts_prefer_cst_path_payloads_and_reject_mismatch() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_value = true;
+    let legacy_value = 1;
+    cst_value;
+    legacy_value;
+    let cst_block = {
+        let selected = cst_value;
+        selected
+    };
+}
+"#,
+        |compiler, payload| {
+            compiler.value_types.set_name(
+                "cst_value",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool)),
+            );
+            compiler.value_types.set_name(
+                "legacy_value",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
+            );
+            let statements = payload.body.statement_payloads();
+            let cst_path = statements[2]
+                .expression_payload()
+                .expect("CST path expression");
+            let legacy_path = statements[3]
+                .expression_payload()
+                .expect("legacy path fallback");
+            let cst_block = statements[4]
+                .let_initializer_expression_payload()
+                .expect("CST block initializer");
+
+            let mismatched_path = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_path
+                    .syntax_expression()
+                    .expect("path CST expression")
+                    .clone(),
+                legacy_path.fallback(),
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_path.fallback(),
+                    Some(&mismatched_path),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::Bool,
+                ))
+            );
+
+            let mismatched_block = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_block
+                    .syntax_expression()
+                    .expect("block CST expression")
+                    .clone(),
+                legacy_path.fallback(),
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_block.fallback(),
+                    Some(&mismatched_block),
+                ),
+                value_types::StaticExprType::Dynamic
+            );
+        },
+    );
+}
+
+#[test]
 fn self_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"
