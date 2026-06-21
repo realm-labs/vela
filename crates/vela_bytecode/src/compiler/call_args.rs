@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::Argument;
+use vela_syntax::ast::{Argument, SyntaxExpression};
 
 use crate::{CallArgument, ScriptCallMode};
 
@@ -15,6 +15,13 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 pub(super) struct ScriptCallArgs {
     pub(super) args: Vec<CallArgument>,
     pub(super) mode: ScriptCallMode,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(in crate::compiler) struct SyntaxCallArgument {
+    pub(in crate::compiler) name: Option<String>,
+    pub(in crate::compiler) span: Span,
+    pub(in crate::compiler) value: SyntaxExpression,
 }
 
 #[derive(Clone, Copy)]
@@ -176,6 +183,54 @@ pub(super) fn resolve_script_call_arguments<'ast>(
         }
         slots[index] = Some(arg);
         slot_spans[index] = Some(arg_span);
+    }
+
+    for (slot, param) in slots.iter().zip(params) {
+        if slot.is_none() && param.default_value_span.is_none() {
+            diagnostics.push(missing_argument_diagnostic(param, call_span));
+        }
+    }
+
+    if diagnostics.is_empty() {
+        Ok(slots)
+    } else {
+        Err(diagnostics)
+    }
+}
+
+pub(in crate::compiler) fn resolve_syntax_call_arguments(
+    params: &[ParamHint],
+    args: &[SyntaxCallArgument],
+    call_span: Span,
+) -> Result<Vec<Option<SyntaxCallArgument>>, Vec<Diagnostic>> {
+    let mut slots = vec![None; params.len()];
+    let mut slot_spans = vec![None; params.len()];
+    let mut diagnostics = Vec::new();
+    let mut next_positional = 0_usize;
+    let mut seen_named = false;
+
+    for arg in args {
+        let Some(index) = argument_index(
+            params,
+            arg.name.as_deref(),
+            arg.span,
+            &mut next_positional,
+            &mut seen_named,
+            &mut diagnostics,
+        ) else {
+            continue;
+        };
+
+        if let Some(previous_span) = slot_spans[index] {
+            diagnostics.push(duplicate_argument_diagnostic(
+                &params[index].name,
+                previous_span,
+                arg.span,
+            ));
+            continue;
+        }
+        slots[index] = Some(arg.clone());
+        slot_spans[index] = Some(arg.span);
     }
 
     for (slot, param) in slots.iter().zip(params) {

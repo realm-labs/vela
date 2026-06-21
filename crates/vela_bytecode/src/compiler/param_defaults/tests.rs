@@ -57,7 +57,7 @@ fn cst(first = 1) {
 fn mismatched_param_defaults_do_not_pair_by_index() {
     let source = SourceId::new(1);
     let text = r#"
-fn cst(first = expensive()) {
+fn cst(first = player.level) {
     return first;
 }
 "#;
@@ -123,11 +123,38 @@ fn param_default_cst_lowering_covers_logical_chains() {
         "logical defaults with parenthesized supported operands should lower from CST"
     );
     assert!(
-        !param_default_cst_lowering_covers(&first_param_default(
+        param_default_cst_lowering_covers(&first_param_default(
             "fn cst(value = true || expensive()) { return value; }"
         )),
-        "logical defaults keep the fallback when an operand is not CST-lowered yet"
+        "logical defaults with path calls should lower from CST"
     );
+}
+
+#[test]
+fn param_default_cst_lowering_covers_path_calls() {
+    let source = SourceId::new(1);
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default("fn cst(value = next()) { return value; }"),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                "fn cst(value = pick(rhs = 2, lhs = 1 + 1)) { return value; }",
+            ),
+        }),
+    ];
+
+    let defaults = param_default_values(&syntax_defaults, &[]);
+
+    assert_eq!(defaults.len(), 2);
+    for default in defaults {
+        assert!(
+            default.expect("direct CST default").fallback.is_none(),
+            "path call defaults with supported arguments should lower directly from CST"
+        );
+    }
 }
 
 #[test]
@@ -304,13 +331,13 @@ fn param_default_cst_lowering_keeps_unsupported_if_fallbacks() {
         Some(ParamDefaultExpression {
             source,
             expression: first_param_default(
-                "fn cst(value = if expensive() { 1 } else { 2 }) { return value; }",
+                "fn cst(value = if player.level { 1 } else { 2 }) { return value; }",
             ),
         }),
         Some(ParamDefaultExpression {
             source,
             expression: first_param_default(
-                "fn cst(value = if true { let x = expensive(); x } else { 2 }) { return value; }",
+                "fn cst(value = if true { let x = player.level; x } else { 2 }) { return value; }",
             ),
         }),
     ];
@@ -383,7 +410,9 @@ fn param_default_cst_lowering_keeps_unsupported_interpolated_fallbacks() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![Some(ParamDefaultExpression {
         source,
-        expression: first_param_default(r#"fn cst(value = f"level {next()}") { return value; }"#),
+        expression: first_param_default(
+            r#"fn cst(value = f"level {player.level}") { return value; }"#,
+        ),
     })];
 
     let defaults = param_default_values(&syntax_defaults, &[]);
@@ -399,7 +428,7 @@ fn param_default_cst_lowering_keeps_unsupported_index_fallbacks() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![Some(ParamDefaultExpression {
         source,
-        expression: first_param_default("fn cst(value = values()[0]) { return value; }"),
+        expression: first_param_default("fn cst(value = values.field[0]) { return value; }"),
     })];
 
     let defaults = param_default_values(&syntax_defaults, &[]);

@@ -163,6 +163,34 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_path_call_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn helper(lhs, rhs) {
+    return lhs + rhs;
+}
+
+fn grant(amount = helper(rhs = 2, lhs = 1)) {
+    return amount;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("CST-backed path call default should compile");
+    let grant = program.function("grant").expect("grant function");
+
+    assert!(grant.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallFunction { name, args, .. }
+            if name == "helper" && args.len() == 2
+    )));
+}
+
+#[test]
 fn compiler_reports_typed_let_block_parameter_default_mismatches_from_cst() {
     let error = compile_program_source(
         SourceId::new(1),

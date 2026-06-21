@@ -739,7 +739,11 @@ impl Compiler<'_, '_> {
         )
     }
 
-    fn resolve_native_function_id(&self, name: &str, call_span: Span) -> CompileResult<FunctionId> {
+    pub(in crate::compiler) fn resolve_native_function_id(
+        &self,
+        name: &str,
+        call_span: Span,
+    ) -> CompileResult<FunctionId> {
         let Some(registry) = self.facts.registry else {
             return Ok(function_id_for_native_name(name));
         };
@@ -988,7 +992,7 @@ fn mutation_arg_debug_name(method: &str, param_name: &str, position: usize) -> S
     }
 }
 
-fn function_id_for_script_name(name: &str) -> FunctionId {
+pub(in crate::compiler) fn function_id_for_script_name(name: &str) -> FunctionId {
     function_id_for_path("script", name)
 }
 
@@ -1007,7 +1011,10 @@ fn function_id_for_path(package: &str, name: &str) -> FunctionId {
     FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }
 
-fn registry_param_hints(params: &[ParamDef], call_span: Span) -> Vec<ParamHint> {
+pub(in crate::compiler) fn registry_param_hints(
+    params: &[ParamDef],
+    call_span: Span,
+) -> Vec<ParamHint> {
     params
         .iter()
         .map(|param| ParamHint {

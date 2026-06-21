@@ -1,3 +1,5 @@
+mod calls;
+
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
@@ -206,9 +208,14 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
                 Ok(dst)
             }
+            SyntaxExpressionKind::Call => {
+                let Some(call) = expression.as_call() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_call(source, expression, &call)
+            }
             SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
-            | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
@@ -745,9 +752,9 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
                     .index()
                     .is_some_and(|index| param_default_cst_lowering_covers(&index))
         }),
+        SyntaxExpressionKind::Call => calls::param_default_call_cst_lowering_covers(expression),
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
-        | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
         | SyntaxExpressionKind::Match => false,
