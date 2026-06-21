@@ -2,9 +2,9 @@ use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{Expr, ExprKind, MatchExpr, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerMatchArmPayload};
-use crate::compiler::control_flow::classification::value_expression_kind_matches;
+use crate::compiler::expression_payload_kinds::expression_payload_kind_matches;
 use crate::compiler::patterns::PatternBindingFacts;
-use crate::compiler::{CompileResult, Compiler};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
@@ -81,9 +81,13 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
             && let Some(kind) = payload.body_expression_kind()
-            && value_expression_kind_matches(kind, &arm.body)
         {
-            return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
+            if expression_payload_kind_matches(kind, &arm.body) {
+                return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
+            }
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match arm body",
+            )));
         }
         self.compile_legacy_match_arm_statement(arm, payload)
     }
@@ -220,9 +224,13 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
             && let Some(kind) = payload.body_expression_kind()
-            && value_expression_kind_matches(kind, body)
         {
-            return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
+            if expression_payload_kind_matches(kind, body) {
+                return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
+            }
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match arm body",
+            )));
         }
         self.compile_legacy_match_arm_value_to(body, payload, dst)
     }
