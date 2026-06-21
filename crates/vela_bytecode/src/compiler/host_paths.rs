@@ -264,6 +264,7 @@ impl Compiler<'_, '_> {
         receiver: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
     ) -> ResolvedHostPath<'ast> {
+        let type_name = self.script_type_for_expr_with_payload(receiver, payload.as_ref());
         ResolvedHostPath {
             path: HostPath {
                 root: HostPathRoot::Expr {
@@ -272,7 +273,7 @@ impl Compiler<'_, '_> {
                 },
                 segments: Vec::new(),
             },
-            type_name: self.script_type_for_expr(receiver),
+            type_name,
         }
     }
 
@@ -650,7 +651,9 @@ impl Compiler<'_, '_> {
 
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
-            HostPathRoot::Expr { expr, .. } => self.script_type_for_expr(expr),
+            HostPathRoot::Expr { expr, payload } => {
+                self.script_type_for_expr_with_payload(expr, payload.as_ref())
+            }
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
         }
     }

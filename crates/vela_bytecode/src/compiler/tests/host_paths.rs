@@ -233,6 +233,133 @@ fn main(player: Player) {
 }
 
 #[test]
+fn cst_host_path_receivers_drive_root_type_and_field_lookup() {
+    let cst_type = HostTypeId::new(77);
+    let legacy_type = HostTypeId::new(78);
+    let cst_amount = FieldId::new(3);
+    let legacy_amount = FieldId::new(4);
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let cst = register_registry_host_type(&mut registry, "CstHost", cst_type);
+    let legacy = register_registry_host_type(&mut registry, "LegacyHost", legacy_type);
+    register_registry_host_field_with_type(
+        &mut registry,
+        cst,
+        "CstHost",
+        "amount",
+        cst_amount,
+        true,
+        Some("i64"),
+    );
+    register_registry_host_field_with_type(
+        &mut registry,
+        legacy,
+        "LegacyHost",
+        "amount",
+        legacy_amount,
+        true,
+        Some("bool"),
+    );
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(cst: CstHost, legacy: LegacyHost) {
+    cst.amount = 1;
+    legacy.amount = 2;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
+    let global_type_symbols = semantic.global_type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let derived_operator_traits =
+        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
+    let const_values = semantic.const_values().expect("const values should lower");
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let facts = CompilerFacts {
+        script_function_symbols,
+        script_function_signatures,
+        script_method_ids: std::collections::BTreeMap::new(),
+        script_method_signatures: std::collections::BTreeMap::new(),
+        derived_operator_traits,
+        script_field_slots,
+        schema_defaults,
+        type_symbols,
+        global_symbols,
+        global_slots,
+        global_type_symbols,
+        const_values,
+        options: CompilerOptions::default(),
+        registry: Some(registry.compile_view()),
+    };
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let cst_target = statements[0]
+        .assignment_target_expression_payload()
+        .expect("CST assignment target");
+    let legacy_target = statements[1]
+        .assignment_target_expression_payload()
+        .expect("legacy assignment target");
+    let legacy_statement = statements[1]
+        .expression_payload()
+        .expect("legacy assignment expression");
+    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_target
+            .syntax_expression()
+            .expect("CST target syntax")
+            .clone(),
+        legacy_target.fallback(),
+    );
+    let mut compiler = Compiler::new(
+        payload.function.name.clone(),
+        payload.function,
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    let resolved = compiler
+        .resolve_host_path_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
+        .expect("CST-backed host path should resolve");
+    assert_eq!(resolved.type_name.as_deref(), Some("i64"));
+    compiler
+        .compile_assignment_with_payloads(
+            legacy_statement.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                None,
+                None,
+                crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
+            ),
+        )
+        .expect("CST-backed host write should compile");
+    let target = compiler
+        .code
+        .instructions
+        .iter()
+        .rev()
+        .find_map(|instruction| match instruction.kind {
+            UnlinkedInstructionKind::HostWrite { target, .. } => Some(target),
+            _ => None,
+        })
+        .expect("host write should be emitted");
+    let plan = compiler
+        .code
+        .host_target(target)
+        .expect("host target should exist");
+    assert_eq!(plan.root_type, cst_type);
+    assert_eq!(plan.parts.as_slice(), [HostPathPart::Field(cst_amount)]);
+}
+
+#[test]
 fn compiler_lowers_host_field_reads_from_registry() {
     let player_type = HostTypeId::new(77);
     let level = FieldId::new(3);
