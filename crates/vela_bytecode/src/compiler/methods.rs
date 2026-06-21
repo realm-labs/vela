@@ -1,5 +1,5 @@
 use vela_common::HostMethodId;
-use vela_syntax::ast::{Expr, ExprKind};
+use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::host_paths::{HostPath, HostPathPart, HostPathRoot, ResolvedHostPath};
@@ -21,9 +21,7 @@ pub(super) fn host_method_call<'ast>(
         ExprKind::Field { base, name } => {
             let receiver_payload = callee_payload.and_then(|payload| payload.field_base_payload());
             let receiver = host_method_receiver_path(compiler, base, receiver_payload.as_ref())?;
-            let name = callee_payload
-                .and_then(CompilerExpressionPayload::syntax_field_name)
-                .unwrap_or_else(|| name.to_owned());
+            let name = callee_field_name(callee_payload, name)?;
             let method =
                 compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), &name)?;
             Some(HostMethodCall {
@@ -56,6 +54,22 @@ pub(super) fn host_method_call<'ast>(
             })
         }
         _ => None,
+    }
+}
+
+fn callee_field_name(
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+    fallback_name: &str,
+) -> Option<String> {
+    match callee_payload {
+        Some(payload) => match payload.kind() {
+            Some(SyntaxExpressionKind::Field) => payload
+                .syntax_field_name()
+                .or_else(|| Some(fallback_name.to_owned())),
+            Some(SyntaxExpressionKind::Path) | None => Some(fallback_name.to_owned()),
+            Some(_) => None,
+        },
+        None => Some(fallback_name.to_owned()),
     }
 }
 

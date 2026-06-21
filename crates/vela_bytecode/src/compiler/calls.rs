@@ -1,4 +1,4 @@
-use vela_syntax::ast::{Argument, Expr, ExprKind};
+use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
@@ -109,12 +109,11 @@ impl Compiler<'_, '_> {
             return Ok(push);
         }
 
-        if let ExprKind::Field { base, name } = &callee.kind {
+        if let ExprKind::Field { base, name } = &callee.kind
+            && let Some(name) = callee_field_name(callee_payload, name)
+        {
             let base_payload =
                 callee_payload.and_then(CompilerExpressionPayload::field_base_payload);
-            let name = callee_payload
-                .and_then(CompilerExpressionPayload::syntax_field_name)
-                .unwrap_or_else(|| name.to_owned());
             return self.compile_script_method_call(
                 expr,
                 base,
@@ -1085,6 +1084,22 @@ fn callable_name(
         )));
     };
     Ok(path.join("::"))
+}
+
+fn callee_field_name(
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+    fallback_name: &str,
+) -> Option<String> {
+    match callee_payload {
+        Some(payload) => match payload.kind() {
+            Some(SyntaxExpressionKind::Field) => payload
+                .syntax_field_name()
+                .or_else(|| Some(fallback_name.to_owned())),
+            Some(SyntaxExpressionKind::Path) | None => Some(fallback_name.to_owned()),
+            Some(_) => None,
+        },
+        None => Some(fallback_name.to_owned()),
+    }
 }
 
 fn callee_path_segments<'expr>(
