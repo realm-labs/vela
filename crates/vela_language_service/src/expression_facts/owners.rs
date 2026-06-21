@@ -1,4 +1,4 @@
-use vela_analysis::{expression::ExprFactScope, facts::AnalysisFacts, type_fact::TypeFact};
+use vela_analysis::{fact_scope::ExprFactScope, facts::AnalysisFacts, type_fact::TypeFact};
 use vela_hir::{
     ids::HirDeclId,
     module_graph::{DeclarationKind, ModuleGraph},

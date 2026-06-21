@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 mod owners;
 
 use vela_analysis::{
-    expression::ExprFactScope,
+    fact_scope::ExprFactScope,
     registry::RegistryFacts,
     stdlib::{stdlib_function_fact, stdlib_method_fact_with_lambda_arity},
     type_fact::TypeFact,
