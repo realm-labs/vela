@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{Diagnostic, Span};
 
 use super::*;
@@ -199,6 +200,130 @@ fn analysis_diagnostics_map_to_document_ranges() {
                     .iter()
                     .any(|label| label.document_id() == &document)
         }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_report_unknown_match_pattern_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut db = LanguageServiceDatabases::new();
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(maybe: Option<i64>) {
+    match maybe {
+        Option::Smoe(value) => value,
+        Option::None => 0,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::unknown_variant")
+                && diagnostic
+                    .message()
+                    .contains("unknown variant `Smoe` for `Option`")
+                && diagnostic.range().is_some()
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("available variants: Some"))
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_report_schema_enum_match_pattern_variants() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Finished",
+        TypeFact::enum_type("QuestState", Some("Finished")),
+    );
+    let mut db = LanguageServiceDatabases::new();
+    db.set_schema_facts(schema);
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(quest: QuestState) {
+    match quest {
+        QuestState::Activ => 1,
+        QuestState::Finished => 0,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics.diagnostics().iter().any(|diagnostic| {
+            diagnostic.code() == Some("analysis::unknown_variant")
+                && diagnostic
+                    .labels()
+                    .iter()
+                    .any(|label| label.message().contains("Active"))
+        }),
+        "{:?}",
+        diagnostics.diagnostics()
+    );
+}
+
+#[test]
+fn analysis_diagnostics_ignore_different_match_pattern_owners() {
+    let document = DocumentId::from("/workspace/scripts/game/main.vela");
+    let mut schema = RegistryFacts::default();
+    schema.insert_type(
+        "QuestState",
+        TypeFact::enum_type("QuestState", None::<String>),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Active",
+        TypeFact::enum_type("QuestState", Some("Active")),
+    );
+    schema.insert_variant(
+        "QuestState",
+        "Finished",
+        TypeFact::enum_type("QuestState", Some("Finished")),
+    );
+    let mut db = LanguageServiceDatabases::new();
+    db.set_schema_facts(schema);
+    db.update(&project(&[file(
+        document.as_str(),
+        "\
+pub fn main(quest: QuestState) {
+    match quest {
+        Other::Activ => 1,
+        QuestState::Active => 2,
+        QuestState::Finished => 0,
+    }
+}",
+    )]));
+
+    let diagnostics = db.diagnostics_for_document(&document);
+
+    assert!(
+        diagnostics
+            .diagnostics()
+            .iter()
+            .all(|diagnostic| diagnostic.code() != Some("analysis::unknown_variant")),
         "{:?}",
         diagnostics.diagnostics()
     );

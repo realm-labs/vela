@@ -1,4 +1,3 @@
-use vela_analysis::diagnostics::match_patterns::match_pattern_diagnostics;
 use vela_analysis::diagnostics::member::member_access_diagnostics;
 use vela_analysis::expression::ExprFactScope;
 use vela_analysis::registry::RegistryFacts;
@@ -14,10 +13,6 @@ const UNKNOWN_HOST_FIELD: &str =
     include_str!("../../../tests/fixtures/diagnostics/unknown_host_field.vela");
 const UNKNOWN_HOST_FIELD_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/unknown_host_field.expected");
-const TYPEFACT_UNKNOWN_OPTION_VARIANT: &str =
-    include_str!("../../../tests/fixtures/diagnostics/typefact_unknown_option_variant.vela");
-const TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/typefact_unknown_option_variant.expected");
 const FLOW_NARROWING_NULL_MEMBER: &str =
     include_str!("../../../tests/fixtures/diagnostics/flow_narrowing_null_member.vela");
 const FLOW_NARROWING_NULL_MEMBER_EXPECTED: &str =
@@ -38,26 +33,6 @@ fn semantic_unknown_host_field_fixture_renders_candidates_and_access_hints() {
     .join("\n");
 
     assert_rendered_eq(&rendered, UNKNOWN_HOST_FIELD_EXPECTED);
-}
-
-#[test]
-fn typefact_unknown_option_variant_fixture_renders_dynamic_candidates() {
-    let source = normalized_fixture(TYPEFACT_UNKNOWN_OPTION_VARIANT);
-    let expr = first_expression(&source);
-    let scope = ExprFactScope::new().with_path(["maybe"], TypeFact::option(TypeFact::I64));
-    let diagnostics = match_pattern_diagnostics(&expr, &scope, &RegistryFacts::default());
-
-    assert_eq!(diagnostics.len(), 1);
-    let rendered = render_diagnostic(
-        &diagnostics[0],
-        [diagnostic_source(
-            "typefact_unknown_option_variant.vela",
-            source,
-        )],
-    )
-    .join("\n");
-
-    assert_rendered_eq(&rendered, TYPEFACT_UNKNOWN_OPTION_VARIANT_EXPECTED);
 }
 
 #[test]

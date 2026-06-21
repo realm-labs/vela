@@ -1,6 +1,0 @@
-fn main(maybe) {
-    match maybe {
-        Option::Smoe(value) => value,
-        Option::None => 0,
-    };
-}

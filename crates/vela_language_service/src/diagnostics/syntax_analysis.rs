@@ -74,6 +74,12 @@ pub(super) fn source_diagnostics(
         &expression_facts,
         facts,
     ));
+    diagnostics.extend(match_pattern_diagnostics(
+        parsed,
+        source,
+        &expression_facts,
+        facts,
+    ));
     if let Some(module) = module {
         diagnostics.extend(record_constructor_diagnostics(
             parsed, source, graph, module,
@@ -221,6 +227,75 @@ fn match_exhaustiveness_diagnostics(
         .collect()
 }
 
+fn match_pattern_diagnostics(
+    parsed: &SyntaxParse<SyntaxSourceFile>,
+    source: SourceId,
+    expression_facts: &BTreeMap<(usize, usize), TypeFact>,
+    facts: &RegistryFacts,
+) -> Vec<Diagnostic> {
+    parsed
+        .tree()
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxMatchExpr::cast)
+        .flat_map(|expr| {
+            let Some(scrutinee) = expr.scrutinee() else {
+                return Vec::new();
+            };
+            let scrutinee_range = text_range_key(scrutinee.syntax().text_range());
+            let Some(enum_shape) = expression_facts
+                .get(&scrutinee_range)
+                .and_then(|fact| enum_shape(fact, facts))
+            else {
+                return Vec::new();
+            };
+
+            expr.arms()
+                .into_iter()
+                .filter_map(|arm| {
+                    let pattern = arm.pattern()?;
+                    diagnose_match_pattern(source, &expr, &pattern, &enum_shape)
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+fn diagnose_match_pattern(
+    source: SourceId,
+    expr: &SyntaxMatchExpr,
+    pattern: &SyntaxPattern,
+    enum_shape: &EnumShape,
+) -> Option<Diagnostic> {
+    let (owner, variant) = pattern_variant_path(pattern)?;
+    if owner
+        .as_ref()
+        .is_some_and(|owner| owner != &enum_shape.name)
+    {
+        return None;
+    }
+    if enum_shape.variants.iter().any(|known| known == &variant) {
+        return None;
+    }
+
+    let candidates = ranked_variant_candidates(&variant, &enum_shape.variants);
+    let span = syntax_span(source, expr.syntax().text_range());
+    let mut diagnostic = Diagnostic::error(format!(
+        "unknown variant `{variant}` for `{}`",
+        enum_shape.name
+    ))
+    .with_code("analysis::unknown_variant")
+    .with_span(span)
+    .with_label(span, "unknown match pattern variant");
+    if !candidates.is_empty() {
+        diagnostic = diagnostic.with_label(
+            span,
+            format!("available variants: {}", candidates.join(", ")),
+        );
+    }
+    Some(diagnostic)
+}
+
 struct EnumShape {
     name: String,
     variants: Vec<String>,
@@ -276,6 +351,22 @@ fn pattern_variant_name(pattern: &SyntaxPattern) -> Option<String> {
             None
         }
     }
+}
+
+fn pattern_variant_path(pattern: &SyntaxPattern) -> Option<(Option<String>, String)> {
+    let path = match pattern.pattern_kind()? {
+        SyntaxPatternKind::Path => pattern.path_segments(),
+        SyntaxPatternKind::TupleVariant => pattern.as_tuple_variant()?.path_segments(),
+        SyntaxPatternKind::RecordVariant => pattern.as_record_variant()?.path_segments(),
+        SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Binding => {
+            return None;
+        }
+    };
+    let (variant, owner) = path.split_last()?;
+    Some((
+        (!owner.is_empty()).then(|| owner.join("::")),
+        variant.clone(),
+    ))
 }
 
 fn syntax_span(source: SourceId, range: SyntaxTextRange) -> Span {
@@ -409,6 +500,19 @@ fn ranked_member_candidates(
         .into_iter()
         .filter(|completion| completion.kind == kind)
         .map(|completion| (edit_distance(member, &completion.label), completion.label))
+        .collect::<Vec<_>>();
+    candidates.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    candidates
+        .into_iter()
+        .take(3)
+        .map(|(_, candidate)| candidate)
+        .collect()
+}
+
+fn ranked_variant_candidates(variant: &str, known_variants: &[String]) -> Vec<String> {
+    let mut candidates = known_variants
+        .iter()
+        .map(|candidate| (edit_distance(variant, candidate), candidate.clone()))
         .collect::<Vec<_>>();
     candidates.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
     candidates
