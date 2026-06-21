@@ -24,6 +24,32 @@ fn with_cst_payload_compiler(
 ) {
     let semantic =
         parse_semantic_source(SourceId::new(1), source).expect("semantic source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    inspect(&mut compiler, payload);
+}
+
+fn cst_payload_compiler_for_function<'ast>(
+    semantic: &'ast semantic::SemanticSource,
+    function: &str,
+) -> (
+    Compiler<'ast, 'static>,
+    legacy_payloads::FunctionBodyPayload<'ast>,
+) {
+    let facts = cst_payload_compiler_facts(semantic);
+    let (payload, signature, bindings) = semantic.function(function).expect("script function");
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+    (compiler, payload)
+}
+
+fn cst_payload_compiler_facts(semantic: &semantic::SemanticSource) -> CompilerFacts<'static> {
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
     let type_symbols = semantic.type_symbols();
@@ -33,7 +59,7 @@ fn with_cst_payload_compiler(
     let script_field_slots = semantic.script_field_slots(&type_symbols);
     let const_values = semantic.const_values().expect("const values should lower");
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
-    let facts = CompilerFacts {
+    CompilerFacts {
         script_function_symbols,
         script_function_signatures,
         script_method_ids: std::collections::BTreeMap::new(),
@@ -48,18 +74,7 @@ fn with_cst_payload_compiler(
         const_values,
         options: CompilerOptions::default(),
         registry: None,
-    };
-    let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let mut compiler = Compiler::new_with_param_defaults(
-        payload.name.clone(),
-        payload.body.clone(),
-        payload.param_defaults.clone(),
-        signature,
-        bindings,
-        facts,
-    )
-    .expect("compiler should initialize");
-    inspect(&mut compiler, payload);
+    }
 }
 
 #[test]

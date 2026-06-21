@@ -36,10 +36,13 @@ pub(crate) fn tuple_variant_field_name(index: usize) -> String {
 fn record_pattern_field_name(
     payload: Option<&CompilerRecordPatternFieldPayload<'_>>,
     field: &RecordPatternField,
-) -> String {
-    payload
-        .and_then(CompilerRecordPatternFieldPayload::syntax_label_name)
-        .unwrap_or_else(|| field.name.clone())
+) -> CompileResult<String> {
+    let Some(payload) = payload else {
+        return Ok(field.name.clone());
+    };
+    payload.syntax_label_name().ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax("record pattern field"))
+    })
 }
 
 fn pattern_literal_payload(
@@ -159,7 +162,7 @@ impl Compiler<'_, '_> {
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
-                    let field_name = record_pattern_field_name(field_payload, field);
+                    let field_name = record_pattern_field_name(field_payload, field)?;
                     let field_value =
                         self.emit_enum_pattern_field_read(scrutinee, &path, field_name)?;
                     jumps.extend(
@@ -250,7 +253,7 @@ impl Compiler<'_, '_> {
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
-                    let field_name = record_pattern_field_name(field_payload, field);
+                    let field_name = record_pattern_field_name(field_payload, field)?;
                     let dst =
                         self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
                     let field_facts = PatternBindingFacts::value(

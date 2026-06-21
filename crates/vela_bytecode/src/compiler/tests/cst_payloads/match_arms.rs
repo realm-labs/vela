@@ -437,6 +437,22 @@ fn legacy_record(value) {
             .all(|field| field.syntax_label_name().is_none()),
         "mismatched record fields must not receive label or index fallback CST fields"
     );
+
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_record");
+    let err = compiler
+        .bind_pattern_locals(
+            Register(0),
+            legacy_record_pattern,
+            Some(&mismatched_record),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("mismatched record field payload should not use legacy field name");
+    assert!(matches!(
+        err.kind,
+        CompileErrorKind::UnsupportedSyntax("record pattern field")
+    ));
 }
 
 fn assert_scrutinee_block_payload(
