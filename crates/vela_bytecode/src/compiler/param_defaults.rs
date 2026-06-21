@@ -1,12 +1,13 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AstNode, BinaryOp, Expr, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, UnaryOp,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxLiteral, SyntaxMapEntry, UnaryOp,
 };
+use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
-use crate::{Register, UnlinkedInstructionKind};
+use crate::{FormatStringPart, Register, UnlinkedInstructionKind};
 
 use super::const_eval::{compile_literal_constant, compile_negated_literal_constant};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -81,13 +82,14 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         match expression.expression_kind() {
             SyntaxExpressionKind::Literal => {
-                let Some(literal) = expression
-                    .as_literal()
-                    .and_then(|literal| literal.literal())
-                else {
+                let Some(literal) = expression.as_literal() else {
                     return Err(param_default_unsupported(source, expression));
                 };
-                self.compile_param_default_literal(source, expression, &literal)
+                if let Some(literal) = literal.literal() {
+                    self.compile_param_default_literal(source, expression, &literal)
+                } else {
+                    self.compile_param_default_interpolated_string(source, expression, &literal)
+                }
             }
             SyntaxExpressionKind::Path => {
                 let Some(path) = expression.as_path() else {
@@ -288,6 +290,46 @@ impl Compiler<'_, '_> {
         self.emit_constant(constant)
     }
 
+    fn compile_param_default_interpolated_string(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        literal: &SyntaxLiteral,
+    ) -> CompileResult<Register> {
+        if !param_default_interpolated_string_cst_lowering_covers(literal) {
+            return Err(param_default_unsupported(source, expression));
+        }
+        let Some(parts) = interpolated_string_parts(literal) else {
+            return Err(param_default_unsupported(source, expression));
+        };
+        let mut interpolation_expressions = literal.interpolation_expressions();
+        let mut compiled = Vec::with_capacity(parts.len());
+        for part in parts {
+            match part {
+                InterpolatedStringTokenPart::Text(value) => {
+                    let constant = self.code.push_constant(crate::Constant::String(value));
+                    compiled.push(FormatStringPart::Text(constant));
+                }
+                InterpolatedStringTokenPart::Expr { .. } => {
+                    let Some(expression) = interpolation_expressions.next() else {
+                        return Err(param_default_unsupported(source, expression));
+                    };
+                    let value = self.compile_param_default_expression(source, &expression)?;
+                    compiled.push(FormatStringPart::Value(value));
+                }
+            }
+        }
+        if interpolation_expressions.next().is_some() {
+            return Err(param_default_unsupported(source, expression));
+        }
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::FormatString {
+            dst,
+            parts: compiled,
+        });
+        Ok(dst)
+    }
+
     fn compile_param_default_unary(
         &mut self,
         source: SourceId,
@@ -451,7 +493,11 @@ impl Compiler<'_, '_> {
 
 fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
     match expression.expression_kind() {
-        SyntaxExpressionKind::Literal | SyntaxExpressionKind::Path => true,
+        SyntaxExpressionKind::Literal => expression.as_literal().is_some_and(|literal| {
+            literal.literal().is_some()
+                || param_default_interpolated_string_cst_lowering_covers(&literal)
+        }),
+        SyntaxExpressionKind::Path => true,
         SyntaxExpressionKind::Paren => expression
             .as_paren()
             .and_then(|paren| paren.expression())
@@ -527,6 +573,24 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
         | SyntaxExpressionKind::Lambda
         | SyntaxExpressionKind::Match => false,
     }
+}
+
+fn param_default_interpolated_string_cst_lowering_covers(literal: &SyntaxLiteral) -> bool {
+    literal.token_kind() == Some(vela_syntax::SyntaxKind::InterpolatedString)
+        && literal
+            .interpolation_expressions()
+            .all(|expression| param_default_cst_lowering_covers(&expression))
+}
+
+fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {
+    let text = literal.token_text()?;
+    vela_syntax::lexer::lex(SourceId::new(0), &text)
+        .tokens
+        .into_iter()
+        .find_map(|token| match token.kind {
+            TokenKind::InterpolatedString(parts) => Some(parts),
+            _ => None,
+        })
 }
 
 fn param_default_if_cst_lowering_covers(if_expr: &SyntaxIfExpr) -> bool {
@@ -952,6 +1016,47 @@ fn cst(first = expensive()) {
                 "index defaults with supported operands should lower directly from CST"
             );
         }
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_interpolated_strings() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                r#"fn cst(value = f"level {1 + 2}") { return value; }"#,
+            ),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        let default = defaults[0].as_ref().expect("direct CST default");
+        assert_eq!(
+            default.expression.syntax().text().to_string(),
+            r#"f"level {1 + 2}""#
+        );
+        assert!(
+            default.fallback.is_none(),
+            "interpolated string defaults with supported expressions should lower directly from CST"
+        );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_keeps_unsupported_interpolated_fallbacks() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                r#"fn cst(value = f"level {next()}") { return value; }"#,
+            ),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        assert!(
+            defaults[0].is_none(),
+            "interpolated defaults still require the temporary legacy fallback when an expression is unsupported"
+        );
     }
 
     #[test]

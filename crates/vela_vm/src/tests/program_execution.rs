@@ -1083,3 +1083,26 @@ fn main() {
         Ok(OwnedValue::Bool(true))
     );
 }
+
+#[test]
+fn managed_heap_execution_runs_interpolated_parameter_defaults() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn greet(name = "Ada", message = f"hello {name}") {
+    return message;
+}
+
+fn main() {
+    return greet();
+}
+"#,
+    )
+    .expect("compile interpolated parameter defaults");
+    let mut budget = ExecutionBudget::new(10_000, 32_000, 32);
+
+    assert_eq!(
+        run_linked_test_program_with_budget(&Vm::new(), &program, "main", &[], &mut budget),
+        Ok(OwnedValue::String("hello Ada".into()))
+    );
+}
