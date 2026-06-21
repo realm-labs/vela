@@ -420,6 +420,10 @@ names and path segments before falling back to temporary legacy callee names.
 Path-style host method lookup now prefers rowan CST callee path segments for
 native-root filtering and method-name resolution before falling back to
 temporary legacy path vectors.
+Script type/fact extraction now also accepts rowan CST expression payloads for
+record constructors, enum constructor calls, and path locals, and payload-aware
+local assignment, script method receiver, and match scrutinee lowering use that
+route before falling back to temporary legacy expression spelling.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

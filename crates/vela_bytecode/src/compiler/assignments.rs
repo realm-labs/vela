@@ -231,7 +231,7 @@ impl Compiler<'_, '_> {
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
             };
             let script_fact = (*op == AssignOp::Set)
-                .then(|| self.script_fact_for_expr(value))
+                .then(|| self.script_fact_for_expr_with_payload(value, value_syntax.expression))
                 .flatten();
             let value_shape = (*op == AssignOp::Set)
                 .then(|| self.value_shape_for_expr(value))

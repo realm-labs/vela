@@ -974,7 +974,8 @@ impl Compiler<'_, '_> {
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
-        let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
+        let scrutinee_fact =
+            self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
@@ -1060,7 +1061,8 @@ impl Compiler<'_, '_> {
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
-        let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
+        let scrutinee_fact =
+            self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();

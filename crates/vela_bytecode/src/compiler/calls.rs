@@ -243,7 +243,7 @@ impl Compiler<'_, '_> {
         base_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
-        let receiver_type = self.script_type_for_expr(base);
+        let receiver_type = self.script_type_for_expr_with_payload(base, base_payload);
         let receiver_shape = self.value_shape_for_expr(base);
         let value_receiver_type = self
             .value_type_for_expr(base)
