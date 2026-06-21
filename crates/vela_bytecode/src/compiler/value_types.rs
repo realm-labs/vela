@@ -5,7 +5,9 @@ use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Expr, ExprKind, Literal, SyntaxExpression, SyntaxExpressionKind,
+};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
@@ -456,6 +458,20 @@ fn static_syntax_expr_type(
             });
             i64_binary_result_type(op, left.as_ref(), right.as_ref()).map(StaticExprType::Exact)
         }
+        SyntaxExpressionKind::Path => {
+            let path = expression.as_path()?;
+            if !path.is_self() {
+                return None;
+            }
+            Some(
+                source
+                    .map(|source| syntax_expression_span(source, expression))
+                    .and_then(local_type_at_span)
+                    .or_else(|| local_type_named("self"))
+                    .map(StaticExprType::Exact)
+                    .unwrap_or(StaticExprType::Dynamic),
+            )
+        }
         SyntaxExpressionKind::Block
         | SyntaxExpressionKind::If
         | SyntaxExpressionKind::Match
@@ -466,8 +482,7 @@ fn static_syntax_expr_type(
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index
         | SyntaxExpressionKind::Try
-        | SyntaxExpressionKind::Record
-        | SyntaxExpressionKind::Path => None,
+        | SyntaxExpressionKind::Record => None,
     }
 }
 
@@ -487,6 +502,11 @@ fn syntax_expression_value_type(
         }
         StaticExprType::Dynamic => None,
     }
+}
+
+fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
+    let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn static_literal_type(literal: &Literal) -> StaticExprType {

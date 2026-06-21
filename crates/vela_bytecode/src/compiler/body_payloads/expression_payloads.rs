@@ -89,6 +89,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         (!segments.is_empty()).then_some(segments)
     }
 
+    pub(in crate::compiler) fn syntax_is_self(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .and_then(SyntaxExpression::as_path)
+            .is_some_and(|path| path.is_self())
+    }
+
     pub(in crate::compiler) fn syntax_record_path_segments(&self) -> Option<Vec<String>> {
         let segments = self.syntax.as_ref()?.as_record()?.path_segments();
         (!segments.is_empty()).then_some(segments)

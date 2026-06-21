@@ -209,6 +209,13 @@ fn expression_script_fact_from_payload(
         return Some(ScriptTypeFact::enum_variant(type_name, variant));
     }
 
+    if payload.syntax_is_self() {
+        return payload
+            .syntax_span()
+            .and_then(local_fact_at_span)
+            .or_else(|| local_fact_named("self"));
+    }
+
     if let Some(path) = payload.syntax_path_segments() {
         if let Some(fact) = path
             .first()

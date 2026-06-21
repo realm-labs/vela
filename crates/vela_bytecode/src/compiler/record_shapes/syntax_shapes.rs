@@ -177,7 +177,7 @@ impl Compiler<'_, '_> {
         source: Option<SourceId>,
         expression: &SyntaxExpression,
     ) -> Option<ValueShape> {
-        let path = expression.as_path()?.path_segments();
+        let path = expression.as_path()?;
         let local_shape = source
             .map(|source| syntax_expression_span(source, expression))
             .and_then(|span| self.value_shapes.local_at_span(self.bindings, span))
@@ -188,6 +188,10 @@ impl Compiler<'_, '_> {
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             });
+        if path.is_self() {
+            return local_shape.or_else(|| self.shape_named("self"));
+        }
+        let path = path.path_segments();
         let [root] = path.as_slice() else {
             return local_shape;
         };
