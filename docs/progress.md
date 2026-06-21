@@ -315,9 +315,10 @@ value contexts, so explicit record field values can reuse rowan block, if, and
 match body payloads while field type-contract paths keep their existing
 checked fallback.
 Block-value tail expressions now use the same CST-aware expression payload
-path for non-control-flow values, so array and map literals returned from
-CST-backed blocks preserve nested element and entry body payloads before
-falling back to legacy expression lowering when syntax association is missing.
+path for non-control-flow values, so array, map, and record literals returned
+from CST-backed blocks preserve nested element, entry, and field body payloads
+before falling back to legacy expression lowering when syntax association is
+missing.
 Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or

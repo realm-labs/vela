@@ -353,6 +353,11 @@ fn return_record() {
 fn semantic_function_block_tail_container_expressions_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
+struct TailPair {
+    first
+    second
+}
+
 fn block_tail_containers() {
     let array = {
         let seed = 1;
@@ -369,6 +374,16 @@ fn block_tail_containers() {
             },
         ]
     };
+    let record = {
+        let seed = 2;
+        TailPair {
+            first: {
+                let field = seed;
+                field
+            },
+            second: seed,
+        }
+    };
     return array;
 }
 "#;
@@ -381,7 +396,7 @@ fn block_tail_containers() {
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
         .collect::<Vec<_>>();
-    assert_eq!(block_payloads.len(), 1);
+    assert_eq!(block_payloads.len(), 2);
 
     let array_block_statements = block_payloads[0].statement_payloads();
     let array_tail = array_block_statements
@@ -422,6 +437,30 @@ fn block_tail_containers() {
         expected_statement_texts(&[vec![
             (SyntaxStatementKind::Let, "let entry = seed;"),
             (SyntaxStatementKind::Expr, "entry"),
+        ]])
+    );
+
+    let record_block_statements = block_payloads[1].statement_payloads();
+    let record_tail = record_block_statements
+        .last()
+        .expect("record block tail statement")
+        .expression_payload()
+        .expect("record tail expression payload");
+    let record_actual = record_tail
+        .record_field_payloads()
+        .expect("record field payloads")
+        .iter()
+        .filter_map(|field| field.value_expression_payload())
+        .filter_map(|value| {
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        record_actual,
+        expected_statement_texts(&[vec![
+            (SyntaxStatementKind::Let, "let field = seed;"),
+            (SyntaxStatementKind::Expr, "field"),
         ]])
     );
 
