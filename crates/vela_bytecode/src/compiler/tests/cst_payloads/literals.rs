@@ -214,9 +214,9 @@ fn literal_payload_value(
             .syntax_expression()
             .and_then(|expression| expression.as_literal())
             .and_then(|literal| literal.literal()),
-        payload.literal()
+        payload.syntax_literal()
     );
-    payload.literal()
+    payload.syntax_literal()
 }
 
 fn literal_int(text: &str) -> vela_syntax::ast::Literal {

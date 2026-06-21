@@ -150,7 +150,9 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST field expression payload kind");
                 };
                 let base_payload = payload.field_base_payload();
-                let name = payload.field_name().unwrap_or_else(|| name.to_owned());
+                let name = payload
+                    .syntax_field_name()
+                    .unwrap_or_else(|| name.to_owned());
                 self.compile_field_expr(expr, base, &name, base_payload.as_ref(), Some(payload))
             }
             SyntaxExpressionKind::Index => {
@@ -202,7 +204,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Literal(literal) = &expr.kind else {
                     unreachable!("validated CST literal expression payload kind");
                 };
-                let literal = payload.literal().unwrap_or_else(|| literal.clone());
+                let literal = payload.syntax_literal().unwrap_or_else(|| literal.clone());
                 self.compile_literal(Some(expr.span), &literal)
             }
             _ => self.compile_expr(expr),
@@ -924,7 +926,9 @@ pub(super) fn literal_string_with_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<String> {
-    if let Some(Literal::String(value)) = payload.and_then(CompilerExpressionPayload::literal) {
+    if let Some(Literal::String(value)) =
+        payload.and_then(CompilerExpressionPayload::syntax_literal)
+    {
         return Some(value);
     }
     literal_string(expr).map(ToOwned::to_owned)

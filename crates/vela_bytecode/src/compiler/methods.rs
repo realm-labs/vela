@@ -22,7 +22,7 @@ pub(super) fn host_method_call<'ast>(
             let receiver_payload = callee_payload.and_then(|payload| payload.field_base_payload());
             let receiver = host_method_receiver_path(compiler, base, receiver_payload.as_ref())?;
             let name = callee_payload
-                .and_then(CompilerExpressionPayload::field_name)
+                .and_then(CompilerExpressionPayload::syntax_field_name)
                 .unwrap_or_else(|| name.to_owned());
             let method =
                 compiler.host_method_id(receiver_type.or(receiver.type_name.as_deref()), &name)?;

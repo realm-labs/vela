@@ -128,7 +128,7 @@ impl Compiler<'_, '_> {
                 let mut receiver = self.resolve_host_path_receiver_with_payload(base, base_payload);
                 let name = payload
                     .as_ref()
-                    .and_then(CompilerExpressionPayload::field_name)
+                    .and_then(CompilerExpressionPayload::syntax_field_name)
                     .unwrap_or_else(|| name.clone());
                 let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
                 receiver.path.segments.push(field.part);
@@ -777,7 +777,7 @@ fn callee_field_name_matches(
     expected: &str,
 ) -> bool {
     payload
-        .and_then(CompilerExpressionPayload::field_name)
+        .and_then(CompilerExpressionPayload::syntax_field_name)
         .as_deref()
         .unwrap_or(fallback_name)
         == expected

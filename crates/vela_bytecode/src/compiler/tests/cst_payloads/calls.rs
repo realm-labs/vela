@@ -339,7 +339,7 @@ fn assert_cst_let_initializer_method_names(
 }
 
 fn call_method_name(payload: body_payloads::CompilerExpressionPayload<'_>) -> Option<String> {
-    payload.call_callee_payload()?.field_name()
+    payload.call_callee_payload()?.syntax_field_name()
 }
 
 fn expected_strings(expected: &[&str]) -> Vec<String> {

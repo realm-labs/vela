@@ -891,7 +891,7 @@ fn assert_cst_let_initializer_field_names(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .filter_map(|payload| payload.field_name())
+        .filter_map(|payload| payload.syntax_field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));
 }
@@ -904,7 +904,7 @@ fn assert_cst_assignment_value_field_names(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
-        .filter_map(|payload| payload.field_name())
+        .filter_map(|payload| payload.syntax_field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));
 }
@@ -917,7 +917,7 @@ fn assert_cst_assignment_target_field_names(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.assignment_target_expression_payload())
-        .filter_map(|payload| payload.field_name())
+        .filter_map(|payload| payload.syntax_field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));
 }

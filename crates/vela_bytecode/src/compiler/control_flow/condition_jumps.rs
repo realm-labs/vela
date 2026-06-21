@@ -69,7 +69,7 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<i64>> {
         let Some(Literal::Integer(value)) = payload
-            .and_then(CompilerExpressionPayload::literal)
+            .and_then(CompilerExpressionPayload::syntax_literal)
             .or_else(|| match &expr.kind {
                 ExprKind::Literal(literal) => Some(literal.clone()),
                 _ => None,

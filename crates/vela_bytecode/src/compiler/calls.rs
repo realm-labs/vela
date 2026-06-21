@@ -107,7 +107,7 @@ impl Compiler<'_, '_> {
             let base_payload =
                 callee_payload.and_then(CompilerExpressionPayload::field_base_payload);
             let name = callee_payload
-                .and_then(CompilerExpressionPayload::field_name)
+                .and_then(CompilerExpressionPayload::syntax_field_name)
                 .unwrap_or_else(|| name.to_owned());
             return self.compile_script_method_call(
                 expr,

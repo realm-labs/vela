@@ -78,7 +78,7 @@ fn contextual_literal_payload(
 ) -> Option<(Literal, Span)> {
     payload
         .and_then(|payload| {
-            let literal = payload.literal()?;
+            let literal = payload.syntax_literal()?;
             Some((literal, payload.syntax_span().unwrap_or(expr.span)))
         })
         .or_else(|| match &expr.kind {

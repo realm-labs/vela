@@ -1006,7 +1006,7 @@ impl super::Compiler<'_, '_> {
             ExprKind::Path(path) => self.value_shape_for_path_expr(expr.span, path, payload),
             ExprKind::Field { base, name } => {
                 let field_name = payload
-                    .and_then(CompilerExpressionPayload::field_name)
+                    .and_then(CompilerExpressionPayload::syntax_field_name)
                     .unwrap_or_else(|| name.clone());
                 let base_payload = payload.and_then(CompilerExpressionPayload::field_base_payload);
                 self.value_shape_for_expr_with_payload(base, base_payload.as_ref())?
@@ -1086,7 +1086,7 @@ impl super::Compiler<'_, '_> {
             return None;
         };
         let field_name = payload
-            .and_then(CompilerExpressionPayload::field_name)
+            .and_then(CompilerExpressionPayload::syntax_field_name)
             .unwrap_or_else(|| name.clone());
         let base_payload = payload.and_then(CompilerExpressionPayload::field_base_payload);
         self.record_shape_for_expr_with_payload(base, base_payload.as_ref())?

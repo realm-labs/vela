@@ -106,7 +106,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    pub(in crate::compiler) fn literal(&self) -> Option<Literal> {
+    pub(in crate::compiler) fn syntax_literal(&self) -> Option<Literal> {
         let ExprKind::Literal(_) = &self.fallback.kind else {
             return None;
         };
@@ -291,7 +291,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         })
     }
 
-    pub(in crate::compiler) fn field_name(&self) -> Option<String> {
+    pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
         let ExprKind::Field { .. } = &self.fallback.kind else {
             return None;
         };

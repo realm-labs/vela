@@ -1053,7 +1053,7 @@ impl Compiler<'_, '_> {
                     self.script_type_for_expr_with_payload(base, base_payload.as_ref())?;
                 let field = syntax
                     .expression
-                    .and_then(CompilerExpressionPayload::field_name)
+                    .and_then(CompilerExpressionPayload::syntax_field_name)
                     .unwrap_or_else(|| name.clone());
                 Some((receiver_type, field))
             }
@@ -1111,7 +1111,7 @@ fn record_field_expr_parts_with_payload<'expr>(
                 });
             let name = payload
                 .as_ref()
-                .and_then(CompilerExpressionPayload::field_name)
+                .and_then(CompilerExpressionPayload::syntax_field_name)
                 .unwrap_or_else(|| name.clone());
             parts.fields.push(name);
             Some(parts)
@@ -1134,7 +1134,7 @@ fn indexed_record_field_parts_with_payload<'expr>(
         indexed_record_field_base_parts_with_payload(base, base_payload)?;
     let name = payload
         .as_ref()
-        .and_then(CompilerExpressionPayload::field_name)
+        .and_then(CompilerExpressionPayload::syntax_field_name)
         .unwrap_or_else(|| name.clone());
     fields.push(name);
     Some((collection, index, fields))
@@ -1156,7 +1156,7 @@ fn indexed_record_field_base_parts_with_payload<'expr>(
                 indexed_record_field_base_parts_with_payload(base, base_payload)?;
             let name = payload
                 .as_ref()
-                .and_then(CompilerExpressionPayload::field_name)
+                .and_then(CompilerExpressionPayload::syntax_field_name)
                 .unwrap_or_else(|| name.clone());
             fields.push(name);
             Some((collection, index, fields))
