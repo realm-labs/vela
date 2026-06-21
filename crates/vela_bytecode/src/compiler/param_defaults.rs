@@ -1,4 +1,5 @@
 mod calls;
+mod fields;
 mod records;
 
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
@@ -221,8 +222,13 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_param_default_record(source, expression, &record)
             }
+            SyntaxExpressionKind::Field => {
+                let Some(field) = expression.as_field() else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                self.compile_param_default_field(source, expression, &field)
+            }
             SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Match => Err(param_default_unsupported(source, expression)),
         }
@@ -762,8 +768,8 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
         SyntaxExpressionKind::Record => {
             records::param_default_record_cst_lowering_covers(expression)
         }
+        SyntaxExpressionKind::Field => fields::param_default_field_cst_lowering_covers(expression),
         SyntaxExpressionKind::Assign
-        | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Lambda
         | SyntaxExpressionKind::Match => false,
     }

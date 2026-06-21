@@ -231,6 +231,36 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_record_field_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: i64
+    label: String = "xp"
+}
+
+fn grant(value = Reward { amount: 7 }.amount) {
+    return value;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("CST-backed record field default should compile");
+    let grant = program.function("grant").expect("grant function");
+
+    assert!(grant.instructions.iter().any(|instruction| {
+        matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::GetRecordSlot { field, .. } if field == "amount"
+        )
+    }));
+}
+
+#[test]
 fn compiler_reports_typed_let_block_parameter_default_mismatches_from_cst() {
     let error = compile_program_source(
         SourceId::new(1),

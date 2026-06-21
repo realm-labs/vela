@@ -188,6 +188,45 @@ fn param_default_cst_lowering_covers_record_expressions() {
 }
 
 #[test]
+fn param_default_cst_lowering_covers_record_literal_field_expressions() {
+    let source = SourceId::new(1);
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                r#"fn cst(value = Reward { amount: 7, label: "xp" }.amount) { return value; }"#,
+            ),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                r#"fn cst(value = Outer { inner: Inner { amount: 7 } }.inner.amount) { return value; }"#,
+            ),
+        }),
+    ];
+
+    let defaults = param_default_values(&syntax_defaults, &[]);
+
+    assert_eq!(defaults.len(), 2);
+    for default in defaults {
+        assert!(
+            default.expect("direct CST default").fallback.is_none(),
+            "record literal field defaults should lower directly from CST"
+        );
+    }
+}
+
+#[test]
+fn param_default_cst_lowering_keeps_path_field_fallbacks() {
+    let default = param_default_at("fn cst(player, value = player.level) { return value; }", 1);
+
+    assert!(
+        !param_default_cst_lowering_covers(&default),
+        "path-rooted field defaults still need the temporary fallback for host/path analysis"
+    );
+}
+
+#[test]
 fn param_default_cst_lowering_covers_range_expressions() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![

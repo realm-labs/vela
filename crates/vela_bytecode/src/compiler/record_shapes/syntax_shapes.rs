@@ -18,6 +18,16 @@ impl Compiler<'_, '_> {
         self.value_shape_for_syntax_expression(payload.source(), payload.syntax_expression()?)
     }
 
+    pub(in crate::compiler) fn record_shape_for_syntax_expression(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<RecordShape> {
+        self.value_shape_for_syntax_expression(source, expression)?
+            .as_record()
+            .cloned()
+    }
+
     fn value_shape_for_syntax_expression(
         &self,
         source: Option<SourceId>,
