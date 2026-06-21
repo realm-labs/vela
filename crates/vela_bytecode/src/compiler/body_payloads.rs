@@ -1,8 +1,8 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, Block, Stmt, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxStatement,
-    SyntaxStatementKind,
+    AstNode, BinaryOp, Block, Stmt, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -118,6 +118,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_return()?
             .expression()
             .map(|expression| expression.expression_kind())
+    }
+
+    pub(super) fn for_iterable_binary_operator(&self) -> Option<BinaryOp> {
+        self.syntax
+            .as_ref()?
+            .as_for()?
+            .iterable()?
+            .as_binary()?
+            .operator()
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {

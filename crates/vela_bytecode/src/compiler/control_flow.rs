@@ -96,6 +96,8 @@ impl Compiler<'_, '_> {
             self.compile_let_statement(stmt.fallback(), stmt.let_initializer_kind())
         } else if kind == SyntaxStatementKind::Return {
             self.compile_return_statement(stmt.fallback(), stmt.return_value_kind())
+        } else if kind == SyntaxStatementKind::For {
+            self.compile_for_statement(stmt.fallback(), stmt.for_iterable_binary_operator())
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
@@ -158,18 +160,7 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_continue()
             }
-            SyntaxStatementKind::For => {
-                let StmtKind::For {
-                    index_pattern,
-                    pattern,
-                    iterable,
-                    body,
-                } = &stmt.kind
-                else {
-                    return self.compile_statement(stmt);
-                };
-                self.compile_for(stmt.span, index_pattern.as_ref(), pattern, iterable, body)
-            }
+            SyntaxStatementKind::For => self.compile_for_statement(stmt, None),
             SyntaxStatementKind::If => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -312,6 +303,30 @@ impl Compiler<'_, '_> {
             self.emit(UnlinkedInstructionKind::Return { src: register });
         }
         Ok(true)
+    }
+
+    fn compile_for_statement(
+        &mut self,
+        stmt: &Stmt,
+        iterable_operator: Option<BinaryOp>,
+    ) -> CompileResult<bool> {
+        let StmtKind::For {
+            index_pattern,
+            pattern,
+            iterable,
+            body,
+        } = &stmt.kind
+        else {
+            return self.compile_statement(stmt);
+        };
+        self.compile_for(
+            stmt.span,
+            index_pattern.as_ref(),
+            pattern,
+            iterable,
+            body,
+            iterable_operator,
+        )
     }
 
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
@@ -544,20 +559,11 @@ impl Compiler<'_, '_> {
         pattern: &Pattern,
         iterable: &Expr,
         body: &Block,
+        iterable_operator: Option<BinaryOp>,
     ) -> CompileResult<bool> {
-        let range_iterable = match &iterable.kind {
-            ExprKind::Binary {
-                op: BinaryOp::Range,
-                left,
-                right,
-            } => Some((left.as_ref(), right.as_ref(), false)),
-            ExprKind::Binary {
-                op: BinaryOp::RangeInclusive,
-                left,
-                right,
-            } => Some((left.as_ref(), right.as_ref(), true)),
-            _ => None,
-        };
+        let range_iterable = iterable_operator
+            .and_then(|operator| cst_range_iterable(operator, iterable))
+            .or_else(|| legacy_range_iterable(iterable));
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {
@@ -1029,6 +1035,35 @@ fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> boo
             expr.kind,
             ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
         ),
+    }
+}
+
+fn cst_range_iterable(operator: BinaryOp, expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
+    let ExprKind::Binary { op, left, right } = &expr.kind else {
+        return None;
+    };
+    match (operator, *op) {
+        (BinaryOp::Range, BinaryOp::Range) => Some((left.as_ref(), right.as_ref(), false)),
+        (BinaryOp::RangeInclusive, BinaryOp::RangeInclusive) => {
+            Some((left.as_ref(), right.as_ref(), true))
+        }
+        _ => None,
+    }
+}
+
+fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
+    match &expr.kind {
+        ExprKind::Binary {
+            op: BinaryOp::Range,
+            left,
+            right,
+        } => Some((left.as_ref(), right.as_ref(), false)),
+        ExprKind::Binary {
+            op: BinaryOp::RangeInclusive,
+            left,
+            right,
+        } => Some((left.as_ref(), right.as_ref(), true)),
+        _ => None,
     }
 }
 

@@ -294,6 +294,10 @@ Top-level return statement payloads now expose rowan return-value expression
 kinds, letting block/if/match return-value lowering dispatch through aligned
 CST expression categories while preserving the legacy return expression
 fallback for non-CST or mismatched payloads.
+Top-level for statement payloads now expose rowan iterable binary operators,
+letting direct range-loop lowering dispatch through aligned CST range
+operators while preserving the legacy iterable fallback for non-CST or
+mismatched payloads.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

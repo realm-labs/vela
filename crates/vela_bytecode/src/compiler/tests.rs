@@ -5,7 +5,7 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
-use vela_syntax::ast::{AstNode, SyntaxExpressionKind, SyntaxStatementKind};
+use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpressionKind, SyntaxStatementKind};
 
 fn assert_cst_param_default(
     default: &Option<ParamDefaultValue>,
@@ -114,6 +114,32 @@ fn assert_cst_return_values(
         expected
             .iter()
             .map(|(kind, text)| (*kind, (*text).to_owned()))
+            .collect::<Vec<_>>()
+    );
+}
+
+fn assert_cst_for_iterables(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[(SyntaxExpressionKind, Option<BinaryOp>, &str)],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .filter_map(|statement| {
+            let syntax = statement.syntax_statement()?;
+            let iterable = syntax.as_for()?.iterable()?;
+            Some((
+                iterable.expression_kind(),
+                iterable.as_binary().and_then(|binary| binary.operator()),
+                iterable.syntax().text().to_string(),
+            ))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        actual,
+        expected
+            .iter()
+            .map(|(kind, op, text)| (*kind, *op, (*text).to_owned()))
             .collect::<Vec<_>>()
     );
 }
@@ -302,6 +328,45 @@ fn choose() {
     );
 
     compile_program_source(source, text).expect("CST-backed return value body should compile");
+}
+
+#[test]
+fn semantic_function_for_iterable_expression_is_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn sum() {
+    let total = 0;
+    for value in 0..3 {
+        total += value;
+    }
+    return total;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("sum").expect("sum function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (SyntaxStatementKind::Let, "let total = 0;"),
+            (
+                SyntaxStatementKind::For,
+                "for value in 0..3 {\n        total += value;\n    }",
+            ),
+            (SyntaxStatementKind::Return, "return total;"),
+        ],
+    );
+    assert_cst_for_iterables(
+        &payload.body,
+        &[(SyntaxExpressionKind::Binary, Some(BinaryOp::Range), "0..3")],
+    );
+
+    let program =
+        compile_program_source(source, text).expect("CST-backed range for body should compile");
+    let function = program.function("sum").expect("sum bytecode");
+    assert!(function.instructions.iter().any(|instruction| matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::I64RangeNext { .. }
+    )));
 }
 
 #[test]
