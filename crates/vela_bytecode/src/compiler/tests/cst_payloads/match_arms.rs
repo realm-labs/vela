@@ -197,6 +197,77 @@ fn classify(input) {
         .expect("CST-backed match arm guards and bodies should compile");
 }
 
+#[test]
+fn semantic_function_match_arm_patterns_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Result {
+    Err { code: i64, message: String }
+    Ok(i64)
+}
+
+fn classify(result) {
+    return match result {
+        Result::Err { code: status, message } => status,
+        Result::Ok(value) => value,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("classify").expect("classify function");
+    let statement_payloads = payload.body.statement_payloads();
+    let return_arm_payloads = statement_payloads
+        .iter()
+        .flat_map(|statement| {
+            statement
+                .return_value_match_arm_payloads()
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(return_arm_payloads.len(), 2);
+
+    let record_pattern = return_arm_payloads[0].pattern_payload();
+    let syntax_pattern = record_pattern
+        .syntax_pattern()
+        .expect("record arm should expose CST pattern");
+    assert_eq!(
+        syntax_pattern.pattern_kind(),
+        Some(vela_syntax::ast::SyntaxPatternKind::RecordVariant)
+    );
+    let record_fields = record_pattern
+        .record_field_payloads()
+        .expect("record pattern should expose field payloads");
+    let field_labels = record_fields
+        .iter()
+        .filter_map(|field| field.syntax_label_name())
+        .collect::<Vec<_>>();
+    assert_eq!(field_labels, ["code", "message"]);
+    let nested_pattern = record_fields[0]
+        .pattern_payload()
+        .expect("explicit record pattern field should expose nested payload");
+    assert_eq!(
+        nested_pattern
+            .syntax_pattern()
+            .and_then(|pattern| pattern.binding_name())
+            .as_deref(),
+        Some("status")
+    );
+
+    let tuple_pattern = return_arm_payloads[1].pattern_payload();
+    let tuple_fields = tuple_pattern
+        .tuple_pattern_payloads()
+        .expect("tuple pattern should expose field payloads");
+    assert_eq!(
+        tuple_fields[0]
+            .syntax_pattern()
+            .and_then(|pattern| pattern.binding_name())
+            .as_deref(),
+        Some("value")
+    );
+
+    compile_program_source(source, text).expect("CST-backed match arm patterns should compile");
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],

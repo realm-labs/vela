@@ -868,19 +868,25 @@ impl Compiler<'_, '_> {
         }
         let mut mismatch_jumps = Vec::new();
         if let (Some(index_pattern), Some(index_register)) = (parts.index_pattern, index_register) {
-            mismatch_jumps.extend(self.compile_match_pattern(index_register, index_pattern)?);
+            mismatch_jumps.extend(self.compile_match_pattern(
+                index_register,
+                index_pattern,
+                None,
+            )?);
             self.bind_pattern_locals(
                 index_register,
                 index_pattern,
+                None,
                 parts.stmt_span,
                 i64_pattern_facts(),
                 LocalBindingKind::For,
             )?;
         }
-        mismatch_jumps.extend(self.compile_match_pattern(item_register, parts.pattern)?);
+        mismatch_jumps.extend(self.compile_match_pattern(item_register, parts.pattern, None)?);
         self.bind_pattern_locals(
             item_register,
             parts.pattern,
+            None,
             parts.stmt_span,
             item_facts,
             LocalBindingKind::For,
@@ -1019,7 +1025,10 @@ impl Compiler<'_, '_> {
         let mut all_arms_return = !match_expr.arms.is_empty();
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
-            let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
+            let mut next_arm_jumps =
+                self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
@@ -1028,11 +1037,11 @@ impl Compiler<'_, '_> {
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
+                pattern_payload.as_ref(),
                 arm.body.span,
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
             if let Some(jump) = self.compile_match_guard(
                 arm.guard.as_ref(),
                 arm_payload.and_then(|payload| payload.guard_payload()),
@@ -1056,11 +1065,9 @@ impl Compiler<'_, '_> {
                 self.patch_jump(jump, self.current_offset())?;
             }
         }
-
         for jump in end_jumps {
             self.patch_jump(jump, self.current_offset())?;
         }
-
         Ok(all_arms_return)
     }
 
@@ -1105,7 +1112,10 @@ impl Compiler<'_, '_> {
         let mut has_catch_all = false;
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
-            let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
+            let mut next_arm_jumps =
+                self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
@@ -1114,11 +1124,11 @@ impl Compiler<'_, '_> {
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
+                pattern_payload.as_ref(),
                 arm.body.span,
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
             if let Some(jump) = self.compile_match_guard(
                 arm.guard.as_ref(),
                 arm_payload.and_then(|payload| payload.guard_payload()),
@@ -1143,7 +1153,6 @@ impl Compiler<'_, '_> {
                 self.patch_jump(jump, self.current_offset())?;
             }
         }
-
         if !has_catch_all {
             self.emit_constant_to(dst, Constant::Null);
             all_arms_return = false;

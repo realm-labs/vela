@@ -1,13 +1,15 @@
 use vela_common::SourceId;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, SyntaxExpression,
-    SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
+    AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, RecordPatternField,
+    SyntaxExpression, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
+    SyntaxRecordPatternField,
 };
 
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
-    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerRecordFieldPayload,
-    if_payload_for_fallback, match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
+    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
+    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
+    match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -433,6 +435,13 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
 }
 
 impl<'ast> CompilerMatchArmPayload<'ast> {
+    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
+        CompilerPatternPayload {
+            syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),
+            fallback: &self.fallback.pattern,
+        }
+    }
+
     pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         Some(CompilerExpressionPayload {
             source: self.source,
@@ -466,5 +475,94 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_arm(&self) -> Option<&SyntaxMatchArm> {
         self.syntax.as_ref()
+    }
+}
+
+impl<'ast> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn record_field_payloads(
+        &self,
+    ) -> Option<Vec<CompilerRecordPatternFieldPayload<'ast>>> {
+        let syntax_fields = self
+            .syntax
+            .as_ref()?
+            .record_pattern()?
+            .fields()
+            .collect::<Vec<_>>();
+        let Pattern::RecordVariant { fields, .. } = self.fallback else {
+            return None;
+        };
+        Some(
+            fields
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerRecordPatternFieldPayload {
+                    syntax: syntax_record_pattern_field_for_fallback(
+                        &syntax_fields,
+                        index,
+                        fallback,
+                    ),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
+    pub(in crate::compiler) fn tuple_pattern_payloads(
+        &self,
+    ) -> Option<Vec<CompilerPatternPayload<'ast>>> {
+        let syntax_fields = self
+            .syntax
+            .as_ref()?
+            .tuple_pattern()?
+            .patterns()
+            .collect::<Vec<_>>();
+        let Pattern::TupleVariant { fields, .. } = self.fallback else {
+            return None;
+        };
+        Some(
+            fields
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerPatternPayload {
+                    syntax: syntax_fields.get(index).cloned(),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax_pattern(&self) -> Option<&vela_syntax::ast::SyntaxPattern> {
+        self.syntax.as_ref()
+    }
+}
+
+fn syntax_record_pattern_field_for_fallback(
+    fields: &[SyntaxRecordPatternField],
+    fallback_index: usize,
+    fallback: &RecordPatternField,
+) -> Option<SyntaxRecordPatternField> {
+    fields
+        .iter()
+        .find(|field| field.label_text().as_deref() == Some(fallback.name.as_str()))
+        .cloned()
+        .or_else(|| fields.get(fallback_index).cloned())
+}
+
+impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
+    pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
+        self.syntax
+            .as_ref()
+            .and_then(SyntaxRecordPatternField::label_text)
+    }
+
+    pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+        Some(CompilerPatternPayload {
+            syntax: self
+                .syntax
+                .as_ref()
+                .and_then(SyntaxRecordPatternField::pattern),
+            fallback: self.fallback.pattern.as_ref()?,
+        })
     }
 }

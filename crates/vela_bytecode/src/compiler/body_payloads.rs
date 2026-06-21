@@ -2,9 +2,10 @@ use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
     Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
-    MatchExpr, RecordField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxRecordExprField, SyntaxStatement, SyntaxStatementKind,
+    MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -31,6 +32,17 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
     fallback: &'ast MatchArm,
+}
+
+#[derive(Clone)]
+pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
+    syntax: Option<SyntaxPattern>,
+    fallback: &'ast Pattern,
+}
+
+pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
+    syntax: Option<SyntaxRecordPatternField>,
+    fallback: &'ast RecordPatternField,
 }
 
 pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
