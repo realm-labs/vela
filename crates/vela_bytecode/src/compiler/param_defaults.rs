@@ -1,7 +1,8 @@
 use vela_common::{SourceId, Span};
-use vela_syntax::ast::{AstNode, Expr, SyntaxExpression, SyntaxParamList};
+use vela_syntax::ast::{AstNode, Expr, SyntaxExpression};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::syntax_payloads::ParamDefaultExpression;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct ParamDefaultValue<'ast> {
@@ -22,38 +23,29 @@ impl<'ast> ParamDefaultValue<'ast> {
     }
 }
 
-pub(super) fn syntax_param_default_values<'ast>(
-    source: SourceId,
-    params: Option<SyntaxParamList>,
+pub(super) fn attach_param_default_fallbacks<'ast>(
+    syntax_defaults: &[Option<ParamDefaultExpression>],
     legacy_defaults: &[Option<&'ast Expr>],
-    param_count: usize,
 ) -> Vec<Option<ParamDefaultValue<'ast>>> {
-    let syntax_params = params
-        .map(|params| params.params().collect::<Vec<_>>())
-        .unwrap_or_default();
-    (0..param_count)
-        .map(|index| {
+    syntax_defaults
+        .iter()
+        .enumerate()
+        .map(|(index, syntax_default)| {
+            let syntax_default = syntax_default.clone()?;
             let legacy = legacy_defaults.get(index).copied().flatten()?;
-            let expression = syntax_default_expression_for_fallback(&syntax_params, legacy)?;
+            if !syntax_range_overlaps_span(
+                syntax_default.expression.syntax().text_range(),
+                legacy.span,
+            ) {
+                return None;
+            }
             Some(ParamDefaultValue {
-                source,
-                expression,
+                source: syntax_default.source,
+                expression: syntax_default.expression,
                 fallback: legacy,
             })
         })
         .collect()
-}
-
-fn syntax_default_expression_for_fallback(
-    params: &[vela_syntax::ast::SyntaxParam],
-    fallback: &Expr,
-) -> Option<SyntaxExpression> {
-    params
-        .iter()
-        .filter_map(vela_syntax::ast::SyntaxParam::default_value)
-        .find(|expression| {
-            syntax_range_overlaps_span(expression.syntax().text_range(), fallback.span)
-        })
 }
 
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
@@ -68,7 +60,9 @@ mod tests {
     use vela_syntax::ast::{Expr, ExprKind};
     use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
-    use super::syntax_param_default_values;
+    use crate::compiler::syntax_payloads::ParamDefaultExpression;
+
+    use super::attach_param_default_fallbacks;
 
     #[test]
     fn mismatched_param_defaults_do_not_pair_by_index() {
@@ -88,14 +82,18 @@ fn cst(first = 1) {
             kind: ExprKind::Error,
             span: Span::new(source, 1000, 1001),
         };
+        let syntax_expression = cst_function
+            .param_list()
+            .and_then(|params| params.params().next())
+            .and_then(|param| param.default_value())
+            .expect("CST default expression");
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: syntax_expression,
+        })];
         let fallback_defaults = vec![Some(&fallback_expr)];
 
-        let defaults = syntax_param_default_values(
-            source,
-            cst_function.param_list(),
-            &fallback_defaults,
-            fallback_defaults.len(),
-        );
+        let defaults = attach_param_default_fallbacks(&syntax_defaults, &fallback_defaults);
 
         assert_eq!(defaults.len(), 1);
         assert!(

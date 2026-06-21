@@ -10,7 +10,8 @@ use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::legacy_payloads::LegacySourceFallback;
-use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
+use super::param_defaults::{ParamDefaultValue, attach_param_default_fallbacks};
+use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct ScriptImplMethod<'ast> {
     pub(super) target_type: String,
@@ -265,11 +266,13 @@ fn impl_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: syntax_param_default_values(
-                        source,
-                        syntax_method.param_list(),
+                    default_values: attach_param_default_fallbacks(
+                        &param_default_expressions(
+                            source,
+                            syntax_method.param_list(),
+                            &method_metadata.signature,
+                        ),
                         &legacy_method.param_defaults,
-                        method_metadata.signature.params.len(),
                     ),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },
@@ -302,11 +305,13 @@ fn trait_default_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: syntax_param_default_values(
-                        source,
-                        syntax_method.param_list(),
+                    default_values: attach_param_default_fallbacks(
+                        &param_default_expressions(
+                            source,
+                            syntax_method.param_list(),
+                            &method_metadata.signature,
+                        ),
                         &legacy_method.param_defaults,
-                        method_metadata.signature.params.len(),
                     ),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },

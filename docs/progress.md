@@ -279,10 +279,12 @@ only as the temporary method body and runtime default-expression compiler
 fallback.
 Script impl fallback method extraction now lives behind the bytecode legacy
 payload boundary, so script impl lowering consumes the temporary fallback
-wrapper without directly traversing old owned-AST impl or trait items, and
-parameter-default matching consumes fallback expressions without depending on
-old owned-AST parameter nodes outside that boundary. Schema default-expression
-payload matching now stays on rowan CST field and variant wrappers, so semantic
+wrapper without directly traversing old owned-AST impl or trait items. Function,
+method, and trait default parameter-expression discovery now lives in the
+rowan syntax payload boundary and keys CST payloads from HIR signature spans;
+the legacy boundary only provides the temporary fallback expressions that are
+still span-checked before compilation. Schema default-expression payload
+matching now stays on rowan CST field and variant wrappers, so semantic
 orchestration no longer requests temporary owned parsed source data for schema
 defaults and the legacy payload boundary no longer owns schema default
 matching.

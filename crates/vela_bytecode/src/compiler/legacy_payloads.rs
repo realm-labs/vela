@@ -9,7 +9,8 @@ use vela_syntax::ast::{
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use super::body_payloads::CompilerBodyPayload;
-use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
+use super::param_defaults::{ParamDefaultValue, attach_param_default_fallbacks};
+use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct LegacySourceFallback {
     parsed: SourceFile,
@@ -91,12 +92,9 @@ pub(super) fn function_body_payload<'ast>(
     let syntax_body = syntax_function.body()?;
     let function = legacy_function_body(&legacy.parsed, syntax_body_span(source, &syntax_body))?;
     let legacy_defaults = legacy_param_defaults(&function.params);
-    let param_defaults = syntax_param_default_values(
-        source,
-        syntax_function.param_list(),
-        &legacy_defaults,
-        signature.params.len(),
-    );
+    let syntax_defaults =
+        param_default_expressions(source, syntax_function.param_list(), signature);
+    let param_defaults = attach_param_default_fallbacks(&syntax_defaults, &legacy_defaults);
     Some(FunctionBodyPayload {
         name: name.to_owned(),
         body: CompilerBodyPayload::syntax(source, syntax_body, &function.body),

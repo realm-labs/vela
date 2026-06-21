@@ -3,11 +3,17 @@ use std::collections::BTreeMap;
 use vela_common::{SourceId, Span};
 use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
-use vela_hir::type_hint::EnumVariantFieldsHint;
+use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{SyntaxExpression, SyntaxSourceFile};
+use vela_syntax::ast::{AstNode, SyntaxExpression, SyntaxParamList, SyntaxSourceFile};
 
 use super::schema_defaults::{SchemaDefaultPayloads, SchemaDefaultValue};
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ParamDefaultExpression {
+    pub(super) source: SourceId,
+    pub(super) expression: SyntaxExpression,
+}
 
 pub(super) fn const_value_payloads(
     parsed: &SyntaxParse<SyntaxSourceFile>,
@@ -23,6 +29,35 @@ pub(super) fn const_value_payloads(
         payloads.entry(name).or_insert(value);
     }
     payloads
+}
+
+pub(super) fn param_default_expressions(
+    source: SourceId,
+    params: Option<SyntaxParamList>,
+    signature: &FunctionSignature,
+) -> Vec<Option<ParamDefaultExpression>> {
+    let syntax_params = params
+        .map(|params| params.params().collect::<Vec<_>>())
+        .unwrap_or_default();
+    signature
+        .params
+        .iter()
+        .map(|param| {
+            let default_span = param.default_value_span?;
+            let expression = syntax_default_expression_for_span(&syntax_params, default_span)?;
+            Some(ParamDefaultExpression { source, expression })
+        })
+        .collect()
+}
+
+fn syntax_default_expression_for_span(
+    params: &[vela_syntax::ast::SyntaxParam],
+    span: Span,
+) -> Option<SyntaxExpression> {
+    params
+        .iter()
+        .filter_map(vela_syntax::ast::SyntaxParam::default_value)
+        .find(|expression| syntax_range_overlaps_span(expression.syntax().text_range(), span))
 }
 
 pub(super) fn schema_default_payloads(
@@ -191,4 +226,52 @@ fn graph_schema_declaration(
         .into_iter()
         .find(|declaration| declaration.name == type_name && declaration.kind == kind)
         .map(|declaration| declaration.id)
+}
+
+fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
+    let start = u32::from(range.start());
+    let end = u32::from(range.end());
+    start < span.end && span.start < end
+}
+
+#[cfg(test)]
+mod tests {
+    use vela_common::{SourceId, Span};
+    use vela_hir::type_hint::{FunctionSignature, ParamHint};
+    use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+
+    use super::param_default_expressions;
+
+    #[test]
+    fn param_defaults_match_hir_spans_not_indexes() {
+        let source = SourceId::new(1);
+        let text = r#"
+fn cst(first = 1) {
+    return first;
+}
+"#;
+        let syntax = parse_syntax_source(source, text);
+        let function = syntax
+            .tree()
+            .functions()
+            .find(|function| function.name_text().as_deref() == Some("cst"))
+            .expect("CST function");
+        let signature = FunctionSignature {
+            params: vec![ParamHint {
+                name: "first".to_owned(),
+                span: Span::new(source, 8, 17),
+                type_hint: None,
+                default_value_span: Some(Span::new(source, 1000, 1001)),
+            }],
+            return_type: None,
+        };
+
+        let defaults = param_default_expressions(source, function.param_list(), &signature);
+
+        assert_eq!(defaults.len(), 1);
+        assert!(
+            defaults[0].is_none(),
+            "mismatched HIR default spans must not receive index-based CST params"
+        );
+    }
 }
