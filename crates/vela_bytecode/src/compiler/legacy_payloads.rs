@@ -11,7 +11,7 @@ use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 pub(super) struct FunctionBodyPayload<'ast> {
     pub(super) name: String,
     pub(super) body: CompilerBodyPayload<'ast>,
-    pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
+    pub(super) param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
 }
 
 pub(super) fn function_body_payload<'ast>(

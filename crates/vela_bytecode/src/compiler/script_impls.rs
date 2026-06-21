@@ -19,14 +19,14 @@ pub(super) struct ScriptImplMethod<'ast> {
     pub(super) method_name: String,
     pub(super) method_id: MethodId,
     pub(super) symbol: String,
-    pub(super) default_values: Vec<Option<ParamDefaultValue>>,
+    pub(super) default_values: Vec<Option<ParamDefaultValue<'ast>>>,
     pub(super) body: CompilerBodyPayload<'ast>,
     pub(super) signature: &'ast FunctionSignature,
     pub(super) bindings: &'ast BindingMap,
 }
 
 struct MethodBodyPayload<'ast> {
-    default_values: Vec<Option<ParamDefaultValue>>,
+    default_values: Vec<Option<ParamDefaultValue<'ast>>>,
     body: CompilerBodyPayload<'ast>,
 }
 

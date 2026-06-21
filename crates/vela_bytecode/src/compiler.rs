@@ -704,7 +704,7 @@ struct Compiler<'ast, 'registry> {
     value_shapes: ValueShapeFlow,
     bindings: &'ast BindingMap,
     next_register: u16,
-    param_defaults: Vec<Option<ParamDefaultValue>>,
+    param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
     return_type: Option<RuntimeTypeFact>,
     body: CompilerBodyPayload<'ast>,
     facts: CompilerFacts<'registry>,
@@ -715,7 +715,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
     fn new_with_param_defaults(
         code_name: String,
         body: CompilerBodyPayload<'ast>,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
         signature: &FunctionSignature,
         bindings: &'ast BindingMap,
         facts: CompilerFacts<'registry>,
@@ -725,7 +725,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_body(
         code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
@@ -825,7 +825,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn new_script_method_body(
         code_name: String,
-        param_defaults: Vec<Option<ParamDefaultValue>>,
+        param_defaults: Vec<Option<ParamDefaultValue<'ast>>>,
         signature: &FunctionSignature,
         body: CompilerBodyPayload<'ast>,
         bindings: &'ast BindingMap,
