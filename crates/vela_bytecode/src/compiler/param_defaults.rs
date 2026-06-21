@@ -6,13 +6,12 @@ mod records;
 use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, FloatSuffix, IntegerSuffix, Literal, SyntaxBlock, SyntaxElseBranch,
+    AstNode, BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxBlock, SyntaxElseBranch,
     SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLetStmt, SyntaxLiteral,
     SyntaxMapEntry, UnaryOp,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
-use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
 use crate::{FormatStringPart, GuardLocation, Register, UnlinkedInstructionKind};
 
@@ -30,41 +29,18 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_
 pub(super) struct ParamDefaultValue {
     pub(super) source: SourceId,
     pub(super) expression: SyntaxExpression,
-    fallback: Option<Expr>,
 }
 
 pub(super) fn param_default_values(
     syntax_defaults: &[Option<ParamDefaultExpression>],
-    legacy_defaults: &[Option<&Expr>],
 ) -> Vec<Option<ParamDefaultValue>> {
     syntax_defaults
         .iter()
-        .enumerate()
-        .map(|(index, syntax_default)| {
+        .map(|syntax_default| {
             let syntax_default = syntax_default.clone()?;
-            let direct_cst_lowering = param_default_cst_lowering_covers(&syntax_default.expression);
-            let fallback = if direct_cst_lowering {
-                None
-            } else {
-                legacy_defaults
-                    .get(index)
-                    .copied()
-                    .flatten()
-                    .filter(|fallback| {
-                        syntax_range_overlaps_span(
-                            syntax_default.expression.syntax().text_range(),
-                            fallback.span,
-                        )
-                    })
-                    .cloned()
-            };
-            if fallback.is_none() && !direct_cst_lowering {
-                return None;
-            }
             Some(ParamDefaultValue {
                 source: syntax_default.source,
                 expression: syntax_default.expression,
-                fallback,
             })
         })
         .collect()
@@ -75,18 +51,13 @@ impl Compiler<'_, '_> {
         &mut self,
         default: &ParamDefaultValue,
     ) -> CompileResult<Register> {
-        if param_default_cst_lowering_covers(&default.expression) {
-            return self.compile_param_default_expression(default.source, &default.expression);
-        }
-        let Some(fallback) = default.fallback.as_ref() else {
+        if !param_default_cst_lowering_covers(&default.expression) {
             return Err(param_default_unsupported(
                 default.source,
                 &default.expression,
             ));
-        };
-        let payload =
-            CompilerExpressionPayload::syntax(default.source, default.expression.clone(), fallback);
-        self.compile_expr_with_payload(fallback, Some(&payload))
+        }
+        self.compile_param_default_expression(default.source, &default.expression)
     }
 
     fn compile_param_default_expression(
@@ -1030,12 +1001,6 @@ fn span_for(source: SourceId, expression: &SyntaxExpression) -> Span {
 
 fn span_for_range(source: SourceId, range: vela_syntax::TextRange) -> Span {
     Span::new(source, range.start().into(), range.end().into())
-}
-
-fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
-    let start = u32::from(range.start());
-    let end = u32::from(range.end());
-    start < span.end && span.start < end
 }
 
 #[cfg(test)]

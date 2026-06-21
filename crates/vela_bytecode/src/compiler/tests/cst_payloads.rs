@@ -364,6 +364,28 @@ fn grant(amount = { let base: bool = 10; base }) {
 }
 
 #[test]
+fn unsupported_parameter_defaults_error_without_legacy_fallback() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn grant(player, value = player.level) {
+    return value;
+}
+
+fn main(player) {
+    return grant(player);
+}
+"#,
+    )
+    .expect_err("unsupported CST parameter default should fail during default compilation");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("parameter default expression")
+    ));
+}
+
+#[test]
 fn semantic_script_method_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
     let semantic = parse_semantic_source(

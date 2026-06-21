@@ -266,14 +266,11 @@ fn impl_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: param_default_values(
-                        &param_default_expressions(
-                            source,
-                            syntax_method.param_list(),
-                            &method_metadata.signature,
-                        ),
-                        &legacy_method.param_defaults,
-                    ),
+                    default_values: param_default_values(&param_default_expressions(
+                        source,
+                        syntax_method.param_list(),
+                        &method_metadata.signature,
+                    )),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },
             ))
@@ -305,14 +302,11 @@ fn trait_default_method_payloads<'ast>(
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
-                    default_values: param_default_values(
-                        &param_default_expressions(
-                            source,
-                            syntax_method.param_list(),
-                            &method_metadata.signature,
-                        ),
-                        &legacy_method.param_defaults,
-                    ),
+                    default_values: param_default_values(&param_default_expressions(
+                        source,
+                        syntax_method.param_list(),
+                        &method_metadata.signature,
+                    )),
                     body: CompilerBodyPayload::syntax(source, syntax_body, legacy_method.body),
                 },
             ))

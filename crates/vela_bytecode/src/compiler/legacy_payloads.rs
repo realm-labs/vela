@@ -4,7 +4,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
-    AstNode, Block, Expr, FunctionItem, ItemKind, Param, SourceFile, SyntaxBlock, SyntaxSourceFile,
+    AstNode, Block, FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile,
 };
 use vela_syntax::parser::parse_source as parse_legacy_source;
 
@@ -33,7 +33,6 @@ impl LegacySourceFallback {
                 methods.insert(
                     method.function.body.span,
                     LegacyMethodFallback {
-                        param_defaults: legacy_param_defaults(&method.function.params),
                         body: &method.function.body,
                     },
                 );
@@ -54,13 +53,7 @@ impl LegacySourceFallback {
                 let Some(body) = &method.default_body else {
                     continue;
                 };
-                methods.insert(
-                    body.span,
-                    LegacyMethodFallback {
-                        param_defaults: legacy_param_defaults(&method.params),
-                        body,
-                    },
-                );
+                methods.insert(body.span, LegacyMethodFallback { body });
             }
         }
         methods
@@ -68,7 +61,6 @@ impl LegacySourceFallback {
 }
 
 pub(super) struct LegacyMethodFallback<'ast> {
-    pub(super) param_defaults: Vec<Option<&'ast Expr>>,
     pub(super) body: &'ast Block,
 }
 
@@ -91,10 +83,9 @@ pub(super) fn function_body_payload<'ast>(
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
     let function = legacy_function_body(&legacy.parsed, syntax_body_span(source, &syntax_body))?;
-    let legacy_defaults = legacy_param_defaults(&function.params);
     let syntax_defaults =
         param_default_expressions(source, syntax_function.param_list(), signature);
-    let param_defaults = param_default_values(&syntax_defaults, &legacy_defaults);
+    let param_defaults = param_default_values(&syntax_defaults);
     Some(FunctionBodyPayload {
         name: name.to_owned(),
         body: CompilerBodyPayload::syntax(source, syntax_body, &function.body),
@@ -114,11 +105,4 @@ fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {
     let start: u32 = range.start().into();
     let end: u32 = range.end().into();
     Span::new(source, start, end)
-}
-
-fn legacy_param_defaults(params: &[Param]) -> Vec<Option<&Expr>> {
-    params
-        .iter()
-        .map(|param| param.default_value.as_ref())
-        .collect()
 }

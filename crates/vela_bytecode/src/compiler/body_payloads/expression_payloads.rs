@@ -16,6 +16,7 @@ use super::{
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax(
         source: SourceId,
         syntax: SyntaxExpression,

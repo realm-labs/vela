@@ -1,5 +1,5 @@
-use vela_common::{SourceId, Span};
-use vela_syntax::ast::{AstNode, Expr, ExprKind};
+use vela_common::SourceId;
+use vela_syntax::ast::AstNode;
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
@@ -29,12 +29,8 @@ fn cst(first = 1) {
         source,
         expression: syntax_expression,
     })];
-    let fallback_expr = Expr {
-        kind: ExprKind::Error,
-        span: Span::new(source, 16, 17),
-    };
 
-    let defaults = param_default_values(&syntax_defaults, &[Some(&fallback_expr)]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 1);
     assert_eq!(
@@ -47,14 +43,10 @@ fn cst(first = 1) {
             .to_string(),
         "1"
     );
-    assert!(
-        defaults[0].as_ref().expect("default").fallback.is_none(),
-        "directly lowered CST defaults should not retain a legacy expression fallback"
-    );
 }
 
 #[test]
-fn mismatched_param_defaults_do_not_pair_by_index() {
+fn unsupported_param_defaults_keep_cst_payloads_without_legacy_pairing() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst(first = player.level) {
@@ -76,36 +68,34 @@ fn cst(first = player.level) {
         source,
         expression: syntax_expression,
     })];
-    let fallback_expr = Expr {
-        kind: ExprKind::Error,
-        span: Span::new(source, 1000, 1001),
-    };
 
-    let defaults = param_default_values(&syntax_defaults, &[Some(&fallback_expr)]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 1);
-    assert!(
-        defaults[0].is_none(),
-        "unsupported defaults must not receive mismatched legacy fallbacks by index"
+    assert_eq!(
+        defaults[0]
+            .as_ref()
+            .expect("default")
+            .expression
+            .syntax()
+            .text()
+            .to_string(),
+        "player.level"
     );
 }
 
 #[test]
-fn directly_lowered_param_defaults_do_not_require_legacy_fallbacks() {
+fn directly_lowered_param_defaults_do_not_require_legacy_inputs() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![Some(ParamDefaultExpression {
         source,
         expression: first_param_default("fn cst(value = 1 + 2) { return value; }"),
     })];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     let default = defaults[0].as_ref().expect("direct CST default");
     assert_eq!(default.expression.syntax().text().to_string(), "1 + 2");
-    assert!(
-        default.fallback.is_none(),
-        "directly lowered CST defaults should not depend on a legacy expression"
-    );
 }
 
 #[test]
@@ -146,14 +136,11 @@ fn param_default_cst_lowering_covers_path_calls() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "path call defaults with supported arguments should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -176,14 +163,11 @@ fn param_default_cst_lowering_covers_record_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "record defaults with supported fields should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -205,14 +189,11 @@ fn param_default_cst_lowering_covers_record_literal_field_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "record literal field defaults should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -236,14 +217,11 @@ fn param_default_cst_lowering_covers_simple_match_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "simple match defaults should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -267,24 +245,21 @@ fn param_default_cst_lowering_covers_payload_match_patterns() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "payload match pattern defaults should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_path_field_fallbacks() {
+fn param_default_cst_lowering_rejects_path_field_defaults() {
     let default = param_default_at("fn cst(player, value = player.level) { return value; }", 1);
 
     assert!(
         !param_default_cst_lowering_covers(&default),
-        "path-rooted field defaults still need the temporary fallback for host/path analysis"
+        "path-rooted field defaults are unsupported until they lower directly from CST"
     );
 }
 
@@ -302,14 +277,11 @@ fn param_default_cst_lowering_covers_range_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "range defaults should be directly lowerable from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -321,14 +293,10 @@ fn param_default_cst_lowering_covers_try_expressions() {
         expression: first_param_default("fn cst(value = maybe?) { return value; }"),
     })];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     let default = defaults[0].as_ref().expect("direct CST default");
     assert_eq!(default.expression.syntax().text().to_string(), "maybe?");
-    assert!(
-        default.fallback.is_none(),
-        "try defaults should be directly lowerable from CST"
-    );
 }
 
 #[test]
@@ -349,14 +317,11 @@ fn param_default_cst_lowering_covers_simple_block_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 3);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "simple block defaults should be directly lowerable from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -380,14 +345,11 @@ fn param_default_cst_lowering_covers_let_block_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 3);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "let block defaults should be directly lowerable from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -408,17 +370,11 @@ fn param_default_cst_lowering_covers_typed_let_block_expressions() {
             ),
         }),
     ];
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for (index, default) in defaults.into_iter().enumerate() {
-        assert!(
-            default
-                .unwrap_or_else(|| panic!("direct CST default at index {index}"))
-                .fallback
-                .is_none(),
-            "typed let block defaults should be directly lowerable from CST"
-        );
+        default.unwrap_or_else(|| panic!("direct CST default at index {index}"));
     }
 }
 
@@ -444,19 +400,16 @@ fn param_default_cst_lowering_covers_simple_if_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 3);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "simple if defaults should be directly lowerable from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_unsupported_if_fallbacks() {
+fn param_default_values_keep_unsupported_if_cst_payloads() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![
         Some(ParamDefaultExpression {
@@ -473,14 +426,11 @@ fn param_default_cst_lowering_keeps_unsupported_if_fallbacks() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 2);
     for default in defaults {
-        assert!(
-            default.is_none(),
-            "unsupported if defaults still require the temporary legacy fallback"
-        );
+        default.expect("unsupported CST default should still be reported during compilation");
     }
 }
 
@@ -504,14 +454,11 @@ fn param_default_cst_lowering_covers_index_expressions() {
         }),
     ];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     assert_eq!(defaults.len(), 3);
     for default in defaults {
-        assert!(
-            default.expect("direct CST default").fallback.is_none(),
-            "index defaults with supported operands should lower directly from CST"
-        );
+        default.expect("direct CST default");
     }
 }
 
@@ -523,21 +470,17 @@ fn param_default_cst_lowering_covers_interpolated_strings() {
         expression: first_param_default(r#"fn cst(value = f"level {1 + 2}") { return value; }"#),
     })];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
     let default = defaults[0].as_ref().expect("direct CST default");
     assert_eq!(
         default.expression.syntax().text().to_string(),
         r#"f"level {1 + 2}""#
     );
-    assert!(
-        default.fallback.is_none(),
-        "interpolated string defaults with supported expressions should lower directly from CST"
-    );
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_unsupported_interpolated_fallbacks() {
+fn param_default_values_keep_unsupported_interpolated_cst_payloads() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![Some(ParamDefaultExpression {
         source,
@@ -546,28 +489,26 @@ fn param_default_cst_lowering_keeps_unsupported_interpolated_fallbacks() {
         ),
     })];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
-    assert!(
-        defaults[0].is_none(),
-        "interpolated defaults still require the temporary legacy fallback when an expression is unsupported"
-    );
+    defaults[0]
+        .as_ref()
+        .expect("unsupported CST default should still be reported during compilation");
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_unsupported_index_fallbacks() {
+fn param_default_values_keep_unsupported_index_cst_payloads() {
     let source = SourceId::new(1);
     let syntax_defaults = vec![Some(ParamDefaultExpression {
         source,
         expression: first_param_default("fn cst(value = values.field[0]) { return value; }"),
     })];
 
-    let defaults = param_default_values(&syntax_defaults, &[]);
+    let defaults = param_default_values(&syntax_defaults);
 
-    assert!(
-        defaults[0].is_none(),
-        "index defaults still require the temporary legacy fallback when an operand is unsupported"
-    );
+    defaults[0]
+        .as_ref()
+        .expect("unsupported CST default should still be reported during compilation");
 }
 
 fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
