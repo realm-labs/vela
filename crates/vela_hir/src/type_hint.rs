@@ -121,4 +121,5 @@ pub struct ImplMethodMetadata {
     pub name: String,
     pub signature: FunctionSignature,
     pub span: Span,
+    pub body_span: Span,
 }

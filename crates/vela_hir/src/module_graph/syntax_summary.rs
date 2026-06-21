@@ -428,7 +428,9 @@ fn impl_metadata(
         methods: item
             .methods()
             .zip(method_nodes)
-            .filter_map(|(method, (node, span))| impl_method_metadata(source, &method, node, span))
+            .filter_map(|(method, (node, body_span))| {
+                impl_method_metadata(source, &method, node, body_span)
+            })
             .collect(),
     }
 }
@@ -455,13 +457,14 @@ fn impl_method_metadata(
     source: SourceId,
     method: &SyntaxImplMethod,
     node: HirNodeId,
-    span: Span,
+    body_span: Span,
 ) -> Option<ImplMethodMetadata> {
     Some(ImplMethodMetadata {
         node,
         name: method.name_text()?,
         signature: function_signature(source, method.param_list(), method.return_type()),
-        span,
+        span: body_span,
+        body_span,
     })
 }
 

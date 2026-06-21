@@ -629,10 +629,7 @@ enum QuestProgress {
 #[test]
 fn lowers_impl_metadata_and_method_bindings() {
     let mut graph = ModuleGraph::new();
-    let module = graph.add_source(source(
-        1,
-        "game::combat",
-        r#"
+    let source_text = r#"
 trait Damageable {
     fn damage(self, amount: i64) -> i64;
     fn alive(self) -> bool { return true; }
@@ -644,8 +641,8 @@ impl Damageable for Player {
         return remaining;
     }
 }
-"#,
-    ));
+"#;
+    let module = graph.add_source(source(1, "game::combat", source_text));
     let declarations = graph.module(module).expect("module declarations");
     let trait_decl = declarations
         .get("Damageable")
@@ -683,6 +680,8 @@ impl Damageable for Player {
     assert_eq!(metadata.methods.len(), 1);
     let method = &metadata.methods[0];
     assert_eq!(method.name, "damage");
+    assert_eq!(method.span, method.body_span);
+    assert!(span_text(source_text, method.body_span).starts_with("{\n        let"));
     assert_eq!(
         method.signature.params[1]
             .type_hint
@@ -715,6 +714,10 @@ impl Damageable for Player {
         Some("i64")
     );
     assert!(bindings.expression_count() >= 3);
+}
+
+fn span_text(source: &str, span: Span) -> &str {
+    &source[span.start as usize..span.end as usize]
 }
 
 #[test]

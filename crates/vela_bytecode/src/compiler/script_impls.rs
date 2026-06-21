@@ -268,7 +268,7 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let legacy_method = legacy_methods.get(&method_metadata.span)?;
+            let legacy_method = legacy_methods.get(&method_metadata.body_span)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
