@@ -312,6 +312,10 @@ the legacy loop-body fallback when syntax alignment is unavailable.
 Top-level if statement payloads now materialize nested rowan then/else block
 payloads, letting branch bodies reuse the CST-aware statement dispatcher while
 preserving legacy branch fallbacks when syntax alignment is unavailable.
+Top-level match statement payloads now materialize rowan block-body payloads
+for match arms, letting statement-form match arms reuse the CST-aware nested
+statement dispatcher while preserving legacy arm fallbacks when syntax
+alignment is unavailable.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -9,7 +9,9 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
-use super::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
+use super::body_payloads::{
+    CompilerBodyPayload, CompilerMatchArmPayload, CompilerStatementPayload,
+};
 use super::const_eval::compile_literal_constant_for_type;
 use super::operators::i64_compare_op;
 use super::patterns::PatternBindingFacts;
@@ -125,6 +127,8 @@ impl Compiler<'_, '_> {
                 stmt.if_then_body_payload(),
                 stmt.if_else_body_payload(),
             )
+        } else if kind == SyntaxStatementKind::Match {
+            self.compile_match_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Block {
             self.compile_block_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Expr {
@@ -392,6 +396,20 @@ impl Compiler<'_, '_> {
         }
         self.compile_expr(expr)?;
         Ok(false)
+    }
+
+    fn compile_match_statement_payload(
+        &mut self,
+        stmt: &CompilerStatementPayload<'_>,
+    ) -> CompileResult<bool> {
+        let StmtKind::Expr(expr) = &stmt.fallback().kind else {
+            return self.compile_statement_as(SyntaxStatementKind::Match, stmt.fallback());
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return self.compile_statement_as(SyntaxStatementKind::Match, stmt.fallback());
+        };
+        let arm_payloads = stmt.match_arm_payloads();
+        self.compile_match_with_payloads(match_expr, arm_payloads.as_deref())
     }
 
     fn compile_let_initializer(
@@ -935,12 +953,20 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_match(&mut self, match_expr: &MatchExpr) -> CompileResult<bool> {
+        self.compile_match_with_payloads(match_expr, None)
+    }
+
+    fn compile_match_with_payloads(
+        &mut self,
+        match_expr: &MatchExpr,
+        arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
+    ) -> CompileResult<bool> {
         let scrutinee_fact = self.script_fact_for_expr(&match_expr.scrutinee);
         let scrutinee = self.compile_expr(&match_expr.scrutinee)?;
         let mut end_jumps = Vec::new();
         let mut all_arms_return = !match_expr.arms.is_empty();
 
-        for arm in &match_expr.arms {
+        for (index, arm) in match_expr.arms.iter().enumerate() {
             let mut next_arm_jumps = self.compile_match_pattern(scrutinee, &arm.pattern)?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
@@ -957,13 +983,8 @@ impl Compiler<'_, '_> {
             if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
                 next_arm_jumps.push(jump);
             }
-            let arm_returned = match &arm.body.kind {
-                ExprKind::Block(block) => self.compile_statements(&block.statements)?,
-                _ => {
-                    self.compile_expr(&arm.body)?;
-                    false
-                }
-            };
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let arm_returned = self.compile_match_arm_statement(arm, arm_payload)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
             self.script_types = previous_script_types;
@@ -986,6 +1007,24 @@ impl Compiler<'_, '_> {
         }
 
         Ok(all_arms_return)
+    }
+
+    fn compile_match_arm_statement(
+        &mut self,
+        arm: &vela_syntax::ast::MatchArm,
+        payload: Option<&CompilerMatchArmPayload<'_>>,
+    ) -> CompileResult<bool> {
+        if let Some(body) = payload.and_then(CompilerMatchArmPayload::body_block_payload) {
+            let statements = body.statement_payloads();
+            return self.compile_statement_payloads(&statements);
+        }
+        match &arm.body.kind {
+            ExprKind::Block(block) => self.compile_statements(&block.statements),
+            _ => {
+                self.compile_expr(&arm.body)?;
+                Ok(false)
+            }
+        }
     }
 
     pub(super) fn compile_match_value_to(

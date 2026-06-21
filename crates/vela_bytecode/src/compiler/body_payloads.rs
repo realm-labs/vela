@@ -1,8 +1,8 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, ElseBranch, ExprKind, Stmt, StmtKind, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxStatement, SyntaxStatementKind,
+    AstNode, BinaryOp, Block, ElseBranch, ExprKind, MatchArm, Stmt, StmtKind, SyntaxBlock,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxMatchArm, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -21,6 +21,12 @@ pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
     fallback: &'ast Stmt,
+}
+
+pub(super) struct CompilerMatchArmPayload<'ast> {
+    source: Option<SourceId>,
+    syntax: Option<SyntaxMatchArm>,
+    fallback: &'ast MatchArm,
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
@@ -83,6 +89,25 @@ fn syntax_statement_for_fallback(
 fn syntax_statement_matches_span(statement: &SyntaxStatement, span: Span) -> bool {
     let range = statement.syntax().text_range();
     u32::from(range.start()) == span.start && u32::from(range.end()) == span.end
+}
+
+fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> bool {
+    let range = expression.syntax().text_range();
+    u32::from(range.start()) == span.start && u32::from(range.end()) == span.end
+}
+
+fn syntax_match_arm_for_fallback(
+    arms: &[SyntaxMatchArm],
+    fallback_index: usize,
+    fallback: &MatchArm,
+) -> Option<SyntaxMatchArm> {
+    arms.iter()
+        .find(|arm| {
+            arm.body_as_expression()
+                .is_some_and(|body| syntax_expression_matches_span(&body, fallback.body.span))
+        })
+        .cloned()
+        .or_else(|| arms.get(fallback_index).cloned())
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
@@ -186,12 +211,52 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return None;
+        };
+        let syntax_arms = self.syntax.as_ref()?.as_match()?.arms();
+        Some(
+            match_expr
+                .arms
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| CompilerMatchArmPayload {
+                    source: self.source,
+                    syntax: syntax_match_arm_for_fallback(&syntax_arms, index, fallback),
+                    fallback,
+                })
+                .collect(),
+        )
+    }
+
     fn expression(&self) -> Option<SyntaxExpression> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }
 
     #[cfg(test)]
     pub(super) fn syntax_statement(&self) -> Option<&SyntaxStatement> {
+        self.syntax.as_ref()
+    }
+}
+
+impl<'ast> CompilerMatchArmPayload<'ast> {
+    pub(super) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        let ExprKind::Block(block) = &self.fallback.body.kind else {
+            return None;
+        };
+        Some(CompilerBodyPayload::syntax(
+            self.source?,
+            self.syntax.as_ref()?.body_block()?,
+            block,
+        ))
+    }
+
+    #[cfg(test)]
+    pub(super) fn syntax_arm(&self) -> Option<&SyntaxMatchArm> {
         self.syntax.as_ref()
     }
 }

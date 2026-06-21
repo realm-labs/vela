@@ -160,6 +160,23 @@ fn assert_cst_if_body_payloads(
     assert_eq!(else_actual, expected_statement_texts(expected_else));
 }
 
+fn assert_cst_match_arm_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let actual = statements
+        .iter()
+        .flat_map(|statement| statement.match_arm_payloads().unwrap_or_default())
+        .filter_map(|arm| {
+            let _syntax_arm = arm.syntax_arm()?;
+            let body = arm.body_block_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
 fn cst_statement_texts(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> Vec<(SyntaxStatementKind, String)> {
@@ -624,6 +641,13 @@ fn flow() {
                 SyntaxStatementKind::Match,
                 "match total {\n        0 => { return 0; },\n        _ => { return total; },\n    }",
             ),
+        ],
+    );
+    assert_cst_match_arm_body_payloads(
+        &payload.body,
+        &[
+            vec![(SyntaxStatementKind::Return, "return 0;")],
+            vec![(SyntaxStatementKind::Return, "return total;")],
         ],
     );
 
