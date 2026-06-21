@@ -501,9 +501,10 @@ fn main(cst: CstMap, legacy: LegacyMap) {
     let ExprKind::Index { base, index } = &mismatched_index.fallback().kind else {
         panic!("expected legacy index fallback");
     };
-    let compiler = Compiler::new(
+    let compiler = Compiler::new_with_param_defaults(
         payload.function.name.clone(),
-        payload.function,
+        payload.body.clone(),
+        payload.param_defaults.clone(),
         signature,
         bindings,
         facts,
@@ -630,9 +631,10 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
             .clone(),
         writable_target.fallback(),
     );
-    let mut compiler = Compiler::new(
+    let mut compiler = Compiler::new_with_param_defaults(
         payload.function.name.clone(),
-        payload.function,
+        payload.body.clone(),
+        payload.param_defaults.clone(),
         signature,
         bindings,
         facts,

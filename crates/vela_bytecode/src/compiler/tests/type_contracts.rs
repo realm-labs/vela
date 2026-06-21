@@ -1,4 +1,5 @@
 use super::*;
+use vela_syntax::ast::FunctionItem;
 
 fn with_static_type_compiler(
     source: &str,
@@ -33,8 +34,15 @@ fn with_static_type_compiler(
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let function = payload.function;
-    let mut compiler = Compiler::new(function.name.clone(), function, signature, bindings, facts)
-        .expect("compiler should initialize");
+    let mut compiler = Compiler::new_with_param_defaults(
+        function.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
     inspect(&mut compiler, function);
 }
 

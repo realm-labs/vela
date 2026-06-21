@@ -46,8 +46,6 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-#[cfg(test)]
-use vela_syntax::ast::FunctionItem;
 use vela_syntax::ast::{Argument, Block, Expr, ExprKind, Param};
 
 use crate::{
@@ -714,33 +712,6 @@ struct Compiler<'ast, 'registry> {
 }
 
 impl<'ast, 'registry> Compiler<'ast, 'registry> {
-    #[cfg(test)]
-    fn new(
-        code_name: String,
-        function: &'ast FunctionItem,
-        signature: &FunctionSignature,
-        bindings: &'ast BindingMap,
-        facts: CompilerFacts<'registry>,
-    ) -> CompileResult<Self> {
-        let param_defaults = (0..signature.params.len())
-            .map(|index| {
-                function
-                    .params
-                    .get(index)
-                    .and_then(|param| param.default_value.clone())
-                    .map(ParamDefaultValue::Legacy)
-            })
-            .collect();
-        Self::new_body(
-            code_name,
-            param_defaults,
-            signature,
-            CompilerBodyPayload::legacy(&function.body),
-            bindings,
-            facts,
-        )
-    }
-
     fn new_with_param_defaults(
         code_name: String,
         body: CompilerBodyPayload<'ast>,
