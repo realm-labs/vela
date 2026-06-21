@@ -1,4 +1,5 @@
 use super::*;
+use crate::compiler::lambdas::collect_lambda_captures_with_payload;
 
 #[test]
 fn semantic_function_lambda_bodies_have_cst_payloads() {
@@ -50,6 +51,66 @@ fn lambda_values() {
     );
 
     compile_program_source(source, text).expect("CST-backed lambda bodies should compile");
+}
+
+#[test]
+fn lambda_capture_collection_prefers_cst_body_payloads() {
+    let source = SourceId::new(1);
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_outer = 1;
+    let legacy_outer = 2;
+    let cst_lambda = |value| cst_outer + value;
+    let legacy_lambda = |value| legacy_outer + value;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst_outer let should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy_outer let should compile");
+
+            let cst_lambda = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST lambda initializer");
+            let legacy_lambda = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy lambda initializer");
+            let mismatched_lambda = body_payloads::CompilerExpressionPayload::syntax(
+                source,
+                cst_lambda
+                    .syntax_expression()
+                    .expect("CST lambda expression")
+                    .clone(),
+                legacy_lambda.fallback(),
+            );
+            let ExprKind::Lambda { body, .. } = &mismatched_lambda.fallback().kind else {
+                panic!("expected legacy lambda fallback");
+            };
+            let mismatched_body = mismatched_lambda
+                .lambda_body_payload()
+                .expect("mismatched lambda body payload");
+
+            let captures = collect_lambda_captures_with_payload(
+                compiler.bindings,
+                &compiler.hir_locals,
+                body,
+                Some(&mismatched_body),
+            );
+
+            assert_eq!(
+                captures
+                    .iter()
+                    .map(|capture| capture.name.as_str())
+                    .collect::<Vec<_>>(),
+                ["cst_outer"],
+            );
+        },
+    );
 }
 
 fn assert_cst_let_initializer_lambda_body_payloads(
