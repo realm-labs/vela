@@ -68,6 +68,62 @@ fn loop_values() {
 }
 
 #[test]
+fn range_for_loop_prefers_cst_operator_payload() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let total = 0;
+    for value in 1..=3 {
+        total += value;
+    }
+    return total;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let total = 0;
+    for value in 1..3 {
+        total += value;
+    }
+    return total;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("CST-backed range loop should compile");
+
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::I64RangeNext {
+                            inclusive: true,
+                            ..
+                        }
+                    )),
+                "range loop should use CST range inclusivity"
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_function_for_patterns_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

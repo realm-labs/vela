@@ -73,20 +73,22 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
     }
 }
 
-pub(super) fn cst_range_iterable(operator: BinaryOp, expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
-    let ExprKind::Binary { op, left, right } = &expr.kind else {
+pub(super) fn range_iterable_for_payload(
+    syntax_operator: Option<BinaryOp>,
+    expr: &Expr,
+) -> Option<(&Expr, &Expr, bool)> {
+    let ExprKind::Binary { left, right, .. } = &expr.kind else {
         return None;
     };
-    match (operator, *op) {
-        (BinaryOp::Range, BinaryOp::Range) => Some((left.as_ref(), right.as_ref(), false)),
-        (BinaryOp::RangeInclusive, BinaryOp::RangeInclusive) => {
-            Some((left.as_ref(), right.as_ref(), true))
-        }
-        _ => None,
+    match syntax_operator {
+        Some(BinaryOp::Range) => Some((left.as_ref(), right.as_ref(), false)),
+        Some(BinaryOp::RangeInclusive) => Some((left.as_ref(), right.as_ref(), true)),
+        Some(_) => None,
+        None => legacy_range_iterable(expr),
     }
 }
 
-pub(super) fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
+fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
     match &expr.kind {
         ExprKind::Binary {
             op: BinaryOp::Range,

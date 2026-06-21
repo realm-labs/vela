@@ -26,9 +26,9 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    cst_range_iterable, expression_statement_kind_matches, i64_pattern_facts,
-    is_map_or_set_type_hint, iterable_item_shape, legacy_range_iterable, legacy_statement_kind,
-    merge_type_hint_and_value_fact, statement_kind_matches, value_expression_kind_matches,
+    expression_statement_kind_matches, i64_pattern_facts, is_map_or_set_type_hint,
+    iterable_item_shape, legacy_statement_kind, merge_type_hint_and_value_fact,
+    range_iterable_for_payload, statement_kind_matches, value_expression_kind_matches,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -745,10 +745,7 @@ impl Compiler<'_, '_> {
             .iterable_payload
             .as_ref()
             .and_then(CompilerExpressionPayload::binary_operand_payloads);
-        let range_iterable = parts
-            .iterable_operator
-            .and_then(|operator| cst_range_iterable(operator, parts.iterable))
-            .or_else(|| legacy_range_iterable(parts.iterable));
+        let range_iterable = range_iterable_for_payload(parts.iterable_operator, parts.iterable);
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {
