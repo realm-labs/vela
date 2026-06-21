@@ -77,6 +77,79 @@ fn legacy_path(legacy) {
 }
 
 #[test]
+fn script_type_facts_with_non_matching_cst_payload_do_not_use_legacy_shape() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct LegacyBox {}
+
+enum LegacyResult {
+    Ok(value),
+}
+
+fn cst_block(cst) {
+    return {
+        let selected = cst;
+        selected
+    };
+}
+
+fn legacy_record() {
+    return LegacyBox {};
+}
+
+fn legacy_path(legacy) {
+    return legacy;
+}
+
+fn legacy_call(legacy) {
+    return LegacyResult::Ok(legacy);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_block").expect("cst function");
+    let cst_block = cst_payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .find_map(|statement| statement.return_value_expression_payload())
+        .expect("CST block return expression");
+    assert_eq!(cst_block.kind(), Some(SyntaxExpressionKind::Block));
+
+    for function in ["legacy_record", "legacy_path", "legacy_call"] {
+        let (legacy_payload, _, _) = semantic.function(function).expect("legacy function");
+        let legacy_return = legacy_payload
+            .body
+            .statement_payloads()
+            .into_iter()
+            .find_map(|statement| statement.return_value_expression_payload())
+            .expect("legacy return expression");
+        let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            source,
+            cst_block
+                .syntax_expression()
+                .expect("block CST expression")
+                .clone(),
+            legacy_return.fallback(),
+        );
+
+        let fact = script_types::expression_script_fact_with_payload(
+            mismatched_payload.fallback(),
+            Some(&mismatched_payload),
+            |_| Some("LegacyResult".to_owned()),
+            |_| None,
+            |name| match name {
+                "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+                _ => None,
+            },
+        );
+        assert_eq!(
+            fact, None,
+            "non-matching CST block payload should not use {function} fallback"
+        );
+    }
+}
+
+#[test]
 fn self_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"

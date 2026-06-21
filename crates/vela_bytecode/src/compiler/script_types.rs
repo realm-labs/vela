@@ -4,7 +4,7 @@ use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, ExprKind};
+use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::patterns::enum_variant_path;
@@ -134,6 +134,9 @@ pub(super) fn expression_script_fact_with_payload(
 
     match &expr.kind {
         ExprKind::Record { path, .. } => {
+            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Record) {
+                return None;
+            }
             let cst_path = payload.and_then(CompilerExpressionPayload::syntax_record_path_segments);
             let lookup_path = cst_path.as_deref().unwrap_or(path);
             if let Some((enum_path, variant)) = enum_variant_path(lookup_path) {
@@ -145,6 +148,9 @@ pub(super) fn expression_script_fact_with_payload(
             Some(ScriptTypeFact::new(type_name))
         }
         ExprKind::Call { callee, .. } => {
+            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Call) {
+                return None;
+            }
             let ExprKind::Path(path) = &callee.kind else {
                 return None;
             };
@@ -158,6 +164,9 @@ pub(super) fn expression_script_fact_with_payload(
             Some(ScriptTypeFact::enum_variant(type_name, variant))
         }
         ExprKind::Path(path) => {
+            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Path) {
+                return None;
+            }
             let cst_path = payload.and_then(CompilerExpressionPayload::syntax_path_segments);
             cst_path
                 .as_deref()
@@ -175,7 +184,12 @@ pub(super) fn expression_script_fact_with_payload(
                     })
                 })
         }
-        ExprKind::SelfValue => local_fact_at_span(expr.span).or_else(|| local_fact_named("self")),
+        ExprKind::SelfValue => {
+            if !payload_allows_legacy_self(payload) {
+                return None;
+            }
+            local_fact_at_span(expr.span).or_else(|| local_fact_named("self"))
+        }
         _ => None,
     }
 }
@@ -227,6 +241,26 @@ fn expression_script_fact_from_payload(
     }
 
     None
+}
+
+fn payload_allows_legacy_kind(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    expected: SyntaxExpressionKind,
+) -> bool {
+    match payload.and_then(CompilerExpressionPayload::kind) {
+        Some(kind) => kind == expected,
+        None => true,
+    }
+}
+
+fn payload_allows_legacy_self(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
+    match payload.and_then(CompilerExpressionPayload::kind) {
+        Some(SyntaxExpressionKind::Path) => {
+            payload.is_some_and(CompilerExpressionPayload::syntax_is_self)
+        }
+        Some(_) => false,
+        None => true,
+    }
 }
 
 pub(super) fn expression_script_type_with_payload(
