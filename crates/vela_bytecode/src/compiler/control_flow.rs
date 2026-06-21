@@ -1010,10 +1010,13 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            if let Some(jump) = self.compile_match_guard(
+                arm.guard.as_ref(),
+                arm_payload.and_then(|payload| payload.guard_payload()),
+            )? {
                 next_arm_jumps.push(jump);
             }
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
             let arm_returned = self.compile_match_arm_statement(arm, arm_payload)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
@@ -1051,7 +1054,8 @@ impl Compiler<'_, '_> {
         match &arm.body.kind {
             ExprKind::Block(block) => self.compile_statements(&block.statements),
             _ => {
-                self.compile_expr(&arm.body)?;
+                let body_payload = payload.map(CompilerMatchArmPayload::body_expression_payload);
+                self.compile_expr_with_payload(&arm.body, body_payload.as_ref())?;
                 Ok(false)
             }
         }
@@ -1091,10 +1095,13 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref())? {
+            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            if let Some(jump) = self.compile_match_guard(
+                arm.guard.as_ref(),
+                arm_payload.and_then(|payload| payload.guard_payload()),
+            )? {
                 next_arm_jumps.push(jump);
             }
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
             let arm_returned = self.compile_match_arm_value_to(&arm.body, arm_payload, dst)?;
             self.locals = previous_locals;
             self.hir_locals = previous_hir_locals;
@@ -1126,11 +1133,15 @@ impl Compiler<'_, '_> {
         Ok(all_arms_return)
     }
 
-    fn compile_match_guard(&mut self, guard: Option<&Expr>) -> CompileResult<Option<usize>> {
+    fn compile_match_guard(
+        &mut self,
+        guard: Option<&Expr>,
+        payload: Option<CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Option<usize>> {
         let Some(guard) = guard else {
             return Ok(None);
         };
-        let condition = self.compile_expr(guard)?;
+        let condition = self.compile_expr_with_payload(guard, payload.as_ref())?;
         Ok(Some(self.emit_jump_if_false(condition)))
     }
 
@@ -1146,7 +1157,8 @@ impl Compiler<'_, '_> {
         match &body.kind {
             ExprKind::Block(block) => self.compile_block_value_to(block, dst),
             _ => {
-                let value = self.compile_expr(body)?;
+                let body_payload = payload.map(CompilerMatchArmPayload::body_expression_payload);
+                let value = self.compile_expr_with_payload(body, body_payload.as_ref())?;
                 self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)
             }

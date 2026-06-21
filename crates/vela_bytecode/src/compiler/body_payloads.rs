@@ -930,6 +930,14 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
 }
 
 impl<'ast> CompilerMatchArmPayload<'ast> {
+    pub(super) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.guard(),
+            fallback: self.fallback.guard.as_ref()?,
+        })
+    }
+
     pub(super) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let ExprKind::Block(block) = &self.fallback.body.kind else {
             return None;
@@ -939,6 +947,17 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             self.syntax.as_ref()?.body_block()?,
             block,
         ))
+    }
+
+    pub(super) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload {
+            source: self.source,
+            syntax: self
+                .syntax
+                .as_ref()
+                .and_then(SyntaxMatchArm::body_as_expression),
+            fallback: &self.fallback.body,
+        }
     }
 
     #[cfg(test)]

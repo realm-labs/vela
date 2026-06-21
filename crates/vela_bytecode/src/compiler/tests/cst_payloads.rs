@@ -8,6 +8,7 @@ mod for_iterables;
 mod if_conditions;
 mod interpolated;
 mod lambdas;
+mod match_arms;
 mod wrappers;
 
 #[test]
