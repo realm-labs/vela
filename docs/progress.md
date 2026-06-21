@@ -282,9 +282,9 @@ method, and trait default parameter-expression discovery now lives in the
 rowan syntax payload boundary and keys CST payloads from HIR signature spans;
 parameter default lowering now compiles supported literal, path, unary,
 ordinary/logical binary, array, and map defaults directly from rowan CST
-payloads without requiring a paired legacy owned-AST expression, and keeps the
-temporary legacy owned-AST fallback only for default expression forms that do
-not yet have direct CST lowering. Schema default-expression payload
+payloads without retaining or requiring a paired legacy owned-AST expression,
+and keeps the temporary legacy owned-AST fallback only for default expression
+forms that do not yet have direct CST lowering. Schema default-expression payload
 matching now stays on rowan CST field and variant wrappers, so semantic
 orchestration no longer requests temporary owned parsed source data for schema
 defaults and the legacy payload boundary no longer owns schema default

@@ -27,19 +27,23 @@ pub(super) fn param_default_values(
         .enumerate()
         .map(|(index, syntax_default)| {
             let syntax_default = syntax_default.clone()?;
-            let fallback = legacy_defaults
-                .get(index)
-                .copied()
-                .flatten()
-                .filter(|fallback| {
-                    syntax_range_overlaps_span(
-                        syntax_default.expression.syntax().text_range(),
-                        fallback.span,
-                    )
-                })
-                .cloned();
-            if fallback.is_none() && !param_default_cst_lowering_covers(&syntax_default.expression)
-            {
+            let direct_cst_lowering = param_default_cst_lowering_covers(&syntax_default.expression);
+            let fallback = if direct_cst_lowering {
+                None
+            } else {
+                legacy_defaults
+                    .get(index)
+                    .copied()
+                    .flatten()
+                    .filter(|fallback| {
+                        syntax_range_overlaps_span(
+                            syntax_default.expression.syntax().text_range(),
+                            fallback.span,
+                        )
+                    })
+                    .cloned()
+            };
+            if fallback.is_none() && !direct_cst_lowering {
                 return None;
             }
             Some(ParamDefaultValue {
@@ -546,6 +550,10 @@ fn cst(first = 1) {
                 .text()
                 .to_string(),
             "1"
+        );
+        assert!(
+            defaults[0].as_ref().expect("default").fallback.is_none(),
+            "directly lowered CST defaults should not retain a legacy expression fallback"
         );
     }
 
