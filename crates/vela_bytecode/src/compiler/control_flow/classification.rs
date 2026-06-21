@@ -106,16 +106,11 @@ pub(super) fn condition_operator_for_fallback(
     syntax_operator: Option<BinaryOp>,
     expr: &Expr,
 ) -> Option<BinaryOp> {
-    syntax_operator
-        .and_then(|operator| cst_condition_operator(operator, expr))
-        .or_else(|| legacy_condition_operator(expr))
-}
-
-fn cst_condition_operator(operator: BinaryOp, expr: &Expr) -> Option<BinaryOp> {
-    let ExprKind::Binary { op, .. } = &expr.kind else {
-        return None;
-    };
-    (operator == *op).then_some(operator)
+    if matches!(expr.kind, ExprKind::Binary { .. }) {
+        syntax_operator.or_else(|| legacy_condition_operator(expr))
+    } else {
+        None
+    }
 }
 
 fn legacy_condition_operator(expr: &Expr) -> Option<BinaryOp> {
