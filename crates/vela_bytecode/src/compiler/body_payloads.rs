@@ -1,9 +1,9 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Block, ElseBranch, ExprKind, MatchArm, MatchExpr, Stmt, StmtKind,
-    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxStatement, SyntaxStatementKind,
+    AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Stmt, StmtKind,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMatchArm,
+    SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 
 #[derive(Clone)]
@@ -28,6 +28,12 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
     fallback: &'ast MatchArm,
+}
+
+pub(super) struct CompilerIfPayload<'ast> {
+    condition_operator: Option<BinaryOp>,
+    then_body: Option<CompilerBodyPayload<'ast>>,
+    else_body: Option<CompilerBodyPayload<'ast>>,
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
@@ -129,6 +135,32 @@ fn match_arm_payloads_for_fallback<'ast>(
         .collect()
 }
 
+fn if_payload_for_fallback<'ast>(
+    source: Option<SourceId>,
+    syntax: SyntaxIfExpr,
+    fallback: &'ast IfExpr,
+) -> Option<CompilerIfPayload<'ast>> {
+    let source = source?;
+    let condition_operator = syntax
+        .condition()
+        .and_then(|condition| condition.as_binary())
+        .and_then(|condition| condition.operator());
+    let then_body = syntax
+        .then_block()
+        .map(|body| CompilerBodyPayload::syntax(source, body, &fallback.then_branch));
+    let else_body = match fallback.else_branch.as_ref() {
+        Some(ElseBranch::Block(block)) => syntax
+            .else_block()
+            .map(|body| CompilerBodyPayload::syntax(source, body, block)),
+        Some(ElseBranch::If(_)) | None => None,
+    };
+    Some(CompilerIfPayload {
+        condition_operator,
+        then_body,
+        else_body,
+    })
+}
+
 impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
@@ -166,6 +198,23 @@ impl<'ast> CompilerStatementPayload<'ast> {
             self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
             block,
         ))
+    }
+
+    pub(super) fn let_initializer_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+        let StmtKind::Let {
+            value: Some(value), ..
+        } = &self.fallback.kind
+        else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &value.kind else {
+            return None;
+        };
+        if_payload_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_let()?.initializer()?.as_if()?,
+            if_expr,
+        )
     }
 
     pub(super) fn let_initializer_match_arm_payloads(
@@ -211,6 +260,20 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .as_block()?,
             block,
         ))
+    }
+
+    pub(super) fn return_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+        let StmtKind::Return(Some(value)) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &value.kind else {
+            return None;
+        };
+        if_payload_for_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_return()?.expression()?.as_if()?,
+            if_expr,
+        )
     }
 
     pub(super) fn return_value_match_arm_payloads(
@@ -343,5 +406,19 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     #[cfg(test)]
     pub(super) fn syntax_arm(&self) -> Option<&SyntaxMatchArm> {
         self.syntax.as_ref()
+    }
+}
+
+impl<'ast> CompilerIfPayload<'ast> {
+    pub(super) fn condition_operator(&self) -> Option<BinaryOp> {
+        self.condition_operator
+    }
+
+    pub(super) fn then_body(&self) -> Option<&CompilerBodyPayload<'ast>> {
+        self.then_body.as_ref()
+    }
+
+    pub(super) fn else_body(&self) -> Option<&CompilerBodyPayload<'ast>> {
+        self.else_body.as_ref()
     }
 }

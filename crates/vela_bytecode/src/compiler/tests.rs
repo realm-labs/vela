@@ -160,6 +160,54 @@ fn assert_cst_if_body_payloads(
     assert_eq!(else_actual, expected_statement_texts(expected_else));
 }
 
+fn assert_cst_let_initializer_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let payloads = statements
+        .iter()
+        .filter_map(|statement| statement.let_initializer_if_payload())
+        .collect::<Vec<_>>();
+    let then_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::then_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    let else_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::else_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
+fn assert_cst_return_value_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let payloads = statements
+        .iter()
+        .filter_map(|statement| statement.return_value_if_payload())
+        .collect::<Vec<_>>();
+    let then_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::then_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    let else_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::else_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
 fn assert_cst_match_arm_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -553,6 +601,69 @@ fn choose() {
     );
 
     compile_program_source(source, text).expect("CST-backed return value body should compile");
+}
+
+#[test]
+fn semantic_function_if_value_expressions_have_cst_body_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose() {
+    let value: i64 = 2;
+    let total = if value > 0 {
+        let base = value;
+        base
+    } else {
+        let fallback = 0;
+        fallback
+    };
+    return if total > 1 {
+        let next = total + 1;
+        next
+    } else {
+        total
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+    assert_cst_let_initializers(
+        &payload.body,
+        &[
+            (SyntaxExpressionKind::Literal, "2"),
+            (
+                SyntaxExpressionKind::If,
+                "if value > 0 {\n        let base = value;\n        base\n    } else {\n        let fallback = 0;\n        fallback\n    }",
+            ),
+        ],
+    );
+    assert_cst_return_values(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::If,
+            "if total > 1 {\n        let next = total + 1;\n        next\n    } else {\n        total\n    }",
+        )],
+    );
+    assert_cst_let_initializer_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let base = value;"),
+            (SyntaxStatementKind::Expr, "base"),
+        ]],
+        &[vec![
+            (SyntaxStatementKind::Let, "let fallback = 0;"),
+            (SyntaxStatementKind::Expr, "fallback"),
+        ]],
+    );
+    assert_cst_return_value_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = total + 1;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "total")]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed if value bodies should compile");
 }
 
 #[test]
