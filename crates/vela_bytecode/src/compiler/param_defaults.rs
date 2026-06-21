@@ -155,11 +155,22 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
                 Ok(dst)
             }
+            SyntaxExpressionKind::Try => {
+                let Some(operand) = expression
+                    .as_try()
+                    .and_then(|try_expr| try_expr.expression())
+                else {
+                    return Err(param_default_unsupported(source, expression));
+                };
+                let src = self.compile_param_default_expression(source, &operand)?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
+                Ok(dst)
+            }
             SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Index
-            | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Record
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
@@ -393,11 +404,14 @@ fn param_default_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
                         .is_some_and(|value| param_default_cst_lowering_covers(&value))
             })
         }),
+        SyntaxExpressionKind::Try => expression
+            .as_try()
+            .and_then(|try_expr| try_expr.expression())
+            .is_some_and(|operand| param_default_cst_lowering_covers(&operand)),
         SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Try
         | SyntaxExpressionKind::Record
         | SyntaxExpressionKind::Lambda
         | SyntaxExpressionKind::Block
@@ -631,6 +645,24 @@ fn cst(first = expensive()) {
                 "fn cst(value = true || expensive()) { return value; }"
             )),
             "logical defaults keep the fallback when an operand is not CST-lowered yet"
+        );
+    }
+
+    #[test]
+    fn param_default_cst_lowering_covers_try_expressions() {
+        let source = SourceId::new(1);
+        let syntax_defaults = vec![Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default("fn cst(value = maybe?) { return value; }"),
+        })];
+
+        let defaults = param_default_values(&syntax_defaults, &[]);
+
+        let default = defaults[0].as_ref().expect("direct CST default");
+        assert_eq!(default.expression.syntax().text().to_string(), "maybe?");
+        assert!(
+            default.fallback.is_none(),
+            "try defaults should be directly lowerable from CST"
         );
     }
 
