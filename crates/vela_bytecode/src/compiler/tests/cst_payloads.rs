@@ -253,6 +253,117 @@ fn call_values() {
 }
 
 #[test]
+fn semantic_function_array_element_values_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn take(values) {
+    return values;
+}
+
+fn array_values() {
+    let values = [
+        {
+            let start = 1;
+            start
+        },
+        if true {
+            let next = 2;
+            next
+        } else {
+            0
+        },
+        match 0 {
+            0 => {
+                let zero = 1;
+                zero
+            },
+            _ => {
+                2
+            },
+        },
+    ];
+    values = [
+        {
+            let assigned = 3;
+            assigned
+        },
+    ];
+    take([
+        {
+            let arg = 4;
+            arg
+        },
+    ]);
+}
+
+fn return_values() {
+    return [
+        {
+            let ret = 5;
+            ret
+        },
+    ];
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("array_values")
+        .expect("array_values function");
+    assert_cst_let_initializers(
+        &payload.body,
+        &[(
+            SyntaxExpressionKind::Array,
+            "[\n        {\n            let start = 1;\n            start\n        },\n        if true {\n            let next = 2;\n            next\n        } else {\n            0\n        },\n        match 0 {\n            0 => {\n                let zero = 1;\n                zero\n            },\n            _ => {\n                2\n            },\n        },\n    ]",
+        )],
+    );
+    assert_cst_let_initializer_array_element_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let start = 1;"),
+            (SyntaxStatementKind::Expr, "start"),
+        ]],
+        &[vec![
+            (SyntaxStatementKind::Let, "let next = 2;"),
+            (SyntaxStatementKind::Expr, "next"),
+        ]],
+        &[vec![(SyntaxStatementKind::Expr, "0")]],
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let zero = 1;"),
+                (SyntaxStatementKind::Expr, "zero"),
+            ],
+            vec![(SyntaxStatementKind::Expr, "2")],
+        ],
+    );
+    assert_cst_assignment_value_array_element_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let assigned = 3;"),
+            (SyntaxStatementKind::Expr, "assigned"),
+        ]],
+    );
+    assert_cst_call_argument_array_element_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let arg = 4;"),
+            (SyntaxStatementKind::Expr, "arg"),
+        ]],
+    );
+    let (return_payload, _, _) = semantic
+        .function("return_values")
+        .expect("return_values function");
+    assert_cst_return_value_array_element_body_payloads(
+        &return_payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let ret = 5;"),
+            (SyntaxStatementKind::Expr, "ret"),
+        ]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed array element values should compile");
+}
+
+#[test]
 fn semantic_function_let_initializer_expression_is_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

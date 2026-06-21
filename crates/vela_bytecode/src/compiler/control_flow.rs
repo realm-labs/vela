@@ -1,6 +1,7 @@
 mod block_values;
 mod classification;
 mod if_values;
+mod value_syntax;
 
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
@@ -13,7 +14,8 @@ use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
-    CompilerBodyPayload, CompilerIfPayload, CompilerMatchArmPayload, CompilerStatementPayload,
+    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
+    CompilerStatementPayload,
 };
 use super::const_eval::compile_literal_constant_for_type;
 use super::operators::i64_compare_op;
@@ -29,6 +31,7 @@ use classification::{
     legacy_statement_kind, merge_type_hint_and_value_fact, statement_kind_matches,
     value_expression_kind_matches,
 };
+use value_syntax::ValueSyntaxPayloads;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct LoopContext {
@@ -58,27 +61,6 @@ struct ForStatementParts<'ast> {
     body: &'ast Block,
     iterable_operator: Option<BinaryOp>,
     body_payload: Option<CompilerBodyPayload<'ast>>,
-}
-
-#[derive(Clone, Copy)]
-struct ValueSyntaxPayloads<'payload, 'ast> {
-    block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-    if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-    match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
-}
-
-impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
-    fn new(
-        block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-        if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-        match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
-    ) -> Self {
-        Self {
-            block_body,
-            if_expr,
-            match_arms,
-        }
-    }
 }
 
 impl LoopContext {
@@ -140,6 +122,7 @@ impl Compiler<'_, '_> {
                 stmt.let_initializer_block_body_payload(),
                 stmt.let_initializer_if_payload(),
                 stmt.let_initializer_match_arm_payloads(),
+                stmt.let_initializer_expression_payload(),
             )
         } else if kind == SyntaxStatementKind::Return {
             self.compile_return_statement(
@@ -148,6 +131,7 @@ impl Compiler<'_, '_> {
                 stmt.return_value_block_body_payload(),
                 stmt.return_value_if_payload(),
                 stmt.return_value_match_arm_payloads(),
+                stmt.return_value_expression_payload(),
             )
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(
@@ -196,10 +180,12 @@ impl Compiler<'_, '_> {
             let value_body = stmt.assignment_value_block_body_payload();
             let value_if = stmt.assignment_value_if_payload();
             let value_match_arms = stmt.assignment_value_match_arm_payloads();
+            let value_expression = stmt.assignment_value_expression_payload();
             self.compile_assignment_with_value_payloads(
                 expr,
                 AssignmentValueSyntax::new(
                     stmt.assignment_value_kind(),
+                    value_expression.as_ref(),
                     AssignmentValuePayloads::new(
                         value_body.as_ref(),
                         value_if.as_ref(),
@@ -245,9 +231,11 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
     ) -> CompileResult<bool> {
         match kind {
-            SyntaxStatementKind::Let => self.compile_let_statement(stmt, None, None, None, None),
+            SyntaxStatementKind::Let => {
+                self.compile_let_statement(stmt, None, None, None, None, None)
+            }
             SyntaxStatementKind::Return => {
-                self.compile_return_statement(stmt, None, None, None, None)
+                self.compile_return_statement(stmt, None, None, None, None, None)
             }
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
@@ -294,6 +282,7 @@ impl Compiler<'_, '_> {
         initializer_body: Option<CompilerBodyPayload<'_>>,
         initializer_if: Option<CompilerIfPayload<'_>>,
         initializer_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
+        initializer_expression: Option<CompilerExpressionPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Let {
             name,
@@ -339,6 +328,7 @@ impl Compiler<'_, '_> {
                 TypeContractContext::TypedLet { name: name.clone() },
                 initializer_kind,
                 ValueSyntaxPayloads::new(
+                    initializer_expression.as_ref(),
                     initializer_body.as_ref(),
                     initializer_if.as_ref(),
                     initializer_match_arms.as_deref(),
@@ -397,6 +387,7 @@ impl Compiler<'_, '_> {
         value_body: Option<CompilerBodyPayload<'_>>,
         value_if: Option<CompilerIfPayload<'_>>,
         value_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
+        value_expression: Option<CompilerExpressionPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Return(value) = &stmt.kind else {
             return self.compile_statement(stmt);
@@ -406,6 +397,7 @@ impl Compiler<'_, '_> {
             value.as_ref(),
             value_kind,
             ValueSyntaxPayloads::new(
+                value_expression.as_ref(),
                 value_body.as_ref(),
                 value_if.as_ref(),
                 value_match_arms.as_deref(),
@@ -559,6 +551,14 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok((dst, returned))
             }
+            SyntaxExpressionKind::Array => match expected {
+                Some(expected) => self
+                    .compile_expr_with_expected_type(value, expected, context)
+                    .map(|register| (register, false)),
+                None => self
+                    .compile_expr_with_payload(value, syntax_payloads.expression)
+                    .map(|register| (register, false)),
+            },
             _ => self.compile_let_initializer_legacy(value, expected, context),
         }
     }
@@ -716,6 +716,14 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok((dst, returned))
             }
+            SyntaxExpressionKind::Array => match expected {
+                Some(expected) => self
+                    .compile_expr_with_expected_type(value, expected, context)
+                    .map(|register| (register, false)),
+                None => self
+                    .compile_expr_with_payload(value, syntax_payloads.expression)
+                    .map(|register| (register, false)),
+            },
             _ => self.compile_return_expr_legacy(value, expected, context),
         }
     }

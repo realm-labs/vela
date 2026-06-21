@@ -1,12 +1,15 @@
 use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::MethodId;
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, UnaryOp};
+use vela_syntax::ast::{
+    BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, SyntaxExpressionKind, UnaryOp,
+};
 
 use crate::{
     BinaryLiteralSide, FormatStringPart, GuardKind, GuardLocation, Register, UnlinkedGuardContext,
     UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
+use super::body_payloads::CompilerExpressionPayload;
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -25,6 +28,68 @@ use super::value_types::{
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
+    pub(in crate::compiler) fn compile_expr_with_payload(
+        &mut self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Register> {
+        if let Some(payload) = payload
+            && let Some(kind) = payload.kind()
+            && expression_payload_kind_matches(kind, expr)
+        {
+            return self.compile_expr_with_payload_kind(expr, payload, kind);
+        }
+        self.compile_expr(expr)
+    }
+
+    fn compile_expr_with_payload_kind(
+        &mut self,
+        expr: &Expr,
+        payload: &CompilerExpressionPayload<'_>,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<Register> {
+        match kind {
+            SyntaxExpressionKind::Block => {
+                let ExprKind::Block(block) = &expr.kind else {
+                    unreachable!("validated CST block expression payload kind");
+                };
+                let dst = self.alloc_register()?;
+                if let Some(body_payload) = payload.block_body_payload() {
+                    self.compile_block_payload_value_to(&body_payload, dst)?;
+                } else {
+                    self.compile_block_value_to(block, dst)?;
+                }
+                Ok(dst)
+            }
+            SyntaxExpressionKind::If => {
+                let ExprKind::If(if_expr) = &expr.kind else {
+                    unreachable!("validated CST if expression payload kind");
+                };
+                let dst = self.alloc_register()?;
+                let if_payload = payload.if_payload();
+                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())?;
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Match => {
+                let ExprKind::Match(match_expr) = &expr.kind else {
+                    unreachable!("validated CST match expression payload kind");
+                };
+                let dst = self.alloc_register()?;
+                let arm_payloads = payload.match_arm_payloads();
+                self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())?;
+                Ok(dst)
+            }
+            SyntaxExpressionKind::Array => {
+                let ExprKind::Array(items) = &expr.kind else {
+                    unreachable!("validated CST array expression payload kind");
+                };
+                let element_payloads = payload.array_element_payloads();
+                self.compile_array(items, element_payloads.as_deref())
+            }
+            _ => self.compile_expr(expr),
+        }
+    }
+
     pub(super) fn compile_expr(&mut self, expr: &Expr) -> CompileResult<Register> {
         match &expr.kind {
             ExprKind::Literal(literal) => self.compile_literal(Some(expr.span), literal),
@@ -162,15 +227,7 @@ impl Compiler<'_, '_> {
                 self.compile_block_value_to(block, dst)?;
                 Ok(dst)
             }
-            ExprKind::Array(items) => {
-                let elements = items
-                    .iter()
-                    .map(|item| self.compile_expr(item))
-                    .collect::<CompileResult<Vec<_>>>()?;
-                let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
-                Ok(dst)
-            }
+            ExprKind::Array(items) => self.compile_array(items, None),
             ExprKind::Map(entries) => {
                 let entries = entries
                     .iter()
@@ -244,6 +301,26 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
         }
+    }
+
+    fn compile_array(
+        &mut self,
+        items: &[Expr],
+        payloads: Option<&[CompilerExpressionPayload<'_>]>,
+    ) -> CompileResult<Register> {
+        let elements = items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                self.compile_expr_with_payload(
+                    item,
+                    payloads.and_then(|payloads| payloads.get(index)),
+                )
+            })
+            .collect::<CompileResult<Vec<_>>>()?;
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
+        Ok(dst)
     }
 
     pub(super) fn compile_literal(
@@ -766,6 +843,19 @@ fn runtime_type_is_identity_operand(fact: &RuntimeTypeFact) -> bool {
         | RuntimeTypeFact::Iterator(_)
         | RuntimeTypeFact::Option(_)
         | RuntimeTypeFact::Result { .. } => true,
+    }
+}
+
+fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+    match kind {
+        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
+        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
+        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
+        _ => !matches!(
+            expr.kind,
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_) | ExprKind::Array(_)
+        ),
     }
 }
 

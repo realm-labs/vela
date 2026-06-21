@@ -50,9 +50,10 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
+        SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         _ => !matches!(
             expr.kind,
-            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_) | ExprKind::Array(_)
         ),
     }
 }

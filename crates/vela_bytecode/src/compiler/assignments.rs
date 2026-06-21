@@ -6,7 +6,9 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::body_payloads::{CompilerBodyPayload, CompilerIfPayload, CompilerMatchArmPayload};
+use super::body_payloads::{
+    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
+};
 use super::expressions::literal_string;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
@@ -100,20 +102,27 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
 #[derive(Clone, Copy)]
 pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
     kind: Option<SyntaxExpressionKind>,
+    expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     payloads: AssignmentValuePayloads<'payload, 'ast>,
 }
 
 impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         kind: Option<SyntaxExpressionKind>,
+        expression: Option<&'payload CompilerExpressionPayload<'ast>>,
         payloads: AssignmentValuePayloads<'payload, 'ast>,
     ) -> Self {
-        Self { kind, payloads }
+        Self {
+            kind,
+            expression,
+            payloads,
+        }
     }
 
     fn none() -> Self {
         Self {
             kind: None,
+            expression: None,
             payloads: AssignmentValuePayloads::none(),
         }
     }
@@ -795,6 +804,9 @@ impl Compiler<'_, '_> {
         if let Some(kind) = syntax.kind
             && assignment_value_kind_matches(kind, value)
         {
+            if kind == SyntaxExpressionKind::Array {
+                return self.compile_expr_with_payload(value, syntax.expression);
+            }
             return self.compile_assignment_value_with_syntax_kind(value, kind, syntax.payloads);
         }
         self.compile_expr(value)

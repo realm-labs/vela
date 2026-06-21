@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use vela_common::{Diagnostic, Span};
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
+use vela_syntax::ast::Argument;
 
 use crate::{CallArgument, ScriptCallMode};
 
@@ -111,66 +111,11 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let value = &arg.value;
-        if let Some(payload) = arg_syntax.payload_for(arg)
-            && let Some(kind) = payload.value_kind()
-            && call_argument_value_kind_matches(kind, value)
-        {
-            return self.compile_call_argument_value_with_payload(value, payload, kind);
+        if let Some(payload) = arg_syntax.payload_for(arg) {
+            let value_payload = payload.value_expression_payload();
+            return self.compile_expr_with_payload(value, Some(&value_payload));
         }
         self.compile_expr(value)
-    }
-
-    fn compile_call_argument_value_with_payload(
-        &mut self,
-        value: &Expr,
-        payload: &CompilerArgumentPayload<'_>,
-        kind: SyntaxExpressionKind,
-    ) -> CompileResult<crate::Register> {
-        match kind {
-            SyntaxExpressionKind::Block => {
-                let ExprKind::Block(block) = &value.kind else {
-                    unreachable!("validated CST block argument value kind");
-                };
-                let dst = self.alloc_register()?;
-                if let Some(body_payload) = payload.value_block_body_payload() {
-                    self.compile_block_payload_value_to(&body_payload, dst)?;
-                } else {
-                    self.compile_block_value_to(block, dst)?;
-                }
-                Ok(dst)
-            }
-            SyntaxExpressionKind::If => {
-                let ExprKind::If(if_expr) = &value.kind else {
-                    unreachable!("validated CST if argument value kind");
-                };
-                let dst = self.alloc_register()?;
-                let if_payload = payload.value_if_payload();
-                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())?;
-                Ok(dst)
-            }
-            SyntaxExpressionKind::Match => {
-                let ExprKind::Match(match_expr) = &value.kind else {
-                    unreachable!("validated CST match argument value kind");
-                };
-                let dst = self.alloc_register()?;
-                let arm_payloads = payload.value_match_arm_payloads();
-                self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())?;
-                Ok(dst)
-            }
-            _ => self.compile_expr(value),
-        }
-    }
-}
-
-fn call_argument_value_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
-    match kind {
-        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
-        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
-        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
-        _ => !matches!(
-            expr.kind,
-            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
-        ),
     }
 }
 
