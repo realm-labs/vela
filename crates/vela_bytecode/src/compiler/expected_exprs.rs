@@ -27,7 +27,8 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
-        let outcome = self.expected_type_for_expr(expr, expected, context.clone())?;
+        let outcome =
+            self.expected_type_for_expr_with_payload(expr, expected, context.clone(), payload)?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let ExprKind::Literal(literal) = &expr.kind
             && let Some(constant) = compile_literal_constant_for_type(literal, *tag)

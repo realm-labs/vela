@@ -6,6 +6,8 @@ use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
     Primitive(PrimitiveTag),
@@ -259,15 +261,16 @@ pub(super) fn expression_value_type(
     local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<RuntimeTypeFact> {
-    expression_value_type_with(expr, &local_type_at_span, &local_type_named)
+    expression_value_type_with_payload(expr, None, &local_type_at_span, &local_type_named)
 }
 
-fn expression_value_type_with(
+fn expression_value_type_with_payload(
     expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
     local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> Option<RuntimeTypeFact> {
-    match static_expr_type_with(expr, local_type_at_span, local_type_named) {
+    match static_expr_type_with_payload(expr, payload, local_type_at_span, local_type_named) {
         StaticExprType::Exact(fact) => Some(fact),
         StaticExprType::UnsuffixedIntegerLiteral => {
             Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
@@ -279,16 +282,9 @@ fn expression_value_type_with(
     }
 }
 
-pub(super) fn static_expr_type(
+fn static_expr_type_with_payload(
     expr: &Expr,
-    local_type_at_span: impl Fn(Span) -> Option<RuntimeTypeFact>,
-    local_type_named: impl Fn(&str) -> Option<RuntimeTypeFact>,
-) -> StaticExprType {
-    static_expr_type_with(expr, &local_type_at_span, &local_type_named)
-}
-
-fn static_expr_type_with(
-    expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
     local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
@@ -324,14 +320,34 @@ fn static_expr_type_with(
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes))
         }
         ExprKind::Array(values) => {
-            StaticExprType::Exact(array_literal_type(values.iter().map(|value| {
-                expression_value_type_with(value, local_type_at_span, local_type_named)
-            })))
+            let payloads = payload.and_then(CompilerExpressionPayload::array_element_payloads);
+            StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
+                |(index, value)| {
+                    expression_value_type_with_payload(
+                        value,
+                        payloads.as_ref().and_then(|payloads| payloads.get(index)),
+                        local_type_at_span,
+                        local_type_named,
+                    )
+                },
+            )))
         }
         ExprKind::Map(entries) => {
-            StaticExprType::Exact(map_literal_type(entries.iter().map(|entry| {
-                expression_value_type_with(&entry.value, local_type_at_span, local_type_named)
-            })))
+            let payloads = payload.and_then(CompilerExpressionPayload::map_entry_payloads);
+            StaticExprType::Exact(map_literal_type(entries.iter().enumerate().map(
+                |(index, entry)| {
+                    let value_payload = payloads
+                        .as_ref()
+                        .and_then(|payloads| payloads.get(index))
+                        .map(|payload| payload.value_expression_payload());
+                    expression_value_type_with_payload(
+                        &entry.value,
+                        value_payload.as_ref(),
+                        local_type_at_span,
+                        local_type_named,
+                    )
+                },
+            )))
         }
         ExprKind::Lambda { .. } => {
             StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Closure))
@@ -341,23 +357,41 @@ fn static_expr_type_with(
             ..
         } => StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
         ExprKind::Binary { op, left, right } => {
-            let left = expression_value_type_with(left, local_type_at_span, local_type_named);
-            let right = expression_value_type_with(right, local_type_at_span, local_type_named);
+            let operand_payloads =
+                payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+            let left = expression_value_type_with_payload(
+                left,
+                operand_payloads.as_ref().map(|(left, _)| left),
+                local_type_at_span,
+                local_type_named,
+            );
+            let right = expression_value_type_with_payload(
+                right,
+                operand_payloads.as_ref().map(|(_, right)| right),
+                local_type_at_span,
+                local_type_named,
+            );
             i64_binary_result_type(*op, left.as_ref(), right.as_ref())
                 .map(StaticExprType::Exact)
                 .unwrap_or(StaticExprType::Dynamic)
         }
-        ExprKind::Try(value) => {
-            match expression_value_type_with(value, local_type_at_span, local_type_named) {
-                Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
-                Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
-                _ => StaticExprType::Dynamic,
-            }
-        }
+        ExprKind::Try(value) => match expression_value_type_with_payload(
+            value,
+            payload
+                .and_then(CompilerExpressionPayload::try_operand_payload)
+                .as_ref(),
+            local_type_at_span,
+            local_type_named,
+        ) {
+            Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
+            Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
+            _ => StaticExprType::Dynamic,
+        },
         ExprKind::Path(path) => local_type_at_span(expr.span)
             .or_else(|| {
-                path.as_slice()
-                    .first()
+                let cst_path = payload.and_then(CompilerExpressionPayload::path_segments);
+                let path = cst_path.as_deref().unwrap_or(path.as_slice());
+                path.first()
                     .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
             })
             .map(StaticExprType::Exact)
@@ -704,7 +738,15 @@ fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
 
 impl super::Compiler<'_, '_> {
     pub(super) fn value_type_for_expr(&self, expr: &Expr) -> Option<RuntimeTypeFact> {
-        match self.static_type_for_expr(expr) {
+        self.value_type_for_expr_with_payload(expr, None)
+    }
+
+    pub(in crate::compiler) fn value_type_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<RuntimeTypeFact> {
+        match self.static_type_for_expr_with_payload(expr, payload) {
             StaticExprType::Exact(fact) => Some(fact),
             StaticExprType::UnsuffixedIntegerLiteral => {
                 Some(RuntimeTypeFact::primitive(PrimitiveTag::I64))
@@ -716,11 +758,21 @@ impl super::Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn static_type_for_expr(&self, expr: &Expr) -> StaticExprType {
-        match static_expr_type(
+        self.static_type_for_expr_with_payload(expr, None)
+    }
+
+    pub(in crate::compiler) fn static_type_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> StaticExprType {
+        match static_expr_type_with_payload(
             expr,
-            |span| self.value_types.local_at_span(self.bindings, span),
-            |name| self.value_types.name(name),
+            payload,
+            &|span| self.value_types.local_at_span(self.bindings, span),
+            &|name| self.value_types.name(name),
         ) {
             StaticExprType::Dynamic => self
                 .record_field_value_type_for_expr(expr)
@@ -736,8 +788,18 @@ impl super::Compiler<'_, '_> {
         expected: RuntimeTypeFact,
         context: TypeContractContext,
     ) -> super::CompileResult<ExpectedTypeOutcome> {
+        self.expected_type_for_expr_with_payload(expr, expected, context, None)
+    }
+
+    pub(in crate::compiler) fn expected_type_for_expr_with_payload(
+        &self,
+        expr: &Expr,
+        expected: RuntimeTypeFact,
+        context: TypeContractContext,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> super::CompileResult<ExpectedTypeOutcome> {
         check_expected_type(
-            self.static_type_for_expr(expr),
+            self.static_type_for_expr_with_payload(expr, payload),
             expected,
             expr.span,
             context,

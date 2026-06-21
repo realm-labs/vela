@@ -424,6 +424,10 @@ Script type/fact extraction now also accepts rowan CST expression payloads for
 record constructors, enum constructor calls, and path locals, and payload-aware
 local assignment, script method receiver, and match scrutinee lowering use that
 route before falling back to temporary legacy expression spelling.
+Value type inference now also accepts rowan CST expression payloads for arrays,
+maps, binary/try operands, and path locals, and payload-aware assignment, call
+argument, method receiver, binary lowering, and condition-jump paths use that
+route before falling back to temporary legacy expression spelling.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

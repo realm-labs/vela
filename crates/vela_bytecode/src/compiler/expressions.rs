@@ -513,8 +513,8 @@ impl Compiler<'_, '_> {
         let rhs = self.compile_expr_with_payload(right, right_payload)?;
         let dst = self.alloc_register()?;
         let instruction = if expressions_are_i64(
-            self.value_type_for_expr(left),
-            self.value_type_for_expr(right),
+            self.value_type_for_expr_with_payload(left, left_payload),
+            self.value_type_for_expr_with_payload(right, right_payload),
         ) {
             i64_binary_instruction(op, dst, lhs, rhs)
         } else {
@@ -656,9 +656,9 @@ impl Compiler<'_, '_> {
         literal: UnsuffixedNumericLiteral<'_>,
         side: BinaryLiteralSide,
     ) -> CompileResult<Option<Register>> {
+        let value_type = self.value_type_for_expr_with_payload(value_expr, value_payload);
         if side == BinaryLiteralSide::Right
-            && self.value_type_for_expr(value_expr)
-                == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+            && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
             && let Some(imm) = self.i64_immediate_literal(literal, span)?
             && i64_immediate_op_supported(op, imm)
         {
@@ -673,11 +673,11 @@ impl Compiler<'_, '_> {
         let Some(literal_op) = binary_literal_op(op) else {
             return Ok(None);
         };
-        if let Some(RuntimeTypeFact::Primitive(tag)) = self.value_type_for_expr(value_expr)
-            && literal.matches_primitive_tag(tag)
+        if let Some(RuntimeTypeFact::Primitive(tag)) = value_type.as_ref()
+            && literal.matches_primitive_tag(*tag)
         {
             let value = self.compile_expr_with_payload(value_expr, value_payload)?;
-            let literal = self.compile_inline_numeric_literal_as(literal, tag, span)?;
+            let literal = self.compile_inline_numeric_literal_as(literal, *tag, span)?;
             let rhs_or_lhs = self.emit_constant(literal)?;
             let dst = self.alloc_register()?;
             let instruction = match side {
@@ -693,7 +693,7 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
-        if self.value_type_for_expr(value_expr).is_none() {
+        if value_type.is_none() {
             let value = self.compile_expr_with_payload(value_expr, value_payload)?;
             let dst = self.alloc_register()?;
             match literal {

@@ -43,7 +43,7 @@ impl Compiler<'_, '_> {
         else {
             return Ok(None);
         };
-        if self.value_type_for_expr(left)
+        if self.value_type_for_expr_with_payload(left, left_payload)
             != Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
         {
             return Ok(None);

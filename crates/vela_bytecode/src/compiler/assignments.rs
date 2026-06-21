@@ -216,13 +216,16 @@ impl Compiler<'_, '_> {
             )));
         };
         if let Some(local_target) = self.local_assignment_target(target) {
-            let target_value_type = self.value_type_for_expr(target);
+            let target_value_type =
+                self.value_type_for_expr_with_payload(target, target_syntax.expression);
             let assigned_value_type = match op {
-                AssignOp::Set => self.value_type_for_expr(value),
+                AssignOp::Set => {
+                    self.value_type_for_expr_with_payload(value, value_syntax.expression)
+                }
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem
                     if expressions_are_i64(
                         target_value_type.clone(),
-                        self.value_type_for_expr(value),
+                        self.value_type_for_expr_with_payload(value, value_syntax.expression),
                     ) =>
                 {
                     Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
