@@ -386,10 +386,8 @@ impl Compiler<'_, '_> {
         )?;
         let base = self.compile_expr_with_payload(base, base_payload)?;
         let dst = self.alloc_register()?;
-        if let Some(key) = literal_string(index) {
-            let key = self
-                .code
-                .push_constant(crate::Constant::String(key.to_owned()));
+        if let Some(key) = literal_string_with_payload(index, index_payload) {
+            let key = self.code.push_constant(crate::Constant::String(key));
             self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
         } else {
             let index = self.compile_expr_with_payload(index, index_payload)?;
@@ -918,6 +916,16 @@ pub(super) fn literal_string(expr: &Expr) -> Option<&str> {
         ExprKind::Literal(Literal::String(value)) => Some(value),
         _ => None,
     }
+}
+
+pub(super) fn literal_string_with_payload(
+    expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> Option<String> {
+    if let Some(Literal::String(value)) = payload.and_then(CompilerExpressionPayload::literal) {
+        return Some(value);
+    }
+    literal_string(expr).map(ToOwned::to_owned)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

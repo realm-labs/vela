@@ -10,7 +10,7 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
 use super::expression_payload_kinds::expression_payload_kind_matches;
-use super::expressions::literal_string;
+use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::{compound_assignment_instruction, i64_compound_assignment_instruction};
 use super::record_shapes::RecordShape;
@@ -378,8 +378,8 @@ impl Compiler<'_, '_> {
             .as_ref()
             .map_or((None, None), |(base, index)| (Some(base), Some(index)));
         let base = self.compile_expr_with_payload(base, base_payload)?;
-        if let Some(key) = literal_string(index) {
-            return self.compile_string_key_index_assignment(op, base, key, value, value_syntax);
+        if let Some(key) = literal_string_with_payload(index, index_payload) {
+            return self.compile_string_key_index_assignment(op, base, &key, value, value_syntax);
         }
         let index = self.compile_expr_with_payload(index, index_payload)?;
         let assigned = match op {

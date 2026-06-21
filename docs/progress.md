@@ -427,6 +427,8 @@ Field expression lowering now prefers rowan CST field names for aligned
 payloads before falling back to temporary legacy field names.
 Field expression slot and receiver-type analysis now also prefers rowan CST
 base expression payloads before falling back to temporary legacy receiver
+expressions. String-key index read and write lowering now prefer rowan CST
+index literal payloads before falling back to temporary legacy index
 expressions.
 Record expression lowering now prefers rowan CST constructor paths for aligned
 payloads before falling back to temporary legacy path vectors.

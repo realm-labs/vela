@@ -398,6 +398,131 @@ fn main() {
 }
 
 #[test]
+fn string_key_index_reads_prefer_cst_index_literal_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst = { "alpha": 1 };
+    let legacy = { "legacy": 2 };
+    let cst_value = cst["alpha"];
+    let legacy_value = legacy[0];
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst map should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy map should compile");
+            let cst_index = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST string-key index payload");
+            let legacy_index = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy numeric index fallback");
+            let mismatched_index = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_index
+                    .syntax_expression()
+                    .expect("CST index syntax")
+                    .clone(),
+                legacy_index.fallback(),
+            );
+
+            compiler
+                .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
+                .expect("CST-backed string-key index read should compile");
+            let key = compiler
+                .code
+                .instructions
+                .iter()
+                .rev()
+                .find_map(|instruction| match instruction.kind {
+                    UnlinkedInstructionKind::GetStringKeyIndex { key, .. } => Some(key),
+                    _ => None,
+                })
+                .expect("string-key index read should be emitted");
+            assert_eq!(
+                compiler.code.constants[key.0],
+                crate::Constant::String("alpha".to_owned())
+            );
+        },
+    );
+}
+
+#[test]
+fn string_key_index_writes_prefer_cst_index_literal_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst = { "alpha": 1 };
+    let legacy = { "legacy": 2 };
+    cst["alpha"] = 3;
+    legacy[0] = 4;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("cst map should compile");
+            compiler
+                .compile_statement(statements[1].fallback())
+                .expect("legacy map should compile");
+            let cst_target = statements[2]
+                .assignment_target_expression_payload()
+                .expect("CST string-key assignment target payload");
+            let legacy_statement = statements[3]
+                .expression_payload()
+                .expect("legacy numeric assignment expression");
+            let legacy_target = statements[3]
+                .assignment_target_expression_payload()
+                .expect("legacy numeric assignment target fallback");
+            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_target
+                    .syntax_expression()
+                    .expect("CST target syntax")
+                    .clone(),
+                legacy_target.fallback(),
+            );
+
+            compiler
+                .compile_assignment_with_payloads(
+                    legacy_statement.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
+                        &mismatched_target,
+                    )),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
+                        None,
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect("CST-backed string-key index assignment should compile");
+            let key = compiler
+                .code
+                .instructions
+                .iter()
+                .rev()
+                .find_map(|instruction| match instruction.kind {
+                    UnlinkedInstructionKind::SetStringKeyIndex { key, .. } => Some(key),
+                    _ => None,
+                })
+                .expect("string-key index write should be emitted");
+            assert_eq!(
+                compiler.code.constants[key.0],
+                crate::Constant::String("alpha".to_owned())
+            );
+        },
+    );
+}
+
+#[test]
 fn host_index_validation_prefers_cst_receiver_payloads() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     registry
