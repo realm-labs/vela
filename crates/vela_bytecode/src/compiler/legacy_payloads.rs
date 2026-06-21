@@ -9,8 +9,8 @@ use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
 
 pub(super) struct FunctionBodyPayload<'ast> {
+    pub(super) name: String,
     pub(super) body: CompilerBodyPayload<'ast>,
-    pub(super) function: &'ast FunctionItem,
     pub(super) param_defaults: Vec<Option<ParamDefaultValue>>,
 }
 
@@ -34,8 +34,8 @@ pub(super) fn function_body_payload<'ast>(
         signature.params.len(),
     );
     Some(FunctionBodyPayload {
+        name: name.to_owned(),
         body: CompilerBodyPayload::syntax(source, syntax_body, &function.body),
-        function,
         param_defaults,
     })
 }

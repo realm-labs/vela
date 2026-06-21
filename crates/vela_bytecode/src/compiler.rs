@@ -184,7 +184,7 @@ fn compile_function_source_inner<'registry>(
 
     verify_code_object(
         Compiler::new_with_param_defaults(
-            payload.function.name.clone(),
+            payload.name,
             payload.body,
             payload.param_defaults,
             signature,
@@ -276,7 +276,7 @@ fn compile_program_source_inner<'registry>(
             .expect("HIR function declarations come from parsed function items");
         program.insert_function(
             Compiler::new_with_param_defaults(
-                payload.function.name.clone(),
+                payload.name,
                 payload.body,
                 payload.param_defaults,
                 signature,

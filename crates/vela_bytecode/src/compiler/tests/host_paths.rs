@@ -318,7 +318,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         legacy_target.fallback(),
     );
     let mut compiler = Compiler::new_with_param_defaults(
-        payload.function.name.clone(),
+        payload.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
         signature,

@@ -51,7 +51,7 @@ fn with_cst_payload_compiler(
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let mut compiler = Compiler::new_with_param_defaults(
-        payload.function.name.clone(),
+        payload.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
         signature,

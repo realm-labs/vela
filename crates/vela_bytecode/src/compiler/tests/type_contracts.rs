@@ -1,9 +1,9 @@
 use super::*;
-use vela_syntax::ast::FunctionItem;
+use vela_syntax::ast::Block;
 
 fn with_static_type_compiler(
     source: &str,
-    inspect: impl for<'ast> FnOnce(&mut Compiler<'ast, 'static>, &'ast FunctionItem),
+    inspect: impl for<'ast> FnOnce(&mut Compiler<'ast, 'static>, &'ast Block),
 ) {
     let semantic =
         parse_semantic_source(SourceId::new(1), source).expect("semantic source should parse");
@@ -33,9 +33,9 @@ fn with_static_type_compiler(
         registry: None,
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let function = payload.function;
+    let fallback_body = payload.body.fallback();
     let mut compiler = Compiler::new_with_param_defaults(
-        function.name.clone(),
+        payload.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
         signature,
@@ -43,15 +43,11 @@ fn with_static_type_compiler(
         facts,
     )
     .expect("compiler should initialize");
-    inspect(&mut compiler, function);
+    inspect(&mut compiler, fallback_body);
 }
 
-fn let_initializer(function: &FunctionItem, index: usize) -> &Expr {
-    let statement = function
-        .body
-        .statements
-        .get(index)
-        .expect("statement should exist");
+fn let_initializer(body: &Block, index: usize) -> &Expr {
+    let statement = body.statements.get(index).expect("statement should exist");
     let vela_syntax::ast::StmtKind::Let {
         value: Some(value), ..
     } = &statement.kind
@@ -61,9 +57,8 @@ fn let_initializer(function: &FunctionItem, index: usize) -> &Expr {
     value
 }
 
-fn return_value(function: &FunctionItem) -> &Expr {
-    let statement = function
-        .body
+fn return_value(body: &Block) -> &Expr {
+    let statement = body
         .statements
         .last()
         .expect("return statement should exist");
@@ -73,8 +68,8 @@ fn return_value(function: &FunctionItem) -> &Expr {
     value
 }
 
-fn return_call_arg(function: &FunctionItem, index: usize) -> &Expr {
-    let value = return_value(function);
+fn return_call_arg(body: &Block, index: usize) -> &Expr {
+    let value = return_value(body);
     let vela_syntax::ast::ExprKind::Call { args, .. } = &value.kind else {
         panic!("expected return call expression");
     };
@@ -156,7 +151,7 @@ fn main(dynamic, exact: i64) {
                 ))
             );
 
-            for statement in function.body.statements.iter().take(3) {
+            for statement in function.statements.iter().take(3) {
                 compiler
                     .compile_statement(statement)
                     .expect("let statement should compile");
@@ -476,7 +471,7 @@ fn main(dynamic) {
 }
 "#,
         |compiler, function| {
-            for statement in function.body.statements.iter().take(2) {
+            for statement in function.statements.iter().take(2) {
                 compiler
                     .compile_statement(statement)
                     .expect("typed let should compile");

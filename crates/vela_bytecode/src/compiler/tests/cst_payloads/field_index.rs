@@ -502,7 +502,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
         panic!("expected legacy index fallback");
     };
     let mut compiler = Compiler::new_with_param_defaults(
-        payload.function.name.clone(),
+        payload.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
         signature,
@@ -654,7 +654,7 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
         writable_target.fallback(),
     );
     let mut compiler = Compiler::new_with_param_defaults(
-        payload.function.name.clone(),
+        payload.name.clone(),
         payload.body.clone(),
         payload.param_defaults.clone(),
         signature,
