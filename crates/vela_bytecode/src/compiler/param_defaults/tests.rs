@@ -234,19 +234,34 @@ fn param_default_cst_lowering_covers_let_block_expressions() {
 }
 
 #[test]
-fn param_default_cst_lowering_keeps_typed_let_block_fallbacks() {
+fn param_default_cst_lowering_covers_typed_let_block_expressions() {
     let source = SourceId::new(1);
-    let syntax_defaults = vec![Some(ParamDefaultExpression {
-        source,
-        expression: first_param_default("fn cst(value = { let x: i64 = 1; x }) { return value; }"),
-    })];
-
+    let syntax_defaults = vec![
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                "fn cst(value = { let x: i64 = 1; x }) { return value; }",
+            ),
+        }),
+        Some(ParamDefaultExpression {
+            source,
+            expression: first_param_default(
+                "fn cst(value = { let x: i8 = 1; x }) { return value; }",
+            ),
+        }),
+    ];
     let defaults = param_default_values(&syntax_defaults, &[]);
 
-    assert!(
-        defaults[0].is_none(),
-        "typed let defaults still require the temporary legacy fallback"
-    );
+    assert_eq!(defaults.len(), 2);
+    for (index, default) in defaults.into_iter().enumerate() {
+        assert!(
+            default
+                .unwrap_or_else(|| panic!("direct CST default at index {index}"))
+                .fallback
+                .is_none(),
+            "typed let block defaults should be directly lowerable from CST"
+        );
+    }
 }
 
 #[test]
@@ -295,7 +310,7 @@ fn param_default_cst_lowering_keeps_unsupported_if_fallbacks() {
         Some(ParamDefaultExpression {
             source,
             expression: first_param_default(
-                "fn cst(value = if true { let x: i64 = 1; x } else { 2 }) { return value; }",
+                "fn cst(value = if true { let x = expensive(); x } else { 2 }) { return value; }",
             ),
         }),
     ];

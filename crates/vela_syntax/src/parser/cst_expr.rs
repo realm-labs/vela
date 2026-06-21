@@ -669,6 +669,9 @@ impl CstParser<'_, '_> {
         if first_entry >= close {
             return false;
         }
+        if self.at_attribute_start(first_entry) || self.at_explicit_statement_start(first_entry) {
+            return false;
+        }
 
         let first_entry_end = self.find_argument_end(first_entry, close);
         self.find_root_kind_before(SyntaxKind::Colon, first_entry, first_entry_end)

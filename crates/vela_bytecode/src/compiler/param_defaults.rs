@@ -1,16 +1,24 @@
-use vela_common::{SourceId, Span};
+use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, Literal, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxLetStmt, SyntaxLiteral, SyntaxMapEntry, UnaryOp,
+    AstNode, BinaryOp, Expr, FloatSuffix, IntegerSuffix, Literal, SyntaxBlock, SyntaxElseBranch,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLetStmt, SyntaxLiteral,
+    SyntaxMapEntry, UnaryOp,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
-use crate::{FormatStringPart, Register, UnlinkedInstructionKind};
+use crate::{FormatStringPart, GuardLocation, Register, UnlinkedInstructionKind};
 
-use super::const_eval::{compile_literal_constant, compile_negated_literal_constant};
+use super::const_eval::{
+    compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
+};
+use super::script_types::type_hint_script_type;
+use super::value_types::{
+    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+    type_hint_value_type,
+};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -305,24 +313,69 @@ impl Compiler<'_, '_> {
         block: &SyntaxBlock,
         let_stmt: &SyntaxLetStmt,
     ) -> CompileResult<()> {
-        if let_stmt.attributes().next().is_some() || let_stmt.type_hint().is_some() {
+        if let_stmt.attributes().next().is_some() {
             return Err(param_default_block_unsupported(source, block));
         }
         let Some(name) = let_stmt.name_text() else {
             return Err(param_default_block_unsupported(source, block));
         };
-        let register = if let Some(initializer) = let_stmt.initializer() {
-            self.compile_param_default_expression(source, &initializer)?
-        } else {
-            self.emit_constant(crate::Constant::Null)?
-        };
         let span = span_for_range(source, let_stmt.syntax().text_range());
         let local = self
             .bindings
             .local_named_at(&name, LocalBindingKind::Let, span);
+        let hir_type_hint = local
+            .and_then(|local| self.bindings.local(local))
+            .and_then(|binding| binding.type_hint.as_ref());
+        let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
+        let register = if let Some(initializer) = let_stmt.initializer() {
+            let outcome = hinted_value_type
+                .clone()
+                .map(|expected| {
+                    check_expected_type(
+                        self.param_default_static_type(source, &initializer),
+                        expected,
+                        span_for(source, &initializer),
+                        TypeContractContext::TypedLet { name: name.clone() },
+                    )
+                })
+                .transpose()?;
+            let register =
+                self.compile_param_default_initializer(source, &initializer, outcome.as_ref())?;
+            if matches!(outcome, Some(ExpectedTypeOutcome::RequiresRuntimeGuard(_)))
+                && let Some(hint) = hir_type_hint
+                && let Some(guard) = super::type_guard_for_hint(
+                    hint,
+                    GuardLocation::Local,
+                    name.clone(),
+                    &self.facts,
+                )
+            {
+                self.emit_spanned(
+                    UnlinkedInstructionKind::GuardType {
+                        src: register,
+                        guard,
+                    },
+                    span_for(source, &initializer),
+                );
+            }
+            register
+        } else {
+            self.emit_constant(crate::Constant::Null)?
+        };
+        let known_type_names = self.facts.known_type_names();
+        let script_type =
+            hir_type_hint.and_then(|hint| type_hint_script_type(hint, known_type_names.iter()));
         self.locals.insert(name.clone(), register);
         if let Some(local) = local {
             self.hir_locals.insert(local, register);
+            self.script_types.set_local(local, &name, script_type);
+            self.value_types
+                .set_local(local, &name, hinted_value_type.clone());
+            self.value_shapes.set_local(local, &name, None);
+        } else {
+            self.script_types.set_name(&name, script_type);
+            self.value_types.set_name(&name, hinted_value_type.clone());
+            self.value_shapes.set_name(&name, None);
         }
         self.record_frame_slot(
             name,
@@ -332,6 +385,56 @@ impl Compiler<'_, '_> {
             Some(span),
         );
         Ok(())
+    }
+
+    fn compile_param_default_initializer(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        outcome: Option<&ExpectedTypeOutcome>,
+    ) -> CompileResult<Register> {
+        if let Some(ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag))) = outcome
+            && let Some(literal) = expression
+                .as_literal()
+                .and_then(|literal| literal.literal())
+            && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
+                .map_err(|error| error.with_span(span_for(source, expression)))?
+        {
+            return self.emit_constant(constant);
+        }
+        self.compile_param_default_expression(source, expression)
+    }
+
+    fn param_default_static_type(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> StaticExprType {
+        match expression.expression_kind() {
+            SyntaxExpressionKind::Literal => expression
+                .as_literal()
+                .and_then(|literal| literal.literal())
+                .map_or(StaticExprType::Dynamic, syntax_literal_static_type),
+            SyntaxExpressionKind::Path => {
+                let span = span_for(source, expression);
+                if let Some(fact) = self.value_types.local_at_span(self.bindings, span) {
+                    StaticExprType::Exact(fact)
+                } else if let Some(constant) = self.const_value_at_span(span) {
+                    constant_static_type(&constant)
+                        .map(StaticExprType::Exact)
+                        .unwrap_or(StaticExprType::Dynamic)
+                } else {
+                    StaticExprType::Dynamic
+                }
+            }
+            SyntaxExpressionKind::Paren => expression
+                .as_paren()
+                .and_then(|paren| paren.expression())
+                .map_or(StaticExprType::Dynamic, |inner| {
+                    self.param_default_static_type(source, &inner)
+                }),
+            _ => StaticExprType::Dynamic,
+        }
     }
 
     fn compile_param_default_literal(
@@ -723,13 +826,88 @@ fn param_default_block_cst_lowering_covers(block: &SyntaxBlock) -> bool {
 }
 
 fn param_default_let_cst_lowering_covers(let_stmt: &SyntaxLetStmt) -> bool {
-    if let_stmt.attributes().next().is_some() || let_stmt.type_hint().is_some() {
+    if let_stmt.attributes().next().is_some() {
         return false;
     }
     let_stmt.name_token().is_some()
         && let_stmt
             .initializer()
             .is_none_or(|initializer| param_default_cst_lowering_covers(&initializer))
+}
+
+fn syntax_literal_static_type(literal: Literal) -> StaticExprType {
+    match literal {
+        Literal::Null => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        Literal::Bool(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        Literal::Char(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
+        Literal::String(_) => {
+            StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
+        }
+        Literal::Bytes(_) => StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        Literal::Integer(value) => match value.suffix {
+            None => StaticExprType::UnsuffixedIntegerLiteral,
+            Some(IntegerSuffix::I8) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::I8))
+            }
+            Some(IntegerSuffix::I16) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::I16))
+            }
+            Some(IntegerSuffix::I32) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::I32))
+            }
+            Some(IntegerSuffix::I64) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::I64))
+            }
+            Some(IntegerSuffix::U8) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::U8))
+            }
+            Some(IntegerSuffix::U16) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::U16))
+            }
+            Some(IntegerSuffix::U32) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::U32))
+            }
+            Some(IntegerSuffix::U64) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::U64))
+            }
+        },
+        Literal::Float(value) => match value.suffix {
+            None => StaticExprType::UnsuffixedFloatLiteral,
+            Some(FloatSuffix::F32) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::F32))
+            }
+            Some(FloatSuffix::F64) => {
+                StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::F64))
+            }
+        },
+    }
+}
+
+fn constant_static_type(constant: &crate::Constant) -> Option<RuntimeTypeFact> {
+    match constant {
+        crate::Constant::Null => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        crate::Constant::Bool(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        crate::Constant::Char(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
+        crate::Constant::String(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        crate::Constant::Bytes(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        crate::Constant::Scalar(value) => Some(RuntimeTypeFact::primitive(scalar_tag(value))),
+        crate::Constant::Array(_) | crate::Constant::Map(_) => None,
+    }
+}
+
+fn scalar_tag(value: &ScalarValue) -> PrimitiveTag {
+    match value {
+        ScalarValue::I8(_) => PrimitiveTag::I8,
+        ScalarValue::I16(_) => PrimitiveTag::I16,
+        ScalarValue::I32(_) => PrimitiveTag::I32,
+        ScalarValue::I64(_) => PrimitiveTag::I64,
+        ScalarValue::U8(_) => PrimitiveTag::U8,
+        ScalarValue::U16(_) => PrimitiveTag::U16,
+        ScalarValue::U32(_) => PrimitiveTag::U32,
+        ScalarValue::U64(_) => PrimitiveTag::U64,
+        ScalarValue::F32(_) => PrimitiveTag::F32,
+        ScalarValue::F64(_) => PrimitiveTag::F64,
+    }
 }
 
 fn logical_chain_syntax_operands(

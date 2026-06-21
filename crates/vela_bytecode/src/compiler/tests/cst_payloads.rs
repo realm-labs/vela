@@ -146,6 +146,41 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_typed_let_block_parameter_defaults_from_cst() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+fn grant(amount = { let base: i8 = 10; let bonus: i8 = base + 2; bonus }) {
+    return amount;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("CST-backed typed let block defaults should compile");
+}
+
+#[test]
+fn compiler_reports_typed_let_block_parameter_default_mismatches_from_cst() {
+    let error = compile_program_source(
+        SourceId::new(1),
+        r#"
+fn grant(amount = { let base: bool = 10; base }) {
+    return amount;
+}
+"#,
+    )
+    .expect_err("CST-backed typed let block default should reject mismatched literals");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::type_contract_mismatch"]
+    );
+}
+
+#[test]
 fn semantic_script_method_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
     let semantic = parse_semantic_source(
