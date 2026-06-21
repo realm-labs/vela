@@ -136,6 +136,41 @@ impl Counter {
 }
 
 #[test]
+fn semantic_function_control_flow_statements_are_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn flow() {
+    let total = 0;
+    if total == 0 {
+        return 1;
+    }
+    match total {
+        0 => { return 0; },
+        _ => { return total; },
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("flow").expect("flow function");
+    assert_cst_statements(
+        &payload.body,
+        &[
+            (SyntaxStatementKind::Let, "let total = 0;"),
+            (
+                SyntaxStatementKind::If,
+                "if total == 0 {\n        return 1;\n    }",
+            ),
+            (
+                SyntaxStatementKind::Match,
+                "match total {\n        0 => { return 0; },\n        _ => { return total; },\n    }",
+            ),
+        ],
+    );
+
+    compile_program_source(source, text).expect("CST-backed control-flow body should compile");
+}
+
+#[test]
 fn compiler_entry_points_return_unlinked_bytecode() {
     let program: UnlinkedProgram = compile_program_source(
         SourceId::new(1),

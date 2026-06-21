@@ -279,6 +279,9 @@ The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement
 lowering migrates.
+Top-level compiler statement dispatch now reads rowan `SyntaxStatementKind`
+from aligned payloads and falls back to the legacy statement category only when
+temporary CST-to-owned association still disagrees during expression lowering.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

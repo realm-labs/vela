@@ -1,5 +1,6 @@
 use vela_common::SourceId;
-use vela_syntax::ast::{Block, Stmt, SyntaxBlock, SyntaxStatement};
+use vela_common::Span;
+use vela_syntax::ast::{AstNode, Block, Stmt, SyntaxBlock, SyntaxStatement, SyntaxStatementKind};
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
@@ -21,13 +22,6 @@ pub(super) struct CompilerBodyPayload<'ast> {
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "CST statement payload is consumed by the upcoming statement lowering migration"
-        )
-    )]
     syntax: Option<SyntaxStatement>,
     fallback: &'ast Stmt,
 }
@@ -62,9 +56,9 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .iter()
             .enumerate()
             .map(|(index, fallback)| CompilerStatementPayload {
-                syntax: syntax_statements
-                    .as_ref()
-                    .and_then(|statements| statements.get(index).cloned()),
+                syntax: syntax_statements.as_ref().and_then(|statements| {
+                    syntax_statement_for_fallback(statements, index, fallback)
+                }),
                 fallback,
             })
             .collect()
@@ -76,9 +70,30 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 }
 
+fn syntax_statement_for_fallback(
+    statements: &[SyntaxStatement],
+    fallback_index: usize,
+    fallback: &Stmt,
+) -> Option<SyntaxStatement> {
+    statements
+        .iter()
+        .find(|statement| syntax_statement_matches_span(statement, fallback.span))
+        .cloned()
+        .or_else(|| statements.get(fallback_index).cloned())
+}
+
+fn syntax_statement_matches_span(statement: &SyntaxStatement, span: Span) -> bool {
+    let range = statement.syntax().text_range();
+    u32::from(range.start()) == span.start && u32::from(range.end()) == span.end
+}
+
 impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
+    }
+
+    pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
+        self.syntax.as_ref().map(SyntaxStatement::statement_kind)
     }
 
     #[cfg(test)]

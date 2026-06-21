@@ -3,7 +3,7 @@ use vela_hir::binding::LocalBindingKind;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{
     BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, Literal, MatchExpr, Pattern, Stmt,
-    StmtKind,
+    StmtKind, SyntaxStatementKind,
 };
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
@@ -76,11 +76,25 @@ impl Compiler<'_, '_> {
         statements: &[CompilerStatementPayload<'_>],
     ) -> CompileResult<bool> {
         for stmt in statements {
-            if self.compile_statement(stmt.fallback())? {
+            if self.compile_statement_payload(stmt)? {
                 return Ok(true);
             }
         }
         Ok(false)
+    }
+
+    fn compile_statement_payload(
+        &mut self,
+        stmt: &CompilerStatementPayload<'_>,
+    ) -> CompileResult<bool> {
+        let Some(kind) = stmt.statement_kind() else {
+            return self.compile_statement(stmt.fallback());
+        };
+        if statement_kind_matches(kind, stmt.fallback()) {
+            self.compile_statement_as(kind, stmt.fallback())
+        } else {
+            self.compile_statement(stmt.fallback())
+        }
     }
 
     pub(super) fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
@@ -93,12 +107,24 @@ impl Compiler<'_, '_> {
     }
 
     pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
-        match &stmt.kind {
-            StmtKind::Let {
-                name,
-                type_hint: _,
-                value,
-            } => {
+        self.compile_statement_as(legacy_statement_kind(stmt), stmt)
+    }
+
+    fn compile_statement_as(
+        &mut self,
+        kind: SyntaxStatementKind,
+        stmt: &Stmt,
+    ) -> CompileResult<bool> {
+        match kind {
+            SyntaxStatementKind::Let => {
+                let StmtKind::Let {
+                    name,
+                    type_hint: _,
+                    value,
+                } = &stmt.kind
+                else {
+                    return self.compile_statement(stmt);
+                };
                 let local_binding = self
                     .bindings
                     .local_named_at(name, LocalBindingKind::Let, stmt.span)
@@ -184,18 +210,66 @@ impl Compiler<'_, '_> {
                 }
                 Ok(returned)
             }
-            StmtKind::Return(value) => {
+            SyntaxStatementKind::Return => {
+                let StmtKind::Return(value) = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
                 let register = self.compile_return_value(stmt.span, value.as_ref())?;
                 self.emit(UnlinkedInstructionKind::Return { src: register });
                 Ok(true)
             }
-            StmtKind::Expr(expr) => {
-                if let ExprKind::If(if_expr) = &expr.kind {
-                    return self.compile_if(if_expr);
-                }
-                if let ExprKind::Match(match_expr) = &expr.kind {
-                    return self.compile_match(match_expr);
-                }
+            SyntaxStatementKind::Break => {
+                let StmtKind::Break = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_break()
+            }
+            SyntaxStatementKind::Continue => {
+                let StmtKind::Continue = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_continue()
+            }
+            SyntaxStatementKind::For => {
+                let StmtKind::For {
+                    index_pattern,
+                    pattern,
+                    iterable,
+                    body,
+                } = &stmt.kind
+                else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_for(stmt.span, index_pattern.as_ref(), pattern, iterable, body)
+            }
+            SyntaxStatementKind::If => {
+                let StmtKind::Expr(expr) = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
+                let ExprKind::If(if_expr) = &expr.kind else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_if(if_expr)
+            }
+            SyntaxStatementKind::Match => {
+                let StmtKind::Expr(expr) = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
+                let ExprKind::Match(match_expr) = &expr.kind else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_match(match_expr)
+            }
+            SyntaxStatementKind::Block => {
+                let StmtKind::Block(block) = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
+                self.compile_statements(&block.statements)
+            }
+            SyntaxStatementKind::Expr => {
+                let StmtKind::Expr(expr) = &stmt.kind else {
+                    return self.compile_statement(stmt);
+                };
                 if let ExprKind::Assign { .. } = &expr.kind {
                     self.compile_assignment(expr)?;
                     return Ok(false);
@@ -203,15 +277,6 @@ impl Compiler<'_, '_> {
                 self.compile_expr(expr)?;
                 Ok(false)
             }
-            StmtKind::Block(block) => self.compile_statements(&block.statements),
-            StmtKind::For {
-                index_pattern,
-                pattern,
-                iterable,
-                body,
-            } => self.compile_for(stmt.span, index_pattern.as_ref(), pattern, iterable, body),
-            StmtKind::Break => self.compile_break(),
-            StmtKind::Continue => self.compile_continue(),
         }
     }
 
@@ -737,6 +802,26 @@ fn iterable_item_shape(shape: ValueShape) -> Option<ValueShape> {
 
 fn i64_pattern_facts() -> PatternBindingFacts {
     PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
+}
+
+fn legacy_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
+    match &stmt.kind {
+        StmtKind::Let { .. } => SyntaxStatementKind::Let,
+        StmtKind::Return(_) => SyntaxStatementKind::Return,
+        StmtKind::Break => SyntaxStatementKind::Break,
+        StmtKind::Continue => SyntaxStatementKind::Continue,
+        StmtKind::For { .. } => SyntaxStatementKind::For,
+        StmtKind::Block(_) => SyntaxStatementKind::Block,
+        StmtKind::Expr(expr) => match &expr.kind {
+            ExprKind::If(_) => SyntaxStatementKind::If,
+            ExprKind::Match(_) => SyntaxStatementKind::Match,
+            _ => SyntaxStatementKind::Expr,
+        },
+    }
+}
+
+fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> bool {
+    kind == legacy_statement_kind(stmt)
 }
 
 fn merge_type_hint_and_value_fact(
