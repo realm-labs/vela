@@ -4,37 +4,21 @@ use vela_syntax::ast::{Expr, Param, SyntaxExpression, SyntaxParamList};
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(super) enum ParamDefaultValue {
-    Syntax {
-        source: SourceId,
-        expression: SyntaxExpression,
-        fallback: Expr,
-    },
-    Legacy(Expr),
+pub(super) struct ParamDefaultValue {
+    pub(super) source: SourceId,
+    pub(super) expression: SyntaxExpression,
+    pub(super) fallback: Expr,
 }
 
 impl ParamDefaultValue {
     #[must_use]
     pub(super) fn fallback(&self) -> &Expr {
-        match self {
-            Self::Syntax { fallback, .. } | Self::Legacy(fallback) => fallback,
-        }
+        &self.fallback
     }
 
     #[must_use]
-    pub(super) fn compiler_payload(&self) -> Option<CompilerExpressionPayload<'_>> {
-        match self {
-            Self::Syntax {
-                source,
-                expression,
-                fallback,
-            } => Some(CompilerExpressionPayload::syntax(
-                *source,
-                expression.clone(),
-                fallback,
-            )),
-            Self::Legacy(_) => None,
-        }
+    pub(super) fn compiler_payload(&self) -> CompilerExpressionPayload<'_> {
+        CompilerExpressionPayload::syntax(self.source, self.expression.clone(), &self.fallback)
     }
 }
 
@@ -52,13 +36,10 @@ pub(super) fn syntax_param_default_values(
             let legacy = legacy_params
                 .get(index)
                 .and_then(|param| param.default_value.clone())?;
-            let Some(expression) = syntax_params
+            let expression = syntax_params
                 .get(index)
-                .and_then(|param| param.default_value())
-            else {
-                return Some(ParamDefaultValue::Legacy(legacy));
-            };
-            Some(ParamDefaultValue::Syntax {
+                .and_then(|param| param.default_value())?;
+            Some(ParamDefaultValue {
                 source,
                 expression,
                 fallback: legacy,

@@ -12,15 +12,11 @@ fn assert_cst_param_default(
     expected_source: SourceId,
     expected_text: &str,
 ) {
-    let Some(ParamDefaultValue::Syntax {
-        source,
-        expression,
-        fallback: _,
-    }) = default
-    else {
-        panic!("expected CST-backed parameter default");
+    let Some(default) = default else {
+        panic!("expected parameter default");
     };
-    assert_eq!(*source, expected_source);
+    assert_eq!(default.source, expected_source);
+    let expression = &default.expression;
     assert_eq!(expression.syntax().text().to_string(), expected_text);
 }
 

@@ -87,9 +87,7 @@ fn grant(base, amount = 10, bonus = amount + 1) {
     let bonus_default = payload.param_defaults[2]
         .as_ref()
         .expect("bonus default payload");
-    let compiler_payload = bonus_default
-        .compiler_payload()
-        .expect("CST-backed default should produce compiler payload");
+    let compiler_payload = bonus_default.compiler_payload();
     assert_eq!(
         compiler_payload
             .syntax_expression()
@@ -141,9 +139,7 @@ impl Counter {
     let amount_default = method.default_values[1]
         .as_ref()
         .expect("amount default payload");
-    let compiler_payload = amount_default
-        .compiler_payload()
-        .expect("CST-backed method default should produce compiler payload");
+    let compiler_payload = amount_default.compiler_payload();
     assert_eq!(
         compiler_payload
             .syntax_expression()

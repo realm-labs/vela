@@ -995,7 +995,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             let skip_default = self.emit_jump_if_not_missing(param);
             let default_payload = default_value.compiler_payload();
             let value =
-                self.compile_expr_with_payload(default_value.fallback(), default_payload.as_ref())?;
+                self.compile_expr_with_payload(default_value.fallback(), Some(&default_payload))?;
             self.emit(UnlinkedInstructionKind::Move {
                 dst: param,
                 src: value,
