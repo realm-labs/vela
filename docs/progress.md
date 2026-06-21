@@ -391,6 +391,10 @@ field labels before falling back to the temporary legacy pattern fields.
 For statement payloads now expose rowan index and value pattern payloads,
 letting loop pattern matching and local binding reuse CST-backed tuple and
 record pattern labels before falling back to temporary legacy pattern fields.
+Generic expression statements now forward their rowan expression payloads into
+bytecode expression lowering, so non-call/non-assignment statement forms such
+as index, array, and interpolated literal expressions preserve nested CST body
+payloads instead of dropping to the old expression-only path.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

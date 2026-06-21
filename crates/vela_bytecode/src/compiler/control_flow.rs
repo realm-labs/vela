@@ -159,7 +159,8 @@ impl Compiler<'_, '_> {
             )?;
             Ok(false)
         } else {
-            self.compile_expr(expr)?;
+            let expression_payload = stmt.expression_payload();
+            self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
             Ok(false)
         }
     }
