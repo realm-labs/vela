@@ -129,6 +129,23 @@ fn grant(base, amount = 10, bonus = amount + 1) {
 }
 
 #[test]
+fn compiler_lowers_let_block_parameter_defaults_from_cst() {
+    compile_program_source(
+        SourceId::new(1),
+        r#"
+fn grant(amount = { let base = 10; let bonus = base + 2; bonus }) {
+    return amount;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("CST-backed let block defaults should compile");
+}
+
+#[test]
 fn semantic_script_method_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
     let semantic = parse_semantic_source(
