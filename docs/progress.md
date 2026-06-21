@@ -402,6 +402,8 @@ Path expression lowering now prefers rowan CST path segments for aligned
 expression payloads before falling back to temporary legacy path vectors.
 Literal expression lowering now also prefers rowan CST literal values for
 aligned payloads before falling back to temporary legacy literal values.
+Field expression lowering now prefers rowan CST field names for aligned
+payloads before falling back to temporary legacy field names.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

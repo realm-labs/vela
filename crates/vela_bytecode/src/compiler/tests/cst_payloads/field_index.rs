@@ -108,6 +108,8 @@ fn field_and_index_values() {
             ],
         ],
     );
+    assert_cst_let_initializer_field_names(&payload.body, &["value", "value"]);
+    assert_cst_assignment_value_field_names(&payload.body, &["value", "value"]);
 
     compile_program_source(source, text).expect("CST-backed field/index operands should compile");
 }
@@ -245,6 +247,36 @@ fn assert_cst_assignment_target_index_operand_body_payloads(
         .flat_map(index_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_let_initializer_field_names(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&str],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .filter_map(|payload| payload.field_name())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_strings(expected));
+}
+
+fn assert_cst_assignment_value_field_names(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&str],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|payload| payload.field_name())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_strings(expected));
+}
+
+fn expected_strings(expected: &[&str]) -> Vec<String> {
+    expected.iter().map(|name| (*name).to_owned()).collect()
 }
 
 fn field_base_block_payloads(

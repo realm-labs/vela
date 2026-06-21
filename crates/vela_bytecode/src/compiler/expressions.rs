@@ -147,7 +147,8 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST field expression payload kind");
                 };
                 let base_payload = payload.field_base_payload();
-                self.compile_field_expr(expr, base, name, base_payload.as_ref())
+                let name = payload.field_name().unwrap_or_else(|| name.to_owned());
+                self.compile_field_expr(expr, base, &name, base_payload.as_ref())
             }
             SyntaxExpressionKind::Index => {
                 let ExprKind::Index { base, index } = &expr.kind else {
