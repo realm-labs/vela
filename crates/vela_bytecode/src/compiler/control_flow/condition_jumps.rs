@@ -38,6 +38,7 @@ impl Compiler<'_, '_> {
         let operand_payloads =
             condition_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
         let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
+        let right_payload = operand_payloads.as_ref().map(|(_, right)| right);
         let Some(op) =
             condition_operator_for_fallback(condition_operator, condition).and_then(i64_compare_op)
         else {
@@ -48,7 +49,7 @@ impl Compiler<'_, '_> {
         {
             return Ok(None);
         }
-        let Some(imm) = self.i64_literal_value(right)? else {
+        let Some(imm) = self.i64_literal_value(right, right_payload)? else {
             return Ok(None);
         };
         let lhs = self.compile_expr_with_payload(left, left_payload)?;
@@ -62,13 +63,23 @@ impl Compiler<'_, '_> {
         Ok(Some(offset))
     }
 
-    fn i64_literal_value(&self, expr: &Expr) -> CompileResult<Option<i64>> {
-        let ExprKind::Literal(Literal::Integer(value)) = &expr.kind else {
+    fn i64_literal_value(
+        &self,
+        expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> CompileResult<Option<i64>> {
+        let Some(Literal::Integer(value)) = payload
+            .and_then(CompilerExpressionPayload::literal)
+            .or_else(|| match &expr.kind {
+                ExprKind::Literal(literal) => Some(literal.clone()),
+                _ => None,
+            })
+        else {
             return Ok(None);
         };
         let Some(Constant::Scalar(vela_common::ScalarValue::I64(value))) =
             compile_literal_constant_for_type(
-                &Literal::Integer(value.clone()),
+                &Literal::Integer(value),
                 vela_common::PrimitiveTag::I64,
             )?
         else {
