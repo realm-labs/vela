@@ -280,7 +280,10 @@ Script impl fallback method extraction now lives behind the bytecode legacy
 payload boundary, so script impl lowering consumes the temporary fallback
 wrapper without directly traversing old owned-AST impl or trait items, and
 parameter-default matching consumes fallback expressions without depending on
-old owned-AST parameter nodes outside that boundary.
+old owned-AST parameter nodes outside that boundary. Schema default-expression
+fallback matching also enters through the bytecode legacy payload boundary, so
+semantic orchestration no longer requests the temporary owned parsed source
+directly.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and runtime default-expression fallback behind a dedicated
 compiler payload boundary. Top-level functions, script methods, and trait

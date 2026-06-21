@@ -19,7 +19,7 @@ use super::field_slots::ScriptFieldSlots;
 use super::legacy_payloads::{FunctionBodyPayload, LegacySourceFallback, function_body_payload};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
-use super::syntax_payloads::{const_value_payloads, schema_default_payloads};
+use super::syntax_payloads::const_value_payloads;
 
 pub(super) struct SemanticSource {
     source: SourceId,
@@ -164,12 +164,11 @@ impl SemanticSource {
         const_values: &BTreeMap<HirDeclId, Constant>,
     ) -> ScriptSchemaDefaults<'_> {
         source_schema_defaults(
-            &schema_default_payloads(
+            &self.legacy.schema_default_payloads(
                 self.source,
                 &self.syntax,
                 &self.graph,
                 self.module,
-                self.legacy.parsed(),
             ),
             &self.graph,
             self.module,
@@ -365,7 +364,7 @@ impl SemanticModules {
                 continue;
             };
             defaults.merge(source_schema_defaults(
-                &schema_default_payloads(source, syntax, &self.graph, *module, legacy.parsed()),
+                &legacy.schema_default_payloads(source, syntax, &self.graph, *module),
                 &self.graph,
                 *module,
                 type_symbols,

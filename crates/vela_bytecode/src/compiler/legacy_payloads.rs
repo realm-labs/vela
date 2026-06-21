@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use vela_common::{SourceId, Span};
+use vela_hir::ids::ModuleId;
+use vela_hir::module_graph::ModuleGraph;
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{
@@ -10,6 +12,8 @@ use vela_syntax::parser::parse_source as parse_legacy_source;
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
+use super::schema_defaults::SchemaDefaultPayloads;
+use super::syntax_payloads::schema_default_payloads;
 
 pub(super) struct LegacySourceFallback {
     parsed: SourceFile,
@@ -20,10 +24,6 @@ impl LegacySourceFallback {
         Self {
             parsed: parse_legacy_source(source, text),
         }
-    }
-
-    pub(super) const fn parsed(&self) -> &SourceFile {
-        &self.parsed
     }
 
     pub(super) fn impl_methods_by_body_span(&self) -> HashMap<Span, LegacyMethodFallback<'_>> {
@@ -68,6 +68,16 @@ impl LegacySourceFallback {
         }
         methods
     }
+
+    pub(super) fn schema_default_payloads<'ast>(
+        &'ast self,
+        source: SourceId,
+        syntax: &SyntaxParse<SyntaxSourceFile>,
+        graph: &ModuleGraph,
+        module: ModuleId,
+    ) -> SchemaDefaultPayloads<'ast> {
+        schema_default_payloads(source, syntax, graph, module, &self.parsed)
+    }
 }
 
 pub(super) struct LegacyMethodFallback<'ast> {
@@ -93,7 +103,7 @@ pub(super) fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let function = legacy_function_body(legacy.parsed(), syntax_body_span(source, &syntax_body))?;
+    let function = legacy_function_body(&legacy.parsed, syntax_body_span(source, &syntax_body))?;
     let legacy_defaults = legacy_param_defaults(&function.params);
     let param_defaults = syntax_param_default_values(
         source,
