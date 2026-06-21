@@ -588,6 +588,22 @@ impl<'ast> CompilerStatementPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn call_callee_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Call { callee, .. } = &expr.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.expression()?.as_call()?.callee(),
+            fallback: callee,
+        })
+    }
+
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;
@@ -879,6 +895,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 })
                 .collect(),
         )
+    }
+
+    pub(in crate::compiler) fn call_callee_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Call { callee, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_call()?.callee(),
+            fallback: callee,
+        })
     }
 
     pub(in crate::compiler) fn field_base_payload(

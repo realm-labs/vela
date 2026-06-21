@@ -2,7 +2,7 @@ use vela_syntax::ast::{Argument, Expr, ExprKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
-use super::body_payloads::CompilerArgumentPayload;
+use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
@@ -36,7 +36,7 @@ impl Compiler<'_, '_> {
         callee: &Expr,
         args: &[Argument],
     ) -> CompileResult<crate::Register> {
-        self.compile_call_expr_with_arg_payloads(expr, callee, args, None)
+        self.compile_call_expr_with_arg_payloads(expr, callee, args, None, None)
     }
 
     pub(in crate::compiler) fn compile_call_expr_with_arg_payloads(
@@ -44,6 +44,7 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         callee: &Expr,
         args: &[Argument],
+        callee_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
@@ -100,7 +101,16 @@ impl Compiler<'_, '_> {
         }
 
         if let ExprKind::Field { base, name } = &callee.kind {
-            return self.compile_script_method_call(expr, base, name, args, arg_syntax);
+            let base_payload =
+                callee_payload.and_then(CompilerExpressionPayload::field_base_payload);
+            return self.compile_script_method_call(
+                expr,
+                base,
+                name,
+                args,
+                base_payload.as_ref(),
+                arg_syntax,
+            );
         }
         if let Some((method, receiver_path)) = local_path_method_call(callee, &self.locals) {
             return self.compile_script_path_method_call(
@@ -133,7 +143,7 @@ impl Compiler<'_, '_> {
             );
         } else if self.local_callee(callee).is_some() || !matches!(callee.kind, ExprKind::Path(_)) {
             reject_named_args(args, "closure call")?;
-            let callee = self.compile_expr(callee)?;
+            let callee = self.compile_expr_with_payload(callee, callee_payload)?;
             let args = args
                 .iter()
                 .map(|arg| self.compile_call_argument_value(arg, arg_syntax))
@@ -222,6 +232,7 @@ impl Compiler<'_, '_> {
         base: &Expr,
         name: &str,
         args: &[Argument],
+        base_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let receiver_type = self.script_type_for_expr(base);
@@ -245,7 +256,7 @@ impl Compiler<'_, '_> {
         let value_receiver_methods_known = value_receiver_type
             .as_ref()
             .is_some_and(|receiver_type| self.registry_value_type_id(receiver_type).is_some());
-        let receiver = self.compile_expr(base)?;
+        let receiver = self.compile_expr_with_payload(base, base_payload)?;
         let dst = self.alloc_register()?;
         if let Some(method_id) = method_id {
             let arg_registers = self.compile_script_method_call_args(

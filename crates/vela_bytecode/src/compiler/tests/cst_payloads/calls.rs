@@ -163,3 +163,106 @@ fn call_argument_block_payloads(
         })
         .collect()
 }
+
+#[test]
+fn semantic_function_call_callee_and_receiver_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn call_targets() {
+    let callable = |value| value;
+    let closure_result = ({
+        let selected = callable;
+        selected
+    })({
+        let value = 7;
+        value
+    });
+    let receiver_result = ({
+        let label = "ready";
+        label
+    }).len();
+    return closure_result + receiver_result;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("call_targets")
+        .expect("call_targets function");
+
+    assert_cst_let_initializer_call_callee_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let selected = callable;"),
+            (SyntaxStatementKind::Expr, "selected"),
+        ]],
+    );
+    assert_cst_let_initializer_method_receiver_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let label = \"ready\";"),
+            (SyntaxStatementKind::Expr, "label"),
+        ]],
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-backed call callees and method receivers should compile");
+}
+
+fn assert_cst_let_initializer_call_callee_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(call_callee_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_let_initializer_method_receiver_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.let_initializer_expression_payload())
+        .flat_map(method_receiver_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn call_callee_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    payload
+        .call_callee_payload()
+        .into_iter()
+        .flat_map(nested_call_target_block_payloads)
+        .collect()
+}
+
+fn method_receiver_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    payload
+        .call_callee_payload()
+        .and_then(|callee| callee.field_base_payload())
+        .into_iter()
+        .flat_map(nested_call_target_block_payloads)
+        .collect()
+}
+
+fn nested_call_target_block_payloads(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    if let Some(body) = payload.block_body_payload() {
+        return vec![cst_statement_texts(&body)];
+    }
+    if let Some(inner) = payload.paren_inner_payload() {
+        return nested_call_target_block_payloads(inner);
+    }
+    Vec::new()
+}

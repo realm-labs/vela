@@ -125,11 +125,13 @@ impl Compiler<'_, '_> {
                 let ExprKind::Call { callee, args } = &expr.kind else {
                     unreachable!("validated CST call expression payload kind");
                 };
+                let callee_payload = payload.call_callee_payload();
                 let arg_payloads = payload.call_argument_payloads();
                 self.compile_call_expr_with_arg_payloads(
                     expr,
                     callee,
                     args,
+                    callee_payload.as_ref(),
                     arg_payloads.as_deref(),
                 )
             }

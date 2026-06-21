@@ -202,11 +202,13 @@ impl Compiler<'_, '_> {
             let ExprKind::Call { callee, args } = &expr.kind else {
                 return self.compile_expr_statement(expr);
             };
+            let callee_payload = stmt.call_callee_payload();
             let argument_payloads = stmt.call_argument_payloads();
             self.compile_call_expr_with_arg_payloads(
                 expr,
                 callee,
                 args,
+                callee_payload.as_ref(),
                 argument_payloads.as_deref(),
             )?;
             Ok(false)
