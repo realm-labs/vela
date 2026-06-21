@@ -167,6 +167,7 @@ fn assignment_targets() {
             (SyntaxStatementKind::Expr, "offset"),
         ]],
     );
+    assert_cst_assignment_target_field_names(&payload.body, &["value", "value"]);
 
     compile_program_source(source, text).expect("CST-backed assignment targets should compile");
 }
@@ -270,6 +271,19 @@ fn assert_cst_assignment_value_field_names(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|payload| payload.field_name())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_strings(expected));
+}
+
+fn assert_cst_assignment_target_field_names(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[&str],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_target_expression_payload())
         .filter_map(|payload| payload.field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));

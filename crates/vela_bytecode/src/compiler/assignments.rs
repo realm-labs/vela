@@ -438,7 +438,8 @@ impl Compiler<'_, '_> {
         if self.host_field_path(target).is_some() {
             return None;
         }
-        let (collection, index, fields) = indexed_record_field_parts(target)?;
+        let (collection, index, fields) =
+            indexed_record_field_parts_with_payload(target, syntax.expression.cloned())?;
         let operand_payloads = syntax.indexed_record_operand_payloads();
         let (collection_payload, index_payload) =
             operand_payloads.map_or((None, None), |payloads| {
@@ -462,7 +463,11 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
             ExprKind::Path(path) => {
-                let Some((record, fields)) = record_path_parts(path) else {
+                let path = syntax
+                    .expression
+                    .and_then(CompilerExpressionPayload::path_segments)
+                    .unwrap_or_else(|| path.to_owned());
+                let Some((record, fields)) = record_path_parts(&path) else {
                     return Ok(None);
                 };
                 if self.host_field_path(target).is_some() {
@@ -498,7 +503,9 @@ impl Compiler<'_, '_> {
                 if self.host_field_path(target).is_some() {
                     return Ok(None);
                 }
-                let Some(parts) = record_field_expr_parts(target) else {
+                let Some(parts) =
+                    record_field_expr_parts_with_payload(target, syntax.expression.cloned())
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "record field assignment target",
                     )));
@@ -511,6 +518,7 @@ impl Compiler<'_, '_> {
                 });
                 let slot = (parts.fields.len() == 1)
                     .then(|| {
+                        let name = parts.fields.first().map_or(name.as_str(), String::as_str);
                         self.script_record_field_slot_for_receiver(base, name)
                             .or_else(|| self.record_field_shape_slot_for_receiver(base, name))
                     })
@@ -1046,37 +1054,70 @@ fn record_field_base_parts(path: &[String]) -> Option<(&str, Vec<String>)> {
     Some((root.as_str(), path[1..].to_vec()))
 }
 
-fn record_field_expr_parts(expr: &Expr) -> Option<RecordFieldExprParts<'_>> {
+fn record_field_expr_parts_with_payload<'expr>(
+    expr: &'expr Expr,
+    payload: Option<CompilerExpressionPayload<'expr>>,
+) -> Option<RecordFieldExprParts<'expr>> {
     match &expr.kind {
         ExprKind::Field { base, name } => {
-            let mut parts = record_field_expr_parts(base).unwrap_or_else(|| RecordFieldExprParts {
-                root: base,
-                fields: Vec::new(),
-            });
-            parts.fields.push(name.clone());
+            let base_payload = payload
+                .as_ref()
+                .and_then(CompilerExpressionPayload::field_base_payload);
+            let mut parts = record_field_expr_parts_with_payload(base, base_payload)
+                .unwrap_or_else(|| RecordFieldExprParts {
+                    root: base,
+                    fields: Vec::new(),
+                });
+            let name = payload
+                .as_ref()
+                .and_then(CompilerExpressionPayload::field_name)
+                .unwrap_or_else(|| name.clone());
+            parts.fields.push(name);
             Some(parts)
         }
         _ => None,
     }
 }
 
-fn indexed_record_field_parts(target: &Expr) -> Option<(&Expr, &Expr, Vec<String>)> {
+fn indexed_record_field_parts_with_payload<'expr>(
+    target: &'expr Expr,
+    payload: Option<CompilerExpressionPayload<'expr>>,
+) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
     let ExprKind::Field { base, name } = &target.kind else {
         return None;
     };
-    let (collection, index, mut fields) = indexed_record_field_base_parts(base)?;
-    fields.push(name.clone());
+    let base_payload = payload
+        .as_ref()
+        .and_then(CompilerExpressionPayload::field_base_payload);
+    let (collection, index, mut fields) =
+        indexed_record_field_base_parts_with_payload(base, base_payload)?;
+    let name = payload
+        .as_ref()
+        .and_then(CompilerExpressionPayload::field_name)
+        .unwrap_or_else(|| name.clone());
+    fields.push(name);
     Some((collection, index, fields))
 }
 
-fn indexed_record_field_base_parts(expr: &Expr) -> Option<(&Expr, &Expr, Vec<String>)> {
+fn indexed_record_field_base_parts_with_payload<'expr>(
+    expr: &'expr Expr,
+    payload: Option<CompilerExpressionPayload<'expr>>,
+) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
     match &expr.kind {
         ExprKind::Index { base, index } if is_local_index_collection(base) => {
             Some((base, index, Vec::new()))
         }
         ExprKind::Field { base, name } => {
-            let (collection, index, mut fields) = indexed_record_field_base_parts(base)?;
-            fields.push(name.clone());
+            let base_payload = payload
+                .as_ref()
+                .and_then(CompilerExpressionPayload::field_base_payload);
+            let (collection, index, mut fields) =
+                indexed_record_field_base_parts_with_payload(base, base_payload)?;
+            let name = payload
+                .as_ref()
+                .and_then(CompilerExpressionPayload::field_name)
+                .unwrap_or_else(|| name.clone());
+            fields.push(name);
             Some((collection, index, fields))
         }
         _ => None,
