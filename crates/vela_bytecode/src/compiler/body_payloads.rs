@@ -492,6 +492,26 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.expression()?.as_assign()?.value()
     }
 
+    fn assignment_target_expression(&self) -> Option<SyntaxExpression> {
+        self.expression()?.as_assign()?.target()
+    }
+
+    pub(in crate::compiler) fn assignment_target_expression_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Assign { target, .. } = &expr.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.assignment_target_expression(),
+            fallback: target,
+        })
+    }
+
     pub(in crate::compiler) fn assignment_value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -694,6 +714,10 @@ impl<'ast> CompilerArgumentPayload<'ast> {
 }
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
+        self.fallback
+    }
+
     pub(in crate::compiler) fn kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()

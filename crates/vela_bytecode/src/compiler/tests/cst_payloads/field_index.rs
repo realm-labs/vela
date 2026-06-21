@@ -112,6 +112,63 @@ fn field_and_index_values() {
     compile_program_source(source, text).expect("CST-backed field/index operands should compile");
 }
 
+#[test]
+fn semantic_function_assignment_targets_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct Counter {
+    value: i64,
+}
+
+struct CounterBox {
+    counter: Counter,
+}
+
+fn make_box(value) {
+    return CounterBox { counter: Counter { value: value } };
+}
+
+fn assignment_targets() {
+    make_box({
+        let seed = 1;
+        seed
+    }).counter.value = 2;
+    let counters = [Counter { value: 0 }];
+    counters[{
+        let offset = 0;
+        offset
+    }].value = 3;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("assignment_targets")
+        .expect("assignment_targets function");
+
+    assert_cst_assignment_target_field_base_body_payloads(
+        &payload.body,
+        &[
+            vec![
+                (SyntaxStatementKind::Let, "let seed = 1;"),
+                (SyntaxStatementKind::Expr, "seed"),
+            ],
+            vec![
+                (SyntaxStatementKind::Let, "let offset = 0;"),
+                (SyntaxStatementKind::Expr, "offset"),
+            ],
+        ],
+    );
+    assert_cst_assignment_target_index_operand_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let offset = 0;"),
+            (SyntaxStatementKind::Expr, "offset"),
+        ]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed assignment targets should compile");
+}
+
 fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -164,6 +221,32 @@ fn assert_cst_assignment_value_index_operand_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
+fn assert_cst_assignment_target_field_base_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_target_expression_payload())
+        .flat_map(field_base_block_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn assert_cst_assignment_target_index_operand_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let actual = body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.assignment_target_expression_payload())
+        .flat_map(index_block_operand_payloads)
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_statement_texts(expected));
+}
+
 fn field_base_block_payloads(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
@@ -205,6 +288,9 @@ fn nested_block_payloads(
             .into_iter()
             .flat_map(nested_block_payloads)
             .collect();
+    }
+    if let Some(base) = payload.field_base_payload() {
+        return nested_block_payloads(base);
     }
     payload
         .call_argument_payloads()

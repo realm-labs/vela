@@ -13,7 +13,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
-use super::assignments::{AssignmentValuePayloads, AssignmentValueSyntax};
+use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
     CompilerStatementPayload,
@@ -181,11 +181,13 @@ impl Compiler<'_, '_> {
             let value_if = stmt.assignment_value_if_payload();
             let value_match_arms = stmt.assignment_value_match_arm_payloads();
             let value_expression = stmt.assignment_value_expression_payload();
+            let target_expression = stmt.assignment_target_expression_payload();
             let value_match_scrutinee = value_expression
                 .as_ref()
                 .and_then(CompilerExpressionPayload::match_scrutinee_payload);
-            self.compile_assignment_with_value_payloads(
+            self.compile_assignment_with_payloads(
                 expr,
+                AssignmentTargetSyntax::new(target_expression.as_ref()),
                 AssignmentValueSyntax::new(
                     stmt.assignment_value_kind(),
                     value_expression.as_ref(),

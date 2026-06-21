@@ -34,10 +34,11 @@ struct RecordFieldAssignmentTarget {
     value_type: Option<RuntimeTypeFact>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
 struct IndexedRecordFieldAssignmentTarget<'expr> {
     collection: &'expr Expr,
     index: &'expr Expr,
+    collection_payload: Option<CompilerExpressionPayload<'expr>>,
+    index_payload: Option<CompilerExpressionPayload<'expr>>,
     fields: Vec<String>,
     element_shape: Option<RecordShape>,
 }
@@ -133,14 +134,80 @@ impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
     }
 }
 
-impl Compiler<'_, '_> {
-    pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
-        self.compile_assignment_with_value_payloads(expr, AssignmentValueSyntax::none())
+#[derive(Clone, Copy)]
+pub(in crate::compiler) struct AssignmentTargetSyntax<'payload, 'ast> {
+    expression: Option<&'payload CompilerExpressionPayload<'ast>>,
+}
+
+impl<'payload, 'ast> AssignmentTargetSyntax<'payload, 'ast> {
+    pub(in crate::compiler) fn new(
+        expression: Option<&'payload CompilerExpressionPayload<'ast>>,
+    ) -> Self {
+        Self { expression }
     }
 
-    pub(in crate::compiler) fn compile_assignment_with_value_payloads(
+    fn none() -> Self {
+        Self { expression: None }
+    }
+
+    fn field_base_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+        self.expression
+            .and_then(CompilerExpressionPayload::field_base_payload)
+    }
+
+    fn index_operand_payloads(
+        &self,
+    ) -> Option<(
+        CompilerExpressionPayload<'ast>,
+        CompilerExpressionPayload<'ast>,
+    )> {
+        self.expression
+            .and_then(CompilerExpressionPayload::index_operand_payloads)
+    }
+
+    fn indexed_record_operand_payloads(
+        &self,
+    ) -> Option<(
+        CompilerExpressionPayload<'ast>,
+        CompilerExpressionPayload<'ast>,
+    )> {
+        let mut payload = self.field_base_payload()?;
+        loop {
+            if let Some(operands) = payload.index_operand_payloads() {
+                return Some(operands);
+            }
+            payload = payload.field_base_payload()?;
+        }
+    }
+
+    fn record_field_root_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+        let payload = self.field_base_payload()?;
+        record_field_root_payload(payload)
+    }
+}
+
+fn record_field_root_payload<'ast>(
+    payload: CompilerExpressionPayload<'ast>,
+) -> Option<CompilerExpressionPayload<'ast>> {
+    match &payload.fallback().kind {
+        ExprKind::Field { .. } => record_field_root_payload(payload.field_base_payload()?),
+        _ => Some(payload),
+    }
+}
+
+impl Compiler<'_, '_> {
+    pub(super) fn compile_assignment(&mut self, expr: &Expr) -> CompileResult<Register> {
+        self.compile_assignment_with_payloads(
+            expr,
+            AssignmentTargetSyntax::none(),
+            AssignmentValueSyntax::none(),
+        )
+    }
+
+    pub(in crate::compiler) fn compile_assignment_with_payloads(
         &mut self,
         expr: &Expr,
+        target_syntax: AssignmentTargetSyntax<'_, '_>,
         value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         let ExprKind::Assign { op, target, value } = &expr.kind else {
@@ -188,13 +255,20 @@ impl Compiler<'_, '_> {
             };
             self.reject_invalid_host_index_access(target, base, index, access)?;
             if self.host_field_path(target).is_none() {
-                return self.compile_index_assignment(*op, base, index, value, value_syntax);
+                return self.compile_index_assignment(
+                    *op,
+                    base,
+                    index,
+                    value,
+                    target_syntax,
+                    value_syntax,
+                );
             }
         }
-        if let Some(target) = self.indexed_record_field_assignment_target(target) {
+        if let Some(target) = self.indexed_record_field_assignment_target(target, target_syntax) {
             return self.compile_indexed_record_field_assignment(*op, target, value, value_syntax);
         }
-        if let Some(target) = self.record_field_assignment_target(target)? {
+        if let Some(target) = self.record_field_assignment_target(target, target_syntax)? {
             return self.compile_record_field_assignment(*op, target, value, value_syntax);
         }
         self.compile_host_assignment(*op, target, value, value_syntax)
@@ -283,13 +357,18 @@ impl Compiler<'_, '_> {
         base: &Expr,
         index: &Expr,
         value: &Expr,
+        target_syntax: AssignmentTargetSyntax<'_, '_>,
         value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
-        let base = self.compile_expr(base)?;
+        let operand_payloads = target_syntax.index_operand_payloads();
+        let (base_payload, index_payload) = operand_payloads
+            .as_ref()
+            .map_or((None, None), |(base, index)| (Some(base), Some(index)));
+        let base = self.compile_expr_with_payload(base, base_payload)?;
         if let Some(key) = literal_string(index) {
             return self.compile_string_key_index_assignment(op, base, key, value, value_syntax);
         }
-        let index = self.compile_expr(index)?;
+        let index = self.compile_expr_with_payload(index, index_payload)?;
         let assigned = match op {
             AssignOp::Set => self.compile_assignment_value(value, None, value_syntax)?,
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
@@ -354,14 +433,23 @@ impl Compiler<'_, '_> {
     fn indexed_record_field_assignment_target<'expr>(
         &self,
         target: &'expr Expr,
+        syntax: AssignmentTargetSyntax<'_, 'expr>,
     ) -> Option<IndexedRecordFieldAssignmentTarget<'expr>> {
         if self.host_field_path(target).is_some() {
             return None;
         }
         let (collection, index, fields) = indexed_record_field_parts(target)?;
+        let operand_payloads = syntax.indexed_record_operand_payloads();
+        let (collection_payload, index_payload) =
+            operand_payloads.map_or((None, None), |payloads| {
+                let (collection, index) = payloads;
+                (Some(collection), Some(index))
+            });
         Some(IndexedRecordFieldAssignmentTarget {
             collection,
             index,
+            collection_payload,
+            index_payload,
             fields,
             element_shape: self.record_shape_for_index_collection(collection),
         })
@@ -370,6 +458,7 @@ impl Compiler<'_, '_> {
     fn record_field_assignment_target(
         &mut self,
         target: &Expr,
+        syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
             ExprKind::Path(path) => {
@@ -428,7 +517,8 @@ impl Compiler<'_, '_> {
                     .flatten();
                 let value_type =
                     self.schema_record_field_value_type(root_type.as_deref(), &parts.fields);
-                let root = self.compile_expr(parts.root)?;
+                let root_payload = syntax.record_field_root_payload();
+                let root = self.compile_expr_with_payload(parts.root, root_payload.as_ref())?;
                 Ok(Some(RecordFieldAssignmentTarget {
                     root,
                     fields: parts.fields,
@@ -553,8 +643,9 @@ impl Compiler<'_, '_> {
         value: &Expr,
         value_syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
-        let collection = self.compile_expr(target.collection)?;
-        let index = self.compile_expr(target.index)?;
+        let collection =
+            self.compile_expr_with_payload(target.collection, target.collection_payload.as_ref())?;
+        let index = self.compile_expr_with_payload(target.index, target.index_payload.as_ref())?;
         let record = self.alloc_register()?;
         self.emit(UnlinkedInstructionKind::GetIndex {
             dst: record,
