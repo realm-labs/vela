@@ -155,12 +155,7 @@ impl Compiler<'_, '_> {
                 stmt.for_body_payload(),
             )
         } else if kind == SyntaxStatementKind::If {
-            self.compile_if_statement(
-                stmt.fallback(),
-                stmt.if_condition_binary_operator(),
-                stmt.if_then_body_payload(),
-                stmt.if_else_body_payload(),
-            )
+            self.compile_if_statement(stmt.fallback(), stmt.if_payload())
         } else if kind == SyntaxStatementKind::Match {
             self.compile_match_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Block {
@@ -241,7 +236,7 @@ impl Compiler<'_, '_> {
                 self.compile_continue()
             }
             SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None),
-            SyntaxStatementKind::If => self.compile_if_statement(stmt, None, None, None),
+            SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -425,9 +420,7 @@ impl Compiler<'_, '_> {
     fn compile_if_statement(
         &mut self,
         stmt: &Stmt,
-        condition_operator: Option<BinaryOp>,
-        then_payload: Option<CompilerBodyPayload<'_>>,
-        else_payload: Option<CompilerBodyPayload<'_>>,
+        payload: Option<CompilerIfPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Expr(expr) = &stmt.kind else {
             return self.compile_statement(stmt);
@@ -435,12 +428,12 @@ impl Compiler<'_, '_> {
         let ExprKind::If(if_expr) = &expr.kind else {
             return self.compile_statement(stmt);
         };
-        self.compile_if(if_expr, condition_operator, then_payload, else_payload)
+        self.compile_if(if_expr, payload.as_ref())
     }
 
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
-            return self.compile_if(if_expr, None, None, None);
+            return self.compile_if(if_expr, None);
         }
         if let ExprKind::Match(match_expr) = &expr.kind {
             return self.compile_match(match_expr);
@@ -882,14 +875,17 @@ impl Compiler<'_, '_> {
     fn compile_if(
         &mut self,
         if_expr: &IfExpr,
-        condition_operator: Option<BinaryOp>,
-        then_payload: Option<CompilerBodyPayload<'_>>,
-        else_payload: Option<CompilerBodyPayload<'_>>,
+        payload: Option<&CompilerIfPayload<'_>>,
     ) -> CompileResult<bool> {
-        let jump_to_else =
-            self.emit_condition_jump_if_false(&if_expr.condition, condition_operator)?;
+        let jump_to_else = self.emit_condition_jump_if_false(
+            &if_expr.condition,
+            payload.and_then(CompilerIfPayload::condition_operator),
+        )?;
 
-        let then_returned = self.compile_if_block(&if_expr.then_branch, then_payload)?;
+        let then_returned = self.compile_if_block(
+            &if_expr.then_branch,
+            payload.and_then(CompilerIfPayload::then_body),
+        )?;
         let jump_to_end = if then_returned {
             None
         } else {
@@ -899,8 +895,12 @@ impl Compiler<'_, '_> {
         self.patch_jump(jump_to_else, self.current_offset())?;
 
         let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => self.compile_if_block(block, else_payload)?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if(if_expr, None, None, None)?,
+            Some(ElseBranch::Block(block)) => {
+                self.compile_if_block(block, payload.and_then(CompilerIfPayload::else_body))?
+            }
+            Some(ElseBranch::If(if_expr)) => {
+                self.compile_if(if_expr, payload.and_then(CompilerIfPayload::else_if))?
+            }
             None => false,
         };
 
@@ -914,7 +914,7 @@ impl Compiler<'_, '_> {
     fn compile_if_block(
         &mut self,
         block: &Block,
-        payload: Option<CompilerBodyPayload<'_>>,
+        payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload {
             let statements = payload.statement_payloads();

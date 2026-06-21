@@ -503,6 +503,45 @@ fn check() {
 }
 
 #[test]
+fn semantic_function_else_if_statements_have_cst_body_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn check() {
+    let value: i64 = 10;
+    if value > 10 {
+        let high = value;
+        return high;
+    } else if value > 5 {
+        let mid = value - 1;
+        return mid;
+    } else {
+        return 0;
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("check").expect("check function");
+    assert_cst_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let high = value;"),
+            (SyntaxStatementKind::Return, "return high;"),
+        ]],
+        &[],
+    );
+    assert_cst_statement_else_if_body_payloads(
+        &payload.body,
+        &[vec![
+            (SyntaxStatementKind::Let, "let mid = value - 1;"),
+            (SyntaxStatementKind::Return, "return mid;"),
+        ]],
+        &[vec![(SyntaxStatementKind::Return, "return 0;")]],
+    );
+
+    compile_program_source(source, text).expect("CST-backed else-if statement body should compile");
+}
+
+#[test]
 fn semantic_function_block_statement_body_is_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

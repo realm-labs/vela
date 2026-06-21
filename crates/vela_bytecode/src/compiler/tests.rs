@@ -146,15 +146,48 @@ fn assert_cst_if_body_payloads(
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
     let statements = body.statement_payloads();
-    let then_actual = statements
+    let payloads = statements
         .iter()
-        .filter_map(|statement| statement.if_then_body_payload())
-        .map(|body| cst_statement_texts(&body))
+        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
         .collect::<Vec<_>>();
-    let else_actual = statements
+    let then_actual = payloads
         .iter()
-        .filter_map(|statement| statement.if_else_body_payload())
-        .map(|body| cst_statement_texts(&body))
+        .filter_map(body_payloads::CompilerIfPayload::then_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    let else_actual = payloads
+        .iter()
+        .filter_map(body_payloads::CompilerIfPayload::else_body)
+        .map(cst_statement_texts)
+        .collect::<Vec<_>>();
+    assert_eq!(then_actual, expected_statement_texts(expected_then));
+    assert_eq!(else_actual, expected_statement_texts(expected_else));
+}
+
+fn assert_cst_statement_else_if_body_payloads(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
+    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
+) {
+    let statements = body.statement_payloads();
+    let nested = statements
+        .iter()
+        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
+        .filter_map(|payload| {
+            let nested = payload.else_if()?;
+            Some((
+                nested.then_body().map(cst_statement_texts),
+                nested.else_body().map(cst_statement_texts),
+            ))
+        })
+        .collect::<Vec<_>>();
+    let then_actual = nested
+        .iter()
+        .filter_map(|(then, _)| then.clone())
+        .collect::<Vec<_>>();
+    let else_actual = nested
+        .iter()
+        .filter_map(|(_, else_body)| else_body.clone())
         .collect::<Vec<_>>();
     assert_eq!(then_actual, expected_statement_texts(expected_then));
     assert_eq!(else_actual, expected_statement_texts(expected_else));

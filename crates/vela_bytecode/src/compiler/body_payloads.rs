@@ -314,44 +314,14 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .operator()
     }
 
-    pub(super) fn if_condition_binary_operator(&self) -> Option<BinaryOp> {
-        self.syntax
-            .as_ref()?
-            .as_if()?
-            .condition()?
-            .as_binary()?
-            .operator()
-    }
-
-    pub(super) fn if_then_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+    pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;
         };
         let ExprKind::If(if_expr) = &expr.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
-            self.source?,
-            self.syntax.as_ref()?.as_if()?.then_block()?,
-            &if_expr.then_branch,
-        ))
-    }
-
-    pub(super) fn if_else_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback.kind else {
-            return None;
-        };
-        let ExprKind::If(if_expr) = &expr.kind else {
-            return None;
-        };
-        let ElseBranch::Block(block) = if_expr.else_branch.as_ref()? else {
-            return None;
-        };
-        Some(CompilerBodyPayload::syntax(
-            self.source?,
-            self.syntax.as_ref()?.as_if()?.else_block()?,
-            block,
-        ))
+        if_payload_for_fallback(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
