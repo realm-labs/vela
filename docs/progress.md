@@ -257,7 +257,8 @@ default evaluation uses rowan CST expressions, including simple constant block
 defaults with local `let` bindings, so schema defaults no longer carry a legacy
 owned-AST runtime expression fallback.
 Constructor schema lowering now consumes explicit default-expression payload
-maps instead of traversing legacy source files inside the schema-default logic.
+maps discovered from the rowan syntax payload boundary instead of traversing
+legacy source files inside the schema-default logic.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload
@@ -283,8 +284,8 @@ parameter-default matching consumes fallback expressions without depending on
 old owned-AST parameter nodes outside that boundary. Schema default-expression
 payload matching now stays on rowan CST field and variant wrappers, so semantic
 orchestration no longer requests temporary owned parsed source data for schema
-defaults and the CST syntax payload module no longer imports the old owned
-source model for schema default matching.
+defaults and the legacy payload boundary no longer owns schema default
+matching.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
 function body and parameter default-expression fallback behind a dedicated
 compiler payload boundary. Top-level functions, script methods, and trait
