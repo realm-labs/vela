@@ -1,7 +1,9 @@
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 use vela_hir::type_hint::FunctionSignature;
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{FunctionItem, ItemKind, SourceFile, SyntaxSourceFile};
+use vela_syntax::ast::{
+    AstNode, FunctionItem, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile,
+};
 
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, syntax_param_default_values};
@@ -24,7 +26,7 @@ pub(super) fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let function = legacy_function_body(parsed, name)?;
+    let function = legacy_function_body(parsed, syntax_body_span(source, &syntax_body))?;
     let param_defaults = syntax_param_default_values(
         source,
         syntax_function.param_list(),
@@ -38,9 +40,16 @@ pub(super) fn function_body_payload<'ast>(
     })
 }
 
-fn legacy_function_body<'ast>(parsed: &'ast SourceFile, name: &str) -> Option<&'ast FunctionItem> {
+fn legacy_function_body(parsed: &SourceFile, body_span: Span) -> Option<&FunctionItem> {
     parsed.items.iter().find_map(|item| match &item.kind {
-        ItemKind::Function(function) if function.name == name => Some(function),
+        ItemKind::Function(function) if function.body.span == body_span => Some(function),
         _ => None,
     })
+}
+
+fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {
+    let range = body.syntax().text_range();
+    let start: u32 = range.start().into();
+    let end: u32 = range.end().into();
+    Span::new(source, start, end)
 }
