@@ -781,6 +781,85 @@ fn block_tail_values() {
 }
 
 #[test]
+fn semantic_function_block_tail_container_expressions_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_tail_containers() {
+    let array = {
+        let seed = 1;
+        [
+            {
+                let item = seed;
+                item
+            },
+            {
+                value: {
+                    let entry = seed;
+                    entry
+                },
+            },
+        ]
+    };
+    return array;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("block_tail_containers")
+        .expect("block_tail_containers function");
+    let statements = payload.body.statement_payloads();
+    let block_payloads = statements
+        .iter()
+        .filter_map(|statement| statement.let_initializer_block_body_payload())
+        .collect::<Vec<_>>();
+    assert_eq!(block_payloads.len(), 1);
+
+    let array_block_statements = block_payloads[0].statement_payloads();
+    let array_tail = array_block_statements
+        .last()
+        .expect("array block tail statement")
+        .expression_payload()
+        .expect("array tail expression payload");
+    let array_actual = array_tail
+        .array_element_payloads()
+        .expect("array element payloads")
+        .iter()
+        .filter_map(|element| {
+            let body = element.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        array_actual,
+        expected_statement_texts(&[vec![
+            (SyntaxStatementKind::Let, "let item = seed;"),
+            (SyntaxStatementKind::Expr, "item"),
+        ]])
+    );
+
+    let map_actual = array_tail
+        .array_element_payloads()
+        .expect("array element payloads")
+        .iter()
+        .flat_map(|element| element.map_entry_payloads().unwrap_or_default())
+        .map(|entry| entry.value_expression_payload())
+        .filter_map(|value| {
+            let body = value.block_body_payload()?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        map_actual,
+        expected_statement_texts(&[vec![
+            (SyntaxStatementKind::Let, "let entry = seed;"),
+            (SyntaxStatementKind::Expr, "entry"),
+        ]])
+    );
+
+    compile_program_source(source, text).expect("CST-backed block tail containers should compile");
+}
+
+#[test]
 fn semantic_function_match_value_expressions_have_cst_arm_payloads() {
     let source = SourceId::new(1);
     let text = r#"

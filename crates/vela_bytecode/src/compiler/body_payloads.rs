@@ -422,6 +422,19 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax.as_ref()?.as_expr()?.expression()
     }
 
+    pub(in crate::compiler) fn expression_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.expression(),
+            fallback: expr,
+        })
+    }
+
     fn assignment_value_expression(&self) -> Option<SyntaxExpression> {
         self.expression()?.as_assign()?.value()
     }

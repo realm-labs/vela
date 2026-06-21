@@ -310,6 +310,10 @@ The same CST-aware expression payload path now covers map literals in those
 value contexts, so map entry values can reuse rowan block, if, and match body
 payloads while non-CST and checked type-contract paths keep their existing
 fallback.
+Block-value tail expressions now use the same CST-aware expression payload
+path for non-control-flow values, so array and map literals returned from
+CST-backed blocks preserve nested element and entry body payloads before
+falling back to legacy expression lowering when syntax association is missing.
 Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or

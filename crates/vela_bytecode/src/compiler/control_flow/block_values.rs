@@ -113,7 +113,12 @@ impl Compiler<'_, '_> {
                 let arm_payloads = payload.expression_match_arm_payloads();
                 self.compile_match_value_with_payloads(match_expr, dst, arm_payloads.as_deref())
             }
-            _ => self.compile_legacy_block_tail_expr_to(expr, dst),
+            _ => {
+                let expression_payload = payload.expression_payload();
+                let value = self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
+                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+                Ok(false)
+            }
         }
     }
 
