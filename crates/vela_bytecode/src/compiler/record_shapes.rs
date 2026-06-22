@@ -1099,20 +1099,22 @@ impl super::Compiler<'_, '_> {
         legacy_path: &[String],
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
-        let local_shape = self.value_shapes.local_at_span(self.bindings, span);
-        let cst_path = payload.and_then(CompilerExpressionPayload::syntax_path_segments);
-        if let Some([root]) = cst_path.as_deref() {
-            let cst_shape = self.value_shapes.name(root).or_else(|| {
+        if let Some(payload) = payload {
+            let cst_path = payload.syntax_path_segments();
+            let [root] = cst_path.as_deref()? else {
+                return None;
+            };
+            return self.value_shapes.name(root).or_else(|| {
                 self.script_types
                     .name(root)
                     .or_else(|| self.global_type_named(root))
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
             });
-            return cst_shape.or(local_shape);
         }
-        let path = cst_path.as_deref().unwrap_or(legacy_path);
-        let [root] = path else {
+
+        let local_shape = self.value_shapes.local_at_span(self.bindings, span);
+        let [root] = legacy_path else {
             return local_shape;
         };
         local_shape

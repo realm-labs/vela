@@ -226,6 +226,10 @@ fn main() {
                 "legacy_value",
                 Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
             );
+            compiler.value_shapes.set_name(
+                "legacy_value",
+                Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
+            );
             let statements = payload.body.statement_payloads();
             let cst_path = statements[2]
                 .expression_payload()
@@ -281,6 +285,14 @@ fn main() {
                     Some(&mismatched_block),
                 ),
                 value_types::StaticExprType::Dynamic
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_block.fallback(),
+                    Some(&mismatched_block),
+                ),
+                None,
+                "non-path CST payload must not use the legacy fallback path shape"
             );
         },
     );
