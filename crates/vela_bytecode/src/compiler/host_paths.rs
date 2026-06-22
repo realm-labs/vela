@@ -793,14 +793,11 @@ fn callee_field_name_matches(
 ) -> bool {
     match payload {
         Some(payload) => match payload.kind() {
-            Some(SyntaxExpressionKind::Field) => {
-                payload
-                    .syntax_field_name()
-                    .as_deref()
-                    .unwrap_or(fallback_name)
-                    == expected
-            }
-            Some(SyntaxExpressionKind::Path) | None => fallback_name == expected,
+            Some(SyntaxExpressionKind::Field) | None => payload
+                .syntax_field_name()
+                .as_deref()
+                .is_some_and(|name| name == expected),
+            Some(SyntaxExpressionKind::Path) => false,
             Some(_) => false,
         },
         None => fallback_name == expected,
@@ -813,12 +810,7 @@ fn host_path_field_name(
 ) -> Option<String> {
     match payload {
         Some(payload) => match payload.kind() {
-            Some(SyntaxExpressionKind::Field) => Some(
-                payload
-                    .syntax_field_name()
-                    .unwrap_or_else(|| fallback_name.to_owned()),
-            ),
-            None => Some(fallback_name.to_owned()),
+            Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
             Some(_) => None,
         },
         None => Some(fallback_name.to_owned()),
