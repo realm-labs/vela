@@ -902,6 +902,101 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
     );
 }
 
+#[test]
+fn read_only_host_assignment_with_non_field_cst_payload_does_not_use_legacy_field() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let readonly = registry
+        .register_type(
+            vela_registry::TypeDef::new(vela_def::DefPath::ty(
+                "host",
+                std::iter::empty::<&str>(),
+                "ReadOnlyHost",
+            ))
+            .host_runtime_id(77),
+        )
+        .expect("ReadOnlyHost host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                vela_def::DefPath::field(
+                    "host",
+                    std::iter::empty::<&str>(),
+                    "ReadOnlyHost",
+                    "amount",
+                ),
+                readonly,
+            )
+            .host_runtime_id(vela_def::FieldId::new(3).get())
+            .writable(false),
+        )
+        .expect("ReadOnlyHost amount field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(readonly: ReadOnlyHost) {
+    let cst_target = {
+        let selected = readonly;
+        selected
+    };
+    readonly.amount = 1;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let cst_block = statements[0]
+        .let_initializer_expression_payload()
+        .expect("CST block initializer");
+    let legacy_target = statements[1]
+        .assignment_target_expression_payload()
+        .expect("legacy read-only assignment target");
+    let legacy_statement = statements[1]
+        .expression_payload()
+        .expect("legacy read-only assignment expression");
+    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_block
+            .syntax_expression()
+            .expect("CST block syntax")
+            .clone(),
+        legacy_target.fallback(),
+    );
+    let mut compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    let error = compiler
+        .compile_assignment_with_payloads(
+            legacy_statement.fallback(),
+            crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
+            crate::compiler::assignments::AssignmentValueSyntax::new(
+                None,
+                None,
+                crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
+            ),
+        )
+        .expect_err("mismatched non-field CST target should be rejected");
+    assert!(
+        matches!(error.kind, CompileErrorKind::UnsupportedSyntax(message) if message == "assignment target"),
+        "expected unsupported assignment target, got {:?}",
+        error.kind
+    );
+}
+
 fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

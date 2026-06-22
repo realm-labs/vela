@@ -1053,20 +1053,27 @@ impl Compiler<'_, '_> {
     ) -> Option<(String, String)> {
         match &target.kind {
             ExprKind::Field { base, name } => {
-                let base_payload = syntax.field_base_payload();
+                let (base_payload, field) = if let Some(payload) = syntax.expression {
+                    (
+                        Some(payload.field_base_payload()?),
+                        payload.syntax_field_name()?,
+                    )
+                } else {
+                    (None, name.clone())
+                };
                 let receiver_type =
                     self.script_type_for_expr_with_payload(base, base_payload.as_ref())?;
-                let field = syntax
-                    .expression
-                    .and_then(CompilerExpressionPayload::syntax_field_name)
-                    .unwrap_or_else(|| name.clone());
                 Some((receiver_type, field))
             }
             ExprKind::Path(path) => {
                 let cst_path = syntax
                     .expression
                     .and_then(CompilerExpressionPayload::syntax_path_segments);
-                let lookup_path = cst_path.as_deref().unwrap_or(path);
+                let lookup_path = if syntax.expression.is_some() {
+                    cst_path.as_deref()?
+                } else {
+                    path
+                };
                 let (field, receiver_path) = lookup_path.split_last()?;
                 let [receiver] = receiver_path else {
                     return None;
