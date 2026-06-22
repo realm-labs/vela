@@ -142,12 +142,35 @@ fn syntax_statement_for_fallback(
 ) -> Option<SyntaxStatement> {
     statements
         .iter()
-        .find(|statement| syntax_statement_matches_span(statement, fallback.span))
+        .filter(|statement| {
+            syntax_statement_kind_matches_fallback(statement.statement_kind(), fallback)
+        })
+        .max_by_key(|statement| {
+            syntax_range_overlap_len(statement.syntax().text_range(), fallback.span).unwrap_or(0)
+        })
+        .filter(|statement| {
+            syntax_range_overlaps_span(statement.syntax().text_range(), fallback.span)
+        })
         .cloned()
 }
 
-fn syntax_statement_matches_span(statement: &SyntaxStatement, span: Span) -> bool {
-    syntax_range_overlaps_span(statement.syntax().text_range(), span)
+fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &Stmt) -> bool {
+    match (&fallback.kind, kind) {
+        (StmtKind::Let { .. }, SyntaxStatementKind::Let)
+        | (StmtKind::Return(_), SyntaxStatementKind::Return)
+        | (StmtKind::Break, SyntaxStatementKind::Break)
+        | (StmtKind::Continue, SyntaxStatementKind::Continue)
+        | (StmtKind::For { .. }, SyntaxStatementKind::For)
+        | (StmtKind::Block(_), SyntaxStatementKind::Block) => true,
+        (StmtKind::Expr(expr), SyntaxStatementKind::If) => matches!(expr.kind, ExprKind::If(_)),
+        (StmtKind::Expr(expr), SyntaxStatementKind::Match) => {
+            matches!(expr.kind, ExprKind::Match(_))
+        }
+        (StmtKind::Expr(expr), SyntaxStatementKind::Expr) => {
+            !matches!(expr.kind, ExprKind::If(_) | ExprKind::Match(_))
+        }
+        _ => false,
+    }
 }
 
 fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> bool {
@@ -198,7 +221,10 @@ fn syntax_record_field_for_fallback(
 ) -> Option<SyntaxRecordExprField> {
     fields
         .iter()
-        .find(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
+        .max_by_key(|field| {
+            syntax_range_overlap_len(field.syntax().text_range(), fallback.span).unwrap_or(0)
+        })
+        .filter(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
         .cloned()
 }
 
@@ -235,14 +261,27 @@ fn syntax_record_pattern_field_for_fallback(
 ) -> Option<SyntaxRecordPatternField> {
     fields
         .iter()
-        .find(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
+        .max_by_key(|field| {
+            syntax_range_overlap_len(field.syntax().text_range(), fallback.span).unwrap_or(0)
+        })
+        .filter(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
         .cloned()
 }
 
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
+    syntax_range_overlap_len(range, span).is_some()
+}
+
+fn syntax_range_overlap_len(range: vela_syntax::TextRange, span: Span) -> Option<u32> {
     let start = u32::from(range.start());
     let end = u32::from(range.end());
-    start < span.end && span.start < end
+    let overlap_start = start.max(span.start);
+    let overlap_end = end.min(span.end);
+    if overlap_start < overlap_end {
+        Some(overlap_end - overlap_start)
+    } else {
+        None
+    }
 }
 
 fn syntax_match_arm_for_fallback(
@@ -250,9 +289,21 @@ fn syntax_match_arm_for_fallback(
     fallback: &MatchArm,
 ) -> Option<SyntaxMatchArm> {
     arms.iter()
-        .find(|arm| {
+        .filter(|arm| {
+            arm.pattern()
+                .is_some_and(|pattern| syntax_pattern_matches_fallback(&pattern, &fallback.pattern))
+        })
+        .max_by_key(|arm| {
             arm.body_as_expression()
-                .is_some_and(|body| syntax_expression_matches_span(&body, fallback.body.span))
+                .and_then(|body| {
+                    syntax_range_overlap_len(body.syntax().text_range(), fallback.body.span)
+                })
+                .unwrap_or(0)
+        })
+        .filter(|arm| {
+            arm.body_as_expression().is_some_and(|body| {
+                syntax_range_overlaps_span(body.syntax().text_range(), fallback.body.span)
+            })
         })
         .cloned()
 }
@@ -328,6 +379,15 @@ fn if_payload_for_fallback<'ast>(
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
+    #[cfg(test)]
+    pub(super) fn syntax(source: SourceId, syntax: SyntaxStatement, fallback: &'ast Stmt) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
     }

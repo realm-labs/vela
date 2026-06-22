@@ -56,7 +56,9 @@ impl Compiler<'_, '_> {
             return self.compile_statement(stmt.fallback());
         };
         if !statement_kind_matches(kind, stmt.fallback()) {
-            self.compile_statement(stmt.fallback())
+            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST statement payload",
+            )))
         } else if kind == SyntaxStatementKind::Let {
             self.compile_let_statement(
                 stmt.fallback(),
@@ -95,6 +97,14 @@ impl Compiler<'_, '_> {
         } else {
             self.compile_statement_as(kind, stmt.fallback())
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn compile_statement_payload_for_test(
+        &mut self,
+        stmt: &CompilerStatementPayload<'_>,
+    ) -> CompileResult<bool> {
+        self.compile_statement_payload(stmt)
     }
 
     fn compile_block_statement_payload(

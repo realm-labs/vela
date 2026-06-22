@@ -120,6 +120,39 @@ fn legacy_body() {
 }
 
 #[test]
+fn mismatched_statement_payloads_do_not_use_legacy_statement() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let let_statement = &statements[0];
+    let return_syntax = statements[1]
+        .syntax_statement()
+        .expect("return CST statement")
+        .clone();
+    let mismatched = body_payloads::CompilerStatementPayload::syntax(
+        source,
+        return_syntax,
+        let_statement.fallback(),
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("mismatched statement payload must not use legacy fallback");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST statement payload")
+    ));
+}
+
+#[test]
 fn semantic_function_defaults_are_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
