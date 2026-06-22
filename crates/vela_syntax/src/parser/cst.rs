@@ -258,12 +258,25 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                     return cursor + 1;
                 }
                 if current.is_trivia() && self.tokens[cursor].text.contains('\n') {
+                    let next = self.skip_trivia(cursor + 1);
+                    if next < end && self.at_postfix_continuation(next) {
+                        continue;
+                    }
                     return cursor;
                 }
             }
             depth.bump(current);
         }
         end
+    }
+
+    fn at_postfix_continuation(&self, cursor: usize) -> bool {
+        matches!(
+            self.kind_at(cursor),
+            Some(
+                SyntaxKind::Dot | SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Question
+            )
+        )
     }
 
     fn find_statement_end(&self, kind: SyntaxKind, start: usize, end: usize) -> usize {

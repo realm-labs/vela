@@ -1,7 +1,7 @@
 use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
-    SyntaxBreakStmt, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt, SyntaxStatementKind,
+    SyntaxBreakStmt, SyntaxCallExpr, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt,
+    SyntaxForStmt, SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt, SyntaxStatementKind,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
@@ -97,6 +97,48 @@ fn ast_block_exposes_statement_children() {
             .collect::<Vec<_>>(),
         vec![SyntaxKind::ContinueStmt]
     );
+}
+
+#[test]
+fn ast_let_initializer_keeps_newline_postfix_chain() {
+    let source = r#"
+fn main() {
+    let value = option::some("quest")
+        .map(|value| value.to_upper())
+        .filter(|value| value.starts_with("Q"));
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let call = SyntaxCallExpr::cast(initializer.syntax().clone()).expect("initializer call");
+    let filter_callee = call
+        .callee()
+        .and_then(|callee| callee.as_field())
+        .expect("filter callee");
+    let map_call = filter_callee
+        .receiver()
+        .and_then(|receiver| receiver.as_call())
+        .expect("map call receiver");
+    let map_callee = map_call
+        .callee()
+        .and_then(|callee| callee.as_field())
+        .expect("map callee");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(filter_callee.name_text().as_deref(), Some("filter"));
+    assert_eq!(map_callee.name_text().as_deref(), Some("map"));
 }
 
 #[test]

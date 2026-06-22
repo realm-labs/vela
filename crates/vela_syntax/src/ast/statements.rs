@@ -147,7 +147,7 @@ impl SyntaxLetStmt {
 
     #[must_use]
     pub fn initializer(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        last_expression_child(&self.syntax)
     }
 
     #[must_use]
@@ -188,7 +188,7 @@ impl SyntaxReturnStmt {
 
     #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        last_expression_child(&self.syntax)
     }
 
     #[must_use]
@@ -296,7 +296,7 @@ impl SyntaxExprStmt {
 
     #[must_use]
     pub fn expression(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        last_expression_child(&self.syntax)
     }
 
     #[must_use]
@@ -532,6 +532,10 @@ pub enum SyntaxElseBranch {
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+fn last_expression_child(parent: &SyntaxNode) -> Option<SyntaxExpression> {
+    parent.children().filter_map(SyntaxExpression::cast).last()
 }
 
 fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {

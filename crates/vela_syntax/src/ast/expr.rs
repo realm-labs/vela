@@ -234,7 +234,7 @@ pub struct SyntaxFieldExpr {
 impl SyntaxFieldExpr {
     #[must_use]
     pub fn receiver(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        last_expression_child(&self.syntax)
     }
 
     #[must_use]
@@ -285,7 +285,7 @@ pub struct SyntaxCallExpr {
 impl SyntaxCallExpr {
     #[must_use]
     pub fn callee(&self) -> Option<SyntaxExpression> {
-        child(&self.syntax)
+        last_expression_child(&self.syntax)
     }
 
     #[must_use]
@@ -909,6 +909,10 @@ fn path_separator_tokens_from_tokens(tokens: &[SyntaxToken]) -> Vec<SyntaxToken>
 
 fn child<N: AstNode>(parent: &SyntaxNode) -> Option<N> {
     parent.children().find_map(N::cast)
+}
+
+fn last_expression_child(parent: &SyntaxNode) -> Option<SyntaxExpression> {
+    parent.children().filter_map(SyntaxExpression::cast).last()
 }
 
 fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken> {

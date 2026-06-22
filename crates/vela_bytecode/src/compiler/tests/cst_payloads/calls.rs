@@ -590,6 +590,77 @@ fn call_targets() {
         .expect("CST-backed call callees and method receivers should compile");
 }
 
+#[test]
+fn callback_expression_lambda_method_callee_has_cst_payload() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn callback_method() {
+    option::some("quest").filter(|value| value.starts_with("Q"));
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("callback_method")
+        .expect("callback_method function");
+
+    let actual = payload
+        .body
+        .statement_payloads()
+        .iter()
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .filter_map(|lambda| lambda.lambda_body_payload())
+        .filter_map(|body| body.call_callee_payload())
+        .filter_map(|callee| callee.syntax_field_name())
+        .collect::<Vec<_>>();
+    assert_eq!(actual, expected_strings(&["starts_with"]));
+}
+
+#[test]
+fn chained_callback_method_callees_have_cst_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn callback_chain() {
+    let option_chain = option::some("quest")
+        .map(|value| value.to_upper())
+        .filter(|value| value.starts_with("Q"));
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("callback_chain")
+        .expect("callback_chain function");
+    let initializer = payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .find_map(|statement| statement.let_initializer_expression_payload())
+        .expect("let initializer payload");
+    assert_eq!(
+        initializer.kind(),
+        Some(SyntaxExpressionKind::Call),
+        "initializer syntax: {:?}",
+        initializer
+            .syntax_expression()
+            .map(|expression| expression.syntax().text().to_string())
+    );
+    let callee = initializer.call_callee_payload().expect("callee payload");
+    assert_eq!(
+        callee.kind(),
+        Some(SyntaxExpressionKind::Field),
+        "callee syntax: {:?}",
+        callee
+            .syntax_expression()
+            .map(|expression| expression.syntax().text().to_string())
+    );
+
+    let actual = chained_call_callee_names(initializer);
+    assert_eq!(
+        actual,
+        expected_strings(&["filter", "map", "starts_with", "to_upper"])
+    );
+}
+
 fn assert_cst_let_initializer_call_callee_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
@@ -631,6 +702,35 @@ fn assert_cst_let_initializer_method_names(
 
 fn call_method_name(payload: body_payloads::CompilerExpressionPayload<'_>) -> Option<String> {
     payload.call_callee_payload()?.syntax_field_name()
+}
+
+fn chained_call_callee_names(payload: body_payloads::CompilerExpressionPayload<'_>) -> Vec<String> {
+    let mut names = Vec::new();
+    collect_chained_call_callee_names(payload, &mut names);
+    names.sort();
+    names
+}
+
+fn collect_chained_call_callee_names(
+    payload: body_payloads::CompilerExpressionPayload<'_>,
+    names: &mut Vec<String>,
+) {
+    if let Some(callee) = payload.call_callee_payload() {
+        if let Some(name) = callee.syntax_field_name() {
+            names.push(name);
+        }
+        collect_chained_call_callee_names(callee, names);
+    }
+    for argument in payload.call_argument_payloads().unwrap_or_default() {
+        let value = argument.value_expression_payload();
+        collect_chained_call_callee_names(value.clone(), names);
+        if let Some(lambda_body) = value.lambda_body_payload() {
+            collect_chained_call_callee_names(lambda_body, names);
+        }
+    }
+    if let Some(base) = payload.field_base_payload() {
+        collect_chained_call_callee_names(base, names);
+    }
 }
 
 fn expected_strings(expected: &[&str]) -> Vec<String> {

@@ -63,10 +63,8 @@ fn callee_field_name(
 ) -> Option<String> {
     match callee_payload {
         Some(payload) => match payload.kind() {
-            Some(SyntaxExpressionKind::Field) => payload
-                .syntax_field_name()
-                .or_else(|| Some(fallback_name.to_owned())),
-            Some(SyntaxExpressionKind::Path) | None => Some(fallback_name.to_owned()),
+            Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
+            Some(SyntaxExpressionKind::Path) => None,
             Some(_) => None,
         },
         None => Some(fallback_name.to_owned()),
