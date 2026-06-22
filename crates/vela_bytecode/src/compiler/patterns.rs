@@ -52,9 +52,6 @@ fn pattern_literal_payload(
     let Some(payload) = payload else {
         return Ok(fallback.clone());
     };
-    if !payload.has_syntax_pattern() {
-        return Ok(fallback.clone());
-    }
     payload
         .syntax_literal()
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("literal pattern")))
@@ -67,9 +64,6 @@ fn pattern_path_segments(
     let Some(payload) = payload else {
         return Ok(fallback.to_vec());
     };
-    if !payload.has_syntax_pattern() {
-        return Ok(fallback.to_vec());
-    }
     payload
         .syntax_path_segments()
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("path pattern")))
@@ -82,9 +76,6 @@ fn pattern_binding_name(
     let Some(payload) = payload else {
         return Ok(fallback.to_owned());
     };
-    if !payload.has_syntax_pattern() {
-        return Ok(fallback.to_owned());
-    }
     payload
         .syntax_binding_name()
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern")))

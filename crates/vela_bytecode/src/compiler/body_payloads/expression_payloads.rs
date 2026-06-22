@@ -558,10 +558,6 @@ impl<'ast> CompilerPatternPayload<'ast> {
         self.syntax.as_ref()?.literal()
     }
 
-    pub(in crate::compiler) fn has_syntax_pattern(&self) -> bool {
-        self.syntax.is_some()
-    }
-
     pub(in crate::compiler) fn syntax_path_segments(&self) -> Option<Vec<String>> {
         if !matches!(
             self.fallback,

@@ -300,11 +300,6 @@ fn syntax_match_arm_for_fallback(
                 })
                 .unwrap_or(0)
         })
-        .filter(|arm| {
-            arm.body_as_expression().is_some_and(|body| {
-                syntax_range_overlaps_span(body.syntax().text_range(), fallback.body.span)
-            })
-        })
         .cloned()
 }
 
