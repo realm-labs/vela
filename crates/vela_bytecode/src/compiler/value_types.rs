@@ -377,14 +377,16 @@ fn static_expr_type_with_payload(
             _ => StaticExprType::Dynamic,
         },
         ExprKind::Path(path) => payload
-            .and_then(CompilerExpressionPayload::syntax_path_segments)
-            .as_deref()
-            .and_then(|path| {
-                path.first()
-                    .and_then(|name| (path.len() == 1).then(|| local_type_named(name)).flatten())
+            .and_then(|payload| {
+                payload.syntax_path_segments().as_deref().and_then(|path| {
+                    path.first().and_then(|name| {
+                        (path.len() == 1).then(|| local_type_named(name)).flatten()
+                    })
+                })
             })
             .or_else(|| {
-                payload_allows_legacy_path_fact(payload)
+                payload
+                    .is_none()
                     .then(|| {
                         local_type_at_span(expr.span).or_else(|| {
                             path.first().and_then(|name| {
@@ -397,7 +399,7 @@ fn static_expr_type_with_payload(
             .map(StaticExprType::Exact)
             .unwrap_or(StaticExprType::Dynamic),
         ExprKind::SelfValue => {
-            if !payload_allows_legacy_self(payload) {
+            if payload.is_some() {
                 return StaticExprType::Dynamic;
             }
             local_type_at_span(expr.span)
@@ -472,17 +474,31 @@ fn static_syntax_expr_type(
         }
         SyntaxExpressionKind::Path => {
             let path = expression.as_path()?;
-            if !path.is_self() {
-                return None;
-            }
-            Some(
+            let local_type_at_syntax_span = || {
                 source
                     .map(|source| syntax_expression_span(source, expression))
                     .and_then(local_type_at_span)
-                    .or_else(|| local_type_named("self"))
-                    .map(StaticExprType::Exact)
-                    .unwrap_or(StaticExprType::Dynamic),
-            )
+            };
+            let local_type_for_path_name = || {
+                let segments = path.path_segments();
+                segments.first().and_then(|name| {
+                    (segments.len() == 1)
+                        .then(|| local_type_named(name))
+                        .flatten()
+                })
+            };
+            if path.is_self() {
+                return Some(
+                    local_type_at_syntax_span()
+                        .or_else(|| local_type_named("self"))
+                        .map(StaticExprType::Exact)
+                        .unwrap_or(StaticExprType::Dynamic),
+                );
+            }
+            local_type_for_path_name().and_then(|fact| {
+                matches!(fact, RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+                    .then_some(StaticExprType::Exact(fact))
+            })
         }
         SyntaxExpressionKind::Block => expression.as_block().map(|block| {
             static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
@@ -587,24 +603,6 @@ fn merge_branch_static_type(left: StaticExprType, right: StaticExprType) -> Stat
         left
     } else {
         StaticExprType::Dynamic
-    }
-}
-
-fn payload_allows_legacy_path_fact(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
-    match payload.and_then(CompilerExpressionPayload::kind) {
-        Some(SyntaxExpressionKind::Path | SyntaxExpressionKind::Binary) => true,
-        Some(_) => false,
-        None => true,
-    }
-}
-
-fn payload_allows_legacy_self(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
-    match payload.and_then(CompilerExpressionPayload::kind) {
-        Some(SyntaxExpressionKind::Path) => {
-            payload.is_some_and(CompilerExpressionPayload::syntax_is_self)
-        }
-        Some(_) => false,
-        None => true,
     }
 }
 

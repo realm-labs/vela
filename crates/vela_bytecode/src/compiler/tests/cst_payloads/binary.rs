@@ -263,6 +263,9 @@ fn binary_value_type_inference_prefers_cst_payload_operands() {
         r#"
 fn main() {
     let cst_sum = 1 + 2;
+    let lhs = 1;
+    let rhs = 2;
+    let cst_diff = lhs - rhs;
     let legacy_bool = true;
 }
 "#,
@@ -271,7 +274,10 @@ fn main() {
             let cst_sum = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST binary payload");
-            let legacy_bool = statements[1]
+            let cst_diff = statements[3]
+                .let_initializer_expression_payload()
+                .expect("CST binary path payload");
+            let legacy_bool = statements[4]
                 .let_initializer_expression_payload()
                 .expect("legacy literal fallback");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
@@ -287,6 +293,32 @@ fn main() {
                 compiler.static_type_for_expr_with_payload(
                     mismatched_payload.fallback(),
                     Some(&mismatched_payload),
+                ),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::I64,
+                ))
+            );
+
+            compiler.value_types.set_name(
+                "lhs",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
+            );
+            compiler.value_types.set_name(
+                "rhs",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
+            );
+            let mismatched_path_operand_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_diff
+                    .syntax_expression()
+                    .expect("CST binary path expression")
+                    .clone(),
+                legacy_bool.fallback(),
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_path_operand_payload.fallback(),
+                    Some(&mismatched_path_operand_payload),
                 ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I64,

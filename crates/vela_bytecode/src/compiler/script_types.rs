@@ -4,7 +4,7 @@ use vela_common::Span;
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
+use vela_syntax::ast::{Expr, ExprKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::patterns::enum_variant_path;
@@ -134,58 +134,38 @@ pub(super) fn expression_script_fact_with_payload(
 
     match &expr.kind {
         ExprKind::Record { path, .. } => {
-            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Record) {
+            if payload.is_some() {
                 return None;
             }
-            let cst_path = payload.and_then(CompilerExpressionPayload::syntax_record_path_segments);
-            let lookup_path = cst_path.as_deref().unwrap_or(path);
-            if let Some((enum_path, variant)) = enum_variant_path(lookup_path) {
+            if let Some((enum_path, variant)) = enum_variant_path(path) {
                 let type_name = type_symbol_at_span(expr.span).unwrap_or(enum_path);
                 return Some(ScriptTypeFact::enum_variant(type_name, variant));
             }
-            let type_name =
-                type_symbol_at_span(expr.span).unwrap_or_else(|| lookup_path.join("::"));
+            let type_name = type_symbol_at_span(expr.span).unwrap_or_else(|| path.join("::"));
             Some(ScriptTypeFact::new(type_name))
         }
         ExprKind::Call { callee, .. } => {
-            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Call) {
+            if payload.is_some() {
                 return None;
             }
             let ExprKind::Path(path) = &callee.kind else {
                 return None;
             };
-            let callee_payload = payload.and_then(CompilerExpressionPayload::call_callee_payload);
-            let cst_path = callee_payload
-                .as_ref()
-                .and_then(|payload| payload.syntax_path_segments());
-            let lookup_path = cst_path.as_deref().unwrap_or(path);
-            let (_, variant) = enum_variant_path(lookup_path)?;
+            let (_, variant) = enum_variant_path(path)?;
             let type_name = type_symbol_at_span(callee.span)?;
             Some(ScriptTypeFact::enum_variant(type_name, variant))
         }
         ExprKind::Path(path) => {
-            if !payload_allows_legacy_kind(payload, SyntaxExpressionKind::Path) {
+            if payload.is_some() {
                 return None;
             }
-            let cst_path = payload.and_then(CompilerExpressionPayload::syntax_path_segments);
-            cst_path
-                .as_deref()
-                .and_then(|lookup_path| {
-                    lookup_path.first().and_then(|name| {
-                        (lookup_path.len() == 1)
-                            .then(|| local_fact_named(name))
-                            .flatten()
-                    })
-                })
-                .or_else(|| local_fact_at_span(expr.span))
-                .or_else(|| {
-                    path.first().and_then(|name| {
-                        (path.len() == 1).then(|| local_fact_named(name)).flatten()
-                    })
-                })
+            local_fact_at_span(expr.span).or_else(|| {
+                path.first()
+                    .and_then(|name| (path.len() == 1).then(|| local_fact_named(name)).flatten())
+            })
         }
         ExprKind::SelfValue => {
-            if !payload_allows_legacy_self(payload) {
+            if payload.is_some() {
                 return None;
             }
             local_fact_at_span(expr.span).or_else(|| local_fact_named("self"))
@@ -241,26 +221,6 @@ fn expression_script_fact_from_payload(
     }
 
     None
-}
-
-fn payload_allows_legacy_kind(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-    expected: SyntaxExpressionKind,
-) -> bool {
-    match payload.and_then(CompilerExpressionPayload::kind) {
-        Some(kind) => kind == expected,
-        None => true,
-    }
-}
-
-fn payload_allows_legacy_self(payload: Option<&CompilerExpressionPayload<'_>>) -> bool {
-    match payload.and_then(CompilerExpressionPayload::kind) {
-        Some(SyntaxExpressionKind::Path) => {
-            payload.is_some_and(CompilerExpressionPayload::syntax_is_self)
-        }
-        Some(_) => false,
-        None => true,
-    }
 }
 
 pub(super) fn expression_script_type_with_payload(

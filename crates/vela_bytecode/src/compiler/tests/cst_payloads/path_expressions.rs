@@ -150,6 +150,59 @@ fn legacy_call(legacy) {
 }
 
 #[test]
+fn script_type_facts_with_cst_path_payload_do_not_use_legacy_path_fact() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_path(cst) {
+    return cst;
+}
+
+fn legacy_path(legacy) {
+    return legacy;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_path").expect("cst function");
+    let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
+    let cst_return = cst_payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .find_map(|statement| statement.return_value_expression_payload())
+        .expect("CST path return expression");
+    let legacy_return = legacy_payload
+        .body
+        .statement_payloads()
+        .into_iter()
+        .find_map(|statement| statement.return_value_expression_payload())
+        .expect("legacy path return expression");
+    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_return
+            .syntax_expression()
+            .expect("path CST expression")
+            .clone(),
+        legacy_return.fallback(),
+    );
+
+    let fact = script_types::expression_script_fact_with_payload(
+        mismatched_payload.fallback(),
+        Some(&mismatched_payload),
+        |_| None,
+        |_| None,
+        |name| match name {
+            "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+            _ => None,
+        },
+    );
+
+    assert_eq!(
+        fact, None,
+        "CST path payload without a fact must not use the legacy fallback path"
+    );
+}
+
+#[test]
 fn static_value_type_facts_prefer_cst_path_payloads_and_reject_mismatch() {
     with_cst_payload_compiler(
         r#"
@@ -200,6 +253,18 @@ fn main() {
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::Bool,
                 ))
+            );
+
+            compiler
+                .value_types
+                .set_name("cst_value", None::<RuntimeTypeFact>);
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_path.fallback(),
+                    Some(&mismatched_path),
+                ),
+                value_types::StaticExprType::Dynamic,
+                "CST path payload without a fact must not use the legacy fallback path"
             );
 
             let mismatched_block = body_payloads::CompilerExpressionPayload::syntax(
