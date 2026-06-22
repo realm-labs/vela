@@ -79,7 +79,7 @@ jobs:
             Set-Content -NoNewline "dist/${{ matrix.archive }}.sha256"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vela-lsp-${{ matrix.label }}
           path: |
