@@ -69,6 +69,41 @@ fn expression_statements() {
         .expect("CST-backed generic expression statements should compile");
 }
 
+#[test]
+fn mismatched_expression_statement_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn take(value) {
+    return value;
+}
+
+fn main() {
+    let values = [1];
+    take(1);
+    values[0];
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let cst_call = statements[1]
+        .syntax_statement()
+        .expect("CST call statement")
+        .clone();
+    let legacy_index = statements[2].fallback();
+    let mismatched =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_call, legacy_index);
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("mismatched expression statement payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST expression statement payload")
+    ));
+}
+
 fn assert_cst_expression_statement_index_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

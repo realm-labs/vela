@@ -41,10 +41,6 @@ pub(super) fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> 
     kind == legacy_statement_kind(stmt)
 }
 
-pub(super) fn expression_statement_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
-    matches!(kind, SyntaxExpressionKind::Assign) == matches!(expr.kind, ExprKind::Assign { .. })
-}
-
 pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),

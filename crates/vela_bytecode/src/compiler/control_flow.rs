@@ -20,6 +20,7 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
     CompilerPatternPayload, CompilerStatementPayload,
 };
+use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -27,9 +28,9 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    expression_statement_kind_matches, i64_pattern_facts, is_map_or_set_type_hint,
-    iterable_item_shape, legacy_statement_kind, merge_type_hint_and_value_fact,
-    range_iterable_for_payload, statement_kind_matches, value_expression_kind_matches,
+    i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape, legacy_statement_kind,
+    merge_type_hint_and_value_fact, range_iterable_for_payload, statement_kind_matches,
+    value_expression_kind_matches,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -128,8 +129,10 @@ impl Compiler<'_, '_> {
         let Some(kind) = stmt.expression_kind() else {
             return self.compile_expr_statement(expr);
         };
-        if !expression_statement_kind_matches(kind, expr) {
-            return self.compile_expr_statement(expr);
+        if !expression_payload_kind_matches(kind, expr) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression statement payload",
+            )));
         }
         if kind == SyntaxExpressionKind::Assign {
             let value_body = stmt.assignment_value_block_body_payload();
