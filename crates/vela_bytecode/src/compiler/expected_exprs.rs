@@ -9,7 +9,7 @@ use crate::{
 use super::body_payloads::CompilerExpressionPayload;
 use super::const_eval::compile_literal_constant_for_type;
 use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext};
-use super::{CompileResult, Compiler};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_expr_with_expected_type(
@@ -31,7 +31,7 @@ impl Compiler<'_, '_> {
         let outcome =
             self.expected_type_for_expr_with_payload(expr, expected, context.clone(), payload)?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let Some((literal, span)) = contextual_literal_payload(expr, payload)
+            && let Some((literal, span)) = contextual_literal_payload(expr, payload)?
             && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
                 .map_err(|error| error.with_span(span))?
         {
@@ -75,16 +75,23 @@ impl Compiler<'_, '_> {
 fn contextual_literal_payload(
     expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
-) -> Option<(Literal, Span)> {
-    payload
-        .and_then(|payload| {
-            let literal = payload.syntax_literal()?;
-            Some((literal, payload.syntax_span().unwrap_or(expr.span)))
-        })
-        .or_else(|| match &expr.kind {
-            ExprKind::Literal(literal) => Some((literal.clone(), expr.span)),
-            _ => None,
-        })
+) -> CompileResult<Option<(Literal, Span)>> {
+    if let Some(payload) = payload {
+        if let Some(literal) = payload.syntax_literal() {
+            return Ok(Some((literal, payload.syntax_span().unwrap_or(expr.span))));
+        }
+        return match &expr.kind {
+            ExprKind::Literal(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST literal expression",
+            ))),
+            _ => Ok(None),
+        };
+    }
+
+    Ok(match &expr.kind {
+        ExprKind::Literal(literal) => Some((literal.clone(), expr.span)),
+        _ => None,
+    })
 }
 
 fn guard_location_and_name(context: TypeContractContext) -> Option<(GuardLocation, String)> {

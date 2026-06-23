@@ -128,6 +128,55 @@ fn main() {
 }
 
 #[test]
+fn contextual_literal_payload_mismatch_does_not_use_legacy_literal() {
+    with_cst_payload_compiler(
+        r#"
+struct Box {
+    amount: i64
+}
+
+fn main(box: Box) {
+    let cst_value = box.amount;
+    let legacy_value = 10;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_field = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST field initializer payload");
+            let legacy_literal = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy fallback literal");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_field
+                    .syntax_expression()
+                    .expect("CST field expression")
+                    .clone(),
+                legacy_literal.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_expected_type_and_payload(
+                    legacy_literal.fallback(),
+                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),
+                    value_types::TypeContractContext::TypedLet {
+                        name: "value".to_owned(),
+                    },
+                    Some(&mismatched_payload),
+                )
+                .expect_err("typed literal context should not use the legacy literal");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST literal expression")
+            );
+        },
+    );
+}
+
+#[test]
 fn typed_let_and_return_values_prefer_cst_literal_payloads() {
     let cst_semantic = parse_semantic_source(
         SourceId::new(1),
