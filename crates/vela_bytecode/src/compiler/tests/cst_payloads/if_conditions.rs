@@ -195,7 +195,7 @@ fn main() {
 }
 
 #[test]
-fn i64_condition_jump_immediate_does_not_use_legacy_operator_without_cst_operator() {
+fn mismatched_i64_condition_payload_does_not_use_legacy_operator() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn main() {
@@ -228,21 +228,14 @@ fn main() {
             );
             let statements = mismatched_body.statement_payloads();
 
-            compiler
+            let error = compiler
                 .compile_statement_payloads(&statements)
-                .expect("mismatched CST condition should compile through generic condition path");
+                .expect_err("mismatched CST condition must not compile the legacy operator");
 
-            assert!(
-                !compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        instruction.kind,
-                        UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
-                    )),
-                "i64 immediate jump must not use a legacy fallback condition operator"
-            );
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST if condition payload")
+            ));
         },
     );
 }

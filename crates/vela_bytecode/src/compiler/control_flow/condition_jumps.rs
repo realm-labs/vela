@@ -2,9 +2,13 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
-use crate::compiler::control_flow::classification::condition_operator_for_fallback;
+use crate::compiler::control_flow::classification::{
+    condition_operator_for_fallback, control_flow_expression_requires_matching_syntax,
+    value_expression_kind_matches,
+};
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
+use crate::compiler::{CompileError, CompileErrorKind};
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, InstructionOffset, UnlinkedInstructionKind};
 
@@ -15,6 +19,15 @@ impl Compiler<'_, '_> {
         condition_operator: Option<BinaryOp>,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
+        if let Some(payload) = condition_payload
+            && let Some(kind) = payload.kind()
+            && !value_expression_kind_matches(kind, condition)
+            && control_flow_expression_requires_matching_syntax(condition)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST if condition payload",
+            )));
+        }
         if let Some(jump) = self.try_emit_i64_immediate_jump_if_false(
             condition,
             condition_operator,

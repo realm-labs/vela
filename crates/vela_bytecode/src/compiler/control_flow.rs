@@ -28,9 +28,10 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape, legacy_statement_kind,
-    merge_type_hint_and_value_fact, range_iterable_for_payload, statement_kind_matches,
-    value_expression_kind_matches, value_expression_requires_matching_syntax,
+    control_flow_expression_requires_matching_syntax, i64_pattern_facts, is_map_or_set_type_hint,
+    iterable_item_shape, legacy_statement_kind, merge_type_hint_and_value_fact,
+    range_iterable_for_payload, statement_kind_matches, value_expression_kind_matches,
+    value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -765,6 +766,15 @@ impl Compiler<'_, '_> {
     }
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
+        if let Some(payload) = parts.iterable_payload.as_ref()
+            && let Some(kind) = payload.kind()
+            && !value_expression_kind_matches(kind, parts.iterable)
+            && control_flow_expression_requires_matching_syntax(parts.iterable)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST for iterable payload",
+            )));
+        }
         let iterable_operand_payloads = parts
             .iterable_payload
             .as_ref()

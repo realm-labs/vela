@@ -124,7 +124,7 @@ fn main() {
 }
 
 #[test]
-fn range_for_loop_does_not_use_legacy_operator_without_cst_operator() {
+fn mismatched_range_iterable_payload_does_not_use_legacy_operator() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn main() {
@@ -159,21 +159,14 @@ fn main() {
             );
             let statements = mismatched_body.statement_payloads();
 
-            compiler
+            let error = compiler
                 .compile_statement_payloads(&statements)
-                .expect("mismatched CST iterable should compile through generic iteration");
+                .expect_err("mismatched CST iterable must not compile the legacy range");
 
-            assert!(
-                !compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        instruction.kind,
-                        UnlinkedInstructionKind::I64RangeNext { .. }
-                    )),
-                "range loop must not use a legacy fallback iterable operator"
-            );
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST for iterable payload")
+            ));
         },
     );
 }
