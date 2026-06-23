@@ -201,10 +201,14 @@ impl Compiler<'_, '_> {
                     let part_payloads = payload.interpolated_expression_payloads();
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }
-                let ExprKind::Literal(literal) = &expr.kind else {
+                let ExprKind::Literal(_) = &expr.kind else {
                     unreachable!("validated CST literal expression payload kind");
                 };
-                let literal = payload.syntax_literal().unwrap_or_else(|| literal.clone());
+                let literal = payload.syntax_literal().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST literal expression",
+                    ))
+                })?;
                 self.compile_literal(Some(expr.span), &literal)
             }
             _ => self.compile_expr(expr),

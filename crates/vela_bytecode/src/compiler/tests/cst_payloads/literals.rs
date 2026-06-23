@@ -86,6 +86,48 @@ fn main() {
 }
 
 #[test]
+fn literal_expression_payload_mismatch_does_not_use_legacy_literal() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_value = true;
+    let selected = cst_value;
+    let legacy_value = 1;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_literal = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST literal payload");
+            let non_literal = statements[1]
+                .let_initializer_expression_payload()
+                .expect("non-literal fallback payload");
+            let legacy_literal = statements[2]
+                .let_initializer_expression_payload()
+                .expect("legacy fallback literal");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_literal
+                    .syntax_expression()
+                    .expect("CST literal expression")
+                    .clone(),
+                non_literal.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(legacy_literal.fallback(), Some(&mismatched_payload))
+                .expect_err("mismatched literal payload should not use the legacy literal");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST literal expression")
+            );
+        },
+    );
+}
+
+#[test]
 fn typed_let_and_return_values_prefer_cst_literal_payloads() {
     let cst_semantic = parse_semantic_source(
         SourceId::new(1),
