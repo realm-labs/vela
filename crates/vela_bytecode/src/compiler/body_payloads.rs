@@ -95,6 +95,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn fallback(&self) -> &'ast Block {
         self.fallback
     }

@@ -2,6 +2,7 @@ use super::*;
 
 mod assignment_targets;
 mod binary;
+mod block_values;
 mod calls;
 mod constructors;
 mod containers;

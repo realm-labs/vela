@@ -57,14 +57,11 @@ impl Compiler<'_, '_> {
                     }
                 }
                 let StmtKind::Expr(expr) = &tail.fallback().kind else {
-                    if tail.value_expression_kind().is_some() {
-                        return Err(crate::compiler::CompileError::new(
-                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                                "mismatched CST block tail expression",
-                            ),
-                        ));
-                    }
-                    return self.compile_block_value_to(body.fallback(), dst);
+                    return Err(crate::compiler::CompileError::new(
+                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST block tail expression",
+                        ),
+                    ));
                 };
                 self.compile_block_tail_expr_to(expr, Some(tail), dst)
             }
@@ -84,9 +81,14 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerStatementPayload<'_>>,
         dst: Register,
     ) -> CompileResult<bool> {
-        if let Some(payload) = payload
-            && let Some(kind) = payload.value_expression_kind()
-        {
+        if let Some(payload) = payload {
+            let Some(kind) = payload.value_expression_kind() else {
+                return Err(crate::compiler::CompileError::new(
+                    crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST block tail expression",
+                    ),
+                ));
+            };
             if expression_payload_kind_matches(kind, expr) {
                 return self.compile_cst_block_tail_expr_to(expr, payload, kind, dst);
             }
