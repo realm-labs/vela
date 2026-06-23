@@ -140,11 +140,13 @@ impl Compiler<'_, '_> {
             }
             ExprKind::Path(_) => self.resolve_host_path(expr),
             ExprKind::Index { base, index } => {
-                let operands = payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::index_operand_payloads);
-                let (base_payload, index_payload) =
-                    operands.map_or((None, None), |(base, index)| (Some(base), Some(index)));
+                let (base_payload, index_payload) = match payload.as_ref() {
+                    Some(payload) => {
+                        let (base, index) = payload.index_operand_payloads()?;
+                        (Some(base), Some(index))
+                    }
+                    None => (None, None),
+                };
                 let mut receiver =
                     self.resolve_host_path_index_receiver_with_payload(base, base_payload)?;
                 let dynamic_kind = receiver
@@ -206,9 +208,12 @@ impl Compiler<'_, '_> {
             ExprKind::Field { .. } | ExprKind::Index { .. } => self
                 .resolve_host_path_with_owned_payload(receiver, payload.clone())
                 .unwrap_or_else(|| self.expr_host_path_receiver_with_payload(receiver, payload)),
-            ExprKind::Path(_) => self
-                .resolve_host_path(receiver)
-                .unwrap_or_else(|| self.expr_host_path_receiver_with_payload(receiver, payload)),
+            ExprKind::Path(_) => match payload {
+                Some(payload) => self.expr_host_path_receiver_with_payload(receiver, Some(payload)),
+                None => self
+                    .resolve_host_path(receiver)
+                    .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
+            },
             _ => self.expr_host_path_receiver_with_payload(receiver, payload),
         }
     }
@@ -266,10 +271,12 @@ impl Compiler<'_, '_> {
             ExprKind::Field { .. } | ExprKind::Index { .. } => {
                 self.resolve_host_path_with_owned_payload(receiver, payload)
             }
-            ExprKind::Path(path) => self
-                .host_index_payload_root_path(receiver, payload.clone())
-                .or_else(|| self.resolve_host_path(receiver))
-                .or_else(|| self.host_index_root_path(receiver.span, path)),
+            ExprKind::Path(path) => match payload {
+                Some(payload) => self.host_index_payload_root_path(receiver, Some(payload)),
+                None => self
+                    .resolve_host_path(receiver)
+                    .or_else(|| self.host_index_root_path(receiver.span, path)),
+            },
             _ => None,
         }
     }

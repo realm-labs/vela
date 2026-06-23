@@ -8,6 +8,7 @@ mod containers;
 mod expression_statements;
 mod field_index;
 mod for_iterables;
+mod host_paths;
 mod if_conditions;
 mod interpolated;
 mod lambdas;
