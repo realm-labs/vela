@@ -10,6 +10,19 @@ use crate::compiler::value_types::RuntimeTypeFact;
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape};
 
+pub(super) fn field_payload_parts<'ast>(
+    name: &str,
+    payload: Option<&CompilerExpressionPayload<'ast>>,
+) -> Option<(String, Option<CompilerExpressionPayload<'ast>>)> {
+    match payload {
+        Some(payload) => Some((
+            payload.syntax_field_name()?,
+            Some(payload.field_base_payload()?),
+        )),
+        None => Some((name.to_owned(), None)),
+    }
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn value_shape_for_syntax_payload(
         &self,
