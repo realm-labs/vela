@@ -1,5 +1,6 @@
 use super::*;
 
+mod assignment_targets;
 mod binary;
 mod calls;
 mod constructors;
