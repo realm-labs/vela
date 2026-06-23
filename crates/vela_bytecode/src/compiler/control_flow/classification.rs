@@ -43,6 +43,7 @@ pub(super) fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> 
 
 pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
+        SyntaxExpressionKind::Paren => true,
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
@@ -67,6 +68,18 @@ pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &E
                 | ExprKind::Try(_)
         ),
     }
+}
+
+pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(_)
+            | ExprKind::If(_)
+            | ExprKind::Match(_)
+            | ExprKind::Array(_)
+            | ExprKind::Map(_)
+            | ExprKind::Record { .. }
+    )
 }
 
 pub(super) fn range_iterable_for_payload(

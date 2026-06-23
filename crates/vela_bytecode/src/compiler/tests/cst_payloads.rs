@@ -13,6 +13,7 @@ mod host_paths;
 mod if_conditions;
 mod interpolated;
 mod lambdas;
+mod let_return_values;
 mod literals;
 mod match_arms;
 mod param_defaults;
