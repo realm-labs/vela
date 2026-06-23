@@ -71,13 +71,14 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<i64>> {
-        let Some(Literal::Integer(value)) = payload
-            .and_then(CompilerExpressionPayload::syntax_literal)
-            .or_else(|| match &expr.kind {
+        let literal = match payload {
+            Some(payload) => payload.syntax_literal(),
+            None => match &expr.kind {
                 ExprKind::Literal(literal) => Some(literal.clone()),
                 _ => None,
-            })
-        else {
+            },
+        };
+        let Some(Literal::Integer(value)) = literal else {
             return Ok(None);
         };
         let Some(Constant::Scalar(vela_common::ScalarValue::I64(value))) =

@@ -247,6 +247,61 @@ fn main() {
     );
 }
 
+#[test]
+fn i64_condition_jump_immediate_does_not_use_legacy_rhs_without_cst_literal() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let value: i64 = 10;
+    let other: i64 = 5;
+    if value > other {
+        return 1;
+    }
+    return 0;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value: i64 = 10;
+    let other: i64 = 5;
+    if value > 5 {
+        return 1;
+    }
+    return 0;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("mismatched CST condition should compile through generic condition path");
+
+            assert!(
+                !compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
+                    )),
+                "i64 immediate jump must not use a legacy fallback right-hand literal"
+            );
+        },
+    );
+}
+
 fn assert_cst_statement_if_condition_block_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
