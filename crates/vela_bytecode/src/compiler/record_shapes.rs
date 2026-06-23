@@ -7,6 +7,7 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, RecordField};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 
+use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
 
@@ -1010,6 +1011,12 @@ impl super::Compiler<'_, '_> {
                     .as_record()?
                     .field_value_shape(&field_name)
                     .cloned()
+            }
+            _ if payload
+                .and_then(CompilerExpressionPayload::kind)
+                .is_some_and(|kind| !expression_payload_kind_matches(kind, expr)) =>
+            {
+                None
             }
             _ => self.value_shape_for_expr_legacy(expr),
         }

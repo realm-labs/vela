@@ -56,3 +56,45 @@ fn main() {
         },
     );
 }
+
+#[test]
+fn shape_inference_with_unsupported_cst_payload_does_not_use_legacy_shape() {
+    with_cst_payload_compiler(
+        r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main(input) {
+    let cst_binary = input + 1;
+    let legacy = LegacyBox { amount: 1 };
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_binary = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST binary initializer");
+            let legacy_record = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy record initializer");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_binary
+                    .syntax_expression()
+                    .expect("CST binary syntax")
+                    .clone(),
+                legacy_record.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                None,
+                "unsupported CST payload must not use the legacy record shape"
+            );
+        },
+    );
+}
