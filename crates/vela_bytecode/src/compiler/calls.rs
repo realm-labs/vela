@@ -48,6 +48,7 @@ impl Compiler<'_, '_> {
         arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
+        reject_mismatched_call_callee_payload(callee, callee_payload)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         let has_callee_payload = callee_payload.is_some();
@@ -1084,6 +1085,26 @@ fn callable_name(
         )));
     };
     Ok(path.join("::"))
+}
+
+fn reject_mismatched_call_callee_payload(
+    callee: &Expr,
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    let Some(kind) = callee_payload.and_then(CompilerExpressionPayload::kind) else {
+        return Ok(());
+    };
+    let matches_fallback = match &callee.kind {
+        ExprKind::Field { .. } => kind == SyntaxExpressionKind::Field,
+        ExprKind::Path(_) => kind == SyntaxExpressionKind::Path,
+        _ => true,
+    };
+    if matches_fallback {
+        return Ok(());
+    }
+    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        "mismatched CST call callee payload",
+    )))
 }
 
 fn callee_field_name(

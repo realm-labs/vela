@@ -232,9 +232,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("callable expression")
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
                 ),
-                "expected unsupported callable expression, got {error:?}"
+                "expected mismatched CST call callee payload, got {error:?}"
             );
         },
     );

@@ -208,9 +208,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("callable expression")
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
                 ),
-                "expected unsupported callable expression, got {error:?}"
+                "expected mismatched CST call callee payload, got {error:?}"
             );
         },
     );
@@ -259,9 +259,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("callable expression")
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
                 ),
-                "expected unsupported callable expression, got {error:?}"
+                "expected mismatched CST call callee payload, got {error:?}"
             );
         },
     );
@@ -297,33 +297,16 @@ fn main() {
                 legacy_call.fallback(),
             );
 
-            compiler
+            let error = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-                .expect("mismatched method fallback should compile as a callable expression");
+                .expect_err("mismatched non-field CST callee must not compile");
 
             assert!(
-                compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .all(|instruction| !matches!(
-                        &instruction.kind,
-                        UnlinkedInstructionKind::CallDynamicMethod { method, .. }
-                            | UnlinkedInstructionKind::CallMethodId { method, .. }
-                            if method == "len"
-                    )),
-                "mismatched non-field CST callee must not use the legacy method name"
-            );
-            assert!(
-                compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        &instruction.kind,
-                        UnlinkedInstructionKind::CallClosure { .. }
-                    )),
-                "mismatched non-field CST callee should fall through to callable expression lowering"
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                ),
+                "expected mismatched CST call callee payload, got {error:?}"
             );
         },
     );
@@ -418,34 +401,16 @@ fn main(player: Player) {
     )
     .expect("compiler should initialize");
 
-    compiler
+    let error = compiler
         .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-        .expect("mismatched host push fallback should compile as a callable expression");
+        .expect_err("mismatched host push fallback must not compile");
 
     assert!(
-        compiler
-            .code
-            .instructions
-            .iter()
-            .all(|instruction| !matches!(
-                &instruction.kind,
-                UnlinkedInstructionKind::HostMutate {
-                    op: vela_host::resolved::HostMutationOp::Push,
-                    ..
-                }
-            )),
-        "mismatched non-field CST callee must not use the legacy host push name"
-    );
-    assert!(
-        compiler
-            .code
-            .instructions
-            .iter()
-            .any(|instruction| matches!(
-                &instruction.kind,
-                UnlinkedInstructionKind::CallClosure { .. }
-            )),
-        "mismatched non-field CST callee should fall through to callable expression lowering"
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+        ),
+        "expected mismatched CST call callee payload, got {error:?}"
     );
 }
 
