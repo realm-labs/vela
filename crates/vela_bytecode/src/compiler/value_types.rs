@@ -292,7 +292,20 @@ fn static_expr_type_with_payload(
     local_type_at_span: &dyn Fn(Span) -> Option<RuntimeTypeFact>,
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
-    if let Some(ty) = payload.and_then(|payload| {
+    let payload_matches_expr = payload
+        .map(|payload| {
+            payload
+                .syntax_span()
+                .is_some_and(|span| spans_overlap(span, expr.span))
+        })
+        .unwrap_or(true);
+    let aligned_payload = payload.filter(|_| payload_matches_expr);
+
+    if payload.is_some() && !payload_matches_expr {
+        return StaticExprType::Dynamic;
+    }
+
+    if let Some(ty) = aligned_payload.and_then(|payload| {
         static_syntax_expr_type(
             payload.syntax_expression()?,
             payload.source(),
@@ -309,7 +322,8 @@ fn static_expr_type_with_payload(
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
         }
         ExprKind::Array(values) => {
-            let payloads = payload.and_then(CompilerExpressionPayload::array_element_payloads);
+            let payloads =
+                aligned_payload.and_then(CompilerExpressionPayload::array_element_payloads);
             StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
                 |(index, value)| {
                     expression_value_type_with_payload(
@@ -322,7 +336,7 @@ fn static_expr_type_with_payload(
             )))
         }
         ExprKind::Map(entries) => {
-            let payloads = payload.and_then(CompilerExpressionPayload::map_entry_payloads);
+            let payloads = aligned_payload.and_then(CompilerExpressionPayload::map_entry_payloads);
             StaticExprType::Exact(map_literal_type(entries.iter().enumerate().map(
                 |(index, entry)| {
                     let value_payload = payloads
@@ -347,7 +361,7 @@ fn static_expr_type_with_payload(
         } => StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
         ExprKind::Binary { op, left, right } => {
             let operand_payloads =
-                payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+                aligned_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
             let left = expression_value_type_with_payload(
                 left,
                 operand_payloads.as_ref().map(|(left, _)| left),
@@ -366,7 +380,7 @@ fn static_expr_type_with_payload(
         }
         ExprKind::Try(value) => match expression_value_type_with_payload(
             value,
-            payload
+            aligned_payload
                 .and_then(CompilerExpressionPayload::try_operand_payload)
                 .as_ref(),
             local_type_at_span,
@@ -376,7 +390,7 @@ fn static_expr_type_with_payload(
             Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
             _ => StaticExprType::Dynamic,
         },
-        ExprKind::Path(path) => payload
+        ExprKind::Path(path) => aligned_payload
             .and_then(|payload| {
                 payload.syntax_path_segments().as_deref().and_then(|path| {
                     path.first().and_then(|name| {
@@ -409,6 +423,10 @@ fn static_expr_type_with_payload(
         }
         _ => StaticExprType::Dynamic,
     }
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 fn static_syntax_expr_type(

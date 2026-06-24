@@ -121,6 +121,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Binary { op, left, right } = &expr.kind else {
                     unreachable!("validated CST binary expression payload kind");
                 };
+                if !payload_syntax_overlaps_expr(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST binary expression payload",
+                    )));
+                }
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
                     let operand_payloads = payload.logical_chain_operand_payloads(*op);
                     return self.compile_logical_chain(*op, expr, operand_payloads.as_deref());
@@ -960,7 +965,7 @@ fn payload_syntax_overlaps_expr(payload: &CompilerExpressionPayload<'_>, expr: &
 }
 
 fn spans_overlap(left: Span, right: Span) -> bool {
-    left.source == right.source && left.start < right.end && right.start < left.end
+    left.start < right.end && right.start < left.end
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -34,7 +34,7 @@ fn literal_values() {
 }
 
 #[test]
-fn static_literal_type_facts_prefer_cst_payloads() {
+fn static_literal_type_facts_reject_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -64,9 +64,7 @@ fn main() {
                     mismatched_payload.fallback(),
                     Some(&mismatched_payload),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::Bool,
-                ))
+                value_types::StaticExprType::Dynamic
             );
             assert_eq!(
                 compiler
@@ -78,8 +76,10 @@ fn main() {
                         },
                         Some(&mismatched_payload),
                     )
-                    .expect("CST literal should satisfy bool contract"),
-                value_types::ExpectedTypeOutcome::Proven
+                    .expect("mismatched literal should require a runtime guard"),
+                value_types::ExpectedTypeOutcome::RequiresRuntimeGuard(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::Bool
+                ),)
             );
         },
     );
@@ -128,7 +128,7 @@ fn main() {
 }
 
 #[test]
-fn contextual_literal_payload_mismatch_does_not_use_legacy_literal() {
+fn contextual_literal_payload_mismatch_requires_runtime_guard() {
     with_cst_payload_compiler(
         r#"
 struct Box {
@@ -157,7 +157,7 @@ fn main(box: Box) {
                 legacy_literal.fallback(),
             );
 
-            let error = compiler
+            compiler
                 .compile_expr_with_expected_type_and_payload(
                     legacy_literal.fallback(),
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),
@@ -166,11 +166,18 @@ fn main(box: Box) {
                     },
                     Some(&mismatched_payload),
                 )
-                .expect_err("typed literal context should not use the legacy literal");
+                .expect("mismatched contextual payload should compile through dynamic guard");
 
-            assert_eq!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST literal expression")
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::GuardType { .. }
+                    )),
+                "mismatched contextual payload should not be treated as a proven literal"
             );
         },
     );

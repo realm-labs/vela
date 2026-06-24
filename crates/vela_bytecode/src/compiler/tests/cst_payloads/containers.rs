@@ -257,7 +257,7 @@ fn main() {
 }
 
 #[test]
-fn container_value_types_prefer_cst_payload_shape() {
+fn container_value_types_reject_mismatched_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -288,9 +288,7 @@ fn main() {
                     mismatched_array.fallback(),
                     Some(&mismatched_array),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::array(
-                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool),
-                ))
+                value_types::StaticExprType::Dynamic
             );
 
             let cst_map = statements[2]
@@ -312,10 +310,7 @@ fn main() {
                     mismatched_map.fallback(),
                     Some(&mismatched_map),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::map(
-                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::String),
-                    RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool),
-                ))
+                value_types::StaticExprType::Dynamic
             );
         },
     );

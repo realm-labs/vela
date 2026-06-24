@@ -241,24 +241,17 @@ fn main() {
 
             let error = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-                .expect_err("static scalar identity comparison should be rejected");
-            let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-                panic!("expected semantic diagnostics");
-            };
-            let diagnostic = diagnostics
-                .iter()
-                .find(|diagnostic| {
-                    diagnostic.code.as_deref() == Some("compiler::invalid_identity_comparison")
-                })
-                .expect("identity comparison diagnostic");
-            assert!(diagnostic.message.contains("type `bool`"), "{diagnostic:?}");
-            assert!(!diagnostic.message.contains("type `i64`"), "{diagnostic:?}");
+                .expect_err("mismatched CST binary payload must not compile");
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST binary expression payload")
+            ));
         },
     );
 }
 
 #[test]
-fn binary_value_type_inference_prefers_cst_payload_operands() {
+fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -294,9 +287,7 @@ fn main() {
                     mismatched_payload.fallback(),
                     Some(&mismatched_payload),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::I64,
-                ))
+                value_types::StaticExprType::Dynamic
             );
 
             compiler.value_types.set_name(
@@ -320,9 +311,7 @@ fn main() {
                     mismatched_path_operand_payload.fallback(),
                     Some(&mismatched_path_operand_payload),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::I64,
-                ))
+                value_types::StaticExprType::Dynamic
             );
         },
     );

@@ -254,9 +254,7 @@ fn main() {
                     mismatched_path.fallback(),
                     Some(&mismatched_path),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::Bool,
-                ))
+                value_types::StaticExprType::Dynamic
             );
 
             compiler
@@ -395,9 +393,7 @@ fn main() {
                     mismatched_payload.fallback(),
                     Some(&mismatched_payload),
                 ),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::Bool,
-                ))
+                value_types::StaticExprType::Dynamic
             );
             assert_eq!(
                 compiler.value_shape_for_expr_with_payload(
