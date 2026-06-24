@@ -294,9 +294,17 @@ fn static_expr_type_with_payload(
 ) -> StaticExprType {
     let payload_matches_expr = payload
         .map(|payload| {
-            payload
-                .syntax_span()
-                .is_some_and(|span| spans_overlap(span, expr.span))
+            let kind_matches = payload.kind().is_none_or(|kind| {
+                kind != SyntaxExpressionKind::Path
+                    || matches!(
+                        expr.kind,
+                        ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Binary { .. }
+                    )
+            });
+            kind_matches
+                && payload
+                    .syntax_span()
+                    .is_some_and(|span| spans_overlap(span, expr.span))
         })
         .unwrap_or(true);
     let aligned_payload = payload.filter(|_| payload_matches_expr);

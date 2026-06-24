@@ -361,6 +361,55 @@ fn main() {
 }
 
 #[test]
+fn static_value_type_facts_with_overlapping_child_cst_payload_do_not_use_child_fact() {
+    with_cst_payload_compiler(
+        r#"
+fn main(cst) {
+    let value = {
+        let selected = cst;
+        selected
+    };
+}
+"#,
+        |compiler, payload| {
+            compiler.value_types.set_name(
+                "selected",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool)),
+            );
+            let statements = payload.body.statement_payloads();
+            let block = statements[0]
+                .let_initializer_expression_payload()
+                .expect("block initializer");
+            assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
+            let block_body = block.block_body_payload().expect("block body");
+            let block_statements = block_body.statement_payloads();
+            let child_path = block_statements[1]
+                .expression_payload()
+                .expect("block tail path");
+            assert_eq!(child_path.kind(), Some(SyntaxExpressionKind::Path));
+
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                child_path
+                    .syntax_expression()
+                    .expect("child path CST expression")
+                    .clone(),
+                block.fallback(),
+            );
+
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                value_types::StaticExprType::Dynamic,
+                "overlapping child CST path payload must not type the enclosing block fallback"
+            );
+        },
+    );
+}
+
+#[test]
 fn self_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"
