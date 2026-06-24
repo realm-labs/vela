@@ -268,6 +268,55 @@ fn main() {
 }
 
 #[test]
+fn path_call_with_misaligned_path_cst_callee_does_not_use_wrong_function() {
+    with_cst_payload_compiler(
+        r#"
+fn first(value) {
+    return value;
+}
+
+fn second(value) {
+    return value;
+}
+
+fn main() {
+    let cst_call = first(1);
+    let legacy_call = second(2);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_call = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST call payload");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy path call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_call
+                    .syntax_expression()
+                    .expect("CST expression")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
+                .expect_err("misaligned path CST callee must not select the wrong function");
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                ),
+                "expected mismatched CST call callee payload, got {error:?}"
+            );
+        },
+    );
+}
+
+#[test]
 fn method_call_with_non_field_cst_callee_does_not_use_legacy_method_name() {
     with_cst_payload_compiler(
         r#"

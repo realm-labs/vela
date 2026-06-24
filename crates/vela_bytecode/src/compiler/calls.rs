@@ -4,6 +4,7 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
+use super::expression_payload_kinds::expression_payload_is_aligned;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -1091,20 +1092,16 @@ fn reject_mismatched_call_callee_payload(
     callee: &Expr,
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<()> {
-    let Some(kind) = callee_payload.and_then(CompilerExpressionPayload::kind) else {
+    let Some(payload) = callee_payload else {
         return Ok(());
     };
-    let matches_fallback = match &callee.kind {
-        ExprKind::Field { .. } => kind == SyntaxExpressionKind::Field,
-        ExprKind::Path(_) => kind == SyntaxExpressionKind::Path,
-        _ => true,
-    };
-    if matches_fallback {
-        return Ok(());
+    if expression_payload_is_aligned(payload, callee) {
+        Ok(())
+    } else {
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST call callee payload",
+        )))
     }
-    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-        "mismatched CST call callee payload",
-    )))
 }
 
 fn callee_field_name(
