@@ -1,5 +1,6 @@
 //! Minimal AST-to-bytecode compiler for the M2 VM loop.
 
+mod assignment_payloads;
 mod assignments;
 mod body_payloads;
 mod cache_sites;

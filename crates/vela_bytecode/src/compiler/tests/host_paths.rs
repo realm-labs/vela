@@ -327,10 +327,12 @@ fn main(cst: CstHost, legacy: LegacyHost) {
     )
     .expect("compiler should initialize");
 
-    let resolved = compiler
-        .resolve_host_path_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
-        .expect("CST-backed host path should resolve");
-    assert_eq!(resolved.type_name.as_deref(), Some("i64"));
+    assert!(
+        compiler
+            .resolve_host_path_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
+            .is_none(),
+        "mismatched CST host path payload must not resolve"
+    );
     let error = compiler
         .compile_expr_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
         .expect_err("mismatched CST host read payload must not compile");
@@ -338,7 +340,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         error.kind,
         CompileErrorKind::UnsupportedSyntax("mismatched CST field expression payload")
     ));
-    compiler
+    let error = compiler
         .compile_assignment_with_payloads(
             legacy_statement.fallback(),
             crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
@@ -348,23 +350,11 @@ fn main(cst: CstHost, legacy: LegacyHost) {
                 crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
             ),
         )
-        .expect("CST-backed host write should compile");
-    let target = compiler
-        .code
-        .instructions
-        .iter()
-        .rev()
-        .find_map(|instruction| match instruction.kind {
-            UnlinkedInstructionKind::HostWrite { target, .. } => Some(target),
-            _ => None,
-        })
-        .expect("host write should be emitted");
-    let plan = compiler
-        .code
-        .host_target(target)
-        .expect("host target should exist");
-    assert_eq!(plan.root_type, cst_type);
-    assert_eq!(plan.parts.as_slice(), [HostPathPart::Field(cst_amount)]);
+        .expect_err("mismatched CST host write payload must not compile");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+    ));
 }
 
 #[test]

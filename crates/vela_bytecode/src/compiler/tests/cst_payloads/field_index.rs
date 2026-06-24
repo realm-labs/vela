@@ -287,23 +287,11 @@ fn main() {
                         ),
                     ),
                 )
-                .expect_err("CST target amount expects i64, not bool");
-            let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
-                panic!("expected semantic diagnostics: {:?}", error.kind);
-            };
-            let diagnostic = diagnostics
-                .iter()
-                .find(|diagnostic| {
-                    diagnostic.code.as_deref() == Some("compiler::type_contract_mismatch")
-                })
-                .expect("type contract mismatch diagnostic");
-            assert!(
-                diagnostic
-                    .labels
-                    .iter()
-                    .any(|label| label.message.contains("expected `i64`")),
-                "{diagnostic:?}"
-            );
+                .expect_err("mismatched CST assignment target must not compile");
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+            ));
         },
     );
 }
@@ -355,7 +343,7 @@ fn main() {
                 legacy_target.fallback(),
             );
 
-            compiler
+            let error = compiler
                 .compile_assignment_with_payloads(
                     legacy_statement.fallback(),
                     crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
@@ -369,21 +357,11 @@ fn main() {
                         ),
                     ),
                 )
-                .expect("CST-backed indexed assignment should compile");
-            let slot = compiler
-                .code
-                .instructions
-                .iter()
-                .rev()
-                .find_map(|instruction| {
-                    let UnlinkedInstructionKind::SetRecordSlot { field, slot, .. } =
-                        &instruction.kind
-                    else {
-                        return None;
-                    };
-                    (field == "amount").then_some(*slot)
-                });
-            assert_eq!(slot, Some(1));
+                .expect_err("mismatched CST indexed assignment target must not compile");
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+            ));
         },
     );
 }
@@ -471,7 +449,7 @@ fn main() {
                 legacy_target.fallback(),
             );
 
-            compiler
+            let error = compiler
                 .compile_assignment_with_payloads(
                     legacy_statement.fallback(),
                     crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
@@ -485,21 +463,11 @@ fn main() {
                         ),
                     ),
                 )
-                .expect("CST-backed string-key index assignment should compile");
-            let key = compiler
-                .code
-                .instructions
-                .iter()
-                .rev()
-                .find_map(|instruction| match instruction.kind {
-                    UnlinkedInstructionKind::SetStringKeyIndex { key, .. } => Some(key),
-                    _ => None,
-                })
-                .expect("string-key index write should be emitted");
-            assert_eq!(
-                compiler.code.constants[key.0],
-                crate::Constant::String("alpha".to_owned())
-            );
+                .expect_err("mismatched CST index assignment target must not compile");
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+            ));
         },
     );
 }
@@ -862,11 +830,11 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
                 crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
             ),
         )
-        .expect_err("CST read-only assignment target should be rejected");
-    assert_eq!(
-        semantic_diagnostic_codes(error),
-        ["analysis::field_not_writable"]
-    );
+        .expect_err("mismatched CST read-only assignment target must not compile");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
+    ));
 }
 
 #[test]
@@ -958,8 +926,8 @@ fn main(readonly: ReadOnlyHost) {
         )
         .expect_err("mismatched non-field CST target should be rejected");
     assert!(
-        matches!(error.kind, CompileErrorKind::UnsupportedSyntax(message) if message == "assignment target"),
-        "expected unsupported assignment target, got {:?}",
+        matches!(error.kind, CompileErrorKind::UnsupportedSyntax(message) if message == "mismatched CST assignment target"),
+        "expected mismatched assignment target, got {:?}",
         error.kind
     );
 }

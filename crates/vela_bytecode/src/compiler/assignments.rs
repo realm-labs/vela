@@ -6,6 +6,7 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
+use super::assignment_payloads::validate_assignment_target_payload;
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
@@ -215,6 +216,7 @@ impl Compiler<'_, '_> {
                 "assignment statement",
             )));
         };
+        validate_assignment_target_payload(target, target_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target) {
             let target_value_type =
                 self.value_type_for_expr_with_payload(target, target_syntax.expression);

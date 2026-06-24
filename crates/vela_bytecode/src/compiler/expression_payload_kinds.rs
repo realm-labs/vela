@@ -1,4 +1,7 @@
+use vela_common::Span;
 use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
+
+use super::body_payloads::CompilerExpressionPayload;
 
 pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
@@ -43,4 +46,30 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
                 | ExprKind::Lambda { .. }
         ),
     }
+}
+
+pub(super) fn expression_payload_is_aligned(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    payload
+        .kind()
+        .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
+        && expression_payload_overlaps_span(payload, expr.span)
+}
+
+pub(super) fn expression_payload_overlaps_fallback(
+    payload: &CompilerExpressionPayload<'_>,
+) -> bool {
+    expression_payload_overlaps_span(payload, payload.fallback().span)
+}
+
+fn expression_payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
+    payload
+        .syntax_span()
+        .is_some_and(|syntax_span| spans_overlap(syntax_span, span))
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
 }

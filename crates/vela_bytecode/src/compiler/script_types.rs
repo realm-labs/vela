@@ -7,6 +7,7 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Expr, ExprKind};
 
 use super::body_payloads::CompilerExpressionPayload;
+use super::expression_payload_kinds::expression_payload_overlaps_fallback;
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -180,6 +181,10 @@ fn expression_script_fact_from_payload(
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
+    if !expression_payload_overlaps_fallback(payload) {
+        return None;
+    }
+
     if let Some(path) = payload.syntax_record_path_segments() {
         if let Some((enum_path, variant)) = enum_variant_path(&path) {
             let type_name = payload

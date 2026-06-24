@@ -43,13 +43,23 @@ fn legacy_path(legacy) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_record").expect("cst function");
-    let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
     let cst_return = cst_payload
         .body
         .statement_payloads()
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("CST record return expression");
+    let fact = script_types::expression_script_fact_with_payload(
+        cst_return.fallback(),
+        Some(&cst_return),
+        |_| None,
+        |_| None,
+        |_| None,
+    )
+    .expect("aligned CST record payload should produce a script type fact");
+    assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
+
+    let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
     let legacy_return = legacy_payload
         .body
         .statement_payloads()
@@ -71,9 +81,11 @@ fn legacy_path(legacy) {
         |_| None,
         |_| None,
         |_| None,
-    )
-    .expect("CST record payload should produce a script type fact");
-    assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
+    );
+    assert_eq!(
+        fact, None,
+        "non-overlapping CST record payload must not produce a script type fact"
+    );
 }
 
 #[test]
@@ -319,13 +331,27 @@ fn legacy_path(legacy) {
         .into_iter()
         .find(|method| method.method_name == "id")
         .expect("self method");
-    let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
     let self_return = self_method
         .body
         .statement_payloads()
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("self return expression");
+    let fact = script_types::expression_script_fact_with_payload(
+        self_return.fallback(),
+        Some(&self_return),
+        |_| None,
+        |_| None,
+        |name| match name {
+            "self" => Some(script_types::ScriptTypeFact::new("CstBox")),
+            "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+            _ => None,
+        },
+    )
+    .expect("aligned CST self payload should produce a script type fact");
+    assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
+
+    let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
     let legacy_return = legacy_payload
         .body
         .statement_payloads()
@@ -352,9 +378,11 @@ fn legacy_path(legacy) {
             "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
             _ => None,
         },
-    )
-    .expect("CST self payload should produce a script type fact");
-    assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
+    );
+    assert_eq!(
+        fact, None,
+        "non-overlapping CST self payload must not produce a script type fact"
+    );
 
     with_cst_payload_compiler(
         r#"
