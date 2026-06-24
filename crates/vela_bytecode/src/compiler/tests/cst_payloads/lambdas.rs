@@ -1,6 +1,4 @@
 use super::*;
-use crate::compiler::lambdas::collect_lambda_captures_with_payload;
-
 #[test]
 fn semantic_function_lambda_bodies_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -54,7 +52,7 @@ fn lambda_values() {
 }
 
 #[test]
-fn lambda_capture_collection_prefers_cst_body_payloads() {
+fn mismatched_lambda_payload_does_not_collect_captures_from_cst_body() {
     let source = SourceId::new(1);
     with_cst_payload_compiler(
         r#"
@@ -88,27 +86,15 @@ fn main() {
                     .clone(),
                 legacy_lambda.fallback(),
             );
-            let ExprKind::Lambda { body, .. } = &mismatched_lambda.fallback().kind else {
-                panic!("expected legacy lambda fallback");
-            };
-            let mismatched_body = mismatched_lambda
-                .lambda_body_payload()
-                .expect("mismatched lambda body payload");
 
-            let captures = collect_lambda_captures_with_payload(
-                compiler.bindings,
-                &compiler.hir_locals,
-                body,
-                Some(&mismatched_body),
-            );
+            let error = compiler
+                .compile_expr_with_payload(mismatched_lambda.fallback(), Some(&mismatched_lambda))
+                .expect_err("mismatched CST lambda payload must not compile");
 
-            assert_eq!(
-                captures
-                    .iter()
-                    .map(|capture| capture.name.as_str())
-                    .collect::<Vec<_>>(),
-                ["cst_outer"],
-            );
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST lambda expression payload")
+            ));
         },
     );
 }

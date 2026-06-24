@@ -186,6 +186,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Lambda { params, body } = &expr.kind else {
                     unreachable!("validated CST lambda expression payload kind");
                 };
+                if !payload_syntax_overlaps_expr(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST lambda expression payload",
+                    )));
+                }
                 let body_payload = payload.lambda_body_payload();
                 self.compile_lambda(expr, params, body, body_payload.as_ref())
             }
