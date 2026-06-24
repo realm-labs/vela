@@ -998,25 +998,30 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
+        let kind_matched_payload = payload.filter(|payload| {
+            payload
+                .kind()
+                .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
+        });
         if let Some(shape) =
-            payload.and_then(|payload| self.value_shape_for_syntax_payload(payload))
+            kind_matched_payload.and_then(|payload| self.value_shape_for_syntax_payload(payload))
         {
             return Some(shape);
         }
+        if payload.is_some() && kind_matched_payload.is_none() {
+            return None;
+        }
         match &expr.kind {
-            ExprKind::Path(path) => self.value_shape_for_path_expr(expr.span, path, payload),
+            ExprKind::Path(path) => {
+                self.value_shape_for_path_expr(expr.span, path, kind_matched_payload)
+            }
             ExprKind::Field { base, name } => {
-                let (field_name, base_payload) = syntax_shapes::field_payload_parts(name, payload)?;
+                let (field_name, base_payload) =
+                    syntax_shapes::field_payload_parts(name, kind_matched_payload)?;
                 self.value_shape_for_expr_with_payload(base, base_payload.as_ref())?
                     .as_record()?
                     .field_value_shape(&field_name)
                     .cloned()
-            }
-            _ if payload
-                .and_then(CompilerExpressionPayload::kind)
-                .is_some_and(|kind| !expression_payload_kind_matches(kind, expr)) =>
-            {
-                None
             }
             _ => self.value_shape_for_expr_legacy(expr),
         }

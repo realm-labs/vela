@@ -459,6 +459,18 @@ fn main() {
             let cst_self = statements[1]
                 .expression_payload()
                 .expect("CST self expression statement");
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
+                    vela_common::PrimitiveTag::Bool
+                )),
+                "aligned CST self payload should infer the self value type"
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
+                Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
+                "aligned CST self payload should infer the self value shape"
+            );
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 source,
                 cst_self
@@ -480,7 +492,8 @@ fn main() {
                     mismatched_payload.fallback(),
                     Some(&mismatched_payload),
                 ),
-                Some(record_shapes::ValueShape::Scalar("bool".to_owned()))
+                None,
+                "mismatched CST self payload must not infer the self value shape"
             );
         },
     );
