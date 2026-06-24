@@ -216,23 +216,14 @@ fn main() {
                 legacy_field.fallback(),
             );
 
-            compiler
+            let error = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-                .expect("CST-backed field read should compile");
-            let slot = compiler
-                .code
-                .instructions
-                .iter()
-                .rev()
-                .find_map(|instruction| {
-                    let UnlinkedInstructionKind::GetRecordSlot { field, slot, .. } =
-                        &instruction.kind
-                    else {
-                        return None;
-                    };
-                    (field == "amount").then_some(*slot)
-                });
-            assert_eq!(slot, Some(1));
+                .expect_err("mismatched CST field payload must not compile");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST field expression payload")
+            ));
         },
     );
 }
@@ -431,23 +422,14 @@ fn main() {
                 legacy_index.fallback(),
             );
 
-            compiler
+            let error = compiler
                 .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
-                .expect("CST-backed string-key index read should compile");
-            let key = compiler
-                .code
-                .instructions
-                .iter()
-                .rev()
-                .find_map(|instruction| match instruction.kind {
-                    UnlinkedInstructionKind::GetStringKeyIndex { key, .. } => Some(key),
-                    _ => None,
-                })
-                .expect("string-key index read should be emitted");
-            assert_eq!(
-                compiler.code.constants[key.0],
-                crate::Constant::String("alpha".to_owned())
-            );
+                .expect_err("mismatched CST index payload must not compile");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST index expression payload")
+            ));
         },
     );
 }
@@ -742,28 +724,13 @@ fn main(cst: CstMap, legacy: LegacyMap) {
             Some(&index_payload),
         )
         .expect("CST receiver payload should select CstMap key contract");
-    compiler
+    let error = compiler
         .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
-        .expect("CST-backed host index read should compile");
-    let target = compiler
-        .code
-        .instructions
-        .iter()
-        .rev()
-        .find_map(|instruction| match instruction.kind {
-            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
-            _ => None,
-        })
-        .expect("host index read should be emitted");
-    let plan = compiler
-        .code
-        .host_target(target)
-        .expect("host index read target should exist");
-    assert_eq!(plan.root_type, HostTypeId::new(77));
-    assert_eq!(
-        plan.parts.as_slice(),
-        [vela_host::target::HostPathPart::DynIndex { arg: 0 }]
-    );
+        .expect_err("mismatched CST index payload must not compile");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST index expression payload")
+    ));
 }
 
 #[test]

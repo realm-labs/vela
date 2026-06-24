@@ -331,28 +331,13 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         .resolve_host_path_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
         .expect("CST-backed host path should resolve");
     assert_eq!(resolved.type_name.as_deref(), Some("i64"));
-    compiler
+    let error = compiler
         .compile_expr_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
-        .expect("CST-backed host read should compile");
-    let read_target = compiler
-        .code
-        .instructions
-        .iter()
-        .rev()
-        .find_map(|instruction| match instruction.kind {
-            UnlinkedInstructionKind::HostRead { target, .. } => Some(target),
-            _ => None,
-        })
-        .expect("host read should be emitted");
-    let read_plan = compiler
-        .code
-        .host_target(read_target)
-        .expect("host read target should exist");
-    assert_eq!(read_plan.root_type, cst_type);
-    assert_eq!(
-        read_plan.parts.as_slice(),
-        [HostPathPart::Field(cst_amount)]
-    );
+        .expect_err("mismatched CST host read payload must not compile");
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST field expression payload")
+    ));
     compiler
         .compile_assignment_with_payloads(
             legacy_statement.fallback(),

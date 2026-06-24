@@ -149,6 +149,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Field { base, name } = &expr.kind else {
                     unreachable!("validated CST field expression payload kind");
                 };
+                if !payload_syntax_overlaps_expr(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST field expression payload",
+                    )));
+                }
                 let base_payload = payload.field_base_payload();
                 let name = payload
                     .syntax_field_name()
@@ -159,6 +164,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Index { base, index } = &expr.kind else {
                     unreachable!("validated CST index expression payload kind");
                 };
+                if !payload_syntax_overlaps_expr(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST index expression payload",
+                    )));
+                }
                 let operand_payloads = payload.index_operand_payloads();
                 let (base_payload, index_payload) = operand_payloads
                     .as_ref()
@@ -936,6 +946,16 @@ pub(super) fn literal_string_with_payload(
         return Some(value);
     }
     literal_string(expr).map(ToOwned::to_owned)
+}
+
+fn payload_syntax_overlaps_expr(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
+    payload
+        .syntax_span()
+        .is_some_and(|span| spans_overlap(span, expr.span))
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.source == right.source && left.start < right.end && right.start < left.end
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
