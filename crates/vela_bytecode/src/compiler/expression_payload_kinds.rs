@@ -9,7 +9,7 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
         SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
         SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
-        SyntaxExpressionKind::Path => matches!(expr.kind, ExprKind::Path(_)),
+        SyntaxExpressionKind::Path => matches!(expr.kind, ExprKind::Path(_) | ExprKind::SelfValue),
         SyntaxExpressionKind::Literal => {
             matches!(
                 expr.kind,
@@ -56,12 +56,6 @@ pub(super) fn expression_payload_is_aligned(
         .kind()
         .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
         && expression_payload_overlaps_span(payload, expr.span)
-}
-
-pub(super) fn expression_payload_overlaps_fallback(
-    payload: &CompilerExpressionPayload<'_>,
-) -> bool {
-    expression_payload_overlaps_span(payload, payload.fallback().span)
 }
 
 fn expression_payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {

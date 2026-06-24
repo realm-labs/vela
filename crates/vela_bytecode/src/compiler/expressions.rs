@@ -84,15 +84,18 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok(dst)
             }
-            SyntaxExpressionKind::Path => {
-                let ExprKind::Path(path) = &expr.kind else {
-                    unreachable!("validated CST path expression payload kind");
-                };
-                let path = payload
-                    .syntax_path_segments()
-                    .unwrap_or_else(|| path.to_owned());
-                self.compile_path_expr(expr.span, &path)
-            }
+            SyntaxExpressionKind::Path => match &expr.kind {
+                ExprKind::Path(path) => {
+                    let path = payload
+                        .syntax_path_segments()
+                        .unwrap_or_else(|| path.to_owned());
+                    self.compile_path_expr(expr.span, &path)
+                }
+                ExprKind::SelfValue if payload.syntax_is_self() => {
+                    self.local_register_at_span(expr.span, "self")
+                }
+                _ => unreachable!("validated CST path expression payload kind"),
+            },
             SyntaxExpressionKind::Array => {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
