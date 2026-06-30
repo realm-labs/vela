@@ -495,6 +495,8 @@ expression fallback is consulted.
 Indexed array value shape inference now also reads rowan CST receiver payloads,
 so aligned index expressions can derive element shapes before consulting the
 temporary legacy expression fallback.
+Parenthesized value shape inference now unwraps rowan CST inner expressions
+before consulting the temporary legacy expression fallback.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

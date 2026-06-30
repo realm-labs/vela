@@ -100,6 +100,46 @@ fn main(input) {
 }
 
 #[test]
+fn paren_shape_inference_prefers_inner_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_paren = (["cst"]);
+    let legacy_array = [true];
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_paren = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST parenthesized initializer");
+            let legacy_array = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy array fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_paren
+                    .syntax_expression()
+                    .expect("CST parenthesized syntax")
+                    .clone(),
+                legacy_array.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Array(Box::new(
+                    record_shapes::ValueShape::Scalar("String".to_owned())
+                ))),
+                "parenthesized CST payload must not use the old fallback array shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn native_call_shape_inference_prefers_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"

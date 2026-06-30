@@ -55,8 +55,8 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Field => self.field_shape(source, expression),
             SyntaxExpressionKind::Call => self.call_shape(source, expression),
             SyntaxExpressionKind::Index => self.index_shape(source, expression),
-            SyntaxExpressionKind::Paren
-            | SyntaxExpressionKind::Unary
+            SyntaxExpressionKind::Paren => self.paren_shape(source, expression),
+            SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Try
@@ -233,6 +233,15 @@ impl Compiler<'_, '_> {
             .as_record()?
             .field_value_shape(&name)
             .cloned()
+    }
+
+    fn paren_shape(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let inner = expression.as_paren()?.expression()?;
+        self.value_shape_for_syntax_expression(source, &inner)
     }
 
     fn index_shape(
