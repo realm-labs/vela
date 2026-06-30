@@ -506,6 +506,10 @@ the temporary legacy expression fallback.
 Argument-aware method-call value shape inference now also handles rowan CST
 `unwrap_or` calls for Option/Result receiver shapes before consulting the
 temporary legacy expression fallback.
+Additional rowan CST method-call value shape inference now covers map lookup
+and entry projection, iterator collection/projection, selected string helpers,
+and Option/Result shape-preserving helpers before consulting the temporary
+legacy expression fallback.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -8,7 +8,7 @@ use vela_syntax::ast::{
 
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-use crate::compiler::value_types::RuntimeTypeFact;
+use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
 
@@ -372,10 +372,55 @@ impl Compiler<'_, '_> {
             "has" | "contains" | "starts_with" | "ends_with" | "is_empty" | "is_none"
             | "is_some" | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset"
             | "is_disjoint" => Some(ValueShape::Scalar("bool".to_owned())),
+            "slice" => match receiver.value_type() {
+                Some(RuntimeTypeFact::Primitive(PrimitiveTag::String)) => Some(string_shape()),
+                Some(RuntimeTypeFact::Standard(StandardRuntimeType::Array))
+                | Some(RuntimeTypeFact::Array(_)) => Some(receiver),
+                _ => None,
+            },
+            "parse_i64" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+                "i64".to_owned(),
+            )))),
+            "parse_f64" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+                "f64".to_owned(),
+            )))),
+            "parse_bool" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+                "bool".to_owned(),
+            )))),
+            "split" | "split_whitespace" | "split_lines" => {
+                Some(ValueShape::Array(Box::new(string_shape())))
+            }
+            "split_once" => Some(ValueShape::Option(Box::new(ValueShape::Array(Box::new(
+                string_shape(),
+            ))))),
+            "strip_prefix" | "strip_suffix" => Some(ValueShape::Option(Box::new(string_shape()))),
+            "filter" => match receiver {
+                ValueShape::Array(_)
+                | ValueShape::Map { .. }
+                | ValueShape::Set(_)
+                | ValueShape::Option(_) => Some(receiver),
+                ValueShape::Iterator(item) => Some(ValueShape::Iterator(item)),
+                _ => None,
+            },
             "first" | "last" | "pop" | "remove_at" | "min" | "max" => receiver
                 .array_element()
                 .cloned()
                 .map(|element| ValueShape::Option(Box::new(element))),
+            "get" => receiver
+                .map_parts()
+                .map(|(_, value)| ValueShape::Option(Box::new(value.clone()))),
+            "get_or" => receiver.map_parts().map(|(_, value)| value.clone()),
+            "index_of" | "last_index_of" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
+                "i64".to_owned(),
+            )))),
+            "take" | "skip" => receiver
+                .iterator_item()
+                .cloned()
+                .map(|item| ValueShape::Iterator(Box::new(item))),
+            "collect_array" => receiver
+                .iterator_item()
+                .cloned()
+                .map(|item| ValueShape::Array(Box::new(item))),
             "keys" => receiver
                 .map_parts()
                 .map(|(key, _)| ValueShape::Iterator(Box::new(key.clone()))),
@@ -385,6 +430,9 @@ impl Compiler<'_, '_> {
                 | ValueShape::Map { value, .. } => Some(ValueShape::Iterator(value.clone())),
                 _ => None,
             },
+            "entries" => receiver.map_parts().map(|(key, value)| {
+                ValueShape::Iterator(Box::new(ValueShape::map_entry(key.clone(), value.clone())))
+            }),
             "unwrap_or" => match receiver {
                 ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
                     Some(*value)
@@ -402,6 +450,50 @@ impl Compiler<'_, '_> {
                     .first()
                     .and_then(|arg| arg.expression())
                     .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg)),
+                _ => None,
+            },
+            "ok_or" => match receiver {
+                ValueShape::Option(value) => Some(ValueShape::Result {
+                    ok: Some(value),
+                    err: args.first().map(|arg| {
+                        Box::new(
+                            arg.expression()
+                                .and_then(|arg| {
+                                    self.value_shape_for_syntax_expression(source, &arg)
+                                })
+                                .unwrap_or(ValueShape::Unknown),
+                        )
+                    }),
+                }),
+                _ => None,
+            },
+            "to_error_option" => match receiver {
+                ValueShape::Result { err, .. } => Some(ValueShape::Option(
+                    err.unwrap_or(Box::new(ValueShape::Unknown)),
+                )),
+                _ => None,
+            },
+            "to_option" => match receiver {
+                ValueShape::Result { ok, .. } => Some(ValueShape::Option(
+                    ok.unwrap_or(Box::new(ValueShape::Unknown)),
+                )),
+                _ => None,
+            },
+            "flatten" => match receiver {
+                ValueShape::Option(value) => match *value {
+                    ValueShape::Option(inner) => Some(ValueShape::Option(inner)),
+                    value => Some(ValueShape::Option(Box::new(value))),
+                },
+                ValueShape::Result { ok, err } => match ok.map(|ok| *ok) {
+                    Some(ValueShape::Result { ok, err: inner_err }) => Some(ValueShape::Result {
+                        ok,
+                        err: inner_err.or(err),
+                    }),
+                    ok => Some(ValueShape::Result {
+                        ok: ok.map(Box::new),
+                        err,
+                    }),
+                },
                 _ => None,
             },
             _ => None,

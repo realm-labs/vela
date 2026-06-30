@@ -327,6 +327,137 @@ fn main() {
 }
 
 #[test]
+fn map_method_shape_inference_prefers_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_map = { "key": ["cst"] };
+    let cst_get = cst_map.get("key");
+    let legacy_call = option::some(true);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("CST map local should compile");
+            let cst_get = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST map get initializer");
+            let legacy_call = statements[2]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_get
+                    .syntax_expression()
+                    .expect("CST map get syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Option(Box::new(
+                    record_shapes::ValueShape::Array(Box::new(record_shapes::ValueShape::Scalar(
+                        "String".to_owned()
+                    )))
+                ))),
+                "map get CST payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
+
+#[test]
+fn iterator_method_shape_inference_prefers_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_collect = ["cst"].values().collect_array();
+    let legacy_call = option::some(true);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_collect = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST collect_array initializer");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_collect
+                    .syntax_expression()
+                    .expect("CST collect_array syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Array(Box::new(
+                    record_shapes::ValueShape::Scalar("String".to_owned())
+                ))),
+                "iterator collect_array CST payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
+
+#[test]
+fn option_ok_or_shape_inference_prefers_cst_argument_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_ok_or = option::some(["cst"]).ok_or(true);
+    let legacy_call = result::ok(false);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_ok_or = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST ok_or initializer");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_ok_or
+                    .syntax_expression()
+                    .expect("CST ok_or syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Result {
+                    ok: Some(Box::new(record_shapes::ValueShape::Array(Box::new(
+                        record_shapes::ValueShape::Scalar("String".to_owned())
+                    )))),
+                    err: Some(Box::new(record_shapes::ValueShape::Scalar(
+                        "bool".to_owned()
+                    ))),
+                }),
+                "ok_or CST payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn index_shape_inference_prefers_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"
