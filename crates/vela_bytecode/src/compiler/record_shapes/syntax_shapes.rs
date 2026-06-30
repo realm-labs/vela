@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{AstNode, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind,
+};
 
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
@@ -56,8 +58,8 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Call => self.call_shape(source, expression),
             SyntaxExpressionKind::Index => self.index_shape(source, expression),
             SyntaxExpressionKind::Paren => self.paren_shape(source, expression),
+            SyntaxExpressionKind::Binary => self.binary_shape(expression),
             SyntaxExpressionKind::Unary
-            | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Lambda
@@ -242,6 +244,25 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let inner = expression.as_paren()?.expression()?;
         self.value_shape_for_syntax_expression(source, &inner)
+    }
+
+    fn binary_shape(&self, expression: &SyntaxExpression) -> Option<ValueShape> {
+        match expression.as_binary()?.operator()? {
+            BinaryOp::Equal
+            | BinaryOp::NotEqual
+            | BinaryOp::IdentityEqual
+            | BinaryOp::IdentityNotEqual
+            | BinaryOp::Less
+            | BinaryOp::LessEqual
+            | BinaryOp::Greater
+            | BinaryOp::GreaterEqual
+            | BinaryOp::And
+            | BinaryOp::Or => Some(ValueShape::Scalar("bool".to_owned())),
+            BinaryOp::Range | BinaryOp::RangeInclusive => {
+                Some(ValueShape::Scalar("Range".to_owned()))
+            }
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => None,
+        }
     }
 
     fn index_shape(

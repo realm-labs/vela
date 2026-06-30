@@ -100,6 +100,69 @@ fn main(input) {
 }
 
 #[test]
+fn binary_shape_inference_prefers_cst_operator_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_range = 1..3;
+    let cst_compare = 1 < 3;
+    let legacy_bool = true == false;
+    let legacy_range = 4..9;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_range = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST range initializer");
+            let cst_compare = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST comparison initializer");
+            let legacy_bool = statements[2]
+                .let_initializer_expression_payload()
+                .expect("legacy boolean fallback");
+            let legacy_range = statements[3]
+                .let_initializer_expression_payload()
+                .expect("legacy range fallback");
+
+            let range_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_range
+                    .syntax_expression()
+                    .expect("CST range syntax")
+                    .clone(),
+                legacy_bool.fallback(),
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    range_payload.fallback(),
+                    Some(&range_payload)
+                ),
+                Some(record_shapes::ValueShape::Scalar("Range".to_owned())),
+                "range CST payload must not use the old fallback boolean shape"
+            );
+
+            let compare_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_compare
+                    .syntax_expression()
+                    .expect("CST comparison syntax")
+                    .clone(),
+                legacy_range.fallback(),
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    compare_payload.fallback(),
+                    Some(&compare_payload),
+                ),
+                Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
+                "comparison CST payload must not use the old fallback range shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn paren_shape_inference_prefers_inner_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"
