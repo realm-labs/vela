@@ -144,3 +144,41 @@ fn main() {
         },
     );
 }
+
+#[test]
+fn index_shape_inference_prefers_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_array_index = ["cst"][0];
+    let legacy_array_index = [true][0];
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_array_index = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST array index initializer");
+            let legacy_array_index = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy array index fallback");
+
+            let mismatched_array_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_array_index
+                    .syntax_expression()
+                    .expect("CST array index syntax")
+                    .clone(),
+                legacy_array_index.fallback(),
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_array_payload.fallback(),
+                    Some(&mismatched_array_payload),
+                ),
+                Some(record_shapes::ValueShape::Scalar("String".to_owned())),
+                "array-index CST payload must not use the old fallback index shape"
+            );
+        },
+    );
+}

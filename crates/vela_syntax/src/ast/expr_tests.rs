@@ -816,6 +816,7 @@ fn ast_field_expression_exposes_receiver_and_member_name() {
 fn ast_index_expression_exposes_receiver_and_index() {
     let source = r#"fn update(items, index) {
     let item = items[index + 1];
+    let first = ["cst"][0];
 }
 "#;
     let parse = parse_source(source);
@@ -826,12 +827,11 @@ fn ast_index_expression_exposes_receiver_and_index() {
         .expect("function item")
         .body()
         .expect("function body");
-    let initializer = body
+    let initializers = body
         .let_statements()
-        .next()
-        .expect("index binding")
-        .initializer()
-        .expect("index initializer");
+        .map(|statement| statement.initializer().expect("index initializer"))
+        .collect::<Vec<_>>();
+    let initializer = &initializers[0];
     let index = SyntaxIndexExpr::cast(initializer.syntax().clone()).expect("index expr");
 
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
@@ -844,6 +844,21 @@ fn ast_index_expression_exposes_receiver_and_index() {
         SyntaxKind::BinaryExpr
     );
     assert_eq!(index.expressions().count(), 2);
+
+    let array_index =
+        SyntaxIndexExpr::cast(initializers[1].syntax().clone()).expect("array index expr");
+    assert_eq!(
+        array_index
+            .receiver()
+            .expect("array receiver")
+            .syntax()
+            .kind(),
+        SyntaxKind::ArrayExpr
+    );
+    assert_eq!(
+        array_index.index().expect("array index").syntax().kind(),
+        SyntaxKind::Literal
+    );
 }
 
 #[test]

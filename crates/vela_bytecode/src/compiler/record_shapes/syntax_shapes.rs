@@ -54,11 +54,11 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Path => self.path_shape(source, expression),
             SyntaxExpressionKind::Field => self.field_shape(source, expression),
             SyntaxExpressionKind::Call => self.call_shape(source, expression),
+            SyntaxExpressionKind::Index => self.index_shape(source, expression),
             SyntaxExpressionKind::Paren
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
@@ -233,6 +233,20 @@ impl Compiler<'_, '_> {
             .as_record()?
             .field_value_shape(&name)
             .cloned()
+    }
+
+    fn index_shape(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let index = expression.as_index()?;
+        let receiver = index.receiver()?;
+        match self.value_shape_for_syntax_expression(source, &receiver)? {
+            ValueShape::Array(element) => Some(*element),
+            ValueShape::Map { value, .. } => Some(*value),
+            _ => None,
+        }
     }
 
     fn call_shape(

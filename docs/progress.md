@@ -492,6 +492,9 @@ before falling back to temporary legacy expression spelling.
 CST-backed `self` path expressions now feed script type facts, static value
 type inference, and value shape inference before the temporary legacy
 expression fallback is consulted.
+Indexed array value shape inference now also reads rowan CST receiver payloads,
+so aligned index expressions can derive element shapes before consulting the
+temporary legacy expression fallback.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout
