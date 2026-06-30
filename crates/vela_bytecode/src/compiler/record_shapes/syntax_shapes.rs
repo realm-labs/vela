@@ -2,13 +2,13 @@ use std::collections::BTreeMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{AstNode, Literal, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{AstNode, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind};
 
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::value_types::RuntimeTypeFact;
 
-use super::{RecordFieldShape, RecordShape, ValueShape, common_shape};
+use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
 
 pub(super) fn field_payload_parts<'ast>(
     name: &str,
@@ -53,11 +53,11 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Record => self.record_shape(source, expression),
             SyntaxExpressionKind::Path => self.path_shape(source, expression),
             SyntaxExpressionKind::Field => self.field_shape(source, expression),
+            SyntaxExpressionKind::Call => self.call_shape(source, expression),
             SyntaxExpressionKind::Paren
             | SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Binary
             | SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Lambda
@@ -235,6 +235,81 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
+    fn call_shape(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let call = expression.as_call()?;
+        let callee = call.callee()?;
+        let path = callee.as_path()?.path_segments();
+        let args = call.arguments();
+        self.native_call_shape(source, &path, &args)
+    }
+
+    fn native_call_shape(
+        &self,
+        source: Option<SourceId>,
+        path: &[String],
+        args: &[SyntaxArgument],
+    ) -> Option<ValueShape> {
+        let [module, function] = path else {
+            return None;
+        };
+        let first = args
+            .first()
+            .and_then(|arg| arg.expression())
+            .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg));
+        match (module.as_str(), function.as_str()) {
+            ("fs", "read_to_string") => Some(ValueShape::Result {
+                ok: Some(Box::new(string_shape())),
+                err: Some(Box::new(io_error_shape())),
+            }),
+            ("fs", "write_string") | ("io", "print") | ("io", "println") => {
+                Some(ValueShape::Result {
+                    ok: Some(Box::new(ValueShape::Scalar("null".to_owned()))),
+                    err: Some(Box::new(io_error_shape())),
+                })
+            }
+            ("option", "some") => Some(ValueShape::Option(Box::new(first?))),
+            ("option", "none") => Some(ValueShape::Option(Box::new(ValueShape::Unknown))),
+            ("option", "unwrap_or") => match first? {
+                ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
+                    Some(*value)
+                }
+                _ => args.get(1).and_then(|arg| {
+                    arg.expression()
+                        .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg))
+                }),
+            },
+            ("result", "ok") => Some(ValueShape::Result {
+                ok: Some(Box::new(first?)),
+                err: None,
+            }),
+            ("result", "err") => Some(ValueShape::Result {
+                ok: None,
+                err: Some(Box::new(first?)),
+            }),
+            ("result", "unwrap_or") => match first? {
+                ValueShape::Result { ok: Some(ok), .. }
+                    if !matches!(ok.as_ref(), ValueShape::Unknown) =>
+                {
+                    Some(*ok)
+                }
+                _ => args.get(1).and_then(|arg| {
+                    arg.expression()
+                        .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg))
+                }),
+            },
+            ("set", "from_array") => first?
+                .array_element()
+                .cloned()
+                .map(|element| ValueShape::Set(Box::new(element))),
+            ("reflect", function) => record_reflection_shapes::native_call_shape(function, first),
+            _ => None,
+        }
+    }
+
     fn value_type_for_syntax_expression(
         &self,
         source: Option<SourceId>,
@@ -253,6 +328,18 @@ impl Compiler<'_, '_> {
                 .map(ValueShape::Record)
         })
     }
+}
+
+fn io_error_shape() -> ValueShape {
+    ValueShape::Record(RecordShape::from_field_shapes([
+        ("kind".to_owned(), string_shape()),
+        ("message".to_owned(), string_shape()),
+        ("path".to_owned(), string_shape()),
+    ]))
+}
+
+fn string_shape() -> ValueShape {
+    ValueShape::Scalar("String".to_owned())
 }
 
 fn literal_type(literal: Literal) -> RuntimeTypeFact {

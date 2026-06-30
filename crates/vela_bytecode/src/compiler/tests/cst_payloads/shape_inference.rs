@@ -98,3 +98,49 @@ fn main(input) {
         },
     );
 }
+
+#[test]
+fn native_call_shape_inference_prefers_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main() {
+    let cst_call = option::some(["cst"]);
+    let legacy_call = result::ok(LegacyBox { amount: 1 });
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_call = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST call initializer");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_call
+                    .syntax_expression()
+                    .expect("CST call syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Option(Box::new(
+                    record_shapes::ValueShape::Array(Box::new(record_shapes::ValueShape::Scalar(
+                        "String".to_owned()
+                    )))
+                ))),
+                "call-shaped CST payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
