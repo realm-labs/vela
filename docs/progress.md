@@ -499,6 +499,10 @@ Parenthesized value shape inference now unwraps rowan CST inner expressions
 before consulting the temporary legacy expression fallback.
 Boolean and range binary value shape inference now also reads rowan CST
 operators before consulting the temporary legacy expression fallback.
+Simple standard method-call value shape inference now reads rowan CST receiver
+and method-name payloads for scalar predicates, scalar length/count/sum
+results, string transforms, and basic collection projections before consulting
+the temporary legacy expression fallback.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

@@ -249,6 +249,44 @@ fn main() {
 }
 
 #[test]
+fn method_call_shape_inference_prefers_cst_payload_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_method = ["cst"].len();
+    let legacy_call = option::some(true);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_method = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST method-call initializer");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_method
+                    .syntax_expression()
+                    .expect("CST method-call syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
+                "method-call CST payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn index_shape_inference_prefers_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"

@@ -286,9 +286,11 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let call = expression.as_call()?;
         let callee = call.callee()?;
-        let path = callee.as_path()?.path_segments();
         let args = call.arguments();
-        self.native_call_shape(source, &path, &args)
+        if let Some(path) = callee.as_path().map(|path| path.path_segments()) {
+            return self.native_call_shape(source, &path, &args);
+        }
+        self.method_call_shape(source, &callee)
     }
 
     fn native_call_shape(
@@ -350,6 +352,38 @@ impl Compiler<'_, '_> {
                 .cloned()
                 .map(|element| ValueShape::Set(Box::new(element))),
             ("reflect", function) => record_reflection_shapes::native_call_shape(function, first),
+            _ => None,
+        }
+    }
+
+    fn method_call_shape(
+        &self,
+        source: Option<SourceId>,
+        callee: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let field = callee.as_field()?;
+        let receiver = field.receiver()?;
+        let receiver = self.value_shape_for_syntax_expression(source, &receiver)?;
+        match field.name_text()?.as_str() {
+            "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
+            | "join" => Some(string_shape()),
+            "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
+            "has" | "contains" | "starts_with" | "ends_with" | "is_empty" | "is_none"
+            | "is_some" | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset"
+            | "is_disjoint" => Some(ValueShape::Scalar("bool".to_owned())),
+            "first" | "last" | "pop" | "remove_at" | "min" | "max" => receiver
+                .array_element()
+                .cloned()
+                .map(|element| ValueShape::Option(Box::new(element))),
+            "keys" => receiver
+                .map_parts()
+                .map(|(key, _)| ValueShape::Iterator(Box::new(key.clone()))),
+            "values" => match &receiver {
+                ValueShape::Array(value)
+                | ValueShape::Set(value)
+                | ValueShape::Map { value, .. } => Some(ValueShape::Iterator(value.clone())),
+                _ => None,
+            },
             _ => None,
         }
     }
