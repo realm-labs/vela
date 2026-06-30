@@ -503,6 +503,9 @@ Simple standard method-call value shape inference now reads rowan CST receiver
 and method-name payloads for scalar predicates, scalar length/count/sum
 results, string transforms, and basic collection projections before consulting
 the temporary legacy expression fallback.
+Argument-aware method-call value shape inference now also handles rowan CST
+`unwrap_or` calls for Option/Result receiver shapes before consulting the
+temporary legacy expression fallback.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

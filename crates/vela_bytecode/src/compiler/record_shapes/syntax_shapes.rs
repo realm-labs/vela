@@ -290,7 +290,7 @@ impl Compiler<'_, '_> {
         if let Some(path) = callee.as_path().map(|path| path.path_segments()) {
             return self.native_call_shape(source, &path, &args);
         }
-        self.method_call_shape(source, &callee)
+        self.method_call_shape(source, &callee, &args)
     }
 
     fn native_call_shape(
@@ -360,6 +360,7 @@ impl Compiler<'_, '_> {
         &self,
         source: Option<SourceId>,
         callee: &SyntaxExpression,
+        args: &[SyntaxArgument],
     ) -> Option<ValueShape> {
         let field = callee.as_field()?;
         let receiver = field.receiver()?;
@@ -382,6 +383,25 @@ impl Compiler<'_, '_> {
                 ValueShape::Array(value)
                 | ValueShape::Set(value)
                 | ValueShape::Map { value, .. } => Some(ValueShape::Iterator(value.clone())),
+                _ => None,
+            },
+            "unwrap_or" => match receiver {
+                ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
+                    Some(*value)
+                }
+                ValueShape::Option(_) => args
+                    .first()
+                    .and_then(|arg| arg.expression())
+                    .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg)),
+                ValueShape::Result { ok: Some(ok), .. }
+                    if !matches!(ok.as_ref(), ValueShape::Unknown) =>
+                {
+                    Some(*ok)
+                }
+                ValueShape::Result { .. } => args
+                    .first()
+                    .and_then(|arg| arg.expression())
+                    .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg)),
                 _ => None,
             },
             _ => None,
