@@ -26,7 +26,6 @@ pub(super) struct CompilerBodyPayload<'ast> {
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
-    body_overlaps_fallback: bool,
     allow_unmatched_statement_fallback: bool,
     fallback: &'ast Stmt,
 }
@@ -114,8 +113,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
-        let body_overlaps_fallback =
-            syntax_range_overlaps_span(self.syntax.body.syntax().text_range(), self.fallback.span);
 
         self.fallback
             .statements
@@ -123,7 +120,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .map(|fallback| CompilerStatementPayload {
                 source: Some(self.syntax.source),
                 syntax: syntax_statement_for_fallback(&syntax_statements, fallback),
-                body_overlaps_fallback,
                 allow_unmatched_statement_fallback: self.allow_unmatched_statement_fallback,
                 fallback,
             })
@@ -396,7 +392,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            body_overlaps_fallback: true,
             allow_unmatched_statement_fallback: false,
             fallback,
         }
@@ -408,10 +403,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
-    }
-
-    pub(super) const fn body_overlaps_fallback(&self) -> bool {
-        self.body_overlaps_fallback
     }
 
     pub(super) const fn allow_unmatched_statement_fallback(&self) -> bool {

@@ -300,6 +300,10 @@ while the final expression/body migration continues.
 The standalone bytecode `legacy_payloads` module has been removed; the
 remaining temporary old-parser body lookup is private to the semantic body
 payload boundary while body lowering continues to move to CST/HIR inputs.
+Top-level body payload lowering no longer uses broad overlapping-body fallback
+when a CST statement payload is missing; unmatched statements now error unless
+they are explicitly marked as nested temporary fallback cases while body
+lowering coverage is completed.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement

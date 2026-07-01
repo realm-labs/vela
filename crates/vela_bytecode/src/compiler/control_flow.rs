@@ -55,7 +55,7 @@ impl Compiler<'_, '_> {
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
         let Some(kind) = stmt.statement_kind() else {
-            if stmt.body_overlaps_fallback() || stmt.allow_unmatched_statement_fallback() {
+            if stmt.allow_unmatched_statement_fallback() {
                 return self.compile_statement(stmt.fallback());
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
