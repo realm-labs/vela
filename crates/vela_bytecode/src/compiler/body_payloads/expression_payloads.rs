@@ -2,7 +2,7 @@ use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AssignOp, AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern,
     SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm,
-    SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
+    SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
 use super::{
@@ -800,6 +800,16 @@ impl<'ast> CompilerPatternPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn record_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+        let Pattern::RecordVariant { fields, .. } = self.fallback else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::record_pattern) else {
+            return true;
+        };
+        syntax.fields().count() <= fields.len()
+    }
+
     pub(in crate::compiler) fn tuple_pattern_payloads(
         &self,
     ) -> Option<Vec<CompilerPatternPayload<'ast>>> {
@@ -822,6 +832,16 @@ impl<'ast> CompilerPatternPayload<'ast> {
                 })
                 .collect(),
         )
+    }
+
+    pub(in crate::compiler) fn tuple_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+        let Pattern::TupleVariant { fields, .. } = self.fallback else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::tuple_pattern) else {
+            return true;
+        };
+        syntax.patterns().count() <= fields.len()
     }
 
     #[cfg(test)]

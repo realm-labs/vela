@@ -90,6 +90,30 @@ fn required_pattern_kind(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }
 
+fn reject_extra_record_pattern_payloads(
+    payload: Option<&CompilerPatternPayload<'_>>,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| !payload.record_pattern_field_count_does_not_exceed_fallback())
+    {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST record pattern fields",
+        )));
+    }
+    Ok(())
+}
+
+fn reject_extra_tuple_pattern_payloads(
+    payload: Option<&CompilerPatternPayload<'_>>,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| !payload.tuple_pattern_field_count_does_not_exceed_fallback())
+    {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST tuple pattern fields",
+        )));
+    }
+    Ok(())
+}
+
 pub(in crate::compiler) fn record_pattern_field_payload_at<'payload, 'ast>(
     payloads: Option<&'payload [CompilerRecordPatternFieldPayload<'ast>]>,
     index: usize,
@@ -264,6 +288,7 @@ impl Compiler<'_, '_> {
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                reject_extra_record_pattern_payloads(payload)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -308,6 +333,7 @@ impl Compiler<'_, '_> {
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                reject_extra_tuple_pattern_payloads(payload)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -401,6 +427,7 @@ impl Compiler<'_, '_> {
             }
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
+                reject_extra_record_pattern_payloads(payload)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
@@ -462,6 +489,7 @@ impl Compiler<'_, '_> {
             }
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
+                reject_extra_tuple_pattern_payloads(payload)?;
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {

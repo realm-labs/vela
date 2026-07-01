@@ -1,0 +1,120 @@
+use super::*;
+
+#[test]
+fn extra_tuple_pattern_payloads_do_not_compile_fallback_fields() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64, right: i64)
+    Single(left: i64)
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Pair(cst_left, cst_right) => cst_left,
+        _ => 0,
+    };
+}
+
+fn fallback_tuple(value) {
+    return match value {
+        Shape::Single(legacy_left) => legacy_left,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_tuple").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_tuple")
+        .expect("fallback function");
+    let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_tuple");
+
+    let error = compiler
+        .compile_match_pattern(Register(0), fallback_pattern, Some(&mismatched))
+        .expect_err("extra CST tuple pattern fields must not be ignored");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST tuple pattern fields")
+    ));
+}
+
+#[test]
+fn extra_record_pattern_payloads_do_not_bind_fallback_fields() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Named { first: i64, second: i64 }
+    One { first: i64 }
+}
+
+fn cst_record(value) {
+    return match value {
+        Shape::Named { first: cst_first, second: cst_second } => cst_first,
+        _ => 0,
+    };
+}
+
+fn fallback_record(value) {
+    return match value {
+        Shape::One { first: legacy_first } => legacy_first,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_record").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_record")
+        .expect("fallback function");
+    let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
+
+    let error = compiler
+        .bind_pattern_locals(
+            Register(0),
+            fallback_pattern,
+            Some(&mismatched),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("extra CST record pattern fields must not be ignored");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST record pattern fields")
+    ));
+}
+
+fn first_return_match_pattern_syntax(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> vela_syntax::ast::SyntaxPattern {
+    let statements = body.statement_payloads();
+    statements[0]
+        .return_value_match_arm_payloads()
+        .expect("return match")[0]
+        .pattern_payload()
+        .syntax_pattern()
+        .expect("CST pattern")
+        .clone()
+}
+
+fn first_return_match_fallback_pattern(
+    body: &vela_syntax::ast::Block,
+) -> &vela_syntax::ast::Pattern {
+    let statement = body.statements.first().expect("return statement");
+    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+        panic!("expected return statement");
+    };
+    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+        panic!("expected return match expression");
+    };
+    &match_expr.arms[0].pattern
+}
