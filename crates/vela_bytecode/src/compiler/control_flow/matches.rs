@@ -46,10 +46,18 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            if let Some(jump) = self.compile_match_guard(
-                arm.guard.as_ref(),
-                arm_payload.and_then(CompilerMatchArmPayload::guard_payload),
-            )? {
+            let guard_payload = arm_payload.and_then(CompilerMatchArmPayload::guard_payload);
+            if arm.guard.is_some()
+                && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
+                && guard_payload
+                    .as_ref()
+                    .is_none_or(|payload| payload.syntax_expression().is_none())
+            {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST match guard payload",
+                )));
+            }
+            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref(), guard_payload)? {
                 next_arm_jumps.push(jump);
             }
             let arm_returned = self.compile_match_arm_statement(arm, arm_payload)?;
@@ -177,10 +185,18 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            if let Some(jump) = self.compile_match_guard(
-                arm.guard.as_ref(),
-                arm_payload.and_then(CompilerMatchArmPayload::guard_payload),
-            )? {
+            let guard_payload = arm_payload.and_then(CompilerMatchArmPayload::guard_payload);
+            if arm.guard.is_some()
+                && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
+                && guard_payload
+                    .as_ref()
+                    .is_none_or(|payload| payload.syntax_expression().is_none())
+            {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST match guard payload",
+                )));
+            }
+            if let Some(jump) = self.compile_match_guard(arm.guard.as_ref(), guard_payload)? {
                 next_arm_jumps.push(jump);
             }
             let arm_returned = self.compile_match_arm_value_to(&arm.body, arm_payload, dst)?;
