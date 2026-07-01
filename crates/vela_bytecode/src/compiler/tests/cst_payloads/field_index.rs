@@ -607,6 +607,37 @@ fn main() {
 }
 
 #[test]
+fn missing_index_expression_payload_does_not_use_legacy_index() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values = [1];
+    let value = values[0];
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = legacy_payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("values local should compile");
+    let legacy_index = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy index payload");
+    let missing_index =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_index.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_index.fallback(), Some(&missing_index))
+        .expect_err("missing CST index payload must not compile legacy index");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn string_key_index_writes_prefer_cst_index_literal_payloads() {
     with_cst_payload_compiler(
         r#"
