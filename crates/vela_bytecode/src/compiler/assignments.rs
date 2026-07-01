@@ -514,10 +514,15 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Option<RecordFieldAssignmentTarget>> {
         match &target.kind {
             ExprKind::Path(path) => {
-                let path = syntax
-                    .expression
-                    .and_then(CompilerExpressionPayload::syntax_path_segments)
-                    .unwrap_or_else(|| path.to_owned());
+                let path = if let Some(payload) = syntax.expression {
+                    payload.syntax_path_segments().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST assignment target path",
+                        ))
+                    })?
+                } else {
+                    path.to_owned()
+                };
                 let Some((record, fields)) = record_path_parts(&path) else {
                     return Ok(None);
                 };

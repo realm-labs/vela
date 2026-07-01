@@ -100,6 +100,74 @@ fn main() {
 }
 
 #[test]
+fn record_path_assignment_without_cst_segments_does_not_use_legacy_target_path() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+struct Box {
+    amount: i64,
+}
+
+fn main() {
+    let box = Box { amount: 0 };
+    self = 1;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+struct Box {
+    amount: i64,
+}
+
+fn main() {
+    let box = Box { amount: 0 };
+    box::amount = 1;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("record local should compile");
+            let assignment = statements[1]
+                .expression_payload()
+                .expect("assignment expression payload");
+            let target = statements[1]
+                .assignment_target_expression_payload()
+                .expect("assignment target payload");
+
+            let error = compiler
+                .compile_assignment_with_payloads(
+                    assignment.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&target)),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
+                        None,
+                        None,
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect_err("missing CST assignment path must not use legacy target path");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST assignment target path")
+            );
+        },
+    );
+}
+
+#[test]
 fn assignment_value_with_misaligned_cst_payload_does_not_use_legacy_value() {
     with_cst_payload_compiler(
         r#"
