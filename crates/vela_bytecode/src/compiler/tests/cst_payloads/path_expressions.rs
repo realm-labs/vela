@@ -53,6 +53,54 @@ fn main(value) {
 }
 
 #[test]
+fn path_expression_without_cst_segments_does_not_use_legacy_path() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let legacy_value = 1;
+    let selected = self;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("CST function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let legacy_value = 1;
+    let selected = legacy_value;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("legacy local should compile");
+            let legacy_path = statements[1]
+                .let_initializer_expression_payload()
+                .expect("path initializer payload");
+
+            let error = compiler
+                .compile_expr_with_payload(legacy_path.fallback(), Some(&legacy_path))
+                .expect_err("CST path without segments must not compile legacy path");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST path expression"),
+                "{:?}",
+                error.kind
+            );
+        },
+    );
+}
+
+#[test]
 fn script_type_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"

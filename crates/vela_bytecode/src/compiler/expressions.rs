@@ -140,10 +140,12 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::Path => match &expr.kind {
-                ExprKind::Path(path) => {
-                    let path = payload
-                        .syntax_path_segments()
-                        .unwrap_or_else(|| path.to_owned());
+                ExprKind::Path(_) => {
+                    let path = payload.syntax_path_segments().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST path expression",
+                        ))
+                    })?;
                     self.compile_path_expr(expr.span, &path)
                 }
                 ExprKind::SelfValue if payload.syntax_is_self() => {
