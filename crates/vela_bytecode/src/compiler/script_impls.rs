@@ -8,9 +8,9 @@ use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, Tra
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
+use super::body_fallbacks::BodyFallbackSource;
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
-use super::semantic::BodyFallbackSource;
 use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct ScriptImplMethod<'ast> {

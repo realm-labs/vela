@@ -2,6 +2,7 @@
 
 mod assignment_payloads;
 mod assignments;
+mod body_fallbacks;
 mod body_payloads;
 mod cache_sites;
 mod call_args;

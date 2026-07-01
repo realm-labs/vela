@@ -298,8 +298,9 @@ and trait default methods now enter bytecode compilation through a shared
 legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.
 The standalone bytecode `legacy_payloads` module has been removed; the
-remaining temporary old-parser body lookup is private to the semantic body
-payload boundary while body lowering continues to move to CST/HIR inputs.
+remaining temporary old-parser body lookup is isolated in the compiler
+`body_fallbacks` module while semantic orchestration stays on HIR/CST inputs
+and body lowering continues to move to CST/HIR inputs.
 Top-level body payload lowering no longer uses broad overlapping-body fallback
 when a CST statement payload is missing; unmatched statements now error unless
 they are explicitly marked as nested temporary fallback cases while body

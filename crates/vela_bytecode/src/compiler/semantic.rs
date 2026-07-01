@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{SourceId, Span};
+use vela_common::SourceId;
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
@@ -8,12 +8,12 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{AstNode, Block, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile};
+use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
-use vela_syntax::parser::parse_source as parse_body_fallback_source;
 
 use crate::Constant;
 
+use super::body_fallbacks::BodyFallbackSource;
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
@@ -40,46 +40,6 @@ pub(super) struct SemanticModules {
     source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
-}
-
-pub(super) struct BodyFallbackSource {
-    parsed: SourceFile,
-}
-
-impl BodyFallbackSource {
-    fn parse(source: SourceId, text: &str) -> Self {
-        Self {
-            parsed: parse_body_fallback_source(source, text),
-        }
-    }
-
-    pub(super) fn body_by_span(&self, span: Span) -> Option<&Block> {
-        for item in &self.parsed.items {
-            if let ItemKind::Function(function) = &item.kind
-                && function.body.span == span
-            {
-                return Some(&function.body);
-            }
-            if let ItemKind::Impl(item) = &item.kind {
-                for method in &item.methods {
-                    if method.function.body.span == span {
-                        return Some(&method.function.body);
-                    }
-                }
-            }
-            if let ItemKind::Trait(item) = &item.kind {
-                for method in &item.methods {
-                    let Some(body) = &method.default_body else {
-                        continue;
-                    };
-                    if body.span == span {
-                        return Some(body);
-                    }
-                }
-            }
-        }
-        None
-    }
 }
 
 impl SemanticSource {
@@ -541,7 +501,7 @@ fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let legacy_body = body_fallbacks.body_by_span(syntax_body_span(source, &syntax_body))?;
+    let legacy_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
     let body = super::body_payloads::CompilerBodyPayload::syntax(source, syntax_body, legacy_body);
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
@@ -549,13 +509,6 @@ fn function_body_payload<'ast>(
         body,
         param_defaults,
     })
-}
-
-fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> vela_common::Span {
-    let range = body.syntax().text_range();
-    let start: u32 = range.start().into();
-    let end: u32 = range.end().into();
-    vela_common::Span::new(source, start, end)
 }
 
 fn function_param_defaults(
