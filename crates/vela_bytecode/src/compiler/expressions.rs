@@ -375,6 +375,11 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
+                    if !payload.interpolation_expression_count_does_not_exceed_fallback() {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST interpolation expressions",
+                        )));
+                    }
                     let part_payloads = payload.interpolated_expression_payloads();
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }

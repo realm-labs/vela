@@ -536,6 +536,22 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .collect(),
         )
     }
+
+    pub(in crate::compiler) fn interpolation_expression_count_does_not_exceed_fallback(
+        &self,
+    ) -> bool {
+        let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
+            return true;
+        };
+        let fallback_count = parts
+            .iter()
+            .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
+            .count();
+        syntax.interpolation_expressions().count() <= fallback_count
+    }
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
