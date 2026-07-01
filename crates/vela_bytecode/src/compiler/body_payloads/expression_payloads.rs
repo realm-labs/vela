@@ -683,6 +683,16 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
             .and_then(SyntaxRecordPatternField::label_text)
     }
 
+    pub(in crate::compiler) fn syntax_is_shorthand(&self) -> Option<bool> {
+        self.syntax
+            .as_ref()
+            .map(SyntaxRecordPatternField::is_shorthand)
+    }
+
+    pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
+        self.syntax.as_ref()?.pattern()?.pattern_kind()
+    }
+
     pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
         Some(CompilerPatternPayload {
             syntax: self

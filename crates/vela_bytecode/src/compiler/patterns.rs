@@ -81,6 +81,34 @@ fn pattern_binding_name(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern")))
 }
 
+fn required_pattern_kind(
+    payload: &CompilerPatternPayload<'_>,
+    context: &'static str,
+) -> CompileResult<SyntaxPatternKind> {
+    payload
+        .syntax_pattern_kind()
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
+}
+
+fn pattern_kind_declares_locals(kind: SyntaxPatternKind) -> bool {
+    matches!(
+        kind,
+        SyntaxPatternKind::Binding
+            | SyntaxPatternKind::TupleVariant
+            | SyntaxPatternKind::RecordVariant
+    )
+}
+
+fn pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {
+    matches!(
+        kind,
+        SyntaxPatternKind::Literal
+            | SyntaxPatternKind::Path
+            | SyntaxPatternKind::TupleVariant
+            | SyntaxPatternKind::RecordVariant
+    )
+}
+
 pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
     match pattern {
         Pattern::Binding(_) => true,
@@ -199,12 +227,30 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    let Some(pattern) = record_pattern_field_match(field) else {
-                        continue;
-                    };
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
+                    if let Some(field_payload) = field_payload {
+                        if field_payload.syntax_label_name().is_none() {
+                            if record_pattern_field_match(field).is_some() {
+                                return Err(CompileError::new(
+                                    CompileErrorKind::UnsupportedSyntax("record pattern field"),
+                                ));
+                            }
+                            continue;
+                        }
+                        let Some(kind) = field_payload.syntax_pattern_kind() else {
+                            continue;
+                        };
+                        if !pattern_kind_needs_match_check(kind) {
+                            continue;
+                        }
+                    }
+                    let Some(pattern) = record_pattern_field_match(field) else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "record pattern field",
+                        )));
+                    };
                     let field_name = record_pattern_field_name(field_payload, field)?;
                     let field_value =
                         self.emit_enum_pattern_field_read(scrutinee, &path, field_name)?;
@@ -226,12 +272,17 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    if matches!(field, Pattern::Wildcard | Pattern::Binding(_)) {
-                        continue;
-                    }
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
+                    if let Some(field_payload) = field_payload {
+                        let kind = required_pattern_kind(field_payload, "tuple pattern field")?;
+                        if !pattern_kind_needs_match_check(kind) {
+                            continue;
+                        }
+                    } else if matches!(field, Pattern::Wildcard | Pattern::Binding(_)) {
+                        continue;
+                    }
                     let field_value = self.emit_enum_pattern_field_read(
                         scrutinee,
                         &path,
@@ -316,12 +367,30 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    if !record_pattern_field_declares_locals(field) {
-                        continue;
-                    }
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
+                    if let Some(field_payload) = field_payload
+                        && field_payload.syntax_label_name().is_none()
+                    {
+                        if record_pattern_field_declares_locals(field) {
+                            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                "record pattern field",
+                            )));
+                        }
+                        continue;
+                    }
+                    let field_declares_locals = match field_payload {
+                        Some(field_payload) => field_payload
+                            .syntax_pattern_kind()
+                            .map(pattern_kind_declares_locals)
+                            .or_else(|| field_payload.syntax_is_shorthand())
+                            .unwrap_or(false),
+                        None => record_pattern_field_declares_locals(field),
+                    };
+                    if !field_declares_locals {
+                        continue;
+                    }
                     let field_name = record_pattern_field_name(field_payload, field)?;
                     let dst =
                         self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
@@ -341,6 +410,14 @@ impl Compiler<'_, '_> {
                             kind,
                         )?,
                         None => {
+                            if field_payload
+                                .and_then(CompilerRecordPatternFieldPayload::syntax_is_shorthand)
+                                == Some(false)
+                            {
+                                return Err(CompileError::new(
+                                    CompileErrorKind::UnsupportedSyntax("record pattern field"),
+                                ));
+                            }
                             self.bind_pattern_local(&field_name, dst, body_span, field_facts, kind)
                         }
                     }
@@ -352,12 +429,19 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    if !pattern_declares_locals(field) {
-                        continue;
-                    }
                     let field_payload = field_payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index));
+                    let field_declares_locals = match field_payload {
+                        Some(field_payload) => pattern_kind_declares_locals(required_pattern_kind(
+                            field_payload,
+                            "tuple pattern field",
+                        )?),
+                        None => pattern_declares_locals(field),
+                    };
+                    if !field_declares_locals {
+                        continue;
+                    }
                     let field_name = tuple_variant_field_name(index);
                     let field_value =
                         self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;

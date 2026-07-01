@@ -543,6 +543,48 @@ fn legacy_record(value) {
 }
 
 #[test]
+fn mismatched_tuple_child_payloads_do_not_use_legacy_pattern_kind() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64, right: i64)
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Pair(cst_left, cst_right) => cst_left,
+        _ => 0,
+    };
+}
+
+fn legacy_tuple(value) {
+    return match value {
+        Shape::Pair(1, _) => 1,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_tuple_payload, _, _) = semantic.function("cst_tuple").expect("cst tuple");
+    let (legacy_tuple_payload, _, _) = semantic.function("legacy_tuple").expect("legacy tuple");
+    let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
+    let legacy_tuple_pattern =
+        first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
+    let mismatched_tuple =
+        body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
+
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
+    let err = compiler
+        .compile_match_pattern(Register(0), legacy_tuple_pattern, Some(&mismatched_tuple))
+        .expect_err("mismatched tuple child should not use legacy pattern kind");
+
+    assert!(matches!(
+        err.kind,
+        CompileErrorKind::UnsupportedSyntax("tuple pattern field")
+    ));
+}
+
+#[test]
 fn mismatched_basic_match_pattern_payloads_do_not_use_legacy_payload_data() {
     let source = SourceId::new(1);
     let text = r#"
