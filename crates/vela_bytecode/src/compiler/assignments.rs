@@ -190,9 +190,15 @@ impl<'payload, 'ast> AssignmentTargetSyntax<'payload, 'ast> {
 fn record_field_root_payload<'ast>(
     payload: CompilerExpressionPayload<'ast>,
 ) -> Option<CompilerExpressionPayload<'ast>> {
-    match &payload.fallback().kind {
-        ExprKind::Field { .. } => record_field_root_payload(payload.field_base_payload()?),
-        _ => Some(payload),
+    match payload.kind() {
+        Some(SyntaxExpressionKind::Field) => {
+            record_field_root_payload(payload.field_base_payload()?)
+        }
+        Some(_) => Some(payload),
+        None => match &payload.fallback().kind {
+            ExprKind::Field { .. } => record_field_root_payload(payload.field_base_payload()?),
+            _ => Some(payload),
+        },
     }
 }
 
