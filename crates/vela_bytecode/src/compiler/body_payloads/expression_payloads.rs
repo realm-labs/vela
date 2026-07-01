@@ -65,11 +65,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
-            self.source,
-            self.syntax.as_ref()?.as_match()?,
-            match_expr,
-        ))
+        match_arm_payloads_for_fallback(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(in crate::compiler) fn match_scrutinee_payload(

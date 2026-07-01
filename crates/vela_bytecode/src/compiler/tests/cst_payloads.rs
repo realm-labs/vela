@@ -18,6 +18,7 @@ mod lambdas;
 mod let_return_values;
 mod literals;
 mod match_arms;
+mod match_counts;
 mod match_guards;
 mod match_payloads;
 mod param_defaults;

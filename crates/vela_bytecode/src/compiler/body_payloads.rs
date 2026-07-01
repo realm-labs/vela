@@ -342,17 +342,22 @@ fn match_arm_payloads_for_fallback<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
     fallback: &'ast MatchExpr,
-) -> Vec<CompilerMatchArmPayload<'ast>> {
+) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
     let syntax_arms = syntax.arms();
-    fallback
-        .arms
-        .iter()
-        .map(|fallback| CompilerMatchArmPayload {
-            source,
-            syntax: syntax_match_arm_for_fallback(&syntax_arms, fallback),
-            fallback,
-        })
-        .collect()
+    if syntax_arms.len() > fallback.arms.len() {
+        return None;
+    }
+    Some(
+        fallback
+            .arms
+            .iter()
+            .map(|fallback| CompilerMatchArmPayload {
+                source,
+                syntax: syntax_match_arm_for_fallback(&syntax_arms, fallback),
+                fallback,
+            })
+            .collect(),
+    )
 }
 
 fn match_scrutinee_payload_for_fallback<'ast>(
@@ -539,11 +544,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
+        match_arm_payloads_for_fallback(
             self.source,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_match()?,
             match_expr,
-        ))
+        )
     }
 
     pub(in crate::compiler) fn let_initializer_expression_payload(
@@ -624,7 +629,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
+        match_arm_payloads_for_fallback(
             self.source,
             self.syntax
                 .as_ref()?
@@ -632,7 +637,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .expression()?
                 .as_match()?,
             match_expr,
-        ))
+        )
     }
 
     pub(in crate::compiler) fn return_value_expression_payload(
@@ -722,11 +727,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
-            self.source,
-            self.syntax.as_ref()?.as_match()?,
-            match_expr,
-        ))
+        match_arm_payloads_for_fallback(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
@@ -871,11 +872,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
+        match_arm_payloads_for_fallback(
             self.source,
             self.assignment_value_expression()?.as_match()?,
             match_expr,
-        ))
+        )
     }
 
     pub(in crate::compiler) fn call_argument_payloads(
@@ -959,13 +960,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return None;
         };
-        Some(match_arm_payloads_for_fallback(
+        match_arm_payloads_for_fallback(
             self.source,
             self.expression()
                 .and_then(|expression| expression.as_match())
                 .or_else(|| self.syntax.as_ref()?.as_match())?,
             match_expr,
-        ))
+        )
     }
 
     pub(super) fn expression_match_scrutinee_payload(
