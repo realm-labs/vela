@@ -571,8 +571,9 @@ Callback lambda argument lowering now rejects missing rowan CST lambda body
 payloads before applying callback parameter shapes, instead of compiling the
 temporary legacy lambda body.
 Structured assignment value lowering now rejects missing rowan CST child
-payloads for block, if, and match values instead of compiling the temporary
-legacy owned-AST value body.
+payloads for block, if, and match values, including typed field assignments
+that use expected field contracts, instead of compiling the temporary legacy
+owned-AST value body.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

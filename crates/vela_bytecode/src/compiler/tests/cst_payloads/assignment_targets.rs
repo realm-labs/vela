@@ -190,6 +190,33 @@ fn main() {
 }
 
 #[test]
+fn typed_field_assignment_block_value_without_body_payload_does_not_use_legacy_value() {
+    assert_missing_typed_field_assignment_value_child_payload_is_rejected(
+        "box.value = { value + 1 };",
+        SyntaxExpressionKind::Block,
+        "missing CST assignment value block body payload",
+    );
+}
+
+#[test]
+fn typed_field_assignment_if_value_without_child_payload_does_not_use_legacy_value() {
+    assert_missing_typed_field_assignment_value_child_payload_is_rejected(
+        "box.value = if true { 2 } else { 3 };",
+        SyntaxExpressionKind::If,
+        "missing CST assignment value if payload",
+    );
+}
+
+#[test]
+fn typed_field_assignment_match_value_without_child_payloads_does_not_use_legacy_value() {
+    assert_missing_typed_field_assignment_value_child_payload_is_rejected(
+        "box.value = match value { 1 => 2, _ => 3 };",
+        SyntaxExpressionKind::Match,
+        "missing CST assignment value match scrutinee payload",
+    );
+}
+
+#[test]
 fn local_assignment_operator_lowering_prefers_cst_operator_payload() {
     let source = SourceId::new(1);
     let cst_text = r#"
@@ -280,6 +307,65 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
                 ),
             )
             .expect_err("missing CST assignment value child payload must not use legacy value");
+
+        assert_eq!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax(message),
+            "{:?}",
+            error.kind
+        );
+    });
+}
+
+fn assert_missing_typed_field_assignment_value_child_payload_is_rejected(
+    assignment: &str,
+    kind: SyntaxExpressionKind,
+    message: &'static str,
+) {
+    let text = format!(
+        r#"
+struct Box {{
+    value: i64,
+}}
+
+fn main() {{
+    let value = 1;
+    let box = Box {{ value: 0 }};
+    {assignment}
+}}
+"#
+    );
+    with_cst_payload_compiler(&text, |compiler, payload| {
+        let statements = payload.body.statement_payloads();
+        compiler
+            .compile_statement(statements[0].fallback())
+            .expect("typed value local should compile");
+        compiler
+            .compile_statement(statements[1].fallback())
+            .expect("typed record local should compile");
+        let assignment = statements[2]
+            .expression_payload()
+            .expect("field assignment expression payload");
+        let value = statements[2]
+            .assignment_value_expression_payload()
+            .expect("field assignment value expression payload");
+
+        let error = compiler
+            .compile_assignment_with_payloads(
+                assignment.fallback(),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentValueSyntax::new(
+                    Some(kind),
+                    None,
+                    Some(&value),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(
+                        None, None, None, None,
+                    ),
+                ),
+            )
+            .expect_err(
+                "missing typed field assignment value child payload must not use legacy value",
+            );
 
         assert_eq!(
             error.kind,

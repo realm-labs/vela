@@ -962,6 +962,16 @@ impl Compiler<'_, '_> {
                 "mismatched CST assignment value",
             )));
         }
+        if let Some(kind) = syntax.kind
+            && matches!(
+                kind,
+                SyntaxExpressionKind::Block
+                    | SyntaxExpressionKind::If
+                    | SyntaxExpressionKind::Match
+            )
+        {
+            reject_missing_assignment_value_child_payloads(kind, syntax)?;
+        }
         if let Some((expected, context)) = expected {
             return self.compile_expr_with_expected_type_and_payload(
                 value,
@@ -977,7 +987,6 @@ impl Compiler<'_, '_> {
                     | SyntaxExpressionKind::If
                     | SyntaxExpressionKind::Match
             ) {
-                reject_missing_assignment_value_child_payloads(kind, syntax)?;
                 return self.compile_assignment_value_with_syntax_kind(
                     value,
                     kind,
