@@ -3,7 +3,7 @@ use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 
-pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
+fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
         SyntaxExpressionKind::Paren => true,
         SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
