@@ -145,6 +145,51 @@ fn main() {
 }
 
 #[test]
+fn assignment_block_value_without_body_payload_does_not_use_legacy_value() {
+    assert_missing_assignment_value_child_payload_is_rejected(
+        r#"
+fn main() {
+    let value = 1;
+    value = { value + 1 };
+}
+"#,
+        SyntaxExpressionKind::Block,
+        "missing CST assignment value block body payload",
+    );
+}
+
+#[test]
+fn assignment_if_value_without_child_payload_does_not_use_legacy_value() {
+    assert_missing_assignment_value_child_payload_is_rejected(
+        r#"
+fn main() {
+    let value = 1;
+    value = if true { 2 } else { 3 };
+}
+"#,
+        SyntaxExpressionKind::If,
+        "missing CST assignment value if payload",
+    );
+}
+
+#[test]
+fn assignment_match_value_without_child_payloads_does_not_use_legacy_value() {
+    assert_missing_assignment_value_child_payload_is_rejected(
+        r#"
+fn main() {
+    let value = 1;
+    value = match value {
+        1 => 2,
+        _ => 3,
+    };
+}
+"#,
+        SyntaxExpressionKind::Match,
+        "missing CST assignment value match scrutinee payload",
+    );
+}
+
+#[test]
 fn local_assignment_operator_lowering_prefers_cst_operator_payload() {
     let source = SourceId::new(1);
     let cst_text = r#"
@@ -202,6 +247,47 @@ fn main() {
             );
         },
     );
+}
+
+fn assert_missing_assignment_value_child_payload_is_rejected(
+    text: &str,
+    kind: SyntaxExpressionKind,
+    message: &'static str,
+) {
+    with_cst_payload_compiler(text, |compiler, payload| {
+        let statements = payload.body.statement_payloads();
+        compiler
+            .compile_statement(statements[0].fallback())
+            .expect("local target should compile");
+        let assignment = statements[1]
+            .expression_payload()
+            .expect("assignment expression payload");
+        let value = statements[1]
+            .assignment_value_expression_payload()
+            .expect("assignment value expression payload");
+
+        let error = compiler
+            .compile_assignment_with_payloads(
+                assignment.fallback(),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentValueSyntax::new(
+                    Some(kind),
+                    None,
+                    Some(&value),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(
+                        None, None, None, None,
+                    ),
+                ),
+            )
+            .expect_err("missing CST assignment value child payload must not use legacy value");
+
+        assert_eq!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax(message),
+            "{:?}",
+            error.kind
+        );
+    });
 }
 
 #[test]
