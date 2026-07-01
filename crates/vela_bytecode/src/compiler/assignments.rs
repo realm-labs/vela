@@ -1069,30 +1069,36 @@ impl Compiler<'_, '_> {
         target: &Expr,
         syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> Option<(String, String)> {
+        if let Some(payload) = syntax.expression {
+            return match payload.kind() {
+                Some(SyntaxExpressionKind::Field) | None => {
+                    let base_payload = payload.field_base_payload()?;
+                    let field = payload.syntax_field_name()?;
+                    let receiver_type = self.script_type_for_expr_with_payload(
+                        base_payload.fallback(),
+                        Some(&base_payload),
+                    )?;
+                    Some((receiver_type, field))
+                }
+                Some(SyntaxExpressionKind::Path) => {
+                    let path = payload.syntax_path_segments()?;
+                    let (field, receiver_path) = path.split_last()?;
+                    let [receiver] = receiver_path else {
+                        return None;
+                    };
+                    Some((self.script_types.name(receiver)?, field.clone()))
+                }
+                Some(_) => None,
+            };
+        }
+
         match &target.kind {
             ExprKind::Field { base, name } => {
-                let (base_payload, field) = if let Some(payload) = syntax.expression {
-                    (
-                        Some(payload.field_base_payload()?),
-                        payload.syntax_field_name()?,
-                    )
-                } else {
-                    (None, name.clone())
-                };
-                let receiver_type =
-                    self.script_type_for_expr_with_payload(base, base_payload.as_ref())?;
-                Some((receiver_type, field))
+                let receiver_type = self.script_type_for_expr_with_payload(base, None)?;
+                Some((receiver_type, name.clone()))
             }
             ExprKind::Path(path) => {
-                let cst_path = syntax
-                    .expression
-                    .and_then(CompilerExpressionPayload::syntax_path_segments);
-                let lookup_path = if syntax.expression.is_some() {
-                    cst_path.as_deref()?
-                } else {
-                    path
-                };
-                let (field, receiver_path) = lookup_path.split_last()?;
+                let (field, receiver_path) = path.split_last()?;
                 let [receiver] = receiver_path else {
                     return None;
                 };
