@@ -97,11 +97,17 @@ pub(in crate::compiler) fn record_pattern_field_payload_at<'payload, 'ast>(
     let Some(payloads) = payloads else {
         return Ok(None);
     };
-    payloads.get(index).map(Some).ok_or_else(|| {
+    let payload = payloads.get(index).ok_or_else(|| {
         CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "missing CST record pattern field payload",
         ))
-    })
+    })?;
+    if !payload.has_syntax() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST record pattern field payload",
+        )));
+    }
+    Ok(Some(payload))
 }
 
 pub(in crate::compiler) fn tuple_pattern_payload_at<'payload, 'ast>(
@@ -111,11 +117,17 @@ pub(in crate::compiler) fn tuple_pattern_payload_at<'payload, 'ast>(
     let Some(payloads) = payloads else {
         return Ok(None);
     };
-    payloads.get(index).map(Some).ok_or_else(|| {
+    let payload = payloads.get(index).ok_or_else(|| {
         CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "missing CST tuple pattern field payload",
         ))
-    })
+    })?;
+    if !payload.has_syntax() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST tuple pattern field payload",
+        )));
+    }
+    Ok(Some(payload))
 }
 
 fn pattern_kind_declares_locals(kind: SyntaxPatternKind) -> bool {

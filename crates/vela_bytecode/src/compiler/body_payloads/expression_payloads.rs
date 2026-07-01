@@ -676,6 +676,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 }
 
 impl<'ast> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn has_syntax(&self) -> bool {
+        self.syntax.is_some()
+    }
+
     pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
         self.syntax.as_ref()?.pattern_kind()
     }
@@ -757,6 +761,10 @@ impl<'ast> CompilerPatternPayload<'ast> {
 }
 
 impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
+    pub(in crate::compiler) fn has_syntax(&self) -> bool {
+        self.syntax.is_some()
+    }
+
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
         self.syntax
             .as_ref()

@@ -538,7 +538,7 @@ fn legacy_record(value) {
         .expect_err("mismatched record field payload should not use legacy field name");
     assert!(matches!(
         err.kind,
-        CompileErrorKind::UnsupportedSyntax("record pattern field")
+        CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
     ));
 }
 
@@ -580,7 +580,7 @@ fn legacy_tuple(value) {
 
     assert!(matches!(
         err.kind,
-        CompileErrorKind::UnsupportedSyntax("tuple pattern field")
+        CompileErrorKind::UnsupportedSyntax("missing CST tuple pattern field payload")
     ));
 }
 
