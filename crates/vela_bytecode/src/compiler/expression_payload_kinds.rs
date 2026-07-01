@@ -58,6 +58,18 @@ pub(super) fn expression_payload_is_aligned(
         && expression_payload_overlaps_span(payload, expr.span)
 }
 
+pub(super) fn expression_requires_matching_payload(expr: &Expr) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Block(_)
+            | ExprKind::If(_)
+            | ExprKind::Match(_)
+            | ExprKind::Array(_)
+            | ExprKind::Map(_)
+            | ExprKind::Record { .. }
+    )
+}
+
 fn expression_payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
     payload
         .syntax_span()

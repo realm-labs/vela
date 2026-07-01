@@ -12,7 +12,9 @@ use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
 use super::constructors::{record_field_names, schema_default_fields};
-use super::expression_payload_kinds::expression_payload_kind_matches;
+use super::expression_payload_kinds::{
+    expression_payload_kind_matches, expression_requires_matching_payload,
+};
 use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -34,6 +36,13 @@ impl Compiler<'_, '_> {
             && expression_payload_kind_matches(kind, expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
+        }
+        if payload.is_some_and(|payload| payload.kind().is_some())
+            && expression_requires_matching_payload(expr)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression payload",
+            )));
         }
         self.compile_expr(expr)
     }

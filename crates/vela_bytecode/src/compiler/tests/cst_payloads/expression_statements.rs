@@ -104,6 +104,49 @@ fn main() {
     ));
 }
 
+#[test]
+fn mismatched_control_flow_expression_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let cst_value = if true {
+        1
+    } else {
+        0
+    };
+    let legacy_value = match 0 {
+        _ => 1,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let cst_if = statements[0]
+        .let_initializer_expression_payload()
+        .expect("CST if initializer payload");
+    let legacy_match = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy match initializer payload");
+    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_if
+            .syntax_expression()
+            .expect("CST if expression")
+            .clone(),
+        legacy_match.fallback(),
+    );
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_match.fallback(), Some(&mismatched_payload))
+        .expect_err("mismatched control-flow payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST expression payload")
+    ));
+}
+
 fn assert_cst_expression_statement_index_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
