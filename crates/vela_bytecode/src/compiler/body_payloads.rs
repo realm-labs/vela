@@ -20,13 +20,12 @@ pub(super) struct SyntaxBodyPayload {
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
     fallback: &'ast Block,
-    allow_unmatched_statement_fallback: bool,
+    pair_child_statements_by_position: bool,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
-    allow_unmatched_statement_fallback: bool,
     fallback: &'ast Stmt,
 }
 
@@ -95,7 +94,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             fallback,
-            allow_unmatched_statement_fallback: false,
+            pair_child_statements_by_position: false,
         }
     }
 
@@ -103,7 +102,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             fallback,
-            allow_unmatched_statement_fallback: true,
+            pair_child_statements_by_position: true,
         }
     }
 
@@ -114,14 +113,20 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
+        let pair_by_position = self.pair_child_statements_by_position
+            && syntax_statements.len() == self.fallback.statements.len();
 
         self.fallback
             .statements
             .iter()
-            .map(|fallback| CompilerStatementPayload {
+            .enumerate()
+            .map(|(index, fallback)| CompilerStatementPayload {
                 source: Some(self.syntax.source),
-                syntax: syntax_statement_for_fallback(&syntax_statements, fallback),
-                allow_unmatched_statement_fallback: self.allow_unmatched_statement_fallback,
+                syntax: syntax_statement_for_fallback(
+                    &syntax_statements,
+                    fallback,
+                    pair_by_position.then_some(index),
+                ),
                 fallback,
             })
             .collect()
@@ -153,8 +158,9 @@ impl<'ast> CompilerBodyPayload<'ast> {
 fn syntax_statement_for_fallback(
     statements: &[SyntaxStatement],
     fallback: &Stmt,
+    positional_index: Option<usize>,
 ) -> Option<SyntaxStatement> {
-    statements
+    let by_span = statements
         .iter()
         .filter(|statement| {
             syntax_statement_kind_matches_fallback(statement.statement_kind(), fallback)
@@ -165,7 +171,12 @@ fn syntax_statement_for_fallback(
         .filter(|statement| {
             syntax_range_overlaps_span(statement.syntax().text_range(), fallback.span)
         })
-        .cloned()
+        .cloned();
+    by_span.or_else(|| {
+        let statement = statements.get(positional_index?)?;
+        syntax_statement_kind_matches_fallback(statement.statement_kind(), fallback)
+            .then(|| statement.clone())
+    })
 }
 
 fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &Stmt) -> bool {
@@ -400,7 +411,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            allow_unmatched_statement_fallback: false,
             fallback,
         }
     }
@@ -413,7 +423,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Self {
             source: None,
             syntax: Some(syntax),
-            allow_unmatched_statement_fallback: false,
             fallback,
         }
     }
@@ -424,10 +433,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
-    }
-
-    pub(super) const fn allow_unmatched_statement_fallback(&self) -> bool {
-        self.allow_unmatched_statement_fallback
     }
 
     #[cfg(test)]
