@@ -605,7 +605,7 @@ impl Compiler<'_, '_> {
                 }
                 Some(SyntaxExpressionKind::Path) => {
                     let parts = payload.syntax_path_segments()?;
-                    if !parts.last().is_some_and(|name| name == method) {
+                    if parts.last().is_none_or(|name| name != method) {
                         return None;
                     }
                     let span = payload.syntax_span().unwrap_or(callee.span);
