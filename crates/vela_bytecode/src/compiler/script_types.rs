@@ -124,6 +124,7 @@ pub(super) fn expression_script_fact_with_payload(
 ) -> Option<ScriptTypeFact> {
     if let Some(fact) = payload.and_then(|payload| {
         expression_script_fact_from_payload(
+            expr,
             payload,
             &type_symbol_at_span,
             &local_fact_at_span,
@@ -176,12 +177,13 @@ pub(super) fn expression_script_fact_with_payload(
 }
 
 fn expression_script_fact_from_payload(
+    expr: &Expr,
     payload: &CompilerExpressionPayload<'_>,
     type_symbol_at_span: &impl Fn(Span) -> Option<String>,
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if !expression_payload_is_aligned(payload, payload.fallback()) {
+    if !expression_payload_is_aligned(payload, expr) {
         return None;
     }
 
