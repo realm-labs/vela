@@ -1,7 +1,7 @@
 use vela_syntax::ast::{ElseBranch, IfExpr};
 
 use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerIfPayload};
-use crate::compiler::{CompileResult, Compiler};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
@@ -25,11 +25,13 @@ impl Compiler<'_, '_> {
             payload.and_then(CompilerIfPayload::condition_payload),
         )?;
 
-        let then_returned = self.compile_if_value_block_to(
-            &if_expr.then_branch,
+        let then_body_payload = required_if_child_payload(
+            payload,
             payload.and_then(CompilerIfPayload::then_body),
-            dst,
+            "missing CST if then body payload",
         )?;
+        let then_returned =
+            self.compile_if_value_block_to(&if_expr.then_branch, then_body_payload, dst)?;
         let jump_to_end = if then_returned {
             None
         } else {
@@ -39,16 +41,22 @@ impl Compiler<'_, '_> {
         self.patch_jump(jump_to_else, self.current_offset())?;
 
         let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => self.compile_if_value_block_to(
-                block,
-                payload.and_then(CompilerIfPayload::else_body),
-                dst,
-            )?,
-            Some(ElseBranch::If(if_expr)) => self.compile_if_value_with_payloads(
-                if_expr,
-                dst,
-                payload.and_then(CompilerIfPayload::else_if),
-            )?,
+            Some(ElseBranch::Block(block)) => {
+                let else_body_payload = required_if_child_payload(
+                    payload,
+                    payload.and_then(CompilerIfPayload::else_body),
+                    "missing CST if else body payload",
+                )?;
+                self.compile_if_value_block_to(block, else_body_payload, dst)?
+            }
+            Some(ElseBranch::If(if_expr)) => {
+                let else_if_payload = required_if_child_payload(
+                    payload,
+                    payload.and_then(CompilerIfPayload::else_if),
+                    "missing CST else-if payload",
+                )?;
+                self.compile_if_value_with_payloads(if_expr, dst, else_if_payload)?
+            }
             None => {
                 self.emit_constant_to(dst, Constant::Null);
                 false
@@ -74,4 +82,17 @@ impl Compiler<'_, '_> {
             self.compile_block_value_to(block, dst)
         }
     }
+}
+
+fn required_if_child_payload<'payload, T>(
+    parent: Option<&CompilerIfPayload<'_>>,
+    child: Option<&'payload T>,
+    context: &'static str,
+) -> CompileResult<Option<&'payload T>> {
+    if parent.is_none() {
+        return Ok(None);
+    }
+    child
+        .map(Some)
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }

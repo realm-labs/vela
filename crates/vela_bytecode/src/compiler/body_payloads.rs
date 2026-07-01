@@ -386,6 +386,19 @@ fn if_payload_for_fallback<'ast>(
     })
 }
 
+impl<'ast> CompilerIfPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn truncated_for_test() -> Self {
+        Self {
+            condition: None,
+            condition_operator: None,
+            then_body: None,
+            else_body: None,
+            else_if: None,
+        }
+    }
+}
+
 impl<'ast> CompilerStatementPayload<'ast> {
     #[cfg(test)]
     pub(super) fn syntax(source: SourceId, syntax: SyntaxStatement, fallback: &'ast Stmt) -> Self {

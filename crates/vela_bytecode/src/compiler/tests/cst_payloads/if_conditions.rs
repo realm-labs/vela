@@ -195,6 +195,44 @@ fn main() {
 }
 
 #[test]
+fn missing_if_value_branch_payload_does_not_use_legacy_branch_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = true;
+    let selected = if value {
+        1
+    } else {
+        2
+    };
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement_payload_for_test(&statements[0])
+                .expect("condition local should compile");
+            let initializer = statements[1]
+                .let_initializer_expression_payload()
+                .expect("if initializer payload");
+            let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
+                panic!("expected legacy if fallback");
+            };
+            let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
+
+            let error = compiler
+                .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))
+                .expect_err("missing CST if body payload must not use legacy branch body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST if then body payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn mismatched_i64_condition_payload_does_not_use_legacy_operator() {
     let source = SourceId::new(1);
     let cst_text = r#"

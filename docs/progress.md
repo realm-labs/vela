@@ -404,6 +404,9 @@ Top-level if statement payloads now materialize nested rowan then/else and
 else-if block payloads, letting branch bodies reuse the CST-aware statement
 dispatcher while preserving legacy branch fallbacks when syntax alignment is
 unavailable.
+If expressions compiled as values now reject missing then/else/else-if child
+body payloads when a parent CST if payload is present instead of silently
+compiling the temporary legacy branch body.
 Top-level match statement payloads now materialize rowan block-body payloads
 for match arms, letting statement-form match arms reuse the CST-aware nested
 statement dispatcher while preserving legacy arm fallbacks when syntax
