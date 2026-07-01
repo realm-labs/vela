@@ -15,3 +15,15 @@ pub(in crate::compiler) fn validate_assignment_target_payload(
     }
     Ok(())
 }
+
+pub(in crate::compiler) fn validate_assignment_value_payload(
+    value: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| !expression_payload_is_aligned(payload, value)) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST assignment value",
+        )));
+    }
+    Ok(())
+}

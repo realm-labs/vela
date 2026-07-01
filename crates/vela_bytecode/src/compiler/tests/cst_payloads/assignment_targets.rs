@@ -67,6 +67,51 @@ fn main() {
 }
 
 #[test]
+fn assignment_value_with_misaligned_cst_payload_does_not_use_legacy_value() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = [];
+    let cst_value = [true];
+    value = [1];
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("local target should compile");
+            let cst_value = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST array initializer");
+            let legacy_assignment = statements[2]
+                .expression_payload()
+                .expect("legacy assignment expression");
+
+            let error = compiler
+                .compile_assignment_with_payloads(
+                    legacy_assignment.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        Some(SyntaxExpressionKind::Array),
+                        None,
+                        Some(&cst_value),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect_err("misaligned CST assignment value must not use legacy value");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST assignment value")
+            ));
+        },
+    );
+}
+
+#[test]
 fn local_assignment_operator_lowering_prefers_cst_operator_payload() {
     let source = SourceId::new(1);
     let cst_text = r#"

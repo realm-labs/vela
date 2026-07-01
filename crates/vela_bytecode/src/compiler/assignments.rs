@@ -6,7 +6,9 @@ use vela_syntax::ast::{AssignOp, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::assignment_payloads::validate_assignment_target_payload;
+use super::assignment_payloads::{
+    validate_assignment_target_payload, validate_assignment_value_payload,
+};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
@@ -225,6 +227,7 @@ impl Compiler<'_, '_> {
         };
         let op = value_syntax.op.unwrap_or(*op);
         validate_assignment_target_payload(target, target_syntax.expression)?;
+        validate_assignment_value_payload(value, value_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
                 self.value_type_for_expr_with_payload(target, target_syntax.expression);
