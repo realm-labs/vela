@@ -1,6 +1,7 @@
 use super::*;
 
 impl Parser {
+    #[cfg(test)]
     pub(super) fn skip_block_tokens(&mut self) {
         if self.eat_symbol(Symbol::LBrace).is_none() {
             self.error_here("expected block");
@@ -35,12 +36,14 @@ impl Parser {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn recover_until(&mut self, symbols: &[Symbol]) {
         while !self.at_eof() && !symbols.iter().any(|symbol| self.check_symbol(*symbol)) {
             self.advance();
         }
     }
 
+    #[cfg(test)]
     pub(super) fn recover_to_next_item(&mut self) {
         while !self.at_eof() {
             if self.check_keyword(Keyword::Pub)
@@ -92,6 +95,7 @@ impl Parser {
         ident
     }
 
+    #[cfg(test)]
     pub(super) fn expect_ident_with_span(&mut self, message: &str) -> Option<(String, Span)> {
         let ident = self.eat_ident_with_span();
         if ident.is_none() {

@@ -1,7 +1,9 @@
 use super::*;
+#[cfg(test)]
 use crate::ast::ImplKind;
 
 impl Parser {
+    #[cfg(test)]
     pub(super) fn parse_item(&mut self) -> Option<Item> {
         let attrs = self.parse_attributes();
         let start = attrs
@@ -90,6 +92,7 @@ impl Parser {
         Some(normalize_attribute_value(&tokens))
     }
 
+    #[cfg(test)]
     pub(super) fn parse_use_item(&mut self) -> Option<UseItem> {
         let path = self.parse_static_path();
         if path.is_empty() {
@@ -105,6 +108,7 @@ impl Parser {
         Some(UseItem { path, alias })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_const_item(&mut self) -> Option<ConstItem> {
         let name = self.expect_ident("expected const name")?;
         let type_hint = self.parse_type_annotation();
@@ -120,6 +124,7 @@ impl Parser {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_global_item(&mut self) -> Option<GlobalItem> {
         let name = self.expect_ident("expected global name")?;
         let type_hint = match self.parse_type_annotation() {
@@ -143,6 +148,7 @@ impl Parser {
         Some(GlobalItem { name, type_hint })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_function_item(&mut self) -> Option<FunctionItem> {
         let name = self.expect_ident("expected function name")?;
         let params = self.parse_parameter_list();
@@ -156,18 +162,21 @@ impl Parser {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_struct_item(&mut self) -> Option<StructItem> {
         let name = self.expect_ident("expected struct name")?;
         let fields = self.parse_struct_fields_in_braces();
         Some(StructItem { name, fields })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_enum_item(&mut self) -> Option<crate::ast::EnumItem> {
         let name = self.expect_ident("expected enum name")?;
         let variants = self.parse_enum_variants_in_braces();
         Some(crate::ast::EnumItem { name, variants })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_trait_item(&mut self) -> Option<TraitItem> {
         let name = self.expect_ident("expected trait name")?;
         let mut methods = Vec::new();
@@ -221,6 +230,7 @@ impl Parser {
         Some(TraitItem { name, methods })
     }
 
+    #[cfg(test)]
     pub(super) fn parse_impl_item(&mut self) -> Option<ImplItem> {
         let first_path = self.parse_static_path();
         if first_path.is_empty() {

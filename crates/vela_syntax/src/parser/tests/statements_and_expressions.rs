@@ -63,6 +63,41 @@ fn on_kill(ctx, player, monster) {
 }
 
 #[test]
+fn parses_body_blocks_at_exact_spans_without_source_file_fallback() {
+    let source = source_id();
+    let text = r#"
+fn first() {
+    return 1;
+}
+
+bogus @@@
+
+fn second() {
+    let value = 2;
+    return value;
+}
+"#;
+    let first_start = text.find("{\n    return 1;").expect("first body") as u32;
+    let first_end = first_start + "{\n    return 1;\n}".len() as u32;
+    let second_start = text.find("{\n    let value = 2;").expect("second body") as u32;
+    let second_end = second_start + "{\n    let value = 2;\n    return value;\n}".len() as u32;
+    let missing = Span::new(source, 0, 2);
+    let spans = [
+        Span::new(source, second_start, second_end),
+        missing,
+        Span::new(source, first_start, first_end),
+    ];
+
+    let bodies = parse_body_blocks_at_spans(source, text, &spans);
+
+    assert_eq!(bodies.len(), 2);
+    assert_eq!(bodies[0].span, spans[0]);
+    assert_eq!(bodies[0].statements.len(), 2);
+    assert_eq!(bodies[1].span, spans[2]);
+    assert_eq!(bodies[1].statements.len(), 1);
+}
+
+#[test]
 fn parses_identity_comparison_expressions() {
     let parsed = parse_source(
         source_id(),

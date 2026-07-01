@@ -24,6 +24,7 @@ impl Parser {
         args
     }
 
+    #[cfg(test)]
     pub(super) fn parse_parameter_list(&mut self) -> Vec<Param> {
         let mut params = Vec::new();
         if self.eat_symbol(Symbol::LParen).is_none() {
@@ -82,6 +83,7 @@ impl Parser {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn parse_struct_fields_in_braces(&mut self) -> Vec<StructField> {
         if self.eat_symbol(Symbol::LBrace).is_none() {
             self.error_here("expected `{`");
@@ -90,6 +92,7 @@ impl Parser {
         self.parse_struct_fields_until_rbrace()
     }
 
+    #[cfg(test)]
     pub(super) fn parse_struct_fields_until_rbrace(&mut self) -> Vec<StructField> {
         let mut fields = Vec::new();
         while !self.at_eof() && !self.check_symbol(Symbol::RBrace) {
@@ -131,6 +134,7 @@ impl Parser {
         fields
     }
 
+    #[cfg(test)]
     pub(super) fn parse_enum_variants_in_braces(&mut self) -> Vec<EnumVariant> {
         let mut variants = Vec::new();
         if self.eat_symbol(Symbol::LBrace).is_none() {

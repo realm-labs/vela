@@ -1,16 +1,23 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::ast::{
-    Argument, AssignOp, Attribute, BinaryOp, Block, ConstItem, ElseBranch, EnumVariant,
-    EnumVariantFields, Expr, ExprKind, FunctionItem, GlobalItem, IfExpr, ImplItem, ImplMethod,
-    InterpolatedStringPart, Item, ItemKind, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern,
-    RecordField, RecordPatternField, SourceFile, Stmt, StmtKind, StructField, StructItem,
-    TraitItem, TraitMethod, TypeHint, UnaryOp, UseItem, Visibility,
+    Argument, AssignOp, Attribute, BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr,
+    InterpolatedStringPart, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
+    RecordPatternField, Stmt, StmtKind, TypeHint, UnaryOp,
+};
+#[cfg(test)]
+use crate::ast::{
+    ConstItem, EnumVariant, EnumVariantFields, FunctionItem, GlobalItem, ImplItem, ImplMethod,
+    Item, ItemKind, SourceFile, StructField, StructItem, TraitItem, TraitMethod, UseItem,
+    Visibility,
 };
 use crate::attribute::normalize_attribute_value;
-use crate::lexer::{lex, lex_at};
+#[cfg(test)]
+use crate::lexer::lex;
+use crate::lexer::lex_at;
 use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKind};
 
+#[cfg(test)]
 #[must_use]
 pub fn parse_source(source: SourceId, text: &str) -> SourceFile {
     let lexed = lex(source, text);
@@ -19,41 +26,21 @@ pub fn parse_source(source: SourceId, text: &str) -> SourceFile {
 
 #[must_use]
 pub fn parse_body_blocks_at_spans(source: SourceId, text: &str, spans: &[Span]) -> Vec<Block> {
-    let parsed = parse_source(source, text);
-    let mut bodies = Vec::new();
-    for item in parsed.items {
-        match item.kind {
-            ItemKind::Function(function) => {
-                push_body_at_span(&mut bodies, spans, function.body);
-            }
-            ItemKind::Impl(item) => {
-                for method in item.methods {
-                    push_body_at_span(&mut bodies, spans, method.function.body);
-                }
-            }
-            ItemKind::Trait(item) => {
-                for body in item
-                    .methods
-                    .into_iter()
-                    .filter_map(|method| method.default_body)
-                {
-                    push_body_at_span(&mut bodies, spans, body);
-                }
-            }
-            ItemKind::Use(_)
-            | ItemKind::Const(_)
-            | ItemKind::Global(_)
-            | ItemKind::Struct(_)
-            | ItemKind::Enum(_) => {}
-        }
-    }
-    bodies
+    spans
+        .iter()
+        .filter(|span| span.source == source)
+        .filter_map(|span| parse_body_block_at_span(source, text, *span))
+        .collect()
 }
 
-fn push_body_at_span(bodies: &mut Vec<Block>, spans: &[Span], body: Block) {
-    if spans.contains(&body.span) {
-        bodies.push(body);
-    }
+fn parse_body_block_at_span(source: SourceId, text: &str, span: Span) -> Option<Block> {
+    let start = usize::try_from(span.start).ok()?;
+    let end = usize::try_from(span.end).ok()?;
+    let body_text = text.get(start..end)?;
+    let lexed = lex_at(source, body_text, span.start);
+    Parser::new(lexed.tokens, lexed.diagnostics)
+        .parse_block()
+        .filter(|body| body.span == span)
 }
 
 fn parse_expression_fragment(
@@ -105,6 +92,7 @@ impl Parser {
         }
     }
 
+    #[cfg(test)]
     fn parse(mut self) -> SourceFile {
         let mut items = Vec::new();
         while !self.at_eof() {
