@@ -1,10 +1,8 @@
-use std::collections::HashSet;
-
 use vela_common::{SourceId, Span};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::ast::{AstNode, Block, SyntaxBlock};
-use vela_syntax::parser::parse_source as parse_body_fallback_source;
+use vela_syntax::parser::parse_body_blocks_at_spans;
 
 pub(super) struct BodyFallbackSource {
     bodies: Vec<Block>,
@@ -17,34 +15,7 @@ impl BodyFallbackSource {
         syntax: &SyntaxParse<SyntaxSourceFile>,
     ) -> Self {
         let required_spans = syntax_body_spans(source, syntax);
-        let parsed = parse_body_fallback_source(source, text);
-        let mut bodies = Vec::new();
-        for item in parsed.items {
-            match item.kind {
-                vela_syntax::ast::ItemKind::Function(function) => {
-                    push_required_body(&mut bodies, &required_spans, function.body);
-                }
-                vela_syntax::ast::ItemKind::Impl(item) => {
-                    for method in item.methods {
-                        push_required_body(&mut bodies, &required_spans, method.function.body);
-                    }
-                }
-                vela_syntax::ast::ItemKind::Trait(item) => {
-                    for body in item
-                        .methods
-                        .into_iter()
-                        .filter_map(|method| method.default_body)
-                    {
-                        push_required_body(&mut bodies, &required_spans, body);
-                    }
-                }
-                vela_syntax::ast::ItemKind::Use(_)
-                | vela_syntax::ast::ItemKind::Const(_)
-                | vela_syntax::ast::ItemKind::Global(_)
-                | vela_syntax::ast::ItemKind::Struct(_)
-                | vela_syntax::ast::ItemKind::Enum(_) => {}
-            }
-        }
+        let bodies = parse_body_blocks_at_spans(source, text, &required_spans);
         Self { bodies }
     }
 
@@ -57,7 +28,7 @@ impl BodyFallbackSource {
     }
 }
 
-fn syntax_body_spans(source: SourceId, syntax: &SyntaxParse<SyntaxSourceFile>) -> HashSet<Span> {
+fn syntax_body_spans(source: SourceId, syntax: &SyntaxParse<SyntaxSourceFile>) -> Vec<Span> {
     syntax
         .tree()
         .functions()
@@ -76,12 +47,6 @@ fn syntax_body_spans(source: SourceId, syntax: &SyntaxParse<SyntaxSourceFile>) -
         )
         .map(|body| syntax_body_span(source, &body))
         .collect()
-}
-
-fn push_required_body(bodies: &mut Vec<Block>, required_spans: &HashSet<Span>, body: Block) {
-    if required_spans.contains(&body.span) {
-        bodies.push(body);
-    }
 }
 
 fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {

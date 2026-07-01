@@ -17,6 +17,45 @@ pub fn parse_source(source: SourceId, text: &str) -> SourceFile {
     Parser::new(lexed.tokens, lexed.diagnostics).parse()
 }
 
+#[must_use]
+pub fn parse_body_blocks_at_spans(source: SourceId, text: &str, spans: &[Span]) -> Vec<Block> {
+    let parsed = parse_source(source, text);
+    let mut bodies = Vec::new();
+    for item in parsed.items {
+        match item.kind {
+            ItemKind::Function(function) => {
+                push_body_at_span(&mut bodies, spans, function.body);
+            }
+            ItemKind::Impl(item) => {
+                for method in item.methods {
+                    push_body_at_span(&mut bodies, spans, method.function.body);
+                }
+            }
+            ItemKind::Trait(item) => {
+                for body in item
+                    .methods
+                    .into_iter()
+                    .filter_map(|method| method.default_body)
+                {
+                    push_body_at_span(&mut bodies, spans, body);
+                }
+            }
+            ItemKind::Use(_)
+            | ItemKind::Const(_)
+            | ItemKind::Global(_)
+            | ItemKind::Struct(_)
+            | ItemKind::Enum(_) => {}
+        }
+    }
+    bodies
+}
+
+fn push_body_at_span(bodies: &mut Vec<Block>, spans: &[Span], body: Block) {
+    if spans.contains(&body.span) {
+        bodies.push(body);
+    }
+}
+
 fn parse_expression_fragment(
     source: SourceId,
     text: &str,
