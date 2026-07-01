@@ -414,6 +414,9 @@ Top-level match statement payloads now materialize rowan block-body payloads
 for match arms, letting statement-form match arms reuse the CST-aware nested
 statement dispatcher while preserving legacy arm fallbacks when syntax
 alignment is unavailable.
+Match arm control-flow bodies now require nested CST block/if/match child
+payloads when the arm body expression is CST-aligned, instead of silently
+compiling the temporary legacy arm body data.
 Top-level let initializer and return-value block expressions now materialize
 rowan body payloads, letting block-value prefix statements and tail if/match
 expressions reuse the CST-aware nested statement dispatcher while preserving

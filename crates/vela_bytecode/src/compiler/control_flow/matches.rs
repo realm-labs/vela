@@ -104,14 +104,16 @@ impl Compiler<'_, '_> {
         kind: SyntaxExpressionKind,
     ) -> CompileResult<bool> {
         if kind == SyntaxExpressionKind::Block {
-            let ExprKind::Block(block) = &arm.body.kind else {
+            let ExprKind::Block(_) = &arm.body.kind else {
                 unreachable!("validated CST match arm statement block kind");
             };
             if let Some(body) = payload.body_block_payload() {
                 let statements = body.statement_payloads();
                 return self.compile_statement_payloads(&statements);
             }
-            return self.compile_statements(&block.statements);
+            return Err(missing_cst_match_arm_child_payload(
+                "missing CST match arm block body payload",
+            ));
         }
         let body_payload = payload.body_expression_payload();
         self.compile_expr_with_payload(&arm.body, Some(&body_payload))?;
@@ -262,13 +264,15 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(block) = &body.kind else {
+                let ExprKind::Block(_) = &body.kind else {
                     unreachable!("validated CST match arm block body kind");
                 };
                 if let Some(body) = payload.body_block_payload() {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
-                    self.compile_block_value_to(block, dst)
+                    Err(missing_cst_match_arm_child_payload(
+                        "missing CST match arm block body payload",
+                    ))
                 }
             }
             SyntaxExpressionKind::If => {
@@ -276,21 +280,33 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match arm if body kind");
                 };
                 let body_payload = payload.body_expression_payload();
-                let if_payload = body_payload.if_payload();
-                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())
+                let Some(if_payload) = body_payload.if_payload() else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "missing CST match arm if payload",
+                    ));
+                };
+                self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))
             }
             SyntaxExpressionKind::Match => {
                 let ExprKind::Match(match_expr) = &body.kind else {
                     unreachable!("validated CST match arm match body kind");
                 };
                 let body_payload = payload.body_expression_payload();
-                let scrutinee_payload = body_payload.match_scrutinee_payload();
-                let arm_payloads = body_payload.match_arm_payloads();
+                let Some(scrutinee_payload) = body_payload.match_scrutinee_payload() else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "missing CST match arm match scrutinee payload",
+                    ));
+                };
+                let Some(arm_payloads) = body_payload.match_arm_payloads() else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "missing CST match arm nested arm payloads",
+                    ));
+                };
                 self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    scrutinee_payload.as_ref(),
-                    arm_payloads.as_deref(),
+                    Some(&scrutinee_payload),
+                    Some(&arm_payloads),
                 )
             }
             _ => {
@@ -332,4 +348,8 @@ fn match_arm_payload_at<'payload, 'ast>(
             "missing CST match arm payload",
         ))
     })
+}
+
+fn missing_cst_match_arm_child_payload(message: &'static str) -> CompileError {
+    CompileError::new(CompileErrorKind::UnsupportedSyntax(message))
 }
