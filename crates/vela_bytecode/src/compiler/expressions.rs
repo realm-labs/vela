@@ -32,6 +32,26 @@ use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_varian
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
+pub(in crate::compiler) fn interpolated_expression_payload_at<'payload, 'ast>(
+    payloads: Option<&'payload [CompilerExpressionPayload<'ast>]>,
+    index: usize,
+) -> CompileResult<Option<&'payload CompilerExpressionPayload<'ast>>> {
+    let Some(payloads) = payloads else {
+        return Ok(None);
+    };
+    let payload = payloads.get(index).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST interpolation expression",
+        ))
+    })?;
+    if payload.syntax_expression().is_none() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST interpolation expression",
+        )));
+    }
+    Ok(Some(payload))
+}
+
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_expr_with_payload(
         &mut self,
@@ -1001,13 +1021,8 @@ impl Compiler<'_, '_> {
                     compiled.push(FormatStringPart::Text(constant));
                 }
                 InterpolatedStringPart::Expr(expr) => {
-                    let payload = payloads.and_then(|payloads| payloads.get(expression_index));
+                    let payload = interpolated_expression_payload_at(payloads, expression_index)?;
                     expression_index += 1;
-                    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST interpolation expression",
-                        )));
-                    }
                     compiled.push(FormatStringPart::Value(
                         self.compile_expr_with_payload(expr, payload)?,
                     ));

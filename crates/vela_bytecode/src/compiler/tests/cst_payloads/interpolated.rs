@@ -133,6 +133,28 @@ fn main() {
     ));
 }
 
+#[test]
+fn missing_interpolation_child_payloads_do_not_use_legacy_expression() {
+    let no_payloads: [body_payloads::CompilerExpressionPayload<'_>; 0] = [];
+    let error = match crate::compiler::expressions::interpolated_expression_payload_at(
+        Some(&no_payloads),
+        0,
+    ) {
+        Ok(_) => panic!("missing interpolation payload must not look at legacy expression"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST interpolation expression")
+    ));
+
+    assert!(
+        crate::compiler::expressions::interpolated_expression_payload_at(None, 0)
+            .expect("absent interpolation payload vector should preserve non-CST fallback path")
+            .is_none()
+    );
+}
+
 fn assert_cst_let_initializer_interpolation_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
