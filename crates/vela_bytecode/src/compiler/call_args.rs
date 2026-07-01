@@ -54,6 +54,9 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     }
 
     fn has_missing_value_payload(self, arg: &Argument) -> bool {
+        if self.payloads.is_some() && self.payload_for(arg).is_none() {
+            return true;
+        }
         self.payload_for(arg)
             .is_some_and(|payload| !payload.has_value_syntax())
     }

@@ -537,7 +537,15 @@ impl Compiler<'_, '_> {
             .iter()
             .enumerate()
             .map(|(index, item)| {
-                let payload = payloads.and_then(|payloads| payloads.get(index));
+                let payload = payloads
+                    .map(|payloads| {
+                        payloads.get(index).ok_or_else(|| {
+                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                "missing CST array element payload",
+                            ))
+                        })
+                    })
+                    .transpose()?;
                 if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST array element value",
@@ -560,7 +568,16 @@ impl Compiler<'_, '_> {
             .iter()
             .enumerate()
             .map(|(index, entry)| {
-                self.compile_map_entry(entry, payloads.and_then(|payloads| payloads.get(index)))
+                let payload = payloads
+                    .map(|payloads| {
+                        payloads.get(index).ok_or_else(|| {
+                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                "missing CST map entry payload",
+                            ))
+                        })
+                    })
+                    .transpose()?;
+                self.compile_map_entry(entry, payload)
             })
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;

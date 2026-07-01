@@ -241,6 +241,53 @@ fn main() {
 }
 
 #[test]
+fn missing_tuple_constructor_child_payload_does_not_use_legacy_value() {
+    with_cst_payload_compiler(
+        r#"
+enum Boxed {
+    Value(value)
+}
+
+fn main() {
+    let legacy_call = Boxed::Value([1]);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let legacy_call = statements[0]
+                .let_initializer_expression_payload()
+                .expect("legacy tuple constructor payload");
+            let ExprKind::Call { args, .. } = &legacy_call.fallback().kind else {
+                panic!("expected legacy tuple constructor fallback");
+            };
+            let argument_payloads = [];
+
+            let error = compiler
+                .compile_tuple_variant_fields(
+                    legacy_call.fallback().span,
+                    "Boxed",
+                    "Value",
+                    args,
+                    Some(&argument_payloads),
+                )
+                .expect_err(
+                    "missing CST tuple constructor child payload must not compile legacy value",
+                );
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax(
+                        "missing CST tuple variant argument payload"
+                    )
+                ),
+                "expected missing CST tuple variant argument payload, got {error:?}"
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_record_constructor_diagnostics_prefer_cst_payload_labels() {
     let source = SourceId::new(1);
     let text = r#"

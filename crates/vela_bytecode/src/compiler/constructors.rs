@@ -85,7 +85,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                     .field_name_at(index)
                     .map(str::to_owned)
                     .unwrap_or_else(|| tuple_variant_field_name(index));
-                let payload = argument_expression_payload(args, arg_payloads, arg);
+                let payload = argument_expression_payload(args, arg_payloads, arg)?;
                 let value = self.compile_constructor_value(
                     &arg.value,
                     &name,
@@ -104,8 +104,17 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 }
                 let name = tuple_variant_field_name(index);
                 let payload = arg_payloads
-                    .and_then(|payloads| payloads.get(index))
-                    .map(CompilerArgumentPayload::value_expression_payload);
+                    .map(|payloads| {
+                        payloads
+                            .get(index)
+                            .ok_or_else(|| {
+                                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                    "missing CST tuple variant argument payload",
+                                ))
+                            })
+                            .map(CompilerArgumentPayload::value_expression_payload)
+                    })
+                    .transpose()?;
                 let value = self.compile_expr_with_payload(&arg.value, payload.as_ref())?;
                 explicit_names.insert(name.clone());
                 fields.push((name, value));
@@ -277,13 +286,27 @@ fn argument_expression_payload<'ast>(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload<'ast>]>,
     arg: &Argument,
-) -> Option<CompilerExpressionPayload<'ast>> {
+) -> CompileResult<Option<CompilerExpressionPayload<'ast>>> {
     let index = args
         .iter()
-        .position(|candidate| std::ptr::eq(candidate, arg))?;
-    arg_payloads?
-        .get(index)
-        .map(CompilerArgumentPayload::value_expression_payload)
+        .position(|candidate| std::ptr::eq(candidate, arg))
+        .ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "tuple variant argument",
+            ))
+        })?;
+    arg_payloads
+        .map(|payloads| {
+            payloads
+                .get(index)
+                .ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST tuple variant argument payload",
+                    ))
+                })
+                .map(CompilerArgumentPayload::value_expression_payload)
+        })
+        .transpose()
 }
 
 fn argument_names(

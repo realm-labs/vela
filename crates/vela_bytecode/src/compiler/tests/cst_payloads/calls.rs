@@ -218,6 +218,48 @@ fn main() {
 }
 
 #[test]
+fn missing_call_argument_child_payload_does_not_use_legacy_value() {
+    with_cst_payload_compiler(
+        r#"
+fn take(value) {
+    return value;
+}
+
+fn main() {
+    let legacy_call = take([1]);
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let legacy_call = statements[0]
+                .let_initializer_expression_payload()
+                .expect("legacy call payload");
+            let ExprKind::Call {
+                args: legacy_args, ..
+            } = &legacy_call.fallback().kind
+            else {
+                panic!("expected legacy call fallback");
+            };
+            let argument_payloads = [];
+            let arg_syntax =
+                call_args::CallArgumentSyntax::new(legacy_args, Some(&argument_payloads));
+
+            let error = compiler
+                .compile_call_argument_value(&legacy_args[0], arg_syntax)
+                .expect_err("missing CST argument child payload must not compile legacy value");
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("missing CST call argument value")
+                ),
+                "expected missing CST call argument value, got {error:?}"
+            );
+        },
+    );
+}
+
+#[test]
 fn missing_call_callee_payload_does_not_use_legacy_callee() {
     let source = SourceId::new(1);
     let text = r#"
