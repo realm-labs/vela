@@ -1008,7 +1008,7 @@ impl super::Compiler<'_, '_> {
         {
             return Some(shape);
         }
-        if kind_matched_payload.is_some() && matches!(expr.kind, ExprKind::Record { .. }) {
+        if kind_matched_payload.is_some_and(syntax_shapes::payload_shape_must_come_from_syntax) {
             return None;
         }
         if payload.is_some() && kind_matched_payload.is_none() {

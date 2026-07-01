@@ -209,6 +209,41 @@ fn main() {
 }
 
 #[test]
+fn unsupported_binary_shape_payload_does_not_use_legacy_binary_shape() {
+    with_cst_payload_compiler(
+        r#"
+fn main(input) {
+    let cst_add = input + 1;
+    let legacy_compare = true == false;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_add = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST add initializer");
+            let legacy_compare = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy compare initializer");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_add.syntax_expression().expect("CST add syntax").clone(),
+                legacy_compare.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                None,
+                "unsupported CST binary shape must not use the legacy binary shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn paren_shape_inference_prefers_inner_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"

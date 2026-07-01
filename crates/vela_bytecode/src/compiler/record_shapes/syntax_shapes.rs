@@ -25,6 +25,13 @@ pub(super) fn field_payload_parts<'ast>(
     }
 }
 
+pub(super) fn payload_shape_must_come_from_syntax(payload: &CompilerExpressionPayload<'_>) -> bool {
+    matches!(
+        payload.syntax_binary_operator(),
+        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
+    ) || payload.syntax_record_path_segments().is_some()
+}
+
 impl Compiler<'_, '_> {
     pub(super) fn value_shape_for_syntax_payload(
         &self,
