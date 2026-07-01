@@ -297,14 +297,17 @@ fn argument_expression_payload<'ast>(
         })?;
     arg_payloads
         .map(|payloads| {
-            payloads
-                .get(index)
-                .ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST tuple variant argument payload",
-                    ))
-                })
-                .map(CompilerArgumentPayload::value_expression_payload)
+            let payload = payloads.get(index).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST tuple variant argument payload",
+                ))
+            })?;
+            if !payload.has_value_syntax() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST tuple variant argument payload",
+                )));
+            }
+            Ok(payload.value_expression_payload())
         })
         .transpose()
 }
