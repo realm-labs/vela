@@ -426,6 +426,9 @@ field labels before falling back to the temporary legacy pattern fields.
 Basic match arm pattern lowering now also prefers rowan literal values, path
 segments, and binding names before falling back to temporary legacy pattern
 data.
+Pattern child lowering now rejects missing tuple and record field payload
+entries instead of treating a present-but-short CST payload list as absent and
+silently consulting temporary legacy pattern fields.
 For statement payloads now expose rowan index and value pattern payloads,
 letting loop pattern matching and local binding reuse CST-backed tuple and
 record pattern labels before falling back to temporary legacy pattern fields.

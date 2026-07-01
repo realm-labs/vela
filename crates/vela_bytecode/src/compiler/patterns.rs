@@ -90,6 +90,34 @@ fn required_pattern_kind(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }
 
+pub(in crate::compiler) fn record_pattern_field_payload_at<'payload, 'ast>(
+    payloads: Option<&'payload [CompilerRecordPatternFieldPayload<'ast>]>,
+    index: usize,
+) -> CompileResult<Option<&'payload CompilerRecordPatternFieldPayload<'ast>>> {
+    let Some(payloads) = payloads else {
+        return Ok(None);
+    };
+    payloads.get(index).map(Some).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST record pattern field payload",
+        ))
+    })
+}
+
+pub(in crate::compiler) fn tuple_pattern_payload_at<'payload, 'ast>(
+    payloads: Option<&'payload [CompilerPatternPayload<'ast>]>,
+    index: usize,
+) -> CompileResult<Option<&'payload CompilerPatternPayload<'ast>>> {
+    let Some(payloads) = payloads else {
+        return Ok(None);
+    };
+    payloads.get(index).map(Some).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST tuple pattern field payload",
+        ))
+    })
+}
+
 fn pattern_kind_declares_locals(kind: SyntaxPatternKind) -> bool {
     matches!(
         kind,
@@ -227,9 +255,8 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    let field_payload = field_payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index));
+                    let field_payload =
+                        record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
                     if let Some(field_payload) = field_payload {
                         if field_payload.syntax_label_name().is_none() {
                             if record_pattern_field_match(field).is_some() {
@@ -272,9 +299,7 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    let field_payload = field_payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index));
+                    let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     if let Some(field_payload) = field_payload {
                         let kind = required_pattern_kind(field_payload, "tuple pattern field")?;
                         if !pattern_kind_needs_match_check(kind) {
@@ -367,9 +392,8 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::record_field_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    let field_payload = field_payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index));
+                    let field_payload =
+                        record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
                     if let Some(field_payload) = field_payload
                         && field_payload.syntax_label_name().is_none()
                     {
@@ -429,9 +453,7 @@ impl Compiler<'_, '_> {
                 let field_payloads =
                     payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
                 for (index, field) in fields.iter().enumerate() {
-                    let field_payload = field_payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index));
+                    let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     let field_declares_locals = match field_payload {
                         Some(field_payload) => pattern_kind_declares_locals(required_pattern_kind(
                             field_payload,

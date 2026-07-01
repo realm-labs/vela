@@ -585,6 +585,44 @@ fn legacy_tuple(value) {
 }
 
 #[test]
+fn missing_pattern_child_payloads_do_not_use_legacy_pattern_fields() {
+    let no_record_payloads: [body_payloads::CompilerRecordPatternFieldPayload<'_>; 0] = [];
+    let record_error = match crate::compiler::patterns::record_pattern_field_payload_at(
+        Some(&no_record_payloads),
+        0,
+    ) {
+        Ok(_) => panic!("missing record pattern child payload must not look at legacy field"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        record_error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
+    ));
+
+    let no_tuple_payloads: [body_payloads::CompilerPatternPayload<'_>; 0] = [];
+    let tuple_error =
+        match crate::compiler::patterns::tuple_pattern_payload_at(Some(&no_tuple_payloads), 0) {
+            Ok(_) => panic!("missing tuple pattern child payload must not look at legacy field"),
+            Err(error) => error,
+        };
+    assert!(matches!(
+        tuple_error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST tuple pattern field payload")
+    ));
+
+    assert!(
+        crate::compiler::patterns::record_pattern_field_payload_at(None, 0)
+            .expect("absent record payload vector should preserve non-CST fallback path")
+            .is_none()
+    );
+    assert!(
+        crate::compiler::patterns::tuple_pattern_payload_at(None, 0)
+            .expect("absent tuple payload vector should preserve non-CST fallback path")
+            .is_none()
+    );
+}
+
+#[test]
 fn mismatched_basic_match_pattern_payloads_do_not_use_legacy_payload_data() {
     let source = SourceId::new(1);
     let text = r#"
