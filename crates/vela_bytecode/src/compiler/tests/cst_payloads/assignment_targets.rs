@@ -161,7 +161,7 @@ fn main() {
 
             assert_eq!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST assignment target path")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST assignment target")
             );
         },
     );

@@ -34,10 +34,33 @@ pub(super) fn expression_payload_is_aligned(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
-    payload
-        .syntax_kind()
-        .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
+    expression_payload_matches_expr(payload, expr)
         && expression_payload_overlaps_span(payload, expr.span)
+}
+
+pub(super) fn expression_payload_matches_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    let Some(kind) = payload.syntax_kind() else {
+        return true;
+    };
+    expression_payload_kind_matches(kind, expr)
+        && expression_payload_shape_matches_expr(payload, expr)
+}
+
+fn expression_payload_shape_matches_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    if payload.syntax_kind() != Some(SyntaxExpressionKind::Path) {
+        return true;
+    }
+    match &expr.kind {
+        ExprKind::Path(_) => !payload.syntax_is_self(),
+        ExprKind::SelfValue => payload.syntax_is_self(),
+        _ => false,
+    }
 }
 
 pub(super) fn expression_requires_matching_payload(expr: &Expr) -> bool {
@@ -49,6 +72,8 @@ pub(super) fn expression_requires_matching_payload(expr: &Expr) -> bool {
             | ExprKind::Array(_)
             | ExprKind::Map(_)
             | ExprKind::Record { .. }
+            | ExprKind::Path(_)
+            | ExprKind::SelfValue
     )
 }
 

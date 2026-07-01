@@ -92,7 +92,7 @@ fn main() {
 
             assert_eq!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST path expression"),
+                CompileErrorKind::UnsupportedSyntax("mismatched CST expression payload"),
                 "{:?}",
                 error.kind
             );
@@ -119,6 +119,48 @@ fn main(value) {
                 );
 
             assert_eq!(missing_source.syntax_path_segments(), None);
+        },
+    );
+}
+
+#[test]
+fn normal_path_payload_does_not_compile_legacy_self() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    value;
+    self;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let path = statements[0]
+                .expression_payload()
+                .expect("path expression payload");
+            let self_value = statements[1]
+                .expression_payload()
+                .expect("self expression payload");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                path.syntax_expression()
+                    .expect("path CST expression")
+                    .clone(),
+                self_value.fallback(),
+            );
+            assert_eq!(
+                mismatched_payload.syntax_path_segments(),
+                Some(vec!["value".to_owned()])
+            );
+            assert!(!mismatched_payload.syntax_is_self());
+
+            let error = compiler
+                .compile_expr_with_payload(self_value.fallback(), Some(&mismatched_payload))
+                .expect_err("normal path payload must not compile legacy self fallback");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("mismatched CST expression payload")
+            );
         },
     );
 }

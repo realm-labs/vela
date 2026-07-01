@@ -19,7 +19,7 @@ use super::expression_checks::{
     unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_payload_kinds::{
-    expression_payload_kind_matches, expression_rejects_missing_payload,
+    expression_payload_matches_expr, expression_rejects_missing_payload,
     expression_requires_matching_payload,
 };
 use super::host_paths::HostPath;
@@ -67,7 +67,7 @@ impl Compiler<'_, '_> {
         }
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_kind()
-            && expression_payload_kind_matches(kind, expr)
+            && expression_payload_matches_expr(payload, expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
