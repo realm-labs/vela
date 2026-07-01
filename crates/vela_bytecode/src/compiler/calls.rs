@@ -636,6 +636,10 @@ impl Compiler<'_, '_> {
                 payload.as_ref(),
             );
         }
+        let arg_payload = arg_syntax.value_expression_payload_for(arg);
+        if !callback_lambda_payload_is_authoritative(arg_payload.as_ref(), &arg.value) {
+            return self.compile_call_argument_value(arg, arg_syntax);
+        }
         let ExprKind::Lambda { params, body } = &arg.value.kind else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
@@ -647,9 +651,7 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let body_payload = arg_syntax
-            .value_expression_payload_for(arg)
-            .and_then(|payload| payload.lambda_body_payload());
+        let body_payload = arg_payload.and_then(|payload| payload.lambda_body_payload());
         self.compile_lambda_with_callback_shapes(
             &arg.value,
             params,
@@ -1128,6 +1130,20 @@ fn callee_is_closure_call(
         return !matches!(payload.kind(), Some(SyntaxExpressionKind::Path));
     }
     !matches!(callee.kind, ExprKind::Path(_))
+}
+
+fn callback_lambda_payload_is_authoritative(
+    arg_payload: Option<&CompilerExpressionPayload<'_>>,
+    arg_value: &Expr,
+) -> bool {
+    let Some(payload) = arg_payload else {
+        return true;
+    };
+    match payload.kind() {
+        Some(SyntaxExpressionKind::Lambda) => expression_payload_is_aligned(payload, arg_value),
+        Some(_) => false,
+        None => true,
+    }
 }
 
 fn reject_mismatched_call_callee_payload(
