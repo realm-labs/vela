@@ -89,7 +89,7 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerMatchArmPayload<'_>>,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
-            && let Some(kind) = payload.body_expression_kind()
+            && let Some(kind) = payload.syntax_body_expression_kind()
         {
             if expression_payload_kind_matches(kind, &arm.body) {
                 return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
@@ -256,7 +256,7 @@ impl Compiler<'_, '_> {
         dst: Register,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
-            && let Some(kind) = payload.body_expression_kind()
+            && let Some(kind) = payload.syntax_body_expression_kind()
         {
             if expression_payload_kind_matches(kind, body) {
                 return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);

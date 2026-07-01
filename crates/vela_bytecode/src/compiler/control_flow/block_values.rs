@@ -82,7 +82,7 @@ impl Compiler<'_, '_> {
         dst: Register,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload {
-            let Some(kind) = payload.value_expression_kind() else {
+            let Some(kind) = payload.syntax_value_expression_kind() else {
                 return Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST block tail expression",

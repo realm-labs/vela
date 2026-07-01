@@ -437,13 +437,25 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.allow_unmatched_statement_fallback
     }
 
+    #[cfg(test)]
     pub(super) fn expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.syntax_expression_kind()
+    }
+
+    pub(super) fn syntax_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.expression()
             .map(|expression| expression.expression_kind())
     }
 
+    #[cfg(test)]
     pub(super) fn value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.expression_kind()
+        self.source?;
+        self.syntax_value_expression_kind()
+    }
+
+    pub(super) fn syntax_value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.syntax_expression_kind()
             .or_else(|| match self.statement_kind()? {
                 SyntaxStatementKind::Block => Some(SyntaxExpressionKind::Block),
                 SyntaxStatementKind::If => Some(SyntaxExpressionKind::If),
@@ -452,7 +464,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
             })
     }
 
+    #[cfg(test)]
     pub(super) fn let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.syntax_let_initializer_kind()
+    }
+
+    pub(super) fn syntax_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
             .as_let()?
@@ -536,7 +554,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn return_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.syntax_return_value_kind()
+    }
+
+    pub(super) fn syntax_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
             .as_return()?
@@ -791,7 +815,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.syntax_assignment_value_kind()
+    }
+
+    pub(super) fn syntax_assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.assignment_value_expression()
             .map(|expression| expression.expression_kind())
     }

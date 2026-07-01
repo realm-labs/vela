@@ -132,3 +132,89 @@ fn main() {
         },
     );
 }
+
+#[test]
+fn source_less_statement_payload_does_not_expose_cst_value_kinds() {
+    with_cst_payload_compiler(
+        r#"
+fn main(target) {
+    let value = 1;
+    target = value;
+    value;
+    return value;
+}
+"#,
+        |_, payload| {
+            let statements = payload.body.statement_payloads();
+            let missing_let =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statements[0]
+                        .syntax_statement()
+                        .expect("let syntax")
+                        .clone(),
+                    statements[0].fallback(),
+                );
+            let missing_assignment =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statements[1]
+                        .syntax_statement()
+                        .expect("assignment syntax")
+                        .clone(),
+                    statements[1].fallback(),
+                );
+            let missing_expression =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statements[2]
+                        .syntax_statement()
+                        .expect("expression syntax")
+                        .clone(),
+                    statements[2].fallback(),
+                );
+            let missing_return =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statements[3]
+                        .syntax_statement()
+                        .expect("return syntax")
+                        .clone(),
+                    statements[3].fallback(),
+                );
+
+            assert_eq!(missing_let.let_initializer_kind(), None);
+            assert_eq!(missing_assignment.assignment_value_kind(), None);
+            assert_eq!(missing_expression.expression_kind(), None);
+            assert_eq!(missing_expression.value_expression_kind(), None);
+            assert_eq!(missing_return.return_value_kind(), None);
+        },
+    );
+}
+
+#[test]
+fn source_less_match_arm_payload_does_not_expose_cst_body_kind() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    return match value {
+        _ => 1,
+    };
+}
+"#,
+        |_, payload| {
+            let match_value = payload.body.statement_payloads()[0]
+                .return_value_expression_payload()
+                .expect("match return payload");
+            let vela_syntax::ast::ExprKind::Match(fallback_match) = &match_value.fallback().kind
+            else {
+                panic!("expected fallback match expression");
+            };
+            let arms = match_value
+                .match_arm_payloads()
+                .expect("match arm payloads");
+            let missing_arm = body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
+                arms[0].syntax_arm().expect("arm syntax").clone(),
+                &fallback_match.arms[0],
+            );
+
+            assert_eq!(missing_arm.body_expression_kind(), None);
+        },
+    );
+}

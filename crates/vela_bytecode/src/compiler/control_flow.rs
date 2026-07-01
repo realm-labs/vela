@@ -74,7 +74,7 @@ impl Compiler<'_, '_> {
             self.compile_let_statement(
                 stmt.fallback(),
                 ValueSyntaxPayloads::new(
-                    stmt.let_initializer_kind(),
+                    stmt.syntax_let_initializer_kind(),
                     initializer_expression.as_ref(),
                     initializer_body.as_ref(),
                     initializer_if.as_ref(),
@@ -90,7 +90,7 @@ impl Compiler<'_, '_> {
             self.compile_return_statement(
                 stmt.fallback(),
                 ValueSyntaxPayloads::new(
-                    stmt.return_value_kind(),
+                    stmt.syntax_return_value_kind(),
                     value_expression.as_ref(),
                     value_body.as_ref(),
                     value_if.as_ref(),
@@ -216,7 +216,7 @@ impl Compiler<'_, '_> {
                 "mismatched CST expression statement payload",
             )));
         };
-        let Some(kind) = stmt.expression_kind() else {
+        let Some(kind) = stmt.syntax_expression_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression statement payload",
             )));
@@ -239,7 +239,7 @@ impl Compiler<'_, '_> {
                 expr,
                 AssignmentTargetSyntax::new(target_expression.as_ref()),
                 AssignmentValueSyntax::new(
-                    stmt.assignment_value_kind(),
+                    stmt.syntax_assignment_value_kind(),
                     stmt.syntax_assignment_operator(),
                     value_expression.as_ref(),
                     AssignmentValuePayloads::new(
