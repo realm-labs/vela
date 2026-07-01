@@ -74,7 +74,10 @@ pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
     expression_requires_matching_payload(expr)
         || matches!(
             expr.kind,
-            ExprKind::Call { .. } | ExprKind::Field { .. } | ExprKind::Index { .. }
+            ExprKind::Call { .. }
+                | ExprKind::Field { .. }
+                | ExprKind::Index { .. }
+                | ExprKind::Lambda { .. }
         )
 }
 

@@ -154,6 +154,32 @@ fn main() {
     ));
 }
 
+#[test]
+fn missing_lambda_expression_payload_does_not_use_legacy_lambda() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let lambda = |value| value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_lambda = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy lambda payload");
+    let missing_lambda =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_lambda.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_lambda.fallback(), Some(&missing_lambda))
+        .expect_err("missing CST lambda payload must not compile legacy lambda");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
 fn assert_cst_let_initializer_lambda_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
