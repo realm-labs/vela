@@ -143,7 +143,18 @@ impl Compiler<'_, '_> {
                     type_name: field.type_hint,
                 })
             }
-            ExprKind::Path(_) => self.resolve_host_path(expr),
+            ExprKind::Path(_) => match payload.as_ref().and_then(CompilerExpressionPayload::kind) {
+                Some(SyntaxExpressionKind::Path) => {
+                    let path = payload.as_ref()?.syntax_path_segments()?;
+                    let span = payload
+                        .as_ref()
+                        .and_then(CompilerExpressionPayload::syntax_span)
+                        .unwrap_or(expr.span);
+                    self.owned_host_field_path_parts(span, &path)
+                }
+                Some(_) => None,
+                None => self.resolve_host_path(expr),
+            },
             ExprKind::Index { base, index } => {
                 let (base_payload, index_payload) = match payload.as_ref() {
                     Some(payload) => {
