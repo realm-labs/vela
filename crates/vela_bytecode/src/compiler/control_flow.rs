@@ -489,6 +489,12 @@ impl Compiler<'_, '_> {
                 )));
             }
         }
+        if syntax_payloads.expression.is_some() && value_expression_requires_matching_syntax(value)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST let initializer payload",
+            )));
+        }
         self.compile_let_initializer_legacy(value, expected, context)
     }
 
@@ -674,6 +680,12 @@ impl Compiler<'_, '_> {
                     "mismatched CST return value payload",
                 )));
             }
+        }
+        if syntax_payloads.expression.is_some() && value_expression_requires_matching_syntax(value)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST return value payload",
+            )));
         }
         self.compile_return_expr_legacy(value, expected, context)
     }
