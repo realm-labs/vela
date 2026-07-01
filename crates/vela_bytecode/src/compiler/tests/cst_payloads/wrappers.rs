@@ -254,6 +254,41 @@ fn main() {
     ));
 }
 
+#[test]
+fn missing_try_expression_payload_does_not_use_legacy_try() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Result {
+    Ok(value)
+    Err(message)
+}
+
+fn checked(value) {
+    return Result::Ok(value);
+}
+
+fn main() {
+    let value = checked(1)?;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_try = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy try payload");
+    let missing_try =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_try.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_try.fallback(), Some(&missing_try))
+        .expect_err("missing CST try payload must not compile legacy try");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
 fn assert_cst_let_initializer_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
