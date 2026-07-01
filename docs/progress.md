@@ -574,6 +574,9 @@ Structured assignment value lowering now rejects missing rowan CST child
 payloads for block, if, and match values, including typed field assignments
 that use expected field contracts, instead of compiling the temporary legacy
 owned-AST value body.
+Typed native-call and value-method mutation argument lowering now rejects
+missing rowan CST argument payloads before expected-type compilation instead
+of compiling the temporary legacy owned-AST argument value.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout

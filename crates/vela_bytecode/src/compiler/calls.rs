@@ -626,6 +626,11 @@ impl Compiler<'_, '_> {
             context.param_name,
             context.position,
         ) {
+            if arg_syntax.has_missing_value_payload(arg) {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST call argument value",
+                )));
+            }
             let payload = arg_syntax.value_expression_payload_for(arg);
             return self.compile_expr_with_expected_type_and_payload(
                 &arg.value,
@@ -779,6 +784,11 @@ impl Compiler<'_, '_> {
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
+        if arg_syntax.has_missing_value_payload(arg) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST call argument value",
+            )));
+        }
         let payload = arg_syntax.value_expression_payload_for(arg);
         self.compile_expr_with_expected_type_and_payload(
             value,

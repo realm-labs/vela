@@ -20,6 +20,7 @@ mod param_defaults;
 mod path_expressions;
 mod shape_inference;
 mod statement_bodies;
+mod typed_call_args;
 mod wrappers;
 
 fn with_cst_payload_compiler(
