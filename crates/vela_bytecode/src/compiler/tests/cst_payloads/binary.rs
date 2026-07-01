@@ -365,6 +365,32 @@ fn main() {
 }
 
 #[test]
+fn missing_binary_expression_payload_does_not_use_legacy_binary() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1 + 2;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_binary = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy binary payload");
+    let missing_binary =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_binary.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_binary.fallback(), Some(&missing_binary))
+        .expect_err("missing CST binary payload must not compile legacy binary");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
