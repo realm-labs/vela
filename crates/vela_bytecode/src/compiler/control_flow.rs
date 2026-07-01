@@ -168,15 +168,14 @@ impl Compiler<'_, '_> {
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
         let StmtKind::Expr(expr) = &stmt.fallback().kind else {
-            return self.compile_statement(stmt.fallback());
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression statement payload",
+            )));
         };
         let Some(kind) = stmt.expression_kind() else {
-            if stmt.has_syntax() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST expression statement payload",
-                )));
-            }
-            return self.compile_expr_statement(expr);
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST expression statement payload",
+            )));
         };
         if !expression_payload_kind_matches(kind, expr) {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -210,7 +209,9 @@ impl Compiler<'_, '_> {
             Ok(false)
         } else if kind == SyntaxExpressionKind::Call {
             let ExprKind::Call { callee, args } = &expr.kind else {
-                return self.compile_expr_statement(expr);
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "mismatched CST expression statement payload",
+                )));
             };
             let callee_payload = stmt.call_callee_payload();
             let argument_payloads = stmt.call_argument_payloads();
@@ -482,10 +483,14 @@ impl Compiler<'_, '_> {
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
         let StmtKind::Expr(expr) = &stmt.fallback().kind else {
-            return self.compile_statement_as(SyntaxStatementKind::Match, stmt.fallback());
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match statement payload",
+            )));
         };
         let ExprKind::Match(match_expr) = &expr.kind else {
-            return self.compile_statement_as(SyntaxStatementKind::Match, stmt.fallback());
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match statement payload",
+            )));
         };
         let scrutinee_payload = stmt.match_scrutinee_payload();
         let arm_payloads = stmt.match_arm_payloads();
