@@ -123,6 +123,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<Literal> {
+        self.source?;
         self.syntax.as_ref()?.as_literal()?.literal()
     }
 

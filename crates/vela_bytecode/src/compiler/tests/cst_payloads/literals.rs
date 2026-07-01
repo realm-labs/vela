@@ -183,6 +183,15 @@ fn main() {
                 mismatched_payload.syntax_literal(),
                 Some(vela_syntax::ast::Literal::Bool(true))
             );
+            let missing_source_literal =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    cst_literal
+                        .syntax_expression()
+                        .expect("CST literal expression")
+                        .clone(),
+                    fallback_path.fallback(),
+                );
+            assert_eq!(missing_source_literal.syntax_literal(), None);
         },
     );
 }
