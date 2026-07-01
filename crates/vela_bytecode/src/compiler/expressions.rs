@@ -261,6 +261,11 @@ impl Compiler<'_, '_> {
                     )));
                 }
                 let body_payload = payload.lambda_body_payload();
+                if body_payload.is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST lambda body",
+                    )));
+                }
                 self.compile_lambda(expr, params, body, body_payload.as_ref())
             }
             SyntaxExpressionKind::Unary => {

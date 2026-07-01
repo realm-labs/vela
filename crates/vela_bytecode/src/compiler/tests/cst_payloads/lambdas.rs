@@ -99,6 +99,61 @@ fn main() {
     );
 }
 
+#[test]
+fn missing_lambda_body_payload_does_not_use_legacy_body() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let lambda = |value|;
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let lambda = |value| value;
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_lambda = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    assert_eq!(cst_lambda.expression_kind(), SyntaxExpressionKind::Lambda);
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_lambda = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy lambda payload");
+    let missing = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_lambda,
+        legacy_lambda.fallback(),
+    );
+    assert!(
+        missing.lambda_body_payload().is_none(),
+        "recovered CST lambda should not expose a body payload"
+    );
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_lambda.fallback(), Some(&missing))
+        .expect_err("missing lambda body payload must not compile legacy body");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST lambda body")
+    ));
+}
+
 fn assert_cst_let_initializer_lambda_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
