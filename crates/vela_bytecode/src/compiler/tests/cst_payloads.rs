@@ -126,6 +126,41 @@ fn legacy_body() {
 }
 
 #[test]
+fn unmatched_statement_payloads_do_not_compile_legacy_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    let cst_value = 1;
+    return cst_value;
+}
+
+fn legacy_body() {
+    let legacy_value = 2;
+    return legacy_value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (legacy_payload, _, _) = semantic.function("legacy_body").expect("legacy function");
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_body");
+    let mismatched = body_payloads::CompilerBodyPayload::syntax(
+        source,
+        cst_payload.body.syntax_payload().body.clone(),
+        legacy_payload.body.fallback(),
+    );
+    let statements = mismatched.statement_payloads();
+
+    let error = compiler
+        .compile_statement_payload_for_test(&statements[0])
+        .expect_err("unmatched statement payload must not use legacy fallback");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST statement payload")
+    ));
+}
+
+#[test]
 fn mismatched_statement_payloads_do_not_use_legacy_statement() {
     let source = SourceId::new(1);
     let text = r#"

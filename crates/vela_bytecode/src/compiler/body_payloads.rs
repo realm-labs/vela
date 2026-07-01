@@ -20,11 +20,14 @@ pub(super) struct SyntaxBodyPayload {
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
     fallback: &'ast Block,
+    allow_unmatched_statement_fallback: bool,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
+    body_overlaps_fallback: bool,
+    allow_unmatched_statement_fallback: bool,
     fallback: &'ast Stmt,
 }
 
@@ -92,6 +95,15 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             fallback,
+            allow_unmatched_statement_fallback: false,
+        }
+    }
+
+    fn nested(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
+        Self {
+            syntax: SyntaxBodyPayload { source, body },
+            fallback,
+            allow_unmatched_statement_fallback: true,
         }
     }
 
@@ -102,6 +114,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
+        let body_overlaps_fallback =
+            syntax_range_overlaps_span(self.syntax.body.syntax().text_range(), self.fallback.span);
 
         self.fallback
             .statements
@@ -109,6 +123,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .map(|fallback| CompilerStatementPayload {
                 source: Some(self.syntax.source),
                 syntax: syntax_statement_for_fallback(&syntax_statements, fallback),
+                body_overlaps_fallback,
+                allow_unmatched_statement_fallback: self.allow_unmatched_statement_fallback,
                 fallback,
             })
             .collect()
@@ -351,11 +367,11 @@ fn if_payload_for_fallback<'ast>(
     });
     let then_body = syntax
         .then_block()
-        .map(|body| CompilerBodyPayload::syntax(source, body, &fallback.then_branch));
+        .map(|body| CompilerBodyPayload::nested(source, body, &fallback.then_branch));
     let else_body = match fallback.else_branch.as_ref() {
         Some(ElseBranch::Block(block)) => syntax
             .else_block()
-            .map(|body| CompilerBodyPayload::syntax(source, body, block)),
+            .map(|body| CompilerBodyPayload::nested(source, body, block)),
         Some(ElseBranch::If(_)) | None => None,
     };
     let else_if = match fallback.else_branch.as_ref() {
@@ -380,6 +396,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
+            body_overlaps_fallback: true,
+            allow_unmatched_statement_fallback: false,
             fallback,
         }
     }
@@ -390,6 +408,14 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
+    }
+
+    pub(super) const fn body_overlaps_fallback(&self) -> bool {
+        self.body_overlaps_fallback
+    }
+
+    pub(super) const fn allow_unmatched_statement_fallback(&self) -> bool {
+        self.allow_unmatched_statement_fallback
     }
 
     pub(super) fn expression_kind(&self) -> Option<SyntaxExpressionKind> {
@@ -425,7 +451,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
             block,
@@ -499,7 +525,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.syntax
                 .as_ref()?
@@ -613,7 +639,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::Block(fallback) = &self.fallback.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
             fallback,
@@ -624,7 +650,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { body, .. } = &self.fallback.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.syntax.as_ref()?.as_for()?.body()?,
             body,
@@ -745,7 +771,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.assignment_value_expression()?.as_block()?,
             block,
@@ -832,7 +858,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &expr.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        Some(CompilerBodyPayload::nested(
             self.source?,
             self.expression()
                 .and_then(|expression| expression.as_block())

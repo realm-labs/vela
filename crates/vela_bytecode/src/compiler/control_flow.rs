@@ -55,7 +55,12 @@ impl Compiler<'_, '_> {
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
         let Some(kind) = stmt.statement_kind() else {
-            return self.compile_statement(stmt.fallback());
+            if stmt.body_overlaps_fallback() || stmt.allow_unmatched_statement_fallback() {
+                return self.compile_statement(stmt.fallback());
+            }
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST statement payload",
+            )));
         };
         if !statement_kind_matches(kind, stmt.fallback()) {
             Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
