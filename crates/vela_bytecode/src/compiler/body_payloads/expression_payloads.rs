@@ -487,6 +487,19 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
 }
 
 impl<'ast> CompilerMapEntryPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax(
+        source: SourceId,
+        syntax: SyntaxMapEntry,
+        fallback: &'ast vela_syntax::ast::MapEntry,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn syntax_key_name(&self) -> Option<String> {
         let key = self.syntax.as_ref()?.key()?;
         if let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) {
@@ -499,6 +512,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
             };
         }
         key.as_path().and_then(|path| path.path_text())
+    }
+
+    pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .is_some_and(|entry| entry.value().is_some())
     }
 
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {

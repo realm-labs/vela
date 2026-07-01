@@ -19,6 +19,11 @@ impl Compiler<'_, '_> {
             map_key_name(&entry.key)?
         };
         let value = if let Some(payload) = payload {
+            if !payload.has_value_syntax() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST map entry value",
+                )));
+            }
             let value_payload = payload.value_expression_payload();
             self.compile_expr_with_payload(&entry.value, Some(&value_payload))?
         } else {

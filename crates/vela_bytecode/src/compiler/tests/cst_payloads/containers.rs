@@ -541,6 +541,67 @@ fn return_map() {
 }
 
 #[test]
+fn missing_map_entry_value_payload_does_not_use_legacy_value() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let value = {
+        key:
+    };
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let value = {
+        key: 1
+    };
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_entry = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer")
+        .as_map()
+        .expect("CST map")
+        .entries()
+        .next()
+        .expect("CST map entry");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_map = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy map payload");
+    let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
+        panic!("expected legacy map fallback");
+    };
+    let missing =
+        body_payloads::CompilerMapEntryPayload::syntax(source, cst_entry, &legacy_entries[0]);
+
+    assert_eq!(missing.syntax_key_name().as_deref(), Some("key"));
+    assert!(!missing.has_value_syntax());
+
+    let error = compiler
+        .compile_map_entry(&legacy_entries[0], Some(&missing))
+        .expect_err("missing map entry value payload must not compile legacy value");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST map entry value")
+    ));
+}
+
+#[test]
 fn semantic_function_record_field_values_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
