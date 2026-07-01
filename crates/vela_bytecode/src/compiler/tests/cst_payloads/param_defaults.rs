@@ -54,3 +54,22 @@ fn main(player: Player) {
         [HostPathPart::Field(FieldId::new(3))]
     );
 }
+
+#[test]
+fn unsupported_parameter_defaults_report_from_cst_without_fallback() {
+    let error = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main(value = |item| item) {
+    return value;
+}
+"#,
+        "main",
+    )
+    .expect_err("lambda parameter defaults are not supported");
+
+    assert_eq!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("parameter default expression")
+    );
+}

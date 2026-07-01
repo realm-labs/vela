@@ -51,12 +51,6 @@ impl Compiler<'_, '_> {
         &mut self,
         default: &ParamDefaultValue,
     ) -> CompileResult<Register> {
-        if !param_default_cst_lowering_covers(&default.expression) {
-            return Err(param_default_unsupported(
-                default.source,
-                &default.expression,
-            ));
-        }
         self.compile_param_default_expression(default.source, &default.expression)
     }
 

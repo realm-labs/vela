@@ -280,18 +280,19 @@ payload boundary, so script impl lowering consumes the temporary fallback
 wrapper without directly traversing old owned-AST impl or trait items. Function,
 method, and trait default parameter-expression discovery now lives in the
 rowan syntax payload boundary and keys CST payloads from HIR signature spans;
-parameter default lowering now compiles supported literal, path, unary,
-ordinary/logical binary, array, and map defaults directly from rowan CST
-payloads without retaining or requiring a paired legacy owned-AST expression,
-and keeps the temporary legacy owned-AST fallback only for default expression
-forms that do not yet have direct CST lowering. Schema default-expression payload
+parameter default lowering compiles from rowan CST payloads directly for
+literal, path, unary, ordinary/logical binary, array, map, record, field,
+index, call, try, block, if, match, range, and supported interpolated-string
+defaults, and unsupported default syntax now reports from the CST compiler path
+without retaining or invoking a legacy owned-AST default-expression fallback.
+Schema default-expression payload
 matching now stays on rowan CST field and variant wrappers, so semantic
 orchestration no longer requests temporary owned parsed source data for schema
 defaults and the legacy payload boundary no longer owns schema default
 matching.
 Bytecode semantic lowering now centralizes the remaining legacy owned-AST
-function body and complex parameter default-expression fallback behind
-dedicated compiler payload boundaries. Top-level functions, script methods,
+function body fallback behind dedicated compiler payload boundaries.
+Top-level functions, script methods,
 and trait default methods now enter bytecode compilation through a shared
 `CompilerBodyPayload` that carries the rowan CST body block plus the temporary
 legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
