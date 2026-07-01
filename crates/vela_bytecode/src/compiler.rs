@@ -48,14 +48,14 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-use vela_syntax::ast::{Argument, Expr, ExprKind, Param};
+use vela_syntax::ast::{Argument, Expr, ExprKind, Param, SyntaxExpressionKind};
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
     UnlinkedCodeObject, UnlinkedGuardContext, UnlinkedInstruction, UnlinkedInstructionKind,
     UnlinkedProgram, UnlinkedTypeGuard, UnlinkedTypeGuardPlan,
 };
-use body_payloads::CompilerBodyPayload;
+use body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
 use cache_sites::{attach_cache_site, cache_site_kind};
 use control_flow::LoopContext;
 use error::{CompileError, CompileErrorKind, CompileResult};
@@ -1070,7 +1070,31 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             })
     }
 
-    fn host_method_receiver_type(&self, callee: &Expr) -> Option<String> {
+    fn host_method_receiver_type(
+        &self,
+        callee: &Expr,
+        callee_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<String> {
+        if let Some(payload) = callee_payload {
+            return match payload.kind()? {
+                SyntaxExpressionKind::Field => {
+                    let base = payload.field_base_payload()?;
+                    self.script_type_for_expr_with_payload(base.fallback(), Some(&base))
+                }
+                SyntaxExpressionKind::Path => {
+                    let path = payload.syntax_path_segments()?;
+                    let [receiver, _method] = path.as_slice() else {
+                        return None;
+                    };
+                    self.script_types.name(receiver).or_else(|| {
+                        payload
+                            .syntax_span()
+                            .and_then(|span| self.global_type_at_span(span))
+                    })
+                }
+                _ => None,
+            };
+        }
         match &callee.kind {
             ExprKind::Field { base, .. } => self.script_type_for_expr(base),
             ExprKind::Path(path) => {

@@ -80,7 +80,7 @@ impl Compiler<'_, '_> {
             return Ok(dst);
         }
 
-        let host_receiver_type = self.host_method_receiver_type(callee);
+        let host_receiver_type = self.host_method_receiver_type(callee, callee_payload);
         let path_root_is_local =
             path_root_is_local(callee_path, has_callee_payload, callee, &self.locals);
         if let Some(call) = host_method_call(
