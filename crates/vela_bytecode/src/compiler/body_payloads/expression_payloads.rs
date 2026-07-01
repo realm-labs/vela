@@ -29,6 +29,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn missing_child_payload_context(
+        syntax: SyntaxExpression,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> Self {
+        Self {
+            source: None,
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let ExprKind::Block(block) = &self.fallback.kind else {
             return None;

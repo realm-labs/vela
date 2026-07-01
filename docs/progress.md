@@ -367,6 +367,9 @@ path for non-control-flow values, so array, map, and record literals returned
 from CST-backed blocks preserve nested element, entry, and field body payloads
 before falling back to legacy expression lowering when syntax association is
 missing.
+Block expressions now reject missing nested CST body payloads once the block
+expression itself is CST-aligned, instead of silently compiling the temporary
+legacy block body.
 Unary and try expressions now expose CST-aware operand payloads in untyped
 let, assignment, return, and call-argument value contexts, so nested block
 operands can reuse rowan body payloads before falling back to legacy

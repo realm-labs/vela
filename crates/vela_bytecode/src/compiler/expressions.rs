@@ -71,14 +71,16 @@ impl Compiler<'_, '_> {
                 self.compile_expr_with_payload(expr, inner_payload.as_ref())
             }
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(block) = &expr.kind else {
+                let ExprKind::Block(_) = &expr.kind else {
                     unreachable!("validated CST block expression payload kind");
                 };
                 let dst = self.alloc_register()?;
                 if let Some(body_payload) = payload.block_body_payload() {
                     self.compile_block_payload_value_to(&body_payload, dst)?;
                 } else {
-                    self.compile_block_value_to(block, dst)?;
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST block expression body payload",
+                    )));
                 }
                 Ok(dst)
             }
