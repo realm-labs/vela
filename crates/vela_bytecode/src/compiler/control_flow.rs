@@ -9,7 +9,7 @@ mod value_syntax;
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    BinaryOp, Block, ElseBranch, Expr, ExprKind, IfExpr, Stmt, StmtKind, SyntaxExpressionKind,
+    Block, ElseBranch, Expr, ExprKind, IfExpr, Stmt, StmtKind, SyntaxExpressionKind,
     SyntaxStatementKind,
 };
 
@@ -118,7 +118,6 @@ impl Compiler<'_, '_> {
             self.compile_for_statement(
                 stmt.fallback(),
                 iterable_payload,
-                stmt.for_iterable_binary_operator(),
                 body_payload,
                 stmt.for_index_pattern_payload(),
                 stmt.for_value_pattern_payload(),
@@ -313,9 +312,7 @@ impl Compiler<'_, '_> {
                 };
                 self.compile_continue()
             }
-            SyntaxStatementKind::For => {
-                self.compile_for_statement(stmt, None, None, None, None, None)
-            }
+            SyntaxStatementKind::For => self.compile_for_statement(stmt, None, None, None, None),
             SyntaxStatementKind::If => self.compile_if_statement(stmt, None),
             SyntaxStatementKind::Match => {
                 let StmtKind::Expr(expr) = &stmt.kind else {
@@ -456,7 +453,6 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &'ast Stmt,
         iterable_payload: Option<CompilerExpressionPayload<'ast>>,
-        iterable_operator: Option<BinaryOp>,
         body_payload: Option<CompilerBodyPayload<'ast>>,
         index_pattern_payload: Option<CompilerPatternPayload<'ast>>,
         pattern_payload: Option<CompilerPatternPayload<'ast>>,
@@ -479,7 +475,6 @@ impl Compiler<'_, '_> {
             index_pattern_payload,
             pattern_payload,
             iterable_payload,
-            iterable_operator,
             body_payload,
         })
     }
@@ -899,11 +894,8 @@ impl Compiler<'_, '_> {
             .iterable_payload
             .as_ref()
             .and_then(CompilerExpressionPayload::binary_operand_payloads);
-        let range_iterable = range_iterable_for_payload(
-            parts.iterable_operator,
-            parts.iterable_payload.is_some(),
-            parts.iterable,
-        );
+        let range_iterable =
+            range_iterable_for_payload(parts.iterable_payload.as_ref(), parts.iterable);
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {
@@ -1091,11 +1083,8 @@ impl Compiler<'_, '_> {
             payload.and_then(CompilerIfPayload::condition_payload),
             "missing CST if condition payload",
         )?;
-        let jump_to_else = self.emit_condition_jump_if_false(
-            &if_expr.condition,
-            payload.and_then(CompilerIfPayload::condition_operator),
-            condition_payload,
-        )?;
+        let jump_to_else =
+            self.emit_condition_jump_if_false(&if_expr.condition, condition_payload)?;
 
         let then_payload = required_if_statement_child_payload(
             payload,

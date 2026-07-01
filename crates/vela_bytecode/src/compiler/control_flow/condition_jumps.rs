@@ -1,9 +1,9 @@
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
+use vela_syntax::ast::{Expr, ExprKind, Literal};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::{
-    condition_operator_for_fallback, control_flow_expression_requires_matching_syntax,
+    condition_operator_for_payload, control_flow_expression_requires_matching_syntax,
     value_expression_kind_matches,
 };
 use crate::compiler::operators::i64_compare_op;
@@ -16,7 +16,6 @@ impl Compiler<'_, '_> {
     pub(in crate::compiler) fn emit_condition_jump_if_false(
         &mut self,
         condition: &Expr,
-        condition_operator: Option<BinaryOp>,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
         if let Some(payload) = condition_payload
@@ -28,11 +27,9 @@ impl Compiler<'_, '_> {
                 "mismatched CST if condition payload",
             )));
         }
-        if let Some(jump) = self.try_emit_i64_immediate_jump_if_false(
-            condition,
-            condition_operator,
-            condition_payload,
-        )? {
+        if let Some(jump) =
+            self.try_emit_i64_immediate_jump_if_false(condition, condition_payload)?
+        {
             return Ok(jump);
         }
         let condition = self.compile_expr_with_payload(condition, condition_payload)?;
@@ -42,7 +39,6 @@ impl Compiler<'_, '_> {
     fn try_emit_i64_immediate_jump_if_false(
         &mut self,
         condition: &Expr,
-        condition_operator: Option<BinaryOp>,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<usize>> {
         let ExprKind::Binary { left, right, .. } = &condition.kind else {
@@ -52,12 +48,9 @@ impl Compiler<'_, '_> {
             condition_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
         let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
         let right_payload = operand_payloads.as_ref().map(|(_, right)| right);
-        let Some(op) = condition_operator_for_fallback(
-            condition_operator,
-            condition_payload.is_some(),
-            condition,
-        )
-        .and_then(i64_compare_op) else {
+        let Some(op) =
+            condition_operator_for_payload(condition_payload, condition).and_then(i64_compare_op)
+        else {
             return Ok(None);
         };
         if self.value_type_for_expr_with_payload(left, left_payload)

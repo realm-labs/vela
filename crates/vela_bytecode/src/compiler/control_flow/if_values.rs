@@ -24,11 +24,8 @@ impl Compiler<'_, '_> {
             payload.and_then(CompilerIfPayload::condition_payload),
             "missing CST if condition payload",
         )?;
-        let jump_to_else = self.emit_condition_jump_if_false(
-            &if_expr.condition,
-            payload.and_then(CompilerIfPayload::condition_operator),
-            condition_payload,
-        )?;
+        let jump_to_else =
+            self.emit_condition_jump_if_false(&if_expr.condition, condition_payload)?;
 
         let then_body_payload = required_if_child_payload(
             payload,

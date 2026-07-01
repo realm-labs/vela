@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
+    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
     SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
     SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
@@ -76,7 +76,6 @@ pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
 
 pub(super) struct CompilerIfPayload<'ast> {
     condition: Option<CompilerExpressionPayload<'ast>>,
-    condition_operator: Option<BinaryOp>,
     then_body: Option<CompilerBodyPayload<'ast>>,
     else_body: Option<CompilerBodyPayload<'ast>>,
     else_if: Option<Box<CompilerIfPayload<'ast>>>,
@@ -354,10 +353,6 @@ fn if_payload_for_fallback<'ast>(
 ) -> Option<CompilerIfPayload<'ast>> {
     let source = source?;
     let condition_syntax = syntax.condition();
-    let condition_operator = condition_syntax
-        .as_ref()
-        .and_then(|condition| condition.as_binary())
-        .and_then(|condition| condition.operator());
     let condition = Some(CompilerExpressionPayload {
         source: Some(source),
         syntax: condition_syntax,
@@ -381,7 +376,6 @@ fn if_payload_for_fallback<'ast>(
     };
     Some(CompilerIfPayload {
         condition,
-        condition_operator,
         then_body,
         else_body,
         else_if,
@@ -393,7 +387,6 @@ impl<'ast> CompilerIfPayload<'ast> {
     pub(in crate::compiler) fn truncated_for_test() -> Self {
         Self {
             condition: None,
-            condition_operator: None,
             then_body: None,
             else_body: None,
             else_if: None,
@@ -638,15 +631,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             syntax: self.syntax.as_ref()?.as_return()?.expression(),
             fallback: value,
         })
-    }
-
-    pub(super) fn for_iterable_binary_operator(&self) -> Option<BinaryOp> {
-        self.syntax
-            .as_ref()?
-            .as_for()?
-            .iterable()?
-            .as_binary()?
-            .operator()
     }
 
     pub(super) fn for_iterable_expression_payload(
@@ -1079,10 +1063,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 impl<'ast> CompilerIfPayload<'ast> {
     pub(super) fn condition_payload(&self) -> Option<&CompilerExpressionPayload<'ast>> {
         self.condition.as_ref()
-    }
-
-    pub(super) fn condition_operator(&self) -> Option<BinaryOp> {
-        self.condition_operator
     }
 
     pub(super) fn then_body(&self) -> Option<&CompilerBodyPayload<'ast>> {

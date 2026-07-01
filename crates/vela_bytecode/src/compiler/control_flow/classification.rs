@@ -4,6 +4,7 @@ use vela_syntax::ast::{
     BinaryOp, Expr, ExprKind, Stmt, StmtKind, SyntaxExpressionKind, SyntaxStatementKind,
 };
 
+use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::ScriptTypeFact;
@@ -95,23 +96,25 @@ pub(super) fn control_flow_expression_requires_matching_syntax(expr: &Expr) -> b
     )
 }
 
-pub(super) fn range_iterable_for_payload(
-    syntax_operator: Option<BinaryOp>,
-    has_payload: bool,
-    expr: &Expr,
-) -> Option<(&Expr, &Expr, bool)> {
+pub(super) fn range_iterable_for_payload<'ast>(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    expr: &'ast Expr,
+) -> Option<(&'ast Expr, &'ast Expr, bool)> {
     let ExprKind::Binary { left, right, .. } = &expr.kind else {
         return None;
     };
-    match (syntax_operator, has_payload) {
+    match (
+        payload.and_then(CompilerExpressionPayload::syntax_binary_operator),
+        payload.is_some(),
+    ) {
         (Some(BinaryOp::Range), _) => Some((left.as_ref(), right.as_ref(), false)),
         (Some(BinaryOp::RangeInclusive), _) => Some((left.as_ref(), right.as_ref(), true)),
         (Some(_), _) | (None, true) => None,
-        (None, false) => legacy_range_iterable(expr),
+        (None, false) => range_iterable_from_fallback(expr),
     }
 }
 
-fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
+fn range_iterable_from_fallback(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
     match &expr.kind {
         ExprKind::Binary {
             op: BinaryOp::Range,
@@ -127,15 +130,17 @@ fn legacy_range_iterable(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
     }
 }
 
-pub(super) fn condition_operator_for_fallback(
-    syntax_operator: Option<BinaryOp>,
-    has_payload: bool,
+pub(super) fn condition_operator_for_payload(
+    payload: Option<&CompilerExpressionPayload<'_>>,
     expr: &Expr,
 ) -> Option<BinaryOp> {
     if matches!(expr.kind, ExprKind::Binary { .. }) {
-        match (syntax_operator, has_payload) {
+        match (
+            payload.and_then(CompilerExpressionPayload::syntax_binary_operator),
+            payload.is_some(),
+        ) {
             (Some(op), _) => Some(op),
-            (None, false) => legacy_condition_operator(expr),
+            (None, false) => condition_operator_from_fallback(expr),
             (None, true) => None,
         }
     } else {
@@ -143,7 +148,7 @@ pub(super) fn condition_operator_for_fallback(
     }
 }
 
-fn legacy_condition_operator(expr: &Expr) -> Option<BinaryOp> {
+fn condition_operator_from_fallback(expr: &Expr) -> Option<BinaryOp> {
     let ExprKind::Binary { op, .. } = &expr.kind else {
         return None;
     };
