@@ -2,7 +2,7 @@ use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{Expr, ExprKind, MatchExpr, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerMatchArmPayload};
-use crate::compiler::expression_payload_kinds::expression_payload_kind_matches;
+use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -92,7 +92,8 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
-            if expression_payload_kind_matches(kind, &arm.body) {
+            let body_payload = payload.body_expression_payload();
+            if expression_payload_matches_expr(&body_payload, &arm.body) {
                 return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -239,8 +240,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         if let Some(payload) = payload.as_ref()
-            && let Some(kind) = payload.syntax_kind()
-            && !expression_payload_kind_matches(kind, guard)
+            && !expression_payload_matches_expr(payload, guard)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match guard",
@@ -259,7 +259,8 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
-            if expression_payload_kind_matches(kind, body) {
+            let body_payload = payload.body_expression_payload();
+            if expression_payload_matches_expr(&body_payload, body) {
                 return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

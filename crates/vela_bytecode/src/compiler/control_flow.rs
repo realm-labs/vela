@@ -20,7 +20,7 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
-use super::expression_payload_kinds::expression_payload_kind_matches;
+use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -245,7 +245,12 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        if !expression_payload_kind_matches(kind, expr) {
+        let expression_payload = stmt.expression_payload().ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST expression statement payload",
+            ))
+        })?;
+        if !expression_payload_matches_expr(&expression_payload, expr) {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression statement payload",
             )));
