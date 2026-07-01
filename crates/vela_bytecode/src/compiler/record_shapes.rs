@@ -1008,6 +1008,9 @@ impl super::Compiler<'_, '_> {
         {
             return Some(shape);
         }
+        if kind_matched_payload.is_some() && matches!(expr.kind, ExprKind::Record { .. }) {
+            return None;
+        }
         if payload.is_some() && kind_matched_payload.is_none() {
             return None;
         }

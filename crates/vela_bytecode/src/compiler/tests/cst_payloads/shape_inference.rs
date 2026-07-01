@@ -100,6 +100,52 @@ fn main(input) {
 }
 
 #[test]
+fn shape_inference_with_unshaped_cst_record_does_not_use_legacy_fields() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main() {
+    let selected = LegacyBox {};
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("CST function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main() {
+    let selected = LegacyBox { amount: 1 };
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+            let record = statements[0]
+                .let_initializer_expression_payload()
+                .expect("record initializer payload");
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(record.fallback(), Some(&record)),
+                None,
+                "same-kind CST record payload with no shape must not use legacy fields"
+            );
+        },
+    );
+}
+
+#[test]
 fn binary_shape_inference_prefers_cst_operator_shape() {
     with_cst_payload_compiler(
         r#"
