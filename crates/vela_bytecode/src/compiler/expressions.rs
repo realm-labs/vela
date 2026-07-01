@@ -164,6 +164,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Map(entries) = &expr.kind else {
                     unreachable!("validated CST map expression payload kind");
                 };
+                if !payload.map_entry_count_matches_fallback() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST map entries",
+                    )));
+                }
                 let entry_payloads = payload.map_entry_payloads();
                 self.compile_map(entries, entry_payloads.as_deref())
             }

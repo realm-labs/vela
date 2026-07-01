@@ -166,6 +166,51 @@ fn legacy_body() {
 }
 
 #[test]
+fn extra_map_entry_payloads_do_not_compile_fallback_entries() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    let value = {
+        first: 1,
+        second: 2,
+    };
+}
+
+fn fallback_body() {
+    let value = {
+        first: 1,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_body")
+        .expect("fallback function");
+    let cst_map = cst_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("cst map payload");
+    let fallback_map = fallback_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("fallback map payload");
+    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_map.syntax_expression().expect("cst map syntax").clone(),
+        fallback_map.fallback(),
+    );
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
+
+    let error = compiler
+        .compile_expr_with_payload(fallback_map.fallback(), Some(&mismatched))
+        .expect_err("extra CST map entries must not be ignored");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST map entries")
+    ));
+}
+
+#[test]
 fn mismatched_statement_payloads_do_not_use_legacy_statement() {
     let source = SourceId::new(1);
     let text = r#"

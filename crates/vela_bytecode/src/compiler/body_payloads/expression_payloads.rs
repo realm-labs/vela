@@ -460,6 +460,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn map_entry_count_matches_fallback(&self) -> bool {
+        let ExprKind::Map(entries) = &self.fallback.kind else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_map) else {
+            return true;
+        };
+        syntax.entries().count() == entries.len()
+    }
+
     pub(in crate::compiler) fn record_field_payloads(
         &self,
     ) -> Option<Vec<CompilerRecordFieldPayload<'ast>>> {
