@@ -116,19 +116,14 @@ impl Compiler<'_, '_> {
             return Ok(push);
         }
 
-        if let ExprKind::Field { base, name } = &callee.kind
-            && let Some(name) = callee_field_name(callee_payload, name)
-        {
-            let base_payload =
-                callee_payload.and_then(CompilerExpressionPayload::field_base_payload);
-            return self.compile_script_method_call(
-                expr,
-                base,
-                &name,
-                args,
-                base_payload.as_ref(),
-                arg_syntax,
-            );
+        if let Some(script_method_call) = self.compile_script_method_call_from_callee(
+            expr,
+            callee,
+            args,
+            callee_payload,
+            arg_syntax,
+        ) {
+            return script_method_call;
         }
         if let Some((method, receiver_path)) =
             local_path_method_call(callee_path, has_callee_payload, callee, &self.locals)
@@ -342,6 +337,36 @@ impl Compiler<'_, '_> {
             );
         }
         Ok(dst)
+    }
+
+    fn compile_script_method_call_from_callee(
+        &mut self,
+        expr: &Expr,
+        callee: &Expr,
+        args: &[Argument],
+        callee_payload: Option<&CompilerExpressionPayload<'_>>,
+        arg_syntax: CallArgumentSyntax<'_, '_>,
+    ) -> Option<CompileResult<crate::Register>> {
+        if let Some(payload) = callee_payload {
+            if !matches!(payload.kind(), Some(SyntaxExpressionKind::Field) | None) {
+                return None;
+            }
+            let name = payload.syntax_field_name()?;
+            let base_payload = payload.field_base_payload()?;
+            return Some(self.compile_script_method_call(
+                expr,
+                base_payload.fallback(),
+                &name,
+                args,
+                Some(&base_payload),
+                arg_syntax,
+            ));
+        }
+
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        Some(self.compile_script_method_call(expr, base, name, args, None, arg_syntax))
     }
 
     fn compile_script_path_method_call(
@@ -1118,20 +1143,6 @@ fn reject_mismatched_call_callee_payload(
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST call callee payload",
         )))
-    }
-}
-
-fn callee_field_name(
-    callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    fallback_name: &str,
-) -> Option<String> {
-    match callee_payload {
-        Some(payload) => match payload.kind() {
-            Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
-            Some(SyntaxExpressionKind::Path) => None,
-            Some(_) => None,
-        },
-        None => Some(fallback_name.to_owned()),
     }
 }
 
