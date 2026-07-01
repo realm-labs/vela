@@ -38,11 +38,13 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
 
 #[derive(Clone)]
 pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
+    source: Option<SourceId>,
     syntax: Option<SyntaxPattern>,
     fallback: &'ast Pattern,
 }
 
 pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
+    source: Option<SourceId>,
     syntax: Option<SyntaxRecordPatternField>,
     fallback: &'ast RecordPatternField,
 }
@@ -641,6 +643,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         Some(CompilerPatternPayload {
+            source: self.source,
             syntax: self.syntax.as_ref()?.as_for()?.index_pattern(),
             fallback: index_pattern.as_ref()?,
         })
@@ -651,6 +654,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         Some(CompilerPatternPayload {
+            source: self.source,
             syntax: self.syntax.as_ref()?.as_for()?.value_pattern(),
             fallback: pattern,
         })

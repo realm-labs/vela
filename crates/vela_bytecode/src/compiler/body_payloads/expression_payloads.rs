@@ -636,6 +636,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload {
+            source: self.source,
             syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),
             fallback: &self.fallback.pattern,
         }
@@ -702,6 +703,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_path_segments(&self) -> Option<Vec<String>> {
+        self.source?;
         let segments = self.syntax.as_ref()?.path_segments();
         (!segments.is_empty()).then_some(segments)
     }
@@ -726,6 +728,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
             fields
                 .iter()
                 .map(|fallback| CompilerRecordPatternFieldPayload {
+                    source: self.source,
                     syntax: syntax_record_pattern_field_for_fallback(&syntax_fields, fallback),
                     fallback,
                 })
@@ -749,6 +752,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
             fields
                 .iter()
                 .map(|fallback| CompilerPatternPayload {
+                    source: self.source,
                     syntax: syntax_pattern_for_fallback(&syntax_fields, fallback),
                     fallback,
                 })
@@ -762,6 +766,19 @@ impl<'ast> CompilerPatternPayload<'ast> {
         fallback: &'ast Pattern,
     ) -> Self {
         Self {
+            source: Some(SourceId::new(1)),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn missing_child_payload_context(
+        syntax: vela_syntax::ast::SyntaxPattern,
+        fallback: &'ast Pattern,
+    ) -> Self {
+        Self {
+            source: None,
             syntax: Some(syntax),
             fallback,
         }
@@ -796,6 +813,7 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
 
     pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
         Some(CompilerPatternPayload {
+            source: self.source,
             syntax: self
                 .syntax
                 .as_ref()

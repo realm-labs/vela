@@ -418,6 +418,12 @@ fn legacy_binding(value) {
         path_payload.syntax_path_segments().as_deref(),
         Some(&["State".to_owned(), "Waiting".to_owned()][..])
     );
+    let missing_source_path_payload =
+        body_payloads::CompilerPatternPayload::missing_child_payload_context(
+            first_return_match_pattern_syntax(&cst_path_payload.body),
+            first_return_match_fallback_pattern(legacy_binding_payload.body.fallback()),
+        );
+    assert_eq!(missing_source_path_payload.syntax_path_segments(), None);
 
     let binding_payload = body_payloads::CompilerPatternPayload::syntax(
         first_return_match_pattern_syntax(&cst_binding_payload.body),
