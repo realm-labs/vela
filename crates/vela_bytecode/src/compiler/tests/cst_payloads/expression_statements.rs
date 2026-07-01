@@ -105,6 +105,49 @@ fn main() {
 }
 
 #[test]
+fn missing_expression_statement_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    ;
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    [1];
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_statement = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST expression statement");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let missing =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+
+    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::Expr));
+    assert_eq!(missing.expression_kind(), None);
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing)
+        .expect_err("missing expression statement payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression statement payload")
+    ));
+}
+
+#[test]
 fn mismatched_control_flow_expression_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"

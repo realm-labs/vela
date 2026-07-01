@@ -133,6 +133,11 @@ impl Compiler<'_, '_> {
             return self.compile_statement(stmt.fallback());
         };
         let Some(kind) = stmt.expression_kind() else {
+            if stmt.has_syntax() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST expression statement payload",
+                )));
+            }
             return self.compile_expr_statement(expr);
         };
         if !expression_payload_kind_matches(kind, expr) {

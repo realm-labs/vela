@@ -418,6 +418,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.allow_unmatched_statement_fallback
     }
 
+    pub(super) fn has_syntax(&self) -> bool {
+        self.syntax.is_some()
+    }
+
     pub(super) fn expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.expression()
             .map(|expression| expression.expression_kind())
