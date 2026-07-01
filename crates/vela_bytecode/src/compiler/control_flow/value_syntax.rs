@@ -3,28 +3,34 @@ use crate::compiler::body_payloads::{
 };
 use crate::compiler::value_types::{RuntimeTypeFact, TypeContractContext};
 use crate::compiler::{CompileResult, Compiler};
-use vela_syntax::ast::Expr;
+use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
 #[derive(Clone, Copy)]
 pub(super) struct ValueSyntaxPayloads<'payload, 'ast> {
+    pub(super) kind: Option<SyntaxExpressionKind>,
     pub(super) expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     pub(super) block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     pub(super) if_expr: Option<&'payload CompilerIfPayload<'ast>>,
     pub(super) match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+    pub(super) syntax_value_missing: bool,
 }
 
 impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
     pub(super) fn new(
+        kind: Option<SyntaxExpressionKind>,
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
         match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+        syntax_value_missing: bool,
     ) -> Self {
         Self {
+            kind,
             expression,
             block_body,
             if_expr,
             match_arms,
+            syntax_value_missing,
         }
     }
 }

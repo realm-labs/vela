@@ -17,8 +17,8 @@ use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
-    CompilerPatternPayload, CompilerStatementPayload,
+    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
+    CompilerStatementPayload,
 };
 use super::expression_payload_kinds::expression_payload_kind_matches;
 use super::patterns::PatternBindingFacts;
@@ -67,22 +67,36 @@ impl Compiler<'_, '_> {
                 "mismatched CST statement payload",
             )))
         } else if kind == SyntaxStatementKind::Let {
+            let initializer_body = stmt.let_initializer_block_body_payload();
+            let initializer_if = stmt.let_initializer_if_payload();
+            let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
+            let initializer_expression = stmt.let_initializer_expression_payload();
             self.compile_let_statement(
                 stmt.fallback(),
-                stmt.let_initializer_kind(),
-                stmt.let_initializer_block_body_payload(),
-                stmt.let_initializer_if_payload(),
-                stmt.let_initializer_match_arm_payloads(),
-                stmt.let_initializer_expression_payload(),
+                ValueSyntaxPayloads::new(
+                    stmt.let_initializer_kind(),
+                    initializer_expression.as_ref(),
+                    initializer_body.as_ref(),
+                    initializer_if.as_ref(),
+                    initializer_match_arms.as_deref(),
+                    stmt.let_initializer_missing_in_syntax(),
+                ),
             )
         } else if kind == SyntaxStatementKind::Return {
+            let value_body = stmt.return_value_block_body_payload();
+            let value_if = stmt.return_value_if_payload();
+            let value_match_arms = stmt.return_value_match_arm_payloads();
+            let value_expression = stmt.return_value_expression_payload();
             self.compile_return_statement(
                 stmt.fallback(),
-                stmt.return_value_kind(),
-                stmt.return_value_block_body_payload(),
-                stmt.return_value_if_payload(),
-                stmt.return_value_match_arm_payloads(),
-                stmt.return_value_expression_payload(),
+                ValueSyntaxPayloads::new(
+                    stmt.return_value_kind(),
+                    value_expression.as_ref(),
+                    value_body.as_ref(),
+                    value_if.as_ref(),
+                    value_match_arms.as_deref(),
+                    stmt.return_value_missing_in_syntax(),
+                ),
             )
         } else if kind == SyntaxStatementKind::For {
             self.compile_for_statement(
@@ -210,12 +224,14 @@ impl Compiler<'_, '_> {
         stmt: &Stmt,
     ) -> CompileResult<bool> {
         match kind {
-            SyntaxStatementKind::Let => {
-                self.compile_let_statement(stmt, None, None, None, None, None)
-            }
-            SyntaxStatementKind::Return => {
-                self.compile_return_statement(stmt, None, None, None, None, None)
-            }
+            SyntaxStatementKind::Let => self.compile_let_statement(
+                stmt,
+                ValueSyntaxPayloads::new(None, None, None, None, None, false),
+            ),
+            SyntaxStatementKind::Return => self.compile_return_statement(
+                stmt,
+                ValueSyntaxPayloads::new(None, None, None, None, None, false),
+            ),
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
                     return self.compile_statement(stmt);
@@ -259,11 +275,7 @@ impl Compiler<'_, '_> {
     fn compile_let_statement(
         &mut self,
         stmt: &Stmt,
-        initializer_kind: Option<SyntaxExpressionKind>,
-        initializer_body: Option<CompilerBodyPayload<'_>>,
-        initializer_if: Option<CompilerIfPayload<'_>>,
-        initializer_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
-        initializer_expression: Option<CompilerExpressionPayload<'_>>,
+        syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<bool> {
         let StmtKind::Let {
             name,
@@ -287,7 +299,7 @@ impl Compiler<'_, '_> {
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
         let value_script_fact = value.as_ref().and_then(|value| {
-            self.script_fact_for_expr_with_payload(value, initializer_expression.as_ref())
+            self.script_fact_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let script_hint_proven = hinted_script_fact
             .as_ref()
@@ -296,24 +308,18 @@ impl Compiler<'_, '_> {
         let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
         let value_type = value.as_ref().and_then(|value| {
-            self.value_type_for_expr_with_payload(value, initializer_expression.as_ref())
+            self.value_type_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let value_type = hinted_value_type.clone().or(value_type);
         let value_shape = value.as_ref().and_then(|value| {
-            self.value_shape_for_expr_with_payload(value, initializer_expression.as_ref())
+            self.value_shape_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let (register, returned) = if let Some(value) = value {
             self.compile_let_initializer(
                 value,
                 hinted_value_type.clone(),
                 TypeContractContext::TypedLet { name: name.clone() },
-                initializer_kind,
-                ValueSyntaxPayloads::new(
-                    initializer_expression.as_ref(),
-                    initializer_body.as_ref(),
-                    initializer_if.as_ref(),
-                    initializer_match_arms.as_deref(),
-                ),
+                syntax_payloads,
             )?
         } else {
             (self.emit_constant(Constant::Null)?, false)
@@ -364,26 +370,13 @@ impl Compiler<'_, '_> {
     fn compile_return_statement(
         &mut self,
         stmt: &Stmt,
-        value_kind: Option<SyntaxExpressionKind>,
-        value_body: Option<CompilerBodyPayload<'_>>,
-        value_if: Option<CompilerIfPayload<'_>>,
-        value_match_arms: Option<Vec<CompilerMatchArmPayload<'_>>>,
-        value_expression: Option<CompilerExpressionPayload<'_>>,
+        syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<bool> {
         let StmtKind::Return(value) = &stmt.kind else {
             return self.compile_statement(stmt);
         };
-        let (register, returned) = self.compile_return_value(
-            stmt.span,
-            value.as_ref(),
-            value_kind,
-            ValueSyntaxPayloads::new(
-                value_expression.as_ref(),
-                value_body.as_ref(),
-                value_if.as_ref(),
-                value_match_arms.as_deref(),
-            ),
-        )?;
+        let (register, returned) =
+            self.compile_return_value(stmt.span, value.as_ref(), syntax_payloads)?;
         if !returned {
             self.emit(UnlinkedInstructionKind::Return { src: register });
         }
@@ -475,10 +468,9 @@ impl Compiler<'_, '_> {
         value: &Expr,
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
-        syntax_kind: Option<SyntaxExpressionKind>,
         syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<(Register, bool)> {
-        if let Some(kind) = syntax_kind {
+        if let Some(kind) = syntax_payloads.kind {
             if value_expression_kind_matches(kind, value) {
                 return self.compile_let_initializer_with_syntax_kind(
                     value,
@@ -494,8 +486,7 @@ impl Compiler<'_, '_> {
                 )));
             }
         }
-        if syntax_payloads.expression.is_some() && value_expression_requires_matching_syntax(value)
-        {
+        if syntax_payloads.syntax_value_missing {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST let initializer payload",
             )));
@@ -626,7 +617,6 @@ impl Compiler<'_, '_> {
         &mut self,
         span: Span,
         value: Option<&Expr>,
-        syntax_kind: Option<SyntaxExpressionKind>,
         syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<(Register, bool)> {
         match (value, self.return_type.clone()) {
@@ -634,16 +624,11 @@ impl Compiler<'_, '_> {
                 value,
                 Some(expected),
                 TypeContractContext::Return,
-                syntax_kind,
                 syntax_payloads,
             ),
-            (Some(value), None) => self.compile_return_expr(
-                value,
-                None,
-                TypeContractContext::Return,
-                syntax_kind,
-                syntax_payloads,
-            ),
+            (Some(value), None) => {
+                self.compile_return_expr(value, None, TypeContractContext::Return, syntax_payloads)
+            }
             (None, Some(expected)) => {
                 check_expected_type(
                     StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -667,10 +652,9 @@ impl Compiler<'_, '_> {
         value: &Expr,
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
-        syntax_kind: Option<SyntaxExpressionKind>,
         syntax_payloads: ValueSyntaxPayloads<'_, '_>,
     ) -> CompileResult<(Register, bool)> {
-        if let Some(kind) = syntax_kind {
+        if let Some(kind) = syntax_payloads.kind {
             if value_expression_kind_matches(kind, value) {
                 return self.compile_return_expr_with_syntax_kind(
                     value,
@@ -686,8 +670,7 @@ impl Compiler<'_, '_> {
                 )));
             }
         }
-        if syntax_payloads.expression.is_some() && value_expression_requires_matching_syntax(value)
-        {
+        if syntax_payloads.syntax_value_missing {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST return value payload",
             )));

@@ -445,6 +445,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn let_initializer_missing_in_syntax(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .and_then(SyntaxStatement::as_let)
+            .is_some_and(|statement| statement.initializer().is_none())
+    }
+
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let StmtKind::Let {
             value: Some(value), ..
@@ -520,6 +527,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_return()?
             .expression()
             .map(|expression| expression.expression_kind())
+    }
+
+    pub(super) fn return_value_missing_in_syntax(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .and_then(SyntaxStatement::as_return)
+            .is_some_and(|statement| statement.expression().is_none())
     }
 
     pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
