@@ -31,6 +31,80 @@ fn scoped() {
 }
 
 #[test]
+fn missing_block_statement_body_payload_does_not_use_legacy_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    {
+        return 1;
+    }
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let block = statements
+                .iter()
+                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::Block))
+                .expect("block statement payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    block
+                        .syntax_statement()
+                        .expect("block statement syntax")
+                        .clone(),
+                    block.fallback(),
+                );
+
+            let error = compiler
+                .compile_statement_payload_for_test(&missing_children)
+                .expect_err("missing CST block body must not use the legacy block body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST block statement body payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_for_statement_body_payload_does_not_use_legacy_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    for value in [1] {
+        return value;
+    }
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let for_statement = statements
+                .iter()
+                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::For))
+                .expect("for statement payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    for_statement
+                        .syntax_statement()
+                        .expect("for statement syntax")
+                        .clone(),
+                    for_statement.fallback(),
+                );
+
+            let error = compiler
+                .compile_statement_payload_for_test(&missing_children)
+                .expect_err("missing CST for body must not use the legacy loop body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST for statement body payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn semantic_function_control_flow_statements_are_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

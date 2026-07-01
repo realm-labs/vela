@@ -400,6 +400,9 @@ unavailable.
 Top-level for statement payloads now materialize nested rowan body payloads,
 letting loop bodies reuse the CST-aware statement dispatcher while preserving
 the legacy loop-body fallback when syntax alignment is unavailable.
+Block and for statements now reject missing nested CST body payloads once the
+parent statement is CST-aligned, instead of silently compiling the temporary
+legacy block or loop body.
 Top-level if statement payloads now materialize nested rowan then/else and
 else-if block payloads, letting branch bodies reuse the CST-aware statement
 dispatcher while preserving legacy branch fallbacks when syntax alignment is

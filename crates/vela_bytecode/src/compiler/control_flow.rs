@@ -99,11 +99,17 @@ impl Compiler<'_, '_> {
                 ),
             )
         } else if kind == SyntaxStatementKind::For {
+            let body_payload = stmt.for_body_payload();
+            if body_payload.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST for statement body payload",
+                )));
+            }
             self.compile_for_statement(
                 stmt.fallback(),
                 stmt.for_iterable_expression_payload(),
                 stmt.for_iterable_binary_operator(),
-                stmt.for_body_payload(),
+                body_payload,
                 stmt.for_index_pattern_payload(),
                 stmt.for_value_pattern_payload(),
             )
@@ -133,7 +139,9 @@ impl Compiler<'_, '_> {
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
         let Some(body) = stmt.block_body_payload() else {
-            return self.compile_statement_as(SyntaxStatementKind::Block, stmt.fallback());
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST block statement body payload",
+            )));
         };
         let statements = body.statement_payloads();
         self.compile_statement_payloads(&statements)
