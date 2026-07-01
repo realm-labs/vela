@@ -9,6 +9,7 @@ use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::call_args::CallArgumentSyntax;
+use super::expression_payload_kinds::expression_payload_is_aligned;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 pub(super) struct HostPath<'ast> {
@@ -102,7 +103,7 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Field => {
                 let name = payload.syntax_field_name()?;
                 let base_payload = payload.field_base_payload()?;
-                let mut receiver = self.resolve_host_path_receiver_from_payload(base_payload);
+                let mut receiver = self.resolve_host_path_receiver_from_payload(base_payload)?;
                 let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
                 receiver.path.segments.push(field.part);
                 Some(ResolvedHostPath {
@@ -169,10 +170,12 @@ impl Compiler<'_, '_> {
     fn resolve_host_path_receiver_from_payload<'ast>(
         &self,
         payload: CompilerExpressionPayload<'ast>,
-    ) -> ResolvedHostPath<'ast> {
+    ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_from_payload(payload.clone())
-            .unwrap_or_else(|| {
-                self.expr_host_path_receiver_with_payload(payload.fallback(), Some(payload))
+            .or_else(|| {
+                expression_payload_is_aligned(&payload, payload.fallback()).then(|| {
+                    self.expr_host_path_receiver_with_payload(payload.fallback(), Some(payload))
+                })
             })
     }
 
