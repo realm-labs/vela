@@ -28,7 +28,7 @@ impl Compiler<'_, '_> {
         let mut all_arms_return = !match_expr.arms.is_empty();
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let arm_payload = match_arm_payload_at(arm_payloads, index)?;
             let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
             let mut next_arm_jumps =
                 self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
@@ -156,7 +156,7 @@ impl Compiler<'_, '_> {
         let mut has_catch_all = false;
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
-            let arm_payload = arm_payloads.and_then(|payloads| payloads.get(index));
+            let arm_payload = match_arm_payload_at(arm_payloads, index)?;
             let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
             let mut next_arm_jumps =
                 self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
@@ -318,4 +318,18 @@ impl Compiler<'_, '_> {
             }
         }
     }
+}
+
+fn match_arm_payload_at<'payload, 'ast>(
+    payloads: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+    index: usize,
+) -> CompileResult<Option<&'payload CompilerMatchArmPayload<'ast>>> {
+    let Some(payloads) = payloads else {
+        return Ok(None);
+    };
+    payloads.get(index).map(Some).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match arm payload",
+        ))
+    })
 }

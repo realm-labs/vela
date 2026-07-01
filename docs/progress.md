@@ -380,9 +380,9 @@ untyped let, assignment, return, and nested call-argument contexts, so nested
 ordinary-call and tuple enum constructor argument bodies can reuse rowan body
 payloads before falling back to legacy expression lowering when syntax
 association is missing.
-Payload-aware call, tuple-constructor, array, and map child lowering now rejects
-missing child payload entries instead of treating them as absent CST syntax and
-silently compiling the temporary legacy child expression.
+Payload-aware call, tuple-constructor, array, map, and match-arm child lowering
+now rejects missing child payload entries instead of treating them as absent
+CST syntax and silently compiling the temporary legacy child expression.
 Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or
