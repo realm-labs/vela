@@ -172,6 +172,58 @@ fn main() {
 }
 
 #[test]
+fn missing_for_iterable_payload_does_not_use_legacy_iterable() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    for value in {
+    }
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    for value in [1] {
+        return value;
+    }
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_statement = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST for statement");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let missing =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+
+    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert_eq!(
+        missing
+            .for_iterable_expression_payload()
+            .and_then(|payload| payload.kind()),
+        None
+    );
+    assert!(missing.for_body_payload().is_some());
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing)
+        .expect_err("missing CST for iterable must not compile legacy iterable");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST for iterable payload")
+    ));
+}
+
+#[test]
 fn semantic_function_for_patterns_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

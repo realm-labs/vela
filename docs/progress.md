@@ -389,6 +389,9 @@ Top-level for statement payloads now expose rowan iterable binary operators,
 letting direct range-loop lowering dispatch through aligned CST range
 operators while preserving the legacy iterable fallback for non-CST or
 mismatched payloads.
+For statements now reject missing CST iterable expression payloads once the
+parent statement is CST-aligned, instead of silently compiling the temporary
+legacy iterable expression.
 Top-level if statement payloads now expose rowan condition binary operators,
 letting i64 immediate compare-jump lowering dispatch through aligned CST
 condition operators while preserving the legacy condition fallback for
