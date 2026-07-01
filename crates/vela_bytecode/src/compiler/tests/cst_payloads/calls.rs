@@ -600,8 +600,18 @@ fn call_targets() {
     );
     assert_cst_let_initializer_method_names(&payload.body, &["len"]);
 
-    compile_program_source(source, text)
+    let program = compile_program_source(source, text)
         .expect("CST-backed call callees and method receivers should compile");
+    let function = program
+        .function("call_targets")
+        .expect("call_targets bytecode");
+    assert!(
+        function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::CallClosure { .. }
+        )),
+        "CST-backed non-path callee should lower as a closure call"
+    );
 }
 
 #[test]

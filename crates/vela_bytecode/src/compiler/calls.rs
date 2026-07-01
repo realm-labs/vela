@@ -165,7 +165,7 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else if self.local_callee_at_span(callee_span).is_some()
-            || !matches!(callee.kind, ExprKind::Path(_))
+            || callee_is_closure_call(callee_payload, callee)
         {
             reject_named_call_args(arg_syntax, "closure call")?;
             let callee = self.compile_expr_with_payload(callee, callee_payload)?;
@@ -1093,6 +1093,16 @@ fn callable_name(
         )));
     };
     Ok(path.join("::"))
+}
+
+fn callee_is_closure_call(
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+    callee: &Expr,
+) -> bool {
+    if let Some(payload) = callee_payload {
+        return !matches!(payload.kind(), Some(SyntaxExpressionKind::Path));
+    }
+    !matches!(callee.kind, ExprKind::Path(_))
 }
 
 fn reject_mismatched_call_callee_payload(
