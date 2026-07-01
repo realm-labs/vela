@@ -248,9 +248,9 @@ fn main() {
             assert!(
                 matches!(
                     err.kind,
-                    CompileErrorKind::UnsupportedSyntax("record field")
+                    CompileErrorKind::UnsupportedSyntax("missing CST record field payload")
                 ),
-                "expected unsupported record-field diagnostic for missing CST label, got {err:?}"
+                "expected missing CST record-field payload diagnostic, got {err:?}"
             );
         },
     );

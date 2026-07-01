@@ -351,9 +351,18 @@ fn record_field_name(
         .iter()
         .position(|candidate| std::ptr::eq(candidate, field))
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("record field")))?;
-    field_payloads
-        .get(index)
-        .and_then(CompilerRecordFieldPayload::syntax_label_name)
+    let payload = field_payloads.get(index).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST record field payload",
+        ))
+    })?;
+    if !payload.has_syntax() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST record field payload",
+        )));
+    }
+    payload
+        .syntax_label_name()
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("record field")))
 }
 

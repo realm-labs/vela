@@ -566,6 +566,10 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
             .and_then(SyntaxRecordExprField::label_text)
     }
 
+    pub(in crate::compiler) fn has_syntax(&self) -> bool {
+        self.syntax.is_some()
+    }
+
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
         self.syntax
             .as_ref()
