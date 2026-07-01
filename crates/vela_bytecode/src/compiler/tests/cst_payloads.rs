@@ -3,6 +3,7 @@ use super::*;
 mod assignment_targets;
 mod binary;
 mod block_values;
+mod call_counts;
 mod calls;
 mod constructors;
 mod containers;

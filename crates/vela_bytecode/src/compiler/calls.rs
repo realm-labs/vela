@@ -11,8 +11,9 @@ use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_sh
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use payload_guards::{
-    callback_lambda_payload_is_authoritative, reject_mismatched_call_callee_payload,
-    reject_missing_call_callee_payload, reject_missing_callback_lambda_body,
+    callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
+    reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
+    reject_missing_callback_lambda_body,
 };
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -56,6 +57,7 @@ impl Compiler<'_, '_> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;
         reject_mismatched_call_callee_payload(callee, callee_payload)?;
+        reject_mismatched_call_argument_payloads(callee_payload, arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         let callee_span = callee_payload

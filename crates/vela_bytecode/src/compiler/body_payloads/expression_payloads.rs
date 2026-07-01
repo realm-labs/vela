@@ -329,6 +329,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
+        if syntax_args.len() > args.len() {
+            return None;
+        }
         Some(
             args.iter()
                 .map(|fallback| CompilerArgumentPayload {

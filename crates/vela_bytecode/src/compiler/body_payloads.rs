@@ -888,6 +888,9 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         let syntax_args = self.expression()?.as_call()?.arguments();
+        if syntax_args.len() > args.len() {
+            return None;
+        }
         Some(
             args.iter()
                 .map(|fallback| CompilerArgumentPayload {

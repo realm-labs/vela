@@ -1,6 +1,6 @@
 use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
-use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use crate::compiler::expression_payload_kinds::expression_payload_is_aligned;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
@@ -52,6 +52,18 @@ pub(super) fn reject_missing_call_callee_payload(
     if callee_payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "missing CST call callee",
+        )));
+    }
+    Ok(())
+}
+
+pub(super) fn reject_mismatched_call_argument_payloads(
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+) -> CompileResult<()> {
+    if callee_payload.is_some() && arg_payloads.is_none() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST call arguments",
         )));
     }
     Ok(())
