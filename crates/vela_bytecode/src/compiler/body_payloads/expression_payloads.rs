@@ -499,6 +499,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn record_field_count_does_not_exceed_fallback(&self) -> bool {
+        let ExprKind::Record { fields, .. } = &self.fallback.kind else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_record) else {
+            return true;
+        };
+        syntax.fields().len() <= fields.len()
+    }
+
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {

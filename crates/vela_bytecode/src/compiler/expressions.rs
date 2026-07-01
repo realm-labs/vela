@@ -181,6 +181,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
+                if !payload.record_field_count_does_not_exceed_fallback() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST record fields",
+                    )));
+                }
                 let field_payloads = payload.record_field_payloads();
                 let path = payload.syntax_record_path_segments().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
