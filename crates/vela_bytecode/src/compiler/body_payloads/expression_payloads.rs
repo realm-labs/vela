@@ -96,6 +96,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_is_self(&self) -> bool {
+        if self.source.is_none() {
+            return false;
+        }
         self.syntax
             .as_ref()
             .and_then(SyntaxExpression::as_path)

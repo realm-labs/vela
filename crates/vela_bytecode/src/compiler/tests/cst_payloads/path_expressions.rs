@@ -566,6 +566,31 @@ fn legacy_path(legacy) {
     );
     assert!(mismatched_payload.syntax_is_self());
 
+    let missing_source_self_payload =
+        body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+            self_return
+                .syntax_expression()
+                .expect("self CST expression")
+                .clone(),
+            legacy_return.fallback(),
+        );
+    assert!(!missing_source_self_payload.syntax_is_self());
+    let fact = script_types::expression_script_fact_with_payload(
+        missing_source_self_payload.fallback(),
+        Some(&missing_source_self_payload),
+        |_| None,
+        |_| None,
+        |name| match name {
+            "self" => Some(script_types::ScriptTypeFact::new("CstBox")),
+            "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+            _ => None,
+        },
+    );
+    assert_eq!(
+        fact, None,
+        "source-less CST self payload must not produce a script type fact"
+    );
+
     let fact = script_types::expression_script_fact_with_payload(
         mismatched_payload.fallback(),
         Some(&mismatched_payload),
