@@ -454,6 +454,67 @@ fn main() {
 }
 
 #[test]
+fn missing_index_operand_payload_does_not_use_legacy_index() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let values = [1];
+    let value = values[];
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let values = [1];
+    let value = values[0];
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_index = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .nth(1)
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    assert_eq!(cst_index.expression_kind(), SyntaxExpressionKind::Index);
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = legacy_payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("values local should compile");
+    let legacy_index = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy index payload");
+    let missing = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_index,
+        legacy_index.fallback(),
+    );
+    let (_base, index) = missing
+        .index_operand_payloads()
+        .expect("index operand payloads");
+    assert!(index.syntax_expression().is_none());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_index.fallback(), Some(&missing))
+        .expect_err("missing CST index operand must not compile legacy operand");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST index operand")
+    ));
+}
+
+#[test]
 fn string_key_index_writes_prefer_cst_index_literal_payloads() {
     with_cst_payload_compiler(
         r#"

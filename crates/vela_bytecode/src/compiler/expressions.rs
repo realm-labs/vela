@@ -242,6 +242,8 @@ impl Compiler<'_, '_> {
                 let (base_payload, index_payload) = operand_payloads
                     .as_ref()
                     .map_or((None, None), |(base, index)| (Some(base), Some(index)));
+                reject_missing_expression_payload(base_payload, "missing CST index receiver")?;
+                reject_missing_expression_payload(index_payload, "missing CST index operand")?;
                 self.compile_index_expr(
                     expr,
                     base,
