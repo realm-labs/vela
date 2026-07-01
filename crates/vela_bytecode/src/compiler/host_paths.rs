@@ -42,6 +42,11 @@ pub(super) enum HostPathPart<'ast> {
     },
 }
 
+struct HostCollectionMethodTarget<'ast> {
+    path: HostPath<'ast>,
+    field_receiver: Option<&'ast Expr>,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum DynamicHostPathPart {
     Index,
@@ -524,32 +529,11 @@ impl Compiler<'_, '_> {
         args: &[Argument],
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<Option<Register>> {
-        let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
-        let has_callee_payload = callee_payload.is_some();
-        let path = match &callee.kind {
-            ExprKind::Field { base, name }
-                if callee_field_name_matches(callee_payload, name, "push") =>
-            {
-                let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
-                self.host_field_path_with_payload(base, base_payload.as_ref())
-            }
-            ExprKind::Path(parts)
-                if callee_path_last_matches(
-                    cst_path.as_deref(),
-                    has_callee_payload,
-                    parts,
-                    "push",
-                ) =>
-            {
-                let parts = cst_path.as_deref().unwrap_or(parts);
-                self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                    .map(|resolved| resolved.path)
-            }
-            _ => None,
-        };
-        let Some(path) = path else {
+        let Some(target) = self.host_collection_method_target(callee, callee_payload, "push")
+        else {
             return Ok(None);
         };
+        let path = target.path;
         if path.segments.is_empty() {
             return Ok(None);
         }
@@ -573,32 +557,11 @@ impl Compiler<'_, '_> {
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
         args: &[Argument],
     ) -> CompileResult<Option<Register>> {
-        let cst_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
-        let has_callee_payload = callee_payload.is_some();
-        let path = match &callee.kind {
-            ExprKind::Field { base, name }
-                if callee_field_name_matches(callee_payload, name, "remove") =>
-            {
-                let base_payload = callee_payload.and_then(|payload| payload.field_base_payload());
-                self.host_field_path_with_payload(base, base_payload.as_ref())
-            }
-            ExprKind::Path(parts)
-                if callee_path_last_matches(
-                    cst_path.as_deref(),
-                    has_callee_payload,
-                    parts,
-                    "remove",
-                ) =>
-            {
-                let parts = cst_path.as_deref().unwrap_or(parts);
-                self.host_field_path_parts(callee.span, &parts[..parts.len() - 1])
-                    .map(|resolved| resolved.path)
-            }
-            _ => None,
-        };
-        let Some(path) = path else {
+        let Some(target) = self.host_collection_method_target(callee, callee_payload, "remove")
+        else {
             return Ok(None);
         };
+        let path = target.path;
         if path.segments.is_empty() {
             return Ok(None);
         }
@@ -608,9 +571,7 @@ impl Compiler<'_, '_> {
                 "host path remove arity",
             )));
         }
-        if let ExprKind::Field { base, name } = &callee.kind
-            && callee_field_name_matches(callee_payload, name, "remove")
-        {
+        if let Some(base) = target.field_receiver {
             self.reject_terminal_host_index_access(base, HostIndexAccessKind::Remove)?;
         }
         let root = self.compile_host_path_root(&path.root)?;
@@ -618,6 +579,62 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))
+    }
+
+    fn host_collection_method_target<'ast>(
+        &self,
+        callee: &'ast Expr,
+        callee_payload: Option<&CompilerExpressionPayload<'ast>>,
+        method: &str,
+    ) -> Option<HostCollectionMethodTarget<'ast>> {
+        if let Some(payload) = callee_payload {
+            return match payload.kind() {
+                Some(SyntaxExpressionKind::Field) | None => {
+                    if payload.syntax_field_name()?.as_str() != method {
+                        return None;
+                    }
+                    let base_payload = payload.field_base_payload()?;
+                    let path = self.host_field_path_with_payload(
+                        base_payload.fallback(),
+                        Some(&base_payload),
+                    )?;
+                    Some(HostCollectionMethodTarget {
+                        path,
+                        field_receiver: Some(base_payload.fallback()),
+                    })
+                }
+                Some(SyntaxExpressionKind::Path) => {
+                    let parts = payload.syntax_path_segments()?;
+                    if !parts.last().is_some_and(|name| name == method) {
+                        return None;
+                    }
+                    let span = payload.syntax_span().unwrap_or(callee.span);
+                    self.owned_host_field_path_parts(span, &parts[..parts.len() - 1])
+                        .map(|resolved| HostCollectionMethodTarget {
+                            path: resolved.path,
+                            field_receiver: None,
+                        })
+                }
+                Some(_) => None,
+            };
+        }
+
+        match &callee.kind {
+            ExprKind::Field { base, name } if name == method => {
+                self.host_field_path(base)
+                    .map(|path| HostCollectionMethodTarget {
+                        path,
+                        field_receiver: Some(base),
+                    })
+            }
+            ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
+                .host_field_path_parts(callee.span, &parts[..parts.len() - 1])
+                .map(|resolved| HostCollectionMethodTarget {
+                    path: resolved.path,
+                    field_receiver: None,
+                }),
+            _ => None,
+        }
     }
 
     pub(super) fn compile_host_path_root<'expr>(
@@ -818,24 +835,6 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn callee_field_name_matches(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-    fallback_name: &str,
-    expected: &str,
-) -> bool {
-    match payload {
-        Some(payload) => match payload.kind() {
-            Some(SyntaxExpressionKind::Field) | None => payload
-                .syntax_field_name()
-                .as_deref()
-                .is_some_and(|name| name == expected),
-            Some(SyntaxExpressionKind::Path) => false,
-            Some(_) => false,
-        },
-        None => fallback_name == expected,
-    }
-}
-
 fn host_path_field_name(
     payload: Option<&CompilerExpressionPayload<'_>>,
     fallback_name: &str,
@@ -847,18 +846,6 @@ fn host_path_field_name(
         },
         None => Some(fallback_name.to_owned()),
     }
-}
-
-fn callee_path_last_matches(
-    cst_path: Option<&[String]>,
-    has_payload: bool,
-    fallback_path: &[String],
-    expected: &str,
-) -> bool {
-    let Some(path) = cst_path.or_else(|| (!has_payload).then_some(fallback_path)) else {
-        return false;
-    };
-    path.last().is_some_and(|name| name == expected)
 }
 
 fn host_index_diagnostic_error(diagnostic: Diagnostic) -> CompileError {
