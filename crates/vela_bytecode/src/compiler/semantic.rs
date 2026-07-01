@@ -527,7 +527,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             syntax.diagnostics().to_vec(),
         )));
     }
-    let body_fallbacks = BodyFallbackSource::parse(source, text);
+    let body_fallbacks = BodyFallbackSource::from_syntax(source, text, &syntax);
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(ModuleSource::new(
         source,
@@ -574,7 +574,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
 
     for (source, syntax_file) in syntax_sources {
         let module = graph.add_source(source.clone());
-        let fallback = BodyFallbackSource::parse(source.id, &source.text);
+        let fallback = BodyFallbackSource::from_syntax(source.id, &source.text, &syntax_file);
         syntax.insert(module, syntax_file);
         body_fallbacks.insert(module, fallback);
         source_ids.insert(module, source.id);
