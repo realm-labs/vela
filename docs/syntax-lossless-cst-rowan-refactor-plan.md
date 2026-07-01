@@ -459,7 +459,7 @@ Checkpoint checklist:
 - [x] Route language-service analysis diagnostics for unknown members,
   non-exhaustive matches, and missing record fields through the CST parse
   record.
-- [ ] Remove `crates/vela_bytecode/src/compiler/legacy_payloads.rs`.
+- [x] Remove `crates/vela_bytecode/src/compiler/legacy_payloads.rs`.
 - [ ] Remove temporary old-AST body and runtime default-expression fallbacks.
 - [ ] Remove production imports of old `Expr`, `ExprKind`, `ItemKind`, and
   `SourceFile` from `vela_bytecode`.

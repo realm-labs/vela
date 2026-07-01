@@ -296,6 +296,9 @@ and trait default methods now enter bytecode compilation through a shared
 `CompilerBodyPayload` that carries the rowan CST body block plus the temporary
 legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.
+The standalone bytecode `legacy_payloads` module has been removed; the
+remaining temporary old-parser body lookup is private to the semantic body
+payload boundary while body lowering continues to move to CST/HIR inputs.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement

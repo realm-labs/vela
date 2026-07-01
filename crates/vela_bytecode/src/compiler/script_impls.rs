@@ -9,8 +9,8 @@ use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 use super::body_payloads::CompilerBodyPayload;
-use super::legacy_payloads::LegacySourceFallback;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
+use super::semantic::BodyFallbackSource;
 use super::syntax_payloads::param_default_expressions;
 
 pub(super) struct ScriptImplMethod<'ast> {
@@ -30,7 +30,7 @@ struct MethodBodyPayload<'ast> {
 }
 
 pub(super) fn source_methods<'ast>(
-    legacy: &'ast LegacySourceFallback,
+    body_fallbacks: &'ast BodyFallbackSource,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     graph: &'ast ModuleGraph,
@@ -45,13 +45,19 @@ pub(super) fn source_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let method_payloads = impl_method_payloads(legacy, syntax, source, impl_metadata);
+            let method_payloads =
+                impl_method_payloads(body_fallbacks, syntax, source, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
                 let shape = graph.trait_shape(declaration)?;
-                let payloads =
-                    trait_default_method_payloads(legacy, syntax, source, trait_path, shape);
+                let payloads = trait_default_method_payloads(
+                    body_fallbacks,
+                    syntax,
+                    source,
+                    trait_path,
+                    shape,
+                );
                 Some((shape, payloads))
             });
             collect_methods(
@@ -67,7 +73,7 @@ pub(super) fn source_methods<'ast>(
 }
 
 pub(super) fn module_methods<'ast>(
-    legacy: &'ast BTreeMap<ModuleId, LegacySourceFallback>,
+    body_fallbacks: &'ast BTreeMap<ModuleId, BodyFallbackSource>,
     syntax: &BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
     source_ids: &BTreeMap<ModuleId, vela_common::SourceId>,
     graph: &'ast ModuleGraph,
@@ -80,7 +86,7 @@ pub(super) fn module_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let Some(fallback) = legacy.get(&declaration.module) else {
+            let Some(fallback) = body_fallbacks.get(&declaration.module) else {
                 return Vec::new();
             };
             let Some(syntax_source) = syntax.get(&declaration.module) else {
@@ -115,7 +121,7 @@ pub(super) fn module_methods<'ast>(
             };
             let trait_item = graph
                 .declaration(trait_declaration)
-                .and_then(|declaration| legacy.get(&declaration.module))
+                .and_then(|declaration| body_fallbacks.get(&declaration.module))
                 .zip(
                     graph
                         .declaration(trait_declaration)
@@ -245,7 +251,7 @@ fn collect_default_methods<'ast>(
 }
 
 fn impl_method_payloads<'ast>(
-    legacy: &'ast LegacySourceFallback,
+    body_fallbacks: &'ast BodyFallbackSource,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     metadata: &ImplMetadata,
@@ -261,7 +267,7 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let fallback_body = legacy.body_by_span(method_metadata.body_span)?;
+            let fallback_body = body_fallbacks.body_by_span(method_metadata.body_span)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -278,7 +284,7 @@ fn impl_method_payloads<'ast>(
 }
 
 fn trait_default_method_payloads<'ast>(
-    legacy: &'ast LegacySourceFallback,
+    body_fallbacks: &'ast BodyFallbackSource,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     path: &[String],
@@ -292,7 +298,7 @@ fn trait_default_method_payloads<'ast>(
         .iter()
         .filter_map(|method_metadata| {
             let span = method_metadata.default_body_span?;
-            let fallback_body = legacy.body_by_span(span)?;
+            let fallback_body = body_fallbacks.body_by_span(span)?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::BindingMap;
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{
@@ -8,8 +8,9 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{AstNode, SyntaxBlock, SyntaxSourceFile};
+use vela_syntax::ast::{AstNode, Block, ItemKind, SourceFile, SyntaxBlock, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parser::parse_source as parse_body_fallback_source;
 
 use crate::Constant;
 
@@ -17,7 +18,6 @@ use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::function_payloads::FunctionBodyPayload;
-use super::legacy_payloads::LegacySourceFallback;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
@@ -29,17 +29,57 @@ pub(super) struct SemanticSource {
     source: SourceId,
     text: String,
     syntax: SyntaxParse<SyntaxSourceFile>,
-    legacy: LegacySourceFallback,
+    body_fallbacks: BodyFallbackSource,
     graph: ModuleGraph,
     module: ModuleId,
 }
 
 pub(super) struct SemanticModules {
     syntax: BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
-    legacy: BTreeMap<ModuleId, LegacySourceFallback>,
+    body_fallbacks: BTreeMap<ModuleId, BodyFallbackSource>,
     source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
     modules: Vec<ModuleId>,
+}
+
+pub(super) struct BodyFallbackSource {
+    parsed: SourceFile,
+}
+
+impl BodyFallbackSource {
+    fn parse(source: SourceId, text: &str) -> Self {
+        Self {
+            parsed: parse_body_fallback_source(source, text),
+        }
+    }
+
+    pub(super) fn body_by_span(&self, span: Span) -> Option<&Block> {
+        for item in &self.parsed.items {
+            if let ItemKind::Function(function) = &item.kind
+                && function.body.span == span
+            {
+                return Some(&function.body);
+            }
+            if let ItemKind::Impl(item) = &item.kind {
+                for method in &item.methods {
+                    if method.function.body.span == span {
+                        return Some(&method.function.body);
+                    }
+                }
+            }
+            if let ItemKind::Trait(item) = &item.kind {
+                for method in &item.methods {
+                    let Some(body) = &method.default_body else {
+                        continue;
+                    };
+                    if body.span == span {
+                        return Some(body);
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 impl SemanticSource {
@@ -65,7 +105,7 @@ impl SemanticSource {
         let payload = function_body_payload(
             self.source,
             &self.syntax,
-            &self.legacy,
+            &self.body_fallbacks,
             metadata.name.as_str(),
             signature,
         )?;
@@ -195,7 +235,7 @@ impl SemanticSource {
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
         script_impls::source_methods(
-            &self.legacy,
+            &self.body_fallbacks,
             &self.syntax,
             self.source,
             &self.graph,
@@ -236,11 +276,16 @@ impl SemanticModules {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
-        let legacy = self.legacy.get(&metadata.module)?;
+        let body_fallbacks = self.body_fallbacks.get(&metadata.module)?;
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
-        let payload =
-            function_body_payload(source, syntax, legacy, metadata.name.as_str(), signature)?;
+        let payload = function_body_payload(
+            source,
+            syntax,
+            body_fallbacks,
+            metadata.name.as_str(),
+            signature,
+        )?;
         Some((payload, signature, bindings))
     }
 
@@ -414,7 +459,12 @@ impl SemanticModules {
     }
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
-        script_impls::module_methods(&self.legacy, &self.syntax, &self.source_ids, &self.graph)
+        script_impls::module_methods(
+            &self.body_fallbacks,
+            &self.syntax,
+            &self.source_ids,
+            &self.graph,
+        )
     }
 
     fn const_values_by_name(
@@ -482,7 +532,7 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
 fn function_body_payload<'ast>(
     source: SourceId,
     syntax: &SyntaxParse<SyntaxSourceFile>,
-    legacy: &'ast LegacySourceFallback,
+    body_fallbacks: &'ast BodyFallbackSource,
     name: &str,
     signature: &FunctionSignature,
 ) -> Option<FunctionBodyPayload<'ast>> {
@@ -491,7 +541,7 @@ fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let legacy_body = legacy.body_by_span(syntax_body_span(source, &syntax_body))?;
+    let legacy_body = body_fallbacks.body_by_span(syntax_body_span(source, &syntax_body))?;
     let body = super::body_payloads::CompilerBodyPayload::syntax(source, syntax_body, legacy_body);
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
@@ -524,7 +574,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             syntax.diagnostics().to_vec(),
         )));
     }
-    let legacy = LegacySourceFallback::parse(source, text);
+    let body_fallbacks = BodyFallbackSource::parse(source, text);
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(ModuleSource::new(
         source,
@@ -537,7 +587,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             source,
             text: text.to_owned(),
             syntax,
-            legacy,
+            body_fallbacks,
             graph,
             module,
         })
@@ -564,16 +614,16 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     }
 
     let mut syntax = BTreeMap::new();
-    let mut legacy = BTreeMap::new();
+    let mut body_fallbacks = BTreeMap::new();
     let mut source_ids = BTreeMap::new();
     let mut graph = ModuleGraph::new();
     let mut modules = Vec::new();
 
     for (source, syntax_file) in syntax_sources {
         let module = graph.add_source(source.clone());
-        let fallback = LegacySourceFallback::parse(source.id, &source.text);
+        let fallback = BodyFallbackSource::parse(source.id, &source.text);
         syntax.insert(module, syntax_file);
-        legacy.insert(module, fallback);
+        body_fallbacks.insert(module, fallback);
         source_ids.insert(module, source.id);
         modules.push(module);
     }
@@ -582,7 +632,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     if graph.diagnostics().is_empty() {
         Ok(SemanticModules {
             syntax,
-            legacy,
+            body_fallbacks,
             source_ids,
             graph,
             modules,

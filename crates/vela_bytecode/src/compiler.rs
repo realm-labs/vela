@@ -18,7 +18,6 @@ mod field_slots;
 mod function_payloads;
 mod host_paths;
 mod lambdas;
-mod legacy_payloads;
 mod map_literals;
 mod methods;
 mod operators;
