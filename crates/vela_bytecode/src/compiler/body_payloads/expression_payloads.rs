@@ -108,9 +108,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<Literal> {
-        let ExprKind::Literal(_) = &self.fallback.kind else {
-            return None;
-        };
         self.syntax.as_ref()?.as_literal()?.literal()
     }
 

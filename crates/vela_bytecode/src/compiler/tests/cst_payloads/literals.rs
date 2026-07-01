@@ -128,6 +128,40 @@ fn main() {
 }
 
 #[test]
+fn literal_payload_value_comes_from_cst_without_literal_fallback() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_value = true;
+    let fallback_path = cst_value;
+}
+"#,
+        |_compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_literal = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST literal payload");
+            let fallback_path = statements[1]
+                .let_initializer_expression_payload()
+                .expect("non-literal fallback payload");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_literal
+                    .syntax_expression()
+                    .expect("CST literal expression")
+                    .clone(),
+                fallback_path.fallback(),
+            );
+
+            assert_eq!(
+                mismatched_payload.syntax_literal(),
+                Some(vela_syntax::ast::Literal::Bool(true))
+            );
+        },
+    );
+}
+
+#[test]
 fn contextual_literal_payload_mismatch_requires_runtime_guard() {
     with_cst_payload_compiler(
         r#"

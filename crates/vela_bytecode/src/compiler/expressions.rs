@@ -227,6 +227,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Literal(_) = &expr.kind else {
                     unreachable!("validated CST literal expression payload kind");
                 };
+                if !payload_expr_is_aligned(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST literal expression",
+                    )));
+                }
                 let literal = payload.syntax_literal().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST literal expression",
@@ -965,6 +970,10 @@ fn payload_syntax_overlaps_expr(payload: &CompilerExpressionPayload<'_>, expr: &
     payload
         .syntax_span()
         .is_some_and(|span| spans_overlap(span, expr.span))
+}
+
+fn payload_expr_is_aligned(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
+    std::ptr::eq(payload.fallback(), expr) || payload_syntax_overlaps_expr(payload, expr)
 }
 
 fn spans_overlap(left: Span, right: Span) -> bool {
