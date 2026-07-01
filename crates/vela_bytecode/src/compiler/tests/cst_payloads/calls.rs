@@ -218,6 +218,44 @@ fn main() {
 }
 
 #[test]
+fn missing_call_callee_payload_does_not_use_legacy_callee() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn make() {
+    return 1;
+}
+
+fn main() {
+    let value = make();
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_call = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy call payload");
+    let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
+        panic!("expected legacy call fallback");
+    };
+    let missing_callee = body_payloads::CompilerExpressionPayload::missing_syntax(source, callee);
+
+    let error = compiler
+        .compile_call_expr_with_arg_payloads(
+            legacy_call.fallback(),
+            callee,
+            args,
+            Some(&missing_callee),
+            None,
+        )
+        .expect_err("missing CST call callee must not compile legacy callee");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST call callee")
+    ));
+}
+
+#[test]
 fn path_call_with_non_path_cst_callee_does_not_use_legacy_callable_name() {
     with_cst_payload_compiler(
         r#"

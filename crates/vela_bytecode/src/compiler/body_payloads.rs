@@ -964,6 +964,18 @@ impl<'ast> CompilerArgumentPayload<'ast> {
 }
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn missing_syntax(
+        source: SourceId,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: None,
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
     }

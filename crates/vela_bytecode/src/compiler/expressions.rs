@@ -205,6 +205,10 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST call expression payload kind");
                 };
                 let callee_payload = payload.call_callee_payload();
+                reject_missing_expression_payload(
+                    callee_payload.as_ref(),
+                    "missing CST call callee",
+                )?;
                 let arg_payloads = payload.call_argument_payloads();
                 self.compile_call_expr_with_arg_payloads(
                     expr,

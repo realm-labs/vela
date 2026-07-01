@@ -49,6 +49,7 @@ impl Compiler<'_, '_> {
         arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
+        reject_missing_call_callee_payload(callee_payload)?;
         reject_mismatched_call_callee_payload(callee, callee_payload)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
@@ -1160,6 +1161,17 @@ fn reject_mismatched_call_callee_payload(
             "mismatched CST call callee payload",
         )))
     }
+}
+
+fn reject_missing_call_callee_payload(
+    callee_payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    if callee_payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST call callee",
+        )));
+    }
+    Ok(())
 }
 
 fn callee_path_segments<'expr>(
