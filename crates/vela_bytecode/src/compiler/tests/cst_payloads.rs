@@ -324,6 +324,39 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_call_receiver_field_parameter_defaults_from_cst() {
+    let program = compile_program_source(
+        SourceId::new(1),
+        r#"
+struct Reward {
+    amount: i64
+}
+
+fn helper() {
+    return Reward { amount: 7 };
+}
+
+fn grant(value = helper().amount) {
+    return value;
+}
+
+fn main() {
+    return grant();
+}
+"#,
+    )
+    .expect("CST-backed call receiver field default should compile");
+    let grant = program.function("grant").expect("grant function");
+
+    assert!(grant.instructions.iter().any(|instruction| {
+        matches!(
+            &instruction.kind,
+            UnlinkedInstructionKind::GetRecordField { field, .. } if field == "amount"
+        )
+    }));
+}
+
+#[test]
 fn compiler_lowers_match_parameter_defaults_from_cst() {
     let program = compile_program_source(
         SourceId::new(1),

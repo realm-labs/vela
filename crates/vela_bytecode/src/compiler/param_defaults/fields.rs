@@ -6,7 +6,7 @@ use crate::{Register, UnlinkedInstructionKind};
 use crate::compiler::host_paths::{HostPath, HostPathPart, HostPathRoot};
 use crate::compiler::{CompileResult, Compiler};
 
-use super::{param_default_cst_lowering_covers, param_default_unsupported, records, span_for};
+use super::{param_default_cst_lowering_covers, param_default_unsupported, span_for};
 
 impl Compiler<'_, '_> {
     pub(super) fn compile_param_default_field(
@@ -87,76 +87,10 @@ impl Compiler<'_, '_> {
 pub(super) fn param_default_field_cst_lowering_covers(expression: &SyntaxExpression) -> bool {
     expression.as_field().is_some_and(|field| {
         field.name_token().is_some()
-            && field.receiver().is_some_and(|receiver| {
-                param_default_cst_lowering_covers(&receiver)
-                    && (field_receiver_is_record_literal_chain(&receiver)
-                        || field_receiver_is_path_chain(&receiver))
-            })
+            && field
+                .receiver()
+                .is_some_and(|receiver| param_default_cst_lowering_covers(&receiver))
     })
-}
-
-fn field_receiver_is_record_literal_chain(expression: &SyntaxExpression) -> bool {
-    match expression.expression_kind() {
-        SyntaxExpressionKind::Record => {
-            records::param_default_record_cst_lowering_covers(expression)
-        }
-        SyntaxExpressionKind::Paren => expression
-            .as_paren()
-            .and_then(|paren| paren.expression())
-            .is_some_and(|inner| field_receiver_is_record_literal_chain(&inner)),
-        SyntaxExpressionKind::Field => expression.as_field().is_some_and(|field| {
-            field.name_token().is_some()
-                && field
-                    .receiver()
-                    .is_some_and(|receiver| field_receiver_is_record_literal_chain(&receiver))
-        }),
-        SyntaxExpressionKind::Literal
-        | SyntaxExpressionKind::Path
-        | SyntaxExpressionKind::Unary
-        | SyntaxExpressionKind::Binary
-        | SyntaxExpressionKind::Array
-        | SyntaxExpressionKind::Map
-        | SyntaxExpressionKind::Try
-        | SyntaxExpressionKind::Block
-        | SyntaxExpressionKind::If
-        | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Call
-        | SyntaxExpressionKind::Assign
-        | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::Match => false,
-    }
-}
-
-fn field_receiver_is_path_chain(expression: &SyntaxExpression) -> bool {
-    match expression.expression_kind() {
-        SyntaxExpressionKind::Path => expression
-            .as_path()
-            .is_some_and(|path| !path.path_segments().is_empty()),
-        SyntaxExpressionKind::Paren => expression
-            .as_paren()
-            .and_then(|paren| paren.expression())
-            .is_some_and(|inner| field_receiver_is_path_chain(&inner)),
-        SyntaxExpressionKind::Field => expression.as_field().is_some_and(|field| {
-            field.name_token().is_some()
-                && field
-                    .receiver()
-                    .is_some_and(|receiver| field_receiver_is_path_chain(&receiver))
-        }),
-        SyntaxExpressionKind::Literal
-        | SyntaxExpressionKind::Unary
-        | SyntaxExpressionKind::Binary
-        | SyntaxExpressionKind::Array
-        | SyntaxExpressionKind::Map
-        | SyntaxExpressionKind::Record
-        | SyntaxExpressionKind::Try
-        | SyntaxExpressionKind::Block
-        | SyntaxExpressionKind::If
-        | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Call
-        | SyntaxExpressionKind::Assign
-        | SyntaxExpressionKind::Lambda
-        | SyntaxExpressionKind::Match => false,
-    }
 }
 
 fn syntax_host_field_path(
