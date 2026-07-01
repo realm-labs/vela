@@ -402,6 +402,41 @@ impl Compiler<'_, '_> {
                 ValueShape::Iterator(item) => Some(ValueShape::Iterator(item)),
                 _ => None,
             },
+            "map" => {
+                let value = self.syntax_callback_return_shape(&receiver, "map", args, source)?;
+                Some(match receiver {
+                    ValueShape::Array(_) => ValueShape::Array(Box::new(value)),
+                    ValueShape::Set(_) => ValueShape::Set(Box::new(value)),
+                    ValueShape::Iterator(_) => ValueShape::Iterator(Box::new(value)),
+                    ValueShape::Option(_) => ValueShape::Option(Box::new(value)),
+                    ValueShape::Result { err, .. } => ValueShape::Result {
+                        ok: Some(Box::new(value)),
+                        err,
+                    },
+                    _ => value,
+                })
+            }
+            "map_err" => {
+                let value =
+                    self.syntax_callback_return_shape(&receiver, "map_err", args, source)?;
+                Some(match receiver {
+                    ValueShape::Result { ok, .. } => ValueShape::Result {
+                        ok,
+                        err: Some(Box::new(value)),
+                    },
+                    _ => value,
+                })
+            }
+            "and_then" => self.syntax_callback_return_shape(&receiver, "and_then", args, source),
+            "map_values" => {
+                let value =
+                    self.syntax_callback_return_shape(&receiver, "map_values", args, source)?;
+                let (key, _) = receiver.map_parts()?;
+                Some(ValueShape::Map {
+                    key: Box::new(key.clone()),
+                    value: Box::new(value),
+                })
+            }
             "first" | "last" | "pop" | "remove_at" | "min" | "max" => receiver
                 .array_element()
                 .cloned()
@@ -452,6 +487,7 @@ impl Compiler<'_, '_> {
                     .and_then(|arg| self.value_shape_for_syntax_expression(source, &arg)),
                 _ => None,
             },
+            "or_else" => self.syntax_callback_return_shape(&receiver, "or_else", args, source),
             "ok_or" => match receiver {
                 ValueShape::Option(value) => Some(ValueShape::Result {
                     ok: Some(value),
@@ -496,6 +532,228 @@ impl Compiler<'_, '_> {
                 },
                 _ => None,
             },
+            _ => None,
+        }
+    }
+
+    fn syntax_callback_return_shape(
+        &self,
+        receiver: &ValueShape,
+        method: &str,
+        args: &[SyntaxArgument],
+        source: Option<SourceId>,
+    ) -> Option<ValueShape> {
+        let lambda = args.first()?.expression()?.as_lambda()?;
+        let params = lambda
+            .param_list()?
+            .params()
+            .filter_map(|param| param.name_text())
+            .collect::<Vec<_>>();
+        let hints = super::callback_param_shapes(receiver, method, params.len())?;
+        let local_shapes = params
+            .into_iter()
+            .zip(hints)
+            .filter_map(|(name, shape)| shape.map(|shape| (name, shape)))
+            .collect::<BTreeMap<_, _>>();
+        let body = lambda.body_expression()?;
+        self.value_shape_for_syntax_expression_with_locals(source, &body, &local_shapes)
+    }
+
+    fn value_shape_for_syntax_expression_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        match expression.expression_kind() {
+            SyntaxExpressionKind::Literal => self.literal_shape(expression),
+            SyntaxExpressionKind::Array => {
+                self.array_shape_with_locals(source, expression, local_shapes)
+            }
+            SyntaxExpressionKind::Map => {
+                self.map_shape_with_locals(source, expression, local_shapes)
+            }
+            SyntaxExpressionKind::Record => {
+                self.record_shape_with_locals(source, expression, local_shapes)
+            }
+            SyntaxExpressionKind::Path => self
+                .local_path_shape(expression, local_shapes)
+                .or_else(|| self.path_shape(source, expression)),
+            SyntaxExpressionKind::Field => {
+                self.field_shape_with_locals(source, expression, local_shapes)
+            }
+            SyntaxExpressionKind::Index => {
+                self.index_shape_with_locals(source, expression, local_shapes)
+            }
+            SyntaxExpressionKind::Paren => {
+                let inner = expression.as_paren()?.expression()?;
+                self.value_shape_for_syntax_expression_with_locals(source, &inner, local_shapes)
+            }
+            SyntaxExpressionKind::Binary => self.binary_shape(expression),
+            SyntaxExpressionKind::Unary
+            | SyntaxExpressionKind::Assign
+            | SyntaxExpressionKind::Try
+            | SyntaxExpressionKind::Call
+            | SyntaxExpressionKind::Lambda
+            | SyntaxExpressionKind::Block
+            | SyntaxExpressionKind::If
+            | SyntaxExpressionKind::Match => None,
+        }
+    }
+
+    fn local_path_shape(
+        &self,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let path = expression.as_path()?.path_segments();
+        let [name] = path.as_slice() else {
+            return None;
+        };
+        local_shapes.get(name).cloned()
+    }
+
+    fn array_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let values = expression.as_array()?.expressions().collect::<Vec<_>>();
+        if values.is_empty() {
+            return Some(ValueShape::Array(Box::new(ValueShape::Unknown)));
+        }
+        let mut shapes = values
+            .iter()
+            .map(|value| {
+                self.value_shape_for_syntax_expression_with_locals(source, value, local_shapes)
+                    .unwrap_or(ValueShape::Unknown)
+            })
+            .collect::<Vec<_>>();
+        let first = shapes.pop()?;
+        let element = if shapes.iter().all(|shape| shape == &first) {
+            first
+        } else {
+            ValueShape::Unknown
+        };
+        Some(ValueShape::Array(Box::new(element)))
+    }
+
+    fn map_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let entries = expression.as_map()?.entries().collect::<Vec<_>>();
+        if entries.is_empty() {
+            return Some(ValueShape::Map {
+                key: Box::new(ValueShape::Unknown),
+                value: Box::new(ValueShape::Unknown),
+            });
+        }
+        let mut keys = entries
+            .iter()
+            .map(|entry| {
+                entry.key().and_then(|key| {
+                    self.value_shape_for_syntax_expression_with_locals(source, &key, local_shapes)
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
+        let key = keys.pop()?;
+        if !keys.iter().all(|shape| shape == &key) {
+            return None;
+        }
+        let values = entries
+            .iter()
+            .map(|entry| {
+                entry.value().and_then(|value| {
+                    self.value_shape_for_syntax_expression_with_locals(source, &value, local_shapes)
+                })
+            })
+            .collect::<Option<Vec<_>>>();
+        let value = values.and_then(common_shape).unwrap_or(ValueShape::Unknown);
+        Some(ValueShape::Map {
+            key: Box::new(key),
+            value: Box::new(value),
+        })
+    }
+
+    fn record_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let record = expression.as_record()?;
+        let path = record.path_segments();
+        if path.len() > 1 {
+            return None;
+        }
+        let type_name = path.first().cloned();
+        let fields = record.fields();
+        let mut field_names = fields
+            .iter()
+            .filter_map(|field| field.label_text())
+            .collect::<Vec<_>>();
+        field_names.sort_unstable();
+        field_names.dedup();
+        if field_names.is_empty() {
+            return None;
+        }
+        let slots = field_names
+            .into_iter()
+            .enumerate()
+            .map(|(slot, field)| (field, slot))
+            .collect::<BTreeMap<_, _>>();
+        let fields = fields
+            .into_iter()
+            .filter_map(|field| {
+                let name = field.label_text()?;
+                let slot = slots.get(&name).copied()?;
+                let value = field.expression().and_then(|value| {
+                    self.value_shape_for_syntax_expression_with_locals(source, &value, local_shapes)
+                });
+                let value_type = value.as_ref().and_then(ValueShape::value_type);
+                Some((
+                    name,
+                    RecordFieldShape {
+                        slot,
+                        value_type,
+                        value,
+                    },
+                ))
+            })
+            .collect();
+        Some(ValueShape::Record(RecordShape { type_name, fields }))
+    }
+
+    fn field_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let field = expression.as_field()?;
+        let receiver = field.receiver()?;
+        let name = field.name_text()?;
+        self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)?
+            .as_record()?
+            .field_value_shape(&name)
+            .cloned()
+    }
+
+    fn index_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let index = expression.as_index()?;
+        let receiver = index.receiver()?;
+        match self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)? {
+            ValueShape::Array(element) => Some(*element),
+            ValueShape::Map { value, .. } => Some(*value),
             _ => None,
         }
     }
