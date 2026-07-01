@@ -187,6 +187,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         payload: Option<&CompilerRecordFieldPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
+            if payload.is_some_and(|payload| !payload.has_value_syntax()) {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST record field value",
+                )));
+            }
             self.compile_constructor_value(
                 value,
                 field_name,

@@ -530,10 +530,29 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
 }
 
 impl<'ast> CompilerRecordFieldPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax(
+        source: SourceId,
+        syntax: SyntaxRecordExprField,
+        fallback: &'ast vela_syntax::ast::RecordField,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
         self.syntax
             .as_ref()
             .and_then(SyntaxRecordExprField::label_text)
+    }
+
+    pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .is_some_and(|field| field.expression().is_some())
     }
 
     pub(in crate::compiler) fn value_expression_payload(
