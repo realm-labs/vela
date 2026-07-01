@@ -63,7 +63,7 @@ fn main() {
     let legacy_text = f"{legacy_value}";
 }
 "#,
-        |_, payload| {
+        |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_interpolated = statements[2]
                 .let_initializer_expression_payload()
@@ -88,6 +88,18 @@ fn main() {
                 parts[0].syntax_expression().is_none(),
                 "mismatched spans must not receive index-based CST interpolation expressions"
             );
+
+            let error = compiler
+                .compile_expr_with_payload(
+                    legacy_interpolated.fallback(),
+                    Some(&mismatched_payload),
+                )
+                .expect_err("missing interpolation payload must not compile legacy expression");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST interpolation expression")
+            ));
         },
     );
 }

@@ -932,6 +932,11 @@ impl Compiler<'_, '_> {
                 InterpolatedStringPart::Expr(expr) => {
                     let payload = payloads.and_then(|payloads| payloads.get(expression_index));
                     expression_index += 1;
+                    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST interpolation expression",
+                        )));
+                    }
                     compiled.push(FormatStringPart::Value(
                         self.compile_expr_with_payload(expr, payload)?,
                     ));
