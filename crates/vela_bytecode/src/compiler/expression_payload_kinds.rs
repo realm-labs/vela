@@ -19,6 +19,7 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
         SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
         SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
         SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
+        SyntaxExpressionKind::Assign => matches!(expr.kind, ExprKind::Assign { .. }),
         SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
         SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
         SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
@@ -26,25 +27,6 @@ pub(super) fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: 
         SyntaxExpressionKind::Field => matches!(expr.kind, ExprKind::Field { .. }),
         SyntaxExpressionKind::Index => matches!(expr.kind, ExprKind::Index { .. }),
         SyntaxExpressionKind::Lambda => matches!(expr.kind, ExprKind::Lambda { .. }),
-        _ => !matches!(
-            expr.kind,
-            ExprKind::Block(_)
-                | ExprKind::If(_)
-                | ExprKind::Match(_)
-                | ExprKind::Path(_)
-                | ExprKind::Literal(_)
-                | ExprKind::InterpolatedString(_)
-                | ExprKind::Array(_)
-                | ExprKind::Map(_)
-                | ExprKind::Record { .. }
-                | ExprKind::Binary { .. }
-                | ExprKind::Call { .. }
-                | ExprKind::Unary { .. }
-                | ExprKind::Try(_)
-                | ExprKind::Field { .. }
-                | ExprKind::Index { .. }
-                | ExprKind::Lambda { .. }
-        ),
     }
 }
 
@@ -74,7 +56,8 @@ pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
     expression_requires_matching_payload(expr)
         || matches!(
             expr.kind,
-            ExprKind::Binary { .. }
+            ExprKind::Assign { .. }
+                | ExprKind::Binary { .. }
                 | ExprKind::Call { .. }
                 | ExprKind::Field { .. }
                 | ExprKind::Index { .. }

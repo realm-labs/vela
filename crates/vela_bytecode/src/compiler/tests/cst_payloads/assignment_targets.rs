@@ -1,6 +1,39 @@
 use super::*;
 
 #[test]
+fn missing_assignment_expression_payload_does_not_use_legacy_assignment() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+    value += 2;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("local target should compile");
+    let legacy_assignment = statements[1]
+        .expression_payload()
+        .expect("legacy assignment expression");
+    let missing_assignment = body_payloads::CompilerExpressionPayload::missing_syntax(
+        source,
+        legacy_assignment.fallback(),
+    );
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_assignment.fallback(), Some(&missing_assignment))
+        .expect_err("missing CST assignment payload must not compile legacy assignment");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn record_assignment_with_non_field_cst_payload_does_not_use_legacy_field_target() {
     with_cst_payload_compiler(
         r#"
