@@ -195,10 +195,7 @@ fn record_field_root_payload<'ast>(
             record_field_root_payload(payload.field_base_payload()?)
         }
         Some(_) => Some(payload),
-        None => match &payload.fallback().kind {
-            ExprKind::Field { .. } => record_field_root_payload(payload.field_base_payload()?),
-            _ => Some(payload),
-        },
+        None => Some(payload),
     }
 }
 
