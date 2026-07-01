@@ -57,3 +57,73 @@ fn main() {
         CompileErrorKind::UnsupportedSyntax("missing CST if expression payload")
     ));
 }
+
+#[test]
+fn missing_let_initializer_if_payload_does_not_use_legacy_if_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = if true {
+        1
+    } else {
+        2
+    };
+}
+"#,
+        |compiler, payload| {
+            let statement = payload.body.statement_payloads()[0]
+                .syntax_statement()
+                .expect("CST let")
+                .clone();
+            let missing_child =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statement,
+                    payload.body.statement_payloads()[0].fallback(),
+                );
+
+            let error = compiler
+                .compile_statement_payload_for_test(&missing_child)
+                .expect_err("missing CST let if payload must not compile legacy if body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST let initializer if payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_return_if_payload_does_not_use_legacy_if_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    return if true {
+        1
+    } else {
+        2
+    };
+}
+"#,
+        |compiler, payload| {
+            let statement = payload.body.statement_payloads()[0]
+                .syntax_statement()
+                .expect("CST return")
+                .clone();
+            let missing_child =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statement,
+                    payload.body.statement_payloads()[0].fallback(),
+                );
+
+            let error = compiler
+                .compile_statement_payload_for_test(&missing_child)
+                .expect_err("missing CST return if payload must not compile legacy if body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST return if payload")
+            ));
+        },
+    );
+}

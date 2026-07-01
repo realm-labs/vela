@@ -580,6 +580,8 @@ of compiling the temporary legacy owned-AST argument value.
 Expression-level if value lowering now rejects a missing rowan CST if payload
 instead of treating the absent child payload as permission to compile the
 temporary legacy owned-AST if body.
+Let initializer and return value lowering now also reject missing rowan CST if
+payloads instead of compiling temporary legacy owned-AST if bodies.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout
