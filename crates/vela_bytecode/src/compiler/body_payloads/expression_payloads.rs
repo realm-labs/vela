@@ -714,6 +714,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_binding_name(&self) -> Option<String> {
+        self.source?;
         self.syntax.as_ref()?.binding_name()
     }
 

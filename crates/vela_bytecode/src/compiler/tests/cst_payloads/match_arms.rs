@@ -439,6 +439,12 @@ fn legacy_binding(value) {
         binding_payload.syntax_binding_name().as_deref(),
         Some("current")
     );
+    let missing_source_binding_payload =
+        body_payloads::CompilerPatternPayload::missing_child_payload_context(
+            first_return_match_pattern_syntax(&cst_binding_payload.body),
+            first_return_match_fallback_pattern(legacy_literal_payload.body.fallback()),
+        );
+    assert_eq!(missing_source_binding_payload.syntax_binding_name(), None);
 }
 
 #[test]
