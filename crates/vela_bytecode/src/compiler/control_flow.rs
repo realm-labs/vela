@@ -995,10 +995,15 @@ impl Compiler<'_, '_> {
         if_expr: &IfExpr,
         payload: Option<&CompilerIfPayload<'_>>,
     ) -> CompileResult<bool> {
+        let condition_payload = required_if_statement_child_payload(
+            payload,
+            payload.and_then(CompilerIfPayload::condition_payload),
+            "missing CST if condition payload",
+        )?;
         let jump_to_else = self.emit_condition_jump_if_false(
             &if_expr.condition,
             payload.and_then(CompilerIfPayload::condition_operator),
-            payload.and_then(CompilerIfPayload::condition_payload),
+            condition_payload,
         )?;
 
         let then_payload = required_if_statement_child_payload(

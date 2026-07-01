@@ -410,6 +410,9 @@ unavailable.
 If statements now reject missing parent, then, else, and else-if CST payloads
 once the parent statement is CST-aligned, instead of silently compiling
 temporary legacy branch bodies.
+CST-aligned if statements now also reject a missing condition expression
+payload before condition-jump lowering, instead of compiling the temporary
+legacy condition expression.
 If expressions compiled as values now reject missing then/else/else-if child
 body payloads when a parent CST if payload is present instead of silently
 compiling the temporary legacy branch body.

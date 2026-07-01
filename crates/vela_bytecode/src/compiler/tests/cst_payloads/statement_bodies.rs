@@ -170,7 +170,7 @@ fn main(flag) {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST if then body payload")
+                CompileErrorKind::UnsupportedSyntax("missing CST if condition payload")
             ));
         },
     );
