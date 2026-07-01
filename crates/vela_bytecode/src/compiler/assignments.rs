@@ -217,7 +217,7 @@ impl Compiler<'_, '_> {
             )));
         };
         validate_assignment_target_payload(target, target_syntax.expression)?;
-        if let Some(local_target) = self.local_assignment_target(target) {
+        if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
                 self.value_type_for_expr_with_payload(target, target_syntax.expression);
             let assigned_value_type = match op {
@@ -289,21 +289,37 @@ impl Compiler<'_, '_> {
         self.compile_host_assignment(*op, target, value, target_syntax, value_syntax)
     }
 
-    fn local_assignment_target(&self, target: &Expr) -> Option<LocalAssignmentTarget> {
-        let ExprKind::Path(path) = &target.kind else {
-            return None;
+    fn local_assignment_target(
+        &self,
+        target: &Expr,
+        target_payload: Option<&CompilerExpressionPayload<'_>>,
+    ) -> Option<LocalAssignmentTarget> {
+        let (target_span, name) = if let Some(payload) = target_payload {
+            if !matches!(payload.kind(), Some(SyntaxExpressionKind::Path) | None) {
+                return None;
+            }
+            let path = payload.syntax_path_segments()?;
+            let [name] = path.as_slice() else {
+                return None;
+            };
+            (payload.syntax_span().unwrap_or(target.span), name.clone())
+        } else {
+            let ExprKind::Path(path) = &target.kind else {
+                return None;
+            };
+            let [name] = path.as_slice() else {
+                return None;
+            };
+            (target.span, name.clone())
         };
-        let [name] = path.as_slice() else {
-            return None;
-        };
-        let local = match self.bindings.resolution_at_span(target.span) {
+        let local = match self.bindings.resolution_at_span(target_span) {
             Some(BindingResolution::Local(local)) => Some(*local),
-            _ if self.locals.contains_key(name) => None,
+            _ if self.locals.contains_key(&name) => None,
             _ => return None,
         };
         Some(LocalAssignmentTarget {
-            target_span: target.span,
-            name: name.clone(),
+            target_span,
+            name,
             local,
         })
     }
