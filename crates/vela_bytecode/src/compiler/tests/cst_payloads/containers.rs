@@ -257,6 +257,35 @@ fn main() {
 }
 
 #[test]
+fn missing_container_expression_payload_does_not_use_legacy_container() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let values = [1];
+}
+"#,
+        |compiler, payload| {
+            let array = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("array payload");
+            let missing = body_payloads::CompilerExpressionPayload::missing_syntax(
+                SourceId::new(1),
+                array.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(array.fallback(), Some(&missing))
+                .expect_err("missing CST array expression must not compile legacy array");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn missing_array_element_payload_does_not_use_legacy_value() {
     let source = SourceId::new(1);
     let cst_text = r#"

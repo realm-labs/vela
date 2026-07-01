@@ -31,6 +31,13 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
+        if payload.is_some_and(|payload| payload.syntax_expression().is_none())
+            && expression_requires_matching_payload(expr)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST expression payload",
+            )));
+        }
         if let Some(payload) = payload
             && let Some(kind) = payload.kind()
             && expression_payload_kind_matches(kind, expr)
