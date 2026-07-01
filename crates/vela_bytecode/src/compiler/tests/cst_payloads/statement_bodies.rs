@@ -105,6 +105,78 @@ fn main() {
 }
 
 #[test]
+fn missing_if_statement_payload_does_not_use_legacy_branches() {
+    with_cst_payload_compiler(
+        r#"
+fn main(flag) {
+    if flag {
+        return 1;
+    }
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let if_statement = statements
+                .iter()
+                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::If))
+                .expect("if statement payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    if_statement
+                        .syntax_statement()
+                        .expect("if statement syntax")
+                        .clone(),
+                    if_statement.fallback(),
+                );
+
+            let error = compiler
+                .compile_statement_payload_for_test(&missing_children)
+                .expect_err("missing CST if payload must not use legacy branches");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST if statement payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_if_statement_child_payloads_do_not_use_legacy_branches() {
+    with_cst_payload_compiler(
+        r#"
+fn main(flag) {
+    if flag {
+        return 1;
+    } else {
+        return 2;
+    }
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let if_statement = statements
+                .iter()
+                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::If))
+                .expect("if statement payload");
+            let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
+
+            let error = compiler
+                .compile_if_statement_with_payload_for_test(
+                    if_statement.fallback(),
+                    &truncated_if_payload,
+                )
+                .expect_err("missing CST if branch payload must not use legacy branches");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST if then body payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn semantic_function_control_flow_statements_are_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

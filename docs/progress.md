@@ -407,6 +407,9 @@ Top-level if statement payloads now materialize nested rowan then/else and
 else-if block payloads, letting branch bodies reuse the CST-aware statement
 dispatcher while preserving legacy branch fallbacks when syntax alignment is
 unavailable.
+If statements now reject missing parent, then, else, and else-if CST payloads
+once the parent statement is CST-aligned, instead of silently compiling
+temporary legacy branch bodies.
 If expressions compiled as values now reject missing then/else/else-if child
 body payloads when a parent CST if payload is present instead of silently
 compiling the temporary legacy branch body.

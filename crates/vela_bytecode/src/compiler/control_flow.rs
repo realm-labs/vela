@@ -114,7 +114,13 @@ impl Compiler<'_, '_> {
                 stmt.for_value_pattern_payload(),
             )
         } else if kind == SyntaxStatementKind::If {
-            self.compile_if_statement(stmt.fallback(), stmt.if_payload())
+            let if_payload = stmt.if_payload();
+            if if_payload.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST if statement payload",
+                )));
+            }
+            self.compile_if_statement(stmt.fallback(), if_payload.as_ref())
         } else if kind == SyntaxStatementKind::Match {
             self.compile_match_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Block {
@@ -426,7 +432,7 @@ impl Compiler<'_, '_> {
     fn compile_if_statement(
         &mut self,
         stmt: &Stmt,
-        payload: Option<CompilerIfPayload<'_>>,
+        payload: Option<&CompilerIfPayload<'_>>,
     ) -> CompileResult<bool> {
         let StmtKind::Expr(expr) = &stmt.kind else {
             return self.compile_statement(stmt);
@@ -434,7 +440,16 @@ impl Compiler<'_, '_> {
         let ExprKind::If(if_expr) = &expr.kind else {
             return self.compile_statement(stmt);
         };
-        self.compile_if(if_expr, payload.as_ref())
+        self.compile_if(if_expr, payload)
+    }
+
+    #[cfg(test)]
+    pub(super) fn compile_if_statement_with_payload_for_test(
+        &mut self,
+        stmt: &Stmt,
+        payload: &CompilerIfPayload<'_>,
+    ) -> CompileResult<bool> {
+        self.compile_if_statement(stmt, Some(payload))
     }
 
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
@@ -986,10 +1001,12 @@ impl Compiler<'_, '_> {
             payload.and_then(CompilerIfPayload::condition_payload),
         )?;
 
-        let then_returned = self.compile_if_block(
-            &if_expr.then_branch,
+        let then_payload = required_if_statement_child_payload(
+            payload,
             payload.and_then(CompilerIfPayload::then_body),
+            "missing CST if then body payload",
         )?;
+        let then_returned = self.compile_if_block(&if_expr.then_branch, then_payload)?;
         let jump_to_end = if then_returned {
             None
         } else {
@@ -999,12 +1016,22 @@ impl Compiler<'_, '_> {
         self.patch_jump(jump_to_else, self.current_offset())?;
 
         let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => {
-                self.compile_if_block(block, payload.and_then(CompilerIfPayload::else_body))?
-            }
-            Some(ElseBranch::If(if_expr)) => {
-                self.compile_if(if_expr, payload.and_then(CompilerIfPayload::else_if))?
-            }
+            Some(ElseBranch::Block(block)) => self.compile_if_block(
+                block,
+                required_if_statement_child_payload(
+                    payload,
+                    payload.and_then(CompilerIfPayload::else_body),
+                    "missing CST if else body payload",
+                )?,
+            )?,
+            Some(ElseBranch::If(if_expr)) => self.compile_if(
+                if_expr,
+                required_if_statement_child_payload(
+                    payload,
+                    payload.and_then(CompilerIfPayload::else_if),
+                    "missing CST else-if payload",
+                )?,
+            )?,
             None => false,
         };
 
@@ -1026,5 +1053,19 @@ impl Compiler<'_, '_> {
         } else {
             self.compile_statements(&block.statements)
         }
+    }
+}
+
+fn required_if_statement_child_payload<'payload, T>(
+    parent: Option<&CompilerIfPayload<'_>>,
+    child: Option<&'payload T>,
+    message: &'static str,
+) -> CompileResult<Option<&'payload T>> {
+    if parent.is_some() && child.is_none() {
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            message,
+        )))
+    } else {
+        Ok(child)
     }
 }
