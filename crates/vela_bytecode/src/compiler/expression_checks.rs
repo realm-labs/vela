@@ -1,6 +1,6 @@
-use vela_common::{Diagnostic, Span};
+use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::MethodId;
-use vela_syntax::ast::{BinaryOp, Expr};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::record_shapes::ValueShape;
@@ -224,6 +224,112 @@ fn binary_op_source_name(op: BinaryOp) -> &'static str {
         BinaryOp::Or => "||",
         BinaryOp::And => "&&",
     }
+}
+
+pub(in crate::compiler) fn payload_syntax_overlaps_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    payload
+        .syntax_span()
+        .is_some_and(|span| spans_overlap(span, expr.span))
+}
+
+pub(in crate::compiler) fn payload_syntax_span_matches_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    payload.syntax_span() == Some(expr.span)
+}
+
+pub(in crate::compiler) fn payload_expr_is_aligned(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    std::ptr::eq(payload.fallback(), expr) || payload_syntax_overlaps_expr(payload, expr)
+}
+
+pub(in crate::compiler) fn arithmetic_binary_operator(op: BinaryOp) -> bool {
+    matches!(
+        op,
+        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
+    )
+}
+
+pub(in crate::compiler) fn reject_missing_binary_operand_payload(
+    left_payload: Option<&CompilerExpressionPayload<'_>>,
+    right_payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    reject_missing_expression_payload(left_payload, "missing CST binary operand")?;
+    reject_missing_expression_payload(right_payload, "missing CST binary operand")
+}
+
+pub(in crate::compiler) fn reject_missing_expression_payload(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    message: &'static str,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            message,
+        )));
+    }
+    Ok(())
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(in crate::compiler) enum UnsuffixedNumericLiteral<'a> {
+    Integer(&'a str),
+    Float(&'a str),
+}
+
+impl UnsuffixedNumericLiteral<'_> {
+    pub(in crate::compiler) fn matches_primitive_tag(self, tag: PrimitiveTag) -> bool {
+        match self {
+            Self::Integer(_) => matches!(
+                tag,
+                PrimitiveTag::I8
+                    | PrimitiveTag::I16
+                    | PrimitiveTag::I32
+                    | PrimitiveTag::I64
+                    | PrimitiveTag::U8
+                    | PrimitiveTag::U16
+                    | PrimitiveTag::U32
+                    | PrimitiveTag::U64
+            ),
+            Self::Float(_) => matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64),
+        }
+    }
+}
+
+pub(in crate::compiler) fn unsuffixed_numeric_literal(
+    expr: &Expr,
+) -> Option<UnsuffixedNumericLiteral<'_>> {
+    match &expr.kind {
+        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
+            Some(UnsuffixedNumericLiteral::Integer(value.source_text()))
+        }
+        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
+            Some(UnsuffixedNumericLiteral::Float(value.source_text()))
+        }
+        _ => None,
+    }
+}
+
+pub(in crate::compiler) fn expressions_are_i64(
+    left: Option<RuntimeTypeFact>,
+    right: Option<RuntimeTypeFact>,
+) -> bool {
+    matches!(
+        (left, right),
+        (
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)),
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        )
+    )
 }
 
 fn builtin_trait_method_id(trait_name: &str, method_name: &str) -> MethodId {

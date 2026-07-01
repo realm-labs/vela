@@ -12,6 +12,12 @@ use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
 use super::constructors::{record_field_names, schema_default_fields};
+use super::expression_checks::{
+    UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
+    payload_expr_is_aligned, payload_syntax_overlaps_expr, payload_syntax_span_matches_expr,
+    reject_missing_binary_operand_payload, reject_missing_expression_payload,
+    unsuffixed_numeric_literal,
+};
 use super::expression_payload_kinds::{
     expression_payload_kind_matches, expression_rejects_missing_payload,
     expression_requires_matching_payload,
@@ -90,6 +96,11 @@ impl Compiler<'_, '_> {
                 };
                 let dst = self.alloc_register()?;
                 let if_payload = payload.if_payload();
+                if if_payload.is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST if expression payload",
+                    )));
+                }
                 self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())?;
                 Ok(dst)
             }
@@ -1095,51 +1106,6 @@ pub(super) fn literal_string_with_payload(
     literal_string(expr).map(ToOwned::to_owned)
 }
 
-fn payload_syntax_overlaps_expr(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
-    payload
-        .syntax_span()
-        .is_some_and(|span| spans_overlap(span, expr.span))
-}
-
-fn payload_syntax_span_matches_expr(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
-    payload.syntax_span() == Some(expr.span)
-}
-
-fn arithmetic_binary_operator(op: BinaryOp) -> bool {
-    matches!(
-        op,
-        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
-    )
-}
-
-fn reject_missing_binary_operand_payload(
-    left_payload: Option<&CompilerExpressionPayload<'_>>,
-    right_payload: Option<&CompilerExpressionPayload<'_>>,
-) -> CompileResult<()> {
-    reject_missing_expression_payload(left_payload, "missing CST binary operand")?;
-    reject_missing_expression_payload(right_payload, "missing CST binary operand")
-}
-
-fn reject_missing_expression_payload(
-    payload: Option<&CompilerExpressionPayload<'_>>,
-    message: &'static str,
-) -> CompileResult<()> {
-    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            message,
-        )));
-    }
-    Ok(())
-}
-
-fn payload_expr_is_aligned(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
-    std::ptr::eq(payload.fallback(), expr) || payload_syntax_overlaps_expr(payload, expr)
-}
-
-fn spans_overlap(left: Span, right: Span) -> bool {
-    left.start < right.end && right.start < left.end
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum LiteralFieldSlotKind {
     Record,
@@ -1186,51 +1152,4 @@ fn logical_chain_operands(op: BinaryOp, expr: &Expr) -> Vec<&Expr> {
         operands.push(expr);
     }
     operands
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum UnsuffixedNumericLiteral<'a> {
-    Integer(&'a str),
-    Float(&'a str),
-}
-
-impl UnsuffixedNumericLiteral<'_> {
-    fn matches_primitive_tag(self, tag: PrimitiveTag) -> bool {
-        match self {
-            Self::Integer(_) => matches!(
-                tag,
-                PrimitiveTag::I8
-                    | PrimitiveTag::I16
-                    | PrimitiveTag::I32
-                    | PrimitiveTag::I64
-                    | PrimitiveTag::U8
-                    | PrimitiveTag::U16
-                    | PrimitiveTag::U32
-                    | PrimitiveTag::U64
-            ),
-            Self::Float(_) => matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64),
-        }
-    }
-}
-
-fn unsuffixed_numeric_literal(expr: &Expr) -> Option<UnsuffixedNumericLiteral<'_>> {
-    match &expr.kind {
-        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
-            Some(UnsuffixedNumericLiteral::Integer(value.source_text()))
-        }
-        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
-            Some(UnsuffixedNumericLiteral::Float(value.source_text()))
-        }
-        _ => None,
-    }
-}
-
-fn expressions_are_i64(left: Option<RuntimeTypeFact>, right: Option<RuntimeTypeFact>) -> bool {
-    matches!(
-        (left, right),
-        (
-            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)),
-            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
-        )
-    )
 }

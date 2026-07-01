@@ -577,6 +577,9 @@ owned-AST value body.
 Typed native-call and value-method mutation argument lowering now rejects
 missing rowan CST argument payloads before expected-type compilation instead
 of compiling the temporary legacy owned-AST argument value.
+Expression-level if value lowering now rejects a missing rowan CST if payload
+instead of treating the absent child payload as permission to compile the
+temporary legacy owned-AST if body.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout
