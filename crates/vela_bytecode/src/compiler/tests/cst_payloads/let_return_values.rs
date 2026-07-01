@@ -139,6 +139,38 @@ fn main() {
 }
 
 #[test]
+fn missing_let_initializer_block_body_payload_does_not_use_legacy_block() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = {
+        let nested = 1;
+        nested
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("CST let")
+        .clone();
+    let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
+        statement,
+        payload.body.statement_payloads()[0].fallback(),
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing_child)
+        .expect_err("missing CST let block body must not compile legacy block");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST let initializer block body payload")
+    ));
+}
+
+#[test]
 fn missing_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -169,6 +201,38 @@ fn main() {
     assert!(matches!(
         error.kind,
         CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
+    ));
+}
+
+#[test]
+fn missing_return_block_body_payload_does_not_use_legacy_block() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return {
+        let nested = 1;
+        nested
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("CST return")
+        .clone();
+    let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
+        statement,
+        payload.body.statement_payloads()[0].fallback(),
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing_child)
+        .expect_err("missing CST return block body must not compile legacy block");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST return block body payload")
     ));
 }
 

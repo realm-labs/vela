@@ -561,6 +561,9 @@ Let initializer and return value compilation now reject missing rowan CST value
 payloads for simple expressions as well as complex expressions, closing a
 temporary fallback path that could still compile an unrelated legacy owned-AST
 expression when the CST statement carried no value.
+Block-valued let initializers and return values now also reject missing nested
+rowan CST block body payloads instead of compiling the temporary legacy block
+body.
 Match statement and value lowering now reject missing rowan CST scrutinee
 payloads at the match boundary instead of delegating to legacy expression
 fallback behavior.

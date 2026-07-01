@@ -546,6 +546,10 @@ impl Compiler<'_, '_> {
                 let dst = self.alloc_register()?;
                 let returned = if let Some(body_payload) = syntax_payloads.block_body {
                     self.compile_block_payload_value_to(body_payload, dst)?
+                } else if syntax_payloads.expression.is_some() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let initializer block body payload",
+                    )));
                 } else {
                     self.compile_block_value_to(block, dst)?
                 };
@@ -730,6 +734,10 @@ impl Compiler<'_, '_> {
                 let dst = self.alloc_register()?;
                 let returned = if let Some(body_payload) = syntax_payloads.block_body {
                     self.compile_block_payload_value_to(body_payload, dst)?
+                } else if syntax_payloads.expression.is_some() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST return block body payload",
+                    )));
                 } else {
                     self.compile_block_value_to(block, dst)?
                 };
