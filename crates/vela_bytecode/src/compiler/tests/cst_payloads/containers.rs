@@ -257,6 +257,63 @@ fn main() {
 }
 
 #[test]
+fn missing_array_element_payload_does_not_use_legacy_value() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let value = [];
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let value = [1];
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_array = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    assert!(cst_array.as_array().is_some());
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_array = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy array payload");
+    let missing = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_array,
+        legacy_array.fallback(),
+    );
+    let element_payloads = missing
+        .array_element_payloads()
+        .expect("array element payloads");
+
+    assert_eq!(element_payloads.len(), 1);
+    assert!(element_payloads[0].syntax_expression().is_none());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_array.fallback(), Some(&missing))
+        .expect_err("missing array element payload must not compile legacy value");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST array element value")
+    ));
+}
+
+#[test]
 fn container_value_types_reject_mismatched_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"

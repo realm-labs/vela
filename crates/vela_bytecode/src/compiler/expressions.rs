@@ -502,10 +502,13 @@ impl Compiler<'_, '_> {
             .iter()
             .enumerate()
             .map(|(index, item)| {
-                self.compile_expr_with_payload(
-                    item,
-                    payloads.and_then(|payloads| payloads.get(index)),
-                )
+                let payload = payloads.and_then(|payloads| payloads.get(index));
+                if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST array element value",
+                    )));
+                }
+                self.compile_expr_with_payload(item, payload)
             })
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
