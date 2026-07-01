@@ -838,6 +838,33 @@ fn main(value) {
 }
 
 #[test]
+fn missing_match_scrutinee_payload_does_not_use_legacy_scrutinee() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    return match value {
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let match_expr = first_return_match_expr(payload.body.fallback());
+    let missing_scrutinee =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, &match_expr.scrutinee);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .compile_match_value_with_payloads(match_expr, Register(0), Some(&missing_scrutinee), None)
+        .expect_err("missing CST match scrutinee must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST match scrutinee payload")
+    ));
+}
+
+#[test]
 fn mismatched_match_guard_payloads_do_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"

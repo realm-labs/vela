@@ -21,6 +21,7 @@ impl Compiler<'_, '_> {
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
+        reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         let scrutinee_fact =
             self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
@@ -150,6 +151,7 @@ impl Compiler<'_, '_> {
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
         arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
     ) -> CompileResult<bool> {
+        reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         let scrutinee_fact =
             self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
@@ -352,4 +354,15 @@ fn match_arm_payload_at<'payload, 'ast>(
 
 fn missing_cst_match_arm_child_payload(message: &'static str) -> CompileError {
     CompileError::new(CompileErrorKind::UnsupportedSyntax(message))
+}
+
+fn reject_missing_match_scrutinee_payload(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match scrutinee payload",
+        )));
+    }
+    Ok(())
 }

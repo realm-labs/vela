@@ -561,6 +561,9 @@ Let initializer and return value compilation now reject missing rowan CST value
 payloads for simple expressions as well as complex expressions, closing a
 temporary fallback path that could still compile an unrelated legacy owned-AST
 expression when the CST statement carried no value.
+Match statement and value lowering now reject missing rowan CST scrutinee
+payloads at the match boundary instead of delegating to legacy expression
+fallback behavior.
 Formatter element extraction now walks the rowan CST token/trivia stream and
 preserves explicit EOF as formatter state, removing the old lexer-gap
 reconstruction from the production formatting input boundary while the layout
