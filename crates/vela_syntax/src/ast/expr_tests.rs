@@ -272,6 +272,66 @@ fn ast_binary_expression_exposes_operator_and_operands() {
 }
 
 #[test]
+fn ast_binary_expression_reports_operator_between_direct_operands() {
+    let source = r#"fn update(left, right) {
+    let value = left * 10 + right;
+}
+"#;
+    let parse = parse_source(source);
+    let initializer = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body")
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let binary = SyntaxBinaryExpr::cast(initializer.syntax().clone()).expect("binary expr");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(binary.operator_kind(), Some(SyntaxKind::Plus));
+    assert_eq!(binary.operator(), Some(BinaryOp::Add));
+
+    let unary_source = r#"fn update() {
+    let value = 1 + -{
+        value
+    };
+}
+"#;
+    let unary_parse = parse_source(unary_source);
+    let unary_initializer = unary_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body")
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let unary_binary =
+        SyntaxBinaryExpr::cast(unary_initializer.syntax().clone()).expect("binary expr");
+
+    assert!(
+        unary_parse.diagnostics().is_empty(),
+        "{:?}",
+        unary_parse.diagnostics()
+    );
+    assert_eq!(unary_binary.operator_kind(), Some(SyntaxKind::Plus));
+    assert_eq!(unary_binary.operator(), Some(BinaryOp::Add));
+    assert_eq!(
+        unary_binary.rhs().expect("rhs").expression_kind(),
+        SyntaxExpressionKind::Unary
+    );
+}
+
+#[test]
 fn ast_assignment_expression_exposes_operator_target_and_value() {
     let source = r#"fn update(score) {
     score = 1;

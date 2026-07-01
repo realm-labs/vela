@@ -731,16 +731,35 @@ impl CstParser<'_, '_> {
 
     fn find_root_binary_op_before(&self, start: usize, end: usize) -> Option<usize> {
         let mut depth = DelimiterDepth::default();
+        let mut root_operator = None;
         for cursor in start..end {
             let Some(current) = self.kind_at(cursor) else {
                 break;
             };
-            if depth.is_root() && cursor > start && Self::is_binary_operator(current) {
-                return Some(cursor);
+            if depth.is_root()
+                && cursor > start
+                && Self::is_binary_operator(current)
+                && self.root_binary_operator_has_left_operand(start, cursor)
+            {
+                let precedence = Self::binary_precedence(current)?;
+                if root_operator.is_none_or(|(_, root_precedence)| precedence <= root_precedence) {
+                    root_operator = Some((cursor, precedence));
+                }
             }
             depth.bump(current);
         }
-        None
+        root_operator.map(|(cursor, _)| cursor)
+    }
+
+    fn root_binary_operator_has_left_operand(&self, start: usize, operator: usize) -> bool {
+        self.previous_significant_before(start, operator)
+            .is_some_and(|left| Self::can_end_expression(self.tokens[left].kind))
+    }
+
+    fn previous_significant_before(&self, start: usize, end: usize) -> Option<usize> {
+        (start..end)
+            .rev()
+            .find(|cursor| !self.tokens[*cursor].kind.is_trivia())
     }
 
     fn find_outer_call_arg_list_start(&self, start: usize, end: usize) -> Option<usize> {
@@ -959,6 +978,45 @@ impl CstParser<'_, '_> {
                 | SyntaxKind::Slash
                 | SyntaxKind::Percent
         )
+    }
+
+    fn can_end_expression(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            SyntaxKind::Ident
+                | SyntaxKind::Int
+                | SyntaxKind::Float
+                | SyntaxKind::Char
+                | SyntaxKind::String
+                | SyntaxKind::InterpolatedString
+                | SyntaxKind::Bytes
+                | SyntaxKind::TrueKw
+                | SyntaxKind::FalseKw
+                | SyntaxKind::NullKw
+                | SyntaxKind::RParen
+                | SyntaxKind::RBracket
+                | SyntaxKind::RBrace
+                | SyntaxKind::Question
+        )
+    }
+
+    fn binary_precedence(kind: SyntaxKind) -> Option<u8> {
+        match kind {
+            SyntaxKind::OrOr => Some(1),
+            SyntaxKind::AndAnd => Some(2),
+            SyntaxKind::EqualEqual
+            | SyntaxKind::BangEqual
+            | SyntaxKind::EqualEqualEqual
+            | SyntaxKind::BangEqualEqual => Some(3),
+            SyntaxKind::Less
+            | SyntaxKind::LessEqual
+            | SyntaxKind::Greater
+            | SyntaxKind::GreaterEqual => Some(4),
+            SyntaxKind::DotDot | SyntaxKind::DotDotEqual => Some(5),
+            SyntaxKind::Plus | SyntaxKind::Minus => Some(6),
+            SyntaxKind::Star | SyntaxKind::Slash | SyntaxKind::Percent => Some(7),
+            _ => None,
+        }
     }
 }
 

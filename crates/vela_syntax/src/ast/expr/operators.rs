@@ -75,7 +75,17 @@ impl SyntaxBinaryExpr {
 
     #[must_use]
     pub fn operator_token(&self) -> Option<SyntaxToken> {
-        operator_token(&self.syntax, binary_operator_from_kind)
+        let lhs_end = self.lhs()?.syntax().text_range().end();
+        let rhs_start = self.rhs()?.syntax().text_range().start();
+        self.syntax
+            .children_with_tokens()
+            .filter_map(|element| element.into_token())
+            .find(|token| {
+                lhs_end <= token.text_range().start()
+                    && token.text_range().end() <= rhs_start
+                    && binary_operator_from_kind(token.kind()).is_some()
+            })
+            .or_else(|| operator_token(&self.syntax, binary_operator_from_kind))
     }
 
     #[must_use]
