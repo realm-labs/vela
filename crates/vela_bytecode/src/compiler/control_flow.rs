@@ -554,6 +554,7 @@ impl Compiler<'_, '_> {
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Array
+            | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Lambda
@@ -573,7 +574,6 @@ impl Compiler<'_, '_> {
                     syntax_payloads.expression,
                 )
                 .map(|register| (register, false)),
-            _ => self.compile_let_initializer_legacy(value, expected, context),
         }
     }
 
@@ -746,6 +746,7 @@ impl Compiler<'_, '_> {
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Array
+            | SyntaxExpressionKind::Assign
             | SyntaxExpressionKind::Field
             | SyntaxExpressionKind::Index
             | SyntaxExpressionKind::Lambda
@@ -765,7 +766,6 @@ impl Compiler<'_, '_> {
                     syntax_payloads.expression,
                 )
                 .map(|register| (register, false)),
-            _ => self.compile_return_expr_legacy(value, expected, context),
         }
     }
 
