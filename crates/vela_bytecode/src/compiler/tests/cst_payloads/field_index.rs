@@ -268,6 +268,67 @@ fn main() {
 }
 
 #[test]
+fn missing_field_receiver_payload_does_not_use_legacy_receiver() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let object = { amount: 1 };
+    let value = .amount;
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let object = { amount: 1 };
+    let value = object.amount;
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_field = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .nth(1)
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    assert_eq!(cst_field.expression_kind(), SyntaxExpressionKind::Field);
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = legacy_payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("object local should compile");
+    let legacy_field = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy field payload");
+    let missing = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_field,
+        legacy_field.fallback(),
+    );
+    let receiver = missing
+        .field_base_payload()
+        .expect("field receiver payload");
+    assert!(receiver.syntax_expression().is_none());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_field.fallback(), Some(&missing))
+        .expect_err("missing CST field receiver must not compile legacy receiver");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST field receiver")
+    ));
+}
+
+#[test]
 fn record_field_assignment_target_facts_prefer_cst_root_payloads() {
     with_cst_payload_compiler(
         r#"

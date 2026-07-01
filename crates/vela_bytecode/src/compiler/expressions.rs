@@ -224,6 +224,10 @@ impl Compiler<'_, '_> {
                     )));
                 }
                 let base_payload = payload.field_base_payload();
+                reject_missing_expression_payload(
+                    base_payload.as_ref(),
+                    "missing CST field receiver",
+                )?;
                 let name = payload
                     .syntax_field_name()
                     .unwrap_or_else(|| name.to_owned());
