@@ -532,6 +532,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
         key.as_path().and_then(|path| path.path_text())
     }
 
+    pub(in crate::compiler) fn has_key_syntax(&self) -> bool {
+        self.syntax
+            .as_ref()
+            .is_some_and(|entry| entry.key().is_some())
+    }
+
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
         self.syntax
             .as_ref()

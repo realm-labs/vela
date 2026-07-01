@@ -12,6 +12,11 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerMapEntryPayload<'_>>,
     ) -> CompileResult<(String, Register)> {
         let key = if let Some(payload) = payload {
+            if !payload.has_key_syntax() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST map entry key",
+                )));
+            }
             payload
                 .syntax_key_name()
                 .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("map key")))?

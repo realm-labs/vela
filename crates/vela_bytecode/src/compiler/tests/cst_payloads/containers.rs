@@ -189,8 +189,11 @@ fn main() {
                 .compile_map_entry(&legacy_entries[0], Some(&map_entries[0]))
                 .expect_err("mismatched CST map key should not use legacy fallback key");
             assert!(
-                matches!(err.kind, CompileErrorKind::UnsupportedSyntax("map key")),
-                "expected unsupported map-key diagnostic for missing CST key, got {err:?}"
+                matches!(
+                    err.kind,
+                    CompileErrorKind::UnsupportedSyntax("missing CST map entry key")
+                ),
+                "expected missing CST map-key diagnostic, got {err:?}"
             );
 
             let cst_record = statements[4]
