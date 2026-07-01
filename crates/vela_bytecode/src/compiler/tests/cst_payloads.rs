@@ -25,6 +25,7 @@ mod pattern_counts;
 mod shape_inference;
 mod source_identity;
 mod statement_bodies;
+mod statement_counts;
 mod typed_call_args;
 mod wrappers;
 

@@ -117,8 +117,7 @@ impl Compiler<'_, '_> {
                 unreachable!("validated CST match arm statement block kind");
             };
             if let Some(body) = payload.body_block_payload() {
-                let statements = body.statement_payloads();
-                return self.compile_statement_payloads(&statements);
+                return self.compile_body_payload_statements(&body);
             }
             return Err(missing_cst_match_arm_child_payload(
                 "missing CST match arm block body payload",

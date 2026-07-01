@@ -44,6 +44,7 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
+        self.reject_extra_body_statement_payloads(body)?;
         let statements = body.statement_payloads();
         match body.block_value(&statements) {
             CompilerBlockValue::Empty => {

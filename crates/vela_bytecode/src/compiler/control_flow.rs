@@ -50,6 +50,27 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    fn compile_body_payload_statements(
+        &mut self,
+        body: &CompilerBodyPayload<'_>,
+    ) -> CompileResult<bool> {
+        self.reject_extra_body_statement_payloads(body)?;
+        let statements = body.statement_payloads();
+        self.compile_statement_payloads(&statements)
+    }
+
+    fn reject_extra_body_statement_payloads(
+        &self,
+        body: &CompilerBodyPayload<'_>,
+    ) -> CompileResult<()> {
+        if body.has_unmatched_extra_statement_payloads() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST body statements",
+            )));
+        }
+        Ok(())
+    }
+
     fn compile_statement_payload(
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
@@ -147,6 +168,14 @@ impl Compiler<'_, '_> {
     }
 
     #[cfg(test)]
+    pub(super) fn compile_body_payload_statements_for_test(
+        &mut self,
+        body: &CompilerBodyPayload<'_>,
+    ) -> CompileResult<bool> {
+        self.compile_body_payload_statements(body)
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_let_initializer_value_payload_for_test(
         &mut self,
         value: &Expr,
@@ -199,8 +228,7 @@ impl Compiler<'_, '_> {
                 "missing CST block statement body payload",
             )));
         };
-        let statements = body.statement_payloads();
-        self.compile_statement_payloads(&statements)
+        self.compile_body_payload_statements(&body)
     }
 
     fn compile_expr_statement_payload(
@@ -1007,8 +1035,7 @@ impl Compiler<'_, '_> {
         )?;
         self.loop_stack.push(LoopContext::new(loop_start));
         let body_returned = if let Some(body_payload) = parts.body_payload {
-            let statements = body_payload.statement_payloads();
-            self.compile_statement_payloads(&statements)?
+            self.compile_body_payload_statements(&body_payload)?
         } else {
             self.compile_statements(&parts.body.statements)?
         };
@@ -1130,8 +1157,7 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerBodyPayload<'_>>,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload {
-            let statements = payload.statement_payloads();
-            self.compile_statement_payloads(&statements)
+            self.compile_body_payload_statements(payload)
         } else {
             self.compile_statements(&block.statements)
         }

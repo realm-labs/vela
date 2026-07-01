@@ -132,6 +132,16 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .collect()
     }
 
+    pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
+        let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
+        syntax_statements.len() > self.fallback.statements.len()
+            && syntax_statements.iter().any(|statement| {
+                !self.fallback.statements.iter().any(|fallback| {
+                    syntax_range_overlaps_span(statement.syntax().text_range(), fallback.span)
+                })
+            })
+    }
+
     pub(super) fn block_value<'payload>(
         &self,
         statements: &'payload [CompilerStatementPayload<'ast>],
