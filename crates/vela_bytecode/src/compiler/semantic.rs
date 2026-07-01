@@ -501,8 +501,9 @@ fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let legacy_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
-    let body = super::body_payloads::CompilerBodyPayload::syntax(source, syntax_body, legacy_body);
+    let fallback_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
+    let body =
+        super::body_payloads::CompilerBodyPayload::syntax(source, syntax_body, fallback_body);
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
         name: name.to_owned(),

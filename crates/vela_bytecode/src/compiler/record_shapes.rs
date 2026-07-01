@@ -1105,7 +1105,7 @@ impl super::Compiler<'_, '_> {
     fn value_shape_for_path_expr(
         &self,
         span: Span,
-        legacy_path: &[String],
+        fallback_path: &[String],
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
         if let Some(payload) = payload {
@@ -1123,7 +1123,7 @@ impl super::Compiler<'_, '_> {
         }
 
         let local_shape = self.value_shapes.local_at_span(self.bindings, span);
-        let [root] = legacy_path else {
+        let [root] = fallback_path else {
             return local_shape;
         };
         local_shape

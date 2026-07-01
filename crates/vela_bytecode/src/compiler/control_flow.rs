@@ -28,8 +28,8 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    control_flow_expression_requires_matching_syntax, i64_pattern_facts, is_map_or_set_type_hint,
-    iterable_item_shape, legacy_statement_kind, merge_type_hint_and_value_fact,
+    control_flow_expression_requires_matching_syntax, fallback_statement_kind, i64_pattern_facts,
+    is_map_or_set_type_hint, iterable_item_shape, merge_type_hint_and_value_fact,
     range_iterable_for_payload, statement_kind_matches, value_expression_kind_matches,
     value_expression_requires_matching_syntax,
 };
@@ -280,7 +280,7 @@ impl Compiler<'_, '_> {
     }
 
     pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
-        self.compile_statement_as(legacy_statement_kind(stmt), stmt)
+        self.compile_statement_as(fallback_statement_kind(stmt), stmt)
     }
 
     fn compile_statement_as(

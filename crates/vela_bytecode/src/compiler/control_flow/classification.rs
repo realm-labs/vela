@@ -22,7 +22,7 @@ pub(super) fn i64_pattern_facts() -> PatternBindingFacts {
     PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
 }
 
-pub(super) fn legacy_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
+pub(super) fn fallback_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
     match &stmt.kind {
         StmtKind::Let { .. } => SyntaxStatementKind::Let,
         StmtKind::Return(_) => SyntaxStatementKind::Return,
@@ -39,7 +39,7 @@ pub(super) fn legacy_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
 }
 
 pub(super) fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> bool {
-    kind == legacy_statement_kind(stmt)
+    kind == fallback_statement_kind(stmt)
 }
 
 pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {

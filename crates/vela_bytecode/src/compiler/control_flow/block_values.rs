@@ -98,7 +98,7 @@ impl Compiler<'_, '_> {
                 ),
             ));
         }
-        self.compile_legacy_block_tail_expr_to(expr, dst)
+        self.compile_fallback_block_tail_expr_to(expr, dst)
     }
 
     fn compile_cst_block_tail_expr_to(
@@ -162,7 +162,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_legacy_block_tail_expr_to(
+    fn compile_fallback_block_tail_expr_to(
         &mut self,
         expr: &Expr,
         dst: Register,

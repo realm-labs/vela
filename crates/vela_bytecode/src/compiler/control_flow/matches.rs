@@ -103,7 +103,7 @@ impl Compiler<'_, '_> {
                 "missing CST match arm body",
             )));
         }
-        self.compile_legacy_match_arm_statement(arm, payload)
+        self.compile_fallback_match_arm_statement(arm, payload)
     }
 
     fn compile_match_arm_statement_with_syntax_kind(
@@ -129,7 +129,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    fn compile_legacy_match_arm_statement(
+    fn compile_fallback_match_arm_statement(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
         payload: Option<&CompilerMatchArmPayload<'_>>,
@@ -270,7 +270,7 @@ impl Compiler<'_, '_> {
                 "missing CST match arm body",
             )));
         }
-        self.compile_legacy_match_arm_value_to(body, payload, dst)
+        self.compile_fallback_match_arm_value_to(body, payload, dst)
     }
 
     fn compile_match_arm_value_with_syntax_kind(
@@ -336,7 +336,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_legacy_match_arm_value_to(
+    fn compile_fallback_match_arm_value_to(
         &mut self,
         body: &Expr,
         payload: Option<&CompilerMatchArmPayload<'_>>,
