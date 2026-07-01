@@ -361,11 +361,17 @@ fn match_arm_payload_at<'payload, 'ast>(
     let Some(payloads) = payloads else {
         return Ok(None);
     };
-    payloads.get(index).map(Some).ok_or_else(|| {
+    let payload = payloads.get(index).ok_or_else(|| {
         CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "missing CST match arm payload",
         ))
-    })
+    })?;
+    if !payload.has_syntax() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match arm payload",
+        )));
+    }
+    Ok(Some(payload))
 }
 
 fn missing_cst_match_arm_child_payload(message: &'static str) -> CompileError {

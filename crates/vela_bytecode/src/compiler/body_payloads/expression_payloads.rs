@@ -612,6 +612,15 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         }
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn missing_syntax(fallback: &'ast vela_syntax::ast::MatchArm) -> Self {
+        Self {
+            source: None,
+            syntax: None,
+            fallback,
+        }
+    }
+
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload {
             syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),

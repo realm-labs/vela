@@ -18,6 +18,7 @@ mod let_return_values;
 mod literals;
 mod match_arms;
 mod match_guards;
+mod match_payloads;
 mod param_defaults;
 mod path_expressions;
 mod shape_inference;
