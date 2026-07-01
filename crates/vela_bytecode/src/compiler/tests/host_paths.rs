@@ -317,6 +317,9 @@ fn main(cst: CstHost, legacy: LegacyHost) {
             .clone(),
         legacy_target.fallback(),
     );
+    let cst_receiver = mismatched_target
+        .field_base_payload()
+        .expect("CST field receiver payload");
     let mut compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
         payload.body.clone(),
@@ -326,6 +329,15 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         facts,
     )
     .expect("compiler should initialize");
+    assert_eq!(
+        compiler
+            .host_path_root_type_name_for_test(crate::compiler::host_paths::HostPathRoot::Expr {
+                expr: cst_receiver.fallback(),
+                payload: Some(cst_receiver),
+            })
+            .as_deref(),
+        Some("CstHost")
+    );
 
     assert!(
         compiler

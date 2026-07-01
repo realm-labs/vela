@@ -731,12 +731,27 @@ impl Compiler<'_, '_> {
 
     fn host_path_root_type_name(&self, root: HostPathRoot<'_>) -> Option<String> {
         match root {
-            HostPathRoot::Expr { expr, payload } => {
-                self.script_type_for_expr_with_payload(expr, payload.as_ref())
-            }
+            HostPathRoot::Expr {
+                expr,
+                payload: Some(payload),
+            } => self
+                .script_type_for_payload(&payload)
+                .or_else(|| self.script_type_for_expr_with_payload(expr, Some(&payload))),
+            HostPathRoot::Expr {
+                expr,
+                payload: None,
+            } => self.script_type_for_expr_with_payload(expr, None),
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn host_path_root_type_name_for_test(
+        &self,
+        root: HostPathRoot<'_>,
+    ) -> Option<String> {
+        self.host_path_root_type_name(root)
     }
 
     pub(super) fn host_local_type_name(&self, name: &str, span: Span) -> Option<String> {
