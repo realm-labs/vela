@@ -53,6 +53,11 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
         Some(self.payload_for(arg)?.value_expression_payload())
     }
 
+    fn has_missing_value_payload(self, arg: &Argument) -> bool {
+        self.payload_for(arg)
+            .is_some_and(|payload| !payload.has_value_syntax())
+    }
+
     pub(in crate::compiler) fn name_for(self, arg: &Argument) -> Option<String> {
         if self.payloads.is_some() {
             self.payload_for(arg)
@@ -125,6 +130,11 @@ impl Compiler<'_, '_> {
         let context = TypeContractContext::FunctionParameter {
             name: param.name.clone(),
         };
+        if arg_syntax.has_missing_value_payload(arg) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST call argument value",
+            )));
+        }
         let payload = arg_syntax.value_expression_payload_for(arg);
         let outcome = self.expected_type_for_expr_with_payload(
             value,
@@ -143,6 +153,11 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> CompileResult<crate::Register> {
         let value = &arg.value;
+        if arg_syntax.has_missing_value_payload(arg) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST call argument value",
+            )));
+        }
         if let Some(value_payload) = arg_syntax.value_expression_payload_for(arg) {
             return self.compile_expr_with_payload(value, Some(&value_payload));
         }
