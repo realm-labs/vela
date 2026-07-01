@@ -214,6 +214,64 @@ fn logical_values() {
 }
 
 #[test]
+fn binary_expression_lowering_prefers_cst_operator_payload() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main(left, right) {
+    let value = left + right;
+    return value;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main(left, right) {
+    let value = left - right;
+    return value;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("CST-backed binary expression should compile");
+
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::Add { .. }
+                    )),
+                "binary expression should use the CST operator"
+            );
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .all(|instruction| !matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::Sub { .. }
+                    )),
+                "binary expression should not use the legacy fallback operator"
+            );
+        },
+    );
+}
+
+#[test]
 fn identity_comparison_diagnostics_prefer_cst_operand_payloads() {
     with_cst_payload_compiler(
         r#"

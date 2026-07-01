@@ -129,15 +129,21 @@ impl Compiler<'_, '_> {
                         "mismatched CST binary expression payload",
                     )));
                 }
+                let cst_op = payload
+                    .syntax_binary_operator()
+                    .filter(|_| payload_syntax_span_matches_expr(payload, expr))
+                    .filter(|cst_op| arithmetic_binary_operator(*cst_op))
+                    .filter(|_| arithmetic_binary_operator(*op));
+                let op = cst_op.unwrap_or(*op);
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    let operand_payloads = payload.logical_chain_operand_payloads(*op);
-                    return self.compile_logical_chain(*op, expr, operand_payloads.as_deref());
+                    let operand_payloads = payload.logical_chain_operand_payloads(op);
+                    return self.compile_logical_chain(op, expr, operand_payloads.as_deref());
                 }
                 let operand_payloads = payload.binary_operand_payloads();
                 let (left_payload, right_payload) = operand_payloads
                     .as_ref()
                     .map_or((None, None), |(left, right)| (Some(left), Some(right)));
-                self.compile_binary(*op, expr.span, left, right, left_payload, right_payload)
+                self.compile_binary(op, expr.span, left, right, left_payload, right_payload)
             }
             SyntaxExpressionKind::Call => {
                 let ExprKind::Call { callee, args } = &expr.kind else {
@@ -206,8 +212,13 @@ impl Compiler<'_, '_> {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
                 };
+                let op = if payload_syntax_span_matches_expr(payload, expr) {
+                    payload.syntax_unary_operator().unwrap_or(*op)
+                } else {
+                    *op
+                };
                 let operand_payload = payload.unary_operand_payload();
-                self.compile_unary(*op, operand.span, operand, operand_payload.as_ref())
+                self.compile_unary(op, operand.span, operand, operand_payload.as_ref())
             }
             SyntaxExpressionKind::Try => {
                 let ExprKind::Try(operand) = &expr.kind else {
@@ -970,6 +981,17 @@ fn payload_syntax_overlaps_expr(payload: &CompilerExpressionPayload<'_>, expr: &
     payload
         .syntax_span()
         .is_some_and(|span| spans_overlap(span, expr.span))
+}
+
+fn payload_syntax_span_matches_expr(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
+    payload.syntax_span() == Some(expr.span)
+}
+
+fn arithmetic_binary_operator(op: BinaryOp) -> bool {
+    matches!(
+        op,
+        BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
+    )
 }
 
 fn payload_expr_is_aligned(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {

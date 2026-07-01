@@ -134,6 +134,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         })
     }
 
+    pub(in crate::compiler) fn syntax_unary_operator(&self) -> Option<vela_syntax::ast::UnaryOp> {
+        self.syntax.as_ref()?.as_unary()?.operator()
+    }
+
     pub(in crate::compiler) fn try_operand_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -169,6 +173,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 fallback: right,
             },
         ))
+    }
+
+    pub(in crate::compiler) fn syntax_binary_operator(&self) -> Option<BinaryOp> {
+        let binary = self.syntax.as_ref()?.as_binary()?;
+        let mut expressions = binary.expressions();
+        expressions.next()?;
+        expressions.next()?;
+        if expressions.next().is_some() {
+            return None;
+        }
+        binary.operator()
     }
 
     pub(in crate::compiler) fn logical_chain_operand_payloads(
