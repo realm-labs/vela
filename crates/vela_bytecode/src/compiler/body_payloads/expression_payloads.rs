@@ -90,6 +90,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_path_segments(&self) -> Option<Vec<String>> {
+        self.source?;
         let segments = self.syntax.as_ref()?.as_path()?.path_segments();
         (!segments.is_empty()).then_some(segments)
     }

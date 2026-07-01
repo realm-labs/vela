@@ -101,6 +101,29 @@ fn main() {
 }
 
 #[test]
+fn source_less_path_payload_does_not_expose_cst_segments() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let selected = value;
+}
+"#,
+        |_, payload| {
+            let path = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("path initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    path.syntax_expression().expect("path syntax").clone(),
+                    path.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_path_segments(), None);
+        },
+    );
+}
+
+#[test]
 fn script_type_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"
