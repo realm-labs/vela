@@ -5,13 +5,15 @@ mod attribute;
 pub mod formatting;
 pub mod lexer;
 pub mod parse;
-pub mod parser;
+mod parser;
 pub mod syntax_kind;
 pub mod syntax_node;
 mod syntax_validation;
 pub mod token;
 
 pub use parse::Parse;
+#[doc(hidden)]
+pub use parser::parse_body_blocks_at_spans;
 pub use rowan::{
     GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };

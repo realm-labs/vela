@@ -2,7 +2,7 @@ use vela_common::{SourceId, Span};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::ast::{AstNode, Block, SyntaxBlock};
-use vela_syntax::parser::parse_body_blocks_at_spans;
+use vela_syntax::parse_body_blocks_at_spans;
 
 pub(super) struct BodyFallbackSource {
     bodies: Vec<Block>,
