@@ -990,6 +990,7 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_name(&self) -> Option<String> {
+        self.source?;
         self.syntax.as_ref().and_then(SyntaxArgument::name_text)
     }
 

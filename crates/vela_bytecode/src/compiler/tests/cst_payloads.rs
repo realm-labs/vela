@@ -22,6 +22,7 @@ mod match_payloads;
 mod param_defaults;
 mod path_expressions;
 mod shape_inference;
+mod source_identity;
 mod statement_bodies;
 mod typed_call_args;
 mod wrappers;

@@ -366,6 +366,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
+        self.source?;
         self.syntax.as_ref()?.as_field()?.name_text()
     }
 
@@ -526,6 +527,7 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_key_name(&self) -> Option<String> {
+        self.source?;
         let key = self.syntax.as_ref()?.key()?;
         if let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) {
             return match literal {
@@ -575,6 +577,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
+        self.source?;
         self.syntax
             .as_ref()
             .and_then(SyntaxRecordExprField::label_text)
