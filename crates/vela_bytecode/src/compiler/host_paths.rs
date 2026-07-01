@@ -1,7 +1,7 @@
 use vela_common::Span;
 use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
-use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
+use vela_syntax::ast::{Argument, Expr, ExprKind, Literal, SyntaxExpressionKind};
 
 use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
@@ -826,7 +826,7 @@ impl Compiler<'_, '_> {
                     payload,
                     dynamic_kind,
                 } => {
-                    if let Some(arg) = const_host_path_arg(expr) {
+                    if let Some(arg) = const_host_path_arg_with_payload(expr, payload.as_ref()) {
                         plan = match arg {
                             ConstHostPathArg::Index(index) => plan.const_index(index),
                             ConstHostPathArg::Key(key) => plan.const_key(key),
@@ -1137,16 +1137,31 @@ impl HostIndexAccessKind {
 
 fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {
     match &expr.kind {
-        ExprKind::Literal(vela_syntax::ast::Literal::Integer(value)) if value.suffix.is_none() => {
-            value
-                .source_text()
-                .parse::<u32>()
-                .ok()
-                .map(ConstHostPathArg::Index)
-        }
-        ExprKind::Literal(vela_syntax::ast::Literal::String(value)) => {
-            Some(ConstHostPathArg::Key(value.clone()))
-        }
+        ExprKind::Literal(literal) => const_host_path_arg_from_literal(literal),
+        _ => None,
+    }
+}
+
+fn const_host_path_arg_with_payload(
+    expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> Option<ConstHostPathArg> {
+    if payload.is_some_and(|payload| payload.source().is_some()) {
+        return payload
+            .and_then(CompilerExpressionPayload::syntax_literal)
+            .and_then(|literal| const_host_path_arg_from_literal(&literal));
+    }
+    const_host_path_arg(expr)
+}
+
+fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathArg> {
+    match literal {
+        Literal::Integer(value) if value.suffix.is_none() => value
+            .source_text()
+            .parse::<u32>()
+            .ok()
+            .map(ConstHostPathArg::Index),
+        Literal::String(value) => Some(ConstHostPathArg::Key(value.clone())),
         _ => None,
     }
 }
