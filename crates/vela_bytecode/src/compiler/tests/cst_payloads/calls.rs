@@ -276,6 +276,16 @@ fn main() {
     let legacy_call = legacy_payload.body.statement_payloads()[0]
         .let_initializer_expression_payload()
         .expect("legacy call payload");
+    let missing_source_call =
+        body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+            legacy_call
+                .syntax_expression()
+                .expect("call syntax expression")
+                .clone(),
+            legacy_call.fallback(),
+        );
+    assert_eq!(missing_source_call.syntax_call_callee_path_segments(), None);
+
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
         panic!("expected legacy call fallback");
     };

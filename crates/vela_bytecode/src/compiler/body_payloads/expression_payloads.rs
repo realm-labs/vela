@@ -109,6 +109,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_call_callee_path_segments(&self) -> Option<Vec<String>> {
+        self.source?;
         let callee = self.syntax.as_ref()?.as_call()?.callee()?;
         let segments = callee.as_path()?.path_segments();
         (!segments.is_empty()).then_some(segments)
