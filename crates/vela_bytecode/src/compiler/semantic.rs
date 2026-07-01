@@ -8,7 +8,7 @@ use vela_hir::module_graph::{
 };
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::SyntaxSourceFile;
+use vela_syntax::ast::{AstNode, SyntaxBlock, SyntaxSourceFile};
 use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
 use crate::Constant;
@@ -17,10 +17,7 @@ use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
 use super::function_payloads::FunctionBodyPayload;
-use super::legacy_payloads::{
-    LegacyFunctionBodyPayload, LegacySourceFallback,
-    function_body_payload as legacy_function_body_payload,
-};
+use super::legacy_payloads::LegacySourceFallback;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::schema_defaults::{ScriptSchemaDefaults, source_schema_defaults};
 use super::script_impls;
@@ -494,14 +491,21 @@ fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let LegacyFunctionBodyPayload { name, body } =
-        legacy_function_body_payload(source, legacy, name, syntax_body)?;
+    let legacy_body = legacy.body_by_span(syntax_body_span(source, &syntax_body))?;
+    let body = super::body_payloads::CompilerBodyPayload::syntax(source, syntax_body, legacy_body);
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
-        name,
+        name: name.to_owned(),
         body,
         param_defaults,
     })
+}
+
+fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> vela_common::Span {
+    let range = body.syntax().text_range();
+    let start: u32 = range.start().into();
+    let end: u32 = range.end().into();
+    vela_common::Span::new(source, start, end)
 }
 
 fn function_param_defaults(

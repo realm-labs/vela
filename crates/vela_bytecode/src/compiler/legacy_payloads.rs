@@ -1,8 +1,6 @@
 use vela_common::{SourceId, Span};
-use vela_syntax::ast::{AstNode, Block, ItemKind, SourceFile, SyntaxBlock};
+use vela_syntax::ast::{Block, ItemKind, SourceFile};
 use vela_syntax::parser::parse_source as parse_legacy_source;
-
-use super::body_payloads::CompilerBodyPayload;
 
 pub(super) struct LegacySourceFallback {
     parsed: SourceFile,
@@ -42,29 +40,4 @@ impl LegacySourceFallback {
         }
         None
     }
-}
-
-pub(super) struct LegacyFunctionBodyPayload<'ast> {
-    pub(super) name: String,
-    pub(super) body: CompilerBodyPayload<'ast>,
-}
-
-pub(super) fn function_body_payload<'ast>(
-    source: SourceId,
-    legacy: &'ast LegacySourceFallback,
-    name: &str,
-    syntax_body: SyntaxBlock,
-) -> Option<LegacyFunctionBodyPayload<'ast>> {
-    let legacy_body = legacy.body_by_span(syntax_body_span(source, &syntax_body))?;
-    Some(LegacyFunctionBodyPayload {
-        name: name.to_owned(),
-        body: CompilerBodyPayload::syntax(source, syntax_body, legacy_body),
-    })
-}
-
-fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {
-    let range = body.syntax().text_range();
-    let start: u32 = range.start().into();
-    let end: u32 = range.end().into();
-    Span::new(source, start, end)
 }
