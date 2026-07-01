@@ -242,6 +242,15 @@ fn classify(result) {
         .filter_map(|field| field.syntax_label_name())
         .collect::<Vec<_>>();
     assert_eq!(field_labels, ["code", "message"]);
+    let missing_source_record =
+        body_payloads::CompilerPatternPayload::missing_child_payload_context(
+            syntax_pattern.clone(),
+            first_return_match_fallback_pattern(payload.body.fallback()),
+        );
+    let missing_source_fields = missing_source_record
+        .record_field_payloads()
+        .expect("source-less record pattern should expose field payloads");
+    assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     let nested_pattern = record_fields[0]
         .pattern_payload()
         .expect("explicit record pattern field should expose nested payload");

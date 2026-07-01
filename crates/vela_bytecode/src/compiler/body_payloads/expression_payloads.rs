@@ -802,6 +802,7 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
+        self.source?;
         self.syntax
             .as_ref()
             .and_then(SyntaxRecordPatternField::label_text)
