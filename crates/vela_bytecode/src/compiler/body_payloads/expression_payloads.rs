@@ -190,6 +190,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_unary_operator(&self) -> Option<vela_syntax::ast::UnaryOp> {
+        self.source?;
         self.syntax.as_ref()?.as_unary()?.operator()
     }
 

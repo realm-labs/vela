@@ -244,6 +244,8 @@ fn main() {
     let missing_unary =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_unary.fallback());
 
+    assert_eq!(missing_unary.syntax_unary_operator(), None);
+
     let error = compiler
         .compile_expr_with_payload(legacy_unary.fallback(), Some(&missing_unary))
         .expect_err("missing CST unary payload must not compile legacy unary");
