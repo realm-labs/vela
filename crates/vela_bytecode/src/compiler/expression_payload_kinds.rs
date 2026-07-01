@@ -35,7 +35,7 @@ pub(super) fn expression_payload_is_aligned(
     expr: &Expr,
 ) -> bool {
     payload
-        .kind()
+        .syntax_kind()
         .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
         && expression_payload_overlaps_span(payload, expr.span)
 }

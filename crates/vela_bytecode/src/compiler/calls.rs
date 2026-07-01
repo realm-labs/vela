@@ -354,7 +354,10 @@ impl Compiler<'_, '_> {
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> Option<CompileResult<crate::Register>> {
         if let Some(payload) = callee_payload {
-            if !matches!(payload.kind(), Some(SyntaxExpressionKind::Field) | None) {
+            if !matches!(
+                payload.syntax_kind(),
+                Some(SyntaxExpressionKind::Field) | None
+            ) {
                 return None;
             }
             let name = payload.syntax_field_name()?;
@@ -1146,7 +1149,7 @@ fn callee_is_closure_call(
     callee: &Expr,
 ) -> bool {
     if let Some(payload) = callee_payload {
-        return !matches!(payload.kind(), Some(SyntaxExpressionKind::Path));
+        return !matches!(payload.syntax_kind(), Some(SyntaxExpressionKind::Path));
     }
     !matches!(callee.kind, ExprKind::Path(_))
 }

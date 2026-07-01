@@ -11,7 +11,7 @@ pub(super) fn callback_lambda_payload_is_authoritative(
     let Some(payload) = arg_payload else {
         return true;
     };
-    match payload.kind() {
+    match payload.syntax_kind() {
         Some(SyntaxExpressionKind::Lambda) => expression_payload_is_aligned(payload, arg_value),
         Some(_) => false,
         None => true,

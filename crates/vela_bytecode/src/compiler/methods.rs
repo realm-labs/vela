@@ -63,7 +63,7 @@ fn callee_field_name(
     fallback_name: &str,
 ) -> Option<String> {
     match callee_payload {
-        Some(payload) => match payload.kind() {
+        Some(payload) => match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
             Some(SyntaxExpressionKind::Path) => None,
             Some(_) => None,

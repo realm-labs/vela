@@ -20,7 +20,7 @@ impl Compiler<'_, '_> {
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
         if let Some(payload) = condition_payload
-            && let Some(kind) = payload.kind()
+            && let Some(kind) = payload.syntax_kind()
             && !value_expression_kind_matches(kind, condition)
             && control_flow_expression_requires_matching_syntax(condition)
         {

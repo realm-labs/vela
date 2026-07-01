@@ -1030,6 +1030,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.syntax_kind()
+    }
+
+    pub(in crate::compiler) fn syntax_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()
             .map(|expression| expression.expression_kind())

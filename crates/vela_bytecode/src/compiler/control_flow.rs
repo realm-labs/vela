@@ -102,7 +102,7 @@ impl Compiler<'_, '_> {
             let iterable_payload = stmt.for_iterable_expression_payload();
             if iterable_payload
                 .as_ref()
-                .and_then(CompilerExpressionPayload::kind)
+                .and_then(CompilerExpressionPayload::syntax_kind)
                 .is_none()
             {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -887,7 +887,7 @@ impl Compiler<'_, '_> {
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
-            && let Some(kind) = payload.kind()
+            && let Some(kind) = payload.syntax_kind()
             && !value_expression_kind_matches(kind, parts.iterable)
             && control_flow_expression_requires_matching_syntax(parts.iterable)
         {

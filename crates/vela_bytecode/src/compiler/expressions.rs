@@ -66,12 +66,12 @@ impl Compiler<'_, '_> {
             )));
         }
         if let Some(payload) = payload
-            && let Some(kind) = payload.kind()
+            && let Some(kind) = payload.syntax_kind()
             && expression_payload_kind_matches(kind, expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
-        if payload.is_some_and(|payload| payload.kind().is_some())
+        if payload.is_some_and(|payload| payload.syntax_kind().is_some())
             && expression_requires_matching_payload(expr)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

@@ -1000,7 +1000,7 @@ impl super::Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let kind_matched_payload = payload.filter(|payload| {
             payload
-                .kind()
+                .syntax_kind()
                 .is_none_or(|kind| expression_payload_kind_matches(kind, expr))
         });
         if let Some(shape) =

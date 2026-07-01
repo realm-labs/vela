@@ -294,7 +294,7 @@ fn static_expr_type_with_payload(
 ) -> StaticExprType {
     let payload_matches_expr = payload
         .map(|payload| {
-            let kind_matches = payload.kind().is_none_or(|kind| {
+            let kind_matches = payload.syntax_kind().is_none_or(|kind| {
                 kind != SyntaxExpressionKind::Path
                     || matches!(
                         expr.kind,

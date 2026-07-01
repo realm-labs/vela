@@ -238,7 +238,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         if let Some(payload) = payload.as_ref()
-            && let Some(kind) = payload.kind()
+            && let Some(kind) = payload.syntax_kind()
             && !expression_payload_kind_matches(kind, guard)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

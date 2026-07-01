@@ -177,7 +177,7 @@ fn is_local_index_collection_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> bool {
     if let Some(payload) = payload {
-        return match payload.kind() {
+        return match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Path) | None => payload
                 .syntax_path_segments()
                 .is_some_and(|path| path.len() == 1),

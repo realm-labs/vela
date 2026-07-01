@@ -203,7 +203,7 @@ impl<'payload, 'ast> AssignmentTargetSyntax<'payload, 'ast> {
 fn record_field_root_payload<'ast>(
     payload: CompilerExpressionPayload<'ast>,
 ) -> Option<CompilerExpressionPayload<'ast>> {
-    match payload.kind() {
+    match payload.syntax_kind() {
         Some(SyntaxExpressionKind::Field) => {
             record_field_root_payload(payload.field_base_payload()?)
         }
@@ -313,7 +313,10 @@ impl Compiler<'_, '_> {
         target_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<LocalAssignmentTarget> {
         let (target_span, name) = if let Some(payload) = target_payload {
-            if !matches!(payload.kind(), Some(SyntaxExpressionKind::Path) | None) {
+            if !matches!(
+                payload.syntax_kind(),
+                Some(SyntaxExpressionKind::Path) | None
+            ) {
                 return None;
             }
             let path = payload.syntax_path_segments()?;
@@ -1103,7 +1106,7 @@ impl Compiler<'_, '_> {
         syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> Option<(String, String)> {
         if let Some(payload) = syntax.expression {
-            return match payload.kind() {
+            return match payload.syntax_kind() {
                 Some(SyntaxExpressionKind::Field) | None => {
                     let base_payload = payload.field_base_payload()?;
                     let field = payload.syntax_field_name()?;

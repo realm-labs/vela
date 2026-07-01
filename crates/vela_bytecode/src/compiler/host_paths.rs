@@ -99,7 +99,7 @@ impl Compiler<'_, '_> {
         &self,
         payload: CompilerExpressionPayload<'ast>,
     ) -> Option<ResolvedHostPath<'ast>> {
-        match payload.kind()? {
+        match payload.syntax_kind()? {
             SyntaxExpressionKind::Field => {
                 let name = payload.syntax_field_name()?;
                 let base_payload = payload.field_base_payload()?;
@@ -183,7 +183,7 @@ impl Compiler<'_, '_> {
         &self,
         payload: CompilerExpressionPayload<'ast>,
     ) -> Option<ResolvedHostPath<'ast>> {
-        match payload.kind()? {
+        match payload.syntax_kind()? {
             SyntaxExpressionKind::Field | SyntaxExpressionKind::Index => {
                 self.resolve_host_path_from_payload(payload)
             }
@@ -723,7 +723,7 @@ impl Compiler<'_, '_> {
         method: &str,
     ) -> Option<HostCollectionMethodTarget<'ast>> {
         if let Some(payload) = callee_payload {
-            return match payload.kind() {
+            return match payload.syntax_kind() {
                 Some(SyntaxExpressionKind::Field) | None => {
                     if payload.syntax_field_name()?.as_str() != method {
                         return None;
@@ -985,7 +985,7 @@ impl Compiler<'_, '_> {
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
         if let Some(payload) = payload {
-            return match payload.kind() {
+            return match payload.syntax_kind() {
                 Some(SyntaxExpressionKind::Index) => {
                     let ExprKind::Index { base, index } = &expr.kind else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -1043,7 +1043,7 @@ fn host_path_field_name(
     fallback_name: &str,
 ) -> Option<String> {
     match payload {
-        Some(payload) => match payload.kind() {
+        Some(payload) => match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
             Some(_) => None,
         },
