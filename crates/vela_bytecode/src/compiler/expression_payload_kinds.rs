@@ -70,6 +70,10 @@ pub(super) fn expression_requires_matching_payload(expr: &Expr) -> bool {
     )
 }
 
+pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
+    expression_requires_matching_payload(expr) || matches!(expr.kind, ExprKind::Call { .. })
+}
+
 fn expression_payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
     payload
         .syntax_span()

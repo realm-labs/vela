@@ -13,7 +13,8 @@ use super::const_eval::{
 };
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_payload_kinds::{
-    expression_payload_kind_matches, expression_requires_matching_payload,
+    expression_payload_kind_matches, expression_rejects_missing_payload,
+    expression_requires_matching_payload,
 };
 use super::host_paths::HostPath;
 use super::operators::{
@@ -32,7 +33,7 @@ impl Compiler<'_, '_> {
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
-            && expression_requires_matching_payload(expr)
+            && expression_rejects_missing_payload(expr)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression payload",
