@@ -1,8 +1,8 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxRecordExprField,
-    SyntaxRecordPatternField,
+    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPatternKind,
+    SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
 use super::{
@@ -545,6 +545,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 }
 
 impl<'ast> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
+        self.syntax.as_ref()?.pattern_kind()
+    }
+
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<vela_syntax::ast::Literal> {
         self.syntax.as_ref()?.literal()
     }

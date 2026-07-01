@@ -572,6 +572,12 @@ fn cst_path(value) {
     };
 }
 
+fn cst_binding(value) {
+    return match value {
+        current => current,
+    };
+}
+
 fn legacy_path(value) {
     return match value {
         State::Ready => 1,
@@ -590,12 +596,14 @@ fn legacy_binding(value) {
     let (legacy_literal_payload, _, _) =
         semantic.function("legacy_literal").expect("legacy literal");
     let (cst_path_payload, _, _) = semantic.function("cst_path").expect("cst path");
+    let (cst_binding_payload, _, _) = semantic.function("cst_binding").expect("cst binding");
     let (legacy_path_payload, _, _) = semantic.function("legacy_path").expect("legacy path");
     let (legacy_binding_payload, _, _) =
         semantic.function("legacy_binding").expect("legacy binding");
 
     let cst_literal_syntax = first_return_match_pattern_syntax(&cst_literal_payload.body);
     let cst_path_syntax = first_return_match_pattern_syntax(&cst_path_payload.body);
+    let cst_binding_syntax = first_return_match_pattern_syntax(&cst_binding_payload.body);
     let legacy_literal_pattern =
         first_return_match_fallback_pattern(legacy_literal_payload.body.fallback());
     let legacy_path_pattern =
@@ -613,29 +621,40 @@ fn legacy_binding(value) {
         body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax, legacy_binding_pattern);
 
     let (mut literal_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_literal");
-    let literal_err = literal_compiler
+    literal_compiler
         .compile_match_pattern(
             Register(0),
             legacy_literal_pattern,
             Some(&mismatched_literal),
         )
-        .expect_err("mismatched literal payload should not use legacy literal");
-    assert!(matches!(
-        literal_err.kind,
-        CompileErrorKind::UnsupportedSyntax("literal pattern")
-    ));
+        .expect("mismatched literal fallback should compile from CST path pattern");
+    assert!(
+        literal_compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::EnumTagEqual { .. }
+            )),
+        "mismatched literal fallback should not drive pattern compilation"
+    );
 
     let (mut path_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_path");
-    let path_err = path_compiler
+    path_compiler
         .compile_match_pattern(Register(0), legacy_path_pattern, Some(&mismatched_path))
-        .expect_err("mismatched path payload should not use legacy path");
-    assert!(matches!(
-        path_err.kind,
-        CompileErrorKind::UnsupportedSyntax("path pattern")
-    ));
+        .expect("mismatched path fallback should compile from CST literal pattern");
+    assert!(
+        path_compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. })),
+        "mismatched path fallback should not drive pattern compilation"
+    );
 
     let (mut binding_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_binding");
-    let binding_err = binding_compiler
+    binding_compiler
         .bind_pattern_locals(
             Register(0),
             legacy_binding_pattern,
@@ -644,11 +663,38 @@ fn legacy_binding(value) {
             crate::compiler::patterns::PatternBindingFacts::default(),
             LocalBindingKind::Pattern,
         )
-        .expect_err("mismatched binding payload should not use legacy binding");
-    assert!(matches!(
-        binding_err.kind,
-        CompileErrorKind::UnsupportedSyntax("binding pattern")
-    ));
+        .expect("CST literal pattern should not bind legacy fallback name");
+    assert!(
+        binding_compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(instruction.kind, UnlinkedInstructionKind::Move { .. })),
+        "mismatched binding fallback should not drive local binding"
+    );
+
+    let cst_binding_payload =
+        body_payloads::CompilerPatternPayload::syntax(cst_binding_syntax, legacy_literal_pattern);
+    let (mut cst_binding_compiler, _) =
+        cst_payload_compiler_for_function(&semantic, "legacy_binding");
+    cst_binding_compiler
+        .bind_pattern_locals(
+            Register(0),
+            legacy_literal_pattern,
+            Some(&cst_binding_payload),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect("CST binding pattern should bind without a binding fallback");
+    assert!(
+        cst_binding_compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Move { .. })),
+        "CST binding pattern should drive local binding"
+    );
 }
 
 #[test]

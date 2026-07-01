@@ -1,6 +1,6 @@
 use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
-use vela_syntax::ast::{Literal, Pattern, RecordPatternField};
+use vela_syntax::ast::{Literal, Pattern, RecordPatternField, SyntaxPatternKind};
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -145,6 +145,37 @@ impl Compiler<'_, '_> {
         pattern: &Pattern,
         payload: Option<&CompilerPatternPayload<'_>>,
     ) -> CompileResult<Vec<usize>> {
+        if let Some(payload) = payload {
+            let Some(kind) = payload.syntax_pattern_kind() else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "match pattern",
+                )));
+            };
+            match kind {
+                SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding => return Ok(Vec::new()),
+                SyntaxPatternKind::Literal => {
+                    let literal = payload.syntax_literal().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax("literal pattern"))
+                    })?;
+                    let pattern = self.compile_literal(None, &literal)?;
+                    let condition = self.alloc_register()?;
+                    self.emit(UnlinkedInstructionKind::Equal {
+                        dst: condition,
+                        lhs: scrutinee,
+                        rhs: pattern,
+                    });
+                    return Ok(vec![self.emit_jump_if_false(condition)]);
+                }
+                SyntaxPatternKind::Path => {
+                    let path = payload.syntax_path_segments().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax("path pattern"))
+                    })?;
+                    return self.compile_variant_tag_pattern(scrutinee, &path);
+                }
+                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {}
+            }
+        }
+
         match pattern {
             Pattern::Wildcard | Pattern::Binding(_) => Ok(Vec::new()),
             Pattern::Literal(literal) => {
@@ -243,6 +274,32 @@ impl Compiler<'_, '_> {
         facts: PatternBindingFacts,
         kind: LocalBindingKind,
     ) -> CompileResult<()> {
+        if let Some(payload) = payload {
+            let Some(pattern_kind) = payload.syntax_pattern_kind() else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "match pattern",
+                )));
+            };
+            match pattern_kind {
+                SyntaxPatternKind::Binding => {
+                    let dst = self.alloc_register()?;
+                    self.emit(UnlinkedInstructionKind::Move {
+                        dst,
+                        src: scrutinee,
+                    });
+                    let binding = payload.syntax_binding_name().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern"))
+                    })?;
+                    self.bind_pattern_local(&binding, dst, body_span, facts, kind);
+                    return Ok(());
+                }
+                SyntaxPatternKind::Wildcard
+                | SyntaxPatternKind::Literal
+                | SyntaxPatternKind::Path => return Ok(()),
+                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {}
+            }
+        }
+
         match pattern {
             Pattern::Binding(binding) => {
                 let dst = self.alloc_register()?;
