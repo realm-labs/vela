@@ -552,6 +552,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         }
     }
 
+    pub(in crate::compiler) fn has_syntax(&self) -> bool {
+        self.syntax.is_some()
+    }
+
     pub(in crate::compiler) fn body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?

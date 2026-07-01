@@ -89,6 +89,11 @@ impl Compiler<'_, '_> {
                 "mismatched CST match arm body",
             )));
         }
+        if payload.is_some_and(CompilerMatchArmPayload::has_syntax) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST match arm body",
+            )));
+        }
         self.compile_legacy_match_arm_statement(arm, payload)
     }
 
@@ -238,6 +243,11 @@ impl Compiler<'_, '_> {
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match arm body",
+            )));
+        }
+        if payload.is_some_and(CompilerMatchArmPayload::has_syntax) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST match arm body",
             )));
         }
         self.compile_legacy_match_arm_value_to(body, payload, dst)

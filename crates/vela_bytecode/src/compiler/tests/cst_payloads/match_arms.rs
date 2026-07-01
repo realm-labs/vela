@@ -779,6 +779,91 @@ fn legacy_guard(value, legacy_flag) {
     ));
 }
 
+#[test]
+fn missing_match_arm_body_payload_does_not_use_legacy_body() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn cst_missing_body(value) {
+    return match value {
+        _ => ,
+    };
+}
+"#;
+    let legacy_text = r#"
+fn statement_form(value) {
+    match value {
+        _ => 1,
+    };
+}
+
+fn value_form(value) {
+    return match value {
+        _ => 1,
+    };
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_arm = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST return statement")
+        .as_return()
+        .expect("CST return")
+        .expression()
+        .expect("CST return expression")
+        .as_match()
+        .expect("CST match expression")
+        .arms()
+        .into_iter()
+        .next()
+        .expect("CST match arm");
+    assert_eq!(cst_arm.body_expression(), None);
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (statement_payload, _, _) = semantic.function("statement_form").expect("statement form");
+    let statement_match = first_statement_match_expr(statement_payload.body.fallback());
+    let missing_statement_arm = body_payloads::CompilerMatchArmPayload::syntax(
+        source,
+        cst_arm.clone(),
+        &statement_match.arms[0],
+    );
+    let (mut statement_compiler, _) =
+        cst_payload_compiler_for_function(&semantic, "statement_form");
+
+    let statement_error = statement_compiler
+        .compile_match_with_payloads(statement_match, None, Some(&[missing_statement_arm]))
+        .expect_err("missing CST match statement arm body must not use legacy body");
+    assert!(matches!(
+        statement_error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST match arm body")
+    ));
+
+    let (value_payload, _, _) = semantic.function("value_form").expect("value form");
+    let value_match = first_return_match_expr(value_payload.body.fallback());
+    let missing_value_arm =
+        body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm, &value_match.arms[0]);
+    let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
+
+    let value_error = value_compiler
+        .compile_match_value_with_payloads(
+            value_match,
+            Register(0),
+            None,
+            Some(&[missing_value_arm]),
+        )
+        .expect_err("missing CST match value arm body must not use legacy body");
+    assert!(matches!(
+        value_error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST match arm body")
+    ));
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
@@ -842,6 +927,17 @@ fn first_return_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast:
     };
     let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
         panic!("expected return match expression");
+    };
+    match_expr
+}
+
+fn first_statement_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
+    let statement = body.statements.first().expect("match statement");
+    let vela_syntax::ast::StmtKind::Expr(value) = &statement.kind else {
+        panic!("expected expression statement");
+    };
+    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+        panic!("expected match expression");
     };
     match_expr
 }
