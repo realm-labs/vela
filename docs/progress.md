@@ -416,6 +416,9 @@ legacy condition expression.
 If expressions compiled as values now reject missing then/else/else-if child
 body payloads when a parent CST if payload is present instead of silently
 compiling the temporary legacy branch body.
+If expressions compiled as values now also reject a missing condition
+expression payload before condition-jump lowering, instead of compiling the
+temporary legacy condition expression.
 Block-value tail control-flow expressions now require their CST block, if, and
 match child payloads when the tail expression itself is CST-aligned, instead
 of silently compiling the temporary legacy tail body or arm data.

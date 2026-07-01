@@ -195,7 +195,7 @@ fn main() {
 }
 
 #[test]
-fn missing_if_value_branch_payload_does_not_use_legacy_branch_body() {
+fn missing_if_value_condition_payload_does_not_use_legacy_condition() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -222,11 +222,11 @@ fn main() {
 
             let error = compiler
                 .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))
-                .expect_err("missing CST if body payload must not use legacy branch body");
+                .expect_err("missing CST if condition payload must not use legacy condition");
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST if then body payload")
+                CompileErrorKind::UnsupportedSyntax("missing CST if condition payload")
             ));
         },
     );
