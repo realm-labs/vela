@@ -633,7 +633,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
                     readable: true,
                     writable: true,
                     addable: true,
-                    removable: true,
+                    removable: false,
                     key_type: Some("i64".to_owned()),
                     value_type: Some("i64".to_owned()),
                 },
@@ -644,7 +644,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
                     readable: true,
                     writable: true,
                     addable: true,
-                    removable: false,
+                    removable: true,
                     key_type: Some("bool".to_owned()),
                     value_type: Some("i64".to_owned()),
                 },
@@ -692,24 +692,24 @@ fn main(cst: CstMap, legacy: LegacyMap) {
             Some(&index_payload),
         )
         .expect("CST receiver payload should select CstMap key contract");
-    let legacy_remove_error = compiler
+    compiler
         .reject_terminal_host_index_access(
             mismatched_index.fallback(),
             None,
             crate::compiler::host_paths::HostIndexAccessKind::Remove,
         )
-        .expect_err("legacy receiver should reject non-removable host index");
-    assert_eq!(
-        semantic_diagnostic_codes(legacy_remove_error),
-        ["analysis::host_index_not_removable"]
-    );
-    compiler
+        .expect("legacy receiver should allow removable host index");
+    let cst_remove_error = compiler
         .reject_terminal_host_index_access(
             mismatched_index.fallback(),
             Some(&mismatched_index),
             crate::compiler::host_paths::HostIndexAccessKind::Remove,
         )
-        .expect("terminal remove validation should select the CST receiver payload");
+        .expect_err("CST receiver should reject non-removable host index");
+    assert_eq!(
+        semantic_diagnostic_codes(cst_remove_error),
+        ["analysis::host_index_not_removable"]
+    );
     let error = compiler
         .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
         .expect_err("mismatched CST index payload must not compile");

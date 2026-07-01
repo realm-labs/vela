@@ -312,7 +312,9 @@ impl Compiler<'_, '_> {
         if cst_path.len() != 1 {
             return None;
         }
-        let type_name = self.script_type_for_expr_with_payload(receiver, Some(&payload))?;
+        let type_name = self
+            .script_type_for_payload(&payload)
+            .or_else(|| self.script_type_for_expr_with_payload(receiver, Some(&payload)))?;
         self.facts.options.host_index_capability(&type_name)?;
         Some(ResolvedHostPath {
             path: HostPath {
@@ -903,7 +905,9 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_index_receiver_with_payload(receiver, payload.cloned())
             .and_then(|resolved| resolved.type_name)
             .or_else(|| {
-                let type_name = self.script_type_for_expr_with_payload(receiver, payload)?;
+                let type_name = payload
+                    .and_then(|payload| self.script_type_for_payload(payload))
+                    .or_else(|| self.script_type_for_expr_with_payload(receiver, payload))?;
                 self.host_runtime_type_id(&type_name).map(|_| type_name)
             })
     }
