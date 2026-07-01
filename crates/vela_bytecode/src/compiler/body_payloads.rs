@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    Argument, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
+    Argument, AssignOp, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
     SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
     SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
@@ -682,6 +682,20 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     fn assignment_target_expression(&self) -> Option<SyntaxExpression> {
         self.expression()?.as_assign()?.target()
+    }
+
+    pub(super) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
+        let StmtKind::Expr(expr) = &self.fallback.kind else {
+            return None;
+        };
+        let ExprKind::Assign { .. } = &expr.kind else {
+            return None;
+        };
+        let source = self.source?;
+        let assignment = self.expression()?.as_assign()?;
+        let range = assignment.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        (span == expr.span).then(|| assignment.operator()).flatten()
     }
 
     pub(in crate::compiler) fn assignment_target_expression_payload(

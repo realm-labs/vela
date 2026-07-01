@@ -321,6 +321,7 @@ fn main() {
                     crate::compiler::assignments::AssignmentValueSyntax::new(
                         None,
                         None,
+                        None,
                         crate::compiler::assignments::AssignmentValuePayloads::new(
                             None, None, None, None,
                         ),
@@ -389,6 +390,7 @@ fn main() {
                         &mismatched_target,
                     )),
                     crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
                         None,
                         None,
                         crate::compiler::assignments::AssignmentValuePayloads::new(
@@ -495,6 +497,7 @@ fn main() {
                         &mismatched_target,
                     )),
                     crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
                         None,
                         None,
                         crate::compiler::assignments::AssignmentValuePayloads::new(
@@ -893,6 +896,7 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
             crate::compiler::assignments::AssignmentValueSyntax::new(
                 None,
                 None,
+                None,
                 crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
             ),
         )
@@ -985,6 +989,7 @@ fn main(readonly: ReadOnlyHost) {
             legacy_statement.fallback(),
             crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
             crate::compiler::assignments::AssignmentValueSyntax::new(
+                None,
                 None,
                 None,
                 crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),

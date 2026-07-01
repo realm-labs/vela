@@ -49,6 +49,7 @@ fn main() {
                     crate::compiler::assignments::AssignmentValueSyntax::new(
                         None,
                         None,
+                        None,
                         crate::compiler::assignments::AssignmentValuePayloads::new(
                             None, None, None, None,
                         ),
@@ -60,6 +61,66 @@ fn main() {
                 matches!(error.kind, CompileErrorKind::UnsupportedSyntax(_)),
                 "{:?}",
                 error.kind
+            );
+        },
+    );
+}
+
+#[test]
+fn local_assignment_operator_lowering_prefers_cst_operator_payload() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let value = 1;
+    value -= 2;
+    return value;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_body = cst_payload.body.syntax_payload().body.clone();
+
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = 1;
+    value += 2;
+    return value;
+}
+"#,
+        |compiler, payload| {
+            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+                source,
+                cst_body,
+                payload.body.fallback(),
+            );
+            let statements = mismatched_body.statement_payloads();
+
+            compiler
+                .compile_statement_payloads(&statements)
+                .expect("CST-backed assignment expression should compile");
+
+            assert!(
+                compiler.code.instructions.iter().any(|instruction| {
+                    matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::Sub { .. }
+                            | UnlinkedInstructionKind::I64Sub { .. }
+                            | UnlinkedInstructionKind::I64SubImm { .. }
+                    )
+                }),
+                "assignment expression should use the CST operator"
+            );
+            assert!(
+                compiler.code.instructions.iter().all(|instruction| {
+                    !matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::Add { .. }
+                            | UnlinkedInstructionKind::I64Add { .. }
+                            | UnlinkedInstructionKind::I64AddImm { .. }
+                    )
+                }),
+                "assignment expression should not use the legacy fallback operator"
             );
         },
     );

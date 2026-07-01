@@ -109,6 +109,7 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
 #[derive(Clone, Copy)]
 pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
     kind: Option<SyntaxExpressionKind>,
+    op: Option<AssignOp>,
     expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     payloads: AssignmentValuePayloads<'payload, 'ast>,
 }
@@ -116,11 +117,13 @@ pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
 impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         kind: Option<SyntaxExpressionKind>,
+        op: Option<AssignOp>,
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
         payloads: AssignmentValuePayloads<'payload, 'ast>,
     ) -> Self {
         Self {
             kind,
+            op,
             expression,
             payloads,
         }
@@ -129,6 +132,7 @@ impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
     fn none() -> Self {
         Self {
             kind: None,
+            op: None,
             expression: None,
             payloads: AssignmentValuePayloads::none(),
         }
@@ -219,6 +223,7 @@ impl Compiler<'_, '_> {
                 "assignment statement",
             )));
         };
+        let op = value_syntax.op.unwrap_or(*op);
         validate_assignment_target_payload(target, target_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
@@ -238,10 +243,10 @@ impl Compiler<'_, '_> {
                 AssignOp::Div => None,
                 AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
             };
-            let script_fact = (*op == AssignOp::Set)
+            let script_fact = (op == AssignOp::Set)
                 .then(|| self.script_fact_for_expr_with_payload(value, value_syntax.expression))
                 .flatten();
-            let value_shape = (*op == AssignOp::Set)
+            let value_shape = (op == AssignOp::Set)
                 .then(|| self.value_shape_for_expr_with_payload(value, value_syntax.expression))
                 .flatten();
             let facts = LocalAssignmentFacts {
@@ -250,7 +255,7 @@ impl Compiler<'_, '_> {
                 value_shape,
             };
             let assigned =
-                self.compile_local_assignment(*op, local_target, value, facts, value_syntax)?;
+                self.compile_local_assignment(op, local_target, value, facts, value_syntax)?;
             return Ok(assigned);
         }
         self.reject_read_only_host_assignment(target, target_syntax)?;
@@ -274,7 +279,7 @@ impl Compiler<'_, '_> {
             )?;
             if self.host_field_path(target).is_none() {
                 return self.compile_index_assignment(
-                    *op,
+                    op,
                     base,
                     index,
                     value,
@@ -284,12 +289,12 @@ impl Compiler<'_, '_> {
             }
         }
         if let Some(target) = self.indexed_record_field_assignment_target(target, target_syntax) {
-            return self.compile_indexed_record_field_assignment(*op, target, value, value_syntax);
+            return self.compile_indexed_record_field_assignment(op, target, value, value_syntax);
         }
         if let Some(target) = self.record_field_assignment_target(target, target_syntax)? {
-            return self.compile_record_field_assignment(*op, target, value, value_syntax);
+            return self.compile_record_field_assignment(op, target, value, value_syntax);
         }
-        self.compile_host_assignment(*op, target, value, target_syntax, value_syntax)
+        self.compile_host_assignment(op, target, value, target_syntax, value_syntax)
     }
 
     fn local_assignment_target(

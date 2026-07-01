@@ -359,6 +359,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
             crate::compiler::assignments::AssignmentValueSyntax::new(
                 None,
                 None,
+                None,
                 crate::compiler::assignments::AssignmentValuePayloads::new(None, None, None, None),
             ),
         )
