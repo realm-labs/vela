@@ -44,7 +44,12 @@ pub(super) enum HostPathPart<'ast> {
 
 struct HostCollectionMethodTarget<'ast> {
     path: HostPath<'ast>,
-    field_receiver: Option<&'ast Expr>,
+    field_receiver: Option<HostCollectionFieldReceiver<'ast>>,
+}
+
+struct HostCollectionFieldReceiver<'ast> {
+    expr: &'ast Expr,
+    payload: Option<CompilerExpressionPayload<'ast>>,
 }
 
 #[derive(Clone, Copy)]
@@ -583,7 +588,11 @@ impl Compiler<'_, '_> {
             )));
         }
         if let Some(base) = target.field_receiver {
-            self.reject_terminal_host_index_access(base, HostIndexAccessKind::Remove)?;
+            self.reject_terminal_host_index_access(
+                base.expr,
+                base.payload.as_ref(),
+                HostIndexAccessKind::Remove,
+            )?;
         }
         let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_remove(root, path, callee.span)?;
@@ -611,7 +620,10 @@ impl Compiler<'_, '_> {
                     )?;
                     Some(HostCollectionMethodTarget {
                         path,
-                        field_receiver: Some(base_payload.fallback()),
+                        field_receiver: Some(HostCollectionFieldReceiver {
+                            expr: base_payload.fallback(),
+                            payload: Some(base_payload),
+                        }),
                     })
                 }
                 Some(SyntaxExpressionKind::Path) => {
@@ -635,7 +647,10 @@ impl Compiler<'_, '_> {
                 self.host_field_path(base)
                     .map(|path| HostCollectionMethodTarget {
                         path,
-                        field_receiver: Some(base),
+                        field_receiver: Some(HostCollectionFieldReceiver {
+                            expr: base,
+                            payload: None,
+                        }),
                     })
             }
             ExprKind::Path(parts) if parts.last().is_some_and(|name| name == method) => self
@@ -821,11 +836,44 @@ impl Compiler<'_, '_> {
         )
     }
 
-    fn reject_terminal_host_index_access(
+    pub(in crate::compiler) fn reject_terminal_host_index_access(
         &self,
         expr: &Expr,
+        payload: Option<&CompilerExpressionPayload<'_>>,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
+        if let Some(payload) = payload {
+            return match payload.kind() {
+                Some(SyntaxExpressionKind::Index) => {
+                    let ExprKind::Index { base, index } = &expr.kind else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST host index receiver payload",
+                        )));
+                    };
+                    let Some((base_payload, index_payload)) = payload.index_operand_payloads()
+                    else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST host index receiver payload",
+                        )));
+                    };
+                    self.reject_invalid_host_index_access_with_payload(
+                        expr,
+                        base,
+                        index,
+                        kind,
+                        Some(&base_payload),
+                        Some(&index_payload),
+                    )
+                }
+                Some(_) => Ok(()),
+                None => {
+                    let ExprKind::Index { base, index } = &expr.kind else {
+                        return Ok(());
+                    };
+                    self.reject_invalid_host_index_access(expr, base, index, kind)
+                }
+            };
+        }
         let ExprKind::Index { base, index } = &expr.kind else {
             return Ok(());
         };
