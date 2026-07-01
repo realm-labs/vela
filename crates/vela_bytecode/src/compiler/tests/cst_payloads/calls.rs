@@ -932,6 +932,78 @@ fn callback_method() {
 }
 
 #[test]
+fn missing_callback_lambda_body_payload_does_not_use_legacy_body() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    option::some("quest").filter(|value|);
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    option::some("quest").filter(|value| value.starts_with("q"));
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_arg = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST body")
+        .statements()
+        .next()
+        .expect("CST statement")
+        .as_expr()
+        .expect("CST expr statement")
+        .expression()
+        .expect("CST expression")
+        .as_call()
+        .expect("CST call")
+        .arguments()
+        .into_iter()
+        .next()
+        .expect("CST callback argument");
+    assert!(
+        cst_arg
+            .expression()
+            .expect("CST lambda argument")
+            .as_lambda()
+            .expect("CST lambda")
+            .body()
+            .is_none(),
+        "recovered CST callback lambda should not expose a body"
+    );
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let legacy_call = payload.body.statement_payloads()[0]
+        .expression_payload()
+        .expect("legacy expression payload");
+    let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
+        panic!("expected callback method call");
+    };
+    let arg_payload = body_payloads::CompilerArgumentPayload::syntax(source, cst_arg, &args[0]);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .compile_call_expr_with_arg_payloads(
+            legacy_call.fallback(),
+            callee,
+            args,
+            legacy_call.call_callee_payload().as_ref(),
+            Some(&[arg_payload]),
+        )
+        .expect_err("missing CST callback lambda body must not compile legacy body");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST lambda body")
+    ));
+}
+
+#[test]
 fn chained_callback_method_callees_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

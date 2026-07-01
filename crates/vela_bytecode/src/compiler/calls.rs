@@ -1,14 +1,19 @@
+mod payload_guards;
+
 use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-use super::expression_payload_kinds::expression_payload_is_aligned;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use payload_guards::{
+    callback_lambda_payload_is_authoritative, reject_mismatched_call_callee_payload,
+    reject_missing_call_callee_payload, reject_missing_callback_lambda_body,
+};
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
@@ -652,7 +657,10 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let body_payload = arg_payload.and_then(|payload| payload.lambda_body_payload());
+        let body_payload = arg_payload
+            .as_ref()
+            .and_then(CompilerExpressionPayload::lambda_body_payload);
+        reject_missing_callback_lambda_body(arg_payload.as_ref(), body_payload.as_ref())?;
         self.compile_lambda_with_callback_shapes(
             &arg.value,
             params,
@@ -1131,47 +1139,6 @@ fn callee_is_closure_call(
         return !matches!(payload.kind(), Some(SyntaxExpressionKind::Path));
     }
     !matches!(callee.kind, ExprKind::Path(_))
-}
-
-fn callback_lambda_payload_is_authoritative(
-    arg_payload: Option<&CompilerExpressionPayload<'_>>,
-    arg_value: &Expr,
-) -> bool {
-    let Some(payload) = arg_payload else {
-        return true;
-    };
-    match payload.kind() {
-        Some(SyntaxExpressionKind::Lambda) => expression_payload_is_aligned(payload, arg_value),
-        Some(_) => false,
-        None => true,
-    }
-}
-
-fn reject_mismatched_call_callee_payload(
-    callee: &Expr,
-    callee_payload: Option<&CompilerExpressionPayload<'_>>,
-) -> CompileResult<()> {
-    let Some(payload) = callee_payload else {
-        return Ok(());
-    };
-    if expression_payload_is_aligned(payload, callee) {
-        Ok(())
-    } else {
-        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "mismatched CST call callee payload",
-        )))
-    }
-}
-
-fn reject_missing_call_callee_payload(
-    callee_payload: Option<&CompilerExpressionPayload<'_>>,
-) -> CompileResult<()> {
-    if callee_payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST call callee",
-        )));
-    }
-    Ok(())
 }
 
 fn callee_path_segments<'expr>(

@@ -962,6 +962,19 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
 impl<'ast> CompilerArgumentPayload<'ast> {
     #[cfg(test)]
+    pub(super) fn syntax(
+        source: SourceId,
+        syntax: SyntaxArgument,
+        fallback: &'ast Argument,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
+
+    #[cfg(test)]
     pub(super) fn missing_value_syntax(source: SourceId, fallback: &'ast Argument) -> Self {
         Self {
             source: Some(source),
