@@ -232,6 +232,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_binary_operator(&self) -> Option<BinaryOp> {
+        self.source?;
         let binary = self.syntax.as_ref()?.as_binary()?;
         let mut expressions = binary.expressions();
         expressions.next()?;

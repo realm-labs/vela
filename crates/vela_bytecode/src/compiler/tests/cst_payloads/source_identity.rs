@@ -24,6 +24,29 @@ fn main(object) {
 }
 
 #[test]
+fn source_less_binary_payload_does_not_expose_cst_operator() {
+    with_cst_payload_compiler(
+        r#"
+fn main(left, right) {
+    let total = left + right;
+}
+"#,
+        |_, payload| {
+            let binary = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("binary initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    binary.syntax_expression().expect("binary syntax").clone(),
+                    binary.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_binary_operator(), None);
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"
