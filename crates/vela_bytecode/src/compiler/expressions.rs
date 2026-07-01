@@ -227,7 +227,7 @@ impl Compiler<'_, '_> {
                 )
             }
             SyntaxExpressionKind::Field => {
-                let ExprKind::Field { base, name } = &expr.kind else {
+                let ExprKind::Field { base, name: _ } = &expr.kind else {
                     unreachable!("validated CST field expression payload kind");
                 };
                 if !payload_syntax_overlaps_expr(payload, expr) {
@@ -240,9 +240,9 @@ impl Compiler<'_, '_> {
                     base_payload.as_ref(),
                     "missing CST field receiver",
                 )?;
-                let name = payload
-                    .syntax_field_name()
-                    .unwrap_or_else(|| name.to_owned());
+                let name = payload.syntax_field_name().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax("field expression"))
+                })?;
                 self.compile_field_expr(expr, base, &name, base_payload.as_ref(), Some(payload))
             }
             SyntaxExpressionKind::Index => {

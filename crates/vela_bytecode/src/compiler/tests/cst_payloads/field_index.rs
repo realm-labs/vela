@@ -329,6 +329,64 @@ fn main() {
 }
 
 #[test]
+fn missing_field_name_payload_does_not_use_legacy_field_name() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let object = { amount: 1 };
+    let value = object.;
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let object = { amount: 1 };
+    let value = object.amount;
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_field = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .nth(1)
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    assert_eq!(cst_field.expression_kind(), SyntaxExpressionKind::Field);
+
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = legacy_payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("object local should compile");
+    let legacy_field = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy field payload");
+    let missing = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_field,
+        legacy_field.fallback(),
+    );
+    assert_eq!(missing.syntax_field_name(), None);
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_field.fallback(), Some(&missing))
+        .expect_err("missing CST field name must not compile legacy field name");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("field expression")
+    ));
+}
+
+#[test]
 fn missing_field_expression_payload_does_not_use_legacy_field() {
     let source = SourceId::new(1);
     let text = r#"
