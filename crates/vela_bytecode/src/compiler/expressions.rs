@@ -56,6 +56,10 @@ impl Compiler<'_, '_> {
         match kind {
             SyntaxExpressionKind::Paren => {
                 let inner_payload = payload.paren_inner_payload();
+                reject_missing_expression_payload(
+                    inner_payload.as_ref(),
+                    "missing CST parenthesized expression",
+                )?;
                 self.compile_expr_with_payload(expr, inner_payload.as_ref())
             }
             SyntaxExpressionKind::Block => {
@@ -269,6 +273,10 @@ impl Compiler<'_, '_> {
                     *op
                 };
                 let operand_payload = payload.unary_operand_payload();
+                reject_missing_expression_payload(
+                    operand_payload.as_ref(),
+                    "missing CST unary operand",
+                )?;
                 self.compile_unary(op, operand.span, operand, operand_payload.as_ref())
             }
             SyntaxExpressionKind::Try => {
@@ -276,6 +284,10 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST try expression payload kind");
                 };
                 let operand_payload = payload.try_operand_payload();
+                reject_missing_expression_payload(
+                    operand_payload.as_ref(),
+                    "missing CST try operand",
+                )?;
                 let src = self.compile_expr_with_payload(operand, operand_payload.as_ref())?;
                 let dst = self.alloc_register()?;
                 self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
@@ -1057,11 +1069,17 @@ fn reject_missing_binary_operand_payload(
     left_payload: Option<&CompilerExpressionPayload<'_>>,
     right_payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<()> {
-    if left_payload.is_some_and(|payload| payload.syntax_expression().is_none())
-        || right_payload.is_some_and(|payload| payload.syntax_expression().is_none())
-    {
+    reject_missing_expression_payload(left_payload, "missing CST binary operand")?;
+    reject_missing_expression_payload(right_payload, "missing CST binary operand")
+}
+
+fn reject_missing_expression_payload(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    message: &'static str,
+) -> CompileResult<()> {
+    if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST binary operand",
+            message,
         )));
     }
     Ok(())
