@@ -78,6 +78,7 @@ pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
                 | ExprKind::Call { .. }
                 | ExprKind::Field { .. }
                 | ExprKind::Index { .. }
+                | ExprKind::InterpolatedString(_)
                 | ExprKind::Lambda { .. }
                 | ExprKind::Try(_)
                 | ExprKind::Unary { .. }

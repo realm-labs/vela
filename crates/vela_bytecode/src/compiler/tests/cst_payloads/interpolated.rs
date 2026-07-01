@@ -104,6 +104,35 @@ fn main() {
     );
 }
 
+#[test]
+fn missing_interpolated_expression_payload_does_not_use_legacy_interpolated() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+    let text = f"{value}";
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_interpolated = legacy_payload.body.statement_payloads()[1]
+        .let_initializer_expression_payload()
+        .expect("legacy interpolated payload");
+    let missing_interpolated = body_payloads::CompilerExpressionPayload::missing_syntax(
+        source,
+        legacy_interpolated.fallback(),
+    );
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_interpolated.fallback(), Some(&missing_interpolated))
+        .expect_err("missing CST interpolated payload must not compile legacy interpolated string");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
 fn assert_cst_let_initializer_interpolation_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
