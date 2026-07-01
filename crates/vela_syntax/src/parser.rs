@@ -19,7 +19,7 @@ use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKin
 
 #[cfg(test)]
 #[must_use]
-pub fn parse_source(source: SourceId, text: &str) -> SourceFile {
+fn parse_source(source: SourceId, text: &str) -> SourceFile {
     let lexed = lex(source, text);
     Parser::new(lexed.tokens, lexed.diagnostics).parse()
 }
