@@ -1059,6 +1059,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;
         self.syntax_kind()

@@ -261,7 +261,10 @@ impl Compiler<'_, '_> {
                     type_name: field.type_hint,
                 })
             }
-            ExprKind::Path(_) => match payload.as_ref().and_then(CompilerExpressionPayload::kind) {
+            ExprKind::Path(_) => match payload
+                .as_ref()
+                .and_then(CompilerExpressionPayload::syntax_kind)
+            {
                 Some(SyntaxExpressionKind::Path) => {
                     let path = payload.as_ref()?.syntax_path_segments()?;
                     let span = payload

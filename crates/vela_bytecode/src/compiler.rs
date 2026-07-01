@@ -1076,7 +1076,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<String> {
         if let Some(payload) = callee_payload {
-            return match payload.kind()? {
+            return match payload.syntax_kind()? {
                 SyntaxExpressionKind::Field => {
                     let base = payload.field_base_payload()?;
                     self.script_type_for_expr_with_payload(base.fallback(), Some(&base))

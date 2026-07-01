@@ -39,7 +39,7 @@ pub(super) fn record_field_expr_parts_with_payload<'expr>(
 ) -> Option<RecordFieldExprParts<'expr>> {
     if payload
         .as_ref()
-        .and_then(CompilerExpressionPayload::kind)
+        .and_then(CompilerExpressionPayload::syntax_kind)
         .is_some_and(|kind| kind != SyntaxExpressionKind::Field)
     {
         return None;
@@ -65,7 +65,7 @@ pub(super) fn indexed_record_field_parts_with_payload<'expr>(
 ) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
     if payload
         .as_ref()
-        .and_then(CompilerExpressionPayload::kind)
+        .and_then(CompilerExpressionPayload::syntax_kind)
         .is_some_and(|kind| kind != SyntaxExpressionKind::Field)
     {
         return None;
@@ -84,7 +84,10 @@ fn indexed_record_field_base_parts_with_payload<'expr>(
     expr: &'expr Expr,
     payload: Option<CompilerExpressionPayload<'expr>>,
 ) -> Option<(&'expr Expr, &'expr Expr, Vec<String>)> {
-    if let Some(kind) = payload.as_ref().and_then(CompilerExpressionPayload::kind) {
+    if let Some(kind) = payload
+        .as_ref()
+        .and_then(CompilerExpressionPayload::syntax_kind)
+    {
         return match kind {
             SyntaxExpressionKind::Index => {
                 let ExprKind::Index { base, index } = &expr.kind else {

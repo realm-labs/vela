@@ -208,7 +208,7 @@ impl Compiler<'_, '_> {
                     AssignmentValueSyntax::new(
                         value_payload
                             .as_ref()
-                            .and_then(CompilerExpressionPayload::kind),
+                            .and_then(CompilerExpressionPayload::syntax_kind),
                         payload.syntax_assignment_operator(),
                         value_payload.as_ref(),
                         AssignmentValuePayloads::new(
