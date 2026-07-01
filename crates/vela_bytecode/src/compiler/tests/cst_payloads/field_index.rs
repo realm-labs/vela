@@ -837,6 +837,15 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
         facts,
     )
     .expect("compiler should initialize");
+    let receiver_payload = mismatched_target
+        .field_base_payload()
+        .expect("mismatched target should retain CST receiver payload");
+    assert_eq!(
+        compiler
+            .script_type_for_payload(&receiver_payload)
+            .as_deref(),
+        Some("ReadOnlyHost")
+    );
 
     let error = compiler
         .compile_assignment_with_payloads(

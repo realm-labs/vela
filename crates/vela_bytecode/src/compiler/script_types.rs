@@ -187,6 +187,20 @@ fn expression_script_fact_from_payload(
         return None;
     }
 
+    expression_script_fact_from_payload_syntax(
+        payload,
+        type_symbol_at_span,
+        local_fact_at_span,
+        local_fact_named,
+    )
+}
+
+fn expression_script_fact_from_payload_syntax(
+    payload: &CompilerExpressionPayload<'_>,
+    type_symbol_at_span: &impl Fn(Span) -> Option<String>,
+    local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
+    local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
+) -> Option<ScriptTypeFact> {
     if let Some(path) = payload.syntax_record_path_segments() {
         if let Some((enum_path, variant)) = enum_variant_path(&path) {
             let type_name = payload
@@ -228,6 +242,21 @@ fn expression_script_fact_from_payload(
     }
 
     None
+}
+
+pub(super) fn expression_script_type_from_payload(
+    payload: &CompilerExpressionPayload<'_>,
+    type_symbol_at_span: impl Fn(Span) -> Option<String>,
+    local_type_at_span: impl Fn(Span) -> Option<String>,
+    local_type_named: impl Fn(&str) -> Option<String>,
+) -> Option<String> {
+    expression_script_fact_from_payload_syntax(
+        payload,
+        &type_symbol_at_span,
+        &|span| local_type_at_span(span).map(ScriptTypeFact::new),
+        &|name| local_type_named(name).map(ScriptTypeFact::new),
+    )
+    .map(|fact| fact.type_name)
 }
 
 pub(super) fn expression_script_type_with_payload(
@@ -279,6 +308,26 @@ impl super::Compiler<'_, '_> {
     ) -> Option<String> {
         expression_script_type_with_payload(
             expr,
+            payload,
+            |span| self.type_symbol_at_span(span),
+            |span| {
+                self.script_types
+                    .local_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span))
+            },
+            |name| {
+                self.script_types
+                    .name(name)
+                    .or_else(|| self.global_type_named(name))
+            },
+        )
+    }
+
+    pub(in crate::compiler) fn script_type_for_payload(
+        &self,
+        payload: &CompilerExpressionPayload<'_>,
+    ) -> Option<String> {
+        expression_script_type_from_payload(
             payload,
             |span| self.type_symbol_at_span(span),
             |span| {

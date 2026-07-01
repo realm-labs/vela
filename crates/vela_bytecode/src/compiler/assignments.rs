@@ -1077,10 +1077,7 @@ impl Compiler<'_, '_> {
                 Some(SyntaxExpressionKind::Field) | None => {
                     let base_payload = payload.field_base_payload()?;
                     let field = payload.syntax_field_name()?;
-                    let receiver_type = self.script_type_for_expr_with_payload(
-                        base_payload.fallback(),
-                        Some(&base_payload),
-                    )?;
+                    let receiver_type = self.script_type_for_payload(&base_payload)?;
                     Some((receiver_type, field))
                 }
                 Some(SyntaxExpressionKind::Path) => {
