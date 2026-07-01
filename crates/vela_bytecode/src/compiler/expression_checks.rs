@@ -280,14 +280,14 @@ fn spans_overlap(left: Span, right: Span) -> bool {
     left.start < right.end && right.start < left.end
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(in crate::compiler) enum UnsuffixedNumericLiteral<'a> {
-    Integer(&'a str),
-    Float(&'a str),
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(in crate::compiler) enum UnsuffixedNumericLiteral {
+    Integer(String),
+    Float(String),
 }
 
-impl UnsuffixedNumericLiteral<'_> {
-    pub(in crate::compiler) fn matches_primitive_tag(self, tag: PrimitiveTag) -> bool {
+impl UnsuffixedNumericLiteral {
+    pub(in crate::compiler) fn matches_primitive_tag(&self, tag: PrimitiveTag) -> bool {
         match self {
             Self::Integer(_) => matches!(
                 tag,
@@ -307,14 +307,38 @@ impl UnsuffixedNumericLiteral<'_> {
 
 pub(in crate::compiler) fn unsuffixed_numeric_literal(
     expr: &Expr,
-) -> Option<UnsuffixedNumericLiteral<'_>> {
+) -> Option<UnsuffixedNumericLiteral> {
     match &expr.kind {
-        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => {
-            Some(UnsuffixedNumericLiteral::Integer(value.source_text()))
-        }
-        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => {
-            Some(UnsuffixedNumericLiteral::Float(value.source_text()))
-        }
+        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => Some(
+            UnsuffixedNumericLiteral::Integer(value.source_text().to_owned()),
+        ),
+        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => Some(
+            UnsuffixedNumericLiteral::Float(value.source_text().to_owned()),
+        ),
+        _ => None,
+    }
+}
+
+pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
+    expr: &Expr,
+    payload: Option<&CompilerExpressionPayload<'_>>,
+) -> Option<UnsuffixedNumericLiteral> {
+    if payload.is_some_and(|payload| payload.source().is_some()) {
+        return payload
+            .and_then(CompilerExpressionPayload::syntax_literal)
+            .and_then(|literal| unsuffixed_numeric_literal_from_literal(&literal));
+    }
+    unsuffixed_numeric_literal(expr)
+}
+
+fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<UnsuffixedNumericLiteral> {
+    match literal {
+        Literal::Integer(value) if value.suffix.is_none() => Some(
+            UnsuffixedNumericLiteral::Integer(value.source_text().to_owned()),
+        ),
+        Literal::Float(value) if value.suffix.is_none() => Some(UnsuffixedNumericLiteral::Float(
+            value.source_text().to_owned(),
+        )),
         _ => None,
     }
 }

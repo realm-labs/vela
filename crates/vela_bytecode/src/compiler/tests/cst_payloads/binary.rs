@@ -505,6 +505,50 @@ fn main() {
     );
 }
 
+#[test]
+fn inline_binary_numeric_literals_prefer_cst_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_literal = 5;
+    let fallback_literal = 99;
+}
+"#,
+        |_compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_literal = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST literal payload");
+            let fallback_literal = statements[1]
+                .let_initializer_expression_payload()
+                .expect("fallback literal payload");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_literal
+                    .syntax_expression()
+                    .expect("CST literal expression")
+                    .clone(),
+                fallback_literal.fallback(),
+            );
+
+            let literal =
+                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                );
+
+            assert_eq!(
+                literal,
+                Some(
+                    crate::compiler::expression_checks::UnsuffixedNumericLiteral::Integer(
+                        "5".to_owned()
+                    )
+                )
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

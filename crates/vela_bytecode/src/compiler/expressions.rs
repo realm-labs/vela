@@ -16,7 +16,7 @@ use super::expression_checks::{
     UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
     payload_expr_is_aligned, payload_syntax_overlaps_expr, payload_syntax_span_matches_expr,
     reject_missing_binary_operand_payload, reject_missing_expression_payload,
-    unsuffixed_numeric_literal,
+    unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_payload_kinds::{
     expression_payload_kind_matches, expression_rejects_missing_payload,
@@ -764,7 +764,7 @@ impl Compiler<'_, '_> {
         left_payload: Option<&CompilerExpressionPayload<'_>>,
         right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<Register>> {
-        if let Some(literal) = unsuffixed_numeric_literal(left) {
+        if let Some(literal) = unsuffixed_numeric_literal_with_payload(left, left_payload) {
             return self.compile_binary_literal_candidate(
                 op,
                 span,
@@ -774,7 +774,7 @@ impl Compiler<'_, '_> {
                 BinaryLiteralSide::Left,
             );
         }
-        if let Some(literal) = unsuffixed_numeric_literal(right) {
+        if let Some(literal) = unsuffixed_numeric_literal_with_payload(right, right_payload) {
             return self.compile_binary_literal_candidate(
                 op,
                 span,
@@ -793,13 +793,13 @@ impl Compiler<'_, '_> {
         span: Span,
         value_expr: &Expr,
         value_payload: Option<&CompilerExpressionPayload<'_>>,
-        literal: UnsuffixedNumericLiteral<'_>,
+        literal: UnsuffixedNumericLiteral,
         side: BinaryLiteralSide,
     ) -> CompileResult<Option<Register>> {
         let value_type = self.value_type_for_expr_with_payload(value_expr, value_payload);
         if side == BinaryLiteralSide::Right
             && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
-            && let Some(imm) = self.i64_immediate_literal(literal, span)?
+            && let Some(imm) = self.i64_immediate_literal(&literal, span)?
             && i64_immediate_op_supported(op, imm)
         {
             let value = self.compile_expr_with_payload(value_expr, value_payload)?;
@@ -817,7 +817,7 @@ impl Compiler<'_, '_> {
             && literal.matches_primitive_tag(*tag)
         {
             let value = self.compile_expr_with_payload(value_expr, value_payload)?;
-            let literal = self.compile_inline_numeric_literal_as(literal, *tag, span)?;
+            let literal = self.compile_inline_numeric_literal_as(&literal, *tag, span)?;
             let rhs_or_lhs = self.emit_constant(literal)?;
             let dst = self.alloc_register()?;
             let instruction = match side {
@@ -870,7 +870,7 @@ impl Compiler<'_, '_> {
 
     fn i64_immediate_literal(
         &self,
-        literal: UnsuffixedNumericLiteral<'_>,
+        literal: &UnsuffixedNumericLiteral,
         span: Span,
     ) -> CompileResult<Option<i64>> {
         let UnsuffixedNumericLiteral::Integer(_) = literal else {
@@ -885,7 +885,7 @@ impl Compiler<'_, '_> {
 
     fn compile_inline_numeric_literal_as(
         &self,
-        literal: UnsuffixedNumericLiteral<'_>,
+        literal: &UnsuffixedNumericLiteral,
         tag: PrimitiveTag,
         span: Span,
     ) -> CompileResult<crate::Constant> {
