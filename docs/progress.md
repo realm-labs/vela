@@ -535,6 +535,13 @@ bytecode semantic parse gate uses CST parse diagnostics before falling back to
 the legacy owned AST only as a temporary compiler body/expression carrier.
 Bytecode compilation and remaining downstream lowering still consume the old
 owned AST while their syntax API migration continues.
+Current compile-dir and checked example validation is green through
+`cargo test -p vela_engine source_reload::dir_basic::engine_compile_dir_loads_vela_modules_deterministically`,
+`cargo test --manifest-path examples/Cargo.toml --test runnable_examples`,
+`cargo run --manifest-path examples/Cargo.toml --bin level_up`, and
+`cargo run --manifest-path examples/Cargo.toml --bin modules`; the Phase 5
+CST/HIR-only proof remains incomplete until the temporary old-AST
+body/expression carrier is removed.
 Remaining pattern coverage, remaining
 control-flow expression coverage, and downstream migration remain open.
 

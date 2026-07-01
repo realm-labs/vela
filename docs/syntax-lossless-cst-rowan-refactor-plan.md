@@ -490,7 +490,9 @@ Validation:
 ```bash
 cargo test -p vela_bytecode
 cargo test -p vela_analysis
-cargo run -p vela_cli -- examples/game_server_demo/scripts/level_up.vela
+cargo test --manifest-path examples/Cargo.toml --test runnable_examples
+cargo run --manifest-path examples/Cargo.toml --bin level_up
+cargo run --manifest-path examples/Cargo.toml --bin modules
 ```
 
 ### Phase 6: Migrate language service features
