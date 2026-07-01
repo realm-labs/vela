@@ -700,6 +700,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<vela_syntax::ast::Literal> {
+        self.source?;
         self.syntax.as_ref()?.literal()
     }
 

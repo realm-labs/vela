@@ -409,6 +409,12 @@ fn legacy_binding(value) {
         literal_payload.syntax_literal(),
         Some(vela_syntax::ast::Literal::integer("0"))
     );
+    let missing_source_literal_payload =
+        body_payloads::CompilerPatternPayload::missing_child_payload_context(
+            first_return_match_pattern_syntax(&cst_literal_payload.body),
+            first_return_match_fallback_pattern(legacy_path_payload.body.fallback()),
+        );
+    assert_eq!(missing_source_literal_payload.syntax_literal(), None);
 
     let path_payload = body_payloads::CompilerPatternPayload::syntax(
         first_return_match_pattern_syntax(&cst_path_payload.body),
