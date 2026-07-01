@@ -115,6 +115,45 @@ fn field_and_index_values() {
 }
 
 #[test]
+fn field_name_payload_comes_from_cst_without_field_fallback() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let object = { value: 1 };
+    let cst_field = object.value;
+    let fallback_path = object;
+}
+"#,
+        |_compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_field = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST field payload");
+            let fallback_path = statements[2]
+                .let_initializer_expression_payload()
+                .expect("non-field fallback payload");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_field
+                    .syntax_expression()
+                    .expect("CST field expression")
+                    .clone(),
+                fallback_path.fallback(),
+            );
+
+            assert_eq!(
+                mismatched_payload.syntax_field_name().as_deref(),
+                Some("value")
+            );
+            assert!(
+                mismatched_payload.field_base_payload().is_none(),
+                "field child payloads still require field-shaped fallback children"
+            );
+        },
+    );
+}
+
+#[test]
 fn semantic_function_assignment_targets_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

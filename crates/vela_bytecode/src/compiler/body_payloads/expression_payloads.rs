@@ -293,9 +293,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
-        let ExprKind::Field { .. } = &self.fallback.kind else {
-            return None;
-        };
         self.syntax.as_ref()?.as_field()?.name_text()
     }
 
