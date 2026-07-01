@@ -44,7 +44,8 @@ pub(super) fn host_method_call<'ast>(
                 return None;
             }
             let method_name = lookup_path.last()?;
-            let receiver = host_method_path_receiver(compiler, callee, &path[..path.len() - 1])?;
+            let receiver =
+                host_method_path_receiver(compiler, callee, &lookup_path[..lookup_path.len() - 1])?;
             let method = compiler
                 .host_method_id(receiver_type.or(receiver.type_name.as_deref()), method_name)?;
             Some(HostMethodCall {
@@ -95,14 +96,14 @@ fn host_method_receiver_path<'ast>(
 fn host_method_path_receiver<'ast>(
     compiler: &super::Compiler<'_, '_>,
     callee: &'ast Expr,
-    path: &'ast [String],
+    path: &[String],
 ) -> Option<ResolvedHostPath<'ast>> {
     let root = path.first()?;
     if path.len() == 1 {
         Some(ResolvedHostPath {
             path: HostPath {
-                root: HostPathRoot::LocalPath {
-                    name: root,
+                root: HostPathRoot::OwnedLocalPath {
+                    name: root.clone(),
                     span: callee.span,
                 },
                 segments: Vec::new(),
@@ -110,6 +111,6 @@ fn host_method_path_receiver<'ast>(
             type_name: compiler.host_local_type_name(root, callee.span),
         })
     } else {
-        compiler.host_field_path_parts(callee.span, path)
+        compiler.owned_host_field_path_parts(callee.span, path)
     }
 }

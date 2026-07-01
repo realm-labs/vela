@@ -350,6 +350,31 @@ impl Compiler<'_, '_> {
         })
     }
 
+    pub(super) fn owned_host_field_path_parts<'ast>(
+        &self,
+        span: Span,
+        path: &[String],
+    ) -> Option<ResolvedHostPath<'ast>> {
+        if path.len() < 2 {
+            return None;
+        }
+        let root = path.first()?.clone();
+        let mut current_type = self.host_local_type_name(&root, span);
+        let mut segments = Vec::with_capacity(path.len() - 1);
+        for segment in &path[1..] {
+            let field = self.host_path_field_part(current_type.as_deref(), segment)?;
+            segments.push(field.part);
+            current_type = field.type_hint;
+        }
+        Some(ResolvedHostPath {
+            path: HostPath {
+                root: HostPathRoot::OwnedLocalPath { name: root, span },
+                segments,
+            },
+            type_name: current_type,
+        })
+    }
+
     fn host_path_field_part<'ast>(
         &self,
         receiver_type: Option<&str>,
