@@ -228,6 +228,32 @@ fn main() {
     ));
 }
 
+#[test]
+fn missing_unary_expression_payload_does_not_use_legacy_unary() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = -1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_unary = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy unary payload");
+    let missing_unary =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_unary.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_unary.fallback(), Some(&missing_unary))
+        .expect_err("missing CST unary payload must not compile legacy unary");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
 fn assert_cst_let_initializer_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
