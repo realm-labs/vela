@@ -46,3 +46,40 @@ fn main() {
         CompileErrorKind::UnsupportedSyntax("mismatched CST block tail expression")
     ));
 }
+
+#[test]
+fn missing_block_tail_body_payload_does_not_use_legacy_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main(flag) {
+    if flag {
+        1
+    } else {
+        2
+    }
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let tail = statements.last().expect("tail statement");
+            let syntax = tail.syntax_statement().expect("tail CST statement").clone();
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    syntax,
+                    tail.fallback(),
+                );
+            let vela_syntax::ast::StmtKind::Expr(expr) = &tail.fallback().kind else {
+                panic!("expected legacy expression tail");
+            };
+
+            let error = compiler
+                .compile_block_tail_expr_to_for_test(expr, Some(&missing_children), Register(0))
+                .expect_err("missing CST if child payload must not use legacy tail expression");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST block tail if payload")
+            ));
+        },
+    );
+}

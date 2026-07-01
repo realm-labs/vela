@@ -407,6 +407,9 @@ unavailable.
 If expressions compiled as values now reject missing then/else/else-if child
 body payloads when a parent CST if payload is present instead of silently
 compiling the temporary legacy branch body.
+Block-value tail control-flow expressions now require their CST block, if, and
+match child payloads when the tail expression itself is CST-aligned, instead
+of silently compiling the temporary legacy tail body or arm data.
 Top-level match statement payloads now materialize rowan block-body payloads
 for match arms, letting statement-form match arms reuse the CST-aware nested
 statement dispatcher while preserving legacy arm fallbacks when syntax

@@ -410,6 +410,19 @@ impl<'ast> CompilerStatementPayload<'ast> {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn missing_child_payload_context(
+        syntax: SyntaxStatement,
+        fallback: &'ast Stmt,
+    ) -> Self {
+        Self {
+            source: None,
+            syntax: Some(syntax),
+            allow_unmatched_statement_fallback: false,
+            fallback,
+        }
+    }
+
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
     }
