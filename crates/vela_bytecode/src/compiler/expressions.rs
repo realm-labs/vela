@@ -200,6 +200,11 @@ impl Compiler<'_, '_> {
                 let op = cst_op.unwrap_or(*op);
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
                     let operand_payloads = payload.logical_chain_operand_payloads(op);
+                    if operand_payloads.is_none() && payload.syntax_binary_operator() == Some(op) {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST logical chain payload",
+                        )));
+                    }
                     return self.compile_logical_chain(op, expr, operand_payloads.as_deref());
                 }
                 let operand_payloads = payload.binary_operand_payloads();

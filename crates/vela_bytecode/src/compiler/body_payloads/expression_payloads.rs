@@ -253,8 +253,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             if let Some(binary) = syntax.as_binary()
                 && binary.operator() == Some(op)
             {
-                collect_syntax(binary.lhs()?, op, operands)?;
-                collect_syntax(binary.rhs()?, op, operands)?;
+                let expressions = binary.expressions().collect::<Vec<_>>();
+                if expressions.len() < 2 {
+                    return None;
+                }
+                for expression in expressions {
+                    collect_syntax(expression, op, operands)?;
+                }
                 return Some(());
             }
 

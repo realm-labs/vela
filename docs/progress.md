@@ -375,6 +375,8 @@ Binary expressions now expose CST-aware left/right operand payloads in those
 same untyped value contexts, including range and numeric-literal fast paths,
 so nested block operands can reuse rowan body payloads before falling back to
 legacy expression lowering when syntax association is missing.
+CST-backed logical chain lowering now rejects mismatched flattened operand
+payloads instead of silently compiling the temporary legacy `&&`/`||` chain.
 Call expressions used as values now expose CST-aware argument payloads in
 untyped let, assignment, return, and nested call-argument contexts, so nested
 ordinary-call and tuple enum constructor argument bodies can reuse rowan body

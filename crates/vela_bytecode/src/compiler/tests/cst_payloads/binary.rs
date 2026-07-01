@@ -214,6 +214,54 @@ fn logical_values() {
 }
 
 #[test]
+fn mismatched_logical_chain_payload_does_not_use_legacy_operands() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main(left, middle, right) {
+    let value = left && right;
+}
+"#;
+    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
+    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
+    let cst_binary = cst_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("CST logical payload");
+
+    with_cst_payload_compiler(
+        r#"
+fn main(left, middle, right) {
+    let value = left && middle && right;
+}
+"#,
+        |compiler, payload| {
+            let legacy_binary = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("legacy logical payload");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                source,
+                cst_binary
+                    .syntax_expression()
+                    .expect("CST logical expression")
+                    .clone(),
+                legacy_binary.fallback(),
+            );
+
+            let error = compiler
+                .compile_expr_with_payload(legacy_binary.fallback(), Some(&mismatched_payload))
+                .expect_err("mismatched CST logical payload must not compile legacy operands");
+
+            assert!(
+                matches!(
+                    error.kind,
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST logical chain payload")
+                ),
+                "expected mismatched CST logical chain payload, got {error:?}"
+            );
+        },
+    );
+}
+
+#[test]
 fn binary_expression_lowering_prefers_cst_operator_payload() {
     let source = SourceId::new(1);
     let cst_text = r#"
