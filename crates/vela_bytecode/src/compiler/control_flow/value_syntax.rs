@@ -33,6 +33,10 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
             syntax_value_missing,
         }
     }
+
+    pub(super) fn has_unclassified_expression_payload(self) -> bool {
+        self.expression.is_some() && self.kind.is_none()
+    }
 }
 
 impl Compiler<'_, '_> {

@@ -70,6 +70,35 @@ fn main() {
 }
 
 #[test]
+fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0].fallback();
+    let vela_syntax::ast::StmtKind::Let {
+        value: Some(value), ..
+    } = &statement.kind
+    else {
+        panic!("expected let statement");
+    };
+    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
+
+    let error = compiler
+        .compile_let_initializer_value_payload_for_test(value, Some(&missing_payload))
+        .expect_err("unclassified CST let payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload")
+    ));
+}
+
+#[test]
 fn mismatched_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -101,6 +130,32 @@ fn main() {
     assert!(matches!(
         error.kind,
         CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
+    ));
+}
+
+#[test]
+fn unclassified_return_value_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0].fallback();
+    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+        panic!("expected return statement");
+    };
+    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
+
+    let error = compiler
+        .compile_return_value_payload_for_test(value, Some(&missing_payload))
+        .expect_err("unclassified CST return payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
     ));
 }
 
