@@ -34,6 +34,32 @@ fn literal_values() {
 }
 
 #[test]
+fn missing_literal_expression_payload_does_not_use_legacy_literal() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 42;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_literal = payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy literal payload");
+    let missing_literal =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_literal.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_literal.fallback(), Some(&missing_literal))
+        .expect_err("missing CST literal payload must not compile legacy literal");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn static_literal_type_facts_reject_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"

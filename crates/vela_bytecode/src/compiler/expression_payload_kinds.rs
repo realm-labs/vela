@@ -63,6 +63,7 @@ pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
                 | ExprKind::Index { .. }
                 | ExprKind::InterpolatedString(_)
                 | ExprKind::Lambda { .. }
+                | ExprKind::Literal(_)
                 | ExprKind::Path(_)
                 | ExprKind::SelfValue
                 | ExprKind::Try(_)
