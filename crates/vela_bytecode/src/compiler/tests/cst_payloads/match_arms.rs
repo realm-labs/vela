@@ -251,6 +251,8 @@ fn classify(result) {
         .record_field_payloads()
         .expect("source-less record pattern should expose field payloads");
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
+    assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
+    assert_eq!(missing_source_fields[1].syntax_is_shorthand(), None);
     let nested_pattern = record_fields[0]
         .pattern_payload()
         .expect("explicit record pattern field should expose nested payload");
@@ -423,6 +425,7 @@ fn legacy_binding(value) {
             first_return_match_pattern_syntax(&cst_literal_payload.body),
             first_return_match_fallback_pattern(legacy_path_payload.body.fallback()),
         );
+    assert_eq!(missing_source_literal_payload.syntax_pattern_kind(), None);
     assert_eq!(missing_source_literal_payload.syntax_literal(), None);
 
     let path_payload = body_payloads::CompilerPatternPayload::syntax(
@@ -1014,10 +1017,10 @@ fn value_form(value, flag) {
 
     let statement_error = statement_compiler
         .compile_match_with_payloads(statement_match, None, Some(&[missing_statement_arm]))
-        .expect_err("missing CST match block body payload must not use legacy block body");
+        .expect_err("source-less CST match arm payload must not use legacy pattern or body");
     assert!(matches!(
         statement_error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST match arm block body payload")
+        CompileErrorKind::UnsupportedSyntax("match pattern")
     ));
 
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
@@ -1036,10 +1039,10 @@ fn value_form(value, flag) {
             None,
             Some(&[missing_value_arm]),
         )
-        .expect_err("missing CST match if payload must not use legacy if body");
+        .expect_err("source-less CST match arm payload must not use legacy pattern or body");
     assert!(matches!(
         value_error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST match arm if payload")
+        CompileErrorKind::UnsupportedSyntax("match pattern")
     ));
 }
 

@@ -699,6 +699,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
+        self.source?;
         self.syntax.as_ref()?.pattern_kind()
     }
 
@@ -809,12 +810,14 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_is_shorthand(&self) -> Option<bool> {
+        self.source?;
         self.syntax
             .as_ref()
             .map(SyntaxRecordPatternField::is_shorthand)
     }
 
     pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
+        self.source?;
         self.syntax.as_ref()?.pattern()?.pattern_kind()
     }
 
