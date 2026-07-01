@@ -80,6 +80,8 @@ pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
                 | ExprKind::Index { .. }
                 | ExprKind::InterpolatedString(_)
                 | ExprKind::Lambda { .. }
+                | ExprKind::Path(_)
+                | ExprKind::SelfValue
                 | ExprKind::Try(_)
                 | ExprKind::Unary { .. }
         )

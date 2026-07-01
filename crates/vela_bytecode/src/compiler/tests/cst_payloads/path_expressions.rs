@@ -27,6 +27,32 @@ fn path_values(input) {
 }
 
 #[test]
+fn missing_path_expression_payload_does_not_use_legacy_path() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    let output = value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_path = payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy path payload");
+    let missing_path =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_path.fallback(), Some(&missing_path))
+        .expect_err("missing CST path payload must not compile legacy path");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn script_type_facts_prefer_cst_payload_shape() {
     let source = SourceId::new(1);
     let text = r#"
