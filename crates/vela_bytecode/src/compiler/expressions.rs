@@ -613,6 +613,7 @@ impl Compiler<'_, '_> {
         left_payload: Option<&CompilerExpressionPayload<'_>>,
         right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
+        reject_missing_binary_operand_payload(left_payload, right_payload)?;
         match op {
             BinaryOp::Range => {
                 return self.compile_range(left, right, false, left_payload, right_payload);
@@ -1050,6 +1051,20 @@ fn arithmetic_binary_operator(op: BinaryOp) -> bool {
         op,
         BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem
     )
+}
+
+fn reject_missing_binary_operand_payload(
+    left_payload: Option<&CompilerExpressionPayload<'_>>,
+    right_payload: Option<&CompilerExpressionPayload<'_>>,
+) -> CompileResult<()> {
+    if left_payload.is_some_and(|payload| payload.syntax_expression().is_none())
+        || right_payload.is_some_and(|payload| payload.syntax_expression().is_none())
+    {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST binary operand",
+        )));
+    }
+    Ok(())
 }
 
 fn payload_expr_is_aligned(payload: &CompilerExpressionPayload<'_>, expr: &Expr) -> bool {
