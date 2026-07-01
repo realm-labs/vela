@@ -436,6 +436,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    pub(in crate::compiler) fn array_element_count_does_not_exceed_fallback(&self) -> bool {
+        let ExprKind::Array(items) = &self.fallback.kind else {
+            return true;
+        };
+        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_array) else {
+            return true;
+        };
+        syntax.expressions().count() <= items.len()
+    }
+
     pub(in crate::compiler) fn map_entry_payloads(
         &self,
     ) -> Option<Vec<CompilerMapEntryPayload<'ast>>> {

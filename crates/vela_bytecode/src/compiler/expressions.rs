@@ -157,6 +157,11 @@ impl Compiler<'_, '_> {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
                 };
+                if !payload.array_element_count_does_not_exceed_fallback() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST array elements",
+                    )));
+                }
                 let element_payloads = payload.array_element_payloads();
                 self.compile_array(items, element_payloads.as_deref())
             }
