@@ -1,8 +1,8 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPatternKind,
-    SyntaxRecordExprField, SyntaxRecordPatternField,
+    AssignOp, AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern,
+    SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm,
+    SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
 use super::{
@@ -109,6 +109,42 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn syntax_literal(&self) -> Option<Literal> {
         self.syntax.as_ref()?.as_literal()?.literal()
+    }
+
+    pub(in crate::compiler) fn assignment_target_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Assign { target, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_assign()?.target(),
+            fallback: target,
+        })
+    }
+
+    pub(in crate::compiler) fn assignment_value_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let ExprKind::Assign { value, .. } = &self.fallback.kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload {
+            source: self.source,
+            syntax: self.syntax.as_ref()?.as_assign()?.value(),
+            fallback: value,
+        })
+    }
+
+    pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
+        let ExprKind::Assign { .. } = &self.fallback.kind else {
+            return None;
+        };
+        let syntax_span = self.syntax_span()?;
+        (syntax_span == self.fallback.span)
+            .then(|| self.syntax.as_ref()?.as_assign()?.operator())
+            .flatten()
     }
 
     pub(in crate::compiler) fn paren_inner_payload(

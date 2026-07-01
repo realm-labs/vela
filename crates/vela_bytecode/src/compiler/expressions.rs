@@ -6,6 +6,7 @@ use vela_syntax::ast::{
 
 use crate::{BinaryLiteralSide, FormatStringPart, Register, UnlinkedInstructionKind};
 
+use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
@@ -119,6 +120,47 @@ impl Compiler<'_, '_> {
                     .syntax_record_path_segments()
                     .unwrap_or_else(|| path.to_owned());
                 self.compile_record(expr, &path, fields, field_payloads.as_deref())
+            }
+            SyntaxExpressionKind::Assign => {
+                let ExprKind::Assign { .. } = &expr.kind else {
+                    unreachable!("validated CST assignment expression payload kind");
+                };
+                if !payload_syntax_overlaps_expr(payload, expr) {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST assignment expression payload",
+                    )));
+                }
+                let target_payload = payload.assignment_target_payload();
+                let value_payload = payload.assignment_value_payload();
+                let value_body = value_payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::block_body_payload);
+                let value_if = value_payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::if_payload);
+                let value_match_arms = value_payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_arm_payloads);
+                let value_match_scrutinee = value_payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
+                self.compile_assignment_with_payloads(
+                    expr,
+                    AssignmentTargetSyntax::new(target_payload.as_ref()),
+                    AssignmentValueSyntax::new(
+                        value_payload
+                            .as_ref()
+                            .and_then(CompilerExpressionPayload::kind),
+                        payload.syntax_assignment_operator(),
+                        value_payload.as_ref(),
+                        AssignmentValuePayloads::new(
+                            value_body.as_ref(),
+                            value_if.as_ref(),
+                            value_match_scrutinee.as_ref(),
+                            value_match_arms.as_deref(),
+                        ),
+                    ),
+                )
             }
             SyntaxExpressionKind::Binary => {
                 let ExprKind::Binary { op, left, right } = &expr.kind else {
@@ -250,7 +292,6 @@ impl Compiler<'_, '_> {
                 })?;
                 self.compile_literal(Some(expr.span), &literal)
             }
-            _ => self.compile_expr(expr),
         }
     }
 
