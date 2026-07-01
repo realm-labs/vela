@@ -329,6 +329,37 @@ fn main() {
 }
 
 #[test]
+fn missing_field_expression_payload_does_not_use_legacy_field() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let object = { amount: 1 };
+    let value = object.amount;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = legacy_payload.body.statement_payloads();
+    compiler
+        .compile_statement(statements[0].fallback())
+        .expect("object local should compile");
+    let legacy_field = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy field payload");
+    let missing_field =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_field.fallback());
+
+    let error = compiler
+        .compile_expr_with_payload(legacy_field.fallback(), Some(&missing_field))
+        .expect_err("missing CST field payload must not compile legacy field");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST expression payload")
+    ));
+}
+
+#[test]
 fn record_field_assignment_target_facts_prefer_cst_root_payloads() {
     with_cst_payload_compiler(
         r#"
