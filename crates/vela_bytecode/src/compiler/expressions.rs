@@ -168,13 +168,15 @@ impl Compiler<'_, '_> {
                 self.compile_map(entries, entry_payloads.as_deref())
             }
             SyntaxExpressionKind::Record => {
-                let ExprKind::Record { path, fields } = &expr.kind else {
+                let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
                 let field_payloads = payload.record_field_payloads();
-                let path = payload
-                    .syntax_record_path_segments()
-                    .unwrap_or_else(|| path.to_owned());
+                let path = payload.syntax_record_path_segments().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST record path",
+                    ))
+                })?;
                 self.compile_record(expr, &path, fields, field_payloads.as_deref())
             }
             SyntaxExpressionKind::Assign => {

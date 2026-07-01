@@ -286,6 +286,40 @@ fn main() {
 }
 
 #[test]
+fn missing_record_path_payload_does_not_use_legacy_record_path() {
+    with_cst_payload_compiler(
+        r#"
+struct Pair {
+    first
+}
+
+fn main() {
+    let value = Pair { first: 1 };
+}
+"#,
+        |compiler, payload| {
+            let record = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("record payload");
+            let missing_path =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    record.syntax_expression().expect("record syntax").clone(),
+                    record.fallback(),
+                );
+
+            let error = compiler
+                .compile_expr_with_payload(record.fallback(), Some(&missing_path))
+                .expect_err("missing CST record path must not compile legacy record path");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST record path")
+            ));
+        },
+    );
+}
+
+#[test]
 fn missing_array_element_payload_does_not_use_legacy_value() {
     let source = SourceId::new(1);
     let cst_text = r#"
