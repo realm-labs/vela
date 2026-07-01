@@ -1,5 +1,4 @@
 use vela_common::{Diagnostic, SourceId, Span};
-use vela_hir::binding::BindingResolution;
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
 use vela_syntax::ast::{AstNode, SyntaxCallExpr, SyntaxExpression};
@@ -94,19 +93,6 @@ impl Compiler<'_, '_> {
             call_span,
         );
         Ok(dst)
-    }
-
-    fn script_function_call_at_span(&self, span: Span) -> Option<(HirDeclId, String)> {
-        let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(span)
-        else {
-            return None;
-        };
-        self.facts
-            .script_function_symbols
-            .get(declaration)
-            .cloned()
-            .map(|name| (*declaration, name))
     }
 
     fn compile_param_default_script_call_args(

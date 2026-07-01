@@ -52,14 +52,19 @@ impl Compiler<'_, '_> {
         reject_mismatched_call_callee_payload(callee, callee_payload)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
+        let callee_span = callee_payload
+            .and_then(CompilerExpressionPayload::syntax_span)
+            .unwrap_or(callee.span);
         let has_callee_payload = callee_payload.is_some();
         let has_authoritative_callee_path =
             callee_path_segments(callee_path, has_callee_payload, callee).is_some();
         if has_authoritative_callee_path
-            && let Some((enum_name, variant)) = self.tuple_enum_constructor_call(callee)
+            && let Some(path) = callee_path_segments(callee_path, has_callee_payload, callee)
+            && let Some((enum_name, variant)) =
+                self.tuple_enum_constructor_call_at_span(path, callee_span)
         {
             let fields = self.compile_tuple_variant_fields(
-                callee.span,
+                callee_span,
                 &enum_name,
                 &variant,
                 args,
@@ -140,13 +145,13 @@ impl Compiler<'_, '_> {
 
         let dst = self.alloc_register()?;
         let script_function_call = has_authoritative_callee_path
-            .then(|| self.script_function_call(callee))
+            .then(|| self.script_function_call_at_span(callee_span))
             .flatten();
         if let Some((declaration, name)) = script_function_call {
             let call_args = self.compile_script_call_args_with_payloads(
                 declaration,
                 args,
-                callee.span,
+                callee_span,
                 arg_syntax,
             )?;
             self.emit_spanned(
@@ -159,7 +164,9 @@ impl Compiler<'_, '_> {
                 },
                 expr.span,
             );
-        } else if self.local_callee(callee).is_some() || !matches!(callee.kind, ExprKind::Path(_)) {
+        } else if self.local_callee_at_span(callee_span).is_some()
+            || !matches!(callee.kind, ExprKind::Path(_))
+        {
             reject_named_call_args(arg_syntax, "closure call")?;
             let callee = self.compile_expr_with_payload(callee, callee_payload)?;
             let args = args

@@ -1005,18 +1005,19 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(())
     }
 
-    fn tuple_enum_constructor_call(&self, callee: &Expr) -> Option<(String, String)> {
-        let ExprKind::Path(path) = &callee.kind else {
-            return None;
-        };
-        let (_, variant) = enum_variant_path(path)?;
-        let enum_name = self.type_symbol_at_span(callee.span)?;
+    fn tuple_enum_constructor_call_at_span(
+        &self,
+        callee_path: &[String],
+        callee_span: Span,
+    ) -> Option<(String, String)> {
+        let (_, variant) = enum_variant_path(callee_path)?;
+        let enum_name = self.type_symbol_at_span(callee_span)?;
         Some((enum_name, variant))
     }
 
-    fn script_function_call(&self, callee: &Expr) -> Option<(HirDeclId, String)> {
+    fn script_function_call_at_span(&self, callee_span: Span) -> Option<(HirDeclId, String)> {
         let Some(BindingResolution::Declaration(declaration)) =
-            self.bindings.resolution_at_span(callee.span)
+            self.bindings.resolution_at_span(callee_span)
         else {
             return None;
         };
@@ -1027,8 +1028,8 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
             .map(|name| (*declaration, name))
     }
 
-    fn local_callee(&self, callee: &Expr) -> Option<HirLocalId> {
-        let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(callee.span)
+    fn local_callee_at_span(&self, callee_span: Span) -> Option<HirLocalId> {
+        let Some(BindingResolution::Local(local)) = self.bindings.resolution_at_span(callee_span)
         else {
             return None;
         };
