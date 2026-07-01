@@ -86,6 +86,116 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_with_owned_payload(expr, payload.cloned())
     }
 
+    fn host_field_path_from_payload<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> Option<HostPath<'ast>> {
+        self.resolve_host_path_from_payload(payload)
+            .map(|resolved| resolved.path)
+    }
+
+    fn resolve_host_path_from_payload<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        match payload.kind()? {
+            SyntaxExpressionKind::Field => {
+                let name = payload.syntax_field_name()?;
+                let base_payload = payload.field_base_payload()?;
+                let mut receiver = self.resolve_host_path_receiver_from_payload(base_payload);
+                let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
+                receiver.path.segments.push(field.part);
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: field.type_hint,
+                })
+            }
+            SyntaxExpressionKind::Path => self.host_path_from_payload_path(payload),
+            SyntaxExpressionKind::Index => {
+                let (base_payload, index_payload) = payload.index_operand_payloads()?;
+                let mut receiver =
+                    self.resolve_host_path_index_receiver_from_payload(base_payload)?;
+                let dynamic_kind = receiver
+                    .type_name
+                    .as_deref()
+                    .and_then(|type_name| self.facts.options.host_index_capability(type_name))
+                    .and_then(|capability| capability.key_type.as_deref())
+                    .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
+                receiver.path.segments.push(HostPathPart::Value {
+                    expr: index_payload.fallback(),
+                    payload: Some(index_payload),
+                    dynamic_kind,
+                });
+                let value_type = receiver.type_name.as_deref().and_then(|type_name| {
+                    self.facts
+                        .options
+                        .host_index_capability(type_name)
+                        .and_then(|capability| capability.value_type.clone())
+                });
+                Some(ResolvedHostPath {
+                    path: receiver.path,
+                    type_name: value_type,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn host_path_from_payload_path<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        let path = payload.syntax_path_segments()?;
+        let span = payload
+            .syntax_span()
+            .unwrap_or_else(|| payload.fallback().span);
+        match path.len() {
+            0 => None,
+            1 => {
+                let name = path.into_iter().next()?;
+                let type_name = self.host_local_type_name(&name, span);
+                Some(ResolvedHostPath {
+                    path: HostPath {
+                        root: HostPathRoot::OwnedLocalPath { name, span },
+                        segments: Vec::new(),
+                    },
+                    type_name,
+                })
+            }
+            _ => self.owned_host_field_path_parts(span, &path),
+        }
+    }
+
+    fn resolve_host_path_receiver_from_payload<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> ResolvedHostPath<'ast> {
+        self.resolve_host_path_from_payload(payload.clone())
+            .unwrap_or_else(|| {
+                self.expr_host_path_receiver_with_payload(payload.fallback(), Some(payload))
+            })
+    }
+
+    fn resolve_host_path_index_receiver_from_payload<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        match payload.kind()? {
+            SyntaxExpressionKind::Field | SyntaxExpressionKind::Index => {
+                self.resolve_host_path_from_payload(payload)
+            }
+            SyntaxExpressionKind::Path => {
+                let resolved = self.host_path_from_payload_path(payload)?;
+                if resolved.path.segments.is_empty() {
+                    let type_name = resolved.type_name.as_deref()?;
+                    self.facts.options.host_index_capability(type_name)?;
+                }
+                Some(resolved)
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn resolve_host_path<'ast>(
         &self,
         expr: &'ast Expr,
@@ -616,10 +726,7 @@ impl Compiler<'_, '_> {
                         return None;
                     }
                     let base_payload = payload.field_base_payload()?;
-                    let path = self.host_field_path_with_payload(
-                        base_payload.fallback(),
-                        Some(&base_payload),
-                    )?;
+                    let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
@@ -662,6 +769,21 @@ impl Compiler<'_, '_> {
                     field_receiver: None,
                 }),
             _ => None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn host_collection_method_target_root_name_for_test<'ast>(
+        &self,
+        callee: &'ast Expr,
+        callee_payload: Option<&CompilerExpressionPayload<'ast>>,
+        method: &str,
+    ) -> Option<String> {
+        let target = self.host_collection_method_target(callee, callee_payload, method)?;
+        match target.path.root {
+            HostPathRoot::Expr { .. } => Some("<expr>".to_owned()),
+            HostPathRoot::LocalPath { name, .. } => Some(name.to_owned()),
+            HostPathRoot::OwnedLocalPath { name, .. } => Some(name),
         }
     }
 

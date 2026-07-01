@@ -463,6 +463,141 @@ fn main(player: Player) {
     );
 }
 
+#[test]
+fn host_collection_method_targets_use_cst_receiver_roots() {
+    fn host_type(
+        registry: &mut vela_registry::DefinitionRegistry,
+        name: &str,
+        id: u32,
+    ) -> vela_def::TypeId {
+        registry
+            .register_type(
+                vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), name))
+                    .host_runtime_id(id.into()),
+            )
+            .expect("host type should register")
+    }
+
+    fn host_field(
+        registry: &mut vela_registry::DefinitionRegistry,
+        owner: vela_def::TypeId,
+        owner_name: &str,
+        name: &str,
+        id: FieldId,
+        type_hint: Option<&str>,
+    ) {
+        let mut field = vela_registry::FieldDef::new(
+            DefPath::field("host", std::iter::empty::<&str>(), owner_name, name),
+            owner,
+        )
+        .host_runtime_id(id.get())
+        .writable(true);
+        if let Some(type_hint) = type_hint {
+            field = field.type_hint(Some(type_hint.to_owned()));
+        }
+        registry
+            .register_field(field)
+            .expect("host field should register");
+    }
+
+    let cst_inventory = FieldId::new(3);
+    let cst_items = FieldId::new(4);
+    let legacy_inventory = FieldId::new(5);
+    let legacy_items = FieldId::new(6);
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let cst_player = host_type(&mut registry, "CstPlayer", 77);
+    let cst_inventory_type = host_type(&mut registry, "CstInventory", 78);
+    let legacy_player = host_type(&mut registry, "LegacyPlayer", 79);
+    let legacy_inventory_type = host_type(&mut registry, "LegacyInventory", 80);
+    host_field(
+        &mut registry,
+        cst_player,
+        "CstPlayer",
+        "inventory",
+        cst_inventory,
+        Some("CstInventory"),
+    );
+    host_field(
+        &mut registry,
+        cst_inventory_type,
+        "CstInventory",
+        "items",
+        cst_items,
+        Some("CstItems"),
+    );
+    host_field(
+        &mut registry,
+        legacy_player,
+        "LegacyPlayer",
+        "inventory",
+        legacy_inventory,
+        Some("LegacyInventory"),
+    );
+    host_field(
+        &mut registry,
+        legacy_inventory_type,
+        "LegacyInventory",
+        "items",
+        legacy_items,
+        Some("LegacyItems"),
+    );
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(cst: CstPlayer, legacy: LegacyPlayer) {
+    let cst_call = cst.inventory.items.remove();
+    let legacy_call = legacy.inventory.items.remove();
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statements = payload.body.statement_payloads();
+    let cst_call = statements[0]
+        .let_initializer_expression_payload()
+        .expect("CST remove call payload");
+    let legacy_call = statements[1]
+        .let_initializer_expression_payload()
+        .expect("legacy remove call fallback");
+    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_call
+            .syntax_expression()
+            .expect("CST expression")
+            .clone(),
+        legacy_call.fallback(),
+    );
+    let callee_payload = mismatched_payload
+        .call_callee_payload()
+        .expect("mismatched callee payload");
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    assert_eq!(
+        compiler.host_collection_method_target_root_name_for_test(
+            callee_payload.fallback(),
+            Some(&callee_payload),
+            "remove",
+        ),
+        Some("cst".to_owned()),
+        "collection host path root must come from the CST receiver payload"
+    );
+}
+
 fn assert_cst_let_initializer_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
