@@ -274,6 +274,12 @@ impl Compiler<'_, '_> {
                     self.owned_host_field_path_parts(span, &path)
                 }
                 Some(_) => None,
+                None if payload
+                    .as_ref()
+                    .is_some_and(|payload| payload.source().is_some()) =>
+                {
+                    None
+                }
                 None => self.resolve_host_path(expr),
             },
             ExprKind::Index { base, index } => {

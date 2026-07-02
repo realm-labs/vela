@@ -79,6 +79,66 @@ fn main(player: Player) {
 }
 
 #[test]
+fn missing_host_path_expression_payload_does_not_use_legacy_path() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player host type should register");
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
+                player,
+            )
+            .host_runtime_id(FieldId::new(3).get())
+            .writable(true)
+            .type_hint(Some("i64".to_owned())),
+        )
+        .expect("Player level field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(player: Player) {
+    player::level;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let legacy_path = payload.body.statement_payloads()[0]
+        .expression_payload()
+        .expect("legacy host path expression");
+    let missing_path =
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    assert!(
+        compiler
+            .resolve_host_path_with_payload(legacy_path.fallback(), Some(&missing_path))
+            .is_none(),
+        "missing source-backed CST path payload must not resolve the legacy host path"
+    );
+}
+
+#[test]
 fn indexed_host_path_with_non_index_cst_payload_does_not_use_legacy_index() {
     let mut registry = vela_registry::DefinitionRegistry::new();
     let player = registry
