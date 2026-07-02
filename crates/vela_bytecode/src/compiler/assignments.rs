@@ -1031,7 +1031,12 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST if assignment value kind");
                 };
                 let dst = self.alloc_register()?;
-                self.compile_if_value_with_payloads(if_expr, dst, syntax_payloads.if_expr)?;
+                let Some(if_payload) = syntax_payloads.if_expr else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value if payload",
+                    )));
+                };
+                self.compile_if_value_with_payloads(if_expr, dst, Some(if_payload))?;
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
@@ -1039,11 +1044,21 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match assignment value kind");
                 };
                 let dst = self.alloc_register()?;
+                let Some(match_scrutinee) = syntax_payloads.match_scrutinee else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value match scrutinee payload",
+                    )));
+                };
+                let Some(match_arms) = syntax_payloads.match_arms else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value match arm payloads",
+                    )));
+                };
                 self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    syntax_payloads.match_scrutinee,
-                    syntax_payloads.match_arms,
+                    Some(match_scrutinee),
+                    Some(match_arms),
                 )?;
                 Ok(dst)
             }
