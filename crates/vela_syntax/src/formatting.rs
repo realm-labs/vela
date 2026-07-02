@@ -1,102 +1,7 @@
-use vela_common::{Diagnostic, SourceId, Span};
+use vela_common::{Diagnostic, SourceId};
 
-use crate::ast::{FloatLiteral, IntegerLiteral};
 use crate::parse::parse_source_with_id;
-use crate::token::{Keyword, Symbol, TokenKind};
 use crate::{SyntaxKind, SyntaxToken};
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct FormatElementStream {
-    elements: Vec<FormatElement>,
-    diagnostics: Vec<Diagnostic>,
-}
-
-impl FormatElementStream {
-    #[must_use]
-    fn elements(&self) -> &[FormatElement] {
-        &self.elements
-    }
-
-    #[cfg(test)]
-    #[must_use]
-    fn diagnostics(&self) -> &[Diagnostic] {
-        &self.diagnostics
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct FormatElement {
-    kind: FormatElementKind,
-    span: Span,
-    text: String,
-}
-
-impl FormatElement {
-    #[must_use]
-    fn kind(&self) -> &FormatElementKind {
-        &self.kind
-    }
-
-    #[cfg(test)]
-    #[must_use]
-    const fn span(&self) -> Span {
-        self.span
-    }
-
-    #[must_use]
-    fn text(&self) -> &str {
-        &self.text
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-enum FormatElementKind {
-    Token(TokenKind),
-    Trivia(TriviaKind),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum TriviaKind {
-    Whitespace,
-    LineComment,
-    BlockComment,
-    Shebang,
-    Unknown,
-}
-
-impl TriviaKind {
-    #[cfg(test)]
-    #[must_use]
-    const fn is_comment(self) -> bool {
-        matches!(self, Self::LineComment | Self::BlockComment)
-    }
-}
-
-#[must_use]
-fn format_elements(source: SourceId, text: &str) -> FormatElementStream {
-    let parsed = parse_source_with_id(source, text);
-    let mut elements = Vec::new();
-    for token in parsed
-        .syntax_node()
-        .descendants_with_tokens()
-        .filter_map(|element| element.into_token())
-    {
-        if let Some(element) = format_element_for_token(source, &token) {
-            elements.push(element);
-        }
-    }
-    let end = u32::try_from(text.len()).unwrap_or(u32::MAX);
-    elements.push(FormatElement {
-        kind: FormatElementKind::Token(TokenKind::Eof),
-        span: Span::new(source, end, end),
-        text: String::new(),
-    });
-
-    FormatElementStream {
-        elements,
-        diagnostics: parsed.into_diagnostics(),
-    }
-}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FormattedSource {
@@ -118,12 +23,16 @@ impl FormattedSource {
 
 #[must_use]
 pub fn format_source(source: SourceId, text: &str) -> FormattedSource {
-    let stream = format_elements(source, text);
+    let parsed = parse_source_with_id(source, text);
+    let tokens = parsed
+        .syntax_node()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token());
     let mut formatter = Formatter::new();
-    formatter.format(stream.elements());
+    formatter.format(tokens);
     FormattedSource {
         text: formatter.finish(),
-        diagnostics: stream.diagnostics,
+        diagnostics: parsed.into_diagnostics(),
     }
 }
 
@@ -133,8 +42,8 @@ struct Formatter {
     indent: usize,
     line_start: bool,
     pending_blank_lines: usize,
-    previous_token: Option<TokenKind>,
-    delimiter_stack: Vec<Symbol>,
+    previous_token: Option<PreviousToken>,
+    delimiter_stack: Vec<SyntaxKind>,
     type_argument_depth: usize,
     brace_context_stack: Vec<BraceContext>,
     declaration_brace_pending: bool,
@@ -147,6 +56,12 @@ enum BraceContext {
     DeclarationMembers,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PreviousToken {
+    kind: SyntaxKind,
+    text: String,
+}
+
 impl Formatter {
     fn new() -> Self {
         Self {
@@ -155,13 +70,9 @@ impl Formatter {
         }
     }
 
-    fn format(&mut self, elements: &[FormatElement]) {
-        for element in elements {
-            match element.kind() {
-                FormatElementKind::Token(TokenKind::Eof) => {}
-                FormatElementKind::Token(token) => self.write_token(token, element.text()),
-                FormatElementKind::Trivia(kind) => self.write_trivia(*kind, element.text()),
-            }
+    fn format(&mut self, tokens: impl IntoIterator<Item = SyntaxToken>) {
+        for token in tokens {
+            self.write_token(&token);
         }
     }
 
@@ -173,9 +84,9 @@ impl Formatter {
         self.output
     }
 
-    fn write_trivia(&mut self, kind: TriviaKind, text: &str) {
+    fn write_trivia(&mut self, kind: SyntaxKind, text: &str) {
         match kind {
-            TriviaKind::Whitespace => {
+            SyntaxKind::Whitespace => {
                 if self.in_type_arguments() {
                     return;
                 }
@@ -192,9 +103,10 @@ impl Formatter {
                     .pending_blank_lines
                     .max(newline_count.saturating_sub(1));
             }
-            TriviaKind::LineComment | TriviaKind::Shebang => self.write_line_comment(text),
-            TriviaKind::BlockComment => self.write_block_comment(text),
-            TriviaKind::Unknown => self.write_unknown_trivia(text),
+            SyntaxKind::LineComment | SyntaxKind::Shebang => self.write_line_comment(text),
+            SyntaxKind::BlockComment => self.write_block_comment(text),
+            SyntaxKind::Unknown => self.write_unknown_trivia(text),
+            _ => {}
         }
     }
 
@@ -227,22 +139,32 @@ impl Formatter {
         self.output.push_str(text);
     }
 
-    fn write_token(&mut self, token: &TokenKind, text: &str) {
-        match token {
-            TokenKind::Symbol(symbol) => self.write_symbol(*symbol, text),
+    fn write_token(&mut self, token: &SyntaxToken) {
+        let kind = token.kind();
+        let text = token.text();
+        match kind {
+            SyntaxKind::Eof => {}
+            kind if kind.is_trivia() || kind == SyntaxKind::Unknown => {
+                self.write_trivia(kind, text);
+                return;
+            }
+            kind if kind.is_symbol() => self.write_symbol(kind, text),
             _ => {
-                self.write_space_before_word(token);
+                self.write_space_before_word(kind);
                 self.write_indent_if_needed();
                 self.output.push_str(text);
             }
         }
-        self.observe_token(token);
-        self.previous_token = Some(token.clone());
+        self.observe_token(kind);
+        self.previous_token = Some(PreviousToken {
+            kind,
+            text: text.to_owned(),
+        });
     }
 
-    fn write_symbol(&mut self, symbol: Symbol, text: &str) {
+    fn write_symbol(&mut self, symbol: SyntaxKind, text: &str) {
         match symbol {
-            Symbol::LBrace => {
+            SyntaxKind::LBrace => {
                 self.write_space_before_open_brace();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
@@ -252,30 +174,30 @@ impl Formatter {
                 self.indent = self.indent.saturating_add(1);
                 self.newline();
             }
-            Symbol::RBrace => {
+            SyntaxKind::RBrace => {
                 self.indent = self.indent.saturating_sub(1);
-                self.pop_delimiter(Symbol::LBrace);
+                self.pop_delimiter(SyntaxKind::LBrace);
                 self.brace_context_stack.pop();
                 self.ensure_line_start();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
             }
-            Symbol::LParen | Symbol::LBracket => {
+            SyntaxKind::LParen | SyntaxKind::LBracket => {
                 self.write_indent_if_needed();
                 self.output.push_str(text);
                 self.delimiter_stack.push(symbol);
             }
-            Symbol::RParen => {
+            SyntaxKind::RParen => {
                 self.trim_trailing_horizontal_space();
-                self.pop_delimiter(Symbol::LParen);
+                self.pop_delimiter(SyntaxKind::LParen);
                 self.output.push_str(text);
             }
-            Symbol::RBracket => {
+            SyntaxKind::RBracket => {
                 self.trim_trailing_horizontal_space();
-                self.pop_delimiter(Symbol::LBracket);
+                self.pop_delimiter(SyntaxKind::LBracket);
                 self.output.push_str(text);
             }
-            Symbol::Comma => {
+            SyntaxKind::Comma => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
                 if self.in_type_arguments() {
@@ -286,43 +208,41 @@ impl Formatter {
                     self.output.push(' ');
                 }
             }
-            Symbol::Semicolon => {
+            SyntaxKind::Semicolon => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
                 self.newline();
             }
-            Symbol::Dot | Symbol::ColonColon | Symbol::Question => {
+            SyntaxKind::Dot | SyntaxKind::ColonColon | SyntaxKind::Question => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
             }
-            Symbol::Colon => {
+            SyntaxKind::Colon => {
                 self.trim_trailing_horizontal_space();
                 self.output.push_str(text);
                 self.output.push(' ');
             }
-            Symbol::Less if self.starts_type_arguments() => {
+            SyntaxKind::Less if self.starts_type_arguments() => {
                 self.trim_trailing_horizontal_space();
                 self.write_indent_if_needed();
                 self.output.push_str(text);
                 self.type_argument_depth = self.type_argument_depth.saturating_add(1);
             }
-            Symbol::Greater if self.in_type_arguments() => {
+            SyntaxKind::Greater if self.in_type_arguments() => {
                 self.write_type_argument_close(text);
             }
-            Symbol::GreaterEqual if self.in_type_arguments() => {
+            SyntaxKind::GreaterEqual if self.in_type_arguments() => {
                 self.write_type_argument_close(">");
                 self.output.push(' ');
                 self.output.push('=');
                 self.output.push(' ');
             }
-            Symbol::Arrow | Symbol::FatArrow => self.write_spaced_symbol(text),
+            SyntaxKind::Arrow | SyntaxKind::FatArrow => self.write_spaced_symbol(text),
             symbol if is_assignment_or_binary_symbol(symbol) => self.write_spaced_symbol(text),
-            Symbol::Pipe => {
+            SyntaxKind::Pipe => {
                 if matches!(
-                    self.previous_token,
-                    None | Some(TokenKind::Symbol(
-                        Symbol::LParen | Symbol::Equal | Symbol::Comma
-                    ))
+                    self.previous_kind(),
+                    None | Some(SyntaxKind::LParen | SyntaxKind::Equal | SyntaxKind::Comma)
                 ) {
                     self.write_indent_if_needed();
                     self.output.push_str(text);
@@ -337,12 +257,10 @@ impl Formatter {
         }
     }
 
-    fn write_space_before_word(&mut self, token: &TokenKind) {
-        if matches!(self.previous_token, Some(TokenKind::Symbol(Symbol::RBrace)))
-            && !self.line_start
-        {
+    fn write_space_before_word(&mut self, token: SyntaxKind) {
+        if self.previous_kind() == Some(SyntaxKind::RBrace) && !self.line_start {
             self.trim_trailing_horizontal_space();
-            if matches!(token, TokenKind::Keyword(Keyword::Else)) {
+            if token == SyntaxKind::ElseKw {
                 self.output.push(' ');
             } else {
                 self.newline();
@@ -366,10 +284,13 @@ impl Formatter {
         if self.line_start {
             return;
         }
-        match self.previous_token {
-            Some(TokenKind::Symbol(
-                Symbol::LBrace | Symbol::LBracket | Symbol::ColonColon | Symbol::Dot,
-            )) => {}
+        match self.previous_kind() {
+            Some(
+                SyntaxKind::LBrace
+                | SyntaxKind::LBracket
+                | SyntaxKind::ColonColon
+                | SyntaxKind::Dot,
+            ) => {}
             _ => {
                 self.trim_trailing_horizontal_space();
                 self.output.push(' ');
@@ -432,7 +353,7 @@ impl Formatter {
         }
     }
 
-    fn pop_delimiter(&mut self, expected: Symbol) {
+    fn pop_delimiter(&mut self, expected: SyntaxKind) {
         if let Some(position) = self
             .delimiter_stack
             .iter()
@@ -443,7 +364,7 @@ impl Formatter {
     }
 
     fn in_brace_block(&self) -> bool {
-        self.delimiter_stack.last() == Some(&Symbol::LBrace)
+        self.delimiter_stack.last() == Some(&SyntaxKind::LBrace)
     }
 
     fn in_declaration_members(&self) -> bool {
@@ -455,10 +376,9 @@ impl Formatter {
     }
 
     fn starts_type_arguments(&self) -> bool {
-        matches!(
-            self.previous_token.as_ref(),
-            Some(TokenKind::Ident(name)) if is_builtin_container_type_name(name)
-        )
+        self.previous_token.as_ref().is_some_and(|token| {
+            token.kind == SyntaxKind::Ident && is_builtin_container_type_name(&token.text)
+        })
     }
 
     fn write_type_argument_close(&mut self, text: &str) {
@@ -477,130 +397,138 @@ impl Formatter {
     }
 
     fn starts_nested_declaration_members(&self) -> bool {
-        self.in_declaration_members() && matches!(self.previous_token, Some(TokenKind::Ident(_)))
+        self.in_declaration_members() && self.previous_kind() == Some(SyntaxKind::Ident)
     }
 
-    fn should_start_declaration_member(&self, token: &TokenKind) -> bool {
+    fn should_start_declaration_member(&self, token: SyntaxKind) -> bool {
         self.in_declaration_members()
             && !self.line_start
-            && matches!(token, TokenKind::Ident(_))
-            && previous_token_can_end_declaration_member(self.previous_token.as_ref())
+            && token == SyntaxKind::Ident
+            && previous_token_can_end_declaration_member(self.previous_kind())
     }
 
-    fn observe_token(&mut self, token: &TokenKind) {
-        if let TokenKind::Keyword(keyword) = token {
-            match keyword {
-                Keyword::Use => {
-                    self.declaration_brace_pending = false;
-                    self.use_item_pending = true;
-                }
-                Keyword::Struct | Keyword::Enum | Keyword::Trait | Keyword::Impl => {
-                    self.declaration_brace_pending = true;
-                }
-                Keyword::Fn
-                | Keyword::Const
-                | Keyword::Global
-                | Keyword::Let
-                | Keyword::If
-                | Keyword::Else
-                | Keyword::Match
-                | Keyword::Return
-                | Keyword::Break
-                | Keyword::Continue => {
-                    self.declaration_brace_pending = false;
-                    self.use_item_pending = false;
-                }
-                Keyword::Pub
-                | Keyword::For
-                | Keyword::In
-                | Keyword::As
-                | Keyword::True
-                | Keyword::False
-                | Keyword::Null
-                | Keyword::SelfValue => {}
+    fn observe_token(&mut self, token: SyntaxKind) {
+        match token {
+            SyntaxKind::UseKw => {
+                self.declaration_brace_pending = false;
+                self.use_item_pending = true;
             }
+            SyntaxKind::StructKw
+            | SyntaxKind::EnumKw
+            | SyntaxKind::TraitKw
+            | SyntaxKind::ImplKw => {
+                self.declaration_brace_pending = true;
+            }
+            SyntaxKind::FnKw
+            | SyntaxKind::ConstKw
+            | SyntaxKind::GlobalKw
+            | SyntaxKind::LetKw
+            | SyntaxKind::IfKw
+            | SyntaxKind::ElseKw
+            | SyntaxKind::MatchKw
+            | SyntaxKind::ReturnKw
+            | SyntaxKind::BreakKw
+            | SyntaxKind::ContinueKw => {
+                self.declaration_brace_pending = false;
+                self.use_item_pending = false;
+            }
+            SyntaxKind::PubKw
+            | SyntaxKind::ForKw
+            | SyntaxKind::InKw
+            | SyntaxKind::AsKw
+            | SyntaxKind::TrueKw
+            | SyntaxKind::FalseKw
+            | SyntaxKind::NullKw
+            | SyntaxKind::SelfKw => {}
+            _ => {}
         }
+    }
+
+    fn previous_kind(&self) -> Option<SyntaxKind> {
+        self.previous_token.as_ref().map(|token| token.kind)
     }
 }
 
-fn needs_space_between(previous: Option<&TokenKind>, current: &TokenKind) -> bool {
+fn needs_space_between(previous: Option<&PreviousToken>, current: SyntaxKind) -> bool {
     let Some(previous) = previous else {
         return false;
     };
     if matches!(
-        previous,
-        TokenKind::Symbol(
-            Symbol::LParen | Symbol::LBracket | Symbol::Dot | Symbol::ColonColon | Symbol::Bang
-        )
+        previous.kind,
+        SyntaxKind::LParen
+            | SyntaxKind::LBracket
+            | SyntaxKind::Dot
+            | SyntaxKind::ColonColon
+            | SyntaxKind::Bang
     ) || matches!(
         current,
-        TokenKind::Symbol(
-            Symbol::RParen
-                | Symbol::RBracket
-                | Symbol::RBrace
-                | Symbol::Comma
-                | Symbol::Dot
-                | Symbol::ColonColon
-                | Symbol::Semicolon
-                | Symbol::Question
-        )
+        SyntaxKind::RParen
+            | SyntaxKind::RBracket
+            | SyntaxKind::RBrace
+            | SyntaxKind::Comma
+            | SyntaxKind::Dot
+            | SyntaxKind::ColonColon
+            | SyntaxKind::Semicolon
+            | SyntaxKind::Question
     ) {
         return false;
     }
-    is_word_like(previous) && is_word_like(current)
+    is_word_like(previous.kind) && is_word_like(current)
 }
 
-fn is_word_like(token: &TokenKind) -> bool {
+fn is_word_like(token: SyntaxKind) -> bool {
     matches!(
         token,
-        TokenKind::Ident(_)
-            | TokenKind::Int(_)
-            | TokenKind::Float(_)
-            | TokenKind::Char(_)
-            | TokenKind::String(_)
-            | TokenKind::InterpolatedString(_)
-            | TokenKind::Bytes(_)
-            | TokenKind::Keyword(
-                Keyword::Use
-                    | Keyword::Pub
-                    | Keyword::Const
-                    | Keyword::Global
-                    | Keyword::Let
-                    | Keyword::Fn
-                    | Keyword::Struct
-                    | Keyword::Enum
-                    | Keyword::Trait
-                    | Keyword::Impl
-                    | Keyword::For
-                    | Keyword::If
-                    | Keyword::Else
-                    | Keyword::Match
-                    | Keyword::Return
-                    | Keyword::Break
-                    | Keyword::Continue
-                    | Keyword::True
-                    | Keyword::False
-                    | Keyword::Null
-                    | Keyword::SelfValue
-                    | Keyword::In
-                    | Keyword::As
-            )
+        SyntaxKind::Ident
+            | SyntaxKind::Int
+            | SyntaxKind::Float
+            | SyntaxKind::Char
+            | SyntaxKind::String
+            | SyntaxKind::InterpolatedString
+            | SyntaxKind::Bytes
+            | SyntaxKind::UseKw
+            | SyntaxKind::PubKw
+            | SyntaxKind::ConstKw
+            | SyntaxKind::GlobalKw
+            | SyntaxKind::LetKw
+            | SyntaxKind::FnKw
+            | SyntaxKind::StructKw
+            | SyntaxKind::EnumKw
+            | SyntaxKind::TraitKw
+            | SyntaxKind::ImplKw
+            | SyntaxKind::ForKw
+            | SyntaxKind::IfKw
+            | SyntaxKind::ElseKw
+            | SyntaxKind::MatchKw
+            | SyntaxKind::ReturnKw
+            | SyntaxKind::BreakKw
+            | SyntaxKind::ContinueKw
+            | SyntaxKind::TrueKw
+            | SyntaxKind::FalseKw
+            | SyntaxKind::NullKw
+            | SyntaxKind::SelfKw
+            | SyntaxKind::InKw
+            | SyntaxKind::AsKw
     )
 }
 
-fn previous_token_can_end_declaration_member(previous: Option<&TokenKind>) -> bool {
+fn previous_token_can_end_declaration_member(previous: Option<SyntaxKind>) -> bool {
     matches!(
         previous,
         Some(
-            TokenKind::Ident(_)
-                | TokenKind::Int(_)
-                | TokenKind::Float(_)
-                | TokenKind::Char(_)
-                | TokenKind::String(_)
-                | TokenKind::InterpolatedString(_)
-                | TokenKind::Bytes(_)
-                | TokenKind::Keyword(Keyword::True | Keyword::False | Keyword::Null)
-                | TokenKind::Symbol(Symbol::RParen | Symbol::RBrace | Symbol::RBracket)
+            SyntaxKind::Ident
+                | SyntaxKind::Int
+                | SyntaxKind::Float
+                | SyntaxKind::Char
+                | SyntaxKind::String
+                | SyntaxKind::InterpolatedString
+                | SyntaxKind::Bytes
+                | SyntaxKind::TrueKw
+                | SyntaxKind::FalseKw
+                | SyntaxKind::NullKw
+                | SyntaxKind::RParen
+                | SyntaxKind::RBrace
+                | SyntaxKind::RBracket
         )
     )
 }
@@ -612,157 +540,38 @@ fn is_builtin_container_type_name(name: &str) -> bool {
     )
 }
 
-fn is_assignment_or_binary_symbol(symbol: Symbol) -> bool {
+fn is_assignment_or_binary_symbol(symbol: SyntaxKind) -> bool {
     matches!(
         symbol,
-        Symbol::Equal
-            | Symbol::PlusEqual
-            | Symbol::MinusEqual
-            | Symbol::StarEqual
-            | Symbol::SlashEqual
-            | Symbol::PercentEqual
-            | Symbol::Plus
-            | Symbol::Minus
-            | Symbol::Star
-            | Symbol::Slash
-            | Symbol::Percent
-            | Symbol::BangEqual
-            | Symbol::BangEqualEqual
-            | Symbol::EqualEqual
-            | Symbol::EqualEqualEqual
-            | Symbol::Less
-            | Symbol::LessEqual
-            | Symbol::Greater
-            | Symbol::GreaterEqual
-            | Symbol::AndAnd
-            | Symbol::OrOr
-            | Symbol::DotDot
-            | Symbol::DotDotEqual
+        SyntaxKind::Equal
+            | SyntaxKind::PlusEqual
+            | SyntaxKind::MinusEqual
+            | SyntaxKind::StarEqual
+            | SyntaxKind::SlashEqual
+            | SyntaxKind::PercentEqual
+            | SyntaxKind::Plus
+            | SyntaxKind::Minus
+            | SyntaxKind::Star
+            | SyntaxKind::Slash
+            | SyntaxKind::Percent
+            | SyntaxKind::BangEqual
+            | SyntaxKind::BangEqualEqual
+            | SyntaxKind::EqualEqual
+            | SyntaxKind::EqualEqualEqual
+            | SyntaxKind::Less
+            | SyntaxKind::LessEqual
+            | SyntaxKind::Greater
+            | SyntaxKind::GreaterEqual
+            | SyntaxKind::AndAnd
+            | SyntaxKind::OrOr
+            | SyntaxKind::DotDot
+            | SyntaxKind::DotDotEqual
     )
-}
-
-fn format_element_for_token(source: SourceId, token: &SyntaxToken) -> Option<FormatElement> {
-    let kind = format_element_kind(token)?;
-    let range = token.text_range();
-    Some(FormatElement {
-        kind,
-        span: Span::new(source, range.start().into(), range.end().into()),
-        text: token.text().to_owned(),
-    })
-}
-
-fn format_element_kind(token: &SyntaxToken) -> Option<FormatElementKind> {
-    match token.kind() {
-        SyntaxKind::Whitespace => Some(FormatElementKind::Trivia(TriviaKind::Whitespace)),
-        SyntaxKind::LineComment => Some(FormatElementKind::Trivia(TriviaKind::LineComment)),
-        SyntaxKind::BlockComment => Some(FormatElementKind::Trivia(TriviaKind::BlockComment)),
-        SyntaxKind::Shebang => Some(FormatElementKind::Trivia(TriviaKind::Shebang)),
-        SyntaxKind::Unknown => Some(FormatElementKind::Trivia(TriviaKind::Unknown)),
-        SyntaxKind::Eof => Some(FormatElementKind::Token(TokenKind::Eof)),
-        SyntaxKind::Ident => Some(FormatElementKind::Token(TokenKind::Ident(
-            token.text().to_owned(),
-        ))),
-        SyntaxKind::Int => Some(FormatElementKind::Token(TokenKind::Int(
-            IntegerLiteral::unsuffixed(token.text()),
-        ))),
-        SyntaxKind::Float => Some(FormatElementKind::Token(TokenKind::Float(
-            FloatLiteral::unsuffixed(token.text()),
-        ))),
-        SyntaxKind::Char => Some(FormatElementKind::Token(TokenKind::Char('\0'))),
-        SyntaxKind::String => Some(FormatElementKind::Token(TokenKind::String(String::new()))),
-        SyntaxKind::InterpolatedString => Some(FormatElementKind::Token(
-            TokenKind::InterpolatedString(Vec::new()),
-        )),
-        SyntaxKind::Bytes => Some(FormatElementKind::Token(TokenKind::Bytes(Vec::new()))),
-        kind if kind.is_keyword() => keyword_for_syntax(kind)
-            .map(TokenKind::Keyword)
-            .map(FormatElementKind::Token),
-        kind if kind.is_symbol() => symbol_for_syntax(kind)
-            .map(TokenKind::Symbol)
-            .map(FormatElementKind::Token),
-        _ => None,
-    }
-}
-
-fn keyword_for_syntax(kind: SyntaxKind) -> Option<Keyword> {
-    match kind {
-        SyntaxKind::UseKw => Some(Keyword::Use),
-        SyntaxKind::PubKw => Some(Keyword::Pub),
-        SyntaxKind::ConstKw => Some(Keyword::Const),
-        SyntaxKind::GlobalKw => Some(Keyword::Global),
-        SyntaxKind::LetKw => Some(Keyword::Let),
-        SyntaxKind::FnKw => Some(Keyword::Fn),
-        SyntaxKind::StructKw => Some(Keyword::Struct),
-        SyntaxKind::EnumKw => Some(Keyword::Enum),
-        SyntaxKind::TraitKw => Some(Keyword::Trait),
-        SyntaxKind::ImplKw => Some(Keyword::Impl),
-        SyntaxKind::ForKw => Some(Keyword::For),
-        SyntaxKind::IfKw => Some(Keyword::If),
-        SyntaxKind::ElseKw => Some(Keyword::Else),
-        SyntaxKind::MatchKw => Some(Keyword::Match),
-        SyntaxKind::ReturnKw => Some(Keyword::Return),
-        SyntaxKind::BreakKw => Some(Keyword::Break),
-        SyntaxKind::ContinueKw => Some(Keyword::Continue),
-        SyntaxKind::TrueKw => Some(Keyword::True),
-        SyntaxKind::FalseKw => Some(Keyword::False),
-        SyntaxKind::NullKw => Some(Keyword::Null),
-        SyntaxKind::SelfKw => Some(Keyword::SelfValue),
-        SyntaxKind::InKw => Some(Keyword::In),
-        SyntaxKind::AsKw => Some(Keyword::As),
-        _ => None,
-    }
-}
-
-fn symbol_for_syntax(kind: SyntaxKind) -> Option<Symbol> {
-    match kind {
-        SyntaxKind::Hash => Some(Symbol::Hash),
-        SyntaxKind::LBracket => Some(Symbol::LBracket),
-        SyntaxKind::RBracket => Some(Symbol::RBracket),
-        SyntaxKind::LParen => Some(Symbol::LParen),
-        SyntaxKind::RParen => Some(Symbol::RParen),
-        SyntaxKind::LBrace => Some(Symbol::LBrace),
-        SyntaxKind::RBrace => Some(Symbol::RBrace),
-        SyntaxKind::Comma => Some(Symbol::Comma),
-        SyntaxKind::Dot => Some(Symbol::Dot),
-        SyntaxKind::DotDot => Some(Symbol::DotDot),
-        SyntaxKind::DotDotEqual => Some(Symbol::DotDotEqual),
-        SyntaxKind::Colon => Some(Symbol::Colon),
-        SyntaxKind::ColonColon => Some(Symbol::ColonColon),
-        SyntaxKind::Semicolon => Some(Symbol::Semicolon),
-        SyntaxKind::Arrow => Some(Symbol::Arrow),
-        SyntaxKind::FatArrow => Some(Symbol::FatArrow),
-        SyntaxKind::Equal => Some(Symbol::Equal),
-        SyntaxKind::PlusEqual => Some(Symbol::PlusEqual),
-        SyntaxKind::MinusEqual => Some(Symbol::MinusEqual),
-        SyntaxKind::StarEqual => Some(Symbol::StarEqual),
-        SyntaxKind::SlashEqual => Some(Symbol::SlashEqual),
-        SyntaxKind::PercentEqual => Some(Symbol::PercentEqual),
-        SyntaxKind::Plus => Some(Symbol::Plus),
-        SyntaxKind::Minus => Some(Symbol::Minus),
-        SyntaxKind::Star => Some(Symbol::Star),
-        SyntaxKind::Slash => Some(Symbol::Slash),
-        SyntaxKind::Percent => Some(Symbol::Percent),
-        SyntaxKind::Bang => Some(Symbol::Bang),
-        SyntaxKind::BangEqual => Some(Symbol::BangEqual),
-        SyntaxKind::BangEqualEqual => Some(Symbol::BangEqualEqual),
-        SyntaxKind::EqualEqual => Some(Symbol::EqualEqual),
-        SyntaxKind::EqualEqualEqual => Some(Symbol::EqualEqualEqual),
-        SyntaxKind::Less => Some(Symbol::Less),
-        SyntaxKind::LessEqual => Some(Symbol::LessEqual),
-        SyntaxKind::Greater => Some(Symbol::Greater),
-        SyntaxKind::GreaterEqual => Some(Symbol::GreaterEqual),
-        SyntaxKind::AndAnd => Some(Symbol::AndAnd),
-        SyntaxKind::OrOr => Some(Symbol::OrOr),
-        SyntaxKind::Pipe => Some(Symbol::Pipe),
-        SyntaxKind::Question => Some(Symbol::Question),
-        _ => None,
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::token::{Keyword, Symbol};
 
     fn source_id() -> SourceId {
         SourceId::new(1)
@@ -771,44 +580,39 @@ mod tests {
     #[test]
     fn formatting_extracts_tokens_and_trivia_in_source_order() {
         let source = "pub fn main() {\n    // keep\n    return 1\n}\n";
-        let stream = format_elements(source_id(), source);
+        let tokens = syntax_tokens(source);
 
-        assert!(stream.diagnostics().is_empty());
-        assert_eq!(reconstruct(&stream), source);
+        assert_eq!(reconstruct_tokens(&tokens), source);
         assert_eq!(
-            stream
-                .elements()
+            tokens
                 .iter()
-                .filter(|element| matches!(element.kind(), FormatElementKind::Token(_)))
+                .filter(|token| !token.kind().is_trivia())
                 .count(),
-            10
+            9
         );
-        assert!(stream.elements().iter().any(|element| matches!(
-            element.kind(),
-            FormatElementKind::Token(TokenKind::Keyword(Keyword::Return))
-        )));
+        assert!(
+            tokens
+                .iter()
+                .any(|token| token.kind() == SyntaxKind::ReturnKw)
+        );
     }
 
     #[test]
     fn formatting_extracts_comments_and_blank_line_groups() {
         let source = "fn main() {\n    /* one\n\n       two */\n\n    // tail\n}\n";
-        let stream = format_elements(source_id(), source);
-        let comments = stream
-            .elements()
+        let tokens = syntax_tokens(source);
+        let comments = tokens
             .iter()
-            .filter_map(|element| match element.kind() {
-                FormatElementKind::Trivia(kind) if kind.is_comment() => Some(element.text()),
+            .filter_map(|token| match token.kind() {
+                SyntaxKind::LineComment | SyntaxKind::BlockComment => Some(token.text()),
                 _ => None,
             })
             .collect::<Vec<_>>();
-        let blank_line_group = stream.elements().iter().any(|element| {
-            matches!(
-                element.kind(),
-                FormatElementKind::Trivia(TriviaKind::Whitespace)
-            ) && element.text().matches('\n').count() >= 2
+        let blank_line_group = tokens.iter().any(|token| {
+            token.kind() == SyntaxKind::Whitespace && token.text().matches('\n').count() >= 2
         });
 
-        assert_eq!(reconstruct(&stream), source);
+        assert_eq!(reconstruct_tokens(&tokens), source);
         assert_eq!(comments, vec!["/* one\n\n       two */", "// tail"]);
         assert!(blank_line_group);
     }
@@ -816,20 +620,20 @@ mod tests {
     #[test]
     fn formatting_extracts_shebang_as_trivia() {
         let source = "#!/usr/bin/env vela\nfn main() { return 1 }\n";
-        let stream = format_elements(source_id(), source);
+        let tokens = syntax_tokens(source);
 
-        assert!(matches!(
-            stream.elements().first().map(FormatElement::kind),
-            Some(FormatElementKind::Trivia(TriviaKind::Shebang))
-        ));
-        assert_eq!(stream.elements()[0].span(), Span::new(source_id(), 0, 20));
-        assert!(stream.elements().iter().any(|element| {
-            matches!(
-                element.kind(),
-                FormatElementKind::Token(TokenKind::Symbol(Symbol::LBrace))
-            )
-        }));
-        assert_eq!(reconstruct(&stream), source);
+        assert_eq!(
+            tokens.first().map(SyntaxToken::kind),
+            Some(SyntaxKind::Shebang)
+        );
+        assert_eq!(u32::from(tokens[0].text_range().start()), 0);
+        assert_eq!(u32::from(tokens[0].text_range().end()), 20);
+        assert!(
+            tokens
+                .iter()
+                .any(|token| token.kind() == SyntaxKind::LBrace)
+        );
+        assert_eq!(reconstruct_tokens(&tokens), source);
     }
 
     #[test]
@@ -1006,11 +810,17 @@ fn main() {
         );
     }
 
-    fn reconstruct(stream: &FormatElementStream) -> String {
-        stream
-            .elements()
-            .iter()
-            .map(FormatElement::text)
-            .collect::<String>()
+    fn syntax_tokens(source: &str) -> Vec<SyntaxToken> {
+        let parsed = parse_source_with_id(source_id(), source);
+        assert!(parsed.diagnostics().is_empty());
+        parsed
+            .syntax_node()
+            .descendants_with_tokens()
+            .filter_map(|element| element.into_token())
+            .collect()
+    }
+
+    fn reconstruct_tokens(tokens: &[SyntaxToken]) -> String {
+        tokens.iter().map(SyntaxToken::text).collect::<String>()
     }
 }
