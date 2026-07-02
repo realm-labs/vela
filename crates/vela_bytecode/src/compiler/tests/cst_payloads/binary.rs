@@ -506,6 +506,49 @@ fn main() {
 }
 
 #[test]
+fn binary_value_type_inference_rejects_child_path_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(lhs, rhs) {
+    let value = lhs + rhs;
+}
+"#,
+        |compiler, payload| {
+            compiler.value_types.set_name(
+                "lhs",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
+            );
+            compiler.value_types.set_name(
+                "rhs",
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
+            );
+            let binary = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("binary initializer payload");
+            let (left, _) = binary
+                .binary_operand_payloads()
+                .expect("binary operand payloads");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                left.syntax_expression()
+                    .expect("left path CST expression")
+                    .clone(),
+                binary.fallback(),
+            );
+
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                value_types::StaticExprType::Dynamic,
+                "child path CST payload must not type the whole legacy binary expression"
+            );
+        },
+    );
+}
+
+#[test]
 fn inline_binary_numeric_literals_prefer_cst_payloads() {
     with_cst_payload_compiler(
         r#"

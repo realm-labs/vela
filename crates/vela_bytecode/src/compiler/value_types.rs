@@ -11,6 +11,7 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
@@ -294,14 +295,7 @@ fn static_expr_type_with_payload(
 ) -> StaticExprType {
     let payload_matches_expr = payload
         .map(|payload| {
-            let kind_matches = payload.syntax_kind().is_none_or(|kind| {
-                kind != SyntaxExpressionKind::Path
-                    || matches!(
-                        expr.kind,
-                        ExprKind::Path(_) | ExprKind::SelfValue | ExprKind::Binary { .. }
-                    )
-            });
-            kind_matches
+            expression_payload_matches_expr(payload, expr)
                 && payload
                     .syntax_span()
                     .is_some_and(|span| spans_overlap(span, expr.span))
