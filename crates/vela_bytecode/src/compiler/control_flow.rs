@@ -638,15 +638,13 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST if initializer kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = if syntax_payloads.if_expr.is_some() {
-                    self.compile_if_value_with_payloads(if_expr, dst, syntax_payloads.if_expr)?
-                } else if syntax_payloads.expression.is_some() {
+                let Some(if_payload) = syntax_payloads.if_expr else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST let initializer if payload",
                     )));
-                } else {
-                    self.compile_if_value_to(if_expr, dst)?
                 };
+                let returned =
+                    self.compile_if_value_with_payloads(if_expr, dst, Some(if_payload))?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Match => {
@@ -835,15 +833,13 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST if return value kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = if syntax_payloads.if_expr.is_some() {
-                    self.compile_if_value_with_payloads(if_expr, dst, syntax_payloads.if_expr)?
-                } else if syntax_payloads.expression.is_some() {
+                let Some(if_payload) = syntax_payloads.if_expr else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return if payload",
                     )));
-                } else {
-                    self.compile_if_value_to(if_expr, dst)?
                 };
+                let returned =
+                    self.compile_if_value_with_payloads(if_expr, dst, Some(if_payload))?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Match => {
