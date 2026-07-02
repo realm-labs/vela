@@ -1,13 +1,35 @@
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::TextRange;
-use crate::ast::{AstNode, SyntaxSourceFile, SyntaxTypeHint};
+use crate::ast::{AstNode, SyntaxSourceFile, SyntaxTypeHint, SyntaxUsePath};
+use crate::syntax_kind::SyntaxKind;
 
 pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
-    tree.syntax()
+    let mut diagnostics = tree
+        .syntax()
         .descendants()
         .filter_map(SyntaxTypeHint::cast)
         .flat_map(|hint| validate_type_hint(source, &hint))
+        .collect::<Vec<_>>();
+    diagnostics.extend(
+        tree.syntax()
+            .descendants()
+            .filter_map(SyntaxUsePath::cast)
+            .flat_map(|path| validate_use_path(source, &path)),
+    );
+    diagnostics
+}
+
+fn validate_use_path(source: SourceId, path: &SyntaxUsePath) -> Vec<Diagnostic> {
+    path.path_tokens()
+        .into_iter()
+        .filter(|token| token.kind() == SyntaxKind::Dot)
+        .map(|token| {
+            let span = span_for(source, token.text_range());
+            Diagnostic::error("use `::` for module/type paths; `.` is value access")
+                .with_code("E_PARSE")
+                .with_span(span)
+        })
         .collect()
 }
 
