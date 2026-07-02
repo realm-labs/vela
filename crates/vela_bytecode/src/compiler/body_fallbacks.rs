@@ -23,7 +23,7 @@ impl BodyFallbackSource {
         self.body_by_span(syntax_body_span(source, body))
     }
 
-    pub(super) fn body_by_span(&self, span: Span) -> Option<&Block> {
+    fn body_by_span(&self, span: Span) -> Option<&Block> {
         self.bodies.iter().find(|body| body.span == span)
     }
 }

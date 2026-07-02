@@ -267,7 +267,7 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let fallback_body = body_fallbacks.body_by_span(method_metadata.body_span)?;
+            let fallback_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -297,12 +297,12 @@ fn trait_default_method_payloads<'ast>(
         .methods
         .iter()
         .filter_map(|method_metadata| {
-            let span = method_metadata.default_body_span?;
-            let fallback_body = body_fallbacks.body_by_span(span)?;
+            method_metadata.default_body_span?;
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
+            let fallback_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
