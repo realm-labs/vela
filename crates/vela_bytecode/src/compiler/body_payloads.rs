@@ -267,16 +267,6 @@ fn syntax_record_field_for_fallback(
         .cloned()
 }
 
-fn syntax_pattern_for_fallback(
-    patterns: &[SyntaxPattern],
-    fallback: &Pattern,
-) -> Option<SyntaxPattern> {
-    patterns
-        .iter()
-        .find(|pattern| syntax_pattern_matches_fallback(pattern, fallback))
-        .cloned()
-}
-
 fn syntax_pattern_matches_fallback(pattern: &SyntaxPattern, fallback: &Pattern) -> bool {
     match fallback {
         Pattern::Wildcard => pattern.is_wildcard(),

@@ -481,7 +481,7 @@ fn classify(result, code = match result {
 }
 
 #[test]
-fn mismatched_match_pattern_payloads_do_not_pair_children_by_index_or_label() {
+fn mismatched_match_pattern_payloads_pair_tuple_by_position_and_record_by_label() {
     let source = SourceId::new(1);
     let text = r#"
 enum Shape {
@@ -532,11 +532,20 @@ fn legacy_record(value) {
         .tuple_pattern_payloads()
         .expect("tuple pattern should expose field payloads");
     assert_eq!(tuple_fields.len(), 2);
-    assert!(
-        tuple_fields
-            .iter()
-            .all(|field| field.syntax_pattern().is_none()),
-        "mismatched tuple fields must not receive index-based CST patterns"
+    let tuple_field_texts = tuple_fields
+        .iter()
+        .map(|field| {
+            field
+                .syntax_pattern()
+                .expect("tuple field syntax")
+                .syntax()
+                .text()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        tuple_field_texts,
+        ["cst_left".to_owned(), "cst_right".to_owned()]
     );
 
     let cst_record_syntax = first_return_match_pattern_syntax(&cst_record_payload.body);
@@ -604,14 +613,17 @@ fn legacy_tuple(value) {
         body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
 
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
-    let err = compiler
+    compiler
         .compile_match_pattern(Register(0), legacy_tuple_pattern, Some(&mismatched_tuple))
-        .expect_err("mismatched tuple child should not use legacy pattern kind");
-
-    assert!(matches!(
-        err.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST tuple pattern field payload")
-    ));
+        .expect("CST tuple child bindings should not compile legacy literal checks");
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(instruction.kind, UnlinkedInstructionKind::Equal { .. })),
+        "CST tuple child bindings must not compile fallback literal checks"
+    );
 }
 
 #[test]

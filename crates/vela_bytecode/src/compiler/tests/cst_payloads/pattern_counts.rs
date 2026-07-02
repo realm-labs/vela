@@ -250,6 +250,54 @@ fn legacy_record(value) {
 }
 
 #[test]
+fn tuple_pattern_child_payloads_are_position_based_not_legacy_matched() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64, right: i64)
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Pair(1, 2) => 1,
+        _ => 0,
+    };
+}
+
+fn fallback_tuple(value) {
+    return match value {
+        Shape::Pair(2, 1) => 1,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_tuple").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_tuple")
+        .expect("fallback function");
+    let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let payload = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+
+    let field_texts = payload
+        .tuple_pattern_payloads()
+        .expect("tuple pattern payloads")
+        .into_iter()
+        .map(|field| {
+            field
+                .syntax_pattern()
+                .expect("field syntax")
+                .syntax()
+                .text()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(field_texts, ["1".to_owned(), "2".to_owned()]);
+}
+
+#[test]
 fn missing_source_backed_match_pattern_payload_does_not_use_legacy_pattern() {
     let source = SourceId::new(1);
     let text = r#"
