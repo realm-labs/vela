@@ -267,23 +267,6 @@ fn syntax_record_field_for_fallback(
         .cloned()
 }
 
-fn syntax_pattern_matches_fallback(pattern: &SyntaxPattern, fallback: &Pattern) -> bool {
-    match fallback {
-        Pattern::Wildcard => pattern.is_wildcard(),
-        Pattern::Literal(literal) => pattern
-            .literal()
-            .is_some_and(|syntax_literal| &syntax_literal == literal),
-        Pattern::Binding(name) => pattern.binding_name().as_deref() == Some(name.as_str()),
-        Pattern::Path(path) => pattern.path_segments().as_slice() == path.as_slice(),
-        Pattern::TupleVariant { path, .. } => pattern
-            .tuple_pattern()
-            .is_some_and(|pattern| pattern.path_segments().as_slice() == path.as_slice()),
-        Pattern::RecordVariant { path, .. } => pattern
-            .record_pattern()
-            .is_some_and(|pattern| pattern.path_segments().as_slice() == path.as_slice()),
-    }
-}
-
 fn syntax_record_pattern_field_for_fallback(
     fields: &[SyntaxRecordPatternField],
     fallback: &RecordPatternField,
@@ -313,25 +296,6 @@ fn syntax_range_overlap_len(range: vela_syntax::TextRange, span: Span) -> Option
     }
 }
 
-fn syntax_match_arm_for_fallback(
-    arms: &[SyntaxMatchArm],
-    fallback: &MatchArm,
-) -> Option<SyntaxMatchArm> {
-    arms.iter()
-        .filter(|arm| {
-            arm.pattern()
-                .is_some_and(|pattern| syntax_pattern_matches_fallback(&pattern, &fallback.pattern))
-        })
-        .max_by_key(|arm| {
-            arm.body_as_expression()
-                .and_then(|body| {
-                    syntax_range_overlap_len(body.syntax().text_range(), fallback.body.span)
-                })
-                .unwrap_or(0)
-        })
-        .cloned()
-}
-
 fn match_arm_payloads_for_fallback<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
@@ -345,9 +309,10 @@ fn match_arm_payloads_for_fallback<'ast>(
         fallback
             .arms
             .iter()
-            .map(|fallback| CompilerMatchArmPayload {
+            .enumerate()
+            .map(|(index, fallback)| CompilerMatchArmPayload {
                 source,
-                syntax: syntax_match_arm_for_fallback(&syntax_arms, fallback),
+                syntax: syntax_arms.get(index).cloned(),
                 fallback,
             })
             .collect(),

@@ -99,6 +99,54 @@ fn main() {
     );
 }
 
+#[test]
+fn equal_count_match_arm_payloads_pair_by_position_not_legacy_pattern() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    return match 1 {
+        1 => 10,
+        _ => 20,
+    };
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    return match 1 {
+        _ => 20,
+        1 => 10,
+    };
+}
+"#;
+    let cst_match = cst_match_expression(source, cst_text);
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_match = payload.body.statement_payloads()[0]
+        .return_value_expression_payload()
+        .expect("legacy return match payload");
+    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_match,
+        legacy_match.fallback(),
+    );
+
+    let arm_texts = mismatched
+        .match_arm_payloads()
+        .expect("equal arm counts should expose payloads")
+        .into_iter()
+        .map(|arm| {
+            arm.pattern_payload()
+                .syntax_pattern()
+                .expect("arm pattern syntax")
+                .syntax()
+                .text()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(arm_texts, ["1".to_owned(), "_".to_owned()]);
+}
+
 fn cst_match_expression(source: SourceId, text: &str) -> vela_syntax::ast::SyntaxExpression {
     cst_match_statement(source, text)
         .as_return()
