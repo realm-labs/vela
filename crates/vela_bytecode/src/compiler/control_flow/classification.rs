@@ -80,6 +80,8 @@ pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
             | ExprKind::Array(_)
             | ExprKind::Map(_)
             | ExprKind::Record { .. }
+            | ExprKind::Path(_)
+            | ExprKind::SelfValue
     )
 }
 
@@ -93,6 +95,8 @@ pub(super) fn control_flow_expression_requires_matching_syntax(expr: &Expr) -> b
             | ExprKind::Map(_)
             | ExprKind::Record { .. }
             | ExprKind::Binary { .. }
+            | ExprKind::Path(_)
+            | ExprKind::SelfValue
     )
 }
 

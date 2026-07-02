@@ -36,6 +36,36 @@ fn main() {
 }
 
 #[test]
+fn mismatched_path_let_initializer_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    let cst_value = self;
+    let legacy_value = value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let cst_self_let = statements[0]
+        .syntax_statement()
+        .expect("CST let statement")
+        .clone();
+    let legacy_path_let = statements[1].fallback();
+    let mismatched =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_self_let, legacy_path_let);
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("mismatched path let initializer payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST let initializer payload")
+    ));
+}
+
+#[test]
 fn missing_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -156,6 +186,39 @@ fn main() {
     assert!(matches!(
         error.kind,
         CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
+    ));
+}
+
+#[test]
+fn mismatched_path_return_value_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    return self;
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let cst_self_return = statements[0]
+        .syntax_statement()
+        .expect("CST return statement")
+        .clone();
+    let legacy_path_return = statements[1].fallback();
+    let mismatched = body_payloads::CompilerStatementPayload::syntax(
+        source,
+        cst_self_return,
+        legacy_path_return,
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("mismatched path return payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
     ));
 }
 
