@@ -23,22 +23,25 @@ fn main() {
         .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let mismatched = body_payloads::CompilerBodyPayload::syntax(
+    let recovered_statement = cst_body
+        .statements()
+        .next()
+        .expect("recovered CST statement");
+    let fallback_statement = &legacy_payload.body.fallback().statements[0];
+    let mismatched = body_payloads::CompilerStatementPayload::syntax(
         source,
-        cst_body,
-        legacy_payload.body.fallback(),
+        recovered_statement,
+        fallback_statement,
     );
 
-    let statements = mismatched.statement_payloads();
-    assert_eq!(statements.len(), 1);
-    assert_eq!(
-        statements[0].statement_kind(),
-        Some(SyntaxStatementKind::Expr)
-    );
-    assert_eq!(statements[0].value_expression_kind(), None);
+    assert_eq!(mismatched.statement_kind(), Some(SyntaxStatementKind::Expr));
+    assert_eq!(mismatched.value_expression_kind(), None);
+    let vela_syntax::ast::StmtKind::Expr(expr) = &fallback_statement.kind else {
+        panic!("expected legacy expression tail");
+    };
 
     let error = compiler
-        .compile_block_payload_value_to(&mismatched, Register(0))
+        .compile_block_tail_expr_to_for_test(expr, Some(&mismatched), Register(0))
         .expect_err("recovered CST tail must not compile the legacy tail expression");
 
     assert!(matches!(

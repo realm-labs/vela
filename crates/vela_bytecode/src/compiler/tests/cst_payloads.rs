@@ -102,7 +102,7 @@ fn cst_payload_compiler_facts_with_options<'registry>(
 }
 
 #[test]
-fn mismatched_body_payloads_do_not_pair_statements_by_index() {
+fn equal_count_body_payloads_pair_statements_by_position_not_legacy_span() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst_body() {
@@ -126,16 +126,24 @@ fn legacy_body() {
 
     let statements = mismatched.statement_payloads();
     assert_eq!(statements.len(), 2);
-    assert!(
-        statements
-            .iter()
-            .all(|statement| statement.syntax_statement().is_none()),
-        "mismatched spans must not receive index-based CST statements"
+    assert_eq!(
+        statements[0]
+            .syntax_statement()
+            .map(|statement| statement.syntax().text().to_string())
+            .as_deref(),
+        Some("let cst_value = 1;")
+    );
+    assert_eq!(
+        statements[1]
+            .syntax_statement()
+            .map(|statement| statement.syntax().text().to_string())
+            .as_deref(),
+        Some("return cst_value;")
     );
 }
 
 #[test]
-fn unmatched_statement_payloads_do_not_compile_legacy_fallback() {
+fn mismatched_statement_body_payloads_compile_cst_values_by_position() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst_body() {
@@ -159,14 +167,26 @@ fn legacy_body() {
     );
     let statements = mismatched.statement_payloads();
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&statements[0])
-        .expect_err("unmatched statement payload must not use legacy fallback");
+        .expect("positionally paired CST statement payload should compile");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST statement payload")
-    ));
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .any(|constant| *constant == Constant::i64(1)),
+        "CST initializer value must be compiled"
+    );
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(2)),
+        "legacy fallback initializer value must not be compiled"
+    );
 }
 
 #[test]

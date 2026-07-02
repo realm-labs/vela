@@ -20,7 +20,6 @@ pub(super) struct SyntaxBodyPayload {
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
     fallback: &'ast Block,
-    pair_child_statements_by_position: bool,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
@@ -94,7 +93,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             fallback,
-            pair_child_statements_by_position: false,
         }
     }
 
@@ -102,7 +100,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             fallback,
-            pair_child_statements_by_position: true,
         }
     }
 
@@ -112,9 +109,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
-        let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
-        let pair_by_position = self.pair_child_statements_by_position
-            && syntax_statements.len() == self.fallback.statements.len();
+        let syntax_statements = syntax_body_statements(&self.syntax.body);
 
         self.fallback
             .statements
@@ -122,28 +117,19 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .enumerate()
             .map(|(index, fallback)| CompilerStatementPayload {
                 source: Some(self.syntax.source),
-                syntax: syntax_statement_for_fallback(
-                    &syntax_statements,
-                    fallback,
-                    pair_by_position.then_some(index),
-                ),
+                syntax: syntax_statements.get(index).cloned(),
                 fallback,
             })
             .collect()
     }
 
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
-        self.syntax.body.statements().next().is_none()
+        syntax_body_statements(&self.syntax.body).is_empty()
     }
 
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
-        let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
-        syntax_statements.len() > self.fallback.statements.len()
-            && syntax_statements.iter().any(|statement| {
-                !self.fallback.statements.iter().any(|fallback| {
-                    syntax_range_overlaps_span(statement.syntax().text_range(), fallback.span)
-                })
-            })
+        let syntax_statements = syntax_body_statements(&self.syntax.body);
+        syntax_statements.len() != self.fallback.statements.len()
     }
 
     pub(super) fn block_value<'payload>(
@@ -169,28 +155,52 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 }
 
-fn syntax_statement_for_fallback(
-    statements: &[SyntaxStatement],
-    fallback: &Stmt,
-    positional_index: Option<usize>,
-) -> Option<SyntaxStatement> {
-    let by_span = statements
-        .iter()
-        .filter(|statement| {
-            syntax_statement_kind_matches_fallback(statement.statement_kind(), fallback)
-        })
-        .max_by_key(|statement| {
-            syntax_range_overlap_len(statement.syntax().text_range(), fallback.span).unwrap_or(0)
-        })
-        .filter(|statement| {
-            syntax_range_overlaps_span(statement.syntax().text_range(), fallback.span)
-        })
-        .cloned();
-    by_span.or_else(|| {
-        let statement = statements.get(positional_index?)?;
-        syntax_statement_kind_matches_fallback(statement.statement_kind(), fallback)
-            .then(|| statement.clone())
-    })
+fn syntax_body_statements(body: &SyntaxBlock) -> Vec<SyntaxStatement> {
+    body.statements()
+        .filter(syntax_statement_counts_for_body_pairing)
+        .collect()
+}
+
+fn syntax_statement_counts_for_body_pairing(statement: &SyntaxStatement) -> bool {
+    if !matches!(statement.statement_kind(), SyntaxStatementKind::Expr) {
+        return true;
+    }
+    let Some(expr_stmt) = statement.as_expr() else {
+        return true;
+    };
+    if expr_stmt.expression().is_none() {
+        return false;
+    }
+    !syntax_statement_starts_with_infix_continuation(statement)
+}
+
+fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) -> bool {
+    let Some(token) = statement
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| !token.kind().is_trivia())
+    else {
+        return false;
+    };
+    matches!(
+        token.text(),
+        "+" | "*"
+            | "/"
+            | "%"
+            | "&&"
+            | "||"
+            | "=="
+            | "!="
+            | "==="
+            | "!=="
+            | "<"
+            | "<="
+            | ">"
+            | ">="
+            | ".."
+            | "..="
+    )
 }
 
 fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &Stmt) -> bool {
@@ -209,22 +219,6 @@ fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &
             !matches!(expr.kind, ExprKind::If(_) | ExprKind::Match(_))
         }
         _ => false,
-    }
-}
-
-fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
-    syntax_range_overlap_len(range, span).is_some()
-}
-
-fn syntax_range_overlap_len(range: vela_syntax::TextRange, span: Span) -> Option<u32> {
-    let start = u32::from(range.start());
-    let end = u32::from(range.end());
-    let overlap_start = start.max(span.start);
-    let overlap_end = end.min(span.end);
-    if overlap_start < overlap_end {
-        Some(overlap_end - overlap_start)
-    } else {
-        None
     }
 }
 
