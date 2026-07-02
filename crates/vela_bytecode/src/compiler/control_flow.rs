@@ -62,6 +62,22 @@ impl Compiler<'_, '_> {
     }
 
     #[cfg(test)]
+    pub(in crate::compiler) fn compile_let_initializer_kind_without_expression_payload_for_test(
+        &mut self,
+        value: &Expr,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<(Register, bool)> {
+        self.compile_let_initializer(
+            value,
+            None,
+            TypeContractContext::TypedLet {
+                name: "value".to_owned(),
+            },
+            ValueSyntaxPayloads::new(Some(kind), None, None, None, None, false),
+        )
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_return_value_payload_for_test(
         &mut self,
         value: &Expr,
@@ -79,6 +95,20 @@ impl Compiler<'_, '_> {
                 None,
                 false,
             ),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn compile_return_kind_without_expression_payload_for_test(
+        &mut self,
+        value: &Expr,
+        kind: SyntaxExpressionKind,
+    ) -> CompileResult<(Register, bool)> {
+        self.compile_return_expr(
+            value,
+            None,
+            TypeContractContext::Return,
+            ValueSyntaxPayloads::new(Some(kind), None, None, None, None, false),
         )
     }
 
@@ -480,7 +510,9 @@ impl Compiler<'_, '_> {
                 "missing CST let initializer payload",
             )));
         }
-        if syntax_payloads.has_unclassified_expression_payload() {
+        if syntax_payloads.has_unclassified_expression_payload()
+            || syntax_payloads.has_kind_without_expression_payload()
+        {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST let initializer payload",
             )));
@@ -685,7 +717,9 @@ impl Compiler<'_, '_> {
                 "missing CST return value payload",
             )));
         }
-        if syntax_payloads.has_unclassified_expression_payload() {
+        if syntax_payloads.has_unclassified_expression_payload()
+            || syntax_payloads.has_kind_without_expression_payload()
+        {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST return value payload",
             )));

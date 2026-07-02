@@ -126,6 +126,37 @@ fn main() {
 }
 
 #[test]
+fn let_initializer_kind_without_expression_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0].fallback();
+    let vela_syntax::ast::StmtKind::Let {
+        value: Some(value), ..
+    } = &statement.kind
+    else {
+        panic!("expected let statement");
+    };
+
+    let error = compiler
+        .compile_let_initializer_kind_without_expression_payload_for_test(
+            value,
+            SyntaxExpressionKind::Literal,
+        )
+        .expect_err("kind-only CST let payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload")
+    ));
+}
+
+#[test]
 fn mismatched_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -179,6 +210,34 @@ fn main() {
     let error = compiler
         .compile_return_value_payload_for_test(value, Some(&missing_payload))
         .expect_err("unclassified CST return payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
+    ));
+}
+
+#[test]
+fn return_value_kind_without_expression_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statement = payload.body.statement_payloads()[0].fallback();
+    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+        panic!("expected return statement");
+    };
+
+    let error = compiler
+        .compile_return_kind_without_expression_payload_for_test(
+            value,
+            SyntaxExpressionKind::Literal,
+        )
+        .expect_err("kind-only CST return payload must not compile legacy expression");
 
     assert!(matches!(
         error.kind,
