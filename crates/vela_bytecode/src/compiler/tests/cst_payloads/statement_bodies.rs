@@ -68,6 +68,46 @@ fn main() {
 }
 
 #[test]
+fn empty_block_statement_payload_uses_cst_empty_body() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    {
+    }
+    {
+        let legacy_value = 1;
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+    let cst_empty_block = statements[0]
+        .syntax_statement()
+        .expect("CST block statement")
+        .clone();
+    let legacy_nonempty_block = statements[1].fallback();
+    let mismatched = body_payloads::CompilerStatementPayload::syntax(
+        source,
+        cst_empty_block,
+        legacy_nonempty_block,
+    );
+
+    compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect("empty CST block must not compile legacy block body");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(1)),
+        "fallback block statement body must not be emitted"
+    );
+}
+
+#[test]
 fn missing_for_statement_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"

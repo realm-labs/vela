@@ -24,6 +24,9 @@ impl Compiler<'_, '_> {
         &mut self,
         body: &CompilerBodyPayload<'_>,
     ) -> CompileResult<bool> {
+        if body.syntax_statements_are_empty() {
+            return Ok(false);
+        }
         self.reject_extra_body_statement_payloads(body)?;
         let statements = body.statement_payloads();
         self.compile_statement_payloads(&statements)

@@ -132,6 +132,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .collect()
     }
 
+    pub(super) fn syntax_statements_are_empty(&self) -> bool {
+        self.syntax.body.statements().next().is_none()
+    }
+
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = self.syntax.body.statements().collect::<Vec<_>>();
         syntax_statements.len() > self.fallback.statements.len()

@@ -44,6 +44,10 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
+        if body.syntax_statements_are_empty() {
+            self.emit_constant_to(dst, Constant::Null);
+            return Ok(false);
+        }
         self.reject_extra_body_statement_payloads(body)?;
         let statements = body.statement_payloads();
         match body.block_value(&statements) {

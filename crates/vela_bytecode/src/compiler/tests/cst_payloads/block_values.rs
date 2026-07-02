@@ -135,3 +135,59 @@ fn main() {
         CompileErrorKind::UnsupportedSyntax("missing CST block expression body payload")
     ));
 }
+
+#[test]
+fn empty_block_expression_payload_uses_cst_empty_body() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    let value = {};
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    let value = {
+        1
+    };
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_block = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST let statement")
+        .as_let()
+        .expect("CST let")
+        .initializer()
+        .expect("CST initializer");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_block = legacy_payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .expect("legacy block initializer");
+    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+        source,
+        cst_block,
+        legacy_block.fallback(),
+    );
+
+    compiler
+        .compile_expr_with_payload(legacy_block.fallback(), Some(&mismatched))
+        .expect("empty CST block must not compile legacy block body");
+
+    assert!(compiler.code.constants.contains(&Constant::Null));
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(1)),
+        "fallback block expression body must not be emitted"
+    );
+}
