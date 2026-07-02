@@ -4,8 +4,8 @@ use vela_syntax::ast::{
     AstNode, SyntaxEnumItem, SyntaxImplItem, SyntaxItem, SyntaxSourceFile, SyntaxStructItem,
     SyntaxTraitItem,
 };
-use vela_syntax::formatting::{FormatElementKind, TriviaKind, format_elements, format_source};
-use vela_syntax::token::{Symbol, TokenKind};
+use vela_syntax::formatting::format_source;
+use vela_syntax::parse::parse_source_with_id;
 use vela_syntax::{
     Parse as SyntaxParse, SyntaxKind, SyntaxNode, TextRange as SyntaxTextRange, TextSize,
 };
@@ -72,18 +72,12 @@ impl LanguageServiceDatabases {
     pub fn formatting_ir(&self, document_id: &DocumentId) -> Option<FormattingIr> {
         let source = self.source_db().records().get(document_id)?;
         let line_index = LineIndex::new(source.text());
-        let extracted = format_elements(source.source_id(), source.text());
-        let segments = extracted
-            .elements()
-            .iter()
-            .map(|element| FormattingSegment {
-                kind: service_segment_kind(element.kind()),
-                range: DiagnosticRange::new(
-                    line_index.position(element.span().start as usize),
-                    line_index.position(element.span().end as usize),
-                ),
-                text: element.text().to_owned(),
-            })
+        let parsed = parse_source_with_id(source.source_id(), source.text());
+        let segments = parsed
+            .syntax_node()
+            .descendants_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter_map(|token| formatting_segment_for_token(&line_index, &token))
             .collect();
 
         Some(FormattingIr {
@@ -170,14 +164,38 @@ impl LanguageServiceDatabases {
     }
 }
 
-fn service_segment_kind(kind: &FormatElementKind) -> FormattingSegmentKind {
+fn formatting_segment_for_token(
+    line_index: &LineIndex,
+    token: &vela_syntax::SyntaxToken,
+) -> Option<FormattingSegment> {
+    let kind = formatting_segment_kind(token.kind())?;
+    let range = token.text_range();
+    Some(FormattingSegment {
+        kind,
+        range: DiagnosticRange::new(
+            line_index.position(text_size_to_usize(range.start())),
+            line_index.position(text_size_to_usize(range.end())),
+        ),
+        text: token.text().to_owned(),
+    })
+}
+
+fn formatting_segment_kind(kind: SyntaxKind) -> Option<FormattingSegmentKind> {
     match kind {
-        FormatElementKind::Token(_) => FormattingSegmentKind::Token,
-        FormatElementKind::Trivia(TriviaKind::Whitespace) => FormattingSegmentKind::Whitespace,
-        FormatElementKind::Trivia(TriviaKind::LineComment) => FormattingSegmentKind::LineComment,
-        FormatElementKind::Trivia(TriviaKind::BlockComment) => FormattingSegmentKind::BlockComment,
-        FormatElementKind::Trivia(TriviaKind::Shebang) => FormattingSegmentKind::Shebang,
-        FormatElementKind::Trivia(TriviaKind::Unknown) => FormattingSegmentKind::UnknownTrivia,
+        SyntaxKind::Whitespace => Some(FormattingSegmentKind::Whitespace),
+        SyntaxKind::LineComment => Some(FormattingSegmentKind::LineComment),
+        SyntaxKind::BlockComment => Some(FormattingSegmentKind::BlockComment),
+        SyntaxKind::Shebang => Some(FormattingSegmentKind::Shebang),
+        SyntaxKind::Unknown => Some(FormattingSegmentKind::UnknownTrivia),
+        SyntaxKind::Ident
+        | SyntaxKind::Int
+        | SyntaxKind::Float
+        | SyntaxKind::Char
+        | SyntaxKind::String
+        | SyntaxKind::InterpolatedString
+        | SyntaxKind::Bytes => Some(FormattingSegmentKind::Token),
+        _ if kind.is_keyword() || kind.is_symbol() => Some(FormattingSegmentKind::Token),
+        _ => None,
     }
 }
 
@@ -617,12 +635,15 @@ fn current_construct_range(
     trigger: &str,
 ) -> Option<DiagnosticRange> {
     let offset = line_index.offset(position).min(source.len());
-    let stream = format_elements(source_id, source);
-    let tokens = stream
-        .elements()
-        .iter()
-        .filter_map(|element| match element.kind() {
-            FormatElementKind::Token(TokenKind::Symbol(symbol)) => Some((*symbol, element.span())),
+    let parsed = parse_source_with_id(source_id, source);
+    let tokens = parsed
+        .syntax_node()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter_map(|token| match token.kind() {
+            SyntaxKind::LBrace | SyntaxKind::RBrace => {
+                Some((token.kind(), token_span(source_id, &token)))
+            }
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -630,7 +651,7 @@ fn current_construct_range(
     if trigger == "}"
         && let Some(index) = tokens
             .iter()
-            .rposition(|(symbol, span)| *symbol == Symbol::RBrace && (span.end as usize) <= offset)
+            .rposition(|(kind, span)| *kind == SyntaxKind::RBrace && (span.end as usize) <= offset)
     {
         return matching_brace_range(&tokens, index, line_index);
     }
@@ -641,8 +662,8 @@ fn current_construct_range(
             break;
         }
         match symbol {
-            Symbol::LBrace => stack.push(index),
-            Symbol::RBrace => {
+            SyntaxKind::LBrace => stack.push(index),
+            SyntaxKind::RBrace => {
                 stack.pop();
             }
             _ => {}
@@ -658,15 +679,15 @@ fn current_construct_range(
 }
 
 fn matching_brace_range(
-    tokens: &[(Symbol, vela_common::Span)],
+    tokens: &[(SyntaxKind, vela_common::Span)],
     close_index: usize,
     line_index: &LineIndex,
 ) -> Option<DiagnosticRange> {
     let mut depth = 0_usize;
     for index in (0..=close_index).rev() {
         match tokens[index].0 {
-            Symbol::RBrace => depth = depth.saturating_add(1),
-            Symbol::LBrace => {
+            SyntaxKind::RBrace => depth = depth.saturating_add(1),
+            SyntaxKind::LBrace => {
                 depth = depth.saturating_sub(1);
                 if depth == 0 {
                     return Some(DiagnosticRange::new(
@@ -682,14 +703,14 @@ fn matching_brace_range(
 }
 
 fn matching_close_offset(
-    tokens: &[(Symbol, vela_common::Span)],
+    tokens: &[(SyntaxKind, vela_common::Span)],
     open_index: usize,
 ) -> Option<usize> {
     let mut depth = 0_usize;
     for (symbol, span) in tokens.iter().skip(open_index) {
         match symbol {
-            Symbol::LBrace => depth = depth.saturating_add(1),
-            Symbol::RBrace => {
+            SyntaxKind::LBrace => depth = depth.saturating_add(1),
+            SyntaxKind::RBrace => {
                 depth = depth.saturating_sub(1);
                 if depth == 0 {
                     return Some(span.end as usize);
@@ -699,6 +720,15 @@ fn matching_close_offset(
         }
     }
     None
+}
+
+fn token_span(source_id: SourceId, token: &vela_syntax::SyntaxToken) -> vela_common::Span {
+    let range = token.text_range();
+    vela_common::Span::new(
+        source_id,
+        text_size_to_usize(range.start()) as u32,
+        text_size_to_usize(range.end()) as u32,
+    )
 }
 
 fn current_line_range(source: &str, line_index: &LineIndex, position: Position) -> DiagnosticRange {

@@ -6,25 +6,26 @@ use crate::token::{Keyword, Symbol, TokenKind};
 use crate::{SyntaxKind, SyntaxToken};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FormatElementStream {
+struct FormatElementStream {
     elements: Vec<FormatElement>,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl FormatElementStream {
     #[must_use]
-    pub fn elements(&self) -> &[FormatElement] {
+    fn elements(&self) -> &[FormatElement] {
         &self.elements
     }
 
+    #[cfg(test)]
     #[must_use]
-    pub fn diagnostics(&self) -> &[Diagnostic] {
+    fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FormatElement {
+struct FormatElement {
     kind: FormatElementKind,
     span: Span,
     text: String,
@@ -32,29 +33,30 @@ pub struct FormatElement {
 
 impl FormatElement {
     #[must_use]
-    pub fn kind(&self) -> &FormatElementKind {
+    fn kind(&self) -> &FormatElementKind {
         &self.kind
     }
 
+    #[cfg(test)]
     #[must_use]
-    pub const fn span(&self) -> Span {
+    const fn span(&self) -> Span {
         self.span
     }
 
     #[must_use]
-    pub fn text(&self) -> &str {
+    fn text(&self) -> &str {
         &self.text
     }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum FormatElementKind {
+enum FormatElementKind {
     Token(TokenKind),
     Trivia(TriviaKind),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TriviaKind {
+enum TriviaKind {
     Whitespace,
     LineComment,
     BlockComment,
@@ -63,14 +65,15 @@ pub enum TriviaKind {
 }
 
 impl TriviaKind {
+    #[cfg(test)]
     #[must_use]
-    pub const fn is_comment(self) -> bool {
+    const fn is_comment(self) -> bool {
         matches!(self, Self::LineComment | Self::BlockComment)
     }
 }
 
 #[must_use]
-pub fn format_elements(source: SourceId, text: &str) -> FormatElementStream {
+fn format_elements(source: SourceId, text: &str) -> FormatElementStream {
     let parsed = parse_source_with_id(source, text);
     let mut elements = Vec::new();
     for token in parsed
