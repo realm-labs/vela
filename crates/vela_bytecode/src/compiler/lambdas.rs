@@ -13,7 +13,7 @@ use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::record_shapes::ValueShape;
-use super::{CompileResult, Compiler};
+use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LambdaCapture {
@@ -158,9 +158,12 @@ impl Compiler<'_, '_> {
         match &body.kind {
             ExprKind::Block(block) => {
                 let dst = self.alloc_register()?;
-                let returned = if let Some(block_payload) =
-                    body_payload.and_then(CompilerExpressionPayload::block_body_payload)
-                {
+                let returned = if let Some(body_payload) = body_payload {
+                    let Some(block_payload) = body_payload.block_body_payload() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST lambda block body payload",
+                        )));
+                    };
                     self.compile_block_payload_value_to(&block_payload, dst)?
                 } else {
                     self.compile_block_value_to(block, dst)?

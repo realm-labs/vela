@@ -155,6 +155,53 @@ fn main() {
 }
 
 #[test]
+fn missing_lambda_block_body_payload_does_not_use_legacy_block() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let lambda = |value| {
+        let next = value + 1;
+        next
+    };
+}
+"#,
+        |compiler, payload| {
+            let lambda_payload = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("CST lambda initializer");
+            let body_payload = lambda_payload
+                .lambda_body_payload()
+                .expect("CST lambda body payload");
+            let missing_block_body =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    body_payload
+                        .syntax_expression()
+                        .expect("CST lambda body expression")
+                        .clone(),
+                    body_payload.fallback(),
+                );
+            let ExprKind::Lambda { params, body } = &lambda_payload.fallback().kind else {
+                panic!("expected lambda expression");
+            };
+
+            let error = compiler
+                .compile_lambda(
+                    lambda_payload.fallback(),
+                    params,
+                    body,
+                    Some(&missing_block_body),
+                )
+                .expect_err("missing CST lambda block payload must not compile legacy block");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST lambda block body payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn missing_lambda_expression_payload_does_not_use_legacy_lambda() {
     let source = SourceId::new(1);
     let text = r#"
