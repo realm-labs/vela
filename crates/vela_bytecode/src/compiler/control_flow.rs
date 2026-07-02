@@ -244,6 +244,11 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_statement(stmt);
         };
+        let value = if syntax_payloads.syntax_value_missing {
+            None
+        } else {
+            value.as_ref()
+        };
         let local_binding = self
             .bindings
             .local_named_at(name, LocalBindingKind::Let, stmt.span)
@@ -257,7 +262,7 @@ impl Compiler<'_, '_> {
             let known_type_names = self.facts.known_type_names();
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
-        let value_script_fact = value.as_ref().and_then(|value| {
+        let value_script_fact = value.and_then(|value| {
             self.script_fact_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let script_hint_proven = hinted_script_fact
@@ -266,11 +271,11 @@ impl Compiler<'_, '_> {
             .is_some_and(|(hint, value)| hint == value);
         let script_fact = merge_type_hint_and_value_fact(hinted_script_fact, value_script_fact);
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
-        let value_type = value.as_ref().and_then(|value| {
+        let value_type = value.and_then(|value| {
             self.value_type_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let value_type = hinted_value_type.clone().or(value_type);
-        let value_shape = value.as_ref().and_then(|value| {
+        let value_shape = value.and_then(|value| {
             self.value_shape_for_expr_with_payload(value, syntax_payloads.expression)
         });
         let (register, returned) = if let Some(value) = value {
@@ -283,8 +288,7 @@ impl Compiler<'_, '_> {
         } else {
             (self.emit_constant(Constant::Null)?, false)
         };
-        if let (Some(value), Some(hint), None) =
-            (value.as_ref(), hir_type_hint, hinted_value_type.as_ref())
+        if let (Some(value), Some(hint), None) = (value, hir_type_hint, hinted_value_type.as_ref())
             && is_map_or_set_type_hint(hint)
             && !script_hint_proven
             && let Some(guard) =

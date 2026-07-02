@@ -66,7 +66,7 @@ fn main(value) {
 }
 
 #[test]
-fn missing_let_initializer_payload_does_not_use_legacy_expression() {
+fn missing_let_initializer_payload_uses_cst_empty_let() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -89,14 +89,11 @@ fn main() {
         legacy_array_let,
     );
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("missing CST let initializer must not compile legacy expression");
+        .expect("CST empty let payload must not compile legacy array expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload")
-    ));
+    assert_empty_let_without_i64_fallback(&compiler);
 }
 
 #[test]
@@ -223,7 +220,7 @@ fn main(value) {
 }
 
 #[test]
-fn missing_simple_let_initializer_payload_does_not_use_legacy_expression() {
+fn missing_simple_let_initializer_payload_uses_cst_empty_let() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -246,14 +243,11 @@ fn main() {
         legacy_literal_let,
     );
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("missing CST simple let initializer must not compile legacy expression");
+        .expect("CST empty let payload must not compile legacy literal expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload")
-    ));
+    assert_empty_let_without_i64_fallback(&compiler);
 }
 
 #[test]
@@ -434,5 +428,20 @@ fn assert_empty_return_without_i64_fallback(compiler: &Compiler<'_, '_>) {
             .iter()
             .all(|constant| *constant != Constant::i64(1)),
         "fallback return value must not be emitted"
+    );
+}
+
+fn assert_empty_let_without_i64_fallback(compiler: &Compiler<'_, '_>) {
+    assert!(
+        compiler.code.constants.contains(&Constant::Null),
+        "CST empty let must emit null"
+    );
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(1)),
+        "fallback let initializer must not be emitted"
     );
 }
