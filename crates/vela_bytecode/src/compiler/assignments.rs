@@ -1073,8 +1073,7 @@ impl Compiler<'_, '_> {
         target: &Expr,
         syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> CompileResult<()> {
-        let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(target, syntax)
-        else {
+        let Some((receiver_type, field)) = self.host_assignment_receiver_and_field(syntax) else {
             return Ok(());
         };
         let Some(access) = self.host_field_info(Some(receiver_type.as_str()), field.as_str())
@@ -1102,42 +1101,25 @@ impl Compiler<'_, '_> {
 
     fn host_assignment_receiver_and_field(
         &self,
-        target: &Expr,
         syntax: AssignmentTargetSyntax<'_, '_>,
     ) -> Option<(String, String)> {
-        if let Some(payload) = syntax.expression {
-            return match payload.syntax_kind() {
-                Some(SyntaxExpressionKind::Field) | None => {
-                    let base_payload = payload.field_base_payload()?;
-                    let field = payload.syntax_field_name()?;
-                    let receiver_type = self.script_type_for_payload(&base_payload)?;
-                    Some((receiver_type, field))
-                }
-                Some(SyntaxExpressionKind::Path) => {
-                    let path = payload.syntax_path_segments()?;
-                    let (field, receiver_path) = path.split_last()?;
-                    let [receiver] = receiver_path else {
-                        return None;
-                    };
-                    Some((self.script_types.name(receiver)?, field.clone()))
-                }
-                Some(_) => None,
-            };
-        }
-
-        match &target.kind {
-            ExprKind::Field { base, name } => {
-                let receiver_type = self.script_type_for_expr_with_payload(base, None)?;
-                Some((receiver_type, name.clone()))
+        let payload = syntax.expression?;
+        match payload.syntax_kind() {
+            Some(SyntaxExpressionKind::Field) | None => {
+                let base_payload = payload.field_base_payload()?;
+                let field = payload.syntax_field_name()?;
+                let receiver_type = self.script_type_for_payload(&base_payload)?;
+                Some((receiver_type, field))
             }
-            ExprKind::Path(path) => {
+            Some(SyntaxExpressionKind::Path) => {
+                let path = payload.syntax_path_segments()?;
                 let (field, receiver_path) = path.split_last()?;
                 let [receiver] = receiver_path else {
                     return None;
                 };
                 Some((self.script_types.name(receiver)?, field.clone()))
             }
-            _ => None,
+            Some(_) => None,
         }
     }
 }
