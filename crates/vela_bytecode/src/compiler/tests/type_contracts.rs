@@ -46,15 +46,79 @@ fn with_static_type_compiler(
     inspect(&mut compiler, fallback_body);
 }
 
-fn let_initializer(body: &Block, index: usize) -> &Expr {
-    let statement = body.statements.get(index).expect("statement should exist");
-    let vela_syntax::ast::StmtKind::Let {
-        value: Some(value), ..
-    } = &statement.kind
-    else {
-        panic!("expected let initializer");
+fn with_static_type_payload_compiler(
+    source: &str,
+    inspect: impl for<'ast> FnOnce(
+        &mut Compiler<'ast, 'static>,
+        function_payloads::FunctionBodyPayload<'ast>,
+    ),
+) {
+    let semantic =
+        parse_semantic_source(SourceId::new(1), source).expect("semantic source should parse");
+    let script_function_symbols = semantic.script_function_symbols();
+    let script_function_signatures = semantic.script_function_signatures();
+    let type_symbols = semantic.type_symbols();
+    let global_symbols = semantic.global_symbols();
+    let global_slots = global_slots(&global_symbols);
+    let global_type_symbols = semantic.global_type_symbols();
+    let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let const_values = semantic.const_values().expect("const values should lower");
+    let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
+    let facts = CompilerFacts {
+        script_function_symbols,
+        script_function_signatures,
+        script_method_ids: std::collections::BTreeMap::new(),
+        script_method_signatures: std::collections::BTreeMap::new(),
+        derived_operator_traits: std::collections::BTreeMap::new(),
+        script_field_slots,
+        schema_defaults,
+        type_symbols,
+        global_symbols,
+        global_slots,
+        global_type_symbols,
+        const_values,
+        options: CompilerOptions::default(),
+        registry: None,
     };
-    value
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let mut compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+    inspect(&mut compiler, payload);
+}
+
+fn let_initializer_payload<'ast>(
+    statements: &[body_payloads::CompilerStatementPayload<'ast>],
+    index: usize,
+) -> body_payloads::CompilerExpressionPayload<'ast> {
+    statements
+        .get(index)
+        .expect("statement should exist")
+        .let_initializer_expression_payload()
+        .expect("expected let initializer")
+}
+
+fn return_value_payload<'ast>(
+    statements: &[body_payloads::CompilerStatementPayload<'ast>],
+) -> body_payloads::CompilerExpressionPayload<'ast> {
+    statements
+        .last()
+        .expect("return statement should exist")
+        .return_value_expression_payload()
+        .expect("expected return value")
+}
+
+fn static_type_for_payload(
+    compiler: &Compiler<'_, '_>,
+    payload: &body_payloads::CompilerExpressionPayload<'_>,
+) -> value_types::StaticExprType {
+    compiler.static_type_for_expr_with_payload(payload.fallback(), Some(payload))
 }
 
 fn return_value(body: &Block) -> &Expr {
@@ -78,7 +142,7 @@ fn return_call_arg(body: &Block, index: usize) -> &Expr {
 
 #[test]
 fn compiler_classifies_literals_without_defaulting_unsuffixed_numbers() {
-    with_static_type_compiler(
+    with_static_type_payload_compiler(
         r#"
 fn main() {
     let integer = 12;
@@ -90,35 +154,36 @@ fn main() {
     return null;
 }
 "#,
-        |compiler, function| {
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 0)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 0)),
                 value_types::StaticExprType::UnsuffixedIntegerLiteral
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 1)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 1)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I8
                 ))
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 2)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 2)),
                 value_types::StaticExprType::UnsuffixedFloatLiteral
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 3)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 3)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::F32
                 ))
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 4)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 4)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::String
                 ))
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 5)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 5)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::Bytes
                 ))
@@ -129,7 +194,7 @@ fn main() {
 
 #[test]
 fn compiler_classifies_dynamic_hinted_and_local_value_facts() {
-    with_static_type_compiler(
+    with_static_type_payload_compiler(
         r#"
 fn main(dynamic, exact: i64) {
     let erased = dynamic;
@@ -139,32 +204,33 @@ fn main(dynamic, exact: i64) {
     return copied;
 }
 "#,
-        |compiler, function| {
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 0)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 0)),
                 value_types::StaticExprType::Dynamic
             );
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 1)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 1)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I64
                 ))
             );
 
-            for statement in function.statements.iter().take(3) {
+            for statement in statements.iter().take(3) {
                 compiler
-                    .compile_statement(statement)
+                    .compile_statement_payload_for_test(statement)
                     .expect("let statement should compile");
             }
 
             assert_eq!(
-                compiler.static_type_for_expr(let_initializer(function, 3)),
+                static_type_for_payload(compiler, &let_initializer_payload(&statements, 3)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::U32
                 ))
             );
             assert_eq!(
-                compiler.static_type_for_expr(return_value(function)),
+                static_type_for_payload(compiler, &return_value_payload(&statements)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I64
                 ))
@@ -460,7 +526,7 @@ fn main(values: Set<Function>) {
 
 #[test]
 fn compiler_preserves_parameterized_container_value_facts() {
-    with_static_type_compiler(
+    with_static_type_payload_compiler(
         r#"
 fn main(dynamic) {
     let values: Array<i64> = dynamic;
@@ -470,21 +536,30 @@ fn main(dynamic) {
     return copied;
 }
 "#,
-        |compiler, function| {
-            for statement in function.statements.iter().take(2) {
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            for statement in statements.iter().take(2) {
                 compiler
-                    .compile_statement(statement)
+                    .compile_statement_payload_for_test(statement)
                     .expect("typed let should compile");
             }
 
+            let copied_values = let_initializer_payload(&statements, 2);
             assert_eq!(
-                compiler.value_type_for_expr(let_initializer(function, 2)),
+                compiler.value_type_for_expr_with_payload(
+                    copied_values.fallback(),
+                    Some(&copied_values)
+                ),
                 Some(RuntimeTypeFact::array(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I64
                 )))
             );
+            let copied_scores = let_initializer_payload(&statements, 3);
             assert_eq!(
-                compiler.value_type_for_expr(let_initializer(function, 3)),
+                compiler.value_type_for_expr_with_payload(
+                    copied_scores.fallback(),
+                    Some(&copied_scores)
+                ),
                 Some(RuntimeTypeFact::map(
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::String),
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),
