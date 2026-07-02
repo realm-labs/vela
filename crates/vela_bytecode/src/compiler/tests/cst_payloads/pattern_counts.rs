@@ -169,6 +169,87 @@ fn fallback_record(value) {
 }
 
 #[test]
+fn compound_pattern_kind_mismatch_does_not_use_legacy_fields() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64)
+    Named { first: i64 }
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Pair(cst_left) => cst_left,
+        _ => 0,
+    };
+}
+
+fn cst_record(value) {
+    return match value {
+        Shape::Named { first: cst_first } => cst_first,
+        _ => 0,
+    };
+}
+
+fn legacy_tuple(value) {
+    return match value {
+        Shape::Pair(legacy_left) => legacy_left,
+        _ => 0,
+    };
+}
+
+fn legacy_record(value) {
+    return match value {
+        Shape::Named { first: legacy_first } => legacy_first,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_tuple_payload, _, _) = semantic.function("cst_tuple").expect("cst tuple");
+    let (cst_record_payload, _, _) = semantic.function("cst_record").expect("cst record");
+    let (legacy_tuple_payload, _, _) = semantic.function("legacy_tuple").expect("legacy tuple");
+    let (legacy_record_payload, _, _) = semantic.function("legacy_record").expect("legacy record");
+    let cst_tuple = first_return_match_pattern_syntax(&cst_tuple_payload.body);
+    let cst_record = first_return_match_pattern_syntax(&cst_record_payload.body);
+    let legacy_tuple = first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
+    let legacy_record = first_return_match_fallback_pattern(legacy_record_payload.body.fallback());
+    let tuple_payload_with_record_fallback =
+        body_payloads::CompilerPatternPayload::syntax(cst_tuple, legacy_record);
+    let record_payload_with_tuple_fallback =
+        body_payloads::CompilerPatternPayload::syntax(cst_record, legacy_tuple);
+    let (mut tuple_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_record");
+    let (mut record_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
+
+    let tuple_error = tuple_compiler
+        .compile_match_pattern(
+            Register(0),
+            legacy_record,
+            Some(&tuple_payload_with_record_fallback),
+        )
+        .expect_err("tuple CST pattern must not use legacy record fields");
+    assert!(matches!(
+        tuple_error.kind,
+        CompileErrorKind::UnsupportedSyntax("match pattern")
+    ));
+
+    let record_error = record_compiler
+        .bind_pattern_locals(
+            Register(0),
+            legacy_tuple,
+            Some(&record_payload_with_tuple_fallback),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("record CST pattern must not use legacy tuple fields");
+    assert!(matches!(
+        record_error.kind,
+        CompileErrorKind::UnsupportedSyntax("match pattern")
+    ));
+}
+
+#[test]
 fn missing_source_backed_match_pattern_payload_does_not_use_legacy_pattern() {
     let source = SourceId::new(1);
     let text = r#"

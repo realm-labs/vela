@@ -193,6 +193,28 @@ fn pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {
     )
 }
 
+fn reject_compound_pattern_kind_mismatch(
+    kind: SyntaxPatternKind,
+    pattern: &Pattern,
+) -> CompileResult<()> {
+    let matches_fallback = matches!(
+        (kind, pattern),
+        (
+            SyntaxPatternKind::TupleVariant,
+            Pattern::TupleVariant { .. }
+        ) | (
+            SyntaxPatternKind::RecordVariant,
+            Pattern::RecordVariant { .. }
+        )
+    );
+    if matches_fallback {
+        return Ok(());
+    }
+    Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        "match pattern",
+    )))
+}
+
 pub(crate) fn pattern_declares_locals(pattern: &Pattern) -> bool {
     match pattern {
         Pattern::Binding(_) => true,
@@ -284,7 +306,9 @@ impl Compiler<'_, '_> {
                     })?;
                     return self.compile_variant_tag_pattern(scrutinee, &path);
                 }
-                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {}
+                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {
+                    reject_compound_pattern_kind_mismatch(kind, pattern)?;
+                }
             }
         }
 
@@ -440,7 +464,9 @@ impl Compiler<'_, '_> {
                 SyntaxPatternKind::Wildcard
                 | SyntaxPatternKind::Literal
                 | SyntaxPatternKind::Path => return Ok(()),
-                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {}
+                SyntaxPatternKind::TupleVariant | SyntaxPatternKind::RecordVariant => {
+                    reject_compound_pattern_kind_mismatch(pattern_kind, pattern)?;
+                }
             }
         }
 
