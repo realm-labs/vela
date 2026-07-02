@@ -289,7 +289,7 @@ fn main() {
 }
 
 #[test]
-fn missing_return_value_payload_does_not_use_legacy_expression() {
+fn empty_return_payload_with_array_fallback_uses_cst_empty_return() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -312,14 +312,11 @@ fn main() {
         legacy_array_return,
     );
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("missing CST return value must not compile legacy expression");
+        .expect("CST empty return payload must not compile legacy array expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
-    ));
+    assert_empty_return_without_i64_fallback(&compiler);
 }
 
 #[test]
@@ -355,7 +352,40 @@ fn main() {
 }
 
 #[test]
-fn missing_simple_return_value_payload_does_not_use_legacy_expression() {
+fn empty_return_statement_payload_uses_cst_kind() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    return;
+}
+
+fn fallback_body() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_body")
+        .expect("fallback function");
+    let cst_statement = cst_payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("cst statement syntax")
+        .clone();
+    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let mismatched =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
+
+    compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect("CST empty return payload must not compile fallback return value");
+
+    assert_empty_return_without_i64_fallback(&compiler);
+}
+
+#[test]
+fn empty_return_payload_with_literal_fallback_uses_cst_empty_return() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -377,12 +407,32 @@ fn main() {
         legacy_literal_return,
     );
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("missing CST simple return value must not compile legacy expression");
+        .expect("CST empty return payload must not compile legacy literal expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
-    ));
+    assert_empty_return_without_i64_fallback(&compiler);
+}
+
+fn assert_empty_return_without_i64_fallback(compiler: &Compiler<'_, '_>) {
+    assert_eq!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::Return { .. }
+            ))
+            .count(),
+        1
+    );
+    assert!(
+        compiler
+            .code
+            .constants
+            .iter()
+            .all(|constant| *constant != Constant::i64(1)),
+        "fallback return value must not be emitted"
+    );
 }

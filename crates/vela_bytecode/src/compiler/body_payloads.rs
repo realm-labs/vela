@@ -604,6 +604,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(super) fn syntax_statement_span(&self) -> Option<Span> {
+        let source = self.source?;
+        let range = self.syntax.as_ref()?.syntax().text_range();
+        Some(Span::new(source, range.start().into(), range.end().into()))
+    }
+
     pub(super) fn return_value_missing_in_syntax(&self) -> bool {
         self.syntax
             .as_ref()

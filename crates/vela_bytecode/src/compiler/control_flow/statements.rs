@@ -53,6 +53,14 @@ impl Compiler<'_, '_> {
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
+            SyntaxStatementKind::Return if stmt.return_value_missing_in_syntax() => {
+                let Some(span) = stmt.syntax_statement_span() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST statement payload",
+                    )));
+                };
+                return self.compile_empty_return(span);
+            }
             _ => {}
         }
 

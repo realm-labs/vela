@@ -342,6 +342,21 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
+    pub(in crate::compiler::control_flow) fn compile_empty_return(
+        &mut self,
+        span: Span,
+    ) -> CompileResult<bool> {
+        let (register, returned) = self.compile_return_value(
+            span,
+            None,
+            ValueSyntaxPayloads::new(None, None, None, None, None, false),
+        )?;
+        if !returned {
+            self.emit(UnlinkedInstructionKind::Return { src: register });
+        }
+        Ok(true)
+    }
+
     fn compile_for_statement<'ast>(
         &mut self,
         stmt: &'ast Stmt,
