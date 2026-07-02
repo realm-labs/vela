@@ -868,6 +868,15 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     #[cfg(test)]
+    pub(in crate::compiler) fn missing_syntax(source: SourceId, fallback: &'ast Pattern) -> Self {
+        Self {
+            source: Some(source),
+            syntax: None,
+            fallback,
+        }
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_pattern(&self) -> Option<&vela_syntax::ast::SyntaxPattern> {
         self.syntax.as_ref()
     }

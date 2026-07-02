@@ -168,6 +168,77 @@ fn fallback_record(value) {
     ));
 }
 
+#[test]
+fn missing_source_backed_match_pattern_payload_does_not_use_legacy_pattern() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64)
+}
+
+fn main(value) {
+    return match value {
+        Shape::Pair(legacy_left) => legacy_left,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
+    let missing_payload =
+        body_payloads::CompilerPatternPayload::missing_syntax(source, fallback_pattern);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .compile_match_pattern(Register(0), fallback_pattern, Some(&missing_payload))
+        .expect_err("source-backed missing CST pattern must not use legacy pattern");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("match pattern")
+    ));
+}
+
+#[test]
+fn missing_source_backed_binding_pattern_payload_does_not_bind_legacy_locals() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64)
+}
+
+fn main(value) {
+    return match value {
+        Shape::Pair(legacy_left) => legacy_left,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
+    let missing_payload =
+        body_payloads::CompilerPatternPayload::missing_syntax(source, fallback_pattern);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .bind_pattern_locals(
+            Register(0),
+            fallback_pattern,
+            Some(&missing_payload),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("source-backed missing CST pattern must not bind legacy locals");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("match pattern")
+    ));
+}
+
 fn first_return_match_pattern_syntax(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxPattern {
