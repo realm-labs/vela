@@ -138,14 +138,9 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        let expression_payload = stmt.expression_payload().ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST expression statement payload",
-            ))
-        })?;
-        if !expression_payload_matches_expr(&expression_payload, expr) {
+        if stmt.expression_payload().is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST expression statement payload",
+                "missing CST expression statement payload",
             )));
         }
         if kind == SyntaxExpressionKind::Assign {
