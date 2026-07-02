@@ -45,6 +45,26 @@ fn record_pattern_field_name(
     })
 }
 
+pub(in crate::compiler) fn record_pattern_field_payload_declares_locals(
+    payload: &CompilerRecordPatternFieldPayload<'_>,
+    field: &RecordPatternField,
+) -> CompileResult<bool> {
+    if payload.syntax_is_shorthand() == Some(true) {
+        if field.pattern.is_some() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "record pattern field",
+            )));
+        }
+        return Ok(true);
+    }
+    payload
+        .syntax_pattern_kind()
+        .map(pattern_kind_declares_locals)
+        .ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax("record pattern field"))
+        })
+}
+
 fn pattern_literal_payload(
     payload: Option<&CompilerPatternPayload<'_>>,
     fallback: &Literal,
@@ -303,8 +323,18 @@ impl Compiler<'_, '_> {
                             }
                             continue;
                         }
-                        let Some(kind) = field_payload.syntax_pattern_kind() else {
+                        if field_payload.syntax_is_shorthand() == Some(true) {
+                            if record_pattern_field_match(field).is_some() {
+                                return Err(CompileError::new(
+                                    CompileErrorKind::UnsupportedSyntax("record pattern field"),
+                                ));
+                            }
                             continue;
+                        }
+                        let Some(kind) = field_payload.syntax_pattern_kind() else {
+                            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                "record pattern field",
+                            )));
                         };
                         if !pattern_kind_needs_match_check(kind) {
                             continue;
@@ -444,11 +474,9 @@ impl Compiler<'_, '_> {
                         continue;
                     }
                     let field_declares_locals = match field_payload {
-                        Some(field_payload) => field_payload
-                            .syntax_pattern_kind()
-                            .map(pattern_kind_declares_locals)
-                            .or_else(|| field_payload.syntax_is_shorthand())
-                            .unwrap_or(false),
+                        Some(field_payload) => {
+                            record_pattern_field_payload_declares_locals(field_payload, field)?
+                        }
                         None => record_pattern_field_declares_locals(field),
                     };
                     if !field_declares_locals {

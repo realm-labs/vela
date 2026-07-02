@@ -93,6 +93,81 @@ fn fallback_record(value) {
     ));
 }
 
+#[test]
+fn shorthand_record_pattern_payload_does_not_bind_legacy_explicit_field() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Named { first: i64 }
+}
+
+fn cst_record(value) {
+    return match value {
+        Shape::Named { first } => first,
+        _ => 0,
+    };
+}
+
+fn fallback_record(value) {
+    return match value {
+        Shape::Named { first: legacy_first } => legacy_first,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_record").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_record")
+        .expect("fallback function");
+    let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let mismatched =
+        body_payloads::CompilerPatternPayload::syntax(cst_pattern.clone(), fallback_pattern);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
+
+    let error = compiler
+        .bind_pattern_locals(
+            Register(0),
+            fallback_pattern,
+            Some(&mismatched),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("CST shorthand field must not bind legacy explicit field pattern");
+
+    assert!(
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
+        ),
+        "unexpected error: {:?}",
+        error.kind
+    );
+
+    let syntax_field = cst_pattern
+        .record_pattern()
+        .expect("record pattern")
+        .fields()
+        .next()
+        .expect("record field");
+    let vela_syntax::ast::Pattern::RecordVariant { fields, .. } = fallback_pattern else {
+        panic!("expected record pattern");
+    };
+    let direct_field_payload =
+        body_payloads::CompilerRecordPatternFieldPayload::syntax(syntax_field, &fields[0]);
+    let direct_error = crate::compiler::patterns::record_pattern_field_payload_declares_locals(
+        &direct_field_payload,
+        &fields[0],
+    )
+    .expect_err("direct CST shorthand field must not use legacy explicit binding");
+    assert!(matches!(
+        direct_error.kind,
+        CompileErrorKind::UnsupportedSyntax("record pattern field")
+    ));
+}
+
 fn first_return_match_pattern_syntax(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxPattern {

@@ -907,4 +907,16 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
             fallback: self.fallback.pattern.as_ref()?,
         })
     }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax(
+        syntax: SyntaxRecordPatternField,
+        fallback: &'ast vela_syntax::ast::RecordPatternField,
+    ) -> Self {
+        Self {
+            source: Some(SourceId::new(1)),
+            syntax: Some(syntax),
+            fallback,
+        }
+    }
 }
