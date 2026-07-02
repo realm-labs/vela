@@ -5,7 +5,9 @@ use crate::{
     UnlinkedInstructionKind, UnlinkedProgram,
 };
 use vela_def::{DefPath, FunctionId, MethodId};
-use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpressionKind, SyntaxStatementKind};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Expr, ExprKind, SyntaxExpressionKind, SyntaxStatementKind,
+};
 
 fn assert_cst_param_default(
     default: &Option<ParamDefaultValue>,

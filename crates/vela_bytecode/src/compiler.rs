@@ -48,7 +48,7 @@ use vela_hir::module_graph::ModulePath;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::{FunctionSignature, HirTypeHint, ParamHint};
 use vela_registry::RegistryCompileView;
-use vela_syntax::ast::{Argument, Expr, ExprKind, Param, SyntaxExpressionKind};
+use vela_syntax::ast::{Argument, Param, SyntaxExpressionKind};
 
 use crate::{
     Constant, FrameSlotInfo, FrameSlotKind, GuardKind, GuardLocation, InstructionOffset, Register,
@@ -1072,38 +1072,24 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn host_method_receiver_type(
         &self,
-        callee: &Expr,
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<String> {
-        if let Some(payload) = callee_payload {
-            return match payload.syntax_kind()? {
-                SyntaxExpressionKind::Field => {
-                    let base = payload.field_base_payload()?;
-                    self.script_type_for_expr_with_payload(base.fallback(), Some(&base))
-                }
-                SyntaxExpressionKind::Path => {
-                    let path = payload.syntax_path_segments()?;
-                    let [receiver, _method] = path.as_slice() else {
-                        return None;
-                    };
-                    self.script_types.name(receiver).or_else(|| {
-                        payload
-                            .syntax_span()
-                            .and_then(|span| self.global_type_at_span(span))
-                    })
-                }
-                _ => None,
-            };
-        }
-        match &callee.kind {
-            ExprKind::Field { base, .. } => self.script_type_for_expr(base),
-            ExprKind::Path(path) => {
+        let payload = callee_payload?;
+        match payload.syntax_kind()? {
+            SyntaxExpressionKind::Field => {
+                let base = payload.field_base_payload()?;
+                self.script_type_for_payload(&base)
+            }
+            SyntaxExpressionKind::Path => {
+                let path = payload.syntax_path_segments()?;
                 let [receiver, _method] = path.as_slice() else {
                     return None;
                 };
-                self.script_types
-                    .name(receiver)
-                    .or_else(|| self.global_type_at_span(callee.span))
+                self.script_types.name(receiver).or_else(|| {
+                    payload
+                        .syntax_span()
+                        .and_then(|span| self.global_type_at_span(span))
+                })
             }
             _ => None,
         }
