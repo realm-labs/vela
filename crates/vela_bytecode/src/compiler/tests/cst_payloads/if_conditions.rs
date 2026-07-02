@@ -233,6 +233,116 @@ fn main() {
 }
 
 #[test]
+fn missing_if_value_then_body_payload_does_not_use_legacy_then_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let selected = if true {
+        1
+    } else {
+        2
+    };
+}
+"#,
+        |compiler, payload| {
+            let initializer = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("if initializer payload");
+            let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
+                panic!("expected legacy if fallback");
+            };
+            let if_payload = initializer
+                .if_payload()
+                .expect("CST if payload")
+                .without_then_body_for_test();
+
+            let error = compiler
+                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .expect_err("missing CST if then body payload must not use legacy then body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST if then body payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_if_value_else_body_payload_does_not_use_legacy_else_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let selected = if true {
+        1
+    } else {
+        2
+    };
+}
+"#,
+        |compiler, payload| {
+            let initializer = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("if initializer payload");
+            let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
+                panic!("expected legacy if fallback");
+            };
+            let if_payload = initializer
+                .if_payload()
+                .expect("CST if payload")
+                .without_else_body_for_test();
+
+            let error = compiler
+                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .expect_err("missing CST if else body payload must not use legacy else body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST if else body payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_if_value_else_if_payload_does_not_use_legacy_else_if_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let selected = if true {
+        1
+    } else if false {
+        2
+    } else {
+        3
+    };
+}
+"#,
+        |compiler, payload| {
+            let initializer = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("if initializer payload");
+            let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
+                panic!("expected legacy if fallback");
+            };
+            let if_payload = initializer
+                .if_payload()
+                .expect("CST if payload")
+                .without_else_if_for_test();
+
+            let error = compiler
+                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .expect_err("missing CST else-if payload must not use legacy else-if body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST else-if payload")
+            ));
+        },
+    );
+}
+
+#[test]
 fn mismatched_i64_condition_payload_does_not_use_legacy_operator() {
     let source = SourceId::new(1);
     let cst_text = r#"

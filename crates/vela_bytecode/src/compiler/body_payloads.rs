@@ -418,6 +418,24 @@ impl<'ast> CompilerIfPayload<'ast> {
             else_if: None,
         }
     }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn without_then_body_for_test(mut self) -> Self {
+        self.then_body = None;
+        self
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn without_else_body_for_test(mut self) -> Self {
+        self.else_body = None;
+        self
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn without_else_if_for_test(mut self) -> Self {
+        self.else_if = None;
+        self
+    }
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
