@@ -70,7 +70,7 @@ impl TriviaKind {
 }
 
 #[must_use]
-pub fn extract_format_elements(source: SourceId, text: &str) -> FormatElementStream {
+pub fn format_elements(source: SourceId, text: &str) -> FormatElementStream {
     let parsed = parse_source_with_id(source, text);
     let mut elements = Vec::new();
     for token in parsed
@@ -115,7 +115,7 @@ impl FormattedSource {
 
 #[must_use]
 pub fn format_source(source: SourceId, text: &str) -> FormattedSource {
-    let stream = extract_format_elements(source, text);
+    let stream = format_elements(source, text);
     let mut formatter = Formatter::new();
     formatter.format(stream.elements());
     FormattedSource {
@@ -768,7 +768,7 @@ mod tests {
     #[test]
     fn formatting_extracts_tokens_and_trivia_in_source_order() {
         let source = "pub fn main() {\n    // keep\n    return 1\n}\n";
-        let stream = extract_format_elements(source_id(), source);
+        let stream = format_elements(source_id(), source);
 
         assert!(stream.diagnostics().is_empty());
         assert_eq!(reconstruct(&stream), source);
@@ -789,7 +789,7 @@ mod tests {
     #[test]
     fn formatting_extracts_comments_and_blank_line_groups() {
         let source = "fn main() {\n    /* one\n\n       two */\n\n    // tail\n}\n";
-        let stream = extract_format_elements(source_id(), source);
+        let stream = format_elements(source_id(), source);
         let comments = stream
             .elements()
             .iter()
@@ -813,7 +813,7 @@ mod tests {
     #[test]
     fn formatting_extracts_shebang_as_trivia() {
         let source = "#!/usr/bin/env vela\nfn main() { return 1 }\n";
-        let stream = extract_format_elements(source_id(), source);
+        let stream = format_elements(source_id(), source);
 
         assert!(matches!(
             stream.elements().first().map(FormatElement::kind),

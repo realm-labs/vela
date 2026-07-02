@@ -4,9 +4,7 @@ use vela_syntax::ast::{
     AstNode, SyntaxEnumItem, SyntaxImplItem, SyntaxItem, SyntaxSourceFile, SyntaxStructItem,
     SyntaxTraitItem,
 };
-use vela_syntax::formatting::{
-    FormatElementKind, TriviaKind, extract_format_elements, format_source,
-};
+use vela_syntax::formatting::{FormatElementKind, TriviaKind, format_elements, format_source};
 use vela_syntax::token::{Symbol, TokenKind};
 use vela_syntax::{
     Parse as SyntaxParse, SyntaxKind, SyntaxNode, TextRange as SyntaxTextRange, TextSize,
@@ -74,7 +72,7 @@ impl LanguageServiceDatabases {
     pub fn formatting_ir(&self, document_id: &DocumentId) -> Option<FormattingIr> {
         let source = self.source_db().records().get(document_id)?;
         let line_index = LineIndex::new(source.text());
-        let extracted = extract_format_elements(source.source_id(), source.text());
+        let extracted = format_elements(source.source_id(), source.text());
         let segments = extracted
             .elements()
             .iter()
@@ -619,7 +617,7 @@ fn current_construct_range(
     trigger: &str,
 ) -> Option<DiagnosticRange> {
     let offset = line_index.offset(position).min(source.len());
-    let stream = extract_format_elements(source_id, source);
+    let stream = format_elements(source_id, source);
     let tokens = stream
         .elements()
         .iter()
