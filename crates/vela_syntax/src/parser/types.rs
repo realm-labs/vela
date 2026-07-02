@@ -80,14 +80,6 @@ impl Parser {
         self.parse_type_hint()
     }
 
-    #[cfg(test)]
-    pub(super) fn parse_optional_return_type(&mut self) -> Option<TypeHint> {
-        if self.eat_symbol(Symbol::Arrow).is_some() {
-            return self.parse_type_hint();
-        }
-        None
-    }
-
     pub(super) fn parse_type_hint(&mut self) -> Option<TypeHint> {
         let start = self.current().span;
         let Some(first) = self.eat_type_hint_segment() else {

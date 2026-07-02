@@ -1,15 +1,6 @@
 use super::*;
 
 impl Parser {
-    #[cfg(test)]
-    pub(super) fn skip_block_tokens(&mut self) {
-        if self.eat_symbol(Symbol::LBrace).is_none() {
-            self.error_here("expected block");
-            return;
-        }
-        self.skip_balanced_until(Symbol::RBrace);
-    }
-
     pub(super) fn skip_balanced_until(&mut self, close: Symbol) {
         let mut depth = 0_u32;
         while !self.at_eof() {
@@ -33,31 +24,6 @@ impl Parser {
                 *depth = depth.saturating_sub(1);
             }
             _ => {}
-        }
-    }
-
-    #[cfg(test)]
-    pub(super) fn recover_until(&mut self, symbols: &[Symbol]) {
-        while !self.at_eof() && !symbols.iter().any(|symbol| self.check_symbol(*symbol)) {
-            self.advance();
-        }
-    }
-
-    #[cfg(test)]
-    pub(super) fn recover_to_next_item(&mut self) {
-        while !self.at_eof() {
-            if self.check_keyword(Keyword::Pub)
-                || self.check_keyword(Keyword::Use)
-                || self.check_keyword(Keyword::Global)
-                || self.check_keyword(Keyword::Fn)
-                || self.check_keyword(Keyword::Struct)
-                || self.check_keyword(Keyword::Enum)
-                || self.check_keyword(Keyword::Trait)
-                || self.check_keyword(Keyword::Impl)
-            {
-                return;
-            }
-            self.advance();
         }
     }
 
@@ -89,15 +55,6 @@ impl Parser {
 
     pub(super) fn expect_ident(&mut self, message: &str) -> Option<String> {
         let ident = self.eat_ident();
-        if ident.is_none() {
-            self.error_here(message);
-        }
-        ident
-    }
-
-    #[cfg(test)]
-    pub(super) fn expect_ident_with_span(&mut self, message: &str) -> Option<(String, Span)> {
-        let ident = self.eat_ident_with_span();
         if ident.is_none() {
             self.error_here(message);
         }

@@ -1,9 +1,23 @@
-use super::*;
+use std::fmt::Write as _;
+
+use crate::SyntaxKind;
+use crate::ast::{
+    AstNode, SyntaxBlock, SyntaxConstItem, SyntaxEnumItem, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxFunctionItem, SyntaxGlobalItem, SyntaxImplItem, SyntaxPattern, SyntaxPatternKind,
+    SyntaxSourceFile, SyntaxStatement, SyntaxStatementKind, SyntaxStructItem, SyntaxTraitItem,
+    SyntaxUseItem,
+};
+use crate::parse::{Parse, parse_source_with_id};
+
+use super::source_id;
+
+fn parse_cst(text: &str) -> Parse<SyntaxSourceFile> {
+    parse_source_with_id(source_id(), text)
+}
 
 #[test]
 fn snapshots_core_m1_syntax_shape() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 use game::player::Player;
 
@@ -34,9 +48,13 @@ impl Damageable for Player { fn damage(self, amount) { return amount; } }
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
     assert_eq!(
-        snapshot_file(&parsed),
+        snapshot_file(&parsed.tree()),
         r#"use game::player::Player
 const START_LEVEL = binary
 pub fn on_kill(ctx, player, monster)
@@ -58,181 +76,223 @@ impl Damageable for Player(damage)
 }
 
 #[test]
-fn malformed_body_diagnostics_keep_source_spans() {
-    let parsed = parse_source(
-        source_id(),
+fn malformed_item_diagnostics_keep_source_spans() {
+    let parsed = parse_cst(
         r#"
-fn bad(player) {
-    let = ;
-    if player.level > {
-        return;
-    }
+fn () {
+    return;
 }
 fn next() {}
 "#,
     );
 
-    assert!(!parsed.diagnostics.is_empty());
+    assert!(!parsed.diagnostics().is_empty());
     assert!(
         parsed
-            .diagnostics
+            .diagnostics()
             .iter()
             .all(|diagnostic| diagnostic.span.is_some())
     );
-    assert_eq!(parsed.items.len(), 2);
-    assert!(matches!(parsed.items[1].kind, ItemKind::Function(_)));
+    let items = parsed.tree().items().collect::<Vec<_>>();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[1].syntax().kind(), SyntaxKind::FunctionItem);
 }
 
-fn snapshot_file(file: &SourceFile) -> String {
+fn snapshot_file(file: &SyntaxSourceFile) -> String {
     let mut out = String::new();
-    for item in &file.items {
-        match &item.kind {
-            ItemKind::Use(use_item) => {
-                writeln!(out, "use {}", use_item.path.join("::")).expect("write syntax snapshot");
+    for item in file.items() {
+        match item.syntax().kind() {
+            SyntaxKind::UseItem => {
+                let use_item = SyntaxUseItem::cast(item.syntax().clone()).expect("use item");
+                writeln!(
+                    out,
+                    "use {}",
+                    use_item
+                        .path()
+                        .expect("use path")
+                        .path_segments()
+                        .join("::")
+                )
+                .expect("write syntax snapshot");
             }
-            ItemKind::Const(constant) => {
+            SyntaxKind::ConstItem => {
+                let constant = SyntaxConstItem::cast(item.syntax().clone()).expect("const item");
                 writeln!(
                     out,
                     "const {} = {}",
-                    constant.name,
-                    expr_kind_name(&constant.value)
+                    required_text(constant.name_text()),
+                    expr_kind_name(&constant.value().expect("const value"))
                 )
                 .expect("write syntax snapshot");
             }
-            ItemKind::Global(global) => {
+            SyntaxKind::GlobalItem => {
+                let global = SyntaxGlobalItem::cast(item.syntax().clone()).expect("global item");
                 writeln!(
                     out,
                     "global {}: {}",
-                    global.name,
-                    global.type_hint.path.join("::")
+                    required_text(global.name_text()),
+                    global
+                        .type_hint()
+                        .expect("global type")
+                        .path_segments()
+                        .join("::")
                 )
                 .expect("write syntax snapshot");
             }
-            ItemKind::Function(function) => {
-                let visibility = if item.visibility == Visibility::Public {
-                    "pub "
-                } else {
-                    ""
-                };
+            SyntaxKind::FunctionItem => {
+                let function =
+                    SyntaxFunctionItem::cast(item.syntax().clone()).expect("function item");
+                let visibility = if item.is_public() { "pub " } else { "" };
                 writeln!(
                     out,
                     "{visibility}fn {}({})",
-                    function.name,
-                    param_names(&function.params).join(", ")
+                    required_text(function.name_text()),
+                    function_param_names(&function).join(", ")
                 )
                 .expect("write syntax snapshot");
-                snapshot_block(&mut out, &function.body, 1);
+                snapshot_block(&mut out, &function.body().expect("function body"), 1);
             }
-            ItemKind::Struct(record) => {
+            SyntaxKind::StructItem => {
+                let record = SyntaxStructItem::cast(item.syntax().clone()).expect("struct item");
                 writeln!(
                     out,
                     "struct {}({})",
-                    record.name,
-                    struct_field_names(&record.fields).join(", ")
+                    required_text(record.name_text()),
+                    record_field_names(&record).join(", ")
                 )
                 .expect("write syntax snapshot");
             }
-            ItemKind::Enum(enumeration) => {
+            SyntaxKind::EnumItem => {
+                let enumeration = SyntaxEnumItem::cast(item.syntax().clone()).expect("enum item");
                 writeln!(
                     out,
                     "enum {}({})",
-                    enumeration.name,
-                    enum_variant_names(&enumeration.variants).join(", ")
+                    required_text(enumeration.name_text()),
+                    variant_names(&enumeration).join(", ")
                 )
                 .expect("write syntax snapshot");
             }
-            ItemKind::Trait(trait_item) => {
+            SyntaxKind::TraitItem => {
+                let trait_item = SyntaxTraitItem::cast(item.syntax().clone()).expect("trait item");
                 writeln!(
                     out,
                     "trait {}({})",
-                    trait_item.name,
-                    trait_method_names(&trait_item.methods).join(", ")
+                    required_text(trait_item.name_text()),
+                    trait_method_names(&trait_item).join(", ")
                 )
                 .expect("write syntax snapshot");
             }
-            ItemKind::Impl(impl_item) => {
+            SyntaxKind::ImplItem => {
+                let impl_item = SyntaxImplItem::cast(item.syntax().clone()).expect("impl item");
                 let methods = impl_item
-                    .methods
-                    .iter()
-                    .map(|method| method.function.name.as_str())
+                    .methods()
+                    .map(|method| required_text(method.name_text()))
                     .collect::<Vec<_>>()
                     .join(", ");
-                match &impl_item.kind {
-                    ImplKind::Inherent => {
-                        writeln!(out, "impl {}({methods})", impl_item.target_path.join("::"))
-                    }
-                    ImplKind::Trait { trait_path } => writeln!(
+                let target_path = impl_item.target_path_segments().join("::");
+                let trait_path = impl_item.trait_path_segments();
+                if trait_path.is_empty() {
+                    writeln!(out, "impl {target_path}({methods})")
+                } else {
+                    writeln!(
                         out,
-                        "impl {} for {}({methods})",
-                        trait_path.join("::"),
-                        impl_item.target_path.join("::")
-                    ),
+                        "impl {} for {target_path}({methods})",
+                        trait_path.join("::")
+                    )
                 }
                 .expect("write syntax snapshot");
             }
+            kind => panic!("unexpected item kind in snapshot: {kind:?}"),
         }
     }
     out
 }
 
-fn snapshot_block(out: &mut String, block: &Block, indent: usize) {
-    for stmt in &block.statements {
-        snapshot_stmt(out, stmt, indent);
+fn snapshot_block(out: &mut String, block: &SyntaxBlock, indent: usize) {
+    for stmt in block.statements() {
+        snapshot_stmt(out, &stmt, indent);
     }
 }
 
-fn snapshot_stmt(out: &mut String, stmt: &Stmt, indent: usize) {
+fn snapshot_stmt(out: &mut String, stmt: &SyntaxStatement, indent: usize) {
     let pad = "  ".repeat(indent);
-    match &stmt.kind {
-        StmtKind::Let { name, value, .. } => {
-            let value = value.as_ref().map_or("<none>", expr_kind_name);
-            writeln!(out, "{pad}let {name} = {value}").expect("write syntax snapshot");
+    match stmt.statement_kind() {
+        SyntaxStatementKind::Let => {
+            let stmt = stmt.as_let().expect("let statement");
+            let value = stmt.initializer().as_ref().map_or("<none>", expr_kind_name);
+            writeln!(
+                out,
+                "{pad}let {} = {value}",
+                required_text(stmt.name_text())
+            )
+            .expect("write syntax snapshot");
         }
-        StmtKind::Return(value) => {
-            let value = value.as_ref().map_or("<none>", expr_kind_name);
+        SyntaxStatementKind::Return => {
+            let stmt = stmt.as_return().expect("return statement");
+            let value = stmt.expression().as_ref().map_or("<none>", expr_kind_name);
             writeln!(out, "{pad}return {value}").expect("write syntax snapshot");
         }
-        StmtKind::Break => writeln!(out, "{pad}break").expect("write syntax snapshot"),
-        StmtKind::Continue => writeln!(out, "{pad}continue").expect("write syntax snapshot"),
-        StmtKind::For {
-            index_pattern,
-            pattern,
-            iterable,
-            body,
-        } => {
-            let pattern = if let Some(index_pattern) = index_pattern {
+        SyntaxStatementKind::Break => {
+            writeln!(out, "{pad}break").expect("write syntax snapshot");
+        }
+        SyntaxStatementKind::Continue => {
+            writeln!(out, "{pad}continue").expect("write syntax snapshot");
+        }
+        SyntaxStatementKind::For => {
+            let stmt = stmt.as_for().expect("for statement");
+            let pattern = if let Some(index_pattern) = stmt.index_pattern() {
                 format!(
                     "{}, {}",
-                    pattern_snapshot_name(index_pattern),
-                    pattern_snapshot_name(pattern)
+                    pattern_snapshot_name(&index_pattern),
+                    pattern_snapshot_name(&stmt.value_pattern().expect("for value pattern"))
                 )
             } else {
-                pattern_snapshot_name(pattern)
+                pattern_snapshot_name(&stmt.value_pattern().expect("for value pattern"))
             };
-            writeln!(out, "{pad}for {} in {}", pattern, expr_kind_name(iterable))
-                .expect("write syntax snapshot");
-            snapshot_block(out, body, indent + 1);
+            writeln!(
+                out,
+                "{pad}for {} in {}",
+                pattern,
+                expr_kind_name(&stmt.iterable().expect("for iterable"))
+            )
+            .expect("write syntax snapshot");
+            snapshot_block(out, &stmt.body().expect("for body"), indent + 1);
         }
-        StmtKind::Expr(expr) => snapshot_expr_stmt(out, expr, indent),
-        StmtKind::Block(block) => {
+        SyntaxStatementKind::If | SyntaxStatementKind::Match => {
+            let expr = SyntaxExpression::cast(stmt.syntax().clone()).expect("statement expr");
+            snapshot_expr_stmt(out, &expr, indent);
+        }
+        SyntaxStatementKind::Expr => {
+            let expr = stmt
+                .as_expr()
+                .expect("expression statement")
+                .expression()
+                .expect("expression");
+            snapshot_expr_stmt(out, &expr, indent);
+        }
+        SyntaxStatementKind::Block => {
             writeln!(out, "{pad}block").expect("write syntax snapshot");
-            snapshot_block(out, block, indent + 1);
+            snapshot_block(out, &stmt.as_block().expect("block statement"), indent + 1);
         }
     }
 }
 
-fn snapshot_expr_stmt(out: &mut String, expr: &Expr, indent: usize) {
+fn snapshot_expr_stmt(out: &mut String, expr: &SyntaxExpression, indent: usize) {
     let pad = "  ".repeat(indent);
     writeln!(out, "{pad}expr {}", expr_kind_name(expr)).expect("write syntax snapshot");
-    match &expr.kind {
-        ExprKind::If(if_expr) => snapshot_block(out, &if_expr.then_branch, indent + 1),
-        ExprKind::Match(match_expr) => {
-            for arm in &match_expr.arms {
+    match expr.expression_kind() {
+        SyntaxExpressionKind::If => {
+            let if_expr = expr.as_if().expect("if expression");
+            snapshot_block(out, &if_expr.then_block().expect("then block"), indent + 1);
+        }
+        SyntaxExpressionKind::Match => {
+            let match_expr = expr.as_match().expect("match expression");
+            for arm in match_expr.arms() {
                 writeln!(
                     out,
                     "{pad}  arm {} => {}",
-                    pattern_kind_name(&arm.pattern),
-                    expr_kind_name(&arm.body)
+                    pattern_kind_name(&arm.pattern().expect("arm pattern")),
+                    expr_kind_name(&arm.body_as_expression().expect("arm body"))
                 )
                 .expect("write syntax snapshot");
             }
@@ -241,48 +301,98 @@ fn snapshot_expr_stmt(out: &mut String, expr: &Expr, indent: usize) {
     }
 }
 
-fn expr_kind_name(expr: &Expr) -> &'static str {
-    match expr.kind {
-        ExprKind::Literal(_) => "literal",
-        ExprKind::InterpolatedString(_) => "interpolated_string",
-        ExprKind::Path(_) => "path",
-        ExprKind::SelfValue => "self",
-        ExprKind::Unary { .. } => "unary",
-        ExprKind::Binary { .. } => "binary",
-        ExprKind::Assign { .. } => "assign",
-        ExprKind::Field { .. } => "field",
-        ExprKind::Call { .. } => "call",
-        ExprKind::Index { .. } => "index",
-        ExprKind::Try(_) => "try",
-        ExprKind::Array(_) => "array",
-        ExprKind::Map(_) => "map",
-        ExprKind::Record { .. } => "record",
-        ExprKind::Lambda { .. } => "lambda",
-        ExprKind::If(_) => "if",
-        ExprKind::Match(_) => "match",
-        ExprKind::Block(_) => "block",
-        ExprKind::Error => "error",
+fn expr_kind_name(expr: &SyntaxExpression) -> &'static str {
+    match expr.expression_kind() {
+        SyntaxExpressionKind::Literal => "literal",
+        SyntaxExpressionKind::Path => "path",
+        SyntaxExpressionKind::Paren => "paren",
+        SyntaxExpressionKind::Unary => "unary",
+        SyntaxExpressionKind::Binary => "binary",
+        SyntaxExpressionKind::Assign => "assign",
+        SyntaxExpressionKind::Field => "field",
+        SyntaxExpressionKind::Call => "call",
+        SyntaxExpressionKind::Index => "index",
+        SyntaxExpressionKind::Try => "try",
+        SyntaxExpressionKind::Array => "array",
+        SyntaxExpressionKind::Map => "map",
+        SyntaxExpressionKind::Record => "record",
+        SyntaxExpressionKind::Lambda => "lambda",
+        SyntaxExpressionKind::Block => "block",
+        SyntaxExpressionKind::If => "if",
+        SyntaxExpressionKind::Match => "match",
     }
 }
 
-fn pattern_kind_name(pattern: &Pattern) -> &'static str {
-    match pattern {
-        Pattern::Wildcard => "_",
-        Pattern::Literal(_) => "literal",
-        Pattern::Binding(_) => "binding",
-        Pattern::Path(_) => "path",
-        Pattern::TupleVariant { .. } => "tuple_variant",
-        Pattern::RecordVariant { .. } => "record_variant",
+fn pattern_kind_name(pattern: &SyntaxPattern) -> &'static str {
+    match pattern.pattern_kind().expect("pattern kind") {
+        SyntaxPatternKind::Wildcard => "_",
+        SyntaxPatternKind::Literal => "literal",
+        SyntaxPatternKind::Binding => "binding",
+        SyntaxPatternKind::Path => "path",
+        SyntaxPatternKind::TupleVariant => "tuple_variant",
+        SyntaxPatternKind::RecordVariant => "record_variant",
     }
 }
 
-fn pattern_snapshot_name(pattern: &Pattern) -> String {
-    match pattern {
-        Pattern::Wildcard => "_".to_owned(),
-        Pattern::Literal(_) => "literal".to_owned(),
-        Pattern::Binding(name) => name.clone(),
-        Pattern::Path(path) => path.join("::"),
-        Pattern::TupleVariant { path, .. } => format!("{}(...)", path.join("::")),
-        Pattern::RecordVariant { path, .. } => format!("{} {{...}}", path.join("::")),
+fn pattern_snapshot_name(pattern: &SyntaxPattern) -> String {
+    match pattern.pattern_kind().expect("pattern kind") {
+        SyntaxPatternKind::Wildcard => "_".to_owned(),
+        SyntaxPatternKind::Literal => "literal".to_owned(),
+        SyntaxPatternKind::Binding => required_text(pattern.binding_name()),
+        SyntaxPatternKind::Path => pattern.path_segments().join("::"),
+        SyntaxPatternKind::TupleVariant => format!(
+            "{}(...)",
+            pattern
+                .tuple_pattern()
+                .expect("tuple pattern")
+                .path_segments()
+                .join("::")
+        ),
+        SyntaxPatternKind::RecordVariant => format!(
+            "{} {{...}}",
+            pattern
+                .record_pattern()
+                .expect("record pattern")
+                .path_segments()
+                .join("::")
+        ),
     }
+}
+
+fn function_param_names(function: &SyntaxFunctionItem) -> Vec<String> {
+    function
+        .param_list()
+        .expect("function params")
+        .params()
+        .map(|param| required_text(param.name_text()))
+        .collect()
+}
+
+fn record_field_names(record: &SyntaxStructItem) -> Vec<String> {
+    record
+        .field_list()
+        .expect("struct fields")
+        .fields()
+        .map(|field| required_text(field.name_text()))
+        .collect()
+}
+
+fn variant_names(enumeration: &SyntaxEnumItem) -> Vec<String> {
+    enumeration
+        .variant_list()
+        .expect("enum variants")
+        .variants()
+        .map(|variant| required_text(variant.name_text()))
+        .collect()
+}
+
+fn trait_method_names(trait_item: &SyntaxTraitItem) -> Vec<String> {
+    trait_item
+        .methods()
+        .map(|method| required_text(method.name_text()))
+        .collect()
+}
+
+fn required_text(text: Option<String>) -> String {
+    text.expect("syntax node text")
 }

@@ -5,24 +5,9 @@ use crate::ast::{
     InterpolatedStringPart, Literal, MapEntry, MatchArm, MatchExpr, Param, Pattern, RecordField,
     RecordPatternField, Stmt, StmtKind, TypeHint, UnaryOp,
 };
-#[cfg(test)]
-use crate::ast::{
-    ConstItem, EnumVariant, EnumVariantFields, FunctionItem, GlobalItem, ImplItem, ImplMethod,
-    Item, ItemKind, SourceFile, StructField, StructItem, TraitItem, TraitMethod, UseItem,
-    Visibility,
-};
 use crate::attribute::normalize_attribute_value;
-#[cfg(test)]
-use crate::lexer::lex;
 use crate::lexer::lex_at;
 use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKind};
-
-#[cfg(test)]
-#[must_use]
-fn parse_source(source: SourceId, text: &str) -> SourceFile {
-    let lexed = lex(source, text);
-    Parser::new(lexed.tokens, lexed.diagnostics).parse()
-}
 
 #[must_use]
 pub fn parse_body_blocks_at_spans(source: SourceId, text: &str, spans: &[Span]) -> Vec<Block> {
@@ -89,23 +74,6 @@ impl Parser {
             pos: 0,
             diagnostics,
             allow_record_literals: true,
-        }
-    }
-
-    #[cfg(test)]
-    fn parse(mut self) -> SourceFile {
-        let mut items = Vec::new();
-        while !self.at_eof() {
-            if let Some(item) = self.parse_item() {
-                items.push(item);
-            } else {
-                self.recover_to_next_item();
-            }
-        }
-
-        SourceFile {
-            items,
-            diagnostics: self.diagnostics,
         }
     }
 }
