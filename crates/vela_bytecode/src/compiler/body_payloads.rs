@@ -465,8 +465,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
-        let kind = self.syntax.as_ref().map(SyntaxStatement::statement_kind)?;
+        let kind = self.syntax_statement_kind()?;
         syntax_statement_kind_matches_fallback(kind, self.fallback).then_some(kind)
+    }
+
+    pub(super) fn syntax_statement_kind(&self) -> Option<SyntaxStatementKind> {
+        self.syntax.as_ref().map(SyntaxStatement::statement_kind)
     }
 
     #[cfg(test)]

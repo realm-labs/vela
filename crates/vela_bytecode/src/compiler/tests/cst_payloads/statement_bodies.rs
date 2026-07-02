@@ -142,6 +142,78 @@ fn main(flag) {
 }
 
 #[test]
+fn mismatched_break_statement_payload_uses_cst_kind() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    break;
+}
+
+fn fallback_body() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_body")
+        .expect("fallback function");
+    let cst_statement = cst_payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("cst statement syntax")
+        .clone();
+    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let mismatched =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("CST break payload must not compile the fallback return statement");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("break outside loop")
+    ));
+}
+
+#[test]
+fn mismatched_continue_statement_payload_uses_cst_kind() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    continue;
+}
+
+fn fallback_body() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_body")
+        .expect("fallback function");
+    let cst_statement = cst_payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("cst statement syntax")
+        .clone();
+    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let mismatched =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("CST continue payload must not compile the fallback return statement");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("continue outside loop")
+    ));
+}
+
+#[test]
 fn missing_if_statement_child_payloads_do_not_use_legacy_branches() {
     with_cst_payload_compiler(
         r#"
