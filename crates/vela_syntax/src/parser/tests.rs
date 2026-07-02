@@ -1,7 +1,7 @@
 use super::*;
 use crate::ast::{
-    BinaryOp, ExprKind, FloatLiteral, FloatSuffix, ImplKind, IntRadix, IntegerLiteral,
-    IntegerSuffix, Literal, StmtKind,
+    ExprKind, FloatLiteral, FloatSuffix, ImplKind, IntRadix, IntegerLiteral, IntegerSuffix,
+    StmtKind,
 };
 use crate::lexer::lex;
 use crate::token::{Keyword, Symbol, TokenKind};
