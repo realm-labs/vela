@@ -618,19 +618,16 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Block(block) = &value.kind else {
+                let ExprKind::Block(_) = &value.kind else {
                     unreachable!("validated CST block initializer kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = if let Some(body_payload) = syntax_payloads.block_body {
-                    self.compile_block_payload_value_to(body_payload, dst)?
-                } else if syntax_payloads.expression.is_some() {
+                let Some(body_payload) = syntax_payloads.block_body else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST let initializer block body payload",
                     )));
-                } else {
-                    self.compile_block_value_to(block, dst)?
                 };
+                let returned = self.compile_block_payload_value_to(body_payload, dst)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {
@@ -818,19 +815,16 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Block(block) = &value.kind else {
+                let ExprKind::Block(_) = &value.kind else {
                     unreachable!("validated CST block return value kind");
                 };
                 let dst = self.alloc_register()?;
-                let returned = if let Some(body_payload) = syntax_payloads.block_body {
-                    self.compile_block_payload_value_to(body_payload, dst)?
-                } else if syntax_payloads.expression.is_some() {
+                let Some(body_payload) = syntax_payloads.block_body else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return block body payload",
                     )));
-                } else {
-                    self.compile_block_value_to(block, dst)?
                 };
+                let returned = self.compile_block_payload_value_to(body_payload, dst)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {

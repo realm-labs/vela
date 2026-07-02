@@ -1014,15 +1014,16 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(block) = &value.kind else {
+                let ExprKind::Block(_) = &value.kind else {
                     unreachable!("validated CST block assignment value kind");
                 };
                 let dst = self.alloc_register()?;
-                if let Some(body_payload) = syntax_payloads.block_body {
-                    self.compile_block_payload_value_to(body_payload, dst)?;
-                } else {
-                    self.compile_block_value_to(block, dst)?;
-                }
+                let Some(body_payload) = syntax_payloads.block_body else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value block body payload",
+                    )));
+                };
+                self.compile_block_payload_value_to(body_payload, dst)?;
                 Ok(dst)
             }
             SyntaxExpressionKind::If => {
