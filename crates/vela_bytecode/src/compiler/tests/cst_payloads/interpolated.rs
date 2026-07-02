@@ -53,7 +53,7 @@ fn messages(input) {
 }
 
 #[test]
-fn mismatched_interpolated_payloads_do_not_pair_expressions_by_index() {
+fn equal_count_interpolated_payloads_pair_expressions_by_position_not_legacy_span() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -63,7 +63,7 @@ fn main() {
     let legacy_text = f"{legacy_value}";
 }
 "#,
-        |compiler, payload| {
+        |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_interpolated = statements[2]
                 .let_initializer_expression_payload()
@@ -84,22 +84,15 @@ fn main() {
                 .interpolated_expression_payloads()
                 .expect("interpolation expression payloads");
             assert_eq!(parts.len(), 1);
-            assert!(
-                parts[0].syntax_expression().is_none(),
-                "mismatched spans must not receive index-based CST interpolation expressions"
+            assert_eq!(
+                parts[0]
+                    .syntax_expression()
+                    .expect("CST interpolation expression")
+                    .syntax()
+                    .text()
+                    .to_string(),
+                "cst_value"
             );
-
-            let error = compiler
-                .compile_expr_with_payload(
-                    legacy_interpolated.fallback(),
-                    Some(&mismatched_payload),
-                )
-                .expect_err("missing interpolation payload must not compile legacy expression");
-
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST interpolation expression")
-            ));
         },
     );
 }

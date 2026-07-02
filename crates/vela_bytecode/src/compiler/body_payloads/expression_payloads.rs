@@ -10,7 +10,7 @@ use super::{
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
     match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
-    syntax_expression_for_fallback, syntax_record_pattern_field_for_fallback,
+    syntax_record_pattern_field_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -529,9 +529,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                     InterpolatedStringPart::Text(_) => None,
                     InterpolatedStringPart::Expr(expr) => Some(expr),
                 })
-                .map(|fallback| CompilerExpressionPayload {
+                .enumerate()
+                .map(|(index, fallback)| CompilerExpressionPayload {
                     source: self.source,
-                    syntax: syntax_expression_for_fallback(&syntax_expressions, fallback),
+                    syntax: syntax_expressions.get(index).cloned(),
                     fallback,
                 })
                 .collect(),

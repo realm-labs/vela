@@ -212,20 +212,6 @@ fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &
     }
 }
 
-fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> bool {
-    syntax_range_overlaps_span(expression.syntax().text_range(), span)
-}
-
-fn syntax_expression_for_fallback(
-    expressions: &[SyntaxExpression],
-    fallback: &vela_syntax::ast::Expr,
-) -> Option<SyntaxExpression> {
-    expressions
-        .iter()
-        .find(|expression| syntax_expression_matches_span(expression, fallback.span))
-        .cloned()
-}
-
 fn syntax_record_pattern_field_for_fallback(
     fields: &[SyntaxRecordPatternField],
     fallback: &RecordPatternField,
