@@ -12,8 +12,6 @@ mod syntax_validation;
 pub mod token;
 
 pub use parse::Parse;
-#[doc(hidden)]
-pub use parser::parse_body_blocks_at_spans;
 pub use rowan::{
     GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };
@@ -22,3 +20,8 @@ pub use syntax_node::{
     SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken,
     SyntaxTreeBuilder, VelaLanguage,
 };
+
+#[doc(hidden)]
+pub mod legacy {
+    pub use crate::parser::parse_body_blocks_at_spans;
+}
