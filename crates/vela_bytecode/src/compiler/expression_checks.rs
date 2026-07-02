@@ -235,13 +235,6 @@ pub(in crate::compiler) fn payload_syntax_overlaps_expr(
         .is_some_and(|span| spans_overlap(span, expr.span))
 }
 
-pub(in crate::compiler) fn payload_syntax_span_matches_expr(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    payload.syntax_span() == Some(expr.span)
-}
-
 pub(in crate::compiler) fn payload_expr_is_aligned(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,

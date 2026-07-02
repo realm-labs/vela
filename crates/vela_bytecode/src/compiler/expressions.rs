@@ -14,9 +14,8 @@ use super::const_eval::{
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_checks::{
     UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
-    payload_expr_is_aligned, payload_syntax_overlaps_expr, payload_syntax_span_matches_expr,
-    reject_missing_binary_operand_payload, reject_missing_expression_payload,
-    unsuffixed_numeric_literal_with_payload,
+    payload_expr_is_aligned, payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
+    reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_payload_kinds::{
     expression_payload_matches_expr, expression_rejects_missing_payload,
@@ -346,11 +345,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Unary { op, expr: operand } = &expr.kind else {
                     unreachable!("validated CST unary expression payload kind");
                 };
-                let op = if payload_syntax_span_matches_expr(payload, expr) {
-                    payload.syntax_unary_operator().unwrap_or(*op)
-                } else {
-                    *op
-                };
+                let op = payload.syntax_unary_operator().unwrap_or(*op);
                 let operand_payload = payload.unary_operand_payload();
                 reject_missing_expression_payload(
                     operand_payload.as_ref(),
