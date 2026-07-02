@@ -11,6 +11,14 @@ must not change Vela language semantics, VM behavior, compiler/runtime host
 boundary rules, hot reload semantics, reflection mutation policy, or LSP
 analysis-only constraints.
 
+Hard-switch policy: the remaining work should prefer deleting obsolete syntax
+surfaces first and using compiler errors as the migration queue. It is
+acceptable for the working tree to be temporarily uncompilable while a
+hard-switch slice is in progress. Do not add or extend fallback code,
+CST-to-owned adapters, duplicate parser APIs, alias types, or temporary
+dispatch paths only to keep the project compiling during the switch. Restoring
+focused compilation and tests is still required before committing a checkpoint.
+
 ## 0. Codex Goal
 
 Use this prompt to execute the full refactor:
@@ -30,12 +38,17 @@ git diff, inspect or run the most relevant failing test, and choose the smallest
 verifiable task that advances the earliest incomplete phase in this plan. This
 track is allowed to be a breaking internal refactor: remove the old owned AST,
 old non-lossless parser API, old token-gap formatter, and transitional
-compatibility shims instead of keeping two syntax stacks alive.
+compatibility shims instead of keeping two syntax stacks alive. Prefer a hard
+switch: delete obsolete syntax surfaces, let compile errors identify downstream
+call sites, and fix those call sites against CST/HIR directly instead of adding
+fallback code to keep both models compiling.
 Temporary names used only to distinguish the new CST path from the old fallback
-path during migration must not become the final API. At close-out, delete the
-old fallback API completely, then rename the new syntax structures and
-functions to concise canonical names that make sense when there is only one
-syntax stack left.
+path during migration must not become the final API. Delete existing syntax
+migration fallbacks at the start of the relevant hard-switch slice instead of
+saving them for final close-out. Close-out should only audit that no fallback
+API remains, then rename the surviving syntax structures and functions to
+concise canonical names that make sense when there is only one syntax stack
+left.
 
 Use the local rust-analyzer checkout at ~/CLionProjects/rust-analyzer as the
 main architecture reference when it is available. Inspect the relevant files
@@ -229,7 +242,9 @@ Downstream ownership should become:
 
 Checklist rule: a phase is complete only when every item in its checkpoint
 checklist is checked. Keep these items updated as each small commit lands, even
-when the phase-level task remains open.
+when the phase-level task remains open. During hard-switch work, the local tree
+may be red between edits; use the resulting compiler errors as the task list,
+but do not commit a checkpoint until the relevant focused validation passes.
 
 ### Phase 1: Add rowan syntax foundation
 
@@ -346,8 +361,12 @@ Checkpoint checklist:
 - [ ] Close the remaining pattern coverage called out in `docs/progress.md`.
 - [ ] Close the remaining control-flow expression coverage called out in
   `docs/progress.md`.
+- [ ] Hard-switch the parser API by deleting the old owned parser entrypoint
+  and owned AST production types before downstream cleanup, accepting compiler
+  errors as the migration queue.
 - [ ] Delete old owned `SourceFile`, `ItemKind`, `ExprKind`, and the old parser
-  output after downstream callers are migrated.
+  output as part of the hard switch, then fix downstream compile errors against
+  CST/HIR directly.
 - [ ] Ensure no production parser path returns the old owned AST.
 
 Expected behavior:
@@ -360,13 +379,15 @@ Expected behavior:
   types, patterns, calls, containers, and blocks.
 - Typed AST wrappers cover the current owned AST surface needed by downstream
   crates.
-- Old owned AST structs are deleted as soon as call sites are migrated in the
-  same checkpoint series.
+- Old owned AST structs are deleted at the start of the hard-switch checkpoint
+  series; downstream call sites are then fixed against CST/HIR directly.
 
 Do not change:
 
 - Do not keep the old `SourceFile { items, diagnostics }` model as a compatibility
   layer.
+- Do not reintroduce owned AST aliases, adapters, or parser entrypoints to make
+  intermediate compilation easier.
 - Do not make AST wrappers compute HIR facts implicitly.
 
 Validation:
@@ -398,8 +419,8 @@ Checkpoint checklist:
 - [x] Stop reparsing module graph sources through the old owned `SourceFile`
   API.
 - [x] Audit remaining HIR-facing tests and helpers for direct old-parser usage.
-- [ ] Keep this phase open until compiler and analysis migration no longer
-  require old AST body fallbacks.
+- [ ] Resolve HIR compile errors from the hard switch by consuming CST/HIR
+  directly; do not restore old AST conversion helpers.
 
 Expected behavior:
 
@@ -441,6 +462,8 @@ Checkpoint checklist:
   from rowan parameter lists.
 - [x] Introduce a shared compiler body payload carrying rowan CST bodies plus
   a temporary legacy fallback.
+- [ ] Retire the shared compiler body payload's old-AST fallback side and make
+  CST body payloads the only compiler body representation.
 - [x] Route top-level statement dispatch through rowan statement categories
   when payloads align.
 - [x] Route expression statement, assignment, call, let, and return payloads
@@ -475,6 +498,7 @@ Checkpoint checklist:
 Expected behavior:
 
 - `vela_bytecode` no longer depends on old owned AST types.
+- Compiler payload structures do not pair CST nodes with old-AST fallback nodes.
 - Expression, pattern, statement, literal, type, const-eval, and semantic
   lowering behavior matches the pre-refactor behavior.
 - `vela_analysis` diagnostics and symbol facts remain behavior-compatible.
@@ -484,6 +508,7 @@ Do not change:
 
 - Do not change VM opcodes unless a separate milestone explicitly requires it.
 - Do not change host boundary rules, reflection, or hot reload behavior.
+- Do not add fallback lowering paths only to preserve old owned-AST behavior.
 
 Validation:
 
