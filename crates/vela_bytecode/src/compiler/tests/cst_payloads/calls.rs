@@ -110,7 +110,7 @@ fn call_values() {
 }
 
 #[test]
-fn mismatched_call_payloads_do_not_pair_arguments_by_index() {
+fn equal_count_call_payloads_pair_arguments_by_position_not_legacy_span() {
     with_cst_payload_compiler(
         r#"
 fn take(value) {
@@ -143,16 +143,16 @@ fn main() {
                 .call_argument_payloads()
                 .expect("call argument payloads");
             assert_eq!(args.len(), 1);
-            assert!(
-                args[0].syntax_argument().is_none(),
-                "mismatched spans must not receive index-based CST arguments"
-            );
-            assert!(args[0].syntax_name().is_none());
-            assert!(
+            assert_eq!(args[0].syntax_name().as_deref(), Some("value"));
+            assert_eq!(
                 args[0]
                     .value_expression_payload()
                     .syntax_expression()
-                    .is_none()
+                    .expect("CST argument value")
+                    .syntax()
+                    .text()
+                    .to_string(),
+                "true"
             );
 
             let ExprKind::Call {
@@ -164,8 +164,8 @@ fn main() {
             let arg_syntax = call_args::CallArgumentSyntax::new(legacy_args, Some(&args));
             assert_eq!(
                 arg_syntax.name_for(&legacy_args[0]),
-                None,
-                "mismatched argument payloads must not expose legacy argument names"
+                Some("value".to_owned()),
+                "argument names must come from the CST argument payload"
             );
         },
     );

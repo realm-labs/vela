@@ -216,20 +216,6 @@ fn syntax_expression_matches_span(expression: &SyntaxExpression, span: Span) -> 
     syntax_range_overlaps_span(expression.syntax().text_range(), span)
 }
 
-fn syntax_argument_for_fallback(
-    arguments: &[SyntaxArgument],
-    fallback: &Argument,
-) -> Option<SyntaxArgument> {
-    arguments
-        .iter()
-        .find(|argument| {
-            argument.expression().is_some_and(|expression| {
-                syntax_expression_matches_span(&expression, fallback.value.span)
-            })
-        })
-        .cloned()
-}
-
 fn syntax_expression_for_fallback(
     expressions: &[SyntaxExpression],
     fallback: &vela_syntax::ast::Expr,
@@ -882,9 +868,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
         }
         Some(
             args.iter()
-                .map(|fallback| CompilerArgumentPayload {
+                .enumerate()
+                .map(|(index, fallback)| CompilerArgumentPayload {
                     source: self.source,
-                    syntax: syntax_argument_for_fallback(&syntax_args, fallback),
+                    syntax: syntax_args.get(index).cloned(),
                     fallback,
                 })
                 .collect(),
