@@ -655,14 +655,24 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match initializer kind");
                 };
                 let dst = self.alloc_register()?;
-                let scrutinee_payload = syntax_payloads
+                let Some(scrutinee_payload) = syntax_payloads
                     .expression
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let initializer match scrutinee payload",
+                    )));
+                };
+                let Some(match_arms) = syntax_payloads.match_arms else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let initializer match arm payloads",
+                    )));
+                };
                 let returned = self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    scrutinee_payload.as_ref(),
-                    syntax_payloads.match_arms,
+                    Some(&scrutinee_payload),
+                    Some(match_arms),
                 )?;
                 Ok((dst, returned))
             }
@@ -850,14 +860,24 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST match return value kind");
                 };
                 let dst = self.alloc_register()?;
-                let scrutinee_payload = syntax_payloads
+                let Some(scrutinee_payload) = syntax_payloads
                     .expression
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST return match scrutinee payload",
+                    )));
+                };
+                let Some(match_arms) = syntax_payloads.match_arms else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST return match arm payloads",
+                    )));
+                };
                 let returned = self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    scrutinee_payload.as_ref(),
-                    syntax_payloads.match_arms,
+                    Some(&scrutinee_payload),
+                    Some(match_arms),
                 )?;
                 Ok((dst, returned))
             }

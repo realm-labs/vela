@@ -94,6 +94,39 @@ fn main() {
 }
 
 #[test]
+fn missing_let_initializer_match_payloads_do_not_use_legacy_match_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = match 1 {
+        1 => 2,
+        _ => 3,
+    };
+}
+"#,
+        |compiler, payload| {
+            let expression = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("CST match initializer");
+
+            let error = compiler
+                .compile_let_initializer_value_payload_for_test(
+                    expression.fallback(),
+                    Some(&expression),
+                )
+                .expect_err("missing CST let match payloads must not compile legacy match body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax(
+                    "missing CST let initializer match arm payloads"
+                )
+            ));
+        },
+    );
+}
+
+#[test]
 fn missing_return_if_payload_does_not_use_legacy_if_body() {
     with_cst_payload_compiler(
         r#"
@@ -123,6 +156,34 @@ fn main() {
             assert!(matches!(
                 error.kind,
                 CompileErrorKind::UnsupportedSyntax("missing CST return if payload")
+            ));
+        },
+    );
+}
+
+#[test]
+fn missing_return_match_payloads_do_not_use_legacy_match_body() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    return match 1 {
+        1 => 2,
+        _ => 3,
+    };
+}
+"#,
+        |compiler, payload| {
+            let expression = payload.body.statement_payloads()[0]
+                .return_value_expression_payload()
+                .expect("CST match return");
+
+            let error = compiler
+                .compile_return_value_payload_for_test(expression.fallback(), Some(&expression))
+                .expect_err("missing CST return match payloads must not compile legacy match body");
+
+            assert!(matches!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST return match arm payloads")
             ));
         },
     );
