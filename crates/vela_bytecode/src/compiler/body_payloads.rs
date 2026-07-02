@@ -670,11 +670,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Assign { .. } = &expr.kind else {
             return None;
         };
-        let source = self.source?;
-        let assignment = self.expression()?.as_assign()?;
-        let range = assignment.syntax().text_range();
-        let span = Span::new(source, range.start().into(), range.end().into());
-        (span == expr.span).then(|| assignment.operator()).flatten()
+        self.expression()?.as_assign()?.operator()
     }
 
     pub(in crate::compiler) fn assignment_target_expression_payload(
