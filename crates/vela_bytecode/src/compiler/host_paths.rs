@@ -364,7 +364,7 @@ impl Compiler<'_, '_> {
                 },
                 segments: Vec::new(),
             },
-            type_name: self.script_type_for_expr(receiver),
+            type_name: None,
         }
     }
 

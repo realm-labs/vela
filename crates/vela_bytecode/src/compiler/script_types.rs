@@ -297,10 +297,6 @@ pub(super) fn type_hint_script_type<'a>(
 }
 
 impl super::Compiler<'_, '_> {
-    pub(super) fn script_type_for_expr(&self, expr: &Expr) -> Option<String> {
-        self.script_type_for_expr_with_payload(expr, None)
-    }
-
     pub(super) fn script_type_for_expr_with_payload(
         &self,
         expr: &Expr,
