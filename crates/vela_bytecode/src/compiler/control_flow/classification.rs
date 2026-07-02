@@ -38,10 +38,6 @@ pub(super) fn fallback_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
     }
 }
 
-pub(super) fn statement_kind_matches(kind: SyntaxStatementKind, stmt: &Stmt) -> bool {
-    kind == fallback_statement_kind(stmt)
-}
-
 pub(super) fn value_expression_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
     match kind {
         SyntaxExpressionKind::Paren => true,

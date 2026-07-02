@@ -30,7 +30,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_
 use classification::{
     control_flow_expression_requires_matching_syntax, fallback_statement_kind, i64_pattern_facts,
     is_map_or_set_type_hint, iterable_item_shape, merge_type_hint_and_value_fact,
-    range_iterable_for_payload, statement_kind_matches, value_expression_requires_matching_syntax,
+    range_iterable_for_payload, value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable, reject_missing_for_pattern_payloads};
@@ -79,11 +79,7 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
-        if !statement_kind_matches(kind, stmt.fallback()) {
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST statement payload",
-            )))
-        } else if kind == SyntaxStatementKind::Let {
+        if kind == SyntaxStatementKind::Let {
             let initializer_body = stmt.let_initializer_block_body_payload();
             let initializer_if = stmt.let_initializer_if_payload();
             let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
