@@ -1,9 +1,19 @@
-use super::*;
+use crate::ast::{
+    AstNode, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxFunctionItem, SyntaxLiteral,
+    SyntaxParam, SyntaxRecordFieldList, SyntaxSourceFile, SyntaxStructField, SyntaxStructFieldList,
+    SyntaxTypeHint,
+};
+use crate::parse::{Parse, parse_source_with_id};
+
+use super::source_id;
+
+fn parse_cst(text: &str) -> Parse<SyntaxSourceFile> {
+    parse_source_with_id(source_id(), text)
+}
 
 #[test]
 fn parses_type_hint_metadata_and_restricted_type_arguments() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 fn level_up(player: game::Player, amount: i64) -> Result<i64, String> {
     let next: i64 = player.level + amount;
@@ -18,91 +28,91 @@ struct Reward {
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Function(function) = &parsed.items[0].kind else {
-        panic!("expected function item");
-    };
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let tree = parsed.tree();
+    let function = tree.functions().next().expect("function item");
+    let params = params(&function);
     assert_eq!(
-        function.params[0]
-            .type_hint
-            .as_ref()
+        params[0]
+            .type_hint()
             .expect("player type hint")
-            .path,
+            .path_segments(),
         ["game", "Player"]
     );
     assert_eq!(
-        function.params[1]
-            .type_hint
-            .as_ref()
+        params[1]
+            .type_hint()
             .expect("amount type hint")
-            .path,
+            .path_segments(),
         ["i64"]
     );
-    let return_type = function
-        .return_type
-        .as_ref()
-        .expect("function return type hint");
-    assert_eq!(return_type.path, ["Result"]);
-    assert_eq!(return_type.args.len(), 2);
-    assert_eq!(return_type.args[0].path, ["i64"]);
-    assert_eq!(return_type.args[1].path, ["String"]);
 
-    let StmtKind::Let {
-        type_hint: Some(next_hint),
-        ..
-    } = &function.body.statements[0].kind
-    else {
-        panic!("expected typed let");
-    };
-    assert_eq!(next_hint.path, ["i64"]);
+    let return_type = function.return_type().expect("function return type hint");
+    assert_eq!(return_type.path_segments(), ["Result"]);
+    let return_args = type_args(&return_type);
+    assert_eq!(return_args.len(), 2);
+    assert_eq!(return_args[0].path_segments(), ["i64"]);
+    assert_eq!(return_args[1].path_segments(), ["String"]);
 
-    let StmtKind::Let {
-        value: Some(lambda),
-        ..
-    } = &function.body.statements[1].kind
-    else {
-        panic!("expected lambda let");
-    };
-    let ExprKind::Lambda { params, .. } = &lambda.kind else {
-        panic!("expected lambda");
-    };
+    let body = function.body().expect("function body");
+    let statements = body.statements().collect::<Vec<_>>();
+    let next = statements[0].as_let().expect("typed let");
     assert_eq!(
-        params[0]
-            .type_hint
-            .as_ref()
+        next.type_hint().expect("next type hint").path_segments(),
+        ["i64"]
+    );
+
+    let mapper = statements[1].as_let().expect("lambda let");
+    let lambda = mapper
+        .initializer()
+        .expect("lambda initializer")
+        .as_lambda()
+        .expect("lambda expression");
+    let lambda_params = lambda
+        .param_list()
+        .expect("lambda param list")
+        .params()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        lambda_params[0]
+            .type_hint()
             .expect("lambda param type hint")
-            .path,
+            .path_segments(),
         ["Reward"]
     );
 
-    let ItemKind::Struct(record) = &parsed.items[1].kind else {
-        panic!("expected struct item");
-    };
+    let record = tree.structs().next().expect("struct item");
+    let fields = struct_fields(record.field_list().expect("struct fields"));
     assert_eq!(
-        record.fields[0]
-            .type_hint
-            .as_ref()
+        fields[0]
+            .type_hint()
             .expect("item_id field type hint")
-            .path,
+            .path_segments(),
         ["String"]
     );
     assert_eq!(
-        record.fields[1]
-            .type_hint
-            .as_ref()
+        fields[1]
+            .type_hint()
             .expect("count field type hint")
-            .path,
+            .path_segments(),
         ["i64"]
     );
 
-    let option = parse_source(source_id(), "fn ok(value: Option<i64>) { return value; }");
-    assert!(option.diagnostics.is_empty(), "{:?}", option.diagnostics);
+    let option = parse_cst("fn ok(value: Option<i64>) { return value; }");
+    assert!(
+        option.diagnostics().is_empty(),
+        "{:?}",
+        option.diagnostics()
+    );
 }
 
 #[test]
 fn parses_builtin_parameterized_container_type_hints() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 fn ok(
     ids: Array<i64>,
@@ -117,30 +127,46 @@ fn ok(
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Function(function) = &parsed.items[0].kind else {
-        panic!("expected function item");
-    };
-    let hint = function.params[0].type_hint.as_ref().expect("Array hint");
-    assert_eq!(hint.path, ["Array"]);
-    assert_eq!(hint.args[0].path, ["i64"]);
-    let hint = function.params[2].type_hint.as_ref().expect("Map hint");
-    assert_eq!(hint.path, ["Map"]);
-    assert_eq!(hint.args[0].path, ["String"]);
-    assert_eq!(hint.args[1].path, ["i64"]);
-    let hint = function.params[4].type_hint.as_ref().expect("Option hint");
-    assert_eq!(hint.path, ["Option"]);
-    assert_eq!(hint.args[0].path, ["Array"]);
-    assert_eq!(hint.args[0].args[0].path, ["i64"]);
-    let hint = function.params[5].type_hint.as_ref().expect("Result hint");
-    assert_eq!(hint.path, ["Result"]);
-    assert_eq!(hint.args[0].path, ["Map"]);
-    assert_eq!(hint.args[0].args[1].path, ["i64"]);
-    let return_type = function.return_type.as_ref().expect("return hint");
-    assert_eq!(return_type.path, ["Result"]);
-    assert_eq!(return_type.args[0].path, ["Array"]);
-    assert_eq!(return_type.args[0].args[0].path, ["Option"]);
-    assert_eq!(return_type.args[0].args[0].args[0].path, ["i64"]);
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let function = parsed.tree().functions().next().expect("function item");
+    let params = params(&function);
+
+    let hint = params[0].type_hint().expect("Array hint");
+    assert_eq!(hint.path_segments(), ["Array"]);
+    assert_eq!(type_args(&hint)[0].path_segments(), ["i64"]);
+
+    let hint = params[2].type_hint().expect("Map hint");
+    let args = type_args(&hint);
+    assert_eq!(hint.path_segments(), ["Map"]);
+    assert_eq!(args[0].path_segments(), ["String"]);
+    assert_eq!(args[1].path_segments(), ["i64"]);
+
+    let hint = params[4].type_hint().expect("Option hint");
+    let option_args = type_args(&hint);
+    let array_args = type_args(&option_args[0]);
+    assert_eq!(hint.path_segments(), ["Option"]);
+    assert_eq!(option_args[0].path_segments(), ["Array"]);
+    assert_eq!(array_args[0].path_segments(), ["i64"]);
+
+    let hint = params[5].type_hint().expect("Result hint");
+    let result_args = type_args(&hint);
+    let map_args = type_args(&result_args[0]);
+    assert_eq!(hint.path_segments(), ["Result"]);
+    assert_eq!(result_args[0].path_segments(), ["Map"]);
+    assert_eq!(map_args[1].path_segments(), ["i64"]);
+
+    let return_type = function.return_type().expect("return hint");
+    let return_args = type_args(&return_type);
+    let array_args = type_args(&return_args[0]);
+    let option_args = type_args(&array_args[0]);
+    assert_eq!(return_type.path_segments(), ["Result"]);
+    assert_eq!(return_args[0].path_segments(), ["Array"]);
+    assert_eq!(array_args[0].path_segments(), ["Option"]);
+    assert_eq!(option_args[0].path_segments(), ["i64"]);
 }
 
 #[test]
@@ -191,22 +217,21 @@ fn rejects_unsupported_parameterized_type_hints() {
             "syntax::type_argument_arity",
         ),
     ] {
-        let parsed = parse_source(source_id(), source);
+        let parsed = parse_cst(source);
         assert!(
             parsed
-                .diagnostics
+                .diagnostics()
                 .iter()
                 .any(|diagnostic| diagnostic.code.as_deref() == Some(code)),
             "{source}: {:?}",
-            parsed.diagnostics
+            parsed.diagnostics()
         );
     }
 }
 
 #[test]
 fn parses_value_keyed_map_and_set_type_hints() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 fn accepts(
     scores: Map<i64, String>,
@@ -220,24 +245,29 @@ fn accepts(
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Function(function) = &parsed.items[0].kind else {
-        panic!("expected function item");
-    };
-    let map_i64 = function.params[0].type_hint.as_ref().expect("map hint");
-    assert_eq!(map_i64.path, ["Map"]);
-    assert_eq!(map_i64.args[0].path, ["i64"]);
-    let map_player = function.params[1].type_hint.as_ref().expect("map hint");
-    assert_eq!(map_player.args[0].path, ["Player"]);
-    let set_player = function.params[3].type_hint.as_ref().expect("set hint");
-    assert_eq!(set_player.path, ["Set"]);
-    assert_eq!(set_player.args[0].path, ["Player"]);
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let function = parsed.tree().functions().next().expect("function item");
+    let params = params(&function);
+
+    let map_i64 = params[0].type_hint().expect("map hint");
+    assert_eq!(map_i64.path_segments(), ["Map"]);
+    assert_eq!(type_args(&map_i64)[0].path_segments(), ["i64"]);
+
+    let map_player = params[1].type_hint().expect("map hint");
+    assert_eq!(type_args(&map_player)[0].path_segments(), ["Player"]);
+
+    let set_player = params[3].type_hint().expect("set hint");
+    assert_eq!(set_player.path_segments(), ["Set"]);
+    assert_eq!(type_args(&set_player)[0].path_segments(), ["Player"]);
 }
 
 #[test]
 fn parses_enum_variant_payload_metadata() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 enum QuestProgress {
     None,
@@ -247,28 +277,34 @@ enum QuestProgress {
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Enum(enumeration) = &parsed.items[0].kind else {
-        panic!("expected enum item");
-    };
-    assert_eq!(
-        enum_variant_names(&enumeration.variants),
-        ["None", "Active", "Finished"]
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
     );
-    let EnumVariantFields::Record(fields) = &enumeration.variants[1].fields else {
-        panic!("expected record variant fields");
-    };
-    assert_eq!(struct_field_names(fields), ["quest_id", "count"]);
-    let EnumVariantFields::Tuple(fields) = &enumeration.variants[2].fields else {
-        panic!("expected tuple variant fields");
-    };
-    assert_eq!(param_names(fields), ["quest_id"]);
+    let enumeration = parsed.tree().enums().next().expect("enum item");
+    let variants = enumeration
+        .variant_list()
+        .expect("variant list")
+        .variants()
+        .collect::<Vec<_>>();
+
+    assert_eq!(variant_names(&variants), ["None", "Active", "Finished"]);
+    let fields = variants[1]
+        .record_field_list()
+        .expect("record variant fields");
+    assert_eq!(field_names(record_fields(fields)), ["quest_id", "count"]);
+    let fields = variants[2]
+        .tuple_field_list()
+        .expect("tuple variant fields")
+        .params()
+        .collect::<Vec<_>>();
+    assert_eq!(param_names(&fields), ["quest_id"]);
 }
 
 #[test]
 fn parses_struct_and_record_variant_field_defaults() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 struct Reward {
     item_id: String = "gold",
@@ -281,41 +317,41 @@ enum QuestProgress {
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Struct(record) = &parsed.items[0].kind else {
-        panic!("expected struct item");
-    };
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let record = parsed.tree().structs().next().expect("struct item");
+    let fields = struct_fields(record.field_list().expect("struct fields"));
     assert!(matches!(
-        record.fields[0]
-            .default_value
-            .as_ref()
-            .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::String(value))) if value == "gold"
+        literal_value(fields[0].default_value().as_ref().expect("item default")),
+        Some(Literal::String(value)) if value == "gold"
     ));
     assert!(matches!(
-        record.fields[1]
-            .default_value
-            .as_ref()
-            .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "1"
+        literal_value(fields[1].default_value().as_ref().expect("count default")),
+        Some(Literal::Integer(value)) if value.source_text() == "1"
     ));
 
-    let ItemKind::Enum(enumeration) = &parsed.items[1].kind else {
-        panic!("expected enum item");
-    };
-    let EnumVariantFields::Record(fields) = &enumeration.variants[0].fields else {
-        panic!("expected record variant fields");
-    };
+    let enumeration = parsed.tree().enums().next().expect("enum item");
+    let variants = enumeration
+        .variant_list()
+        .expect("variant list")
+        .variants()
+        .collect::<Vec<_>>();
+    let fields = variants[0]
+        .record_field_list()
+        .expect("record variant fields");
+    let fields = record_fields(fields);
     assert!(matches!(
-        fields[1].default_value.as_ref().map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "0"
+        literal_value(fields[1].default_value().as_ref().expect("count default")),
+        Some(Literal::Integer(value)) if value.source_text() == "0"
     ));
 }
 
 #[test]
 fn parses_schema_members_separated_by_newlines() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 struct Reward {
     item_id
@@ -333,33 +369,37 @@ enum QuestProgress {
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Struct(record) = &parsed.items[0].kind else {
-        panic!("expected struct item");
-    };
-    assert_eq!(struct_field_names(&record.fields), ["item_id", "count"]);
-
-    let ItemKind::Enum(enumeration) = &parsed.items[1].kind else {
-        panic!("expected enum item");
-    };
-    assert_eq!(
-        enum_variant_names(&enumeration.variants),
-        ["None", "Active", "Finished"]
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
     );
-    let EnumVariantFields::Record(fields) = &enumeration.variants[1].fields else {
-        panic!("expected record variant fields");
-    };
-    assert_eq!(struct_field_names(fields), ["quest_id", "count"]);
-    let EnumVariantFields::Tuple(fields) = &enumeration.variants[2].fields else {
-        panic!("expected tuple variant fields");
-    };
-    assert_eq!(param_names(fields), ["quest_id"]);
+    let record = parsed.tree().structs().next().expect("struct item");
+    let fields = struct_fields(record.field_list().expect("struct fields"));
+    assert_eq!(field_names(fields), ["item_id", "count"]);
+
+    let enumeration = parsed.tree().enums().next().expect("enum item");
+    let variants = enumeration
+        .variant_list()
+        .expect("variant list")
+        .variants()
+        .collect::<Vec<_>>();
+    assert_eq!(variant_names(&variants), ["None", "Active", "Finished"]);
+    let fields = variants[1]
+        .record_field_list()
+        .expect("record variant fields");
+    assert_eq!(field_names(record_fields(fields)), ["quest_id", "count"]);
+    let fields = variants[2]
+        .tuple_field_list()
+        .expect("tuple variant fields")
+        .params()
+        .collect::<Vec<_>>();
+    assert_eq!(param_names(&fields), ["quest_id"]);
 }
 
 #[test]
 fn parses_parameter_defaults_and_named_arguments() {
-    let parsed = parse_source(
-        source_id(),
+    let parsed = parse_cst(
         r#"
 fn grant(player, amount = 10, reason: String = "quest") {
     return apply(amount = amount, reason = reason);
@@ -367,32 +407,92 @@ fn grant(player, amount = 10, reason: String = "quest") {
 "#,
     );
 
-    assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
-    let ItemKind::Function(function) = &parsed.items[0].kind else {
-        panic!("expected function item");
-    };
-    assert!(function.params[0].default_value.is_none());
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let function = parsed.tree().functions().next().expect("function item");
+    let params = params(&function);
+    assert!(params[0].default_value().is_none());
     assert!(matches!(
-        function.params[1]
-            .default_value
-            .as_ref()
-            .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::Integer(value))) if value.source_text() == "10"
+        literal_value(params[1].default_value().as_ref().expect("amount default")),
+        Some(Literal::Integer(value)) if value.source_text() == "10"
     ));
     assert!(matches!(
-        function.params[2]
-            .default_value
-            .as_ref()
-            .map(|expr| &expr.kind),
-        Some(ExprKind::Literal(Literal::String(value))) if value == "quest"
+        literal_value(params[2].default_value().as_ref().expect("reason default")),
+        Some(Literal::String(value)) if value == "quest"
     ));
-    let StmtKind::Return(Some(Expr {
-        kind: ExprKind::Call { args, .. },
-        ..
-    })) = &function.body.statements[0].kind
-    else {
-        panic!("expected call return");
-    };
-    assert_eq!(args[0].name.as_deref(), Some("amount"));
-    assert_eq!(args[1].name.as_deref(), Some("reason"));
+
+    let body = function.body().expect("function body");
+    let return_stmt = body
+        .statements()
+        .next()
+        .expect("return statement")
+        .as_return()
+        .expect("return statement");
+    let call = return_stmt
+        .expression()
+        .expect("return expression")
+        .as_call()
+        .expect("call return");
+    let args = call.arguments();
+    assert_eq!(args[0].name_text().as_deref(), Some("amount"));
+    assert_eq!(args[1].name_text().as_deref(), Some("reason"));
+}
+
+fn params(function: &SyntaxFunctionItem) -> Vec<SyntaxParam> {
+    function
+        .param_list()
+        .expect("parameter list")
+        .params()
+        .collect()
+}
+
+fn type_args(hint: &SyntaxTypeHint) -> Vec<SyntaxTypeHint> {
+    hint.type_arg_list()
+        .expect("type argument list")
+        .type_hints()
+        .collect()
+}
+
+fn struct_fields(fields: SyntaxStructFieldList) -> Vec<SyntaxStructField> {
+    fields.fields().collect()
+}
+
+fn record_fields(fields: SyntaxRecordFieldList) -> Vec<SyntaxStructField> {
+    fields.fields().collect()
+}
+
+fn field_names(fields: Vec<SyntaxStructField>) -> Vec<String> {
+    fields
+        .iter()
+        .map(|field| field.name_text().expect("field name"))
+        .collect()
+}
+
+fn param_names(params: &[SyntaxParam]) -> Vec<String> {
+    params
+        .iter()
+        .map(|param| param.name_text().expect("param name"))
+        .collect()
+}
+
+fn variant_names(variants: &[crate::ast::SyntaxEnumVariant]) -> Vec<String> {
+    variants
+        .iter()
+        .map(|variant| variant.name_text().expect("variant name"))
+        .collect()
+}
+
+fn literal_value(expression: &SyntaxExpression) -> Option<Literal> {
+    assert_eq!(
+        expression.expression_kind(),
+        SyntaxExpressionKind::Literal,
+        "expected literal expression, got {:?}",
+        expression.syntax().kind()
+    );
+    SyntaxLiteral::cast(expression.syntax().clone())
+        .expect("literal expression")
+        .literal()
 }
