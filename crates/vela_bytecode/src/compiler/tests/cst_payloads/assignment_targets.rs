@@ -213,6 +213,58 @@ fn main() {
 }
 
 #[test]
+fn unclassified_assignment_value_payload_does_not_use_legacy_value() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = 1;
+    value = 2;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement(statements[0].fallback())
+                .expect("local target should compile");
+            let assignment = statements[1]
+                .expression_payload()
+                .expect("assignment expression payload");
+            let value = statements[1]
+                .assignment_value_expression_payload()
+                .expect("assignment value expression payload");
+            let unclassified_value =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    value
+                        .syntax_expression()
+                        .expect("assignment value syntax")
+                        .clone(),
+                    value.fallback(),
+                );
+
+            let error = compiler
+                .compile_assignment_with_payloads(
+                    assignment.fallback(),
+                    crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(
+                        None,
+                        None,
+                        Some(&unclassified_value),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(
+                            None, None, None, None,
+                        ),
+                    ),
+                )
+                .expect_err("unclassified CST assignment value must not use legacy value");
+
+            assert_eq!(
+                error.kind,
+                CompileErrorKind::UnsupportedSyntax("missing CST assignment value")
+            );
+        },
+    );
+}
+
+#[test]
 fn assignment_block_value_without_body_payload_does_not_use_legacy_value() {
     assert_missing_assignment_value_child_payload_is_rejected(
         r#"

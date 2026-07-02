@@ -234,6 +234,11 @@ impl Compiler<'_, '_> {
         };
         let op = value_syntax.op.unwrap_or(*op);
         validate_assignment_target_payload(target, target_syntax.expression)?;
+        if value_syntax.expression.is_some() && value_syntax.kind.is_none() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST assignment value",
+            )));
+        }
         validate_assignment_value_payload(value, value_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
@@ -987,6 +992,11 @@ impl Compiler<'_, '_> {
                 context,
                 syntax.expression,
             );
+        }
+        if syntax.expression.is_some() && syntax.kind.is_none() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST assignment value",
+            )));
         }
         if let Some(kind) = syntax.kind {
             if matches!(
