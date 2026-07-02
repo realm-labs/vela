@@ -8,6 +8,7 @@ use vela_syntax::ast::{
 
 use crate::compiler::Compiler;
 use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::expression_payload_kinds::expression_payload_is_aligned;
 use crate::compiler::value_types::{RuntimeTypeFact, StandardRuntimeType};
 
 use super::{RecordFieldShape, RecordShape, ValueShape, common_shape, record_reflection_shapes};
@@ -25,11 +26,21 @@ pub(super) fn field_payload_parts<'ast>(
     }
 }
 
-pub(super) fn payload_shape_must_come_from_syntax(payload: &CompilerExpressionPayload<'_>) -> bool {
+pub(super) fn payload_shape_must_come_from_syntax(
+    payload: Option<&CompilerExpressionPayload<'_>>,
+    expr: &vela_syntax::ast::Expr,
+) -> bool {
+    let Some(payload) = payload else {
+        return false;
+    };
     matches!(
         payload.syntax_binary_operator(),
         Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
-    ) || payload.syntax_record_path_segments().is_some()
+    ) || (payload
+        .syntax_kind()
+        .is_some_and(|kind| kind == SyntaxExpressionKind::Call)
+        && !expression_payload_is_aligned(payload, expr))
+        || payload.syntax_record_path_segments().is_some()
 }
 
 impl Compiler<'_, '_> {

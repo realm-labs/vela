@@ -11,6 +11,7 @@ use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
 
+mod queries;
 mod syntax_shapes;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -1010,7 +1011,7 @@ impl super::Compiler<'_, '_> {
         }) {
             return None;
         }
-        if kind_matched_payload.is_some_and(syntax_shapes::payload_shape_must_come_from_syntax) {
+        if syntax_shapes::payload_shape_must_come_from_syntax(kind_matched_payload, expr) {
             return None;
         }
         if payload.is_some() && kind_matched_payload.is_none() {
@@ -1057,38 +1058,6 @@ impl super::Compiler<'_, '_> {
             &|span| self.value_types.local_at_span(self.bindings, span),
             &|name| self.value_types.name(name),
         )
-    }
-
-    pub(in crate::compiler) fn record_shape_for_expr_with_payload(
-        &self,
-        expr: &Expr,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<RecordShape> {
-        self.value_shape_for_expr_with_payload(expr, payload)?
-            .as_record()
-            .cloned()
-    }
-
-    pub(super) fn record_shape_for_path_root(&self, span: Span, root: &str) -> Option<RecordShape> {
-        self.value_shapes
-            .local_at_span(self.bindings, span)
-            .or_else(|| self.value_shapes.name(root))
-            .and_then(|shape| shape.as_record().cloned())
-            .or_else(|| {
-                self.global_type_at_span(span)
-                    .or_else(|| self.global_type_named(root))
-                    .and_then(|type_name| self.record_shape_for_type(&type_name))
-            })
-    }
-
-    pub(super) fn record_shape_for_index_collection(
-        &self,
-        collection: &Expr,
-        payload: Option<&CompilerExpressionPayload<'_>>,
-    ) -> Option<RecordShape> {
-        self.value_shape_for_expr_with_payload(collection, payload)?
-            .array_element_record()
-            .cloned()
     }
 
     pub(in crate::compiler) fn record_field_value_type_for_expr_with_payload(

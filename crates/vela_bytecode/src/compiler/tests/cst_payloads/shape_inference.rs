@@ -363,6 +363,48 @@ fn main() {
 }
 
 #[test]
+fn unsupported_call_shape_payload_does_not_use_legacy_call_shape() {
+    with_cst_payload_compiler(
+        r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main() {
+    let unsupported = unknown_shape();
+    let legacy_call = result::ok(LegacyBox { amount: 1 });
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let unsupported = statements[0]
+                .let_initializer_expression_payload()
+                .expect("unsupported CST call initializer");
+            let legacy_call = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy call fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                unsupported
+                    .syntax_expression()
+                    .expect("unsupported CST call syntax")
+                    .clone(),
+                legacy_call.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                None,
+                "unsupported CST call payload must not use the old fallback call shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn method_call_shape_inference_prefers_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"
