@@ -153,10 +153,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Assign { .. } = &self.fallback.kind else {
             return None;
         };
-        let syntax_span = self.syntax_span()?;
-        (syntax_span == self.fallback.span)
-            .then(|| self.syntax.as_ref()?.as_assign()?.operator())
-            .flatten()
+        self.syntax.as_ref()?.as_assign()?.operator()
     }
 
     pub(in crate::compiler) fn paren_inner_payload(
