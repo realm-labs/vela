@@ -100,6 +100,39 @@ fn main(input) {
 }
 
 #[test]
+fn missing_shape_expression_payload_does_not_use_legacy_shape() {
+    with_cst_payload_compiler(
+        r#"
+struct LegacyBox {
+    amount: i64,
+}
+
+fn main() {
+    let legacy = LegacyBox { amount: 1 };
+}
+"#,
+        |compiler, payload| {
+            let record = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("record initializer payload");
+            let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(
+                SourceId::new(1),
+                record.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    missing_payload.fallback(),
+                    Some(&missing_payload),
+                ),
+                None,
+                "missing source-backed CST payload must not use the legacy record shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn shape_inference_with_unshaped_cst_record_does_not_use_legacy_fields() {
     let source = SourceId::new(1);
     let cst_text = r#"
