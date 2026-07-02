@@ -6,6 +6,7 @@ use crate::Register;
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerPatternPayload,
 };
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::compiler) struct LoopContext {
@@ -37,6 +38,26 @@ pub(super) struct ForStatementParts<'ast> {
     pub(super) pattern_payload: Option<CompilerPatternPayload<'ast>>,
     pub(super) iterable_payload: Option<CompilerExpressionPayload<'ast>>,
     pub(super) body_payload: Option<CompilerBodyPayload<'ast>>,
+}
+
+pub(super) fn reject_missing_for_pattern_payloads(
+    index_pattern_payload: Option<&CompilerPatternPayload<'_>>,
+    value_pattern_payload: Option<&CompilerPatternPayload<'_>>,
+) -> CompileResult<()> {
+    if index_pattern_payload.is_some_and(|payload| payload.syntax_pattern_kind().is_none()) {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST for index pattern payload",
+        )));
+    }
+    if value_pattern_payload
+        .and_then(CompilerPatternPayload::syntax_pattern_kind)
+        .is_none()
+    {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST for value pattern payload",
+        )));
+    }
+    Ok(())
 }
 
 impl LoopContext {

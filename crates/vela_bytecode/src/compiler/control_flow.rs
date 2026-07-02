@@ -33,7 +33,7 @@ use classification::{
     range_iterable_for_payload, statement_kind_matches, value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
-use loops::{ForStatementParts, LoopIterable};
+use loops::{ForStatementParts, LoopIterable, reject_missing_for_pattern_payloads};
 use value_syntax::ValueSyntaxPayloads;
 
 impl Compiler<'_, '_> {
@@ -132,12 +132,18 @@ impl Compiler<'_, '_> {
                     "missing CST for statement body payload",
                 )));
             }
+            let index_pattern_payload = stmt.for_index_pattern_payload();
+            let value_pattern_payload = stmt.for_value_pattern_payload();
+            reject_missing_for_pattern_payloads(
+                index_pattern_payload.as_ref(),
+                value_pattern_payload.as_ref(),
+            )?;
             self.compile_for_statement(
                 stmt.fallback(),
                 iterable_payload,
                 body_payload,
-                stmt.for_index_pattern_payload(),
-                stmt.for_value_pattern_payload(),
+                index_pattern_payload,
+                value_pattern_payload,
             )
         } else if kind == SyntaxStatementKind::If {
             let if_payload = stmt.if_payload();

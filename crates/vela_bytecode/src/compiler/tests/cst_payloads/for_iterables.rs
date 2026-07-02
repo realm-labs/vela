@@ -224,6 +224,107 @@ fn main() {
 }
 
 #[test]
+fn missing_for_index_pattern_payload_does_not_use_legacy_index() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    for value in [1] {
+        return value;
+    }
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    for index, value in [1] {
+        return index;
+    }
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_statement = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST for statement");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let missing =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+
+    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert!(
+        missing
+            .for_index_pattern_payload()
+            .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing)
+        .expect_err("missing CST for index pattern must not compile legacy index");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST for index pattern payload")
+    ));
+}
+
+#[test]
+fn missing_for_value_pattern_payload_does_not_use_legacy_value() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    for in [1] {
+    }
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    for value in [1] {
+        return value;
+    }
+}
+"#;
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
+    let cst_statement = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST for statement");
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let missing =
+        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+
+    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert!(
+        missing
+            .for_value_pattern_payload()
+            .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&missing)
+        .expect_err("missing CST for value pattern must not compile legacy value");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST for value pattern payload")
+    ));
+}
+
+#[test]
 fn semantic_function_for_patterns_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
