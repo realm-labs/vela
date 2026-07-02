@@ -331,7 +331,7 @@ fn fallback_body() {
 }
 
 #[test]
-fn mismatched_statement_payloads_do_not_use_legacy_statement() {
+fn mismatched_statement_payloads_do_not_compile_legacy_statement() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -359,7 +359,7 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST statement payload")
+        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
     ));
 }
 

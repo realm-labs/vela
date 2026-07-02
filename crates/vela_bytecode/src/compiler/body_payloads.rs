@@ -203,25 +203,6 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &Stmt) -> bool {
-    match (&fallback.kind, kind) {
-        (StmtKind::Let { .. }, SyntaxStatementKind::Let)
-        | (StmtKind::Return(_), SyntaxStatementKind::Return)
-        | (StmtKind::Break, SyntaxStatementKind::Break)
-        | (StmtKind::Continue, SyntaxStatementKind::Continue)
-        | (StmtKind::For { .. }, SyntaxStatementKind::For)
-        | (StmtKind::Block(_), SyntaxStatementKind::Block) => true,
-        (StmtKind::Expr(expr), SyntaxStatementKind::If) => matches!(expr.kind, ExprKind::If(_)),
-        (StmtKind::Expr(expr), SyntaxStatementKind::Match) => {
-            matches!(expr.kind, ExprKind::Match(_))
-        }
-        (StmtKind::Expr(expr), SyntaxStatementKind::Expr) => {
-            !matches!(expr.kind, ExprKind::If(_) | ExprKind::Match(_))
-        }
-        _ => false,
-    }
-}
-
 fn match_arm_payloads_for_fallback<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
@@ -350,8 +331,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
-        let kind = self.syntax_statement_kind()?;
-        syntax_statement_kind_matches_fallback(kind, self.fallback).then_some(kind)
+        self.syntax_statement_kind()
     }
 
     pub(super) fn syntax_statement_kind(&self) -> Option<SyntaxStatementKind> {

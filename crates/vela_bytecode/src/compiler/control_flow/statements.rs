@@ -77,6 +77,11 @@ impl Compiler<'_, '_> {
             let initializer_if = stmt.let_initializer_if_payload();
             let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
             let initializer_expression = stmt.let_initializer_expression_payload();
+            if stmt.syntax_let_initializer_kind().is_some() && initializer_expression.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST let initializer payload",
+                )));
+            }
             self.compile_let_statement(
                 stmt.fallback(),
                 ValueSyntaxPayloads::new(
@@ -93,6 +98,11 @@ impl Compiler<'_, '_> {
             let value_if = stmt.return_value_if_payload();
             let value_match_arms = stmt.return_value_match_arm_payloads();
             let value_expression = stmt.return_value_expression_payload();
+            if stmt.syntax_return_value_kind().is_some() && value_expression.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST return value payload",
+                )));
+            }
             self.compile_return_statement(
                 stmt.fallback(),
                 ValueSyntaxPayloads::new(
