@@ -10,7 +10,6 @@ use super::{
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
     match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
-    syntax_record_pattern_field_for_fallback,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -793,9 +792,10 @@ impl<'ast> CompilerPatternPayload<'ast> {
         Some(
             fields
                 .iter()
-                .map(|fallback| CompilerRecordPatternFieldPayload {
+                .enumerate()
+                .map(|(index, fallback)| CompilerRecordPatternFieldPayload {
                     source: self.source,
-                    syntax: syntax_record_pattern_field_for_fallback(&syntax_fields, fallback),
+                    syntax: syntax_fields.get(index).cloned(),
                     fallback,
                 })
                 .collect(),

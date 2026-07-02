@@ -212,19 +212,6 @@ fn syntax_statement_kind_matches_fallback(kind: SyntaxStatementKind, fallback: &
     }
 }
 
-fn syntax_record_pattern_field_for_fallback(
-    fields: &[SyntaxRecordPatternField],
-    fallback: &RecordPatternField,
-) -> Option<SyntaxRecordPatternField> {
-    fields
-        .iter()
-        .max_by_key(|field| {
-            syntax_range_overlap_len(field.syntax().text_range(), fallback.span).unwrap_or(0)
-        })
-        .filter(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
-        .cloned()
-}
-
 fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool {
     syntax_range_overlap_len(range, span).is_some()
 }

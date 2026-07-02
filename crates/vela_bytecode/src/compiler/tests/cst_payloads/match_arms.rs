@@ -481,7 +481,7 @@ fn classify(result, code = match result {
 }
 
 #[test]
-fn mismatched_match_pattern_payloads_pair_tuple_by_position_and_record_by_label() {
+fn mismatched_match_pattern_payloads_pair_children_by_position_not_legacy_span() {
     let source = SourceId::new(1);
     let text = r#"
 enum Shape {
@@ -557,15 +557,13 @@ fn legacy_record(value) {
         .record_field_payloads()
         .expect("record pattern should expose field payloads");
     assert_eq!(record_fields.len(), 1);
-    assert!(
-        record_fields
-            .iter()
-            .all(|field| field.syntax_label_name().is_none()),
-        "mismatched record fields must not receive label or index fallback CST fields"
+    assert_eq!(
+        record_fields[0].syntax_label_name().as_deref(),
+        Some("first")
     );
 
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_record");
-    let err = compiler
+    compiler
         .bind_pattern_locals(
             Register(0),
             legacy_record_pattern,
@@ -574,11 +572,23 @@ fn legacy_record(value) {
             crate::compiler::patterns::PatternBindingFacts::default(),
             LocalBindingKind::Pattern,
         )
-        .expect_err("mismatched record field payload should not use legacy field name");
-    assert!(matches!(
-        err.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
-    ));
+        .expect("CST record field payload should bind the CST field name");
+    assert!(
+        compiler
+            .code
+            .frame
+            .slot("cst_field", crate::FrameSlotKind::PatternBinding)
+            .is_some(),
+        "record pattern payload must bind the CST field binding"
+    );
+    assert!(
+        compiler
+            .code
+            .frame
+            .slot("legacy_field", crate::FrameSlotKind::PatternBinding)
+            .is_none(),
+        "record pattern payload must not bind the legacy fallback field"
+    );
 }
 
 #[test]

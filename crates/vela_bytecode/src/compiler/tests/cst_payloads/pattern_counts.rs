@@ -140,7 +140,7 @@ fn fallback_record(value) {
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
+            CompileErrorKind::UnsupportedSyntax("record pattern field")
         ),
         "unexpected error: {:?}",
         error.kind
