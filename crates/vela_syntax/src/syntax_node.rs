@@ -51,7 +51,7 @@ mod tests {
         builder.token(SyntaxKind::Whitespace, "\n");
         builder.finish_node();
 
-        let parse: crate::Parse<crate::ast::SourceFile> = builder.finish();
+        let parse: crate::Parse<crate::ast::SyntaxSourceFile> = builder.finish();
         let root = parse.syntax_node();
 
         assert_eq!(root.kind(), SyntaxKind::SourceFile);

@@ -934,12 +934,19 @@ impl Compiler<'_, '_> {
                 "mismatched CST for iterable payload",
             )));
         }
-        let iterable_operand_payloads = parts
-            .iterable_payload
-            .as_ref()
-            .and_then(CompilerExpressionPayload::binary_operand_payloads);
         let range_iterable =
             range_iterable_for_payload(parts.iterable_payload.as_ref(), parts.iterable);
+        let iterable_operand_payloads =
+            match (range_iterable.is_some(), parts.iterable_payload.as_ref()) {
+                (true, Some(payload)) => {
+                    Some(payload.binary_operand_payloads().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST range operand payload",
+                        ))
+                    })?)
+                }
+                _ => None,
+            };
         let item_facts = if range_iterable.is_some() {
             i64_pattern_facts()
         } else {
