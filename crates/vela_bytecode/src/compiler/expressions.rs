@@ -246,7 +246,6 @@ impl Compiler<'_, '_> {
                 }
                 let cst_op = payload
                     .syntax_binary_operator()
-                    .filter(|_| payload_syntax_span_matches_expr(payload, expr))
                     .filter(|cst_op| arithmetic_binary_operator(*cst_op))
                     .filter(|_| arithmetic_binary_operator(*op));
                 let op = cst_op.unwrap_or(*op);
