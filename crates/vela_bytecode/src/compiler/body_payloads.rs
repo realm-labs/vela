@@ -226,33 +226,6 @@ fn syntax_expression_for_fallback(
         .cloned()
 }
 
-fn syntax_map_entry_for_fallback(
-    entries: &[SyntaxMapEntry],
-    fallback: &MapEntry,
-) -> Option<SyntaxMapEntry> {
-    entries
-        .iter()
-        .find(|entry| {
-            entry
-                .value()
-                .is_some_and(|value| syntax_expression_matches_span(&value, fallback.value.span))
-        })
-        .cloned()
-}
-
-fn syntax_record_field_for_fallback(
-    fields: &[SyntaxRecordExprField],
-    fallback: &RecordField,
-) -> Option<SyntaxRecordExprField> {
-    fields
-        .iter()
-        .max_by_key(|field| {
-            syntax_range_overlap_len(field.syntax().text_range(), fallback.span).unwrap_or(0)
-        })
-        .filter(|field| syntax_range_overlaps_span(field.syntax().text_range(), fallback.span))
-        .cloned()
-}
-
 fn syntax_record_pattern_field_for_fallback(
     fields: &[SyntaxRecordPatternField],
     fallback: &RecordPatternField,

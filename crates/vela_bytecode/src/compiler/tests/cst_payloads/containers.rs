@@ -112,7 +112,7 @@ fn return_values() {
 }
 
 #[test]
-fn mismatched_container_payloads_do_not_pair_children_by_index() {
+fn equal_count_container_payloads_pair_children_by_position_not_legacy_span() {
     with_cst_payload_compiler(
         r#"
 struct Pair {
@@ -128,7 +128,7 @@ fn main() {
     let legacy_record = Pair { first: 1 };
 }
 "#,
-        |compiler, payload| {
+        |_compiler, payload| {
             let statements = payload.body.statement_payloads();
 
             let cst_array = statements[0]
@@ -149,9 +149,14 @@ fn main() {
                 .array_element_payloads()
                 .expect("array element payloads");
             assert_eq!(array_elements.len(), 1);
-            assert!(
-                array_elements[0].syntax_expression().is_none(),
-                "mismatched spans must not receive index-based CST array elements"
+            assert_eq!(
+                array_elements[0]
+                    .syntax_expression()
+                    .expect("CST array element")
+                    .syntax()
+                    .text()
+                    .to_string(),
+                "true"
             );
 
             let cst_map = statements[2]
@@ -172,28 +177,16 @@ fn main() {
                 .map_entry_payloads()
                 .expect("map entry payloads");
             assert_eq!(map_entries.len(), 1);
-            assert!(
-                map_entries[0].syntax_key_name().is_none(),
-                "mismatched spans must not receive index-based CST map entries"
-            );
-            assert!(
+            assert_eq!(map_entries[0].syntax_key_name().as_deref(), Some("value"));
+            assert_eq!(
                 map_entries[0]
                     .value_expression_payload()
                     .syntax_expression()
-                    .is_none()
-            );
-            let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
-                panic!("expected legacy map fallback");
-            };
-            let err = compiler
-                .compile_map_entry(&legacy_entries[0], Some(&map_entries[0]))
-                .expect_err("mismatched CST map key should not use legacy fallback key");
-            assert!(
-                matches!(
-                    err.kind,
-                    CompileErrorKind::UnsupportedSyntax("missing CST map entry key")
-                ),
-                "expected missing CST map-key diagnostic, got {err:?}"
+                    .expect("CST map value")
+                    .syntax()
+                    .text()
+                    .to_string(),
+                "true"
             );
 
             let cst_record = statements[4]
@@ -214,16 +207,20 @@ fn main() {
                 .record_field_payloads()
                 .expect("record field payloads");
             assert_eq!(record_fields.len(), 1);
-            assert!(
-                record_fields[0].syntax_label_name().is_none(),
-                "mismatched spans must not receive index-based CST record fields"
+            assert_eq!(
+                record_fields[0].syntax_label_name().as_deref(),
+                Some("first")
             );
-            assert!(
+            assert_eq!(
                 record_fields[0]
                     .value_expression_payload()
                     .expect("record field value payload")
                     .syntax_expression()
-                    .is_none()
+                    .expect("CST record field value")
+                    .syntax()
+                    .text()
+                    .to_string(),
+                "true"
             );
             let legacy_named_fields = vec![vela_syntax::ast::RecordField {
                 name: "legacy_only".to_owned(),
@@ -235,25 +232,8 @@ fn main() {
                     &legacy_named_fields,
                     Some(&record_fields),
                 ),
-                Some(vec![None]),
-                "CST-backed record field names must not fall back to legacy labels"
-            );
-            let ExprKind::Record {
-                fields: legacy_fields,
-                ..
-            } = &legacy_record.fallback().kind
-            else {
-                panic!("expected legacy record fallback");
-            };
-            let err = compiler
-                .compile_record_fields(legacy_fields, Vec::new(), None, Some(&record_fields))
-                .expect_err("mismatched CST record field should not use legacy fallback label");
-            assert!(
-                matches!(
-                    err.kind,
-                    CompileErrorKind::UnsupportedSyntax("missing CST record field payload")
-                ),
-                "expected missing CST record-field payload diagnostic, got {err:?}"
+                Some(vec![Some("first".to_owned())]),
+                "record field names must come from the CST field payload"
             );
         },
     );
