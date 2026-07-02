@@ -1,3 +1,5 @@
+use std::str::Chars;
+
 use vela_common::{Diagnostic, SourceId, Span};
 
 use crate::SyntaxKind;
@@ -24,6 +26,7 @@ pub(crate) fn lex_at(source: SourceId, text: &str, base_offset: u32) -> Lexed {
 struct Lexer<'src> {
     source: SourceId,
     text: &'src str,
+    chars: Chars<'src>,
     base_offset: u32,
     offset: usize,
     tokens: Vec<Token>,
@@ -36,6 +39,7 @@ impl<'src> Lexer<'src> {
         Self {
             source,
             text,
+            chars: text.chars(),
             base_offset: 0,
             offset: 0,
             tokens: Vec::new(),
@@ -48,6 +52,7 @@ impl<'src> Lexer<'src> {
         Self {
             source,
             text,
+            chars: text.chars(),
             base_offset,
             offset: 0,
             tokens: Vec::new(),
@@ -107,17 +112,17 @@ impl<'src> Lexer<'src> {
     }
 
     fn peek_char(&self) -> Option<char> {
-        self.text.get(self.offset..)?.chars().next()
+        self.chars.clone().next()
     }
 
     fn peek_next_char(&self) -> Option<char> {
-        let mut chars = self.text.get(self.offset..)?.chars();
+        let mut chars = self.chars.clone();
         chars.next()?;
         chars.next()
     }
 
     fn bump_char(&mut self) -> Option<char> {
-        let ch = self.peek_char()?;
+        let ch = self.chars.next()?;
         self.offset = self.offset.saturating_add(ch.len_utf8());
         Some(ch)
     }
