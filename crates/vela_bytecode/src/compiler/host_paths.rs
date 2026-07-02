@@ -867,10 +867,7 @@ impl Compiler<'_, '_> {
             } => self
                 .script_type_for_payload(&payload)
                 .or_else(|| self.script_type_for_expr_with_payload(expr, Some(&payload))),
-            HostPathRoot::Expr {
-                expr,
-                payload: None,
-            } => self.script_type_for_expr_with_payload(expr, None),
+            HostPathRoot::Expr { payload: None, .. } => None,
             HostPathRoot::LocalPath { name, span } => self.host_local_type_name(name, span),
             HostPathRoot::OwnedLocalPath { name, span } => self.host_local_type_name(&name, span),
         }
