@@ -832,7 +832,7 @@ impl Compiler<'_, '_> {
                     payload,
                     dynamic_kind,
                 } => {
-                    if let Some(arg) = const_host_path_arg_with_payload(expr, payload.as_ref()) {
+                    if let Some(arg) = const_host_path_arg_with_payload(payload.as_ref()) {
                         plan = match arg {
                             ConstHostPathArg::Index(index) => plan.const_index(index),
                             ConstHostPathArg::Key(key) => plan.const_key(key),
@@ -1138,23 +1138,13 @@ impl HostIndexAccessKind {
     }
 }
 
-fn const_host_path_arg(expr: &Expr) -> Option<ConstHostPathArg> {
-    match &expr.kind {
-        ExprKind::Literal(literal) => const_host_path_arg_from_literal(literal),
-        _ => None,
-    }
-}
-
 fn const_host_path_arg_with_payload(
-    expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<ConstHostPathArg> {
-    if payload.is_some_and(|payload| payload.source().is_some()) {
-        return payload
-            .and_then(CompilerExpressionPayload::syntax_literal)
-            .and_then(|literal| const_host_path_arg_from_literal(&literal));
-    }
-    const_host_path_arg(expr)
+    payload
+        .filter(|payload| payload.source().is_some())
+        .and_then(CompilerExpressionPayload::syntax_literal)
+        .and_then(|literal| const_host_path_arg_from_literal(&literal))
 }
 
 fn const_host_path_arg_from_literal(literal: &Literal) -> Option<ConstHostPathArg> {
