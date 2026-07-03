@@ -112,8 +112,9 @@ fn required_pattern_kind(
 
 fn reject_extra_record_pattern_payloads(
     payload: Option<&CompilerPatternPayload<'_>>,
+    fields: &[vela_syntax::ast::RecordPatternField],
 ) -> CompileResult<()> {
-    if payload.is_some_and(CompilerPatternPayload::has_extra_record_pattern_fields) {
+    if payload.is_some_and(|payload| payload.has_extra_record_pattern_fields(fields)) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST record pattern fields",
         )));
@@ -123,8 +124,9 @@ fn reject_extra_record_pattern_payloads(
 
 fn reject_extra_tuple_pattern_payloads(
     payload: Option<&CompilerPatternPayload<'_>>,
+    fields: &[vela_syntax::ast::Pattern],
 ) -> CompileResult<()> {
-    if payload.is_some_and(CompilerPatternPayload::has_extra_tuple_pattern_fields) {
+    if payload.is_some_and(|payload| payload.has_extra_tuple_pattern_fields(fields)) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST tuple pattern fields",
         )));
@@ -330,9 +332,9 @@ impl Compiler<'_, '_> {
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
-                reject_extra_record_pattern_payloads(payload)?;
+                reject_extra_record_pattern_payloads(payload, fields)?;
                 let field_payloads =
-                    payload.and_then(CompilerPatternPayload::record_field_payloads);
+                    payload.and_then(|payload| payload.record_field_payloads(fields));
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
                         record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
@@ -385,9 +387,9 @@ impl Compiler<'_, '_> {
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
-                reject_extra_tuple_pattern_payloads(payload)?;
+                reject_extra_tuple_pattern_payloads(payload, fields)?;
                 let field_payloads =
-                    payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
+                    payload.and_then(|payload| payload.tuple_pattern_payloads(fields));
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     if let Some(field_payload) = field_payload {
@@ -481,9 +483,9 @@ impl Compiler<'_, '_> {
             }
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
-                reject_extra_record_pattern_payloads(payload)?;
+                reject_extra_record_pattern_payloads(payload, fields)?;
                 let field_payloads =
-                    payload.and_then(CompilerPatternPayload::record_field_payloads);
+                    payload.and_then(|payload| payload.record_field_payloads(fields));
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
                         record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
@@ -541,9 +543,9 @@ impl Compiler<'_, '_> {
             }
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
-                reject_extra_tuple_pattern_payloads(payload)?;
+                reject_extra_tuple_pattern_payloads(payload, fields)?;
                 let field_payloads =
-                    payload.and_then(CompilerPatternPayload::tuple_pattern_payloads);
+                    payload.and_then(|payload| payload.tuple_pattern_payloads(fields));
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     let field_declares_locals = match field_payload {

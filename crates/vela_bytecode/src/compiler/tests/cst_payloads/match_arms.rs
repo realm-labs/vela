@@ -228,6 +228,7 @@ fn classify(result) {
         .collect::<Vec<_>>();
     assert_eq!(return_arm_payloads.len(), 2);
 
+    let fallback_record_pattern = return_match_fallback_pattern(payload.body.fallback(), 0);
     let record_pattern = return_arm_payloads[0].pattern_payload();
     let syntax_pattern = record_pattern
         .syntax_pattern()
@@ -237,7 +238,7 @@ fn classify(result) {
         Some(vela_syntax::ast::SyntaxPatternKind::RecordVariant)
     );
     let record_fields = record_pattern
-        .record_field_payloads()
+        .record_field_payloads(record_pattern_fields(fallback_record_pattern))
         .expect("record pattern should expose field payloads");
     let field_labels = record_fields
         .iter()
@@ -247,12 +248,15 @@ fn classify(result) {
     let missing_source_record =
         body_payloads::CompilerPatternPayload::missing_child_payload_context(
             syntax_pattern.clone(),
-            first_return_match_fallback_pattern(payload.body.fallback()),
+            fallback_record_pattern,
         );
     let missing_source_fields = missing_source_record
-        .record_field_payloads()
+        .record_field_payloads(record_pattern_fields(fallback_record_pattern))
         .expect("source-less record pattern should expose field payloads");
-    assert!(!missing_source_record.has_extra_record_pattern_fields());
+    assert!(
+        !missing_source_record
+            .has_extra_record_pattern_fields(record_pattern_fields(fallback_record_pattern))
+    );
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
     assert!(missing_source_fields[0].pattern_payload().is_none());
@@ -268,17 +272,21 @@ fn classify(result) {
         Some("status")
     );
 
+    let fallback_tuple_pattern = return_match_fallback_pattern(payload.body.fallback(), 1);
     let tuple_pattern = return_arm_payloads[1].pattern_payload();
     let missing_source_tuple = body_payloads::CompilerPatternPayload::missing_child_payload_context(
         tuple_pattern
             .syntax_pattern()
             .expect("tuple arm should expose CST pattern")
             .clone(),
-        first_return_match_fallback_pattern(payload.body.fallback()),
+        fallback_tuple_pattern,
     );
-    assert!(!missing_source_tuple.has_extra_tuple_pattern_fields());
+    assert!(
+        !missing_source_tuple
+            .has_extra_tuple_pattern_fields(tuple_pattern_fields(fallback_tuple_pattern))
+    );
     let tuple_fields = tuple_pattern
-        .tuple_pattern_payloads()
+        .tuple_pattern_payloads(tuple_pattern_fields(fallback_tuple_pattern))
         .expect("tuple pattern should expose field payloads");
     assert_eq!(
         tuple_fields[0]
@@ -435,7 +443,7 @@ fn legacy_record(value) {
     let mismatched_tuple =
         body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
     let tuple_fields = mismatched_tuple
-        .tuple_pattern_payloads()
+        .tuple_pattern_payloads(tuple_pattern_fields(legacy_tuple_pattern))
         .expect("tuple pattern should expose field payloads");
     assert_eq!(tuple_fields.len(), 2);
     let tuple_field_texts = tuple_fields
@@ -460,7 +468,7 @@ fn legacy_record(value) {
     let mismatched_record =
         body_payloads::CompilerPatternPayload::syntax(cst_record_syntax, legacy_record_pattern);
     let record_fields = mismatched_record
-        .record_field_payloads()
+        .record_field_payloads(record_pattern_fields(legacy_record_pattern))
         .expect("record pattern should expose field payloads");
     assert_eq!(record_fields.len(), 1);
     assert_eq!(
@@ -1037,6 +1045,13 @@ fn first_return_match_pattern_syntax(
 fn first_return_match_fallback_pattern(
     body: &vela_syntax::ast::Block,
 ) -> &vela_syntax::ast::Pattern {
+    return_match_fallback_pattern(body, 0)
+}
+
+fn return_match_fallback_pattern(
+    body: &vela_syntax::ast::Block,
+    arm_index: usize,
+) -> &vela_syntax::ast::Pattern {
     let statement = body.statements.first().expect("return statement");
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
@@ -1044,7 +1059,23 @@ fn first_return_match_fallback_pattern(
     let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
         panic!("expected return match expression");
     };
-    &match_expr.arms[0].pattern
+    &match_expr.arms.get(arm_index).expect("match arm").pattern
+}
+
+fn record_pattern_fields(
+    pattern: &vela_syntax::ast::Pattern,
+) -> &[vela_syntax::ast::RecordPatternField] {
+    let vela_syntax::ast::Pattern::RecordVariant { fields, .. } = pattern else {
+        panic!("expected record pattern");
+    };
+    fields
+}
+
+fn tuple_pattern_fields(pattern: &vela_syntax::ast::Pattern) -> &[vela_syntax::ast::Pattern] {
+    let vela_syntax::ast::Pattern::TupleVariant { fields, .. } = pattern else {
+        panic!("expected tuple pattern");
+    };
+    fields
 }
 
 fn first_return_match_syntax_arm(

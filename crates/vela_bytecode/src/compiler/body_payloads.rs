@@ -13,10 +13,10 @@ use vela_syntax::ast::MapEntry;
 #[cfg(test)]
 use vela_syntax::ast::RecordField;
 use vela_syntax::ast::{
-    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, RecordPatternField,
-    Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
-    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -81,8 +81,7 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
 pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxPattern>,
-    record_fields_fallback: Option<&'ast [RecordPatternField]>,
-    tuple_fields_fallback: Option<&'ast [Pattern]>,
+    _ast: PhantomData<&'ast ()>,
 }
 
 pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
