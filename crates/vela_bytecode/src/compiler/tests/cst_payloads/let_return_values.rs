@@ -639,6 +639,58 @@ fn main(left, middle, right) {
 }
 
 #[test]
+fn syntax_only_field_binary_values_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn field_equality(input, other) {
+    let same = input.id == other.id;
+}
+
+fn field_comparison(input, other) {
+    return input.amount < other.amount;
+}
+
+fn field_arithmetic(input, other) {
+    let total = input.amount + other.amount;
+}
+
+fn field_logical(input, other) {
+    return input.enabled && other.enabled;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+
+    for name in [
+        "field_equality",
+        "field_comparison",
+        "field_arithmetic",
+        "field_logical",
+    ] {
+        let (payload, _, _) = semantic.function(name).expect("function payload");
+        assert!(
+            !payload.body.has_fallback_statements(),
+            "syntax-only {name} body should not retain an owned body fallback"
+        );
+    }
+
+    let program = compile_program_source(source, text).expect("CST field binary bodies compile");
+    assert!(
+        program.functions.iter().any(|function| {
+            function.instructions.iter().any(|instruction| {
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::Equal { .. }
+                        | UnlinkedInstructionKind::Less { .. }
+                        | UnlinkedInstructionKind::Add { .. }
+                        | UnlinkedInstructionKind::Truthy { .. }
+                )
+            })
+        }),
+        "CST field binary bodies should emit binary/logical instructions"
+    );
+}
+
+#[test]
 fn syntax_only_field_return_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

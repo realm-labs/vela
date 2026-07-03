@@ -683,4 +683,34 @@ fn field_numeric_arithmetic_return(input) {
             assert!(lookup.body_for_syntax(source, &body).is_none());
         }
     }
+
+    #[test]
+    fn field_binary_bodies_do_not_require_owned_body_lookup() {
+        let source = SourceId::new(1);
+        let text = r#"
+fn field_equality_let(input, other) {
+    let value = input.id == other.id;
+}
+
+fn field_comparison_return(input, other) {
+    return input.amount < other.amount;
+}
+
+fn field_arithmetic_let(input, other) {
+    let value = input.amount + other.amount;
+}
+
+fn field_logical_return(input, other) {
+    return input.enabled && other.enabled;
+}
+"#;
+        let parsed = parse_source_with_id(source, text);
+        assert!(parsed.diagnostics().is_empty());
+        let lookup = BodyBlockLookup::from_syntax(source, text, &parsed);
+
+        for function in parsed.tree().functions() {
+            let body = function.body().expect("function body");
+            assert!(lookup.body_for_syntax(source, &body).is_none());
+        }
+    }
 }

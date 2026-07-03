@@ -276,6 +276,10 @@ fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
 }
 
+fn syntax_expression_is_simple_path_or_field(expression: &SyntaxExpression) -> bool {
+    expression_syntax_path_or_field(expression).is_some()
+}
+
 fn syntax_expression_is_simple_path_field(expression: &SyntaxExpression) -> bool {
     expression_syntax_path_field(expression).is_some()
 }
@@ -462,7 +466,8 @@ fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> boo
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && syntax_expression_is_simple_path(&rhs)
+    syntax_expression_is_simple_path_or_field(&lhs)
+        && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
 fn syntax_expression_is_simple_path_comparison(expression: &SyntaxExpression) -> bool {
@@ -484,7 +489,8 @@ fn syntax_expression_is_simple_path_comparison(expression: &SyntaxExpression) ->
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && syntax_expression_is_simple_path(&rhs)
+    syntax_expression_is_simple_path_or_field(&lhs)
+        && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
 fn syntax_expression_is_simple_path_arithmetic(expression: &SyntaxExpression) -> bool {
@@ -506,7 +512,8 @@ fn syntax_expression_is_simple_path_arithmetic(expression: &SyntaxExpression) ->
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && syntax_expression_is_simple_path(&rhs)
+    syntax_expression_is_simple_path_or_field(&lhs)
+        && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
 fn syntax_expression_is_simple_path_logical(expression: &SyntaxExpression) -> bool {
@@ -533,7 +540,7 @@ fn syntax_expression_is_simple_path_logical_operand(expression: &SyntaxExpressio
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_logical_operand(&inner);
     }
-    syntax_expression_is_simple_path(expression)
+    syntax_expression_is_simple_path_or_field(expression)
         || syntax_expression_is_simple_path_binary(expression)
         || syntax_expression_is_simple_path_comparison(expression)
         || syntax_expression_is_simple_path_arithmetic(expression)
