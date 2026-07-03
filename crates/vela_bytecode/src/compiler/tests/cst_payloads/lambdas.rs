@@ -202,6 +202,34 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_lambda_block_body_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let lambda = |value| {
+        let nested;
+        return;
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let body = payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .and_then(|payload| payload.lambda_body_payload())
+        .and_then(|payload| payload.block_body_payload())
+        .expect("lambda block body payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only lambda block body should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn missing_lambda_expression_payload_does_not_use_legacy_lambda() {
     let source = SourceId::new(1);
     let text = r#"
