@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+
+use vela_common::SourceId;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
     BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement,
@@ -5,6 +8,7 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
+use crate::compiler::const_eval::evaluate_syntax_const_expr;
 
 pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
     match statement.statement_kind() {
@@ -141,6 +145,22 @@ fn syntax_expression_is_simple_literal_comparison(expression: &SyntaxExpression)
     }
 }
 
+fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_constant_arithmetic(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if binary.operator() != Some(BinaryOp::Rem) {
+        return false;
+    }
+    evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+        .ok()
+        .flatten()
+        .is_some()
+}
+
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_bool_literal(&inner);
@@ -218,4 +238,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
         || syntax_expression_is_simple_literal_comparison(expression)
+        || syntax_expression_is_simple_constant_arithmetic(expression)
 }

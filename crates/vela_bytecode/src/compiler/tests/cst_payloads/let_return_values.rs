@@ -365,6 +365,35 @@ fn main() -> bool {
 }
 
 #[test]
+fn syntax_only_numeric_arithmetic_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> i64 {
+    return 8 % 3;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only numeric arithmetic return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only numeric arithmetic return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(2)),
+        "CST numeric arithmetic return should emit the evaluated integer constant"
+    );
+}
+
+#[test]
 fn syntax_only_literal_let_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
@@ -541,6 +570,36 @@ fn main() {
     assert!(
         compiler.code.constants.contains(&Constant::Bool(true)),
         "CST typed literal equality let should emit the evaluated boolean constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_numeric_arithmetic_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value: i64 = 8 % 3;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only typed numeric arithmetic let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed numeric arithmetic let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(2)),
+        "CST typed numeric arithmetic let should emit the evaluated integer constant"
     );
 }
 
