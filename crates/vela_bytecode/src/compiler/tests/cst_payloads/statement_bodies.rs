@@ -108,6 +108,30 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_block_statement_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    {
+        let cst_value;
+        return;
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only block statement body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Null),
+        "syntax-only nested empty let must emit null"
+    );
+}
+
+#[test]
 fn missing_for_statement_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"

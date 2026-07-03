@@ -103,6 +103,17 @@ impl<'ast> CompilerBodyPayload<'ast> {
         }
     }
 
+    fn nested_syntax_optional(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback: Option<&'ast Block>,
+    ) -> Option<Self> {
+        match fallback {
+            Some(fallback) => Some(Self::nested(source, body, fallback)),
+            None => Self::syntax_only_without_body_lookup(source, body),
+        }
+    }
+
     pub(super) fn syntax_only_without_body_lookup(
         source: SourceId,
         body: SyntaxBlock,
@@ -254,6 +265,9 @@ fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> b
         SyntaxStatementKind::Return => statement
             .as_return()
             .is_none_or(|return_statement| return_statement.expression().is_some()),
+        SyntaxStatementKind::Block => statement
+            .as_block()
+            .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
         _ => true,
     }
 }
@@ -695,14 +709,16 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let StmtKind::Block(fallback) = &self.fallback?.kind else {
-            return None;
+        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+            Some(StmtKind::Block(fallback)) => Some(fallback),
+            Some(_) => return None,
+            None => None,
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
             fallback,
-        ))
+        )
     }
 
     pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {

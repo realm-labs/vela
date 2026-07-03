@@ -78,6 +78,7 @@ impl Compiler<'_, '_> {
                 };
                 return self.compile_empty_return(span);
             }
+            SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
             _ => {}
         }
 
@@ -173,8 +174,6 @@ impl Compiler<'_, '_> {
             self.compile_if_statement(fallback, if_payload.as_ref())
         } else if kind == SyntaxStatementKind::Match {
             self.compile_match_statement_payload(stmt)
-        } else if kind == SyntaxStatementKind::Block {
-            self.compile_block_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
