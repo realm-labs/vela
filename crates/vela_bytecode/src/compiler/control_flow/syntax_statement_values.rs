@@ -204,8 +204,12 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         let span = syntax_expression_span(source, expression);
-        let value_type =
-            self.value_type_for_path(syntax_expression_span(source, lhs_expression), &path);
+        let path_span = syntax_expression_span(source, lhs_expression);
+        let script_type = self
+            .script_fact_for_path(path_span, &path)
+            .map(|fact| fact.type_name);
+        self.reject_static_script_path_binary_operands(op, span, script_type.as_deref(), None)?;
+        let value_type = self.value_type_for_path(path_span, &path);
         if value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
             && let Some(imm) = i64_immediate_value(&literal, span)?
             && i64_immediate_op_supported(op, imm)

@@ -185,7 +185,7 @@ fn binary_shape_inference_prefers_cst_operator_shape() {
         r#"
 fn main(input) {
     let cst_range = 1..3;
-    let cst_compare = input < 3;
+    let cst_compare = input < (3 + 1);
     let legacy_bool = input == false;
     let legacy_arithmetic = input + input;
 }
