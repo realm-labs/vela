@@ -7,6 +7,7 @@ mod cst_parser;
 pub mod formatting;
 pub mod lexer;
 pub mod parse;
+#[cfg(feature = "legacy-body-parser")]
 mod parser;
 pub mod syntax_kind;
 pub mod syntax_node;
