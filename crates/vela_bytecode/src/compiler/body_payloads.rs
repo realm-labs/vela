@@ -970,12 +970,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.stored_syntax_kind()
+    }
+
+    pub(super) fn stored_syntax_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()
             .map(|expression| expression.expression_kind())
     }
 
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
+        self.source?;
         self.syntax.as_ref()
     }
 }

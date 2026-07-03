@@ -57,24 +57,24 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Register> {
+        if let Some(payload) = payload
+            && let Some(kind) = payload.stored_syntax_kind()
+            && expression_payload_matches_expr(payload, expr)
+        {
+            return self.compile_expr_with_payload_kind(expr, payload, kind);
+        }
+        if payload.is_some_and(|payload| payload.stored_syntax_kind().is_some())
+            && expression_requires_matching_payload(expr)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression payload",
+            )));
+        }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
             && expression_rejects_missing_payload(expr)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression payload",
-            )));
-        }
-        if let Some(payload) = payload
-            && let Some(kind) = payload.syntax_kind()
-            && expression_payload_matches_expr(payload, expr)
-        {
-            return self.compile_expr_with_payload_kind(expr, payload, kind);
-        }
-        if payload.is_some_and(|payload| payload.syntax_kind().is_some())
-            && expression_requires_matching_payload(expr)
-        {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST expression payload",
             )));
         }
         self.compile_expr(expr)

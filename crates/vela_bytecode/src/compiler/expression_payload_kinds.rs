@@ -42,7 +42,7 @@ pub(super) fn expression_payload_matches_expr(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
-    let Some(kind) = payload.syntax_kind() else {
+    let Some(kind) = payload.stored_syntax_kind() else {
         return true;
     };
     expression_payload_kind_matches(kind, expr)
@@ -53,7 +53,7 @@ fn expression_payload_shape_matches_expr(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
-    if payload.syntax_kind() != Some(SyntaxExpressionKind::Path) {
+    if payload.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
         return true;
     }
     match &expr.kind {

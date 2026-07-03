@@ -1,6 +1,30 @@
 use super::*;
 
 #[test]
+fn source_less_expression_payload_does_not_expose_cst_expression() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let result = value;
+}
+"#,
+        |_, payload| {
+            let value = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("value initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    value.syntax_expression().expect("value syntax").clone(),
+                    value.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_kind(), None);
+            assert!(missing_source.syntax_expression().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_field_payload_does_not_expose_cst_name() {
     with_cst_payload_compiler(
         r#"
