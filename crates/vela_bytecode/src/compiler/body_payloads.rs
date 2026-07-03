@@ -180,6 +180,86 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind {
     Other,
 }
 
+#[cfg(test)]
+impl CompilerExpressionFallbackKind<'_> {
+    fn matches_syntax_kind(self, syntax_kind: SyntaxExpressionKind) -> bool {
+        match syntax_kind {
+            SyntaxExpressionKind::Literal => matches!(
+                self,
+                CompilerExpressionFallbackKind::Literal
+                    | CompilerExpressionFallbackKind::InterpolatedString(_)
+            ),
+            SyntaxExpressionKind::Path => matches!(
+                self,
+                CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue
+            ),
+            SyntaxExpressionKind::Paren => true,
+            SyntaxExpressionKind::Unary => {
+                matches!(self, CompilerExpressionFallbackKind::Unary { .. })
+            }
+            SyntaxExpressionKind::Binary => {
+                matches!(self, CompilerExpressionFallbackKind::Binary { .. })
+            }
+            SyntaxExpressionKind::Assign => {
+                matches!(self, CompilerExpressionFallbackKind::Assign { .. })
+            }
+            SyntaxExpressionKind::Field => {
+                matches!(self, CompilerExpressionFallbackKind::Field { .. })
+            }
+            SyntaxExpressionKind::Call => {
+                matches!(self, CompilerExpressionFallbackKind::Call { .. })
+            }
+            SyntaxExpressionKind::Index => {
+                matches!(self, CompilerExpressionFallbackKind::Index { .. })
+            }
+            SyntaxExpressionKind::Try => matches!(self, CompilerExpressionFallbackKind::Try(_)),
+            SyntaxExpressionKind::Array => matches!(self, CompilerExpressionFallbackKind::Array(_)),
+            SyntaxExpressionKind::Map => matches!(self, CompilerExpressionFallbackKind::Map(_)),
+            SyntaxExpressionKind::Record => {
+                matches!(self, CompilerExpressionFallbackKind::Record { .. })
+            }
+            SyntaxExpressionKind::Lambda => {
+                matches!(self, CompilerExpressionFallbackKind::Lambda { .. })
+            }
+            SyntaxExpressionKind::Block => matches!(self, CompilerExpressionFallbackKind::Block(_)),
+            SyntaxExpressionKind::If => matches!(self, CompilerExpressionFallbackKind::If(_)),
+            SyntaxExpressionKind::Match => matches!(self, CompilerExpressionFallbackKind::Match(_)),
+        }
+    }
+}
+
+#[cfg(not(test))]
+impl CompilerExpressionFallbackKind {
+    fn matches_syntax_kind(self, syntax_kind: SyntaxExpressionKind) -> bool {
+        match syntax_kind {
+            SyntaxExpressionKind::Literal => matches!(
+                self,
+                CompilerExpressionFallbackKind::Literal
+                    | CompilerExpressionFallbackKind::InterpolatedString
+            ),
+            SyntaxExpressionKind::Path => matches!(
+                self,
+                CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue
+            ),
+            SyntaxExpressionKind::Paren => true,
+            SyntaxExpressionKind::Unary => matches!(self, CompilerExpressionFallbackKind::Unary),
+            SyntaxExpressionKind::Binary => matches!(self, CompilerExpressionFallbackKind::Binary),
+            SyntaxExpressionKind::Assign => matches!(self, CompilerExpressionFallbackKind::Assign),
+            SyntaxExpressionKind::Field => matches!(self, CompilerExpressionFallbackKind::Field),
+            SyntaxExpressionKind::Call => matches!(self, CompilerExpressionFallbackKind::Call),
+            SyntaxExpressionKind::Index => matches!(self, CompilerExpressionFallbackKind::Index),
+            SyntaxExpressionKind::Try => matches!(self, CompilerExpressionFallbackKind::Try),
+            SyntaxExpressionKind::Array => matches!(self, CompilerExpressionFallbackKind::Array),
+            SyntaxExpressionKind::Map => matches!(self, CompilerExpressionFallbackKind::Map),
+            SyntaxExpressionKind::Record => matches!(self, CompilerExpressionFallbackKind::Record),
+            SyntaxExpressionKind::Lambda => matches!(self, CompilerExpressionFallbackKind::Lambda),
+            SyntaxExpressionKind::Block => matches!(self, CompilerExpressionFallbackKind::Block),
+            SyntaxExpressionKind::If => matches!(self, CompilerExpressionFallbackKind::If),
+            SyntaxExpressionKind::Match => matches!(self, CompilerExpressionFallbackKind::Match),
+        }
+    }
+}
+
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
@@ -1663,195 +1743,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
         syntax_kind: SyntaxExpressionKind,
     ) -> bool {
-        match syntax_kind {
-            SyntaxExpressionKind::Literal => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Literal
-                            | CompilerExpressionFallbackKind::InterpolatedString(_)
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Literal
-                            | CompilerExpressionFallbackKind::InterpolatedString
-                    )
-                }
-            }
-            SyntaxExpressionKind::Path => matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue
-            ),
-            SyntaxExpressionKind::Paren => true,
-            SyntaxExpressionKind::Unary => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Unary { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Unary)
-                }
-            }
-            SyntaxExpressionKind::Binary => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Binary { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Binary)
-                }
-            }
-            SyntaxExpressionKind::Assign => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Assign { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Assign)
-                }
-            }
-            SyntaxExpressionKind::Field => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Field { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Field)
-                }
-            }
-            SyntaxExpressionKind::Call => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Call { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Call)
-                }
-            }
-            SyntaxExpressionKind::Index => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Index { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Index)
-                }
-            }
-            SyntaxExpressionKind::Try => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try)
-                }
-            }
-            SyntaxExpressionKind::Array => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array)
-                }
-            }
-            SyntaxExpressionKind::Map => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map)
-                }
-            }
-            SyntaxExpressionKind::Record => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Record { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Record)
-                }
-            }
-            SyntaxExpressionKind::Lambda => {
-                #[cfg(test)]
-                {
-                    matches!(
-                        self.fallback_kind,
-                        CompilerExpressionFallbackKind::Lambda { .. }
-                    )
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Lambda)
-                }
-            }
-            SyntaxExpressionKind::Block => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block)
-                }
-            }
-            SyntaxExpressionKind::If => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::If(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::If)
-                }
-            }
-            SyntaxExpressionKind::Match => {
-                #[cfg(test)]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match(_))
-                }
-                #[cfg(not(test))]
-                {
-                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match)
-                }
-            }
-        }
+        self.fallback_kind.matches_syntax_kind(syntax_kind)
     }
 
     #[cfg(test)]
