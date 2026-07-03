@@ -244,7 +244,7 @@ impl Compiler<'_, '_> {
                     .filter(|_| arithmetic_binary_operator(*op));
                 let op = cst_op.unwrap_or(*op);
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    let operand_payloads = payload.logical_chain_operand_payloads(op);
+                    let operand_payloads = payload.logical_chain_operand_payloads(op, expr);
                     if operand_payloads.is_none() && payload.syntax_binary_operator() == Some(op) {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST logical chain payload",
@@ -252,7 +252,7 @@ impl Compiler<'_, '_> {
                     }
                     return self.compile_logical_chain(op, expr, operand_payloads.as_deref());
                 }
-                let operand_payloads = payload.binary_operand_payloads();
+                let operand_payloads = payload.binary_operand_payloads(left, right);
                 let (left_payload, right_payload) = operand_payloads
                     .as_ref()
                     .map_or((None, None), |(left, right)| (Some(left), Some(right)));
@@ -1104,7 +1104,8 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
 
-        let operand_payloads = payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+        let operand_payloads =
+            payload.and_then(|payload| payload.binary_operand_payloads(left, right));
         let (left_payload, right_payload) = operand_payloads
             .as_ref()
             .map_or((None, None), |(left, right)| (Some(left), Some(right)));

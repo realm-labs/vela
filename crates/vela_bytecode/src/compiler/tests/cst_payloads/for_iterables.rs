@@ -40,8 +40,11 @@ fn loop_values() {
         iterable_payloads[0].kind(),
         Some(SyntaxExpressionKind::Binary)
     );
+    let (_, fallback_start, fallback_end) = iterable_payloads[0]
+        .fallback_binary_operands()
+        .expect("fallback range operands");
     let (range_start, range_end) = iterable_payloads[0]
-        .binary_operand_payloads()
+        .binary_operand_payloads(fallback_start, fallback_end)
         .expect("range iterable should expose operand payloads");
     assert_eq!(range_start.kind(), Some(SyntaxExpressionKind::Block));
     assert_eq!(range_end.kind(), Some(SyntaxExpressionKind::Block));

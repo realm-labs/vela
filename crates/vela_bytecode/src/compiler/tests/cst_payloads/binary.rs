@@ -160,7 +160,7 @@ fn logical_values() {
         .iter()
         .find(|payload| {
             payload
-                .logical_chain_operand_payloads(BinaryOp::And)
+                .logical_chain_operand_payloads(BinaryOp::And, payload.fallback())
                 .is_some_and(|operands| operands.len() == 3)
         })
         .expect("&& initializer should expose flattened logical operands");
@@ -187,7 +187,7 @@ fn logical_values() {
         .iter()
         .find(|payload| {
             payload
-                .logical_chain_operand_payloads(BinaryOp::Or)
+                .logical_chain_operand_payloads(BinaryOp::Or, payload.fallback())
                 .is_some_and(|operands| operands.len() == 3)
         })
         .expect("|| initializer should expose flattened logical operands");
@@ -396,8 +396,11 @@ fn main(input) {
         cst_binary,
         legacy_binary.fallback(),
     );
+    let (_, left, right) = missing
+        .fallback_binary_operands()
+        .expect("fallback binary operands");
     let (_left, right) = missing
-        .binary_operand_payloads()
+        .binary_operand_payloads(left, right)
         .expect("binary operand payloads");
 
     assert!(right.syntax_expression().is_none());
@@ -525,8 +528,11 @@ fn main(lhs, rhs) {
             let binary = payload.body.statement_payloads()[0]
                 .let_initializer_expression_payload()
                 .expect("binary initializer payload");
+            let (_, fallback_left, fallback_right) = binary
+                .fallback_binary_operands()
+                .expect("fallback binary operands");
             let (left, _) = binary
-                .binary_operand_payloads()
+                .binary_operand_payloads(fallback_left, fallback_right)
                 .expect("binary operand payloads");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -682,7 +688,7 @@ fn assert_logical_chain_block_payloads(
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
     let actual = payload
-        .logical_chain_operand_payloads(op)
+        .logical_chain_operand_payloads(op, payload.fallback())
         .expect("logical chain should expose operand payloads")
         .into_iter()
         .flat_map(block_operand_payloads)
@@ -702,7 +708,10 @@ fn binary_block_operand_payloads(
     {
         return binary_block_operand_payloads(operand);
     }
-    let Some((left, right)) = payload.binary_operand_payloads() else {
+    let Some((_, fallback_left, fallback_right)) = payload.fallback_binary_operands() else {
+        return Vec::new();
+    };
+    let Some((left, right)) = payload.binary_operand_payloads(fallback_left, fallback_right) else {
         return Vec::new();
     };
     [left, right]

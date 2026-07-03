@@ -68,7 +68,14 @@ fn main(left, right) {
                 );
 
             assert_eq!(missing_source.syntax_binary_operator(), None);
-            assert!(missing_source.binary_operand_payloads().is_none());
+            let (_, left, right) = missing_source
+                .fallback_binary_operands()
+                .expect("fallback binary operands");
+            assert!(
+                missing_source
+                    .binary_operand_payloads(left, right)
+                    .is_none()
+            );
         },
     );
 }
@@ -224,7 +231,7 @@ fn main(left, middle, right) {
 
             assert!(
                 missing_source
-                    .logical_chain_operand_payloads(BinaryOp::And)
+                    .logical_chain_operand_payloads(BinaryOp::And, missing_source.fallback())
                     .is_none()
             );
         },

@@ -2,11 +2,13 @@ use std::marker::PhantomData;
 
 use vela_common::SourceId;
 use vela_common::Span;
+#[cfg(test)]
+use vela_syntax::ast::BinaryOp;
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr,
-    InterpolatedStringPart, MapEntry, MatchExpr, Pattern, RecordField, RecordPatternField, Stmt,
-    StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, InterpolatedStringPart,
+    MapEntry, MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
@@ -121,11 +123,14 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Try(&'ast vela_syntax::ast::Expr),
     #[cfg(not(test))]
     Try,
+    #[cfg(test)]
     Binary {
         op: BinaryOp,
         left: &'ast vela_syntax::ast::Expr,
         right: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(not(test))]
+    Binary,
     Call {
         callee: &'ast vela_syntax::ast::Expr,
         args: &'ast [Argument],
@@ -1504,11 +1509,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Try(expr) => CompilerExpressionFallbackKind::Try(expr),
             #[cfg(not(test))]
             ExprKind::Try(_) => CompilerExpressionFallbackKind::Try,
+            #[cfg(test)]
             ExprKind::Binary { op, left, right } => CompilerExpressionFallbackKind::Binary {
                 op: *op,
                 left,
                 right,
             },
+            #[cfg(not(test))]
+            ExprKind::Binary { .. } => CompilerExpressionFallbackKind::Binary,
             ExprKind::Call { callee, args } => {
                 CompilerExpressionFallbackKind::Call { callee, args }
             }
@@ -1579,10 +1587,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 }
             }
             SyntaxExpressionKind::Binary => {
-                matches!(
-                    self.fallback_kind,
-                    CompilerExpressionFallbackKind::Binary { .. }
-                )
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Binary { .. }
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Binary)
+                }
             }
             SyntaxExpressionKind::Assign => {
                 matches!(

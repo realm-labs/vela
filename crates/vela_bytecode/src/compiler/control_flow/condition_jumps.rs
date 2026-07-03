@@ -40,11 +40,11 @@ impl Compiler<'_, '_> {
         condition: &Expr,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<usize>> {
-        let ExprKind::Binary { left, .. } = &condition.kind else {
+        let ExprKind::Binary { left, right, .. } = &condition.kind else {
             return Ok(None);
         };
         let operand_payloads =
-            condition_payload.and_then(CompilerExpressionPayload::binary_operand_payloads);
+            condition_payload.and_then(|payload| payload.binary_operand_payloads(left, right));
         let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
         let right_payload = operand_payloads.as_ref().map(|(_, right)| right);
         let Some(op) =

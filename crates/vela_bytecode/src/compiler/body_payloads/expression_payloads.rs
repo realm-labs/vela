@@ -283,19 +283,45 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn binary_operand_payloads(
         &self,
+        left: &'ast Expr,
+        right: &'ast Expr,
     ) -> Option<(
         CompilerExpressionPayload<'ast>,
         CompilerExpressionPayload<'ast>,
     )> {
-        let CompilerExpressionFallbackKind::Binary { left, right, .. } = self.fallback_kind else {
+        if !self.fallback_is_binary() {
             return None;
-        };
+        }
         self.source?;
         let syntax = self.syntax.as_ref()?.as_binary()?;
         Some((
             CompilerExpressionPayload::from_fallback(self.source, syntax.lhs(), left),
             CompilerExpressionPayload::from_fallback(self.source, syntax.rhs(), right),
         ))
+    }
+
+    fn fallback_is_binary(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Binary { .. }
+            )
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Binary)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_binary_operands(
+        &self,
+    ) -> Option<(BinaryOp, &'ast Expr, &'ast Expr)> {
+        let CompilerExpressionFallbackKind::Binary { op, left, right } = self.fallback_kind else {
+            return None;
+        };
+        Some((op, left, right))
     }
 
     pub(in crate::compiler) fn syntax_binary_operator(&self) -> Option<BinaryOp> {
@@ -313,6 +339,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn logical_chain_operand_payloads(
         &self,
         op: BinaryOp,
+        expr: &'ast Expr,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
         fn collect_expr<'ast>(
             expr: &'ast vela_syntax::ast::Expr,
@@ -355,15 +382,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             Some(())
         }
 
-        let CompilerExpressionFallbackKind::Binary { op: expr_op, .. } = self.fallback_kind else {
+        if !self.fallback_is_binary() {
             return None;
         };
-        if expr_op != op {
+        let ExprKind::Binary { op: expr_op, .. } = &expr.kind else {
+            return None;
+        };
+        if *expr_op != op {
             return None;
         }
 
         let mut expr_operands = Vec::new();
-        collect_expr(self.fallback, op, &mut expr_operands);
+        collect_expr(expr, op, &mut expr_operands);
 
         self.source?;
         let mut syntax_operands = Vec::new();

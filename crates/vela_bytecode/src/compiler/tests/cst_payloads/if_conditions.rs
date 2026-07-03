@@ -541,7 +541,8 @@ fn assert_cst_statement_if_condition_operand_payloads(
         .filter_map(body_payloads::CompilerStatementPayload::if_payload)
         .filter_map(|if_payload| {
             let condition = if_payload.condition_payload()?;
-            let (left, right) = condition.binary_operand_payloads()?;
+            let (_, fallback_left, fallback_right) = condition.fallback_binary_operands()?;
+            let (left, right) = condition.binary_operand_payloads(fallback_left, fallback_right)?;
             Some((payload_text(&left)?, payload_text(&right)?))
         })
         .collect::<Vec<_>>();
