@@ -721,13 +721,12 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
-        CompilerPatternPayload {
-            source: self.source,
-            syntax: self
-                .source
+        CompilerPatternPayload::from_fallback(
+            self.source,
+            self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
-            fallback: self.pattern_fallback,
-        }
+            self.pattern_fallback,
+        )
     }
 
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
@@ -788,6 +787,26 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 }
 
 impl<'ast> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn from_fallback(
+        source: Option<SourceId>,
+        syntax: Option<SyntaxPattern>,
+        fallback: &'ast Pattern,
+    ) -> Self {
+        let (record_fields_fallback, tuple_fields_fallback) = match fallback {
+            Pattern::RecordVariant { fields, .. } => (Some(fields.as_slice()), None),
+            Pattern::TupleVariant { fields, .. } => (None, Some(fields.as_slice())),
+            Pattern::Wildcard | Pattern::Literal(_) | Pattern::Binding(_) | Pattern::Path(_) => {
+                (None, None)
+            }
+        };
+        Self {
+            source,
+            syntax,
+            record_fields_fallback,
+            tuple_fields_fallback,
+        }
+    }
+
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
         self.source.is_some() && self.syntax.is_some()
     }
@@ -822,9 +841,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
             .record_pattern()?
             .fields()
             .collect::<Vec<_>>();
-        let Pattern::RecordVariant { fields, .. } = self.fallback else {
-            return None;
-        };
+        let fields = self.record_fields_fallback?;
         Some(
             fields
                 .iter()
@@ -832,7 +849,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
                 .map(|(index, fallback)| CompilerRecordPatternFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    fallback,
+                    pattern_fallback: fallback.pattern.as_ref(),
                 })
                 .collect(),
         )
@@ -842,7 +859,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
         if self.source.is_none() {
             return false;
         }
-        let Pattern::RecordVariant { fields, .. } = self.fallback else {
+        let Some(fields) = self.record_fields_fallback else {
             return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::record_pattern) else {
@@ -860,17 +877,17 @@ impl<'ast> CompilerPatternPayload<'ast> {
             .tuple_pattern()?
             .patterns()
             .collect::<Vec<_>>();
-        let Pattern::TupleVariant { fields, .. } = self.fallback else {
-            return None;
-        };
+        let fields = self.tuple_fields_fallback?;
         Some(
             fields
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerPatternPayload {
-                    source: self.source,
-                    syntax: syntax_fields.get(index).cloned(),
-                    fallback,
+                .map(|(index, fallback)| {
+                    CompilerPatternPayload::from_fallback(
+                        self.source,
+                        syntax_fields.get(index).cloned(),
+                        fallback,
+                    )
                 })
                 .collect(),
         )
@@ -880,7 +897,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
         if self.source.is_none() {
             return false;
         }
-        let Pattern::TupleVariant { fields, .. } = self.fallback else {
+        let Some(fields) = self.tuple_fields_fallback else {
             return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::tuple_pattern) else {
@@ -894,11 +911,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
         syntax: vela_syntax::ast::SyntaxPattern,
         fallback: &'ast Pattern,
     ) -> Self {
-        Self {
-            source: Some(SourceId::new(1)),
-            syntax: Some(syntax),
-            fallback,
-        }
+        Self::from_fallback(Some(SourceId::new(1)), Some(syntax), fallback)
     }
 
     #[cfg(test)]
@@ -906,20 +919,12 @@ impl<'ast> CompilerPatternPayload<'ast> {
         syntax: vela_syntax::ast::SyntaxPattern,
         fallback: &'ast Pattern,
     ) -> Self {
-        Self {
-            source: None,
-            syntax: Some(syntax),
-            fallback,
-        }
+        Self::from_fallback(None, Some(syntax), fallback)
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn missing_syntax(source: SourceId, fallback: &'ast Pattern) -> Self {
-        Self {
-            source: Some(source),
-            syntax: None,
-            fallback,
-        }
+        Self::from_fallback(Some(source), None, fallback)
     }
 
     #[cfg(test)]
@@ -955,14 +960,13 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
 
     pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
         self.source?;
-        Some(CompilerPatternPayload {
-            source: self.source,
-            syntax: self
-                .syntax
+        Some(CompilerPatternPayload::from_fallback(
+            self.source,
+            self.syntax
                 .as_ref()
                 .and_then(SyntaxRecordPatternField::pattern),
-            fallback: self.fallback.pattern.as_ref()?,
-        })
+            self.pattern_fallback?,
+        ))
     }
 
     #[cfg(test)]
@@ -973,7 +977,7 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
         Self {
             source: Some(SourceId::new(1)),
             syntax: Some(syntax),
-            fallback,
+            pattern_fallback: fallback.pattern.as_ref(),
         }
     }
 }

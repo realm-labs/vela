@@ -69,13 +69,14 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
 pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxPattern>,
-    fallback: &'ast Pattern,
+    record_fields_fallback: Option<&'ast [RecordPatternField]>,
+    tuple_fields_fallback: Option<&'ast [Pattern]>,
 }
 
 pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordPatternField>,
-    fallback: &'ast RecordPatternField,
+    pattern_fallback: Option<&'ast Pattern>,
 }
 
 pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
@@ -938,11 +939,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerPatternPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_for()?.index_pattern(),
-            fallback: index_pattern.as_ref()?,
-        })
+        Some(CompilerPatternPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_for()?.index_pattern(),
+            index_pattern.as_ref()?,
+        ))
     }
 
     pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
@@ -950,11 +951,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerPatternPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_for()?.value_pattern(),
-            fallback: pattern,
-        })
+        Some(CompilerPatternPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_for()?.value_pattern(),
+            pattern,
+        ))
     }
 
     pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {

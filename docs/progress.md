@@ -317,6 +317,10 @@ expression handle needed by the still-migrating expression payload boundary.
 Match-arm child payloads no longer carry full legacy owned `MatchArm` nodes;
 they retain only the pattern, optional guard expression, and body expression
 handles needed while match body and pattern lowering continue migrating.
+Pattern and record-pattern-field child payloads no longer carry full legacy
+owned pattern nodes; they retain only tuple/record child fallback slices and
+explicit nested field pattern handles while pattern lowering continues
+migrating.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors only under
 test cfg instead of carrying old `Block` values through production body lookup;
 parsed blocks are retained only for legacy fixture assertions.
