@@ -1,7 +1,7 @@
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    BinaryOp, IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind,
-    UnaryOp,
+    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement,
+    SyntaxStatementKind, UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
@@ -114,26 +114,31 @@ fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> boo
     expression_syntax_bool_literal(&operand).is_some()
 }
 
-fn syntax_expression_is_simple_boolean_equality(expression: &SyntaxExpression) -> bool {
+fn syntax_expression_is_simple_literal_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_simple_boolean_equality(&inner);
+        return syntax_expression_is_simple_literal_comparison(&inner);
     }
     let Some(binary) = expression.as_binary() else {
         return false;
     };
-    if !matches!(
-        binary.operator(),
-        Some(BinaryOp::Equal | BinaryOp::NotEqual)
-    ) {
-        return false;
-    }
     let Some(lhs) = binary.lhs() else {
         return false;
     };
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    expression_syntax_bool_literal(&lhs).is_some() && expression_syntax_bool_literal(&rhs).is_some()
+    match binary.operator() {
+        Some(BinaryOp::Equal | BinaryOp::NotEqual) => {
+            expression_syntax_comparable_literal(&lhs).is_some()
+                && expression_syntax_comparable_literal(&rhs).is_some()
+        }
+        Some(BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual) => {
+            expression_syntax_numeric_literal_kind(&lhs)
+                .zip(expression_syntax_numeric_literal_kind(&rhs))
+                .is_some_and(|(lhs, rhs)| lhs == rhs)
+        }
+        _ => false,
+    }
 }
 
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {
@@ -145,6 +150,37 @@ fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool>
         .and_then(|literal| literal.literal())?;
     match literal {
         Literal::Bool(value) => Some(value),
+        _ => None,
+    }
+}
+
+fn expression_syntax_comparable_literal(expression: &SyntaxExpression) -> Option<Literal> {
+    let literal = expression_syntax_literal(expression)?;
+    match literal {
+        Literal::String(_) | Literal::Bytes(_) | Literal::Float(_) | Literal::Integer(_) => {
+            Some(literal)
+        }
+        Literal::Null | Literal::Bool(_) | Literal::Char(_) => Some(literal),
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum NumericLiteralKind {
+    Integer,
+    Float,
+}
+
+fn expression_syntax_numeric_literal_kind(
+    expression: &SyntaxExpression,
+) -> Option<NumericLiteralKind> {
+    let literal = expression_syntax_literal(expression)?;
+    match literal {
+        Literal::Integer(value) if matches!(value.suffix, None | Some(IntegerSuffix::I64)) => {
+            Some(NumericLiteralKind::Integer)
+        }
+        Literal::Float(value) if matches!(value.suffix, None | Some(FloatSuffix::F64)) => {
+            Some(NumericLiteralKind::Float)
+        }
         _ => None,
     }
 }
@@ -181,5 +217,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_block(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
-        || syntax_expression_is_simple_boolean_equality(expression)
+        || syntax_expression_is_simple_literal_comparison(expression)
 }
