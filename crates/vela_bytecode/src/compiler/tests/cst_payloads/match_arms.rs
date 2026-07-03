@@ -141,9 +141,11 @@ fn classify(input) {
         .iter()
         .flat_map(|statement| statement.match_arm_payloads().unwrap_or_default())
         .collect::<Vec<_>>();
+    let statement_match = first_statement_match_expr(payload.body.fallback());
     assert_eq!(statement_arm_payloads.len(), 2);
     assert_match_guard_payload(
         &statement_arm_payloads[0],
+        statement_match.arms[0].guard.as_ref(),
         &[
             (SyntaxStatementKind::Let, "let allowed = value > 0;"),
             (SyntaxStatementKind::Expr, "allowed"),
@@ -172,9 +174,11 @@ fn classify(input) {
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
+    let return_match = first_return_match_expr(payload.body.fallback());
     assert_eq!(return_arm_payloads.len(), 2);
     assert_match_guard_payload(
         &return_arm_payloads[0],
+        return_match.arms[0].guard.as_ref(),
         &[
             (SyntaxStatementKind::Let, "let accepted = value == 1;"),
             (SyntaxStatementKind::Expr, "accepted"),
@@ -1113,33 +1117,42 @@ fn first_statement_match_syntax_arm(
 }
 
 fn first_return_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
-    let statement = body.statements.first().expect("return statement");
-    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
-        panic!("expected return statement");
-    };
-    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
-        panic!("expected return match expression");
-    };
-    match_expr
+    body.statements
+        .iter()
+        .find_map(|statement| {
+            let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
+                return None;
+            };
+            let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+                return None;
+            };
+            Some(match_expr)
+        })
+        .expect("return match expression")
 }
 
 fn first_statement_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
-    let statement = body.statements.first().expect("match statement");
-    let vela_syntax::ast::StmtKind::Expr(value) = &statement.kind else {
-        panic!("expected expression statement");
-    };
-    let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
-        panic!("expected match expression");
-    };
-    match_expr
+    body.statements
+        .iter()
+        .find_map(|statement| {
+            let vela_syntax::ast::StmtKind::Expr(value) = &statement.kind else {
+                return None;
+            };
+            let vela_syntax::ast::ExprKind::Match(match_expr) = &value.kind else {
+                return None;
+            };
+            Some(match_expr)
+        })
+        .expect("match expression statement")
 }
 
 fn assert_match_guard_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
+    fallback: Option<&vela_syntax::ast::Expr>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
     let guard = arm
-        .guard_payload()
+        .guard_payload(fallback)
         .expect("match arm should expose guard payload");
     assert_eq!(guard.kind(), Some(SyntaxExpressionKind::Block));
     let body = guard

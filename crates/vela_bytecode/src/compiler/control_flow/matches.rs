@@ -47,7 +47,8 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let guard_payload = arm_payload.and_then(CompilerMatchArmPayload::guard_payload);
+            let guard_payload =
+                arm_payload.and_then(|payload| payload.guard_payload(arm.guard.as_ref()));
             if arm.guard.is_some()
                 && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
                 && guard_payload
@@ -184,7 +185,8 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let guard_payload = arm_payload.and_then(CompilerMatchArmPayload::guard_payload);
+            let guard_payload =
+                arm_payload.and_then(|payload| payload.guard_payload(arm.guard.as_ref()));
             if arm.guard.is_some()
                 && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
                 && guard_payload

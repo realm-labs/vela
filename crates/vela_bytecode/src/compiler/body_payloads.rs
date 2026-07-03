@@ -71,7 +71,6 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
     pattern_fallback: &'ast Pattern,
-    guard_fallback: Option<&'ast vela_syntax::ast::Expr>,
     body_fallback: &'ast vela_syntax::ast::Expr,
     #[cfg(test)]
     body_block_fallback: Option<&'ast Block>,
@@ -544,7 +543,6 @@ fn match_arm_payloads_for_expr<'ast>(
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
                 pattern_fallback: &fallback.pattern,
-                guard_fallback: fallback.guard.as_ref(),
                 body_fallback: &fallback.body,
                 #[cfg(test)]
                 body_block_fallback: expression_fallback_block(&fallback.body),

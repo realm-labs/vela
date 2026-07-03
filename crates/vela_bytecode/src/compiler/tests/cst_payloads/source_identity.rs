@@ -657,7 +657,11 @@ fn main(value) {
                     .syntax_expression()
                     .is_none()
             );
-            assert!(missing_arm.guard_payload().is_none());
+            assert!(
+                missing_arm
+                    .guard_payload(fallback_match.arms[0].guard.as_ref())
+                    .is_none()
+            );
         },
     );
 }
