@@ -1043,9 +1043,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            pattern_fallback: &fallback.pattern,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
+            _ast: std::marker::PhantomData,
         }
     }
 
@@ -1057,9 +1057,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: Some(syntax),
-            pattern_fallback: &fallback.pattern,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
+            _ast: std::marker::PhantomData,
         }
     }
 
@@ -1068,18 +1068,21 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: None,
-            pattern_fallback: &fallback.pattern,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
+            _ast: std::marker::PhantomData,
         }
     }
 
-    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn pattern_payload(
+        &self,
+        fallback: &'ast Pattern,
+    ) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload::from_fallback(
             self.source,
             self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
-            self.pattern_fallback,
+            fallback,
         )
     }
 

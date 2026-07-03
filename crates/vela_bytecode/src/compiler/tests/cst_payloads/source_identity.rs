@@ -647,10 +647,11 @@ fn main(value) {
 
             assert!(!missing_arm.has_syntax());
             assert!(missing_arm.syntax_arm().is_none());
-            assert!(!missing_arm.pattern_payload().has_syntax());
-            assert!(missing_arm.pattern_payload().syntax_pattern().is_none());
+            let missing_pattern = missing_arm.pattern_payload(&fallback_match.arms[0].pattern);
+            assert!(!missing_pattern.has_syntax());
+            assert!(missing_pattern.syntax_pattern().is_none());
             assert_eq!(missing_arm.body_expression_kind(), None);
-            assert_eq!(missing_arm.pattern_payload().syntax_pattern_kind(), None);
+            assert_eq!(missing_pattern.syntax_pattern_kind(), None);
             assert!(
                 missing_arm
                     .body_expression_payload(&fallback_match.arms[0].body)
@@ -693,8 +694,16 @@ fn main(value) {
             let missing_arms = missing_source
                 .match_arm_payloads()
                 .expect("source-less match arm payload shells");
+            let vela_syntax::ast::ExprKind::Match(fallback_match) = &match_value.fallback().kind
+            else {
+                panic!("expected fallback match expression");
+            };
             assert!(!missing_arms[0].has_syntax());
-            assert!(!missing_arms[0].pattern_payload().has_syntax());
+            assert!(
+                !missing_arms[0]
+                    .pattern_payload(&fallback_match.arms[0].pattern)
+                    .has_syntax()
+            );
         },
     );
 }
@@ -724,8 +733,18 @@ fn main(value) {
             let missing_arms = missing_source
                 .match_arm_payloads()
                 .expect("source-less statement match arm payload shells");
+            let vela_syntax::ast::StmtKind::Expr(expr) = &statement.fallback().kind else {
+                panic!("expected fallback expression statement");
+            };
+            let vela_syntax::ast::ExprKind::Match(fallback_match) = &expr.kind else {
+                panic!("expected fallback match expression");
+            };
             assert!(!missing_arms[0].has_syntax());
-            assert!(!missing_arms[0].pattern_payload().has_syntax());
+            assert!(
+                !missing_arms[0]
+                    .pattern_payload(&fallback_match.arms[0].pattern)
+                    .has_syntax()
+            );
             assert!(
                 missing_source
                     .expression_match_payloads_with_fallback()

@@ -130,12 +130,16 @@ fn main() {
         legacy_match.fallback(),
     );
 
+    let vela_syntax::ast::ExprKind::Match(fallback_match) = &legacy_match.fallback().kind else {
+        panic!("expected fallback match expression");
+    };
     let arm_texts = mismatched
         .match_arm_payloads()
         .expect("equal arm counts should expose payloads")
         .into_iter()
-        .map(|arm| {
-            arm.pattern_payload()
+        .enumerate()
+        .map(|(index, arm)| {
+            arm.pattern_payload(&fallback_match.arms[index].pattern)
                 .syntax_pattern()
                 .expect("arm pattern syntax")
                 .syntax()

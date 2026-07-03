@@ -13,7 +13,7 @@ use vela_syntax::ast::MapEntry;
 #[cfg(test)]
 use vela_syntax::ast::RecordField;
 use vela_syntax::ast::{
-    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind,
+    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Stmt, StmtKind,
     SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
     SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
@@ -70,9 +70,9 @@ pub(super) struct CompilerStatementPayload<'ast> {
 pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
-    pattern_fallback: &'ast Pattern,
     #[cfg(test)]
     body_block_fallback: Option<&'ast Block>,
+    _ast: PhantomData<&'ast ()>,
 }
 
 #[derive(Clone)]
@@ -538,12 +538,12 @@ fn match_arm_payloads_for_expr<'ast>(
             .arms
             .iter()
             .enumerate()
-            .map(|(index, fallback)| CompilerMatchArmPayload {
+            .map(|(index, _fallback)| CompilerMatchArmPayload {
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
-                pattern_fallback: &fallback.pattern,
                 #[cfg(test)]
-                body_block_fallback: expression_fallback_block(&fallback.body),
+                body_block_fallback: expression_fallback_block(&_fallback.body),
+                _ast: PhantomData,
             })
             .collect(),
     )

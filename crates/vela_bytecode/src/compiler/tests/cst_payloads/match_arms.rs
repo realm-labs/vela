@@ -235,7 +235,7 @@ fn classify(result) {
     assert_eq!(return_arm_payloads.len(), 2);
 
     let fallback_record_pattern = return_match_fallback_pattern(payload.body.fallback(), 0);
-    let record_pattern = return_arm_payloads[0].pattern_payload();
+    let record_pattern = return_arm_payloads[0].pattern_payload(fallback_record_pattern);
     let syntax_pattern = record_pattern
         .syntax_pattern()
         .expect("record arm should expose CST pattern");
@@ -291,7 +291,7 @@ fn classify(result) {
     );
 
     let fallback_tuple_pattern = return_match_fallback_pattern(payload.body.fallback(), 1);
-    let tuple_pattern = return_arm_payloads[1].pattern_payload();
+    let tuple_pattern = return_arm_payloads[1].pattern_payload(fallback_tuple_pattern);
     let missing_source_tuple = body_payloads::CompilerPatternPayload::missing_child_payload_context(
         tuple_pattern
             .syntax_pattern()
@@ -348,7 +348,8 @@ fn classify(state) {
         .collect::<Vec<_>>();
     assert_eq!(arm_payloads.len(), 3);
 
-    let literal_pattern = arm_payloads[0].pattern_payload();
+    let literal_pattern =
+        arm_payloads[0].pattern_payload(return_match_fallback_pattern(payload.body.fallback(), 0));
     assert_eq!(
         literal_pattern.syntax_literal(),
         Some(vela_syntax::ast::Literal::integer("0"))
@@ -361,7 +362,8 @@ fn classify(state) {
         Some("0")
     );
 
-    let path_pattern = arm_payloads[1].pattern_payload();
+    let path_pattern =
+        arm_payloads[1].pattern_payload(return_match_fallback_pattern(payload.body.fallback(), 1));
     assert_eq!(
         path_pattern.syntax_path_segments().as_deref(),
         Some(&["State".to_owned(), "Ready".to_owned()][..])
@@ -374,7 +376,8 @@ fn classify(state) {
         Some("State::Ready")
     );
 
-    let binding_pattern = arm_payloads[2].pattern_payload();
+    let binding_pattern =
+        arm_payloads[2].pattern_payload(return_match_fallback_pattern(payload.body.fallback(), 2));
     assert_eq!(
         binding_pattern.syntax_binding_name().as_deref(),
         Some("value")
@@ -1051,10 +1054,11 @@ fn first_return_match_pattern_syntax(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxPattern {
     let statements = body.statement_payloads();
+    let fallback = first_return_match_fallback_pattern(body.fallback());
     statements[0]
         .return_value_match_arm_payloads()
         .expect("return match")[0]
-        .pattern_payload()
+        .pattern_payload(fallback)
         .syntax_pattern()
         .expect("CST pattern")
         .clone()
