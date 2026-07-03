@@ -110,7 +110,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    fn emit_dynamic_contract_guard(
+    pub(in crate::compiler::control_flow) fn emit_dynamic_contract_guard(
         &mut self,
         register: Register,
         span: Span,

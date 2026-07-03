@@ -10,8 +10,8 @@ use crate::compiler::const_eval::{
 };
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
-    RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, static_literal_type,
-    type_hint_value_type,
+    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+    static_literal_type, type_hint_value_type,
 };
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
 use crate::{Constant, UnlinkedInstructionKind};
@@ -125,15 +125,28 @@ impl Compiler<'_, '_> {
             type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
         });
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
-        if let Some(expected) = hinted_value_type.clone() {
-            check_expected_type(
+        let guard_expected = if let Some(expected) = hinted_value_type.clone() {
+            match check_expected_type(
                 static_type_for_constant(&constant),
                 expected,
                 span,
                 TypeContractContext::TypedLet { name: name.clone() },
+            )? {
+                ExpectedTypeOutcome::RequiresRuntimeGuard(expected) => Some(expected),
+                ExpectedTypeOutcome::Proven | ExpectedTypeOutcome::Contextualized(_) => None,
+            }
+        } else {
+            None
+        };
+        let register = self.emit_constant(constant.clone())?;
+        if let Some(expected) = guard_expected.as_ref() {
+            self.emit_dynamic_contract_guard(
+                register,
+                span,
+                expected,
+                TypeContractContext::TypedLet { name: name.clone() },
             )?;
         }
-        let register = self.emit_constant(constant.clone())?;
         let value_type = hinted_value_type.or_else(|| runtime_type_for_constant(&constant));
         self.locals.insert(name.clone(), register);
         if let Some((local, _)) = local_binding {
@@ -327,15 +340,28 @@ impl Compiler<'_, '_> {
         else {
             return Ok(None);
         };
-        if let Some(expected) = self.return_type.clone() {
-            check_expected_type(
+        let guard_expected = if let Some(expected) = self.return_type.clone() {
+            match check_expected_type(
                 static_type_for_constant(&constant),
                 expected,
                 span,
                 TypeContractContext::Return,
+            )? {
+                ExpectedTypeOutcome::RequiresRuntimeGuard(expected) => Some(expected),
+                ExpectedTypeOutcome::Proven | ExpectedTypeOutcome::Contextualized(_) => None,
+            }
+        } else {
+            None
+        };
+        let register = self.emit_constant(constant)?;
+        if let Some(expected) = guard_expected.as_ref() {
+            self.emit_dynamic_contract_guard(
+                register,
+                span,
+                expected,
+                TypeContractContext::Return,
             )?;
         }
-        let register = self.emit_constant(constant)?;
         self.emit(UnlinkedInstructionKind::Return { src: register });
         Ok(Some(true))
     }

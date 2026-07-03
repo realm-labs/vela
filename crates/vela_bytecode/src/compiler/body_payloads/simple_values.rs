@@ -118,6 +118,30 @@ fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> boo
     expression_syntax_bool_literal(&operand).is_some()
 }
 
+fn syntax_expression_is_simple_constant_unary(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_constant_unary(&inner);
+    }
+    let Some(unary) = expression.as_unary() else {
+        return false;
+    };
+    let Some(operand) = unary.expression() else {
+        return false;
+    };
+    let operand_is_constant = match unary.operator() {
+        Some(UnaryOp::Negate) => syntax_expression_is_inline_numeric_constant_operand(&operand),
+        Some(UnaryOp::Not) => syntax_expression_is_inline_constant_logical_operand(&operand),
+        None => false,
+    };
+    if !operand_is_constant {
+        return false;
+    }
+    evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+        .ok()
+        .flatten()
+        .is_some()
+}
+
 fn syntax_expression_is_simple_constant_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_constant_comparison(&inner);
@@ -323,6 +347,7 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_block(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_comparison(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
         || syntax_expression_is_simple_constant_logical(expression)
