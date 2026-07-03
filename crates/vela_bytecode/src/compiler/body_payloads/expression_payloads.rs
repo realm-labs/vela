@@ -813,46 +813,28 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
 
 impl<'ast> CompilerMatchArmPayload<'ast> {
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(
-        source: SourceId,
-        syntax: SyntaxMatchArm,
-        fallback_guard: Option<&'ast Expr>,
-        fallback_body: &'ast Expr,
-    ) -> Self {
+    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMatchArm) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback_guard,
-            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_child_payload_context(
-        syntax: SyntaxMatchArm,
-        fallback_guard: Option<&'ast Expr>,
-        fallback_body: &'ast Expr,
-    ) -> Self {
+    pub(in crate::compiler) fn missing_child_payload_context(syntax: SyntaxMatchArm) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
-            fallback_guard,
-            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(
-        fallback_guard: Option<&'ast Expr>,
-        fallback_body: &'ast Expr,
-    ) -> Self {
+    pub(in crate::compiler) fn missing_syntax() -> Self {
         Self {
             source: None,
             syntax: None,
-            fallback_guard,
-            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }
@@ -883,9 +865,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             .map(|body| body.expression_kind())
     }
 
-    pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+    pub(in crate::compiler) fn guard_payload(
+        &self,
+        fallback: &'ast Expr,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
-        let fallback = self.fallback_guard?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.guard(),
@@ -914,7 +898,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn body_expression_payload(
+        &self,
+        fallback_body: &'ast Expr,
+    ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_fallback(
             self.source,
             self.source.and_then(|_| {
@@ -922,7 +909,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-            self.fallback_body,
+            fallback_body,
         )
     }
 

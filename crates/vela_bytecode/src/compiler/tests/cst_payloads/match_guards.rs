@@ -27,12 +27,7 @@ fn legacy_guard(value, legacy_flag) {
 
     let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
     let legacy_match = first_return_match_expr(legacy_payload.body.fallback());
-    let mismatched_arm = body_payloads::CompilerMatchArmPayload::syntax(
-        source,
-        cst_arm,
-        legacy_match.arms[0].guard.as_ref(),
-        &legacy_match.arms[0].body,
-    );
+    let mismatched_arm = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler
@@ -71,12 +66,7 @@ fn legacy_guard(value, flag) {
     assert!(cst_arm.guard().is_none());
     let legacy_match = first_return_match_expr(legacy_payload.body.fallback());
     assert!(legacy_match.arms[0].guard.is_some());
-    let missing_guard = body_payloads::CompilerMatchArmPayload::syntax(
-        source,
-        cst_arm,
-        legacy_match.arms[0].guard.as_ref(),
-        &legacy_match.arms[0].body,
-    );
+    let missing_guard = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler

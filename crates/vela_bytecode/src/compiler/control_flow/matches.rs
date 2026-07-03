@@ -46,7 +46,10 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let guard_payload = arm_payload.and_then(|payload| payload.guard_payload());
+            let guard_payload = arm
+                .guard
+                .as_ref()
+                .and_then(|guard| arm_payload.and_then(|payload| payload.guard_payload(guard)));
             if arm.guard.is_some()
                 && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
                 && guard_payload
@@ -91,7 +94,7 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
-            let body_payload = payload.body_expression_payload();
+            let body_payload = payload.body_expression_payload(&arm.body);
             if body_payload.matches_paired_expr(&arm.body) {
                 return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
             }
@@ -134,7 +137,7 @@ impl Compiler<'_, '_> {
                 "missing CST match arm block body payload",
             ));
         }
-        let body_payload = payload.body_expression_payload();
+        let body_payload = payload.body_expression_payload(&arm.body);
         self.compile_expr_with_payload(&arm.body, Some(&body_payload))?;
         Ok(false)
     }
@@ -147,7 +150,8 @@ impl Compiler<'_, '_> {
         match &arm.body.kind {
             ExprKind::Block(block) => self.compile_statements(&block.statements),
             _ => {
-                let body_payload = payload.map(|payload| payload.body_expression_payload());
+                let body_payload =
+                    payload.map(|payload| payload.body_expression_payload(&arm.body));
                 self.compile_expr_with_payload(&arm.body, body_payload.as_ref())?;
                 Ok(false)
             }
@@ -196,7 +200,10 @@ impl Compiler<'_, '_> {
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let guard_payload = arm_payload.and_then(|payload| payload.guard_payload());
+            let guard_payload = arm
+                .guard
+                .as_ref()
+                .and_then(|guard| arm_payload.and_then(|payload| payload.guard_payload(guard)));
             if arm.guard.is_some()
                 && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
                 && guard_payload
@@ -268,7 +275,7 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
-            let body_payload = payload.body_expression_payload();
+            let body_payload = payload.body_expression_payload(body);
             if body_payload.matches_paired_expr(body) {
                 return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
             }
@@ -315,7 +322,7 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxExpressionKind::If => {
-                let body_payload = payload.body_expression_payload();
+                let body_payload = payload.body_expression_payload(body);
                 let Some((if_expr, if_payload)) = body_payload.if_payload_with_fallback() else {
                     return Err(missing_cst_match_arm_child_payload(
                         "missing CST match arm if payload",
@@ -324,7 +331,7 @@ impl Compiler<'_, '_> {
                 self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))
             }
             SyntaxExpressionKind::Match => {
-                let body_payload = payload.body_expression_payload();
+                let body_payload = payload.body_expression_payload(body);
                 let Some((match_expr, scrutinee_payload, arm_payloads)) =
                     body_payload.match_payloads_with_fallback()
                 else {
@@ -340,7 +347,7 @@ impl Compiler<'_, '_> {
                 )
             }
             _ => {
-                let body_payload = payload.body_expression_payload();
+                let body_payload = payload.body_expression_payload(body);
                 let value = self.compile_expr_with_payload(body, Some(&body_payload))?;
                 self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)
@@ -357,7 +364,7 @@ impl Compiler<'_, '_> {
         match &body.kind {
             ExprKind::Block(block) => self.compile_block_value_to(block, dst),
             _ => {
-                let body_payload = payload.map(|payload| payload.body_expression_payload());
+                let body_payload = payload.map(|payload| payload.body_expression_payload(body));
                 let value = self.compile_expr_with_payload(body, body_payload.as_ref())?;
                 self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)

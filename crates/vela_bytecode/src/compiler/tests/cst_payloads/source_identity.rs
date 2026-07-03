@@ -670,8 +670,6 @@ fn main(value) {
                 .expect("match arm payloads");
             let missing_arm = body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
                 arms[0].syntax_arm().expect("arm syntax").clone(),
-                fallback_match.arms[0].guard.as_ref(),
-                &fallback_match.arms[0].body,
             );
 
             assert!(!missing_arm.has_syntax());
@@ -683,11 +681,16 @@ fn main(value) {
             assert_eq!(missing_pattern.syntax_pattern_kind(), None);
             assert!(
                 missing_arm
-                    .body_expression_payload()
+                    .body_expression_payload(&fallback_match.arms[0].body)
                     .syntax_expression()
                     .is_none()
             );
-            assert!(missing_arm.guard_payload().is_none());
+            assert!(
+                fallback_match.arms[0]
+                    .guard
+                    .as_ref()
+                    .is_none_or(|guard| missing_arm.guard_payload(guard).is_none())
+            );
         },
     );
 }

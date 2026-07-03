@@ -888,12 +888,8 @@ fn value_form(value) {
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (statement_payload, _, _) = semantic.function("statement_form").expect("statement form");
     let statement_match = first_statement_match_expr(statement_payload.body.fallback());
-    let missing_statement_arm = body_payloads::CompilerMatchArmPayload::syntax(
-        source,
-        cst_arm.clone(),
-        statement_match.arms[0].guard.as_ref(),
-        &statement_match.arms[0].body,
-    );
+    let missing_statement_arm =
+        body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm.clone());
     let (mut statement_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "statement_form");
 
@@ -907,12 +903,7 @@ fn value_form(value) {
 
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
     let value_match = first_return_match_expr(value_payload.body.fallback());
-    let missing_value_arm = body_payloads::CompilerMatchArmPayload::syntax(
-        source,
-        cst_arm,
-        value_match.arms[0].guard.as_ref(),
-        &value_match.arms[0].body,
-    );
+    let missing_value_arm = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
@@ -958,11 +949,7 @@ fn value_form(value, flag) {
     let statement_match = first_statement_match_expr(statement_payload.body.fallback());
     let statement_syntax_arm = first_statement_match_syntax_arm(&statement_payload.body);
     let missing_statement_arm =
-        body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
-            statement_syntax_arm,
-            statement_match.arms[0].guard.as_ref(),
-            &statement_match.arms[0].body,
-        );
+        body_payloads::CompilerMatchArmPayload::missing_child_payload_context(statement_syntax_arm);
     let (mut statement_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "statement_form");
 
@@ -977,11 +964,8 @@ fn value_form(value, flag) {
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
     let value_match = first_return_match_expr(value_payload.body.fallback());
     let value_syntax_arm = first_return_match_syntax_arm(&value_payload.body);
-    let missing_value_arm = body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
-        value_syntax_arm,
-        value_match.arms[0].guard.as_ref(),
-        &value_match.arms[0].body,
-    );
+    let missing_value_arm =
+        body_payloads::CompilerMatchArmPayload::missing_child_payload_context(value_syntax_arm);
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
@@ -1148,11 +1132,11 @@ fn first_statement_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::a
 
 fn assert_match_guard_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
-    _fallback: Option<&vela_syntax::ast::Expr>,
+    fallback: Option<&vela_syntax::ast::Expr>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
     let guard = arm
-        .guard_payload()
+        .guard_payload(fallback.expect("match arm guard fallback"))
         .expect("match arm should expose guard payload");
     assert_eq!(guard.kind(), Some(SyntaxExpressionKind::Block));
     let body = guard
@@ -1166,10 +1150,10 @@ fn assert_match_guard_payload(
 
 fn assert_match_body_array_element_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
-    _fallback: &vela_syntax::ast::Expr,
+    fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    let body = arm.body_expression_payload();
+    let body = arm.body_expression_payload(fallback);
     assert_eq!(body.kind(), Some(SyntaxExpressionKind::Array));
     let _items = body.fallback_array_items().expect("fallback array items");
     let element_payloads = body

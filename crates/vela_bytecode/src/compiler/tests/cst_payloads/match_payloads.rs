@@ -13,10 +13,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_return_match_expr(payload.body.fallback());
-    let missing_arm = body_payloads::CompilerMatchArmPayload::missing_syntax(
-        match_expr.arms[0].guard.as_ref(),
-        &match_expr.arms[0].body,
-    );
+    let missing_arm = body_payloads::CompilerMatchArmPayload::missing_syntax();
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
