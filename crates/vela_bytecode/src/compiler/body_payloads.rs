@@ -133,9 +133,26 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
-        syntax_body_statements(body)
-            .iter()
-            .any(syntax_statement_requires_body_block_lookup)
+        Self::requires_body_block_lookup_with_single_tail(body, true)
+    }
+
+    pub(super) fn requires_strict_body_block_lookup(body: &SyntaxBlock) -> bool {
+        Self::requires_body_block_lookup_with_single_tail(body, false)
+    }
+
+    fn requires_body_block_lookup_with_single_tail(
+        body: &SyntaxBlock,
+        allow_single_unterminated_tail: bool,
+    ) -> bool {
+        let syntax_statements = syntax_body_statements(body);
+        let allow_unterminated_cst_expression =
+            allow_single_unterminated_tail && syntax_statements.len() == 1;
+        syntax_statements.iter().any(|statement| {
+            syntax_statement_requires_body_block_lookup(
+                statement,
+                allow_unterminated_cst_expression,
+            )
+        })
     }
 
     pub(super) fn syntax_with_optional_body(
@@ -167,7 +184,12 @@ impl<'ast> CompilerBodyPayload<'ast> {
                     syntax: syntax_statements.get(index).cloned(),
                     fallback: syntax_statements
                         .get(index)
-                        .is_none_or(syntax_statement_requires_body_block_lookup)
+                        .is_none_or(|statement| {
+                            syntax_statement_requires_body_block_lookup(
+                                statement,
+                                syntax_statements.len() == 1,
+                            )
+                        })
                         .then_some(fallback),
                 })
                 .collect(),
@@ -192,7 +214,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
             Some(fallback) => syntax_statements.len() != fallback.statements.len(),
             None => syntax_statements
                 .iter()
-                .any(syntax_statement_requires_body_block_lookup),
+                .any(|statement| syntax_statement_requires_body_block_lookup(statement, true)),
         }
     }
 

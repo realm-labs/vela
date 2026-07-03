@@ -10,7 +10,10 @@ use vela_syntax::ast::{
 use crate::compiler::body_payloads::CompilerBodyPayload;
 use crate::compiler::const_eval::evaluate_syntax_const_expr;
 
-pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
+pub(super) fn syntax_statement_requires_body_block_lookup(
+    statement: &SyntaxStatement,
+    allow_unterminated_cst_expression: bool,
+) -> bool {
     match statement.statement_kind() {
         SyntaxStatementKind::Let => statement.as_let().is_none_or(|let_statement| {
             if let_statement.name_text().is_none() {
@@ -40,15 +43,21 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
             .as_block()
             .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
         SyntaxStatementKind::Expr => statement.as_expr().is_none_or(|expr_statement| {
-            expr_statement.semicolon_token().is_none()
-                || expr_statement.expression().is_none_or(|expression| {
-                    !syntax_expression_is_inline_constant(&expression)
-                        && !syntax_expression_is_simple_path(&expression)
-                        && !syntax_expression_is_simple_range(&expression)
-                })
+            if expr_statement.semicolon_token().is_some() || allow_unterminated_cst_expression {
+                return expr_statement.expression().is_none_or(|expression| {
+                    !syntax_expression_statement_is_cst_lowerable(&expression)
+                });
+            }
+            true
         }),
         _ => true,
     }
+}
+
+fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -> bool {
+    syntax_expression_is_inline_constant(expression)
+        || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_range(expression)
 }
 
 pub(in crate::compiler) fn expression_syntax_path_or_self(
@@ -192,7 +201,7 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     }
     expression
         .as_block()
-        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
+        .is_some_and(|block| !CompilerBodyPayload::requires_strict_body_block_lookup(&block))
 }
 
 fn syntax_expression_is_simple_negated_number(expression: &SyntaxExpression) -> bool {

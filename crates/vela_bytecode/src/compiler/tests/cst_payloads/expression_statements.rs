@@ -86,6 +86,45 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_unterminated_expression_tails_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn constant_tail() {
+    1 + 2
+}
+
+fn path_tail(input) {
+    input
+}
+
+fn range_tail(input) {
+    input..=10
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    for function in ["constant_tail", "path_tail", "range_tail"] {
+        let (payload, _, _) = semantic.function(function).expect("function payload");
+        let body_fallback =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+        assert!(
+            body_fallback.is_err(),
+            "{function} body should not require owned fallback"
+        );
+        let statements = payload.body.statement_payloads();
+        assert_eq!(statements.len(), 1);
+        let statement_fallback =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+        assert!(
+            statement_fallback.is_err(),
+            "{function} tail statement should not require owned fallback"
+        );
+    }
+
+    compile_program_source(source, text)
+        .expect("CST-only unterminated expression tails should compile");
+}
+
+#[test]
 fn semantic_function_generic_expression_statements_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
