@@ -558,12 +558,22 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn field_base_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
+        self.field_base_payload_with_fallback()
+            .map(|(_, payload)| payload)
+    }
+
+    pub(in crate::compiler) fn field_base_payload_with_fallback(
+        &self,
+    ) -> Option<(&'ast Expr, CompilerExpressionPayload<'ast>)> {
         let base = self.fallback_field_base()?;
         self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.syntax.as_ref()?.as_field()?.receiver(),
+        Some((
             base,
+            CompilerExpressionPayload::from_fallback(
+                self.source,
+                self.syntax.as_ref()?.as_field()?.receiver(),
+                base,
+            ),
         ))
     }
 
