@@ -152,6 +152,34 @@ fn main(values, index) {
 }
 
 #[test]
+fn source_less_call_payload_does_not_expose_callee_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn make() {
+    return 1;
+}
+
+fn main() {
+    let value = make();
+}
+"#,
+        |_, payload| {
+            let call = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("call initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    call.syntax_expression().expect("call syntax").clone(),
+                    call.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_call_callee_path_segments(), None);
+            assert!(missing_source.call_callee_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"
