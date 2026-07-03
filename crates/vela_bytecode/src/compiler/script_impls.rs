@@ -297,16 +297,17 @@ fn impl_method_payloads<'ast>(
             })?;
             let syntax_body = syntax_method.body()?;
             #[cfg(test)]
-            let body_block = body_fallback(
+            let body_fallback = body_fallback(
                 source,
                 &syntax_body,
                 #[cfg(test)]
                 body_blocks,
             );
-            #[cfg(not(test))]
-            let body_block = None;
+            #[cfg(test)]
             let body =
-                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
+                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_fallback)?;
+            #[cfg(not(test))]
+            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -342,16 +343,17 @@ fn trait_default_method_payloads<'ast>(
             })?;
             let syntax_body = syntax_method.body()?;
             #[cfg(test)]
-            let body_block = body_fallback(
+            let body_fallback = body_fallback(
                 source,
                 &syntax_body,
                 #[cfg(test)]
                 body_blocks,
             );
-            #[cfg(not(test))]
-            let body_block = None;
+            #[cfg(test)]
             let body =
-                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
+                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_fallback)?;
+            #[cfg(not(test))]
+            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {

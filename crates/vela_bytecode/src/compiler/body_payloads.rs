@@ -310,23 +310,21 @@ impl<'ast> CompilerBodyPayload<'ast> {
             })
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_with_optional_body(
         source: SourceId,
         body: SyntaxBlock,
         fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
-        #[cfg(not(test))]
-        {
-            let _ = fallback;
-            Some(Self::syntax_only(source, body))
+        match fallback {
+            Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
+            None => Self::syntax_only_without_body_lookup(source, body),
         }
-        #[cfg(test)]
-        {
-            match fallback {
-                Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
-                None => Self::syntax_only_without_body_lookup(source, body),
-            }
-        }
+    }
+
+    #[cfg(not(test))]
+    pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {
+        Some(Self::syntax_only(source, body))
     }
 
     #[cfg(test)]
