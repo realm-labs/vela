@@ -378,7 +378,7 @@ impl Compiler<'_, '_> {
                         "mismatched CST literal expression",
                     ))
                 })?;
-                if !payload.fallback_expr_matches_stored_syntax_kind() {
+                if !payload.payload_fallback_matches_stored_syntax_kind() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST literal expression",
                     )));

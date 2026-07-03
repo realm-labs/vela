@@ -2,19 +2,13 @@ use std::marker::PhantomData;
 
 use vela_common::SourceId;
 use vela_common::Span;
-#[cfg(test)]
 use vela_syntax::ast::Argument;
 #[cfg(test)]
 use vela_syntax::ast::AssignOp;
-#[cfg(test)]
 use vela_syntax::ast::BinaryOp;
-#[cfg(test)]
 use vela_syntax::ast::Block;
-#[cfg(test)]
 use vela_syntax::ast::InterpolatedStringPart;
-#[cfg(test)]
 use vela_syntax::ast::MapEntry;
-#[cfg(test)]
 use vela_syntax::ast::RecordField;
 #[cfg(test)]
 use vela_syntax::ast::Stmt;
@@ -106,7 +100,6 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     syntax: Option<SyntaxExpression>,
     fallback_summary: CompilerExpressionFallbackSummary,
     fallback: &'ast vela_syntax::ast::Expr,
-    #[cfg(test)]
     fallback_kind: CompilerExpressionFallbackKind<'ast>,
 }
 
@@ -139,7 +132,7 @@ impl CompilerExpressionFallbackSummary {
 }
 
 #[derive(Clone, Copy)]
-#[cfg(test)]
+#[allow(dead_code)]
 pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Literal,
     Path,
@@ -1600,7 +1593,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
         let fallback_summary = fallback_expr_summary(fallback);
-        #[cfg(test)]
         let fallback_kind = match &fallback.kind {
             ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
             ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
@@ -1639,7 +1631,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             syntax,
             fallback_summary,
             fallback,
-            #[cfg(test)]
             fallback_kind,
         }
     }
@@ -1719,7 +1710,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
-    pub(in crate::compiler) fn fallback_expr_matches_stored_syntax_kind(&self) -> bool {
+    pub(in crate::compiler) fn payload_fallback_matches_stored_syntax_kind(&self) -> bool {
         self.stored_syntax_kind()
             .is_some_and(|kind| self.fallback_expr_matches_syntax_kind(kind))
     }

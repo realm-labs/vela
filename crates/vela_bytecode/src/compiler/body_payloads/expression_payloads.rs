@@ -8,7 +8,6 @@ use vela_syntax::ast::{
 
 #[cfg(test)]
 use super::CompilerBodyFallback;
-#[cfg(test)]
 use super::CompilerExpressionFallbackKind;
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
@@ -66,20 +65,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_if_expr(&self) -> Option<&'ast IfExpr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
-                return None;
-            };
-            Some(if_expr)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::If(if_expr) = &self.fallback.kind else {
-                return None;
-            };
-            Some(if_expr)
-        }
+        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
+            return None;
+        };
+        Some(if_expr)
     }
 
     pub(in crate::compiler) fn match_arm_payloads(
@@ -118,20 +107,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
-                return None;
-            };
-            Some(match_expr)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Match(match_expr) = &self.fallback.kind else {
-                return None;
-            };
-            Some(match_expr)
-        }
+        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
+            return None;
+        };
+        Some(match_expr)
     }
 
     pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
@@ -212,37 +191,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_assignment_target(&self) -> Option<&'ast Expr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Assign { target, .. } = self.fallback_kind else {
-                return None;
-            };
-            Some(target)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Assign { target, .. } = &self.fallback.kind else {
-                return None;
-            };
-            Some(target)
-        }
+        let CompilerExpressionFallbackKind::Assign { target, .. } = self.fallback_kind else {
+            return None;
+        };
+        Some(target)
     }
 
     fn fallback_assignment_value(&self) -> Option<&'ast Expr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Assign { value, .. } = self.fallback_kind else {
-                return None;
-            };
-            Some(value)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Assign { value, .. } = &self.fallback.kind else {
-                return None;
-            };
-            Some(value)
-        }
+        let CompilerExpressionFallbackKind::Assign { value, .. } = self.fallback_kind else {
+            return None;
+        };
+        Some(value)
     }
 
     fn fallback_is_assignment(&self) -> bool {
@@ -487,37 +446,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_call_args(&self) -> Option<&'ast [Argument]> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Call { args, .. } = self.fallback_kind else {
-                return None;
-            };
-            Some(args)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Call { args, .. } = &self.fallback.kind else {
-                return None;
-            };
-            Some(args)
-        }
+        let CompilerExpressionFallbackKind::Call { args, .. } = self.fallback_kind else {
+            return None;
+        };
+        Some(args)
     }
 
     fn fallback_call_callee(&self) -> Option<&'ast Expr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Call { callee, .. } = self.fallback_kind else {
-                return None;
-            };
-            Some(callee)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Call { callee, .. } = &self.fallback.kind else {
-                return None;
-            };
-            Some(callee)
-        }
+        let CompilerExpressionFallbackKind::Call { callee, .. } = self.fallback_kind else {
+            return None;
+        };
+        Some(callee)
     }
 
     pub(in crate::compiler) fn field_base_payload(
@@ -543,20 +482,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_field_base(&self) -> Option<&'ast Expr> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Field { base } = self.fallback_kind else {
-                return None;
-            };
-            Some(base)
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Field { base, .. } = &self.fallback.kind else {
-                return None;
-            };
-            Some(base)
-        }
+        let CompilerExpressionFallbackKind::Field { base } = self.fallback_kind else {
+            return None;
+        };
+        Some(base)
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
@@ -596,20 +525,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_index_operands(&self) -> Option<(&'ast Expr, &'ast Expr)> {
-        #[cfg(test)]
-        {
-            let CompilerExpressionFallbackKind::Index { base, index } = self.fallback_kind else {
-                return None;
-            };
-            Some((base, index))
-        }
-        #[cfg(not(test))]
-        {
-            let ExprKind::Index { base, index } = &self.fallback.kind else {
-                return None;
-            };
-            Some((base, index))
-        }
+        let CompilerExpressionFallbackKind::Index { base, index } = self.fallback_kind else {
+            return None;
+        };
+        Some((base, index))
     }
 
     pub(in crate::compiler) fn lambda_body_payload(
