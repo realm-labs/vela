@@ -1129,9 +1129,6 @@ pub(super) fn literal_string_with_payload(
     _expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<String> {
-    if payload.is_none_or(|payload| payload.source().is_none()) {
-        return None;
-    }
     if let Some(Literal::String(value)) =
         payload.and_then(CompilerExpressionPayload::syntax_literal)
     {
