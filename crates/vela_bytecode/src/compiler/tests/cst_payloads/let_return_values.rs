@@ -1553,6 +1553,35 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_typed_bool_path_let_body_uses_cst_type_fact() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input: bool) {
+    let value: bool = input;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed bool path let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::GuardType { .. }
+            )),
+        "typed CST bool path should prove its type without legacy path fallback"
+    );
+}
+
+#[test]
 fn syntax_only_path_let_in_mixed_body_drops_owned_statement_fallback() {
     let source = SourceId::new(1);
     let text = r#"

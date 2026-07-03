@@ -577,6 +577,9 @@ expression spelling, while existing payload-aware path local, binary/try
 operand, assignment, call argument, method receiver, binary lowering, and
 condition-jump paths continue to use CST child payloads before falling back to
 the legacy boundary.
+Static value type inference for rowan CST path expressions now accepts every
+known local runtime type fact, not only `i64`, so aligned bool/string/container
+paths no longer need the temporary legacy path branch to prove typed contracts.
 Static literal type inference now prefers rowan CST literal payloads for
 typed-let and expected-type contracts before falling back to temporary legacy
 literal expression spelling.

@@ -518,10 +518,12 @@ fn static_syntax_expr_type(
                         .unwrap_or(StaticExprType::Dynamic),
                 );
             }
-            local_type_for_path_name().and_then(|fact| {
-                matches!(fact, RuntimeTypeFact::Primitive(PrimitiveTag::I64))
-                    .then_some(StaticExprType::Exact(fact))
-            })
+            Some(
+                local_type_at_syntax_span()
+                    .or_else(local_type_for_path_name)
+                    .map(StaticExprType::Exact)
+                    .unwrap_or(StaticExprType::Dynamic),
+            )
         }
         SyntaxExpressionKind::Block => expression.as_block().map(|block| {
             static_syntax_block_type(&block, source, local_type_at_span, local_type_named)
