@@ -360,7 +360,7 @@ fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> b
         return syntax_expression_is_simple_range_operand(&inner);
     }
     syntax_expression_is_simple_literal(expression)
-        || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_path_or_field(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)

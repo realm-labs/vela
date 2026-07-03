@@ -424,3 +424,35 @@ fn main() -> Range {
         "CST range return should emit an exclusive range"
     );
 }
+
+#[test]
+fn syntax_only_field_range_let_and_return_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn field_range_let(input) {
+    let values = input.start..=input.end;
+}
+
+fn field_range_return(input) {
+    return input.start..input.end;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    for name in ["field_range_let", "field_range_return"] {
+        let (payload, _, _) = semantic.function(name).expect("function payload");
+        assert!(
+            !payload.body.has_fallback_statements(),
+            "syntax-only {name} body should not retain an owned body fallback"
+        );
+    }
+
+    let program = compile_program_source(source, text).expect("CST field ranges should compile");
+    assert!(
+        program.functions.iter().any(|function| {
+            function.instructions.iter().any(|instruction| {
+                matches!(instruction.kind, UnlinkedInstructionKind::MakeRange { .. })
+            })
+        }),
+        "CST field range bodies should emit range construction"
+    );
+}

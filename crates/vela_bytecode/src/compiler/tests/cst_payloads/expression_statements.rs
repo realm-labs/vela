@@ -119,6 +119,26 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_field_range_expression_statements_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    input.start..input.end;
+    input.offset..=10;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "field range expression statements should not require owned fallback"
+    );
+
+    compile_program_source(source, text)
+        .expect("CST-only field range expression statements should compile");
+}
+
+#[test]
 fn syntax_only_block_expression_statements_drop_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
