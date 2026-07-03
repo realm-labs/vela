@@ -701,7 +701,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload {
             source: self.source,
-            syntax: self.syntax.as_ref().and_then(SyntaxMatchArm::pattern),
+            syntax: self
+                .source
+                .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
             fallback: &self.fallback.pattern,
         }
     }
@@ -717,6 +719,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
         self.syntax
             .as_ref()?
             .body_as_expression()
@@ -746,10 +749,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     pub(in crate::compiler) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload {
             source: self.source,
-            syntax: self
-                .syntax
-                .as_ref()
-                .and_then(SyntaxMatchArm::body_as_expression),
+            syntax: self.source.and_then(|_| {
+                self.syntax
+                    .as_ref()
+                    .and_then(SyntaxMatchArm::body_as_expression)
+            }),
             fallback: &self.fallback.body,
         }
     }

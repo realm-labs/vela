@@ -508,6 +508,13 @@ fn main(value) {
             );
 
             assert_eq!(missing_arm.body_expression_kind(), None);
+            assert_eq!(missing_arm.pattern_payload().syntax_pattern_kind(), None);
+            assert!(
+                missing_arm
+                    .body_expression_payload()
+                    .syntax_expression()
+                    .is_none()
+            );
             assert!(missing_arm.guard_payload().is_none());
         },
     );
