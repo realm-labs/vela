@@ -492,11 +492,14 @@ fn main(value) {
                         .clone(),
                     interpolated.fallback(),
                 );
+            let fallback_parts = missing_source
+                .fallback_interpolated_string_parts()
+                .expect("fallback interpolated string parts");
             let expressions = missing_source
-                .interpolated_expression_payloads()
+                .interpolated_expression_payloads(fallback_parts)
                 .expect("interpolated expression payloads");
 
-            assert!(!missing_source.has_extra_interpolation_expressions());
+            assert!(!missing_source.has_extra_interpolation_expressions(fallback_parts));
             assert!(expressions[0].syntax_expression().is_none());
         },
     );

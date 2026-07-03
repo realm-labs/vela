@@ -705,10 +705,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
+        parts: &'ast [InterpolatedStringPart],
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::InterpolatedString(parts) = self.fallback_kind else {
+        if !self.fallback_is_interpolated_string() {
             return None;
-        };
+        }
         let syntax_expressions = self
             .syntax
             .as_ref()?
@@ -734,13 +735,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_interpolation_expressions(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_interpolation_expressions(
+        &self,
+        parts: &'ast [InterpolatedStringPart],
+    ) -> bool {
         if self.source.is_none() {
             return false;
         }
-        let CompilerExpressionFallbackKind::InterpolatedString(parts) = self.fallback_kind else {
+        if !self.fallback_is_interpolated_string() {
             return false;
-        };
+        }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
             return false;
         };
@@ -749,6 +753,33 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
             .count();
         syntax.interpolation_expressions().count() > expression_count
+    }
+
+    fn fallback_is_interpolated_string(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::InterpolatedString(_)
+            )
+        }
+        #[cfg(not(test))]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::InterpolatedString
+            )
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_interpolated_string_parts(
+        &self,
+    ) -> Option<&'ast [InterpolatedStringPart]> {
+        let CompilerExpressionFallbackKind::InterpolatedString(parts) = self.fallback_kind else {
+            return None;
+        };
+        Some(parts)
     }
 }
 

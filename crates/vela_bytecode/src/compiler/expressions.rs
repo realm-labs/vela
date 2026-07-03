@@ -364,12 +364,12 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
-                    if payload.has_extra_interpolation_expressions() {
+                    if payload.has_extra_interpolation_expressions(parts) {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST interpolation expressions",
                         )));
                     }
-                    let part_payloads = payload.interpolated_expression_payloads();
+                    let part_payloads = payload.interpolated_expression_payloads(parts);
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }
                 let ExprKind::Literal(_) = &expr.kind else {

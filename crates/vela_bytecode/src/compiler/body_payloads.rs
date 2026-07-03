@@ -5,15 +5,17 @@ use vela_common::Span;
 #[cfg(test)]
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
+use vela_syntax::ast::InterpolatedStringPart;
+#[cfg(test)]
 use vela_syntax::ast::MapEntry;
 #[cfg(test)]
 use vela_syntax::ast::RecordField;
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, InterpolatedStringPart,
-    MatchExpr, Pattern, RecordPatternField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock,
-    SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm,
-    SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField,
-    SyntaxStatement, SyntaxStatementKind,
+    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern,
+    RecordPatternField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
+    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
+    SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -166,7 +168,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     },
     #[cfg(not(test))]
     Record,
+    #[cfg(test)]
     InterpolatedString(&'ast [InterpolatedStringPart]),
+    #[cfg(not(test))]
+    InterpolatedString,
     Other,
 }
 
@@ -1556,9 +1561,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Record { fields, .. } => CompilerExpressionFallbackKind::Record { fields },
             #[cfg(not(test))]
             ExprKind::Record { .. } => CompilerExpressionFallbackKind::Record,
+            #[cfg(test)]
             ExprKind::InterpolatedString(parts) => {
                 CompilerExpressionFallbackKind::InterpolatedString(parts)
             }
+            #[cfg(not(test))]
+            ExprKind::InterpolatedString(_) => CompilerExpressionFallbackKind::InterpolatedString,
             _ => CompilerExpressionFallbackKind::Other,
         };
         Self {
@@ -1591,11 +1599,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     fn fallback_kind_matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
         match syntax_kind {
-            SyntaxExpressionKind::Literal => matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Literal
-                    | CompilerExpressionFallbackKind::InterpolatedString(_)
-            ),
+            SyntaxExpressionKind::Literal => {
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Literal
+                            | CompilerExpressionFallbackKind::InterpolatedString(_)
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Literal
+                            | CompilerExpressionFallbackKind::InterpolatedString
+                    )
+                }
+            }
             SyntaxExpressionKind::Path => matches!(
                 self.fallback_kind,
                 CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue

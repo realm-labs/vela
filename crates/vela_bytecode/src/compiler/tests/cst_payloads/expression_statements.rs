@@ -431,7 +431,8 @@ fn assert_cst_expression_statement_interpolation_body_payloads(
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
         .flat_map(|payload| {
             payload
-                .interpolated_expression_payloads()
+                .fallback_interpolated_string_parts()
+                .and_then(|parts| payload.interpolated_expression_payloads(parts))
                 .unwrap_or_default()
         })
         .flat_map(nested_expression_block_payloads)

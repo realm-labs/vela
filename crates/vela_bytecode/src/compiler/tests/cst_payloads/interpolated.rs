@@ -80,8 +80,11 @@ fn main() {
                 legacy_interpolated.fallback(),
             );
 
+            let fallback_parts = mismatched_payload
+                .fallback_interpolated_string_parts()
+                .expect("fallback interpolated string parts");
             let parts = mismatched_payload
-                .interpolated_expression_payloads()
+                .interpolated_expression_payloads(fallback_parts)
                 .expect("interpolation expression payloads");
             assert_eq!(parts.len(), 1);
             assert_eq!(
@@ -207,7 +210,8 @@ fn assert_cst_let_initializer_interpolation_body_payloads(
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {
             payload
-                .interpolated_expression_payloads()
+                .fallback_interpolated_string_parts()
+                .and_then(|parts| payload.interpolated_expression_payloads(parts))
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
