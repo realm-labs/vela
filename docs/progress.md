@@ -377,6 +377,9 @@ Expression payload matching no longer keeps a free syntax-kind to old-`ExprKind`
 dispatch table; caller expression category checks now route through the
 payload-owned fallback-kind boundary, with only literal-family syntax dispatch
 kept in the matcher for CST literal diagnostics.
+Static type inference for CST `try` expressions now unwraps Option/Result
+operand facts through syntax expressions instead of falling through to the old
+`ExprKind::Try` branch after payload alignment.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy

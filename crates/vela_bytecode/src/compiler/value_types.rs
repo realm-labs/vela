@@ -571,13 +571,22 @@ fn static_syntax_expr_type(
                 )
             }))
         }
+        SyntaxExpressionKind::Try => {
+            let operand_type = expression.as_try()?.expression().and_then(|operand| {
+                syntax_expression_value_type(&operand, source, local_type_at_span, local_type_named)
+            });
+            Some(match operand_type {
+                Some(RuntimeTypeFact::Option(payload)) => StaticExprType::Exact(*payload),
+                Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
+                _ => StaticExprType::Dynamic,
+            })
+        }
         SyntaxExpressionKind::Paren
         | SyntaxExpressionKind::Unary
         | SyntaxExpressionKind::Assign
         | SyntaxExpressionKind::Field
         | SyntaxExpressionKind::Call
         | SyntaxExpressionKind::Index
-        | SyntaxExpressionKind::Try
         | SyntaxExpressionKind::Record => None,
     }
 }
