@@ -114,9 +114,27 @@ impl Compiler<'_, '_> {
         let local_binding = self
             .bindings
             .local_named_at(&name, LocalBindingKind::Let, span)
-            .and_then(|local| self.bindings.local(local).map(|binding| (local, binding)));
+            .and_then(|local| {
+                self.bindings
+                    .local(local)
+                    .map(|binding| (local, binding.type_hint.clone()))
+            });
+        let hir_type_hint = local_binding.as_ref().and_then(|(_, hint)| hint.as_ref());
+        let hinted_script_fact = hir_type_hint.and_then(|hint| {
+            let known_type_names = self.facts.known_type_names();
+            type_hint_script_type(hint, known_type_names.iter()).map(ScriptTypeFact::new)
+        });
+        let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
+        if let Some(expected) = hinted_value_type.clone() {
+            check_expected_type(
+                static_type_for_constant(&constant),
+                expected,
+                span,
+                TypeContractContext::TypedLet { name: name.clone() },
+            )?;
+        }
         let register = self.emit_constant(constant.clone())?;
-        let value_type = runtime_type_for_constant(&constant);
+        let value_type = hinted_value_type.or_else(|| runtime_type_for_constant(&constant));
         self.locals.insert(name.clone(), register);
         if let Some((local, _)) = local_binding {
             self.hir_locals.insert(local, register);
@@ -127,7 +145,8 @@ impl Compiler<'_, '_> {
                 Some(local),
                 Some(span),
             );
-            self.script_types.set_local_fact(local, name.clone(), None);
+            self.script_types
+                .set_local_fact(local, name.clone(), hinted_script_fact);
             self.value_types.set_local(local, name.clone(), value_type);
             self.value_shapes.set_local(local, name, None);
         } else {
@@ -138,7 +157,8 @@ impl Compiler<'_, '_> {
                 None,
                 Some(span),
             );
-            self.script_types.set_name_fact(name.clone(), None);
+            self.script_types
+                .set_name_fact(name.clone(), hinted_script_fact);
             self.value_types.set_name(name.clone(), value_type);
             self.value_shapes.set_name(name, None);
         }
@@ -297,6 +317,29 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
+    pub(in crate::compiler::control_flow) fn compile_return_syntax_constant(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        span: Span,
+    ) -> CompileResult<Option<bool>> {
+        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        else {
+            return Ok(None);
+        };
+        if let Some(expected) = self.return_type.clone() {
+            check_expected_type(
+                static_type_for_constant(&constant),
+                expected,
+                span,
+                TypeContractContext::Return,
+            )?;
+        }
+        let register = self.emit_constant(constant)?;
+        self.emit(UnlinkedInstructionKind::Return { src: register });
+        Ok(Some(true))
+    }
+
     fn compile_negated_literal_without_context(
         &mut self,
         literal: &Literal,
@@ -321,6 +364,10 @@ fn runtime_type_for_constant(value: &Constant) -> Option<RuntimeTypeFact> {
         Constant::Bytes(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
         Constant::Array(_) | Constant::Map(_) => None,
     }
+}
+
+fn static_type_for_constant(value: &Constant) -> StaticExprType {
+    runtime_type_for_constant(value).map_or(StaticExprType::Dynamic, StaticExprType::Exact)
 }
 
 fn check_negated_literal_expected_type(

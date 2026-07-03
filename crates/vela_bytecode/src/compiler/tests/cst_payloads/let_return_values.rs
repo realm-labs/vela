@@ -278,6 +278,35 @@ fn main() -> i8 {
 }
 
 #[test]
+fn syntax_only_boolean_not_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> bool {
+    return !(true);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only boolean-not return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only boolean-not return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Bool(false)),
+        "CST boolean-not return should emit the evaluated boolean constant"
+    );
+}
+
+#[test]
 fn syntax_only_literal_let_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
@@ -364,6 +393,36 @@ fn main() {
             .constants
             .contains(&Constant::Scalar(vela_common::ScalarValue::I8(-12))),
         "typed CST negated numeric let should use the local type hint"
+    );
+}
+
+#[test]
+fn syntax_only_typed_boolean_not_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value: bool = !(false);
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only typed boolean-not let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed boolean-not let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Bool(true)),
+        "CST typed boolean-not let should emit the evaluated boolean constant"
     );
 }
 

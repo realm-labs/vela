@@ -160,6 +160,14 @@ impl Compiler<'_, '_> {
                 if let Some((literal, span)) = stmt.return_value_syntax_negated_literal_and_span() {
                     return self.compile_return_negated_literal(literal, span);
                 }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, span)) =
+                        stmt.return_value_syntax_expression_and_span()
+                    && let Some(compiled) =
+                        self.compile_return_syntax_constant(source, &expression, span)?
+                {
+                    return Ok(compiled);
+                }
                 if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
                     return self.compile_return_path(path, span);
                 }

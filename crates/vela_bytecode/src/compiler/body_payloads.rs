@@ -666,6 +666,16 @@ impl<'ast> CompilerStatementPayload<'ast> {
         (!path.is_empty()).then_some((path, span))
     }
 
+    pub(in crate::compiler) fn return_value_syntax_expression_and_span(
+        &self,
+    ) -> Option<(SourceId, SyntaxExpression, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        Some((source, expression, span))
+    }
+
     pub(super) fn syntax_statement_span(&self) -> Option<Span> {
         let source = self.source?;
         let range = self.syntax.as_ref()?.syntax().text_range();

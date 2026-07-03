@@ -442,12 +442,12 @@ fn main() {
 fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
-fn main() {
+fn main(input) {
     let cst_sum = 1 + 2;
     let lhs = 1;
     let rhs = 2;
     let cst_diff = lhs - rhs;
-    let legacy_bool = !true;
+    let legacy_bool = !input;
 }
 "#,
         |compiler, payload| {
