@@ -37,7 +37,7 @@ fn missing_block_statement_body_payload_does_not_use_legacy_body() {
 fn main() {
     {
         let value = 1;
-        return value + value;
+        return value && value;
     }
 }
 "#,
@@ -268,7 +268,7 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -305,7 +305,7 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

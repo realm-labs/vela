@@ -67,7 +67,7 @@ struct LegacyBox {
 }
 
 fn main(input) {
-    let cst_binary = input + input;
+    let cst_binary = input && input;
     let legacy = LegacyBox { amount: 1 };
 }
 "#,
@@ -187,7 +187,7 @@ fn main(input) {
     let cst_range = 1..3;
     let cst_compare = input < (3 + 1);
     let legacy_bool = input == false;
-    let legacy_arithmetic = input + input;
+    let legacy_arithmetic = input && input;
 }
 "#,
         |compiler, payload| {
@@ -279,23 +279,27 @@ fn main(input) {
 }
 
 #[test]
-fn fallback_dynamic_arithmetic_shape_does_not_invent_numeric_literal_shape() {
+fn fallback_dynamic_call_shape_does_not_invent_numeric_literal_shape() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(input) {
-    let dynamic = input + input;
+    let dynamic = make(input);
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let dynamic = statements[0]
                 .let_initializer_expression_payload()
-                .expect("dynamic arithmetic initializer");
+                .expect("dynamic call initializer");
 
             assert_eq!(
                 compiler.value_shape_for_expr_with_payload(dynamic.fallback(), None),
                 None,
-                "fallback arithmetic shape must not invent a numeric type for dynamic operands"
+                "fallback dynamic call shape must not invent a numeric type for dynamic operands"
             );
         },
     );
@@ -305,23 +309,30 @@ fn main(input) {
 fn unsupported_binary_shape_payload_does_not_use_legacy_binary_shape() {
     with_cst_payload_compiler(
         r#"
+struct LegacyBox {
+    amount: i64,
+}
+
 fn main(input) {
-    let cst_add = input + input;
-    let legacy_compare = true == input;
+    let cst_logical = input && input;
+    let legacy_record = LegacyBox { amount: 1 };
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
-            let cst_add = statements[0]
+            let cst_logical = statements[0]
                 .let_initializer_expression_payload()
-                .expect("CST add initializer");
-            let legacy_compare = statements[1]
+                .expect("CST logical initializer");
+            let legacy_record = statements[1]
                 .let_initializer_expression_payload()
-                .expect("legacy compare initializer");
+                .expect("legacy record initializer");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
-                cst_add.syntax_expression().expect("CST add syntax").clone(),
-                legacy_compare.fallback(),
+                cst_logical
+                    .syntax_expression()
+                    .expect("CST logical syntax")
+                    .clone(),
+                legacy_record.fallback(),
             );
 
             assert_eq!(
@@ -330,7 +341,7 @@ fn main(input) {
                     Some(&mismatched_payload),
                 ),
                 None,
-                "unsupported CST binary shape must not use the legacy binary shape"
+                "unsupported CST binary shape must not use the legacy record shape"
             );
         },
     );

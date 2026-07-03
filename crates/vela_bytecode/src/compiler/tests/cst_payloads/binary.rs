@@ -277,7 +277,7 @@ fn main(left, right) {
     with_cst_payload_compiler(
         r#"
 fn main(left, right) {
-    let value = left - right;
+    let value = left && right;
     return value;
 }
 "#,
@@ -313,7 +313,7 @@ fn main(left, right) {
                         instruction.kind,
                         UnlinkedInstructionKind::Sub { .. }
                     )),
-                "binary expression should not use the legacy fallback operator"
+                "binary expression should not use the legacy fallback body"
             );
         },
     );
@@ -366,7 +366,7 @@ fn main(input) {
 "#;
     let legacy_text = r#"
 fn main(input, other) {
-    let value = input + other;
+    let value = input && other;
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -417,7 +417,7 @@ fn missing_binary_expression_payload_does_not_use_legacy_binary() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(input, other) {
-    let value = input + other;
+    let value = input && other;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -445,8 +445,8 @@ fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
 fn main(input) {
     let lhs = 1;
     let rhs = 2;
-    let cst_sum = lhs + rhs;
-    let cst_diff = lhs - rhs;
+    let cst_sum = lhs && rhs;
+    let cst_diff = lhs || rhs;
     let legacy_bool = !(input == rhs);
 }
 "#,
@@ -510,7 +510,7 @@ fn binary_value_type_inference_rejects_child_path_payload() {
     with_cst_payload_compiler(
         r#"
 fn main(lhs, rhs) {
-    let value = lhs + rhs;
+    let value = lhs && rhs;
 }
 "#,
         |compiler, payload| {

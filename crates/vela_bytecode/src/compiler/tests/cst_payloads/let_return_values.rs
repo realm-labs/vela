@@ -46,7 +46,7 @@ fn mismatched_path_let_initializer_payload_does_not_use_legacy_expression() {
     let text = r#"
 fn main(value) {
     let cst_value = value;
-    let legacy_value = value + value;
+    let legacy_value = value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1207,7 +1207,7 @@ fn syntax_only_path_let_in_mixed_body_drops_owned_statement_fallback() {
     let text = r#"
 fn main(input) {
     let value = input;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1499,7 +1499,7 @@ fn unclassified_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1525,7 +1525,7 @@ fn return_value_kind_without_expression_payload_does_not_use_legacy_expression()
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1554,7 +1554,7 @@ fn mismatched_path_return_value_payload_does_not_use_legacy_expression() {
     let text = r#"
 fn main(value) {
     return value;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1767,7 +1767,7 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1798,7 +1798,7 @@ fn empty_return_payload_with_literal_fallback_uses_cst_empty_return() {
 fn main() {
     return;
     let value = 1;
-    return value + value;
+    return value && value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

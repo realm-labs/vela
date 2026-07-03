@@ -376,7 +376,7 @@ fn syntax_expression_is_simple_path_arithmetic(expression: &SyntaxExpression) ->
     };
     if !matches!(
         binary.operator(),
-        Some(BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
+        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
     ) {
         return false;
     }
