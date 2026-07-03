@@ -53,7 +53,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             {
                 return false;
             }
-            if syntax_expression_is_simple_path_numeric_add_sub_mul(&initializer) {
+            if syntax_expression_is_simple_path_numeric_arithmetic(&initializer) {
                 return false;
             }
             let_statement.type_hint().is_some()
@@ -68,7 +68,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                     && !syntax_expression_is_simple_path_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_equality(&expression)
-                    && !syntax_expression_is_simple_path_numeric_add_sub_mul(&expression)
+                    && !syntax_expression_is_simple_path_numeric_arithmetic(&expression)
             })
         }),
         SyntaxStatementKind::Block => statement
@@ -230,16 +230,16 @@ fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> b
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
-fn syntax_expression_is_simple_path_numeric_add_sub_mul(expression: &SyntaxExpression) -> bool {
+fn syntax_expression_is_simple_path_numeric_arithmetic(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_simple_path_numeric_add_sub_mul(&inner);
+        return syntax_expression_is_simple_path_numeric_arithmetic(&inner);
     }
     let Some(binary) = expression.as_binary() else {
         return false;
     };
     if !matches!(
         binary.operator(),
-        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul)
+        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
     ) {
         return false;
     }
