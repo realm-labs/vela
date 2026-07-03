@@ -522,7 +522,7 @@ impl Compiler<'_, '_> {
                 "missing CST let initializer payload",
             )));
         }
-        self.compile_let_initializer_legacy(value, expected, context)
+        self.compile_let_initializer_without_payload(value, expected, context)
     }
 
     fn compile_let_initializer_with_syntax_kind(
@@ -620,7 +620,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_let_initializer_legacy(
+    fn compile_let_initializer_without_payload(
         &mut self,
         value: &Expr,
         expected: Option<super::value_types::RuntimeTypeFact>,
@@ -729,7 +729,7 @@ impl Compiler<'_, '_> {
                 "missing CST return value payload",
             )));
         }
-        self.compile_return_expr_legacy(value, expected, context)
+        self.compile_return_expr_without_payload(value, expected, context)
     }
 
     fn compile_return_expr_with_syntax_kind(
@@ -827,7 +827,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn compile_return_expr_legacy(
+    fn compile_return_expr_without_payload(
         &mut self,
         value: &Expr,
         expected: Option<super::value_types::RuntimeTypeFact>,
