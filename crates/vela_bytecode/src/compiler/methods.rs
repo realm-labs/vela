@@ -60,7 +60,7 @@ pub(super) fn host_method_call<'ast>(
 
 fn callee_field_name(
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    fallback_name: &str,
+    default_name: &str,
 ) -> Option<String> {
     match callee_payload {
         Some(payload) => match payload.syntax_kind() {
@@ -68,7 +68,7 @@ fn callee_field_name(
             Some(SyntaxExpressionKind::Path) => None,
             Some(_) => None,
         },
-        None => Some(fallback_name.to_owned()),
+        None => Some(default_name.to_owned()),
     }
 }
 

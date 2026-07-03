@@ -130,14 +130,14 @@ fn indexed_record_field_base_parts_with_payload<'expr>(
 
 fn field_payload_parts<'expr>(
     payload: Option<&CompilerExpressionPayload<'expr>>,
-    fallback_name: &str,
+    default_name: &str,
 ) -> Option<(Option<CompilerExpressionPayload<'expr>>, String)> {
     match payload {
         Some(payload) => Some((
             Some(payload.field_base_payload()?),
             payload.syntax_field_name()?,
         )),
-        None => Some((None, fallback_name.to_owned())),
+        None => Some((None, default_name.to_owned())),
     }
 }
 

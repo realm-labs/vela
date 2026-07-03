@@ -245,8 +245,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
         op: BinaryOp,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        fn collect_fallback<'ast>(
-            fallback: &'ast vela_syntax::ast::Expr,
+        fn collect_expr<'ast>(
+            expr: &'ast vela_syntax::ast::Expr,
             op: BinaryOp,
             operands: &mut Vec<&'ast vela_syntax::ast::Expr>,
         ) {
@@ -254,13 +254,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 op: expr_op,
                 left,
                 right,
-            } = &fallback.kind
+            } = &expr.kind
                 && *expr_op == op
             {
-                collect_fallback(left, op, operands);
-                collect_fallback(right, op, operands);
+                collect_expr(left, op, operands);
+                collect_expr(right, op, operands);
             } else {
-                operands.push(fallback);
+                operands.push(expr);
             }
         }
 
@@ -293,18 +293,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         }
 
-        let mut fallback_operands = Vec::new();
-        collect_fallback(self.fallback, op, &mut fallback_operands);
+        let mut expr_operands = Vec::new();
+        collect_expr(self.fallback, op, &mut expr_operands);
 
         self.source?;
         let mut syntax_operands = Vec::new();
         collect_syntax(self.syntax.clone()?, op, &mut syntax_operands)?;
-        if syntax_operands.len() != fallback_operands.len() {
+        if syntax_operands.len() != expr_operands.len() {
             return None;
         }
 
         Some(
-            fallback_operands
+            expr_operands
                 .into_iter()
                 .zip(syntax_operands.into_iter().map(Some))
                 .map(|(fallback, syntax)| CompilerExpressionPayload {
@@ -562,11 +562,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
             return false;
         };
-        let fallback_count = parts
+        let expression_count = parts
             .iter()
             .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
             .count();
-        syntax.interpolation_expressions().count() > fallback_count
+        syntax.interpolation_expressions().count() > expression_count
     }
 }
 

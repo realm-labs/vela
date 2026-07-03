@@ -187,8 +187,8 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else {
-            let fallback_name = callable_name(callee_path, has_callee_payload, callee)?;
-            if fallback_name == "set::from_array" {
+            let callee_name = callable_name(callee_path, has_callee_payload, callee)?;
+            if callee_name == "set::from_array" {
                 reject_named_call_args(arg_syntax, "set::from_array")?;
                 if args.len() != 1 {
                     return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
@@ -209,18 +209,13 @@ impl Compiler<'_, '_> {
                 );
                 return Ok(dst);
             }
-            let native = self.resolve_native_function_id(&fallback_name, callee.span)?;
-            let arg_registers = self.compile_native_call_args(
-                &fallback_name,
-                native,
-                args,
-                callee.span,
-                arg_syntax,
-            )?;
+            let native = self.resolve_native_function_id(&callee_name, callee.span)?;
+            let arg_registers =
+                self.compile_native_call_args(&callee_name, native, args, callee.span, arg_syntax)?;
             self.emit_spanned(
                 UnlinkedInstructionKind::CallNative {
                     dst: Some(dst),
-                    name: fallback_name,
+                    name: callee_name,
                     native,
                     cache_site: None,
                     args: arg_registers,

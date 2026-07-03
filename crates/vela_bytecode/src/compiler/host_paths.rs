@@ -1041,14 +1041,14 @@ impl Compiler<'_, '_> {
 
 fn host_path_field_name(
     payload: Option<&CompilerExpressionPayload<'_>>,
-    fallback_name: &str,
+    default_name: &str,
 ) -> Option<String> {
     match payload {
         Some(payload) => match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Field) | None => payload.syntax_field_name(),
             Some(_) => None,
         },
-        None => Some(fallback_name.to_owned()),
+        None => Some(default_name.to_owned()),
     }
 }
 

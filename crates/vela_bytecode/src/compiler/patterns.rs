@@ -195,7 +195,7 @@ fn reject_compound_pattern_kind_mismatch(
     kind: SyntaxPatternKind,
     pattern: &Pattern,
 ) -> CompileResult<()> {
-    let matches_fallback = matches!(
+    let matches_pattern = matches!(
         (kind, pattern),
         (
             SyntaxPatternKind::TupleVariant,
@@ -205,7 +205,7 @@ fn reject_compound_pattern_kind_mismatch(
             Pattern::RecordVariant { .. }
         )
     );
-    if matches_fallback {
+    if matches_pattern {
         return Ok(());
     }
     Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
