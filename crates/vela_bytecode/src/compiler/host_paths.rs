@@ -731,12 +731,14 @@ impl Compiler<'_, '_> {
                     if payload.syntax_field_name()?.as_str() != method {
                         return None;
                     }
-                    let base_payload = payload.field_base_payload()?;
+                    let (base, base_payload) = payload.field_base_payload_with_fallback()?;
+                    let base_expr =
+                        expression_payload_is_aligned(&base_payload, base).then_some(base);
                     let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: None,
+                            expr: base_expr,
                             payload: Some(base_payload),
                         }),
                     })
@@ -783,16 +785,10 @@ impl Compiler<'_, '_> {
         receiver: HostCollectionFieldReceiver<'_>,
         kind: HostIndexAccessKind,
     ) -> CompileResult<()> {
-        if let Some(payload) = receiver.payload.as_ref() {
-            let Some(expr) = payload.aligned_fallback_expr() else {
-                return Ok(());
-            };
-            return self.reject_terminal_host_index_access(expr, Some(payload), kind);
-        }
         let Some(expr) = receiver.expr else {
             return Ok(());
         };
-        self.reject_terminal_host_index_access(expr, None, kind)
+        self.reject_terminal_host_index_access(expr, receiver.payload.as_ref(), kind)
     }
 
     #[cfg(test)]

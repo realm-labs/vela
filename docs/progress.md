@@ -569,6 +569,10 @@ payloads for payload-aware read, write, and compound mutation checks before
 falling back to temporary legacy receiver expressions.
 Host path `push` and `remove` lowering now also prefers rowan CST callee field
 names and path segments before falling back to temporary legacy callee names.
+Host collection method target validation now carries the CST receiver fallback
+only when the field-base payload remains aligned, so terminal host-index checks
+no longer ask receiver payloads for a generic aligned legacy expression while
+still resolving collection paths from rowan CST receiver payloads.
 Path-style host method lookup now prefers rowan CST callee path segments for
 native-root filtering and method-name resolution before falling back to
 temporary legacy path vectors.
