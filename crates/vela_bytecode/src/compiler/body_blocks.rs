@@ -246,6 +246,14 @@ fn unary_valued_return(input) {
     return -input;
 }
 
+fn field_unary_valued_let(input) {
+    let value = !input.enabled;
+}
+
+fn field_unary_valued_return(input) {
+    return -input.amount;
+}
+
 fn self_valued_let() {
     let value = self;
 }
@@ -372,20 +380,23 @@ fn parenthesized_simple_values() {
             .expect("path numeric remainder return body");
         let unary_valued_let_body = bodies[32].body().expect("unary valued let body");
         let unary_valued_return_body = bodies[33].body().expect("unary valued return body");
-        let self_valued_let_body = bodies[34].body().expect("self valued let body");
-        let self_valued_return_body = bodies[35].body().expect("self valued return body");
-        let block_valued_let_body = bodies[36].body().expect("block valued let body");
-        let block_valued_return_body = bodies[37].body().expect("block valued return body");
+        let field_unary_valued_let_body = bodies[34].body().expect("field unary valued let body");
+        let field_unary_valued_return_body =
+            bodies[35].body().expect("field unary valued return body");
+        let self_valued_let_body = bodies[36].body().expect("self valued let body");
+        let self_valued_return_body = bodies[37].body().expect("self valued return body");
+        let block_valued_let_body = bodies[38].body().expect("block valued let body");
+        let block_valued_return_body = bodies[39].body().expect("block valued return body");
         let path_value_tail_block_let_body =
-            bodies[38].body().expect("path value tail block let body");
-        let path_value_tail_block_return_body = bodies[39]
+            bodies[40].body().expect("path value tail block let body");
+        let path_value_tail_block_return_body = bodies[41]
             .body()
             .expect("path value tail block return body");
-        let path_value_expression_statements_body = bodies[40]
+        let path_value_expression_statements_body = bodies[42]
             .body()
             .expect("path value expression statements body");
         let parenthesized_simple_values_body =
-            bodies[41].body().expect("parenthesized simple values body");
+            bodies[43].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -539,6 +550,16 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &unary_valued_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &field_unary_valued_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &field_unary_valued_return_body)
                 .is_none()
         );
         assert!(

@@ -1570,6 +1570,38 @@ impl CstBox {
 }
 
 #[test]
+fn syntax_only_field_unary_let_and_return_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn field_unary_let(input) {
+    let ready = !input.enabled;
+}
+
+fn field_unary_return(input) {
+    return -input.amount;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (field_unary_let, _, _) = semantic
+        .function("field_unary_let")
+        .expect("field_unary_let");
+    let (field_unary_return, _, _) = semantic
+        .function("field_unary_return")
+        .expect("field_unary_return");
+
+    compile_program_source(source, text).expect("CST field unary let/return should compile");
+
+    assert!(
+        !field_unary_let.body.has_fallback_statements(),
+        "syntax-only field unary let should not retain an owned body fallback"
+    );
+    assert!(
+        !field_unary_return.body.has_fallback_statements(),
+        "syntax-only field unary return should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn syntax_only_block_let_and_return_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

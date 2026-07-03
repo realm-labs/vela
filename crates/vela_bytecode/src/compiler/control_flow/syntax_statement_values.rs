@@ -427,7 +427,9 @@ impl Compiler<'_, '_> {
         let Some(operand_expression) = unary.expression() else {
             return Ok(None);
         };
-        let Some(path) = expression_syntax_path_or_self(&operand_expression) else {
+        let Some(path) = expression_syntax_path_or_self(&operand_expression)
+            .or_else(|| expression_syntax_path_field(&operand_expression))
+        else {
             return Ok(None);
         };
         let src =

@@ -623,9 +623,10 @@ fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool
     if !matches!(unary.operator(), Some(UnaryOp::Not | UnaryOp::Negate)) {
         return false;
     }
-    unary
-        .expression()
-        .is_some_and(|operand| syntax_expression_is_simple_path(&operand))
+    unary.expression().is_some_and(|operand| {
+        syntax_expression_is_simple_path(&operand)
+            || syntax_expression_is_simple_path_field(&operand)
+    })
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
