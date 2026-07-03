@@ -43,13 +43,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             }
             _ => return None,
         };
+        let body = self.syntax.as_ref()?.as_block()?;
+        #[cfg(test)]
+        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
         #[cfg(not(test))]
-        let fallback = None;
-        CompilerBodyPayload::nested_syntax_optional(
-            self.source?,
-            self.syntax.as_ref()?.as_block()?,
-            fallback,
-        )
+        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -1150,7 +1148,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-            None,
         )
     }
 
