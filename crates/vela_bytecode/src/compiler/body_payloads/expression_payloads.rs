@@ -720,6 +720,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.guard(),

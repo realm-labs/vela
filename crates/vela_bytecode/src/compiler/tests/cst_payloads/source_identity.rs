@@ -397,12 +397,12 @@ fn main(target) {
 }
 
 #[test]
-fn source_less_match_arm_payload_does_not_expose_cst_body_kind() {
+fn source_less_match_arm_payload_does_not_expose_cst_body_or_guard() {
     with_cst_payload_compiler(
         r#"
 fn main(value) {
     return match value {
-        _ => 1,
+        _ if value > 0 => 1,
     };
 }
 "#,
@@ -423,6 +423,7 @@ fn main(value) {
             );
 
             assert_eq!(missing_arm.body_expression_kind(), None);
+            assert!(missing_arm.guard_payload().is_none());
         },
     );
 }
