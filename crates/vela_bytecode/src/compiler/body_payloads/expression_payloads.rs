@@ -712,11 +712,7 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
 
 impl<'ast> CompilerMapEntryPayload<'ast> {
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(
-        source: SourceId,
-        syntax: SyntaxMapEntry,
-        _fallback: &'ast vela_syntax::ast::MapEntry,
-    ) -> Self {
+    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMapEntry) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
@@ -770,11 +766,7 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
 
 impl<'ast> CompilerRecordFieldPayload<'ast> {
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(
-        source: SourceId,
-        syntax: SyntaxRecordExprField,
-        _fallback: &'ast vela_syntax::ast::RecordField,
-    ) -> Self {
+    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxRecordExprField) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),

@@ -315,10 +315,8 @@ fn main() {
             let ExprKind::Call { args, .. } = &legacy_call.fallback().kind else {
                 panic!("expected legacy tuple constructor fallback");
             };
-            let missing_value_arg = body_payloads::CompilerArgumentPayload::missing_value_syntax(
-                SourceId::new(1),
-                &args[0],
-            );
+            let missing_value_arg =
+                body_payloads::CompilerArgumentPayload::missing_value_syntax(SourceId::new(1));
 
             let error = compiler
                 .compile_tuple_variant_fields(

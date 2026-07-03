@@ -200,10 +200,8 @@ fn main() {
             else {
                 panic!("expected legacy call fallback");
             };
-            let missing_value_arg = body_payloads::CompilerArgumentPayload::missing_value_syntax(
-                SourceId::new(1),
-                &legacy_args[0],
-            );
+            let missing_value_arg =
+                body_payloads::CompilerArgumentPayload::missing_value_syntax(SourceId::new(1));
             let argument_payloads = [missing_value_arg];
             let arg_syntax =
                 call_args::CallArgumentSyntax::new(legacy_args, Some(&argument_payloads));
@@ -997,7 +995,7 @@ fn main() {
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
         panic!("expected callback method call");
     };
-    let arg_payload = body_payloads::CompilerArgumentPayload::syntax(source, cst_arg, &args[0]);
+    let arg_payload = body_payloads::CompilerArgumentPayload::syntax(source, cst_arg);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler

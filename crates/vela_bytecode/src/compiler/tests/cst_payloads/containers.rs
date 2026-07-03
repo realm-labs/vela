@@ -710,8 +710,7 @@ fn main() {
     let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
         panic!("expected legacy map fallback");
     };
-    let missing =
-        body_payloads::CompilerMapEntryPayload::syntax(source, cst_entry, &legacy_entries[0]);
+    let missing = body_payloads::CompilerMapEntryPayload::syntax(source, cst_entry);
 
     assert_eq!(missing.syntax_key_name().as_deref(), Some("key"));
     assert!(!missing.has_value_syntax());
@@ -929,8 +928,7 @@ fn main() {
     else {
         panic!("expected legacy record fallback");
     };
-    let missing =
-        body_payloads::CompilerRecordFieldPayload::syntax(source, cst_field, &legacy_fields[0]);
+    let missing = body_payloads::CompilerRecordFieldPayload::syntax(source, cst_field);
 
     assert_eq!(missing.syntax_label_name().as_deref(), Some("first"));
     assert!(!missing.has_value_syntax());

@@ -1527,11 +1527,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
 impl<'ast> CompilerArgumentPayload<'ast> {
     #[cfg(test)]
-    pub(super) fn syntax(
-        source: SourceId,
-        syntax: SyntaxArgument,
-        _fallback: &'ast vela_syntax::ast::Argument,
-    ) -> Self {
+    pub(super) fn syntax(source: SourceId, syntax: SyntaxArgument) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
@@ -1540,10 +1536,7 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn missing_value_syntax(
-        source: SourceId,
-        _fallback: &'ast vela_syntax::ast::Argument,
-    ) -> Self {
+    pub(super) fn missing_value_syntax(source: SourceId) -> Self {
         Self {
             source: Some(source),
             syntax: None,
