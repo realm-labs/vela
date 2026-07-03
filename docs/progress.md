@@ -380,6 +380,9 @@ kept in the matcher for CST literal diagnostics.
 Static type inference for CST `try` expressions now unwraps Option/Result
 operand facts through syntax expressions instead of falling through to the old
 `ExprKind::Try` branch after payload alignment.
+Value-shape inference for CST `try` expressions now unwraps Option/Result
+operand shapes through syntax expressions and block-local syntax shape facts
+instead of treating `try` as shape-unknown in the CST path.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy

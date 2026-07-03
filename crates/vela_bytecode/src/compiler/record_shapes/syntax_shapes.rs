@@ -72,9 +72,9 @@ impl Compiler<'_, '_> {
             SyntaxExpressionKind::Index => self.index_shape(source, expression),
             SyntaxExpressionKind::Paren => self.paren_shape(source, expression),
             SyntaxExpressionKind::Binary => self.binary_shape(expression),
+            SyntaxExpressionKind::Try => self.try_shape(source, expression),
             SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
             | SyntaxExpressionKind::If
@@ -257,6 +257,15 @@ impl Compiler<'_, '_> {
     ) -> Option<ValueShape> {
         let inner = expression.as_paren()?.expression()?;
         self.value_shape_for_syntax_expression(source, &inner)
+    }
+
+    fn try_shape(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<ValueShape> {
+        let operand = expression.as_try()?.expression()?;
+        unwrap_try_shape(self.value_shape_for_syntax_expression(source, &operand)?)
     }
 
     fn binary_shape(&self, expression: &SyntaxExpression) -> Option<ValueShape> {
@@ -606,9 +615,16 @@ impl Compiler<'_, '_> {
                 self.value_shape_for_syntax_expression_with_locals(source, &inner, local_shapes)
             }
             SyntaxExpressionKind::Binary => self.binary_shape(expression),
+            SyntaxExpressionKind::Try => {
+                let operand = expression.as_try()?.expression()?;
+                unwrap_try_shape(self.value_shape_for_syntax_expression_with_locals(
+                    source,
+                    &operand,
+                    local_shapes,
+                )?)
+            }
             SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Try
             | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
@@ -858,6 +874,15 @@ fn literal_type(literal: Literal) -> RuntimeTypeFact {
         }),
         Literal::String(_) => RuntimeTypeFact::primitive(PrimitiveTag::String),
         Literal::Bytes(_) => RuntimeTypeFact::primitive(PrimitiveTag::Bytes),
+    }
+}
+
+fn unwrap_try_shape(shape: ValueShape) -> Option<ValueShape> {
+    match shape {
+        ValueShape::Option(value) => Some(*value),
+        ValueShape::Result { ok: Some(ok), .. } => Some(*ok),
+        ValueShape::Result { .. } => Some(ValueShape::Unknown),
+        _ => None,
     }
 }
 
