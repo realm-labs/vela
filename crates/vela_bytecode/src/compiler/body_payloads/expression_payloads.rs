@@ -439,17 +439,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn array_element_count_does_not_exceed_fallback(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_array_elements(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let ExprKind::Array(items) = &self.fallback.kind else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_array) else {
-            return true;
+            return false;
         };
-        syntax.expressions().count() <= items.len()
+        syntax.expressions().count() > items.len()
     }
 
     pub(in crate::compiler) fn map_entry_payloads(
@@ -477,17 +477,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn map_entry_count_matches_fallback(&self) -> bool {
+    pub(in crate::compiler) fn has_mismatched_map_entries(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let ExprKind::Map(entries) = &self.fallback.kind else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_map) else {
-            return true;
+            return false;
         };
-        syntax.entries().count() == entries.len()
+        syntax.entries().count() != entries.len()
     }
 
     pub(in crate::compiler) fn record_field_payloads(
@@ -510,17 +510,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn record_field_count_does_not_exceed_fallback(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_record_fields(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let ExprKind::Record { fields, .. } = &self.fallback.kind else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_record) else {
-            return true;
+            return false;
         };
-        syntax.fields().len() <= fields.len()
+        syntax.fields().len() > fields.len()
     }
 
     pub(in crate::compiler) fn interpolated_expression_payloads(
@@ -552,23 +552,21 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn interpolation_expression_count_does_not_exceed_fallback(
-        &self,
-    ) -> bool {
+    pub(in crate::compiler) fn has_extra_interpolation_expressions(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
-            return true;
+            return false;
         };
         let fallback_count = parts
             .iter()
             .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
             .count();
-        syntax.interpolation_expressions().count() <= fallback_count
+        syntax.interpolation_expressions().count() > fallback_count
     }
 }
 

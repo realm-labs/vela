@@ -156,7 +156,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
                 };
-                if !payload.array_element_count_does_not_exceed_fallback() {
+                if payload.has_extra_array_elements() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST array elements",
                     )));
@@ -168,7 +168,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Map(entries) = &expr.kind else {
                     unreachable!("validated CST map expression payload kind");
                 };
-                if !payload.map_entry_count_matches_fallback() {
+                if payload.has_mismatched_map_entries() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST map entries",
                     )));
@@ -180,7 +180,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
-                if !payload.record_field_count_does_not_exceed_fallback() {
+                if payload.has_extra_record_fields() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST record fields",
                     )));
@@ -369,7 +369,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
-                    if !payload.interpolation_expression_count_does_not_exceed_fallback() {
+                    if payload.has_extra_interpolation_expressions() {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST interpolation expressions",
                         )));

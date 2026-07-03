@@ -328,7 +328,7 @@ fn main() {
                 .array_element_payloads()
                 .expect("array element payloads");
 
-            assert!(missing_source.array_element_count_does_not_exceed_fallback());
+            assert!(!missing_source.has_extra_array_elements());
             assert!(elements[0].syntax_expression().is_none());
         },
     );
@@ -355,7 +355,7 @@ fn main() {
                 .map_entry_payloads()
                 .expect("map entry payloads");
 
-            assert!(missing_source.map_entry_count_matches_fallback());
+            assert!(!missing_source.has_mismatched_map_entries());
             assert!(!entries[0].has_key_syntax());
             assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);
@@ -394,7 +394,7 @@ fn main() {
                 .record_field_payloads()
                 .expect("record field payloads");
 
-            assert!(missing_source.record_field_count_does_not_exceed_fallback());
+            assert!(!missing_source.has_extra_record_fields());
             assert!(!fields[0].has_syntax());
             assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
@@ -471,7 +471,7 @@ fn main(value) {
                 .interpolated_expression_payloads()
                 .expect("interpolated expression payloads");
 
-            assert!(missing_source.interpolation_expression_count_does_not_exceed_fallback());
+            assert!(!missing_source.has_extra_interpolation_expressions());
             assert!(expressions[0].syntax_expression().is_none());
         },
     );
