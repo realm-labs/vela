@@ -686,6 +686,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Assign { target, .. } = &expr.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.assignment_target_expression(),
@@ -702,6 +703,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Assign { value, .. } = &expr.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.assignment_value_expression(),

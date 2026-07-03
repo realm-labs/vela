@@ -417,6 +417,16 @@ fn main(target) {
 
             assert_eq!(missing_let.let_initializer_kind(), None);
             assert_eq!(missing_assignment.assignment_value_kind(), None);
+            assert!(
+                missing_assignment
+                    .assignment_target_expression_payload()
+                    .is_none()
+            );
+            assert!(
+                missing_assignment
+                    .assignment_value_expression_payload()
+                    .is_none()
+            );
             assert_eq!(missing_expression.expression_kind(), None);
             assert_eq!(missing_expression.value_expression_kind(), None);
             assert_eq!(missing_return.return_value_kind(), None);
