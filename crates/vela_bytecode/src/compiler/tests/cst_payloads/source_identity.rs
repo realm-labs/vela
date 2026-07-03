@@ -48,6 +48,33 @@ fn main(left, right) {
 }
 
 #[test]
+fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main(left, middle, right) {
+    let value = left && middle && right;
+}
+"#,
+        |_, payload| {
+            let logical = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("logical initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    logical.syntax_expression().expect("logical syntax").clone(),
+                    logical.fallback(),
+                );
+
+            assert!(
+                missing_source
+                    .logical_chain_operand_payloads(BinaryOp::And)
+                    .is_none()
+            );
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"

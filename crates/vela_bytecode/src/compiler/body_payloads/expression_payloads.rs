@@ -288,21 +288,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let mut fallback_operands = Vec::new();
         collect_fallback(self.fallback, op, &mut fallback_operands);
 
-        let syntax_operands = if let Some(syntax) = self.syntax.clone() {
-            let mut syntax_operands = Vec::new();
-            collect_syntax(syntax, op, &mut syntax_operands)?;
-            if syntax_operands.len() != fallback_operands.len() {
-                return None;
-            }
-            syntax_operands.into_iter().map(Some).collect()
-        } else {
-            vec![None; fallback_operands.len()]
-        };
+        self.source?;
+        let mut syntax_operands = Vec::new();
+        collect_syntax(self.syntax.clone()?, op, &mut syntax_operands)?;
+        if syntax_operands.len() != fallback_operands.len() {
+            return None;
+        }
 
         Some(
             fallback_operands
                 .into_iter()
-                .zip(syntax_operands)
+                .zip(syntax_operands.into_iter().map(Some))
                 .map(|(fallback, syntax)| CompilerExpressionPayload {
                     source: self.source,
                     syntax,
