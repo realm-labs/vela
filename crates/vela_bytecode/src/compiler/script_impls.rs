@@ -303,11 +303,12 @@ fn impl_method_payloads<'ast>(
                 #[cfg(test)]
                 body_blocks,
             );
-            #[cfg(test)]
-            let body =
-                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_fallback)?;
-            #[cfg(not(test))]
-            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
+            let body = CompilerBodyPayload::syntax_with_optional_body(
+                source,
+                syntax_body,
+                #[cfg(test)]
+                body_fallback,
+            )?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -349,11 +350,12 @@ fn trait_default_method_payloads<'ast>(
                 #[cfg(test)]
                 body_blocks,
             );
-            #[cfg(test)]
-            let body =
-                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_fallback)?;
-            #[cfg(not(test))]
-            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
+            let body = CompilerBodyPayload::syntax_with_optional_body(
+                source,
+                syntax_body,
+                #[cfg(test)]
+                body_fallback,
+            )?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {

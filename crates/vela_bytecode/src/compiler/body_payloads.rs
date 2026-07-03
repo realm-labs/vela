@@ -200,21 +200,20 @@ impl<'ast> CompilerBodyPayload<'ast> {
             })
     }
 
-    #[cfg(test)]
     pub(super) fn syntax_with_optional_body(
         source: SourceId,
         body: SyntaxBlock,
-        fallback: Option<CompilerBodyFallback<'ast>>,
+        #[cfg(test)] fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
+        #[cfg(test)]
         match fallback {
             Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
             None => Self::syntax_only_without_body_lookup(source, body),
         }
-    }
-
-    #[cfg(not(test))]
-    pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {
-        Some(Self::syntax_only(source, body))
+        #[cfg(not(test))]
+        {
+            Some(Self::syntax_only(source, body))
+        }
     }
 
     #[cfg(test)]

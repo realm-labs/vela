@@ -511,15 +511,12 @@ fn function_body_payload<'ast>(
     let syntax_body = syntax_function.body()?;
     #[cfg(test)]
     let body_fallback = body_fallback(source, &syntax_body, body_blocks);
-    #[cfg(test)]
     let body = super::body_payloads::CompilerBodyPayload::syntax_with_optional_body(
         source,
         syntax_body,
+        #[cfg(test)]
         body_fallback,
     )?;
-    #[cfg(not(test))]
-    let body =
-        super::body_payloads::CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
         name: name.to_owned(),
