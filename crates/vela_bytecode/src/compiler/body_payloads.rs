@@ -233,51 +233,38 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        #[cfg(not(test))]
-        {
-            syntax_statements
-                .into_iter()
-                .map(|syntax| CompilerStatementPayload {
-                    source: Some(self.syntax.source),
-                    syntax: Some(syntax),
-                    _ast: PhantomData,
-                })
-                .collect()
-        }
+
         #[cfg(test)]
-        {
-            match self.fallback_statements {
-                Some(fallback_statements) => fallback_statements
-                    .iter()
-                    .enumerate()
-                    .map(|(index, fallback)| CompilerStatementPayload {
-                        source: Some(self.syntax.source),
-                        syntax: syntax_statements.get(index).cloned(),
-                        _ast: PhantomData,
-                        fallback: syntax_statements
-                            .get(index)
-                            .is_none_or(|statement| {
-                                let is_unterminated_tail =
-                                    index == syntax_statements.len().saturating_sub(1);
-                                syntax_statement_requires_body_block_lookup(
-                                    statement,
-                                    is_unterminated_tail,
-                                )
-                            })
-                            .then_some(fallback),
-                    })
-                    .collect(),
-                None => syntax_statements
-                    .into_iter()
-                    .map(|syntax| CompilerStatementPayload {
-                        source: Some(self.syntax.source),
-                        syntax: Some(syntax),
-                        _ast: PhantomData,
-                        fallback: None,
-                    })
-                    .collect(),
-            }
+        if let Some(fallback_statements) = self.fallback_statements {
+            return fallback_statements
+                .iter()
+                .enumerate()
+                .map(|(index, fallback)| {
+                    let syntax = syntax_statements.get(index).cloned();
+                    let fallback = syntax_statements
+                        .get(index)
+                        .is_none_or(|statement| {
+                            let is_unterminated_tail =
+                                index == syntax_statements.len().saturating_sub(1);
+                            syntax_statement_requires_body_block_lookup(
+                                statement,
+                                is_unterminated_tail,
+                            )
+                        })
+                        .then_some(fallback);
+                    CompilerStatementPayload::new_with_fallback(
+                        self.syntax.source,
+                        syntax,
+                        fallback,
+                    )
+                })
+                .collect();
         }
+
+        syntax_statements
+            .into_iter()
+            .map(|syntax| CompilerStatementPayload::new_syntax(self.syntax.source, syntax))
+            .collect()
     }
 
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
@@ -286,34 +273,19 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        #[cfg(not(test))]
-        {
-            let tail_index = syntax_statements.len().saturating_sub(1);
-            syntax_statements
-                .iter()
-                .enumerate()
-                .any(|(index, statement)| {
-                    syntax_statement_requires_body_block_lookup(statement, index == tail_index)
-                })
-        }
+
         #[cfg(test)]
-        {
-            match self.fallback_statements {
-                Some(fallback_statements) => syntax_statements.len() != fallback_statements.len(),
-                None => {
-                    let tail_index = syntax_statements.len().saturating_sub(1);
-                    syntax_statements
-                        .iter()
-                        .enumerate()
-                        .any(|(index, statement)| {
-                            syntax_statement_requires_body_block_lookup(
-                                statement,
-                                index == tail_index,
-                            )
-                        })
-                }
-            }
+        if let Some(fallback_statements) = self.fallback_statements {
+            return syntax_statements.len() != fallback_statements.len();
         }
+
+        let tail_index = syntax_statements.len().saturating_sub(1);
+        syntax_statements
+            .iter()
+            .enumerate()
+            .any(|(index, statement)| {
+                syntax_statement_requires_body_block_lookup(statement, index == tail_index)
+            })
     }
 
     pub(super) fn block_value<'payload>(
@@ -502,18 +474,22 @@ fn if_payload_for_expr<'ast>(
             Some(CompilerBodyFallback::block(&fallback.then_branch)),
         )
     });
-    let else_body = match fallback.else_branch.as_ref() {
-        Some(ElseBranch::Block(block)) => syntax.else_block().and_then(|body| {
-            #[cfg(not(test))]
-            let _ = block;
+    let else_body = if matches!(fallback.else_branch.as_ref(), Some(ElseBranch::Block(_))) {
+        syntax.else_block().and_then(|body| {
             CompilerBodyPayload::nested_syntax_optional(
                 source,
                 body,
                 #[cfg(test)]
-                Some(CompilerBodyFallback::block(block)),
+                {
+                    let Some(ElseBranch::Block(block)) = fallback.else_branch.as_ref() else {
+                        unreachable!("else block syntax was checked before payload creation");
+                    };
+                    Some(CompilerBodyFallback::block(block))
+                },
             )
-        }),
-        Some(ElseBranch::If(_)) | None => None,
+        })
+    } else {
+        None
     };
     let else_if = match fallback.else_branch.as_ref() {
         Some(ElseBranch::If(if_expr)) => {
@@ -561,6 +537,30 @@ impl<'ast> CompilerIfPayload<'ast> {
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
+    fn new_syntax(source: SourceId, syntax: SyntaxStatement) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            _ast: PhantomData,
+            #[cfg(test)]
+            fallback: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn new_with_fallback(
+        source: SourceId,
+        syntax: Option<SyntaxStatement>,
+        fallback: Option<&'ast Stmt>,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax,
+            _ast: PhantomData,
+            fallback,
+        }
+    }
+
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_only_for_test(
         source: SourceId,
