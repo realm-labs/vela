@@ -7,13 +7,14 @@ use vela_syntax::ast::{
 };
 
 #[cfg(test)]
+use super::CompilerBodyFallback;
+#[cfg(test)]
 use super::expression_fallback_block;
 use super::{
-    CompilerArgumentPayload, CompilerBodyFallback, CompilerBodyPayload,
-    CompilerExpressionFallbackKind, CompilerExpressionPayload, CompilerIfPayload,
-    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
-    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_expr,
-    match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
+    CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionFallbackKind,
+    CompilerExpressionPayload, CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload,
+    CompilerPatternPayload, CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload,
+    if_payload_for_expr, match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -35,13 +36,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Block(block) = self.fallback_kind else {
-            return None;
+        #[cfg(test)]
+        let fallback = match self.fallback_kind {
+            CompilerExpressionFallbackKind::Block(block) => {
+                Some(CompilerBodyFallback::block(block))
+            }
+            _ => return None,
         };
+        #[cfg(not(test))]
+        let fallback = None;
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
-            Some(CompilerBodyFallback::block(block)),
+            fallback,
         )
     }
 

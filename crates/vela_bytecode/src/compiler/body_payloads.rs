@@ -101,7 +101,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Literal,
     Path,
     SelfValue,
+    #[cfg(test)]
     Block(&'ast Block),
+    #[cfg(not(test))]
+    Block,
     If(&'ast IfExpr),
     Match(&'ast MatchExpr),
     Assign {
@@ -1478,7 +1481,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
             ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
             ExprKind::SelfValue => CompilerExpressionFallbackKind::SelfValue,
+            #[cfg(test)]
             ExprKind::Block(block) => CompilerExpressionFallbackKind::Block(block),
+            #[cfg(not(test))]
+            ExprKind::Block(_) => CompilerExpressionFallbackKind::Block,
             ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
             ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
             ExprKind::Assign { target, value, .. } => {
@@ -1605,7 +1611,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 )
             }
             SyntaxExpressionKind::Block => {
-                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block(_))
+                #[cfg(test)]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block(_))
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block)
+                }
             }
             SyntaxExpressionKind::If => {
                 matches!(self.fallback_kind, CompilerExpressionFallbackKind::If(_))
