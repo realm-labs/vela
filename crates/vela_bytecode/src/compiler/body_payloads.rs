@@ -4,9 +4,11 @@ use vela_common::SourceId;
 use vela_common::Span;
 #[cfg(test)]
 use vela_syntax::ast::BinaryOp;
+#[cfg(test)]
+use vela_syntax::ast::MapEntry;
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, InterpolatedStringPart,
-    MapEntry, MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
+    MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
     SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
     SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
@@ -152,7 +154,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Array(&'ast [vela_syntax::ast::Expr]),
     #[cfg(not(test))]
     Array,
+    #[cfg(test)]
     Map(&'ast [MapEntry]),
+    #[cfg(not(test))]
+    Map,
     Record {
         fields: &'ast [RecordField],
     },
@@ -1538,7 +1543,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Array(items) => CompilerExpressionFallbackKind::Array(items),
             #[cfg(not(test))]
             ExprKind::Array(_) => CompilerExpressionFallbackKind::Array,
+            #[cfg(test)]
             ExprKind::Map(entries) => CompilerExpressionFallbackKind::Map(entries),
+            #[cfg(not(test))]
+            ExprKind::Map(_) => CompilerExpressionFallbackKind::Map,
             ExprKind::Record { fields, .. } => CompilerExpressionFallbackKind::Record { fields },
             ExprKind::InterpolatedString(parts) => {
                 CompilerExpressionFallbackKind::InterpolatedString(parts)
@@ -1656,7 +1664,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 }
             }
             SyntaxExpressionKind::Map => {
-                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
+                #[cfg(test)]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map)
+                }
             }
             SyntaxExpressionKind::Record => {
                 matches!(

@@ -663,7 +663,12 @@ fn assert_cst_let_initializer_map_entry_value_body_payloads(
     let values = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(entries) = payload.fallback_map_entries() else {
+                return Vec::new();
+            };
+            payload.map_entry_payloads(entries).unwrap_or_default()
+        })
         .map(|entry| entry.value_expression_payload())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
@@ -683,7 +688,12 @@ fn assert_cst_assignment_value_map_entry_value_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
-        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(entries) = payload.fallback_map_entries() else {
+                return Vec::new();
+            };
+            payload.map_entry_payloads(entries).unwrap_or_default()
+        })
         .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
@@ -701,7 +711,12 @@ fn assert_cst_return_value_map_entry_value_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
-        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(entries) = payload.fallback_map_entries() else {
+                return Vec::new();
+            };
+            payload.map_entry_payloads(entries).unwrap_or_default()
+        })
         .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
@@ -720,7 +735,12 @@ fn assert_cst_call_argument_map_entry_value_body_payloads(
         .iter()
         .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
         .map(|argument| argument.value_expression_payload())
-        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(entries) = payload.fallback_map_entries() else {
+                return Vec::new();
+            };
+            payload.map_entry_payloads(entries).unwrap_or_default()
+        })
         .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;

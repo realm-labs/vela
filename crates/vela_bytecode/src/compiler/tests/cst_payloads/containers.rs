@@ -176,8 +176,11 @@ fn main() {
                     .clone(),
                 legacy_map.fallback(),
             );
+            let entries = mismatched_map
+                .fallback_map_entries()
+                .expect("fallback map entries");
             let map_entries = mismatched_map
-                .map_entry_payloads()
+                .map_entry_payloads(entries)
                 .expect("map entry payloads");
             assert_eq!(map_entries.len(), 1);
             assert_eq!(map_entries[0].syntax_key_name().as_deref(), Some("value"));
@@ -595,7 +598,12 @@ fn return_map() {
         .statement_payloads()
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(entries) = payload.fallback_map_entries() else {
+                return Vec::new();
+            };
+            payload.map_entry_payloads(entries).unwrap_or_default()
+        })
         .collect::<Vec<_>>();
     let map_keys = map_entries
         .iter()
@@ -1067,7 +1075,12 @@ fn block_tail_containers() {
         .array_element_payloads(array_items)
         .expect("array element payloads")
         .iter()
-        .flat_map(|element| element.map_entry_payloads().unwrap_or_default())
+        .flat_map(|element| {
+            let Some(entries) = element.fallback_map_entries() else {
+                return Vec::new();
+            };
+            element.map_entry_payloads(entries).unwrap_or_default()
+        })
         .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;

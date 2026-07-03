@@ -1,6 +1,6 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal,
+    AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal, MapEntry,
     MatchExpr, Pattern, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
@@ -588,10 +588,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn map_entry_payloads(
         &self,
+        entries: &'ast [MapEntry],
     ) -> Option<Vec<CompilerMapEntryPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::Map(entries) = self.fallback_kind else {
+        if !self.fallback_is_map() {
             return None;
-        };
+        }
         let syntax_entries = self
             .syntax
             .as_ref()?
@@ -611,17 +612,39 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_mismatched_map_entries(&self) -> bool {
+    pub(in crate::compiler) fn has_mismatched_map_entries(
+        &self,
+        entries: &'ast [MapEntry],
+    ) -> bool {
         if self.source.is_none() {
             return false;
         }
-        let CompilerExpressionFallbackKind::Map(entries) = self.fallback_kind else {
+        if !self.fallback_is_map() {
             return false;
-        };
+        }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_map) else {
             return false;
         };
         syntax.entries().count() != entries.len()
+    }
+
+    fn fallback_is_map(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_map_entries(&self) -> Option<&'ast [MapEntry]> {
+        let CompilerExpressionFallbackKind::Map(entries) = self.fallback_kind else {
+            return None;
+        };
+        Some(entries)
     }
 
     pub(in crate::compiler) fn record_field_payloads(

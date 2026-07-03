@@ -370,11 +370,14 @@ fn main() {
                     map.syntax_expression().expect("map syntax").clone(),
                     map.fallback(),
                 );
+            let fallback_entries = missing_source
+                .fallback_map_entries()
+                .expect("fallback map entries");
             let entries = missing_source
-                .map_entry_payloads()
+                .map_entry_payloads(fallback_entries)
                 .expect("map entry payloads");
 
-            assert!(!missing_source.has_mismatched_map_entries());
+            assert!(!missing_source.has_mismatched_map_entries(fallback_entries));
             assert!(!entries[0].has_key_syntax());
             assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);

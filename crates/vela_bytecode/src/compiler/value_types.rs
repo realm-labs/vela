@@ -341,7 +341,7 @@ fn static_expr_type_with_payload(
             )))
         }
         ExprKind::Map(entries) => {
-            let payloads = aligned_payload.and_then(CompilerExpressionPayload::map_entry_payloads);
+            let payloads = aligned_payload.and_then(|payload| payload.map_entry_payloads(entries));
             StaticExprType::Exact(map_literal_type(entries.iter().enumerate().map(
                 |(index, entry)| {
                     let value_payload = payloads
