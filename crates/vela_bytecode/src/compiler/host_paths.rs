@@ -271,7 +271,7 @@ impl Compiler<'_, '_> {
                 Some(_) => None,
                 None if payload
                     .as_ref()
-                    .is_some_and(|payload| payload.source().is_some()) =>
+                    .is_some_and(CompilerExpressionPayload::has_missing_syntax) =>
                 {
                     None
                 }
@@ -1137,7 +1137,6 @@ fn const_host_path_arg_with_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<ConstHostPathArg> {
     payload
-        .filter(|payload| payload.source().is_some())
         .and_then(CompilerExpressionPayload::syntax_literal)
         .and_then(|literal| const_host_path_arg_from_literal(&literal))
 }
