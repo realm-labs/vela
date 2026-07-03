@@ -305,6 +305,12 @@ fn main() {
                 .expect("map entry payloads");
 
             assert_eq!(entries[0].syntax_key_name(), None);
+            assert!(
+                entries[0]
+                    .value_expression_payload()
+                    .syntax_expression()
+                    .is_none()
+            );
         },
     );
 }
@@ -335,6 +341,13 @@ fn main() {
                 .expect("record field payloads");
 
             assert_eq!(fields[0].syntax_label_name(), None);
+            assert!(
+                fields[0]
+                    .value_expression_payload()
+                    .expect("record field value payload")
+                    .syntax_expression()
+                    .is_none()
+            );
         },
     );
 }
@@ -365,6 +378,12 @@ fn main() {
                 .expect("call argument payloads");
 
             assert_eq!(args[0].syntax_name(), None);
+            assert!(
+                args[0]
+                    .value_expression_payload()
+                    .syntax_expression()
+                    .is_none()
+            );
         },
     );
 }

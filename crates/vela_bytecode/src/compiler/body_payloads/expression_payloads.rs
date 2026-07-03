@@ -609,7 +609,9 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload {
             source: self.source,
-            syntax: self.syntax.as_ref().and_then(SyntaxMapEntry::value),
+            syntax: self
+                .source
+                .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
             fallback: &self.fallback.value,
         }
     }
@@ -651,10 +653,11 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         Some(CompilerExpressionPayload {
             source: self.source,
-            syntax: self
-                .syntax
-                .as_ref()
-                .and_then(SyntaxRecordExprField::expression),
+            syntax: self.source.and_then(|_| {
+                self.syntax
+                    .as_ref()
+                    .and_then(SyntaxRecordExprField::expression)
+            }),
             fallback: self.fallback.value.as_ref()?,
         })
     }

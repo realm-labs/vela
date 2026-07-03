@@ -929,7 +929,9 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload {
             source: self.source,
-            syntax: self.syntax.as_ref().and_then(SyntaxArgument::expression),
+            syntax: self
+                .source
+                .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
             fallback: &self.fallback.value,
         }
     }
