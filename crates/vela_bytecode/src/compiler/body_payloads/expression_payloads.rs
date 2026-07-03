@@ -158,9 +158,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_target_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Assign { target, .. } = self.fallback_kind else {
-            return None;
-        };
+        let target = self.fallback_assignment_target()?;
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -172,9 +170,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_value_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Assign { value, .. } = self.fallback_kind else {
-            return None;
-        };
+        let value = self.fallback_assignment_value()?;
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -184,14 +180,59 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
-        if !matches!(
-            self.fallback_kind,
-            CompilerExpressionFallbackKind::Assign { .. }
-        ) {
+        if !self.fallback_is_assignment() {
             return None;
         }
         self.source?;
         self.syntax.as_ref()?.as_assign()?.operator()
+    }
+
+    fn fallback_assignment_target(&self) -> Option<&'ast Expr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Assign { target, .. } = self.fallback_kind else {
+                return None;
+            };
+            Some(target)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Assign { target, .. } = &self.fallback.kind else {
+                return None;
+            };
+            Some(target)
+        }
+    }
+
+    fn fallback_assignment_value(&self) -> Option<&'ast Expr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Assign { value, .. } = self.fallback_kind else {
+                return None;
+            };
+            Some(value)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Assign { value, .. } = &self.fallback.kind else {
+                return None;
+            };
+            Some(value)
+        }
+    }
+
+    fn fallback_is_assignment(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Assign { .. }
+            )
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Assign)
+        }
     }
 
     pub(in crate::compiler) fn paren_inner_payload(
