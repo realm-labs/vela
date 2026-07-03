@@ -96,6 +96,9 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
 
 #[derive(Clone, Copy)]
 pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
+    Literal,
+    Path,
+    SelfValue,
     Block(&'ast Block),
     If(&'ast IfExpr),
     Match(&'ast MatchExpr),
@@ -1403,6 +1406,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
         let fallback_kind = match &fallback.kind {
+            ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
+            ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
+            ExprKind::SelfValue => CompilerExpressionFallbackKind::SelfValue,
             ExprKind::Block(block) => CompilerExpressionFallbackKind::Block(block),
             ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
             ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
@@ -1448,8 +1454,105 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self::from_fallback(Some(source), None, fallback)
     }
 
-    pub(super) fn alignment_fallback_expr(&self) -> &'ast vela_syntax::ast::Expr {
-        self.fallback
+    pub(super) fn aligned_fallback_expr(&self) -> Option<&'ast vela_syntax::ast::Expr> {
+        let syntax_kind = self.stored_syntax_kind()?;
+        if !self.fallback_kind_matches_syntax_kind(syntax_kind) {
+            return None;
+        }
+        if syntax_kind == SyntaxExpressionKind::Path && !self.fallback_path_shape_matches_syntax() {
+            return None;
+        }
+        let syntax_span = self.syntax_span()?;
+        spans_overlap(syntax_span, self.fallback.span).then_some(self.fallback)
+    }
+
+    fn fallback_kind_matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
+        match syntax_kind {
+            SyntaxExpressionKind::Literal => matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Literal
+                    | CompilerExpressionFallbackKind::InterpolatedString(_)
+            ),
+            SyntaxExpressionKind::Path => matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue
+            ),
+            SyntaxExpressionKind::Paren => true,
+            SyntaxExpressionKind::Unary => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Unary { .. }
+                )
+            }
+            SyntaxExpressionKind::Binary => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Binary { .. }
+                )
+            }
+            SyntaxExpressionKind::Assign => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Assign { .. }
+                )
+            }
+            SyntaxExpressionKind::Field => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Field { .. }
+                )
+            }
+            SyntaxExpressionKind::Call => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Call { .. }
+                )
+            }
+            SyntaxExpressionKind::Index => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Index { .. }
+                )
+            }
+            SyntaxExpressionKind::Try => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
+            }
+            SyntaxExpressionKind::Array => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array(_))
+            }
+            SyntaxExpressionKind::Map => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
+            }
+            SyntaxExpressionKind::Record => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Record { .. }
+                )
+            }
+            SyntaxExpressionKind::Lambda => {
+                matches!(
+                    self.fallback_kind,
+                    CompilerExpressionFallbackKind::Lambda { .. }
+                )
+            }
+            SyntaxExpressionKind::Block => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block(_))
+            }
+            SyntaxExpressionKind::If => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::If(_))
+            }
+            SyntaxExpressionKind::Match => {
+                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match(_))
+            }
+        }
+    }
+
+    fn fallback_path_shape_matches_syntax(&self) -> bool {
+        match self.fallback_kind {
+            CompilerExpressionFallbackKind::Path => !self.syntax_is_self(),
+            CompilerExpressionFallbackKind::SelfValue => self.syntax_is_self(),
+            _ => false,
+        }
     }
 
     pub(in crate::compiler) fn is_fallback_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
@@ -1490,6 +1593,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source?;
         self.syntax.as_ref()
     }
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 impl<'ast> CompilerIfPayload<'ast> {

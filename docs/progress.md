@@ -324,6 +324,9 @@ migrating.
 The raw expression payload fallback accessor is now test-only; production
 callers must use alignment-scoped payload helpers while the remaining
 `CompilerExpressionPayload` storage is decomposed.
+Expression payload alignment now asks the payload for an already-validated
+aligned fallback expression, removing the remaining production raw fallback
+getter used by alignment helpers.
 All `CompilerExpressionPayload` instances are now created through a single
 payload-boundary constructor, giving the next decomposition slice one
 bytecode-owned boundary for attaching expression fallback facts instead of
