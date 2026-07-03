@@ -113,10 +113,10 @@ impl Compiler<'_, '_> {
         let Some(op) = binary.operator() else {
             return Ok(None);
         };
-        if matches!(
-            op,
-            BinaryOp::And | BinaryOp::Or | BinaryOp::Range | BinaryOp::RangeInclusive
-        ) {
+        if matches!(op, BinaryOp::And | BinaryOp::Or) {
+            return self.compile_syntax_logical_chain(source, expression, op);
+        }
+        if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
             return Ok(None);
         }
         let Some(lhs_expression) = binary.lhs() else {
@@ -152,6 +152,89 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_logical_chain(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        op: BinaryOp,
+    ) -> CompileResult<Option<Register>> {
+        let Some(operands) = logical_chain_syntax_operands(expression, op) else {
+            return Ok(None);
+        };
+        match op {
+            BinaryOp::And => self.compile_syntax_logical_and_chain(source, &operands),
+            BinaryOp::Or => self.compile_syntax_logical_or_chain(source, &operands),
+            _ => unreachable!("logical chain only supports && and ||"),
+        }
+    }
+
+    fn compile_syntax_logical_and_chain(
+        &mut self,
+        source: SourceId,
+        operands: &[SyntaxExpression],
+    ) -> CompileResult<Option<Register>> {
+        let dst = self.alloc_register()?;
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, true);
+            return Ok(Some(dst));
+        };
+
+        let mut false_branches = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let Some(value) = self.compile_syntax_expression(source, operand)? else {
+                return Ok(None);
+            };
+            false_branches.push(self.emit_jump_if_false(value));
+        }
+
+        let Some(last) = self.compile_syntax_expression(source, last)? else {
+            return Ok(None);
+        };
+        self.emit_truthy_to_bool(dst, last)?;
+        let end = self.emit_jump();
+
+        for false_branch in false_branches {
+            self.patch_jump(false_branch, self.current_offset())?;
+        }
+        self.emit_bool_constant_to(dst, false);
+        self.patch_jump(end, self.current_offset())?;
+
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_logical_or_chain(
+        &mut self,
+        source: SourceId,
+        operands: &[SyntaxExpression],
+    ) -> CompileResult<Option<Register>> {
+        let dst = self.alloc_register()?;
+        let Some((last, prefix)) = operands.split_last() else {
+            self.emit_bool_constant_to(dst, false);
+            return Ok(Some(dst));
+        };
+
+        let mut end_jumps = Vec::with_capacity(prefix.len());
+        for operand in prefix {
+            let Some(value) = self.compile_syntax_expression(source, operand)? else {
+                return Ok(None);
+            };
+            let next_operand = self.emit_jump_if_false(value);
+            self.emit_bool_constant_to(dst, true);
+            end_jumps.push(self.emit_jump());
+            self.patch_jump(next_operand, self.current_offset())?;
+        }
+
+        let Some(last) = self.compile_syntax_expression(source, last)? else {
+            return Ok(None);
+        };
+        self.emit_truthy_to_bool(dst, last)?;
+        for end in end_jumps {
+            self.patch_jump(end, self.current_offset())?;
+        }
+
         Ok(Some(dst))
     }
 
@@ -331,6 +414,32 @@ fn syntax_path_numeric_literal_operands<'expression>(
         return Some((rhs, lhs, BinaryLiteralSide::Left));
     }
     None
+}
+
+fn logical_chain_syntax_operands(
+    expression: &SyntaxExpression,
+    op: BinaryOp,
+) -> Option<Vec<SyntaxExpression>> {
+    fn collect(
+        expression: SyntaxExpression,
+        op: BinaryOp,
+        operands: &mut Vec<SyntaxExpression>,
+    ) -> Option<()> {
+        if let Some(binary) = expression.as_binary()
+            && binary.operator() == Some(op)
+        {
+            collect(binary.lhs()?, op, operands)?;
+            collect(binary.rhs()?, op, operands)?;
+            return Some(());
+        }
+
+        operands.push(expression);
+        Some(())
+    }
+
+    let mut operands = Vec::new();
+    collect(expression.clone(), op, &mut operands)?;
+    Some(operands)
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {

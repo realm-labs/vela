@@ -46,7 +46,11 @@ fn mismatched_path_let_initializer_payload_does_not_use_legacy_expression() {
     let text = r#"
 fn main(value) {
     let cst_value = value;
-    let legacy_value = value && value;
+    let legacy_value = value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -554,6 +558,39 @@ fn main(left, right) {
             .iter()
             .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Mul { .. })),
         "CST path arithmetic return should emit the binary multiply operator"
+    );
+}
+
+#[test]
+fn syntax_only_path_logical_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(left, middle, right) {
+    return left && middle || right;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only path logical return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only path logical return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Truthy { .. })),
+        "CST path logical return should normalize the result to bool"
     );
 }
 
@@ -1207,7 +1244,11 @@ fn syntax_only_path_let_in_mixed_body_drops_owned_statement_fallback() {
     let text = r#"
 fn main(input) {
     let value = input;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1499,7 +1540,11 @@ fn unclassified_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1525,7 +1570,11 @@ fn return_value_kind_without_expression_payload_does_not_use_legacy_expression()
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1554,7 +1603,11 @@ fn mismatched_path_return_value_payload_does_not_use_legacy_expression() {
     let text = r#"
 fn main(value) {
     return value;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1767,7 +1820,11 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -1798,7 +1855,11 @@ fn empty_return_payload_with_literal_fallback_uses_cst_empty_return() {
 fn main() {
     return;
     let value = 1;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

@@ -34,10 +34,14 @@ fn scoped() {
 fn missing_block_statement_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main() {
     {
         let value = 1;
-        return value && value;
+        return value && make(value);
     }
 }
 "#,
@@ -268,7 +272,11 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -305,7 +313,11 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value && value;
+    return value && make(value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

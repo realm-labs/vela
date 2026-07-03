@@ -172,8 +172,12 @@ fn main() {
 }
 "#;
     let legacy_text = r#"
+fn make(value) {
+    return value;
+}
+
 fn main(input) {
-    let value = (input && input);
+    let value = (input && make(input));
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);

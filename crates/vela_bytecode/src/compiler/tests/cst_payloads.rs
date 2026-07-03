@@ -113,7 +113,11 @@ fn cst_body() {
 
 fn legacy_body() {
     let legacy_value = 2;
-    return legacy_value && legacy_value;
+    return legacy_value && make(legacy_value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -154,7 +158,11 @@ fn cst_body() {
 
 fn legacy_body() {
     let legacy_value = 2;
-    return legacy_value && legacy_value;
+    return legacy_value && make(legacy_value);
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

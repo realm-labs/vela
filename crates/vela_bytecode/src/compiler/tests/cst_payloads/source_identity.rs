@@ -4,8 +4,12 @@ use super::*;
 fn source_less_expression_payload_does_not_expose_cst_expression() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(value) {
-    let result = value && value;
+    let result = value && make(value);
 }
 "#,
         |_, payload| {
@@ -53,8 +57,12 @@ fn main(object) {
 fn source_less_binary_payload_does_not_expose_cst_operator() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(left, right) {
-    let total = left && right;
+    let total = left && make(right);
 }
 "#,
         |_, payload| {
@@ -140,8 +148,12 @@ fn main(value) {
 fn source_less_paren_payload_does_not_expose_inner_payload() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(value) {
-    let result = (value && value);
+    let result = (value && make(value));
 }
 "#,
         |_, payload| {
@@ -218,8 +230,12 @@ fn main(value) {
 fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(left, middle, right) {
-    let value = left && middle && right;
+    let value = left && make(middle) && right;
 }
 "#,
         |_, payload| {
@@ -521,11 +537,15 @@ fn main(value) {
 fn source_less_statement_payload_does_not_expose_cst_value_kinds() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(target) {
-    let value = target && target;
+    let value = target && make(target);
     target = value;
     value && true;
-    return value && value;
+    return value && make(value);
 }
 "#,
         |_, payload| {

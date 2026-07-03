@@ -217,8 +217,12 @@ fn logical_values() {
 fn mismatched_logical_chain_payload_does_not_use_legacy_operands() {
     let source = SourceId::new(1);
     let cst_text = r#"
+fn make(value) {
+    return value;
+}
+
 fn main(left, middle, right) {
-    let value = left && right;
+    let value = left && make(right);
 }
 "#;
     let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
@@ -229,8 +233,12 @@ fn main(left, middle, right) {
 
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(left, middle, right) {
-    let value = left && middle && right;
+    let value = left && make(middle) && right;
 }
 "#,
         |compiler, payload| {
@@ -276,8 +284,12 @@ fn main(left, right) {
 
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(left, right) {
-    let value = left && right;
+    let value = left && make(right);
     return value;
 }
 "#,
@@ -365,8 +377,12 @@ fn main(input) {
 }
 "#;
     let legacy_text = r#"
+fn make(value) {
+    return value;
+}
+
 fn main(input, other) {
-    let value = input && other;
+    let value = input && make(other);
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -416,8 +432,12 @@ fn main(input, other) {
 fn missing_binary_expression_payload_does_not_use_legacy_binary() {
     let source = SourceId::new(1);
     let text = r#"
+fn make(value) {
+    return value;
+}
+
 fn main(input, other) {
-    let value = input && other;
+    let value = input && make(other);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -442,11 +462,15 @@ fn main(input, other) {
 fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(input) {
     let lhs = 1;
     let rhs = 2;
-    let cst_sum = lhs && rhs;
-    let cst_diff = lhs || rhs;
+    let cst_sum = lhs && make(rhs);
+    let cst_diff = lhs || make(rhs);
     let legacy_bool = !(input == rhs);
 }
 "#,
@@ -509,8 +533,12 @@ fn main(input) {
 fn binary_value_type_inference_rejects_child_path_payload() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(lhs, rhs) {
-    let value = lhs && rhs;
+    let value = lhs && make(rhs);
 }
 "#,
         |compiler, payload| {

@@ -67,8 +67,12 @@ struct LegacyBox {
 }
 
 fn main(input) {
-    let cst_binary = input && input;
+    let cst_binary = input && make(input);
     let legacy = LegacyBox { amount: 1 };
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |compiler, payload| {
@@ -187,7 +191,11 @@ fn main(input) {
     let cst_range = 1..3;
     let cst_compare = input < (3 + 1);
     let legacy_bool = input == false;
-    let legacy_arithmetic = input && input;
+    let legacy_arithmetic = input && make(input);
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |compiler, payload| {
@@ -314,8 +322,12 @@ struct LegacyBox {
 }
 
 fn main(input) {
-    let cst_logical = input && input;
+    let cst_logical = input && make(input);
     let legacy_record = LegacyBox { amount: 1 };
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |compiler, payload| {
