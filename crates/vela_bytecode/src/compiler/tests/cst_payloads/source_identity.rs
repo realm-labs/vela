@@ -684,7 +684,7 @@ fn main(value) {
             assert!(!missing_arms[0].pattern_payload().has_syntax());
             assert!(
                 missing_source
-                    .expression_match_scrutinee_payload()
+                    .expression_match_payloads_with_fallback()
                     .is_none()
             );
         },

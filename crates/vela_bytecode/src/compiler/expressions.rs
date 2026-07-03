@@ -96,9 +96,6 @@ impl Compiler<'_, '_> {
                 self.compile_expr_with_payload(expr, inner_payload.as_ref())
             }
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(_) = &expr.kind else {
-                    unreachable!("validated CST block expression payload kind");
-                };
                 let dst = self.alloc_register()?;
                 if let Some(body_payload) = payload.block_body_payload() {
                     self.compile_block_payload_value_to(&body_payload, dst)?;
@@ -110,31 +107,29 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::If => {
-                let ExprKind::If(if_expr) = &expr.kind else {
-                    unreachable!("validated CST if expression payload kind");
-                };
                 let dst = self.alloc_register()?;
-                let if_payload = payload.if_payload();
-                if if_payload.is_none() {
+                let Some((if_expr, if_payload)) = payload.if_payload_with_fallback() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
-                }
-                self.compile_if_value_with_payloads(if_expr, dst, if_payload.as_ref())?;
+                };
+                self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))?;
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
-                let ExprKind::Match(match_expr) = &expr.kind else {
-                    unreachable!("validated CST match expression payload kind");
-                };
                 let dst = self.alloc_register()?;
-                let scrutinee_payload = payload.match_scrutinee_payload();
-                let arm_payloads = payload.match_arm_payloads();
+                let Some((match_expr, scrutinee_payload, arm_payloads)) =
+                    payload.match_payloads_with_fallback()
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST match expression payload",
+                    )));
+                };
                 self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    scrutinee_payload.as_ref(),
-                    arm_payloads.as_deref(),
+                    Some(&scrutinee_payload),
+                    Some(&arm_payloads),
                 )?;
                 Ok(dst)
             }

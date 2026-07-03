@@ -159,9 +159,6 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(_) = &expr.kind else {
-                    unreachable!("validated CST block tail expression kind");
-                };
                 if let Some(body) = payload.expression_block_body_payload() {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
@@ -171,10 +168,8 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxExpressionKind::If => {
-                let ExprKind::If(if_expr) = &expr.kind else {
-                    unreachable!("validated CST if tail expression kind");
-                };
-                let Some(if_payload) = payload.expression_if_payload() else {
+                let Some((if_expr, if_payload)) = payload.expression_if_payload_with_fallback()
+                else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail if payload",
                     ));
@@ -182,17 +177,11 @@ impl Compiler<'_, '_> {
                 self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))
             }
             SyntaxExpressionKind::Match => {
-                let ExprKind::Match(match_expr) = &expr.kind else {
-                    unreachable!("validated CST match tail expression kind");
-                };
-                let Some(scrutinee_payload) = payload.expression_match_scrutinee_payload() else {
+                let Some((match_expr, scrutinee_payload, arm_payloads)) =
+                    payload.expression_match_payloads_with_fallback()
+                else {
                     return Err(missing_cst_block_tail_payload(
-                        "missing CST block tail match scrutinee payload",
-                    ));
-                };
-                let Some(arm_payloads) = payload.expression_match_arm_payloads() else {
-                    return Err(missing_cst_block_tail_payload(
-                        "missing CST block tail match arm payloads",
+                        "missing CST block tail match payload",
                     ));
                 };
                 self.compile_match_value_with_payloads(

@@ -763,7 +763,8 @@ fn assert_cst_let_initializer_block_tail_if_body_payloads(
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
         .flat_map(|block| block.statement_payloads())
-        .filter_map(|statement| statement.expression_if_payload())
+        .filter_map(|statement| statement.expression_if_payload_with_fallback())
+        .map(|(_, payload)| payload)
         .collect::<Vec<_>>();
     let then_actual = payloads
         .iter()
@@ -790,7 +791,8 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
         .flat_map(|block| block.statement_payloads())
         .flat_map(|statement| {
             statement
-                .expression_match_arm_payloads()
+                .expression_match_payloads_with_fallback()
+                .map(|(_, _, arms)| arms)
                 .unwrap_or_default()
         })
         .filter_map(|arm| {

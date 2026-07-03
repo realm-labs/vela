@@ -1293,43 +1293,32 @@ impl<'ast> CompilerStatementPayload<'ast> {
         )
     }
 
-    pub(super) fn expression_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
+    pub(in crate::compiler) fn expression_if_payload_with_fallback(
+        &self,
+    ) -> Option<(&'ast IfExpr, CompilerIfPayload<'ast>)> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
         let ExprKind::If(if_expr) = &expr.kind else {
             return None;
         };
-        if_payload_for_expr(
+        let payload = if_payload_for_expr(
             self.source,
             self.expression()
                 .and_then(|expression| expression.as_if())
                 .or_else(|| self.syntax.as_ref()?.as_if())?,
             if_expr,
-        )
+        )?;
+        Some((if_expr, payload))
     }
 
-    pub(super) fn expression_match_arm_payloads(
+    pub(in crate::compiler) fn expression_match_payloads_with_fallback(
         &self,
-    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
-            return None;
-        };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return None;
-        };
-        match_arm_payloads_for_expr(
-            self.source,
-            self.expression()
-                .and_then(|expression| expression.as_match())
-                .or_else(|| self.syntax.as_ref()?.as_match())?,
-            match_expr,
-        )
-    }
-
-    pub(super) fn expression_match_scrutinee_payload(
-        &self,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
+    ) -> Option<(
+        &'ast MatchExpr,
+        CompilerExpressionPayload<'ast>,
+        Vec<CompilerMatchArmPayload<'ast>>,
+    )> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1337,13 +1326,14 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(match_scrutinee_payload_for_expr(
-            self.source,
-            self.expression()
-                .and_then(|expression| expression.as_match())
-                .or_else(|| self.syntax.as_ref()?.as_match())?,
-            match_expr,
-        ))
+        let syntax = self
+            .expression()
+            .and_then(|expression| expression.as_match())
+            .or_else(|| self.syntax.as_ref()?.as_match())?;
+        let scrutinee_payload =
+            match_scrutinee_payload_for_expr(self.source, syntax.clone(), match_expr);
+        let arm_payloads = match_arm_payloads_for_expr(self.source, syntax, match_expr)?;
+        Some((match_expr, scrutinee_payload, arm_payloads))
     }
 
     #[cfg(test)]

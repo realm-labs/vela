@@ -593,9 +593,6 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Block(_) = &value.kind else {
-                    unreachable!("validated CST block initializer kind");
-                };
                 let dst = self.alloc_register()?;
                 let Some(body_payload) = syntax_payloads.block_body else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -609,10 +606,15 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::If(if_expr) = &value.kind else {
-                    unreachable!("validated CST if initializer kind");
-                };
                 let dst = self.alloc_register()?;
+                let Some((if_expr, _)) = syntax_payloads
+                    .expression
+                    .and_then(CompilerExpressionPayload::if_payload_with_fallback)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let initializer if payload",
+                    )));
+                };
                 let Some(if_payload) = syntax_payloads.if_expr else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST let initializer if payload",
@@ -626,16 +628,13 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Match(match_expr) = &value.kind else {
-                    unreachable!("validated CST match initializer kind");
-                };
                 let dst = self.alloc_register()?;
-                let Some(scrutinee_payload) = syntax_payloads
+                let Some((match_expr, scrutinee_payload, _)) = syntax_payloads
                     .expression
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload)
+                    .and_then(CompilerExpressionPayload::match_payloads_with_fallback)
                 else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST let initializer match scrutinee payload",
+                        "missing CST let initializer match payload",
                     )));
                 };
                 let Some(match_arms) = syntax_payloads.match_arms else {
@@ -800,9 +799,6 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Block(_) = &value.kind else {
-                    unreachable!("validated CST block return value kind");
-                };
                 let dst = self.alloc_register()?;
                 let Some(body_payload) = syntax_payloads.block_body else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -816,10 +812,15 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::If(if_expr) = &value.kind else {
-                    unreachable!("validated CST if return value kind");
-                };
                 let dst = self.alloc_register()?;
+                let Some((if_expr, _)) = syntax_payloads
+                    .expression
+                    .and_then(CompilerExpressionPayload::if_payload_with_fallback)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST return if payload",
+                    )));
+                };
                 let Some(if_payload) = syntax_payloads.if_expr else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return if payload",
@@ -833,16 +834,13 @@ impl Compiler<'_, '_> {
                 if let Some(expected) = expected {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
-                let ExprKind::Match(match_expr) = &value.kind else {
-                    unreachable!("validated CST match return value kind");
-                };
                 let dst = self.alloc_register()?;
-                let Some(scrutinee_payload) = syntax_payloads
+                let Some((match_expr, scrutinee_payload, _)) = syntax_payloads
                     .expression
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload)
+                    .and_then(CompilerExpressionPayload::match_payloads_with_fallback)
                 else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST return match scrutinee payload",
+                        "missing CST return match payload",
                     )));
                 };
                 let Some(match_arms) = syntax_payloads.match_arms else {
