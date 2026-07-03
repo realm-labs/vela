@@ -219,6 +219,7 @@ fn syntax_expression_is_inline_numeric_constant_operand(expression: &SyntaxExpre
     }
     expression_syntax_numeric_literal_kind(expression).is_some()
         || syntax_expression_is_simple_negated_number(expression)
+        || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
@@ -229,6 +230,7 @@ fn syntax_expression_is_inline_comparable_constant_operand(expression: &SyntaxEx
     expression_syntax_comparable_literal(expression).is_some()
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
         || syntax_expression_is_simple_constant_logical(expression)
         || syntax_expression_is_simple_constant_comparison(expression)
@@ -267,6 +269,7 @@ fn syntax_expression_is_inline_constant_logical_operand(expression: &SyntaxExpre
     }
     expression_syntax_bool_literal(expression).is_some()
         || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_comparison(expression)
         || syntax_expression_is_simple_constant_logical(expression)
 }

@@ -117,3 +117,62 @@ fn main() {
         "CST typed constant unary let should emit the evaluated boolean constant"
     );
 }
+
+#[test]
+fn syntax_only_nested_constant_unary_arithmetic_return_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> i64 {
+    return -(1 + 2) * 4;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only nested constant unary arithmetic return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only nested constant unary arithmetic return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(-12)),
+        "CST nested constant unary arithmetic return should emit the evaluated integer constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_nested_constant_unary_logical_let_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value: bool = !(true && false) || false;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only typed nested constant unary logical let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed nested constant unary logical let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Bool(true)),
+        "CST typed nested constant unary logical let should emit the evaluated boolean constant"
+    );
+}
