@@ -47,7 +47,7 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
             return false;
         }
         self.expression
-            .is_some_and(|payload| payload.matches_fallback_expr(value))
+            .is_some_and(|payload| payload.matches_paired_expr(value))
     }
 }
 

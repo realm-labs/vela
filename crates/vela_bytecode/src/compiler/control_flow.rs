@@ -908,7 +908,7 @@ impl Compiler<'_, '_> {
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
-            && !payload.matches_fallback_expr(parts.iterable)
+            && !payload.matches_paired_expr(parts.iterable)
             && control_flow_expression_requires_matching_syntax(parts.iterable)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

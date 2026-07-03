@@ -55,7 +55,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
-            && payload.matches_fallback_expr(expr)
+            && payload.matches_paired_expr(expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }

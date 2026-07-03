@@ -117,7 +117,7 @@ impl Compiler<'_, '_> {
                     payload.index_operand_payloads_with_fallback()?;
                 let mut receiver =
                     self.resolve_host_path_index_receiver_from_payload(base_payload)?;
-                if !index_payload.is_aligned_with_fallback_expr(index) {
+                if !index_payload.is_aligned_with_paired_expr(index) {
                     return None;
                 }
                 let dynamic_kind = receiver
@@ -176,7 +176,7 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_from_payload(payload.clone())
             .or_else(|| {
-                if !payload.is_aligned_with_fallback_expr(fallback) {
+                if !payload.is_aligned_with_paired_expr(fallback) {
                     return None;
                 }
                 Some(self.expr_host_path_receiver_with_payload(fallback, Some(payload)))
@@ -736,7 +736,7 @@ impl Compiler<'_, '_> {
                     }
                     let (base, base_payload) = payload.field_base_payload_with_fallback()?;
                     let base_expr = base_payload
-                        .is_aligned_with_fallback_expr(base)
+                        .is_aligned_with_paired_expr(base)
                         .then_some(base);
                     let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {

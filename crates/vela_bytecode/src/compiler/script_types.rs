@@ -182,7 +182,7 @@ fn expression_script_fact_from_payload(
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if !payload.is_aligned_with_fallback_expr(expr) {
+    if !payload.is_aligned_with_paired_expr(expr) {
         return None;
     }
 

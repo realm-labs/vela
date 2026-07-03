@@ -92,7 +92,7 @@ impl Compiler<'_, '_> {
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
             let body_payload = payload.body_expression_payload();
-            if body_payload.matches_fallback_expr(&arm.body) {
+            if body_payload.matches_paired_expr(&arm.body) {
                 return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -249,7 +249,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         if let Some(payload) = payload.as_ref()
-            && !payload.matches_fallback_expr(guard)
+            && !payload.matches_paired_expr(guard)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match guard",
@@ -269,7 +269,7 @@ impl Compiler<'_, '_> {
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
             let body_payload = payload.body_expression_payload();
-            if body_payload.matches_fallback_expr(body) {
+            if body_payload.matches_paired_expr(body) {
                 return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

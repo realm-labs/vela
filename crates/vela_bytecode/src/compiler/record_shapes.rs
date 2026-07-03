@@ -1014,7 +1014,7 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
-        let kind_matched_payload = payload.filter(|payload| payload.matches_fallback_expr(expr));
+        let kind_matched_payload = payload.filter(|payload| payload.matches_paired_expr(expr));
         if let Some(shape) =
             kind_matched_payload.and_then(|payload| self.value_shape_for_syntax_payload(payload))
         {

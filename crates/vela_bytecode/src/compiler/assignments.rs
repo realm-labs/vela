@@ -968,7 +968,7 @@ impl Compiler<'_, '_> {
         syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         if let Some(payload) = syntax.expression
-            && !payload.matches_fallback_expr(value)
+            && !payload.matches_paired_expr(value)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST assignment value",

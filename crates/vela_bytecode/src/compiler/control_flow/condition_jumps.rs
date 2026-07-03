@@ -18,7 +18,7 @@ impl Compiler<'_, '_> {
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
         if let Some(payload) = condition_payload
-            && !payload.matches_fallback_expr(condition)
+            && !payload.matches_paired_expr(condition)
             && control_flow_expression_requires_matching_syntax(condition)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

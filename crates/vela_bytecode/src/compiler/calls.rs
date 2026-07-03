@@ -364,7 +364,7 @@ impl Compiler<'_, '_> {
             }
             let name = payload.syntax_field_name()?;
             let (base, base_payload) = payload.field_base_payload_with_fallback()?;
-            if !base_payload.is_aligned_with_fallback_expr(base) {
+            if !base_payload.is_aligned_with_paired_expr(base) {
                 return None;
             }
             return Some(self.compile_script_method_call(

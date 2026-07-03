@@ -294,7 +294,7 @@ fn static_expr_type_with_payload(
 ) -> StaticExprType {
     let payload_matches_expr = payload
         .map(|payload| {
-            payload.matches_fallback_expr(expr)
+            payload.matches_paired_expr(expr)
                 && payload
                     .syntax_span()
                     .is_some_and(|span| spans_overlap(span, expr.span))

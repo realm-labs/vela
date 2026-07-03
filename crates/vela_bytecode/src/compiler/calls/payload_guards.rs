@@ -11,7 +11,7 @@ pub(super) fn callback_lambda_payload_is_authoritative(
         return true;
     };
     match payload.syntax_kind() {
-        Some(SyntaxExpressionKind::Lambda) => payload.is_aligned_with_fallback_expr(arg_value),
+        Some(SyntaxExpressionKind::Lambda) => payload.is_aligned_with_paired_expr(arg_value),
         Some(_) => false,
         None => true,
     }
@@ -36,7 +36,7 @@ pub(super) fn reject_mismatched_call_callee_payload(
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if payload.is_aligned_with_fallback_expr(callee) {
+    if payload.is_aligned_with_paired_expr(callee) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

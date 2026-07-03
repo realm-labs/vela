@@ -1531,7 +1531,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         fallback_expr_matches_syntax_kind(self.fallback, syntax_kind)
     }
 
-    fn fallback_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
+    fn paired_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         let Some(kind) = self.stored_syntax_kind() else {
             return true;
         };
@@ -1540,24 +1540,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         (kind == SyntaxExpressionKind::Literal
             || fallback_expr_syntax_kind(self.fallback) == fallback_expr_syntax_kind(expr))
-            && self.fallback_expr_matches_stored_syntax_shape(expr)
+            && self.paired_expr_matches_stored_syntax_shape(expr)
     }
 
-    pub(in crate::compiler) fn matches_fallback_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
-        self.fallback_expr_matches_stored_syntax_expr(expr)
+    pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
+        self.paired_expr_matches_stored_syntax_expr(expr)
     }
 
-    pub(in crate::compiler) fn is_aligned_with_fallback_expr(
+    pub(in crate::compiler) fn is_aligned_with_paired_expr(
         &self,
         expr: &vela_syntax::ast::Expr,
     ) -> bool {
-        self.matches_fallback_expr(expr)
+        self.matches_paired_expr(expr)
             && self
                 .syntax_span()
                 .is_some_and(|syntax_span| spans_overlap(syntax_span, expr.span))
     }
 
-    fn fallback_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {
+    fn paired_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {
         if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
             return true;
         }

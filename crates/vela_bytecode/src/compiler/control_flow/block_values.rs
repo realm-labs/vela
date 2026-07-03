@@ -168,7 +168,7 @@ impl Compiler<'_, '_> {
                     ),
                 ));
             };
-            if expression_payload.matches_fallback_expr(expr) {
+            if expression_payload.matches_paired_expr(expr) {
                 return self.compile_cst_block_tail_expr_to(expr, payload, kind, dst);
             }
             return Err(crate::compiler::CompileError::new(
