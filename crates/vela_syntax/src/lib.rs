@@ -1,6 +1,7 @@
 //! Lexer and parser for Vela source files.
 
 pub mod ast;
+#[cfg(feature = "legacy-body-parser")]
 mod attribute;
 pub mod formatting;
 pub mod lexer;
@@ -12,6 +13,7 @@ mod syntax_validation;
 pub mod token;
 
 pub use parse::Parse;
+#[cfg(feature = "legacy-body-parser")]
 pub use parser::parse_body_blocks_at_spans;
 pub use rowan::{
     GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,

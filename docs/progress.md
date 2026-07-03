@@ -311,6 +311,10 @@ statement and expression payload fallbacks are retired.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors instead of
 carrying old `Block` values through production body lookup; parsed blocks are
 retained only under test cfg for legacy fixture assertions.
+The old `parse_body_blocks_at_spans` parser entrypoint and its supporting
+owned-AST parser helpers are now compiled only behind the explicit
+`legacy-body-parser` feature, which `vela_bytecode` enables only for its
+remaining CST payload fixture tests.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement

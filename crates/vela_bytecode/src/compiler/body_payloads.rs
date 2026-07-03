@@ -274,15 +274,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
 }
 
 impl<'ast> CompilerBodyFallback<'ast> {
-    #[cfg(not(test))]
-    pub(super) const fn statements(statements: &'ast [Stmt]) -> Self {
-        Self {
-            statements,
-            #[cfg(test)]
-            block: None,
-        }
-    }
-
     pub(super) fn block(block: &'ast Block) -> Self {
         Self {
             statements: &block.statements,

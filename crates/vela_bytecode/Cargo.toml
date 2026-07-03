@@ -13,5 +13,8 @@ vela_registry = { workspace = true }
 vela_stdlib = { workspace = true }
 vela_syntax = { workspace = true }
 
+[dev-dependencies]
+vela_syntax = { workspace = true, features = ["legacy-body-parser"] }
+
 [lints]
 workspace = true
