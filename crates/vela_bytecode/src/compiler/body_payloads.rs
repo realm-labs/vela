@@ -108,10 +108,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
         body: SyntaxBlock,
         fallback: Option<&'ast Block>,
     ) -> Option<Self> {
-        match fallback {
-            Some(fallback) => Some(Self::nested(source, body, fallback)),
-            None => Self::syntax_only_without_body_lookup(source, body),
+        if !Self::requires_body_block_lookup(&body) {
+            return Self::syntax_only_without_body_lookup(source, body);
         }
+        fallback.map(|fallback| Self::nested(source, body, fallback))
     }
 
     pub(super) fn syntax_only_without_body_lookup(
