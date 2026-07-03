@@ -89,6 +89,15 @@ fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
 }
 
+fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_empty_array(&inner);
+    }
+    expression
+        .as_array()
+        .is_some_and(|array| array.expressions().next().is_none())
+}
+
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_block(&inner);
@@ -347,6 +356,7 @@ fn expression_syntax_negatable_number_literal(expression: &SyntaxExpression) -> 
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_simple_literal(expression)
         || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_empty_array(expression)
         || syntax_expression_is_simple_block(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)

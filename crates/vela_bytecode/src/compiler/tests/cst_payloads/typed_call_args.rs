@@ -15,7 +15,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("typed array local should compile");
             let call = statements[1]
                 .expression_payload()
