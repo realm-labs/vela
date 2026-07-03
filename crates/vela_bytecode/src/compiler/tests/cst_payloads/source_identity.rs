@@ -258,7 +258,7 @@ fn main(left, middle, right) {
 
             assert!(
                 missing_source
-                    .logical_chain_operand_payloads(BinaryOp::And, missing_source.fallback())
+                    .logical_chain_operand_payloads(BinaryOp::And)
                     .is_none()
             );
         },

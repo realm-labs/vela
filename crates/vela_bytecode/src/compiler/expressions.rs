@@ -242,7 +242,7 @@ impl Compiler<'_, '_> {
                     .filter(|_| arithmetic_binary_operator(*op));
                 let op = cst_op.unwrap_or(*op);
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    let operand_payloads = payload.logical_chain_operand_payloads(op, expr);
+                    let operand_payloads = payload.logical_chain_operand_payloads(op);
                     if operand_payloads.is_none() && payload.syntax_binary_operator() == Some(op) {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST logical chain payload",

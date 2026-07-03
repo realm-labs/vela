@@ -160,7 +160,7 @@ fn logical_values() {
         .iter()
         .find(|payload| {
             payload
-                .logical_chain_operand_payloads(BinaryOp::And, payload.fallback())
+                .logical_chain_operand_payloads(BinaryOp::And)
                 .is_some_and(|operands| operands.len() == 3)
         })
         .expect("&& initializer should expose flattened logical operands");
@@ -187,7 +187,7 @@ fn logical_values() {
         .iter()
         .find(|payload| {
             payload
-                .logical_chain_operand_payloads(BinaryOp::Or, payload.fallback())
+                .logical_chain_operand_payloads(BinaryOp::Or)
                 .is_some_and(|operands| operands.len() == 3)
         })
         .expect("|| initializer should expose flattened logical operands");
@@ -712,7 +712,7 @@ fn assert_logical_chain_block_payloads(
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
     let actual = payload
-        .logical_chain_operand_payloads(op, payload.fallback())
+        .logical_chain_operand_payloads(op)
         .expect("logical chain should expose operand payloads")
         .into_iter()
         .flat_map(block_operand_payloads)

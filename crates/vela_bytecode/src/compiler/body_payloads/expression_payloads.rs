@@ -301,7 +301,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn logical_chain_operand_payloads(
         &self,
         op: BinaryOp,
-        expr: &'ast Expr,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
         fn collect_expr<'ast>(
             expr: &'ast vela_syntax::ast::Expr,
@@ -350,7 +349,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
 
         let mut expr_operands = Vec::new();
-        collect_expr(expr, op, &mut expr_operands);
+        collect_expr(self.fallback, op, &mut expr_operands);
 
         self.source?;
         let mut syntax_operands = Vec::new();
