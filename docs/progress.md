@@ -311,6 +311,9 @@ kept under test cfg for remaining CST payload fixture pairing.
 `CompilerStatementPayload` no longer stores legacy owned statements in
 production; its statement fallback handle is now test-only while production
 statement payloads carry only source identity and rowan CST statements.
+Argument, map-entry, and record-field child payloads no longer carry their
+full legacy owned child AST nodes; they retain only the remaining legacy value
+expression handle needed by the still-migrating expression payload boundary.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors only under
 test cfg instead of carrying old `Block` values through production body lookup;
 parsed blocks are retained only for legacy fixture assertions.

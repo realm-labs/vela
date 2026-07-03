@@ -332,7 +332,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    fallback,
+                    value_fallback: &fallback.value,
                 })
                 .collect(),
         )
@@ -471,7 +471,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, fallback)| CompilerMapEntryPayload {
                     source: self.source,
                     syntax: syntax_entries.get(index).cloned(),
-                    fallback,
+                    value_fallback: &fallback.value,
                 })
                 .collect(),
         )
@@ -504,7 +504,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, fallback)| CompilerRecordFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    fallback,
+                    value_fallback: fallback.value.as_ref(),
                 })
                 .collect(),
         )
@@ -585,7 +585,7 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback,
+            value_fallback: &fallback.value,
         }
     }
 
@@ -626,7 +626,7 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
             syntax: self
                 .source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
-            fallback: &self.fallback.value,
+            fallback: self.value_fallback,
         }
     }
 }
@@ -641,7 +641,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback,
+            value_fallback: fallback.value.as_ref(),
         }
     }
 
@@ -674,7 +674,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxRecordExprField::expression)
             }),
-            fallback: self.fallback.value.as_ref()?,
+            fallback: self.value_fallback?,
         })
     }
 }

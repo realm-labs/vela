@@ -3,11 +3,11 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
-    MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
-    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
-    SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
-    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Pattern,
+    RecordPatternField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
+    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
+    SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -80,7 +80,7 @@ pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
 pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxArgument>,
-    fallback: &'ast Argument,
+    value_fallback: &'ast vela_syntax::ast::Expr,
 }
 
 #[derive(Clone)]
@@ -93,13 +93,13 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
-    fallback: &'ast MapEntry,
+    value_fallback: &'ast vela_syntax::ast::Expr,
 }
 
 pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordExprField>,
-    fallback: &'ast RecordField,
+    value_fallback: Option<&'ast vela_syntax::ast::Expr>,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
@@ -1177,7 +1177,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .map(|(index, fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    fallback,
+                    value_fallback: &fallback.value,
                 })
                 .collect(),
         )
@@ -1299,21 +1299,24 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     pub(super) fn syntax(
         source: SourceId,
         syntax: SyntaxArgument,
-        fallback: &'ast Argument,
+        fallback: &'ast vela_syntax::ast::Argument,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback,
+            value_fallback: &fallback.value,
         }
     }
 
     #[cfg(test)]
-    pub(super) fn missing_value_syntax(source: SourceId, fallback: &'ast Argument) -> Self {
+    pub(super) fn missing_value_syntax(
+        source: SourceId,
+        fallback: &'ast vela_syntax::ast::Argument,
+    ) -> Self {
         Self {
             source: Some(source),
             syntax: None,
-            fallback,
+            value_fallback: &fallback.value,
         }
     }
 
@@ -1336,7 +1339,7 @@ impl<'ast> CompilerArgumentPayload<'ast> {
             syntax: self
                 .source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
-            fallback: &self.fallback.value,
+            fallback: self.value_fallback,
         }
     }
 
