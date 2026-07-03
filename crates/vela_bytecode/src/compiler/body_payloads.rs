@@ -3,10 +3,11 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, RecordPatternField,
-    Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
-    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    Argument, AssignOp, AstNode, BinaryOp, Block, ElseBranch, ExprKind, IfExpr,
+    InterpolatedStringPart, MapEntry, MatchExpr, Pattern, RecordField, RecordPatternField, Stmt,
+    StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -102,6 +103,35 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
         target: &'ast vela_syntax::ast::Expr,
         value: &'ast vela_syntax::ast::Expr,
     },
+    Unary {
+        expr: &'ast vela_syntax::ast::Expr,
+    },
+    Try(&'ast vela_syntax::ast::Expr),
+    Binary {
+        op: BinaryOp,
+        left: &'ast vela_syntax::ast::Expr,
+        right: &'ast vela_syntax::ast::Expr,
+    },
+    Call {
+        callee: &'ast vela_syntax::ast::Expr,
+        args: &'ast [Argument],
+    },
+    Field {
+        base: &'ast vela_syntax::ast::Expr,
+    },
+    Index {
+        base: &'ast vela_syntax::ast::Expr,
+        index: &'ast vela_syntax::ast::Expr,
+    },
+    Lambda {
+        body: &'ast vela_syntax::ast::Expr,
+    },
+    Array(&'ast [vela_syntax::ast::Expr]),
+    Map(&'ast [MapEntry]),
+    Record {
+        fields: &'ast [RecordField],
+    },
+    InterpolatedString(&'ast [InterpolatedStringPart]),
     Other,
 }
 
@@ -1378,6 +1408,27 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
             ExprKind::Assign { target, value, .. } => {
                 CompilerExpressionFallbackKind::Assign { target, value }
+            }
+            ExprKind::Unary { expr, .. } => CompilerExpressionFallbackKind::Unary { expr },
+            ExprKind::Try(expr) => CompilerExpressionFallbackKind::Try(expr),
+            ExprKind::Binary { op, left, right } => CompilerExpressionFallbackKind::Binary {
+                op: *op,
+                left,
+                right,
+            },
+            ExprKind::Call { callee, args } => {
+                CompilerExpressionFallbackKind::Call { callee, args }
+            }
+            ExprKind::Field { base, .. } => CompilerExpressionFallbackKind::Field { base },
+            ExprKind::Index { base, index } => {
+                CompilerExpressionFallbackKind::Index { base, index }
+            }
+            ExprKind::Lambda { body, .. } => CompilerExpressionFallbackKind::Lambda { body },
+            ExprKind::Array(items) => CompilerExpressionFallbackKind::Array(items),
+            ExprKind::Map(entries) => CompilerExpressionFallbackKind::Map(entries),
+            ExprKind::Record { fields, .. } => CompilerExpressionFallbackKind::Record { fields },
+            ExprKind::InterpolatedString(parts) => {
+                CompilerExpressionFallbackKind::InterpolatedString(parts)
             }
             _ => CompilerExpressionFallbackKind::Other,
         };

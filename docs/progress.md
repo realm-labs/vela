@@ -607,6 +607,10 @@ owned-AST value body.
 `CompilerExpressionPayload` now stores a bytecode-owned fallback-kind summary
 for block, if, match, and assignment shapes, so those child payload accessors
 no longer inspect the full legacy expression node directly.
+That summary now also covers unary, try, binary, call, field, index, lambda,
+array, map, record, and interpolated string expression payload shapes, moving
+the remaining direct child payload accessors off full legacy expression-kind
+inspection.
 Typed native-call and value-method mutation argument lowering now rejects
 missing rowan CST argument payloads before expected-type compilation instead
 of compiling the temporary legacy owned-AST argument value.
