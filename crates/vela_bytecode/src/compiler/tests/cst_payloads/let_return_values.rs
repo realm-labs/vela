@@ -423,6 +423,35 @@ fn main() -> i64 {
 }
 
 #[test]
+fn syntax_only_numeric_multiplication_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> i64 {
+    return 3 * 4;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only numeric multiplication return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only numeric multiplication return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(12)),
+        "CST numeric multiplication return should emit the evaluated integer constant"
+    );
+}
+
+#[test]
 fn syntax_only_literal_let_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
@@ -659,6 +688,36 @@ fn main() {
     assert!(
         compiler.code.constants.contains(&Constant::i64(4)),
         "CST typed numeric division let should emit the evaluated integer constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_numeric_multiplication_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value: i64 = 3 * 4;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only typed numeric multiplication let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed numeric multiplication let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(12)),
+        "CST typed numeric multiplication let should emit the evaluated integer constant"
     );
 }
 
