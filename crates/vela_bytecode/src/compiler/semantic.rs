@@ -15,7 +15,6 @@ use crate::Constant;
 
 #[cfg(test)]
 use super::body_blocks::BodyBlockLookup;
-use super::body_payloads::CompilerBodyFallback;
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
@@ -513,7 +512,7 @@ fn function_body_payload<'ast>(
     #[cfg(test)]
     let body_block = body_fallback(source, &syntax_body, body_blocks);
     #[cfg(not(test))]
-    let body_block = body_fallback(source, &syntax_body);
+    let body_block = None;
     let body = super::body_payloads::CompilerBodyPayload::syntax_with_optional_body(
         source,
         syntax_body,
@@ -541,17 +540,8 @@ fn body_fallback<'ast>(
     source: SourceId,
     syntax_body: &vela_syntax::ast::SyntaxBlock,
     body_blocks: &'ast BodyBlockLookup,
-) -> Option<CompilerBodyFallback<'ast>> {
+) -> Option<super::body_payloads::CompilerBodyFallback<'ast>> {
     body_blocks.body_for_syntax(source, syntax_body)
-}
-
-#[cfg(not(test))]
-fn body_fallback<'ast>(
-    source: SourceId,
-    syntax_body: &vela_syntax::ast::SyntaxBlock,
-) -> Option<CompilerBodyFallback<'ast>> {
-    let _ = (source, syntax_body);
-    None
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {

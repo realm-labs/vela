@@ -10,7 +10,7 @@ use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
 #[cfg(test)]
 use super::body_blocks::BodyBlockLookup;
-use super::body_payloads::{CompilerBodyFallback, CompilerBodyPayload};
+use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::syntax_payloads::param_default_expressions;
 
@@ -296,12 +296,15 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
+            #[cfg(test)]
             let body_block = body_fallback(
                 source,
                 &syntax_body,
                 #[cfg(test)]
                 body_blocks,
             );
+            #[cfg(not(test))]
+            let body_block = None;
             let body =
                 CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
             Some((
@@ -338,12 +341,15 @@ fn trait_default_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
+            #[cfg(test)]
             let body_block = body_fallback(
                 source,
                 &syntax_body,
                 #[cfg(test)]
                 body_blocks,
             );
+            #[cfg(not(test))]
+            let body_block = None;
             let body =
                 CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
             Some((
@@ -366,17 +372,8 @@ fn body_fallback<'ast>(
     source: vela_common::SourceId,
     syntax_body: &vela_syntax::ast::SyntaxBlock,
     body_blocks: &'ast BodyBlockLookup,
-) -> Option<CompilerBodyFallback<'ast>> {
+) -> Option<super::body_payloads::CompilerBodyFallback<'ast>> {
     body_blocks.body_for_syntax(source, syntax_body)
-}
-
-#[cfg(not(test))]
-fn body_fallback<'ast>(
-    source: vela_common::SourceId,
-    syntax_body: &vela_syntax::ast::SyntaxBlock,
-) -> Option<CompilerBodyFallback<'ast>> {
-    let _ = (source, syntax_body);
-    None
 }
 
 fn syntax_impl_item(
