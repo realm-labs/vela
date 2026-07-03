@@ -145,11 +145,11 @@ fn main() {
                     .clone(),
                 legacy_array.fallback(),
             );
-            let items = mismatched_array
+            let _items = mismatched_array
                 .fallback_array_items()
                 .expect("fallback array items");
             let array_elements = mismatched_array
-                .array_element_payloads(items)
+                .array_element_payloads()
                 .expect("array element payloads");
             assert_eq!(array_elements.len(), 1);
             assert_eq!(
@@ -180,7 +180,7 @@ fn main() {
                 .fallback_map_entries()
                 .expect("fallback map entries");
             let map_entries = mismatched_map
-                .map_entry_payloads(entries)
+                .map_entry_payloads()
                 .expect("map entry payloads");
             assert_eq!(map_entries.len(), 1);
             assert_eq!(map_entries[0].syntax_key_name().as_deref(), Some("value"));
@@ -213,7 +213,7 @@ fn main() {
                 .fallback_record_fields()
                 .expect("fallback record fields");
             let record_fields = mismatched_record
-                .record_field_payloads(fallback_fields)
+                .record_field_payloads()
                 .expect("record field payloads");
             assert_eq!(record_fields.len(), 1);
             assert_eq!(
@@ -356,11 +356,11 @@ fn main() {
         cst_array,
         legacy_array.fallback(),
     );
-    let items = missing
+    let _items = missing
         .fallback_array_items()
         .expect("fallback array items");
     let element_payloads = missing
-        .array_element_payloads(items)
+        .array_element_payloads()
         .expect("array element payloads");
 
     assert_eq!(element_payloads.len(), 1);
@@ -607,10 +607,10 @@ fn return_map() {
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {
-            let Some(entries) = payload.fallback_map_entries() else {
+            let Some(_entries) = payload.fallback_map_entries() else {
                 return Vec::new();
             };
-            payload.map_entry_payloads(entries).unwrap_or_default()
+            payload.map_entry_payloads().unwrap_or_default()
         })
         .collect::<Vec<_>>();
     let map_keys = map_entries
@@ -814,7 +814,7 @@ fn return_record() {
         .flat_map(|payload| {
             payload
                 .fallback_record_fields()
-                .and_then(|fields| payload.record_field_payloads(fields))
+                .and_then(|_fields| payload.record_field_payloads())
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
@@ -1064,11 +1064,11 @@ fn block_tail_containers() {
         .expect("array block tail statement")
         .expression_payload()
         .expect("array tail expression payload");
-    let array_items = array_tail
+    let _array_items = array_tail
         .fallback_array_items()
         .expect("fallback array items");
     let array_actual = array_tail
-        .array_element_payloads(array_items)
+        .array_element_payloads()
         .expect("array element payloads")
         .iter()
         .filter_map(|element| {
@@ -1085,7 +1085,7 @@ fn block_tail_containers() {
     );
 
     let map_actual = array_tail
-        .array_element_payloads(array_items)
+        .array_element_payloads()
         .expect("array element payloads")
         .iter()
         .flat_map(|element| {
@@ -1094,7 +1094,7 @@ fn block_tail_containers() {
             };
             entries
                 .iter()
-                .zip(element.map_entry_payloads(entries).unwrap_or_default())
+                .zip(element.map_entry_payloads().unwrap_or_default())
                 .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect::<Vec<_>>()
         })
@@ -1120,7 +1120,7 @@ fn block_tail_containers() {
     let record_actual = record_tail
         .fallback_record_fields()
         .and_then(|fields| {
-            let payloads = record_tail.record_field_payloads(fields)?;
+            let payloads = record_tail.record_field_payloads()?;
             Some(
                 fields
                     .iter()
@@ -1166,7 +1166,7 @@ fn assert_cst_let_initializer_record_field_value_body_payloads(
             };
             fields
                 .iter()
-                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .zip(payload.record_field_payloads().unwrap_or_default())
                 .filter_map(|(fallback, payload)| {
                     payload.value_expression_payload(fallback.value.as_ref()?)
                 })
@@ -1196,7 +1196,7 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
             };
             fields
                 .iter()
-                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .zip(payload.record_field_payloads().unwrap_or_default())
                 .filter_map(|(fallback, payload)| {
                     payload.value_expression_payload(fallback.value.as_ref()?)
                 })
@@ -1224,7 +1224,7 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
             };
             fields
                 .iter()
-                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .zip(payload.record_field_payloads().unwrap_or_default())
                 .filter_map(|(fallback, payload)| {
                     payload.value_expression_payload(fallback.value.as_ref()?)
                 })
@@ -1252,7 +1252,7 @@ fn assert_cst_return_value_record_field_value_body_payloads(
             };
             fields
                 .iter()
-                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .zip(payload.record_field_payloads().unwrap_or_default())
                 .filter_map(|(fallback, payload)| {
                     payload.value_expression_payload(fallback.value.as_ref()?)
                 })

@@ -149,36 +149,36 @@ impl Compiler<'_, '_> {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
                 };
-                if payload.has_extra_array_elements(items) {
+                if payload.has_extra_array_elements() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST array elements",
                     )));
                 }
-                let element_payloads = payload.array_element_payloads(items);
+                let element_payloads = payload.array_element_payloads();
                 self.compile_array(items, element_payloads.as_deref())
             }
             SyntaxExpressionKind::Map => {
                 let ExprKind::Map(entries) = &expr.kind else {
                     unreachable!("validated CST map expression payload kind");
                 };
-                if payload.has_mismatched_map_entries(entries) {
+                if payload.has_mismatched_map_entries() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST map entries",
                     )));
                 }
-                let entry_payloads = payload.map_entry_payloads(entries);
+                let entry_payloads = payload.map_entry_payloads();
                 self.compile_map(entries, entry_payloads.as_deref())
             }
             SyntaxExpressionKind::Record => {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
-                if payload.has_extra_record_fields(fields) {
+                if payload.has_extra_record_fields() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST record fields",
                     )));
                 }
-                let field_payloads = payload.record_field_payloads(fields);
+                let field_payloads = payload.record_field_payloads();
                 let path = payload.syntax_record_path_segments().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST record path",
@@ -362,12 +362,12 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
-                    if payload.has_extra_interpolation_expressions(parts) {
+                    if payload.has_extra_interpolation_expressions() {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST interpolation expressions",
                         )));
                     }
-                    let part_payloads = payload.interpolated_expression_payloads(parts);
+                    let part_payloads = payload.interpolated_expression_payloads();
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }
                 let ExprKind::Literal(_) = &expr.kind else {

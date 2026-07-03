@@ -327,8 +327,7 @@ fn static_expr_type_with_payload(
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
         }
         ExprKind::Array(values) => {
-            let payloads =
-                aligned_payload.and_then(|payload| payload.array_element_payloads(values));
+            let payloads = aligned_payload.and_then(|payload| payload.array_element_payloads());
             StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
                 |(index, value)| {
                     expression_value_type_with_payload(
@@ -341,7 +340,7 @@ fn static_expr_type_with_payload(
             )))
         }
         ExprKind::Map(entries) => {
-            let payloads = aligned_payload.and_then(|payload| payload.map_entry_payloads(entries));
+            let payloads = aligned_payload.and_then(|payload| payload.map_entry_payloads());
             StaticExprType::Exact(map_literal_type(entries.iter().enumerate().map(
                 |(index, entry)| {
                     let value_payload = payloads

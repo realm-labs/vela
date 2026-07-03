@@ -501,10 +501,10 @@ fn assert_cst_let_initializer_array_element_body_payloads(
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {
-            let Some(items) = payload.fallback_array_items() else {
+            let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
             };
-            payload.array_element_payloads(items).unwrap_or_default()
+            payload.array_element_payloads().unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
@@ -525,10 +525,10 @@ fn assert_cst_assignment_value_array_element_body_payloads(
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
         .flat_map(|payload| {
-            let Some(items) = payload.fallback_array_items() else {
+            let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
             };
-            payload.array_element_payloads(items).unwrap_or_default()
+            payload.array_element_payloads().unwrap_or_default()
         })
         .filter_map(|element| {
             let body = element.block_body_payload()?;
@@ -547,10 +547,10 @@ fn assert_cst_return_value_array_element_body_payloads(
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(|payload| {
-            let Some(items) = payload.fallback_array_items() else {
+            let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
             };
-            payload.array_element_payloads(items).unwrap_or_default()
+            payload.array_element_payloads().unwrap_or_default()
         })
         .filter_map(|element| {
             let body = element.block_body_payload()?;
@@ -569,10 +569,10 @@ fn assert_cst_call_argument_array_element_body_payloads(
         .iter()
         .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .flat_map(|payload| {
-            let Some(items) = payload.fallback_array_items() else {
+            let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
             };
-            payload.array_element_payloads(items).unwrap_or_default()
+            payload.array_element_payloads().unwrap_or_default()
         })
         .filter_map(|element| {
             let body = element.block_body_payload()?;
@@ -599,7 +599,7 @@ fn assert_cst_let_initializer_map_entry_value_body_payloads(
             };
             entries
                 .iter()
-                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .zip(payload.map_entry_payloads().unwrap_or_default())
                 .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect::<Vec<_>>()
         })
@@ -627,7 +627,7 @@ fn assert_cst_assignment_value_map_entry_value_body_payloads(
             };
             entries
                 .iter()
-                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .zip(payload.map_entry_payloads().unwrap_or_default())
                 .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect::<Vec<_>>()
         })
@@ -653,7 +653,7 @@ fn assert_cst_return_value_map_entry_value_body_payloads(
             };
             entries
                 .iter()
-                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .zip(payload.map_entry_payloads().unwrap_or_default())
                 .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect::<Vec<_>>()
         })
@@ -679,7 +679,7 @@ fn assert_cst_call_argument_map_entry_value_body_payloads(
             };
             entries
                 .iter()
-                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .zip(payload.map_entry_payloads().unwrap_or_default())
                 .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect::<Vec<_>>()
         })

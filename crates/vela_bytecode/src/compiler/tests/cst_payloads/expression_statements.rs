@@ -470,10 +470,10 @@ fn assert_cst_expression_statement_array_element_body_payloads(
         .iter()
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
         .flat_map(|payload| {
-            let Some(items) = payload.fallback_array_items() else {
+            let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
             };
-            payload.array_element_payloads(items).unwrap_or_default()
+            payload.array_element_payloads().unwrap_or_default()
         })
         .flat_map(nested_expression_block_payloads)
         .collect::<Vec<_>>();
@@ -491,7 +491,7 @@ fn assert_cst_expression_statement_interpolation_body_payloads(
         .flat_map(|payload| {
             payload
                 .fallback_interpolated_string_parts()
-                .and_then(|parts| payload.interpolated_expression_payloads(parts))
+                .and_then(|_parts| payload.interpolated_expression_payloads())
                 .unwrap_or_default()
         })
         .flat_map(nested_expression_block_payloads)

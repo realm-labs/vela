@@ -556,11 +556,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn array_element_payloads(
         &self,
-        items: &'ast [Expr],
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        if !self.fallback_is_array() {
-            return None;
-        }
+        let items = self.fallback_array_items()?;
         let syntax_items = self
             .syntax
             .as_ref()?
@@ -582,24 +579,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_array_elements(&self, items: &'ast [Expr]) -> bool {
+    pub(in crate::compiler) fn has_extra_array_elements(&self) -> bool {
         if self.source.is_none() {
             return false;
         }
-        if !self.fallback_is_array() {
+        let Some(items) = self.fallback_array_items() else {
             return false;
-        }
+        };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_array) else {
             return false;
         };
         syntax.expressions().count() > items.len()
     }
 
-    fn fallback_is_array(&self) -> bool {
-        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Array)
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn fallback_array_items(&self) -> Option<&'ast [Expr]> {
         let CompilerExpressionFallbackKind::Array(items) = self.fallback_kind else {
             return None;
@@ -609,11 +601,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn map_entry_payloads(
         &self,
-        entries: &'ast [MapEntry],
     ) -> Option<Vec<CompilerMapEntryPayload<'ast>>> {
-        if !self.fallback_is_map() {
-            return None;
-        }
+        let entries = self.fallback_map_entries()?;
         let syntax_entries = self
             .syntax
             .as_ref()?
@@ -633,27 +622,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_mismatched_map_entries(
-        &self,
-        entries: &'ast [MapEntry],
-    ) -> bool {
+    pub(in crate::compiler) fn has_mismatched_map_entries(&self) -> bool {
         if self.source.is_none() {
             return false;
         }
-        if !self.fallback_is_map() {
+        let Some(entries) = self.fallback_map_entries() else {
             return false;
-        }
+        };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_map) else {
             return false;
         };
         syntax.entries().count() != entries.len()
     }
 
-    fn fallback_is_map(&self) -> bool {
-        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Map)
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn fallback_map_entries(&self) -> Option<&'ast [MapEntry]> {
         let CompilerExpressionFallbackKind::Map(entries) = self.fallback_kind else {
             return None;
@@ -663,11 +644,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn record_field_payloads(
         &self,
-        fields: &'ast [RecordField],
     ) -> Option<Vec<CompilerRecordFieldPayload<'ast>>> {
-        if !self.fallback_is_record() {
-            return None;
-        }
+        let fields = self.fallback_record_fields()?;
         let syntax_fields = self.syntax.as_ref()?.as_record()?.fields();
         Some(
             fields
@@ -682,24 +660,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_record_fields(&self, fields: &'ast [RecordField]) -> bool {
+    pub(in crate::compiler) fn has_extra_record_fields(&self) -> bool {
         if self.source.is_none() {
             return false;
         }
-        if !self.fallback_is_record() {
+        let Some(fields) = self.fallback_record_fields() else {
             return false;
-        }
+        };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_record) else {
             return false;
         };
         syntax.fields().len() > fields.len()
     }
 
-    fn fallback_is_record(&self) -> bool {
-        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Record)
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn fallback_record_fields(&self) -> Option<&'ast [RecordField]> {
         let CompilerExpressionFallbackKind::Record { fields } = self.fallback_kind else {
             return None;
@@ -709,11 +682,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
-        parts: &'ast [InterpolatedStringPart],
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        if !self.fallback_is_interpolated_string() {
-            return None;
-        }
+        let parts = self.fallback_interpolated_string_parts()?;
         let syntax_expressions = self
             .syntax
             .as_ref()?
@@ -739,16 +709,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_interpolation_expressions(
-        &self,
-        parts: &'ast [InterpolatedStringPart],
-    ) -> bool {
+    pub(in crate::compiler) fn has_extra_interpolation_expressions(&self) -> bool {
         if self.source.is_none() {
             return false;
         }
-        if !self.fallback_is_interpolated_string() {
+        let Some(parts) = self.fallback_interpolated_string_parts() else {
             return false;
-        }
+        };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
             return false;
         };
@@ -759,11 +726,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax.interpolation_expressions().count() > expression_count
     }
 
-    fn fallback_is_interpolated_string(&self) -> bool {
-        self.fallback_expr_is_interpolated_string()
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn fallback_interpolated_string_parts(
         &self,
     ) -> Option<&'ast [InterpolatedStringPart]> {

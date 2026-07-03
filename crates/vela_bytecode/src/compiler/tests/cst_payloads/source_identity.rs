@@ -365,14 +365,14 @@ fn main() {
                     array.syntax_expression().expect("array syntax").clone(),
                     array.fallback(),
                 );
-            let items = missing_source
+            let _items = missing_source
                 .fallback_array_items()
                 .expect("fallback array items");
             let elements = missing_source
-                .array_element_payloads(items)
+                .array_element_payloads()
                 .expect("array element payloads");
 
-            assert!(!missing_source.has_extra_array_elements(items));
+            assert!(!missing_source.has_extra_array_elements());
             assert!(elements[0].syntax_expression().is_none());
         },
     );
@@ -399,10 +399,10 @@ fn main() {
                 .fallback_map_entries()
                 .expect("fallback map entries");
             let entries = missing_source
-                .map_entry_payloads(fallback_entries)
+                .map_entry_payloads()
                 .expect("map entry payloads");
 
-            assert!(!missing_source.has_mismatched_map_entries(fallback_entries));
+            assert!(!missing_source.has_mismatched_map_entries());
             assert!(!entries[0].has_key_syntax());
             assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);
@@ -441,10 +441,10 @@ fn main() {
                 .fallback_record_fields()
                 .expect("fallback record fields");
             let fields = missing_source
-                .record_field_payloads(fallback_fields)
+                .record_field_payloads()
                 .expect("record field payloads");
 
-            assert!(!missing_source.has_extra_record_fields(fallback_fields));
+            assert!(!missing_source.has_extra_record_fields());
             assert!(!fields[0].has_syntax());
             assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
@@ -529,14 +529,14 @@ fn main(value) {
                         .clone(),
                     interpolated.fallback(),
                 );
-            let fallback_parts = missing_source
+            let _fallback_parts = missing_source
                 .fallback_interpolated_string_parts()
                 .expect("fallback interpolated string parts");
             let expressions = missing_source
-                .interpolated_expression_payloads(fallback_parts)
+                .interpolated_expression_payloads()
                 .expect("interpolated expression payloads");
 
-            assert!(!missing_source.has_extra_interpolation_expressions(fallback_parts));
+            assert!(!missing_source.has_extra_interpolation_expressions());
             assert!(expressions[0].syntax_expression().is_none());
         },
     );
