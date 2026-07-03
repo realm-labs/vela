@@ -633,6 +633,11 @@ impl Compiler<'_, '_> {
                         })
                     })
                     .transpose()?;
+                let payload = payload.ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST map entry payload",
+                    ))
+                })?;
                 self.compile_map_entry(entry, payload)
             })
             .collect::<CompileResult<Vec<_>>>()?;

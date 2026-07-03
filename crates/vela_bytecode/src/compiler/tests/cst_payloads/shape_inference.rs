@@ -495,7 +495,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("CST map local should compile");
             let cst_get = statements[1]
                 .let_initializer_expression_payload()
@@ -673,7 +673,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("CST map local should compile");
             let cst_values = statements[1]
                 .let_initializer_expression_payload()

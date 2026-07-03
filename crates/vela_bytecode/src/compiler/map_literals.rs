@@ -1,4 +1,4 @@
-use vela_syntax::ast::{Expr, ExprKind, Literal, MapEntry};
+use vela_syntax::ast::MapEntry;
 
 use crate::Register;
 
@@ -9,44 +9,23 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_map_entry(
         &mut self,
         entry: &MapEntry,
-        payload: Option<&CompilerMapEntryPayload<'_>>,
+        payload: &CompilerMapEntryPayload<'_>,
     ) -> CompileResult<(String, Register)> {
-        let key = if let Some(payload) = payload {
-            if !payload.has_key_syntax() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST map entry key",
-                )));
-            }
-            payload
-                .syntax_key_name()
-                .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("map key")))?
-        } else {
-            map_key_name(&entry.key)?
-        };
-        let value = if let Some(payload) = payload {
-            if !payload.has_value_syntax() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST map entry value",
-                )));
-            }
-            let value_payload = payload.value_expression_payload();
-            self.compile_expr_with_payload(&entry.value, Some(&value_payload))?
-        } else {
-            self.compile_expr(&entry.value)?
-        };
+        if !payload.has_key_syntax() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST map entry key",
+            )));
+        }
+        let key = payload
+            .syntax_key_name()
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("map key")))?;
+        if !payload.has_value_syntax() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST map entry value",
+            )));
+        }
+        let value_payload = payload.value_expression_payload();
+        let value = self.compile_expr_with_payload(&entry.value, Some(&value_payload))?;
         Ok((key, value))
-    }
-}
-
-fn map_key_name(key: &Expr) -> CompileResult<String> {
-    match &key.kind {
-        ExprKind::Literal(Literal::String(value)) => Ok(value.clone()),
-        ExprKind::Literal(Literal::Char(value)) => Ok(value.to_string()),
-        ExprKind::Literal(Literal::Integer(value)) => Ok(value.source_text_with_suffix()),
-        ExprKind::Literal(Literal::Float(value)) => Ok(value.source_text_with_suffix()),
-        ExprKind::Path(path) => Ok(path.join("::")),
-        _ => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "map key",
-        ))),
     }
 }

@@ -306,7 +306,7 @@ fn main() {
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = legacy_payload.body.statement_payloads();
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
@@ -367,7 +367,7 @@ fn main() {
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = legacy_payload.body.statement_payloads();
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
@@ -402,7 +402,7 @@ fn main() {
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = legacy_payload.body.statement_payloads();
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
@@ -574,10 +574,10 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("cst map should compile");
             compiler
-                .compile_statement(statements[1].fallback())
+                .compile_statement_payload_for_test(&statements[1])
                 .expect("legacy map should compile");
             let cst_index = statements[2]
                 .let_initializer_expression_payload()
@@ -712,10 +712,10 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("cst map should compile");
             compiler
-                .compile_statement(statements[1].fallback())
+                .compile_statement_payload_for_test(&statements[1])
                 .expect("legacy map should compile");
             let cst_target = statements[2]
                 .assignment_target_expression_payload()

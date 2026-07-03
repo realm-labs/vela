@@ -695,7 +695,7 @@ fn main() {
     assert!(!missing.has_value_syntax());
 
     let error = compiler
-        .compile_map_entry(&legacy_entries[0], Some(&missing))
+        .compile_map_entry(&legacy_entries[0], &missing)
         .expect_err("missing map entry value payload must not compile legacy value");
 
     assert!(matches!(
