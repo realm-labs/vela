@@ -126,10 +126,10 @@ impl Compiler<'_, '_> {
                 };
                 Some(block)
             };
-            #[cfg(not(test))]
-            let body_payload = payload.body_block_payload();
-            #[cfg(test)]
-            let body_payload = payload.body_block_payload(fallback_block);
+            let body_payload = payload.body_block_payload(
+                #[cfg(test)]
+                fallback_block,
+            );
             if let Some(body) = body_payload {
                 return self.compile_body_payload_statements(&body);
             }
@@ -309,10 +309,10 @@ impl Compiler<'_, '_> {
                     };
                     Some(block)
                 };
-                #[cfg(not(test))]
-                let body_payload = payload.body_block_payload();
-                #[cfg(test)]
-                let body_payload = payload.body_block_payload(fallback_block);
+                let body_payload = payload.body_block_payload(
+                    #[cfg(test)]
+                    fallback_block,
+                );
                 if let Some(body) = body_payload {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {

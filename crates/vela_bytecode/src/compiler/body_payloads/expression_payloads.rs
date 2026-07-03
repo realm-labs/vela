@@ -43,10 +43,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         let body = self.syntax.as_ref()?.as_block()?;
-        #[cfg(test)]
-        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
-        #[cfg(not(test))]
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            body,
+            #[cfg(test)]
+            fallback,
+        )
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -861,24 +863,17 @@ impl CompilerMatchArmPayload {
         ))
     }
 
-    #[cfg(test)]
     pub(in crate::compiler) fn body_block_payload<'ast>(
         &self,
-        fallback_block: Option<&'ast vela_syntax::ast::Block>,
+        #[cfg(test)] fallback_block: Option<&'ast vela_syntax::ast::Block>,
     ) -> Option<CompilerBodyPayload<'ast>> {
+        #[cfg(test)]
         let fallback = fallback_block.map(CompilerBodyFallback::block);
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
+            #[cfg(test)]
             fallback,
-        )
-    }
-
-    #[cfg(not(test))]
-    pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'_>> {
-        CompilerBodyPayload::nested_syntax_optional(
-            self.source?,
-            self.syntax.as_ref()?.body_block()?,
         )
     }
 

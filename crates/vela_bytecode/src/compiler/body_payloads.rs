@@ -151,21 +151,22 @@ impl<'ast> CompilerBodyPayload<'ast> {
         }
     }
 
-    #[cfg(test)]
     pub(super) fn nested_syntax_optional(
         source: SourceId,
         body: SyntaxBlock,
-        fallback: Option<CompilerBodyFallback<'ast>>,
+        #[cfg(test)] fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
-        if !Self::requires_body_block_lookup(&body) {
-            return Self::syntax_only_without_body_lookup(source, body);
+        #[cfg(test)]
+        {
+            if !Self::requires_body_block_lookup(&body) {
+                return Self::syntax_only_without_body_lookup(source, body);
+            }
+            fallback.map(|fallback| Self::nested(source, body, fallback))
         }
-        fallback.map(|fallback| Self::nested(source, body, fallback))
-    }
-
-    #[cfg(not(test))]
-    pub(super) fn nested_syntax_optional(source: SourceId, body: SyntaxBlock) -> Option<Self> {
-        Some(Self::syntax_only(source, body))
+        #[cfg(not(test))]
+        {
+            Some(Self::syntax_only(source, body))
+        }
     }
 
     #[cfg(test)]
@@ -173,12 +174,15 @@ impl<'ast> CompilerBodyPayload<'ast> {
         source: SourceId,
         body: SyntaxBlock,
     ) -> Option<Self> {
-        (!Self::requires_body_block_lookup(&body)).then_some(Self {
-            syntax: SyntaxBodyPayload { source, body },
-            _ast: PhantomData,
-            fallback_statements: None,
-            fallback_block: None,
-        })
+        if !Self::requires_body_block_lookup(&body) {
+            return Some(Self {
+                syntax: SyntaxBodyPayload { source, body },
+                _ast: PhantomData,
+                fallback_statements: None,
+                fallback_block: None,
+            });
+        }
+        None
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
@@ -490,31 +494,25 @@ fn if_payload_for_expr<'ast>(
         condition_syntax,
         &fallback.condition,
     ));
-    #[cfg(test)]
     let then_body = syntax.then_block().and_then(|body| {
         CompilerBodyPayload::nested_syntax_optional(
             source,
             body,
+            #[cfg(test)]
             Some(CompilerBodyFallback::block(&fallback.then_branch)),
         )
     });
-    #[cfg(not(test))]
-    let then_body = syntax
-        .then_block()
-        .and_then(|body| CompilerBodyPayload::nested_syntax_optional(source, body));
     let else_body = match fallback.else_branch.as_ref() {
-        #[cfg(test)]
         Some(ElseBranch::Block(block)) => syntax.else_block().and_then(|body| {
+            #[cfg(not(test))]
+            let _ = block;
             CompilerBodyPayload::nested_syntax_optional(
                 source,
                 body,
+                #[cfg(test)]
                 Some(CompilerBodyFallback::block(block)),
             )
         }),
-        #[cfg(not(test))]
-        Some(ElseBranch::Block(_)) => syntax
-            .else_block()
-            .and_then(|body| CompilerBodyPayload::nested_syntax_optional(source, body)),
         Some(ElseBranch::If(_)) | None => None,
     };
     let else_if = match fallback.else_branch.as_ref() {
@@ -769,10 +767,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
         #[cfg(test)]
         let fallback = fallback.map(CompilerBodyFallback::block);
         let body = self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?;
-        #[cfg(test)]
-        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
-        #[cfg(not(test))]
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            body,
+            #[cfg(test)]
+            fallback,
+        )
     }
 
     #[cfg(test)]
@@ -938,10 +938,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_return()?
             .expression()?
             .as_block()?;
-        #[cfg(test)]
-        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
-        #[cfg(not(test))]
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            body,
+            #[cfg(test)]
+            fallback,
+        )
     }
 
     #[cfg(test)]
@@ -1053,10 +1055,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
         #[cfg(test)]
         let fallback = fallback.map(CompilerBodyFallback::block);
         let body = self.syntax.as_ref()?.as_block()?;
-        #[cfg(test)]
-        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
-        #[cfg(not(test))]
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            body,
+            #[cfg(test)]
+            fallback,
+        )
     }
 
     #[cfg(test)]
@@ -1371,10 +1375,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
         #[cfg(test)]
         let fallback = fallback.map(CompilerBodyFallback::block);
         let body = expression_block_syntax(&self.expression()?)?;
-        #[cfg(test)]
-        return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
-        #[cfg(not(test))]
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            body,
+            #[cfg(test)]
+            fallback,
+        )
     }
 
     #[cfg(test)]

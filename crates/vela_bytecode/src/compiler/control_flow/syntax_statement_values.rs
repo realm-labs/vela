@@ -91,10 +91,12 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        #[cfg(test)]
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block, None);
-        #[cfg(not(test))]
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
+        let then_body = CompilerBodyPayload::nested_syntax_optional(
+            source,
+            then_block,
+            #[cfg(test)]
+            None,
+        );
         let Some(then_body) = then_body else {
             return Ok(None);
         };
@@ -126,10 +128,12 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                #[cfg(test)]
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block, None);
-                #[cfg(not(test))]
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
+                let else_body = CompilerBodyPayload::nested_syntax_optional(
+                    source,
+                    block,
+                    #[cfg(test)]
+                    None,
+                );
                 let Some(else_body) = else_body else {
                     return Ok(None);
                 };
@@ -374,10 +378,12 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        #[cfg(test)]
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block, None);
-        #[cfg(not(test))]
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
+        let then_body = CompilerBodyPayload::nested_syntax_optional(
+            source,
+            then_block,
+            #[cfg(test)]
+            None,
+        );
         let Some(then_body) = then_body else {
             return Ok(None);
         };
@@ -399,10 +405,12 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                #[cfg(test)]
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block, None);
-                #[cfg(not(test))]
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
+                let else_body = CompilerBodyPayload::nested_syntax_optional(
+                    source,
+                    block,
+                    #[cfg(test)]
+                    None,
+                );
                 let Some(else_body) = else_body else {
                     return Ok(None);
                 };
