@@ -145,8 +145,11 @@ fn main() {
                     .clone(),
                 legacy_array.fallback(),
             );
+            let items = mismatched_array
+                .fallback_array_items()
+                .expect("fallback array items");
             let array_elements = mismatched_array
-                .array_element_payloads()
+                .array_element_payloads(items)
                 .expect("array element payloads");
             assert_eq!(array_elements.len(), 1);
             assert_eq!(
@@ -342,8 +345,11 @@ fn main() {
         cst_array,
         legacy_array.fallback(),
     );
+    let items = missing
+        .fallback_array_items()
+        .expect("fallback array items");
     let element_payloads = missing
-        .array_element_payloads()
+        .array_element_payloads(items)
         .expect("array element payloads");
 
     assert_eq!(element_payloads.len(), 1);
@@ -1037,8 +1043,11 @@ fn block_tail_containers() {
         .expect("array block tail statement")
         .expression_payload()
         .expect("array tail expression payload");
+    let array_items = array_tail
+        .fallback_array_items()
+        .expect("fallback array items");
     let array_actual = array_tail
-        .array_element_payloads()
+        .array_element_payloads(array_items)
         .expect("array element payloads")
         .iter()
         .filter_map(|element| {
@@ -1055,7 +1064,7 @@ fn block_tail_containers() {
     );
 
     let map_actual = array_tail
-        .array_element_payloads()
+        .array_element_payloads(array_items)
         .expect("array element payloads")
         .iter()
         .flat_map(|element| element.map_entry_payloads().unwrap_or_default())

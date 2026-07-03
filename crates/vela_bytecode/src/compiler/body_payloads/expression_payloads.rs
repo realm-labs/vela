@@ -528,10 +528,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn array_element_payloads(
         &self,
+        items: &'ast [Expr],
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::Array(items) = self.fallback_kind else {
+        if !self.fallback_is_array() {
             return None;
-        };
+        }
         let syntax_items = self
             .syntax
             .as_ref()?
@@ -553,17 +554,36 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_array_elements(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_array_elements(&self, items: &'ast [Expr]) -> bool {
         if self.source.is_none() {
             return false;
         }
-        let CompilerExpressionFallbackKind::Array(items) = self.fallback_kind else {
+        if !self.fallback_is_array() {
             return false;
-        };
+        }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_array) else {
             return false;
         };
         syntax.expressions().count() > items.len()
+    }
+
+    fn fallback_is_array(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array(_))
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_array_items(&self) -> Option<&'ast [Expr]> {
+        let CompilerExpressionFallbackKind::Array(items) = self.fallback_kind else {
+            return None;
+        };
+        Some(items)
     }
 
     pub(in crate::compiler) fn map_entry_payloads(

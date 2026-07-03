@@ -1114,8 +1114,9 @@ fn assert_match_body_array_element_payload(
 ) {
     let body = arm.body_expression_payload();
     assert_eq!(body.kind(), Some(SyntaxExpressionKind::Array));
+    let items = body.fallback_array_items().expect("fallback array items");
     let element_payloads = body
-        .array_element_payloads()
+        .array_element_payloads(items)
         .expect("array arm body should expose element payloads");
     let element_body = element_payloads[0]
         .block_body_payload()

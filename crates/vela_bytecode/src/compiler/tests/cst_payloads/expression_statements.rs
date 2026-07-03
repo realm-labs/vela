@@ -410,7 +410,12 @@ fn assert_cst_expression_statement_array_element_body_payloads(
         .statement_payloads()
         .iter()
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
-        .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            let Some(items) = payload.fallback_array_items() else {
+                return Vec::new();
+            };
+            payload.array_element_payloads(items).unwrap_or_default()
+        })
         .flat_map(nested_expression_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));

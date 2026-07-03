@@ -328,7 +328,7 @@ fn static_expr_type_with_payload(
         }
         ExprKind::Array(values) => {
             let payloads =
-                aligned_payload.and_then(CompilerExpressionPayload::array_element_payloads);
+                aligned_payload.and_then(|payload| payload.array_element_payloads(values));
             StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
                 |(index, value)| {
                     expression_value_type_with_payload(

@@ -340,11 +340,14 @@ fn main() {
                     array.syntax_expression().expect("array syntax").clone(),
                     array.fallback(),
                 );
+            let items = missing_source
+                .fallback_array_items()
+                .expect("fallback array items");
             let elements = missing_source
-                .array_element_payloads()
+                .array_element_payloads(items)
                 .expect("array element payloads");
 
-            assert!(!missing_source.has_extra_array_elements());
+            assert!(!missing_source.has_extra_array_elements(items));
             assert!(elements[0].syntax_expression().is_none());
         },
     );
