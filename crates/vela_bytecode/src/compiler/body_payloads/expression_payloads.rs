@@ -917,6 +917,7 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
     }
 
     pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+        self.source?;
         Some(CompilerPatternPayload {
             source: self.source,
             syntax: self

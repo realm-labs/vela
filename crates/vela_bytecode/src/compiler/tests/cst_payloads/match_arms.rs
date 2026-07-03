@@ -254,6 +254,7 @@ fn classify(result) {
         .expect("source-less record pattern should expose field payloads");
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
+    assert!(missing_source_fields[0].pattern_payload().is_none());
     assert_eq!(missing_source_fields[1].syntax_is_shorthand(), None);
     let nested_pattern = record_fields[0]
         .pattern_payload()
