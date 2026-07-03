@@ -113,6 +113,7 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
 #[derive(Clone, Copy)]
 struct CompilerExpressionFallbackSummary {
     kind: Option<SyntaxExpressionKind>,
+    is_interpolated_string: bool,
 }
 
 impl CompilerExpressionFallbackSummary {
@@ -125,6 +126,10 @@ impl CompilerExpressionFallbackSummary {
 
     fn matches_summary(self, other: Self) -> bool {
         self.kind == other.kind
+    }
+
+    fn is_interpolated_string(self) -> bool {
+        self.is_interpolated_string
     }
 }
 
@@ -490,6 +495,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 }
 
 fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressionFallbackSummary {
+    let is_interpolated_string = matches!(fallback.kind, ExprKind::InterpolatedString(_));
     let kind = match fallback.kind {
         ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
             Some(SyntaxExpressionKind::Literal)
@@ -511,7 +517,10 @@ fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressio
         ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
         ExprKind::Error => None,
     };
-    CompilerExpressionFallbackSummary { kind }
+    CompilerExpressionFallbackSummary {
+        kind,
+        is_interpolated_string,
+    }
 }
 
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
@@ -1641,6 +1650,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax_kind: SyntaxExpressionKind,
     ) -> bool {
         self.fallback_summary.matches_syntax_kind(syntax_kind)
+    }
+
+    pub(in crate::compiler) fn fallback_expr_is_interpolated_string(&self) -> bool {
+        self.fallback_summary.is_interpolated_string()
     }
 
     pub(in crate::compiler) fn fallback_expr_matches_expr(

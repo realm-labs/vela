@@ -246,17 +246,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_assignment(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Assign { .. }
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Assign { .. })
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Assign)
     }
 
     pub(in crate::compiler) fn paren_inner_payload(
@@ -286,17 +276,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_unary(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Unary { .. }
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Unary { .. })
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Unary)
     }
 
     #[cfg(test)]
@@ -328,14 +308,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_try(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Try(_))
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Try)
     }
 
     #[cfg(test)]
@@ -366,17 +339,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_binary(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Binary { .. }
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Binary { .. })
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Binary)
     }
 
     #[cfg(test)]
@@ -669,17 +632,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_lambda(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Lambda { .. }
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Lambda { .. })
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Lambda)
     }
 
     #[cfg(test)]
@@ -732,14 +685,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_array(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array(_))
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Array(_))
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Array)
     }
 
     #[cfg(test)]
@@ -793,14 +739,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_map(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map(_))
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Map(_))
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Map)
     }
 
     #[cfg(test)]
@@ -846,17 +785,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_record(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::Record { .. }
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Record { .. })
-        }
+        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Record)
     }
 
     #[cfg(test)]
@@ -920,17 +849,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_interpolated_string(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::InterpolatedString(_)
-            )
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::InterpolatedString(_))
-        }
+        self.fallback_expr_is_interpolated_string()
     }
 
     #[cfg(test)]
