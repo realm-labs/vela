@@ -90,6 +90,19 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
     fallback: &'ast vela_syntax::ast::Expr,
+    fallback_kind: CompilerExpressionFallbackKind<'ast>,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
+    Block(&'ast Block),
+    If(&'ast IfExpr),
+    Match(&'ast MatchExpr),
+    Assign {
+        target: &'ast vela_syntax::ast::Expr,
+        value: &'ast vela_syntax::ast::Expr,
+    },
+    Other,
 }
 
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
@@ -1359,10 +1372,20 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax: Option<SyntaxExpression>,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
+        let fallback_kind = match &fallback.kind {
+            ExprKind::Block(block) => CompilerExpressionFallbackKind::Block(block),
+            ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
+            ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
+            ExprKind::Assign { target, value, .. } => {
+                CompilerExpressionFallbackKind::Assign { target, value }
+            }
+            _ => CompilerExpressionFallbackKind::Other,
+        };
         Self {
             source,
             syntax,
             fallback,
+            fallback_kind,
         }
     }
 

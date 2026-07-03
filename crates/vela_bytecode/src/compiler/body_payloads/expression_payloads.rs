@@ -6,8 +6,9 @@ use vela_syntax::ast::{
 };
 
 use super::{
-    CompilerArgumentPayload, CompilerBodyFallback, CompilerBodyPayload, CompilerExpressionPayload,
-    CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
+    CompilerArgumentPayload, CompilerBodyFallback, CompilerBodyPayload,
+    CompilerExpressionFallbackKind, CompilerExpressionPayload, CompilerIfPayload,
+    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_expr,
     match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
@@ -31,7 +32,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let ExprKind::Block(block) = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::Block(block) = self.fallback_kind else {
             return None;
         };
         CompilerBodyPayload::nested_syntax_optional(
@@ -42,7 +43,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let ExprKind::If(if_expr) = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
             return None;
         };
         if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
@@ -51,7 +52,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn match_arm_payloads(
         &self,
     ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
-        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
             return None;
         };
         match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
@@ -60,7 +61,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn match_scrutinee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
             return None;
         };
         self.source?;
@@ -119,7 +120,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_target_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let ExprKind::Assign { target, .. } = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::Assign { target, .. } = self.fallback_kind else {
             return None;
         };
         self.source?;
@@ -133,7 +134,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_value_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let ExprKind::Assign { value, .. } = &self.fallback.kind else {
+        let CompilerExpressionFallbackKind::Assign { value, .. } = self.fallback_kind else {
             return None;
         };
         self.source?;
@@ -145,9 +146,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
-        let ExprKind::Assign { .. } = &self.fallback.kind else {
+        if !matches!(
+            self.fallback_kind,
+            CompilerExpressionFallbackKind::Assign { .. }
+        ) {
             return None;
-        };
+        }
         self.source?;
         self.syntax.as_ref()?.as_assign()?.operator()
     }

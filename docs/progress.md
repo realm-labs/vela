@@ -604,6 +604,9 @@ Structured assignment value lowering now rejects missing rowan CST child
 payloads for block, if, and match values, including typed field assignments
 that use expected field contracts, instead of compiling the temporary legacy
 owned-AST value body.
+`CompilerExpressionPayload` now stores a bytecode-owned fallback-kind summary
+for block, if, match, and assignment shapes, so those child payload accessors
+no longer inspect the full legacy expression node directly.
 Typed native-call and value-method mutation argument lowering now rejects
 missing rowan CST argument payloads before expected-type compilation instead
 of compiling the temporary legacy owned-AST argument value.
