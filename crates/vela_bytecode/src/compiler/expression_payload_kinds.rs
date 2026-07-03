@@ -24,19 +24,19 @@ pub(super) fn expression_payload_matches_expr(
             ExprKind::Literal(_) | ExprKind::InterpolatedString(_)
         ) && expression_payload_shape_matches_expr(payload, expr);
     }
-    payload.fallback_kind_matches_stored_syntax_kind()
-        && expression_matches_payload_fallback_kind(payload, expr)
+    payload.fallback_expr_matches_stored_syntax_kind()
+        && expression_matches_payload_fallback_expr(payload, expr)
         && expression_payload_shape_matches_expr(payload, expr)
 }
 
-fn expression_matches_payload_fallback_kind(
+fn expression_matches_payload_fallback_expr(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
     match fallback_expr_syntax_kind(expr) {
         Some(SyntaxExpressionKind::Paren) => true,
-        Some(kind) => payload.fallback_kind_matches_syntax_kind(kind),
-        None => payload.fallback_kind_is_other(),
+        Some(kind) => payload.fallback_expr_matches_syntax_kind(kind),
+        None => payload.fallback_expr_is_error(),
     }
 }
 

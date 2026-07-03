@@ -1669,7 +1669,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self::from_fallback(Some(source), None, fallback)
     }
 
-    pub(in crate::compiler) fn fallback_kind_matches_syntax_kind(
+    pub(in crate::compiler) fn fallback_expr_matches_syntax_kind(
         &self,
         syntax_kind: SyntaxExpressionKind,
     ) -> bool {
@@ -1713,12 +1713,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
-    pub(in crate::compiler) fn fallback_kind_matches_stored_syntax_kind(&self) -> bool {
+    pub(in crate::compiler) fn fallback_expr_matches_stored_syntax_kind(&self) -> bool {
         self.stored_syntax_kind()
-            .is_some_and(|kind| self.fallback_kind_matches_syntax_kind(kind))
+            .is_some_and(|kind| self.fallback_expr_matches_syntax_kind(kind))
     }
 
-    pub(in crate::compiler) fn fallback_kind_is_other(&self) -> bool {
+    pub(in crate::compiler) fn fallback_expr_is_error(&self) -> bool {
         #[cfg(test)]
         {
             matches!(self.fallback_kind, CompilerExpressionFallbackKind::Other)
@@ -1729,7 +1729,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
-    pub(in crate::compiler) fn fallback_kind_requires_matching_payload(&self) -> bool {
+    pub(in crate::compiler) fn fallback_expr_requires_matching_payload(&self) -> bool {
         [
             SyntaxExpressionKind::Block,
             SyntaxExpressionKind::If,
@@ -1740,11 +1740,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             SyntaxExpressionKind::Path,
         ]
         .into_iter()
-        .any(|kind| self.fallback_kind_matches_syntax_kind(kind))
+        .any(|kind| self.fallback_expr_matches_syntax_kind(kind))
     }
 
-    pub(in crate::compiler) fn fallback_kind_rejects_missing_payload(&self) -> bool {
-        self.fallback_kind_requires_matching_payload()
+    pub(in crate::compiler) fn fallback_expr_rejects_missing_payload(&self) -> bool {
+        self.fallback_expr_requires_matching_payload()
             || [
                 SyntaxExpressionKind::Assign,
                 SyntaxExpressionKind::Binary,
@@ -1757,7 +1757,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 SyntaxExpressionKind::Unary,
             ]
             .into_iter()
-            .any(|kind| self.fallback_kind_matches_syntax_kind(kind))
+            .any(|kind| self.fallback_expr_matches_syntax_kind(kind))
     }
 
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
