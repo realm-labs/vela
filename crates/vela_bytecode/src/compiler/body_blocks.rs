@@ -4,11 +4,11 @@ use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::ast::{AstNode, Block, SyntaxBlock};
 use vela_syntax::legacy::parse_body_blocks_at_spans;
 
-pub(super) struct BodyFallbackSource {
+pub(super) struct BodyBlockLookup {
     bodies: Vec<Block>,
 }
 
-impl BodyFallbackSource {
+impl BodyBlockLookup {
     pub(super) fn from_syntax(
         source: SourceId,
         text: &str,

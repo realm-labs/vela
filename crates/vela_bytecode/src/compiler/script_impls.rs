@@ -8,7 +8,7 @@ use vela_hir::type_hint::{FunctionSignature, ImplMetadata, ImplMetadataKind, Tra
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::{SyntaxImplItem, SyntaxSourceFile, SyntaxTraitItem};
 
-use super::body_fallbacks::BodyFallbackSource;
+use super::body_blocks::BodyBlockLookup;
 use super::body_payloads::CompilerBodyPayload;
 use super::param_defaults::{ParamDefaultValue, param_default_values};
 use super::syntax_payloads::param_default_expressions;
@@ -30,7 +30,7 @@ struct MethodBodyPayload<'ast> {
 }
 
 pub(super) fn source_methods<'ast>(
-    body_fallbacks: &'ast BodyFallbackSource,
+    body_blocks: &'ast BodyBlockLookup,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     graph: &'ast ModuleGraph,
@@ -45,19 +45,13 @@ pub(super) fn source_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let method_payloads =
-                impl_method_payloads(body_fallbacks, syntax, source, impl_metadata);
+            let method_payloads = impl_method_payloads(body_blocks, syntax, source, impl_metadata);
             let target_type = local_target_name(&impl_metadata.target_path);
             let trait_item = impl_metadata.trait_path().and_then(|trait_path| {
                 let declaration = trait_declaration(graph, declaration.module, trait_path)?;
                 let shape = graph.trait_shape(declaration)?;
-                let payloads = trait_default_method_payloads(
-                    body_fallbacks,
-                    syntax,
-                    source,
-                    trait_path,
-                    shape,
-                );
+                let payloads =
+                    trait_default_method_payloads(body_blocks, syntax, source, trait_path, shape);
                 Some((shape, payloads))
             });
             collect_methods(
@@ -73,7 +67,7 @@ pub(super) fn source_methods<'ast>(
 }
 
 pub(super) fn module_methods<'ast>(
-    body_fallbacks: &'ast BTreeMap<ModuleId, BodyFallbackSource>,
+    body_blocks: &'ast BTreeMap<ModuleId, BodyBlockLookup>,
     syntax: &BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
     source_ids: &BTreeMap<ModuleId, vela_common::SourceId>,
     graph: &'ast ModuleGraph,
@@ -86,7 +80,7 @@ pub(super) fn module_methods<'ast>(
             let Some(impl_metadata) = graph.impl_metadata(declaration.id) else {
                 return Vec::new();
             };
-            let Some(fallback) = body_fallbacks.get(&declaration.module) else {
+            let Some(body_lookup) = body_blocks.get(&declaration.module) else {
                 return Vec::new();
             };
             let Some(syntax_source) = syntax.get(&declaration.module) else {
@@ -96,7 +90,7 @@ pub(super) fn module_methods<'ast>(
                 return Vec::new();
             };
             let method_payloads =
-                impl_method_payloads(fallback, syntax_source, source_id, impl_metadata);
+                impl_method_payloads(body_lookup, syntax_source, source_id, impl_metadata);
             let target_type = module_target_name(module_path, &impl_metadata.target_path);
             let Some(trait_path) = impl_metadata.trait_path() else {
                 return collect_methods(
@@ -121,7 +115,7 @@ pub(super) fn module_methods<'ast>(
             };
             let trait_item = graph
                 .declaration(trait_declaration)
-                .and_then(|declaration| body_fallbacks.get(&declaration.module))
+                .and_then(|declaration| body_blocks.get(&declaration.module))
                 .zip(
                     graph
                         .declaration(trait_declaration)
@@ -133,12 +127,16 @@ pub(super) fn module_methods<'ast>(
                         .and_then(|declaration| source_ids.get(&declaration.module))
                         .copied(),
                 )
-                .and_then(|((fallback, syntax), source_id)| {
+                .and_then(|((body_lookup, syntax), source_id)| {
                     graph.trait_shape(trait_declaration).map(|shape| {
                         (
                             shape,
                             trait_default_method_payloads(
-                                fallback, syntax, source_id, trait_path, shape,
+                                body_lookup,
+                                syntax,
+                                source_id,
+                                trait_path,
+                                shape,
                             ),
                         )
                     })
@@ -251,7 +249,7 @@ fn collect_default_methods<'ast>(
 }
 
 fn impl_method_payloads<'ast>(
-    body_fallbacks: &'ast BodyFallbackSource,
+    body_blocks: &'ast BodyBlockLookup,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     metadata: &ImplMetadata,
@@ -267,7 +265,7 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let fallback_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
+            let body_block = body_blocks.body_for_syntax(source, &syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -276,7 +274,7 @@ fn impl_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, fallback_body),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, body_block),
                 },
             ))
         })
@@ -284,7 +282,7 @@ fn impl_method_payloads<'ast>(
 }
 
 fn trait_default_method_payloads<'ast>(
-    body_fallbacks: &'ast BodyFallbackSource,
+    body_blocks: &'ast BodyBlockLookup,
     syntax: &SyntaxParse<SyntaxSourceFile>,
     source: vela_common::SourceId,
     path: &[String],
@@ -302,7 +300,7 @@ fn trait_default_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let fallback_body = body_fallbacks.body_for_syntax(source, &syntax_body)?;
+            let body_block = body_blocks.body_for_syntax(source, &syntax_body)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -311,7 +309,7 @@ fn trait_default_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, fallback_body),
+                    body: CompilerBodyPayload::syntax(source, syntax_body, body_block),
                 },
             ))
         })
