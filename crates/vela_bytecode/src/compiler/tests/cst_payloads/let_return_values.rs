@@ -562,6 +562,50 @@ fn main(left, right) {
 }
 
 #[test]
+fn syntax_only_field_numeric_let_and_return_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn field_numeric_let(input) {
+    let next = input.amount + 1;
+}
+
+fn field_numeric_return(input) {
+    return 2 * input.amount;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (field_numeric_let, _, _) = semantic
+        .function("field_numeric_let")
+        .expect("field_numeric_let");
+    let (field_numeric_return, _, _) = semantic
+        .function("field_numeric_return")
+        .expect("field_numeric_return");
+
+    let program =
+        compile_program_source(source, text).expect("CST field numeric let/return should compile");
+
+    assert!(
+        !field_numeric_let.body.has_fallback_statements(),
+        "syntax-only field numeric let should not retain an owned body fallback"
+    );
+    assert!(
+        !field_numeric_return.body.has_fallback_statements(),
+        "syntax-only field numeric return should not retain an owned body fallback"
+    );
+    assert!(
+        program.functions.iter().any(|function| {
+            function.instructions.iter().any(|instruction| {
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::BinaryIntLiteral { .. }
+                )
+            })
+        }),
+        "CST field numeric bodies should emit numeric literal binary operations"
+    );
+}
+
+#[test]
 fn syntax_only_path_logical_return_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

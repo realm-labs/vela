@@ -124,7 +124,7 @@ fn field_name_payload_comes_from_cst_without_field_fallback() {
 fn main() {
     let object = { value: 1 };
     let cst_field = make(object).value;
-    let fallback_path = object.value + 1;
+    let fallback_path = make(object);
 }
 
 fn make(value) {

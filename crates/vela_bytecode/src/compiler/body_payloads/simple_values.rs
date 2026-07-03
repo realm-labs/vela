@@ -161,6 +161,12 @@ pub(in crate::compiler) fn expression_syntax_path_field(
     Some(path)
 }
 
+pub(in crate::compiler) fn expression_syntax_path_or_field(
+    expression: &SyntaxExpression,
+) -> Option<Vec<String>> {
+    expression_syntax_path_or_self(expression).or_else(|| expression_syntax_path_field(expression))
+}
+
 pub(in crate::compiler) fn expression_syntax_literal(
     expression: &SyntaxExpression,
 ) -> Option<Literal> {
@@ -426,9 +432,10 @@ fn syntax_expression_has_path_and_numeric_literal_operands(
     lhs: &SyntaxExpression,
     rhs: &SyntaxExpression,
 ) -> bool {
-    (syntax_expression_is_simple_path(lhs) && expression_syntax_numeric_literal_kind(rhs).is_some())
+    (expression_syntax_path_or_field(lhs).is_some()
+        && expression_syntax_numeric_literal_kind(rhs).is_some())
         || (expression_syntax_numeric_literal_kind(lhs).is_some()
-            && syntax_expression_is_simple_path(rhs))
+            && expression_syntax_path_or_field(rhs).is_some())
 }
 
 fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> bool {
@@ -623,10 +630,9 @@ fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool
     if !matches!(unary.operator(), Some(UnaryOp::Not | UnaryOp::Negate)) {
         return false;
     }
-    unary.expression().is_some_and(|operand| {
-        syntax_expression_is_simple_path(&operand)
-            || syntax_expression_is_simple_path_field(&operand)
-    })
+    unary
+        .expression()
+        .is_some_and(|operand| expression_syntax_path_or_field(&operand).is_some())
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {

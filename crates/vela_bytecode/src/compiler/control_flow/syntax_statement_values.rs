@@ -9,7 +9,7 @@ use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
-    expression_syntax_path_or_self,
+    expression_syntax_path_or_field, expression_syntax_path_or_self,
 };
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::operators::{
@@ -427,9 +427,7 @@ impl Compiler<'_, '_> {
         let Some(operand_expression) = unary.expression() else {
             return Ok(None);
         };
-        let Some(path) = expression_syntax_path_or_self(&operand_expression)
-            .or_else(|| expression_syntax_path_field(&operand_expression))
-        else {
+        let Some(path) = expression_syntax_path_or_field(&operand_expression) else {
             return Ok(None);
         };
         let src =
@@ -525,7 +523,7 @@ impl Compiler<'_, '_> {
         else {
             return Ok(None);
         };
-        let Some(path) = expression_syntax_path_or_self(path_expression) else {
+        let Some(path) = expression_syntax_path_or_field(path_expression) else {
             return Ok(None);
         };
         let literal = expression_syntax_literal(literal_expression)
@@ -615,7 +613,7 @@ fn syntax_path_numeric_literal_operands<'expression>(
     &'expression SyntaxExpression,
     BinaryLiteralSide,
 )> {
-    if expression_syntax_path_or_self(lhs).is_some()
+    if expression_syntax_path_or_field(lhs).is_some()
         && expression_syntax_literal(rhs)
             .and_then(InlineNumericLiteral::from_literal)
             .is_some()
@@ -625,7 +623,7 @@ fn syntax_path_numeric_literal_operands<'expression>(
     if expression_syntax_literal(lhs)
         .and_then(InlineNumericLiteral::from_literal)
         .is_some()
-        && expression_syntax_path_or_self(rhs).is_some()
+        && expression_syntax_path_or_field(rhs).is_some()
     {
         return Some((rhs, lhs, BinaryLiteralSide::Left));
     }
