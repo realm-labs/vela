@@ -340,6 +340,9 @@ The old `parse_body_blocks_at_spans` parser entrypoint and its supporting
 owned-AST parser helpers are now compiled only behind the explicit
 `legacy-body-parser` feature, which `vela_bytecode` enables only for its
 remaining CST payload fixture tests.
+`BodyBlockLookup` no longer imports or calls `parse_body_blocks_at_spans` in
+production builds; the span-keyed owned body lookup is compiled only for
+bytecode fixture pairing under tests.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement
