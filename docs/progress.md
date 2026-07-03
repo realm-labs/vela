@@ -308,6 +308,9 @@ lowering coverage is completed.
 `CompilerBodyPayload` no longer stores legacy owned body data in production;
 it carries only the rowan CST body while temporary legacy statement slices are
 kept under test cfg for remaining CST payload fixture pairing.
+`CompilerStatementPayload` no longer stores legacy owned statements in
+production; its statement fallback handle is now test-only while production
+statement payloads carry only source identity and rowan CST statements.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors only under
 test cfg instead of carrying old `Block` values through production body lookup;
 parsed blocks are retained only for legacy fixture assertions.
