@@ -106,6 +106,34 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_range_expr_statement(
+        &mut self,
+        source: vela_common::SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+            return Ok(None);
+        };
+        self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        Ok(Some(false))
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_range_expr_to(
+        &mut self,
+        source: vela_common::SourceId,
+        expression: &SyntaxExpression,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some((lhs, rhs, inclusive)) = expression_syntax_range_operands(expression) else {
+            return Ok(None);
+        };
+        let value = self.compile_syntax_range_value(source, &lhs, &rhs, inclusive)?;
+        if value != dst {
+            self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+        }
+        Ok(Some(false))
+    }
+
     fn compile_syntax_range_value(
         &mut self,
         source: vela_common::SourceId,

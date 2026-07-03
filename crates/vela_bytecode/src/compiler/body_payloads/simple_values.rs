@@ -44,6 +44,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
                 || expr_statement.expression().is_none_or(|expression| {
                     !syntax_expression_is_inline_constant(&expression)
                         && !syntax_expression_is_simple_path(&expression)
+                        && !syntax_expression_is_simple_range(&expression)
                 })
         }),
         _ => true,
