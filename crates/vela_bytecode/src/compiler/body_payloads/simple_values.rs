@@ -1,6 +1,7 @@
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind, UnaryOp,
+    BinaryOp, IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind,
+    UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
@@ -113,6 +114,28 @@ fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> boo
     expression_syntax_bool_literal(&operand).is_some()
 }
 
+fn syntax_expression_is_simple_boolean_equality(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_boolean_equality(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if !matches!(
+        binary.operator(),
+        Some(BinaryOp::Equal | BinaryOp::NotEqual)
+    ) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    expression_syntax_bool_literal(&lhs).is_some() && expression_syntax_bool_literal(&rhs).is_some()
+}
+
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_bool_literal(&inner);
@@ -158,4 +181,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_block(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_boolean_equality(expression)
 }
