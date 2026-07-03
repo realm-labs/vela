@@ -3,11 +3,10 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
-    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchArm, MatchExpr, Pattern,
-    RecordPatternField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
-    SyntaxStatementKind,
+    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, RecordPatternField,
+    Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
+    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -61,7 +60,9 @@ pub(super) struct CompilerStatementPayload<'ast> {
 pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
-    fallback: &'ast MatchArm,
+    pattern_fallback: &'ast Pattern,
+    guard_fallback: Option<&'ast vela_syntax::ast::Expr>,
+    body_fallback: &'ast vela_syntax::ast::Expr,
 }
 
 #[derive(Clone)]
@@ -417,7 +418,9 @@ fn match_arm_payloads_for_expr<'ast>(
             .map(|(index, fallback)| CompilerMatchArmPayload {
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
-                fallback,
+                pattern_fallback: &fallback.pattern,
+                guard_fallback: fallback.guard.as_ref(),
+                body_fallback: &fallback.body,
             })
             .collect(),
     )

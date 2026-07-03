@@ -689,7 +689,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback,
+            pattern_fallback: &fallback.pattern,
+            guard_fallback: fallback.guard.as_ref(),
+            body_fallback: &fallback.body,
         }
     }
 
@@ -701,7 +703,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: Some(syntax),
-            fallback,
+            pattern_fallback: &fallback.pattern,
+            guard_fallback: fallback.guard.as_ref(),
+            body_fallback: &fallback.body,
         }
     }
 
@@ -710,7 +714,9 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: None,
-            fallback,
+            pattern_fallback: &fallback.pattern,
+            guard_fallback: fallback.guard.as_ref(),
+            body_fallback: &fallback.body,
         }
     }
 
@@ -720,7 +726,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             syntax: self
                 .source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
-            fallback: &self.fallback.pattern,
+            fallback: self.pattern_fallback,
         }
     }
 
@@ -747,12 +753,12 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.guard(),
-            fallback: self.fallback.guard.as_ref()?,
+            fallback: self.guard_fallback?,
         })
     }
 
     pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let ExprKind::Block(block) = &self.fallback.body.kind else {
+        let ExprKind::Block(block) = &self.body_fallback.kind else {
             return None;
         };
         CompilerBodyPayload::nested_syntax_optional(
@@ -770,7 +776,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-            fallback: &self.fallback.body,
+            fallback: self.body_fallback,
         }
     }
 
