@@ -525,6 +525,39 @@ fn main() -> i64 {
 }
 
 #[test]
+fn syntax_only_path_arithmetic_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(left, right) {
+    return left * right;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only path arithmetic return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only path arithmetic return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Mul { .. })),
+        "CST path arithmetic return should emit the binary multiply operator"
+    );
+}
+
+#[test]
 fn syntax_only_numeric_division_return_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

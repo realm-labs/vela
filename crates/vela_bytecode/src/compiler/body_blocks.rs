@@ -166,6 +166,14 @@ fn path_comparison_valued_return(input, other) {
     return input >= other;
 }
 
+fn path_arithmetic_valued_let(input, other) {
+    let value = input * other;
+}
+
+fn path_arithmetic_valued_return(input, other) {
+    return input * other;
+}
+
 fn path_numeric_comparison_let(input) {
     let value = input > 0;
 }
@@ -273,46 +281,51 @@ fn parenthesized_simple_values() {
         let path_comparison_valued_return_body = bodies[13]
             .body()
             .expect("path comparison valued return body");
+        let path_arithmetic_valued_let_body =
+            bodies[14].body().expect("path arithmetic valued let body");
+        let path_arithmetic_valued_return_body = bodies[15]
+            .body()
+            .expect("path arithmetic valued return body");
         let path_numeric_comparison_let_body =
-            bodies[14].body().expect("path numeric comparison let body");
-        let path_numeric_comparison_return_body = bodies[15]
+            bodies[16].body().expect("path numeric comparison let body");
+        let path_numeric_comparison_return_body = bodies[17]
             .body()
             .expect("path numeric comparison return body");
         let path_numeric_equality_let_body =
-            bodies[16].body().expect("path numeric equality let body");
-        let path_numeric_equality_return_body = bodies[17]
+            bodies[18].body().expect("path numeric equality let body");
+        let path_numeric_equality_return_body = bodies[19]
             .body()
             .expect("path numeric equality return body");
-        let path_numeric_subtraction_let_body = bodies[18]
+        let path_numeric_subtraction_let_body = bodies[20]
             .body()
             .expect("path numeric subtraction let body");
-        let path_numeric_subtraction_return_body = bodies[19]
+        let path_numeric_subtraction_return_body = bodies[21]
             .body()
             .expect("path numeric subtraction return body");
-        let path_numeric_multiplication_let_body = bodies[20]
+        let path_numeric_multiplication_let_body = bodies[22]
             .body()
             .expect("path numeric multiplication let body");
-        let path_numeric_multiplication_return_body = bodies[21]
+        let path_numeric_multiplication_return_body = bodies[23]
             .body()
             .expect("path numeric multiplication return body");
         let path_numeric_division_let_body =
-            bodies[22].body().expect("path numeric division let body");
-        let path_numeric_division_return_body = bodies[23]
+            bodies[24].body().expect("path numeric division let body");
+        let path_numeric_division_return_body = bodies[25]
             .body()
             .expect("path numeric division return body");
         let path_numeric_remainder_let_body =
-            bodies[24].body().expect("path numeric remainder let body");
-        let path_numeric_remainder_return_body = bodies[25]
+            bodies[26].body().expect("path numeric remainder let body");
+        let path_numeric_remainder_return_body = bodies[27]
             .body()
             .expect("path numeric remainder return body");
-        let unary_valued_let_body = bodies[26].body().expect("unary valued let body");
-        let unary_valued_return_body = bodies[27].body().expect("unary valued return body");
-        let self_valued_let_body = bodies[28].body().expect("self valued let body");
-        let self_valued_return_body = bodies[29].body().expect("self valued return body");
-        let block_valued_let_body = bodies[30].body().expect("block valued let body");
-        let block_valued_return_body = bodies[31].body().expect("block valued return body");
+        let unary_valued_let_body = bodies[28].body().expect("unary valued let body");
+        let unary_valued_return_body = bodies[29].body().expect("unary valued return body");
+        let self_valued_let_body = bodies[30].body().expect("self valued let body");
+        let self_valued_return_body = bodies[31].body().expect("self valued return body");
+        let block_valued_let_body = bodies[32].body().expect("block valued let body");
+        let block_valued_return_body = bodies[33].body().expect("block valued return body");
         let parenthesized_simple_values_body =
-            bodies[32].body().expect("parenthesized simple values body");
+            bodies[34].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -366,6 +379,16 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &path_comparison_valued_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_arithmetic_valued_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_arithmetic_valued_return_body)
                 .is_none()
         );
         assert!(
