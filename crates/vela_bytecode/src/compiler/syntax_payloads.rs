@@ -238,7 +238,7 @@ fn syntax_range_overlaps_span(range: vela_syntax::TextRange, span: Span) -> bool
 mod tests {
     use vela_common::{SourceId, Span};
     use vela_hir::type_hint::{FunctionSignature, ParamHint};
-    use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+    use vela_syntax::parse::parse_source_with_id;
 
     use super::param_default_expressions;
 
@@ -250,7 +250,7 @@ fn cst(first = 1) {
     return first;
 }
 "#;
-        let syntax = parse_syntax_source(source, text);
+        let syntax = parse_source_with_id(source, text);
         let function = syntax
             .tree()
             .functions()

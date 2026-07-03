@@ -11,7 +11,7 @@ mod validation;
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::Visibility;
-use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parse::parse_source_with_id;
 
 pub use model::{
     Declaration, DeclarationIndex, DeclarationKind, Import, ImportResolution, ModulePath,
@@ -76,7 +76,7 @@ impl ModuleGraph {
     }
 
     pub fn add_source(&mut self, source: ModuleSource) -> ModuleId {
-        let parsed = parse_syntax_source(source.id, &source.text);
+        let parsed = parse_source_with_id(source.id, &source.text);
         let diagnostics = parsed.diagnostics().to_vec();
         let syntax_summary = SyntaxModuleSummary::from_parse(source.id, &parsed);
         let source_hash = stable_source_hash(&source.text);

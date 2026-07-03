@@ -9,7 +9,7 @@ use vela_hir::module_graph::{
 use vela_hir::type_hint::{FunctionSignature, ParamHint};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
-use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parse::parse_source_with_id;
 
 use crate::Constant;
 
@@ -547,7 +547,7 @@ fn body_fallback<'ast>(
 }
 
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
-    let syntax = parse_syntax_source(source, text);
+    let syntax = parse_source_with_id(source, text);
     if !syntax.diagnostics().is_empty() {
         return Err(CompileError::new(CompileErrorKind::SyntaxDiagnostics(
             syntax.diagnostics().to_vec(),
@@ -582,7 +582,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
 pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<SemanticModules> {
     let syntax_sources = sources
         .iter()
-        .map(|source| (source, parse_syntax_source(source.id, &source.text)))
+        .map(|source| (source, parse_source_with_id(source.id, &source.text)))
         .collect::<Vec<_>>();
     let syntax_diagnostics = syntax_sources
         .iter()

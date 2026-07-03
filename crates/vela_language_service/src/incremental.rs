@@ -10,7 +10,7 @@ use vela_common::{Diagnostic, SourceId};
 use vela_hir::module_graph::{ModuleGraph, ModulePath, ModuleSource, stable_source_hash};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
-use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parse::parse_source_with_id;
 
 use crate::{
     CompletionResolvePayload, DocumentId, ProjectSources, SchemaArtifact, SchemaSourceLocations,
@@ -176,7 +176,7 @@ impl ParseDb {
                 reparsed_documents.insert(document_id.clone());
                 changed_modules.insert(source.module_path.clone());
                 self.parse_count = self.parse_count.saturating_add(1);
-                let syntax = parse_syntax_source(source.source_id, source.text());
+                let syntax = parse_source_with_id(source.source_id, source.text());
                 let summary = summarize_source(&syntax);
                 ParseRecord {
                     source: source.source_id,

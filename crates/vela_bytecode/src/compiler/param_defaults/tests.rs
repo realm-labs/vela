@@ -1,6 +1,6 @@
 use vela_common::SourceId;
 use vela_syntax::ast::AstNode;
-use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
+use vela_syntax::parse::parse_source_with_id;
 
 use crate::compiler::syntax_payloads::ParamDefaultExpression;
 
@@ -14,7 +14,7 @@ fn cst(first = 1) {
     return first;
 }
 "#;
-    let syntax = parse_syntax_source(source, text);
+    let syntax = parse_source_with_id(source, text);
     let cst_function = syntax
         .tree()
         .functions()
@@ -53,7 +53,7 @@ fn cst(first = player.level) {
     return first;
 }
 "#;
-    let parsed = parse_syntax_source(source, text);
+    let parsed = parse_source_with_id(source, text);
     let cst_function = parsed
         .tree()
         .functions()
@@ -516,7 +516,7 @@ fn first_param_default(text: &str) -> vela_syntax::ast::SyntaxExpression {
 }
 
 fn param_default_at(text: &str, index: usize) -> vela_syntax::ast::SyntaxExpression {
-    parse_syntax_source(SourceId::new(1), text)
+    parse_source_with_id(SourceId::new(1), text)
         .tree()
         .functions()
         .next()
