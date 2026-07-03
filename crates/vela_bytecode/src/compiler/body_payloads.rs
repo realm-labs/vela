@@ -933,6 +933,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn syntax_statement(&self) -> Option<&SyntaxStatement> {
+        self.source?;
         self.syntax.as_ref()
     }
 }
@@ -985,6 +986,7 @@ impl<'ast> CompilerArgumentPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn syntax_argument(&self) -> Option<&SyntaxArgument> {
+        self.source?;
         self.syntax.as_ref()
     }
 }

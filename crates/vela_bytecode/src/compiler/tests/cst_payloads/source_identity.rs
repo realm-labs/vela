@@ -434,6 +434,7 @@ fn main() {
                 .call_argument_payloads()
                 .expect("call argument payloads");
 
+            assert!(args[0].syntax_argument().is_none());
             assert!(!args[0].has_value_syntax());
             assert_eq!(args[0].syntax_name(), None);
             assert!(
@@ -523,9 +524,13 @@ fn main(target) {
                 );
 
             assert_eq!(missing_let.statement_kind(), None);
+            assert!(missing_let.syntax_statement().is_none());
             assert_eq!(missing_assignment.statement_kind(), None);
+            assert!(missing_assignment.syntax_statement().is_none());
             assert_eq!(missing_expression.statement_kind(), None);
+            assert!(missing_expression.syntax_statement().is_none());
             assert_eq!(missing_return.statement_kind(), None);
+            assert!(missing_return.syntax_statement().is_none());
             assert_eq!(missing_let.let_initializer_kind(), None);
             assert_eq!(missing_assignment.syntax_assignment_operator(), None);
             assert_eq!(missing_assignment.assignment_value_kind(), None);
@@ -601,7 +606,9 @@ fn main(value) {
             );
 
             assert!(!missing_arm.has_syntax());
+            assert!(missing_arm.syntax_arm().is_none());
             assert!(!missing_arm.pattern_payload().has_syntax());
+            assert!(missing_arm.pattern_payload().syntax_pattern().is_none());
             assert_eq!(missing_arm.body_expression_kind(), None);
             assert_eq!(missing_arm.pattern_payload().syntax_pattern_kind(), None);
             assert!(

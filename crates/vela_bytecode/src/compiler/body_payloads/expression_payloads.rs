@@ -782,6 +782,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_arm(&self) -> Option<&SyntaxMatchArm> {
+        self.source?;
         self.syntax.as_ref()
     }
 }
@@ -923,6 +924,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
 
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_pattern(&self) -> Option<&vela_syntax::ast::SyntaxPattern> {
+        self.source?;
         self.syntax.as_ref()
     }
 }
