@@ -156,8 +156,8 @@ impl Compiler<'_, '_> {
                 expr,
                 AssignmentTargetSyntax::new(target_expression.as_ref()),
                 AssignmentValueSyntax::new(
-                    stmt.syntax_assignment_value_kind(),
-                    stmt.syntax_assignment_operator(),
+                    stmt.stored_assignment_value_kind(),
+                    stmt.stored_assignment_operator(),
                     value_expression.as_ref(),
                     AssignmentValuePayloads::new(
                         value_body.as_ref(),

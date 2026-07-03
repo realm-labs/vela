@@ -388,7 +388,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax_let_initializer_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.stored_let_initializer_kind()
+    }
+
+    pub(super) fn stored_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
             .as_let()?
@@ -397,10 +403,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn let_initializer_missing_in_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .and_then(SyntaxStatement::as_let)
-            .is_some_and(|statement| statement.initializer().is_none())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .and_then(SyntaxStatement::as_let)
+                .is_some_and(|statement| statement.initializer().is_none())
     }
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -478,7 +486,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax_return_value_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.stored_return_value_kind()
+    }
+
+    pub(super) fn stored_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
             .as_return()?
@@ -493,10 +507,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn return_value_missing_in_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .and_then(SyntaxStatement::as_return)
-            .is_some_and(|statement| statement.expression().is_none())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .and_then(SyntaxStatement::as_return)
+                .is_some_and(|statement| statement.expression().is_none())
     }
 
     pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -684,7 +700,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.expression()?.as_assign()?.target()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
+        self.source?;
+        self.stored_assignment_operator()
+    }
+
+    pub(super) fn stored_assignment_operator(&self) -> Option<AssignOp> {
         let StmtKind::Expr(expr) = &self.fallback.kind else {
             return None;
         };
@@ -734,7 +756,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax_assignment_value_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.stored_assignment_value_kind()
+    }
+
+    pub(super) fn stored_assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.assignment_value_expression()
             .map(|expression| expression.expression_kind())
     }

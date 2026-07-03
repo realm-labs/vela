@@ -468,6 +468,7 @@ fn main(target) {
             assert_eq!(missing_expression.statement_kind(), None);
             assert_eq!(missing_return.statement_kind(), None);
             assert_eq!(missing_let.let_initializer_kind(), None);
+            assert_eq!(missing_assignment.syntax_assignment_operator(), None);
             assert_eq!(missing_assignment.assignment_value_kind(), None);
             assert!(
                 missing_assignment
