@@ -24,31 +24,55 @@ focused compilation and tests is still required before committing a checkpoint.
 Use this prompt to execute the full refactor:
 
 ```text
-goal Implement the lossless CST + rowan syntax refactor from
-docs/syntax-lossless-cst-rowan-refactor-plan.md. Treat docs/goal.md as the
-product roadmap, docs/architecture.md and docs/architecture/*.md as the
-architecture contract, docs/grammar.ebnf as the language grammar reference,
-docs/progress.md as the current milestone state, and docs/decisions.md as the
-durable design decision log. Also read docs/lsp-implementation-plan.md and
+goal Execute the full lossless CST rowan refactor hard-switch from
+docs/syntax-lossless-cst-rowan-refactor-plan.md. Treat docs/goal.md,
+docs/architecture.md, docs/architecture/*.md, docs/progress.md,
+docs/decisions.md, docs/grammar.ebnf, and this plan as required context. Also
+read docs/lsp-implementation-plan.md and
 docs/lsp-rust-analyzer-main-loop-refactor-plan.md before changing LSP-facing
-syntax behavior because the language server depends on the syntax model.
+syntax behavior because the language server depends on the syntax model. This
+is a breaking internal refactor: the priority is to delete old syntax surfaces
+and finish the CST-only architecture, not to preserve compatibility.
 
-At the start of each execution turn, read those documents, inspect the current
-git diff, inspect or run the most relevant failing test, and choose the smallest
-verifiable task that advances the earliest incomplete phase in this plan. This
-track is allowed to be a breaking internal refactor: remove the old owned AST,
-old non-lossless parser API, old token-gap formatter, and transitional
-compatibility shims instead of keeping two syntax stacks alive. Prefer a hard
-switch: delete obsolete syntax surfaces, let compile errors identify downstream
-call sites, and fix those call sites against CST/HIR directly instead of adding
-fallback code to keep both models compiling.
-Temporary names used only to distinguish the new CST path from the old fallback
-path during migration must not become the final API. Delete existing syntax
-migration fallbacks at the start of the relevant hard-switch slice instead of
-saving them for final close-out. Close-out should only audit that no fallback
-API remains, then rename the surviving syntax structures and functions to
-concise canonical names that make sense when there is only one syntax stack
-left.
+At the start of each execution turn, inspect the current git diff, then inspect
+remaining production references to vela_syntax::legacy,
+parse_body_blocks_at_spans, old parser entrypoints, old owned AST structs,
+Expr, ExprKind, StmtKind, Block, SourceFile, ItemKind, token-gap formatting
+paths, CST-to-owned adapters, and migration-only names. Work with any existing
+user changes and do not revert them.
+
+Use a hard-switch strategy. Prefer deleting the obsolete fallback/API at the
+start of a slice, then use compiler errors and focused failing tests as the
+migration queue. It is acceptable for the working tree to be temporarily
+uncompilable during the turn, but do not commit until the changed slice has
+focused tests passing. Do not add new compatibility shims, CST-to-owned
+adapters, duplicate parser APIs, alias types, optional fallback paths, or
+migration-only dispatch just to keep both syntax stacks alive.
+
+Current execution order:
+1. Finish any dirty in-progress bytecode hard-switch edits first, especially
+   control-flow payload changes.
+2. Delete the remaining production old-body fallback path: BodyBlockLookup's
+   dependency on vela_syntax::legacy::parse_body_blocks_at_spans.
+3. Remove old-AST fallback fields from CompilerBodyPayload,
+   CompilerStatementPayload, CompilerExpressionPayload, and child payload
+   structs.
+4. Replace production bytecode usage of Expr, ExprKind, StmtKind, Block,
+   SourceFile, and ItemKind with CST wrappers, HIR facts, or bytecode-owned
+   payload/fact structs.
+5. Delete vela_syntax::legacy, old parser production APIs, old owned AST
+   production structs, and any remaining CST-to-owned conversion helpers.
+6. Rename surviving CST APIs to concise canonical names only after old
+   fallbacks are gone; do not keep long migration names like parse_syntax_* or
+   Syntax* names that only existed to distinguish old/new stacks unless they
+   are still the best final API.
+7. Replace the remaining formatter layout state machine with CST/typed-AST
+   layout rules, then delete token-gap formatter production paths.
+8. Audit language service, LSP, HIR, analysis, and bytecode for old parser
+   imports, migration-only names, unnecessary re-exports, more-than-one-super
+   imports, and touched active files over 1200 lines.
+9. Update docs/progress.md and the plan checklist only when milestone state or
+   remaining gaps materially change.
 
 Use the local rust-analyzer checkout at ~/CLionProjects/rust-analyzer as the
 main architecture reference when it is available. Inspect the relevant files
@@ -81,8 +105,18 @@ unclear file placement. Keep active source and test files under 1200 lines
 unless a documented exception explains why splitting would make ownership or
 logic materially worse.
 
-Validate each checkpoint with focused tests for the changed crates, then close
-out with formatting, clippy, and workspace tests when practical. Update
+For each checkpoint, choose the smallest deletion-first slice that permanently
+removes one old production dependency or fallback class. Validate with the
+narrowest relevant tests first, usually
+cargo test -p vela_bytecode cst_payloads --no-fail-fast for bytecode slices,
+then cargo test -p vela_syntax parser ast formatting, cargo test -p vela_hir,
+cargo test -p vela_analysis,
+cargo test -p vela_language_service completion formatting semantic_tokens inlay,
+and cargo test -p vela_lsp_server completion formatting semantic_tokens
+lifecycle as the touched surface expands. Close out with
+cargo fmt --all -- --check,
+cargo clippy --workspace --all-targets -- -D warnings, and
+cargo test --workspace when practical. Update
 docs/progress.md only when milestone state changes, update docs/decisions.md for
 durable architecture decisions, and commit small Conventional Commit
 checkpoints.
