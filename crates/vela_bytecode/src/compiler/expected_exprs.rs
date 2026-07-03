@@ -31,7 +31,7 @@ impl Compiler<'_, '_> {
         let outcome =
             self.expected_type_for_expr_with_payload(expr, expected, context.clone(), payload)?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
-            && let Some((literal, span)) = contextual_literal_payload(expr, payload)?
+            && let Some((literal, span)) = contextual_literal_payload(payload)?
             && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
                 .map_err(|error| error.with_span(span))?
         {
@@ -73,12 +73,16 @@ impl Compiler<'_, '_> {
 }
 
 fn contextual_literal_payload(
-    expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<Option<(Literal, Span)>> {
     if let Some(payload) = payload {
         if let Some(literal) = payload.syntax_literal() {
-            return Ok(Some((literal, payload.syntax_span().unwrap_or(expr.span))));
+            let span = payload.syntax_span().ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "mismatched CST literal expression",
+                ))
+            })?;
+            return Ok(Some((literal, span)));
         }
         return match payload.syntax_kind() {
             Some(SyntaxExpressionKind::Literal) => Err(CompileError::new(
