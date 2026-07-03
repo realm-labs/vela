@@ -9,39 +9,39 @@ fn take(value) {
 }
 
 fn binary_values() {
-    let amount = -{
+    let amount = (-{
         let left = 1;
         left
-    } + {
+    }) + {
         let right = 2;
         right
     };
-    let plus_right = -{
+    let plus_right = (-{
         let base = 3;
         base
-    } + 1;
-    let plus_left = 1 + -{
+    }) + 1;
+    let plus_left = 1 + (-{
         let tail = 4;
         tail
-    };
-    amount = -{
+    });
+    amount = (-{
         let assigned_left = 5;
         assigned_left
-    } + {
+    }) + {
         let assigned_right = 6;
         assigned_right
     };
-    take(-{
+    take((-{
         let arg_left = 7;
         arg_left
-    } + {
+    }) + {
         let arg_right = 8;
         arg_right
     });
-    return -{
+    return (-{
         let return_left = 9;
         return_left
-    } + {
+    }) + {
         let return_right = 10;
         return_right
     };
@@ -360,13 +360,13 @@ fn main() {
 fn missing_binary_operand_payload_does_not_use_legacy_operand() {
     let source = SourceId::new(1);
     let cst_text = r#"
-fn main() {
-    let value = 1 +;
+fn main(input) {
+    let value = input +;
 }
 "#;
     let legacy_text = r#"
-fn main() {
-    let value = 1 + 2;
+fn main(input) {
+    let value = input + 2;
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -416,8 +416,8 @@ fn main() {
 fn missing_binary_expression_payload_does_not_use_legacy_binary() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    let value = 1 + 2;
+fn main(input) {
+    let value = input + 2;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -443,16 +443,16 @@ fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main(input) {
-    let cst_sum = 1 + 2;
     let lhs = 1;
     let rhs = 2;
+    let cst_sum = lhs + rhs;
     let cst_diff = lhs - rhs;
     let legacy_bool = !input;
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
-            let cst_sum = statements[0]
+            let cst_sum = statements[2]
                 .let_initializer_expression_payload()
                 .expect("CST binary payload");
             let cst_diff = statements[3]
@@ -681,6 +681,12 @@ fn assert_logical_chain_block_payloads(
 fn binary_block_operand_payloads(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    if let Some(operand) = payload.paren_inner_payload() {
+        return binary_block_operand_payloads(operand);
+    }
+    if let Some(operand) = payload.unary_operand_payload() {
+        return binary_block_operand_payloads(operand);
+    }
     let Some((left, right)) = payload.binary_operand_payloads() else {
         return Vec::new();
     };

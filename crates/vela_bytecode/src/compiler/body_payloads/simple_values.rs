@@ -154,14 +154,34 @@ fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression
     };
     if !matches!(
         binary.operator(),
-        Some(BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
+        Some(BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem)
     ) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    if !syntax_expression_is_inline_constant_arithmetic_operand(&lhs)
+        || !syntax_expression_is_inline_constant_arithmetic_operand(&rhs)
+    {
         return false;
     }
     evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
         .ok()
         .flatten()
         .is_some()
+}
+
+fn syntax_expression_is_inline_constant_arithmetic_operand(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_inline_constant_arithmetic_operand(&inner);
+    }
+    expression_syntax_numeric_literal_kind(expression).is_some()
+        || syntax_expression_is_simple_negated_number(expression)
+        || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {

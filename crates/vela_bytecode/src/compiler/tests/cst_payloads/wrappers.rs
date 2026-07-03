@@ -182,8 +182,8 @@ fn main() {
 }
 "#;
     let legacy_text = r#"
-fn main() {
-    let value = (1 + 2);
+fn main(input) {
+    let value = (input + 2);
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);

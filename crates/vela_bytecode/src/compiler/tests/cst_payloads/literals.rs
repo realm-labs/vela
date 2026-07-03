@@ -293,9 +293,9 @@ fn main() -> bool {
 
     with_cst_payload_compiler(
         r#"
-fn main() -> bool {
-    let value: bool = 1 + 0;
-    return 1 + 0;
+fn main(input) -> bool {
+    let value: bool = input == 0;
+    return input == 0;
 }
 "#,
         |compiler, payload| {

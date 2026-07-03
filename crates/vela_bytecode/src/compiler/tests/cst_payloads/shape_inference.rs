@@ -247,7 +247,7 @@ fn arithmetic_shape_inference_prefers_cst_literal_operands() {
         r#"
 fn main() {
     let cst_float = 1.0 + 2;
-    let legacy_int = 1 + 2;
+    let legacy_range = 1..3;
 }
 "#,
         |compiler, payload| {
@@ -255,16 +255,16 @@ fn main() {
             let cst_float = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST float arithmetic initializer");
-            let legacy_int = statements[1]
+            let legacy_range = statements[1]
                 .let_initializer_expression_payload()
-                .expect("legacy int arithmetic fallback");
+                .expect("legacy range fallback");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_float
                     .syntax_expression()
                     .expect("CST float arithmetic syntax")
                     .clone(),
-                legacy_int.fallback(),
+                legacy_range.fallback(),
             );
 
             assert_eq!(
@@ -273,20 +273,18 @@ fn main() {
                     Some(&mismatched_payload),
                 ),
                 Some(record_shapes::ValueShape::Scalar("f64".to_owned())),
-                "arithmetic shape must use CST float operands instead of legacy integer operands"
+                "arithmetic shape must use CST float operands instead of legacy range operands"
             );
         },
     );
 }
 
 #[test]
-fn fallback_arithmetic_shape_requires_numeric_literal_operands() {
+fn fallback_dynamic_arithmetic_shape_does_not_invent_numeric_literal_shape() {
     with_cst_payload_compiler(
         r#"
 fn main(input) {
     let dynamic = input + 1;
-    let integer = 1 + 2;
-    let float = 1 + 2.0;
 }
 "#,
         |compiler, payload| {
@@ -294,27 +292,11 @@ fn main(input) {
             let dynamic = statements[0]
                 .let_initializer_expression_payload()
                 .expect("dynamic arithmetic initializer");
-            let integer = statements[1]
-                .let_initializer_expression_payload()
-                .expect("integer arithmetic initializer");
-            let float = statements[2]
-                .let_initializer_expression_payload()
-                .expect("float arithmetic initializer");
 
             assert_eq!(
                 compiler.value_shape_for_expr_with_payload(dynamic.fallback(), None),
                 None,
                 "fallback arithmetic shape must not invent a numeric type for dynamic operands"
-            );
-            assert_eq!(
-                compiler.value_shape_for_expr_with_payload(integer.fallback(), None),
-                Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
-                "integer literal arithmetic should keep its fallback scalar shape"
-            );
-            assert_eq!(
-                compiler.value_shape_for_expr_with_payload(float.fallback(), None),
-                Some(record_shapes::ValueShape::Scalar("f64".to_owned())),
-                "float literal arithmetic should keep its fallback scalar shape"
             );
         },
     );
