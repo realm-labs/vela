@@ -1125,23 +1125,19 @@ impl Compiler<'_, '_> {
     }
 }
 
-pub(super) fn literal_string(expr: &Expr) -> Option<&str> {
-    match &expr.kind {
-        ExprKind::Literal(Literal::String(value)) => Some(value),
-        _ => None,
-    }
-}
-
 pub(super) fn literal_string_with_payload(
-    expr: &Expr,
+    _expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<String> {
+    if payload.is_none_or(|payload| payload.source().is_none()) {
+        return None;
+    }
     if let Some(Literal::String(value)) =
         payload.and_then(CompilerExpressionPayload::syntax_literal)
     {
         return Some(value);
     }
-    literal_string(expr).map(ToOwned::to_owned)
+    None
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

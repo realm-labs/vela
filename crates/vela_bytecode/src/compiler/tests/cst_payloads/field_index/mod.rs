@@ -607,6 +607,34 @@ fn main() {
 }
 
 #[test]
+fn string_key_index_reads_require_cst_index_literal_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let values = { "legacy": 1 };
+    let value = values["legacy"];
+}
+"#,
+        |_compiler, payload| {
+            let statement = payload.body.statement_payloads()[1]
+                .let_initializer_expression_payload()
+                .expect("index payload");
+            let (_base, index) = statement
+                .index_operand_payloads()
+                .expect("index operand payloads");
+
+            let key =
+                crate::compiler::expressions::literal_string_with_payload(index.fallback(), None);
+
+            assert_eq!(
+                key, None,
+                "old string literal fallback must not drive string-key index lowering"
+            );
+        },
+    );
+}
+
+#[test]
 fn missing_index_operand_payload_does_not_use_legacy_index() {
     let source = SourceId::new(1);
     let cst_text = r#"
