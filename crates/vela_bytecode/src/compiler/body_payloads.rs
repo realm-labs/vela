@@ -209,7 +209,7 @@ fn match_arm_payloads_for_fallback<'ast>(
     fallback: &'ast MatchExpr,
 ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
     let syntax_arms = syntax.arms();
-    if syntax_arms.len() > fallback.arms.len() {
+    if source.is_some() && syntax_arms.len() > fallback.arms.len() {
         return None;
     }
     Some(
@@ -219,7 +219,7 @@ fn match_arm_payloads_for_fallback<'ast>(
             .enumerate()
             .map(|(index, fallback)| CompilerMatchArmPayload {
                 source,
-                syntax: syntax_arms.get(index).cloned(),
+                syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
                 fallback,
             })
             .collect(),
@@ -233,7 +233,7 @@ fn match_scrutinee_payload_for_fallback<'ast>(
 ) -> CompilerExpressionPayload<'ast> {
     CompilerExpressionPayload {
         source,
-        syntax: syntax.scrutinee(),
+        syntax: source.and_then(|_| syntax.scrutinee()),
         fallback: &fallback.scrutinee,
     }
 }
