@@ -6,7 +6,6 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-use super::expression_payload_kinds::aligned_payload_expr;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -365,7 +364,7 @@ impl Compiler<'_, '_> {
             }
             let name = payload.syntax_field_name()?;
             let base_payload = payload.field_base_payload()?;
-            let base = aligned_payload_expr(&base_payload)?;
+            let base = base_payload.aligned_fallback_expr()?;
             return Some(self.compile_script_method_call(
                 expr,
                 base,
