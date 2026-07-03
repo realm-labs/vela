@@ -9,7 +9,7 @@ use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::call_args::CallArgumentSyntax;
-use super::expression_payload_kinds::expression_payload_is_aligned;
+use super::expression_payload_kinds::aligned_payload_fallback_expr;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 pub(super) struct HostPath<'ast> {
@@ -171,9 +171,8 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_from_payload(payload.clone())
             .or_else(|| {
-                expression_payload_is_aligned(&payload, payload.fallback()).then(|| {
-                    self.expr_host_path_receiver_with_payload(payload.fallback(), Some(payload))
-                })
+                let fallback = aligned_payload_fallback_expr(&payload)?;
+                Some(self.expr_host_path_receiver_with_payload(fallback, Some(payload)))
             })
     }
 
