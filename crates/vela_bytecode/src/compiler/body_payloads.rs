@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 #[cfg(test)]
+use vela_syntax::ast::Argument;
+#[cfg(test)]
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
 use vela_syntax::ast::InterpolatedStringPart;
@@ -11,11 +13,10 @@ use vela_syntax::ast::MapEntry;
 #[cfg(test)]
 use vela_syntax::ast::RecordField;
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern,
-    RecordPatternField, Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
-    SyntaxStatementKind,
+    AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MatchExpr, Pattern, RecordPatternField,
+    Stmt, StmtKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
+    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -137,10 +138,13 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     },
     #[cfg(not(test))]
     Binary,
+    #[cfg(test)]
     Call {
         callee: &'ast vela_syntax::ast::Expr,
         args: &'ast [Argument],
     },
+    #[cfg(not(test))]
+    Call,
     #[cfg(test)]
     Field {
         base: &'ast vela_syntax::ast::Expr,
@@ -1544,9 +1548,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             },
             #[cfg(not(test))]
             ExprKind::Binary { .. } => CompilerExpressionFallbackKind::Binary,
+            #[cfg(test)]
             ExprKind::Call { callee, args } => {
                 CompilerExpressionFallbackKind::Call { callee, args }
             }
+            #[cfg(not(test))]
+            ExprKind::Call { .. } => CompilerExpressionFallbackKind::Call,
             #[cfg(test)]
             ExprKind::Field { base, .. } => CompilerExpressionFallbackKind::Field { base },
             #[cfg(not(test))]
@@ -1680,10 +1687,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 }
             }
             SyntaxExpressionKind::Call => {
-                matches!(
-                    self.fallback_kind,
-                    CompilerExpressionFallbackKind::Call { .. }
-                )
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Call { .. }
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Call)
+                }
             }
             SyntaxExpressionKind::Index => {
                 #[cfg(test)]

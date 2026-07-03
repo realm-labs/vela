@@ -1,9 +1,9 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal, MapEntry,
-    MatchExpr, Pattern, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
-    SyntaxRecordPatternField,
+    Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal,
+    MapEntry, MatchExpr, Pattern, RecordField, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
 #[cfg(test)]
@@ -416,9 +416,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::Call { args, .. } = self.fallback_kind else {
-            return None;
-        };
+        let args = self.fallback_call_args()?;
         let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
         if syntax_args.len() > args.len() {
             return None;
@@ -438,15 +436,47 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_callee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Call { callee, .. } = self.fallback_kind else {
-            return None;
-        };
+        let callee = self.fallback_call_callee()?;
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_call()?.callee(),
             callee,
         ))
+    }
+
+    fn fallback_call_args(&self) -> Option<&'ast [Argument]> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Call { args, .. } = self.fallback_kind else {
+                return None;
+            };
+            Some(args)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Call { args, .. } = &self.fallback.kind else {
+                return None;
+            };
+            Some(args)
+        }
+    }
+
+    fn fallback_call_callee(&self) -> Option<&'ast Expr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Call { callee, .. } = self.fallback_kind else {
+                return None;
+            };
+            Some(callee)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Call { callee, .. } = &self.fallback.kind else {
+                return None;
+            };
+            Some(callee)
+        }
     }
 
     pub(in crate::compiler) fn field_base_payload(
