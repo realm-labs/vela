@@ -52,7 +52,7 @@ impl Compiler<'_, '_> {
         callee: &Expr,
         args: &[Argument],
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
-        arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+        arg_payloads: Option<&[CompilerArgumentPayload]>,
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;

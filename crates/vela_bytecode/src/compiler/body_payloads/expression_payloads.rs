@@ -371,7 +371,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
-    ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {
+    ) -> Option<Vec<CompilerArgumentPayload>> {
         let args = self.fallback_call_args()?;
         let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
         if syntax_args.len() > args.len() {
@@ -383,7 +383,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, _fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )

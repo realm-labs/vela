@@ -27,18 +27,18 @@ pub(in crate::compiler) struct SyntaxCallArgument {
 #[derive(Clone, Copy)]
 pub(in crate::compiler) struct CallArgumentSyntax<'payload, 'ast> {
     args: &'ast [Argument],
-    payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
+    payloads: Option<&'payload [CompilerArgumentPayload]>,
 }
 
 impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         args: &'ast [Argument],
-        payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
+        payloads: Option<&'payload [CompilerArgumentPayload]>,
     ) -> Self {
         Self { args, payloads }
     }
 
-    fn payload_for(self, arg: &'ast Argument) -> Option<&'payload CompilerArgumentPayload<'ast>> {
+    fn payload_for(self, arg: &'ast Argument) -> Option<&'payload CompilerArgumentPayload> {
         let index = self
             .args
             .iter()

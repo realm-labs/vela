@@ -83,10 +83,9 @@ pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
     _ast: PhantomData<&'ast ()>,
 }
 
-pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
+pub(in crate::compiler) struct CompilerArgumentPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxArgument>,
-    _ast: PhantomData<&'ast ()>,
 }
 
 #[derive(Clone)]
@@ -1293,7 +1292,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
-    ) -> Option<Vec<CompilerArgumentPayload<'ast>>> {
+    ) -> Option<Vec<CompilerArgumentPayload>> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1310,7 +1309,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .map(|(index, _fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    _ast: PhantomData,
                 })
                 .collect(),
         )
@@ -1447,13 +1445,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 }
 
-impl<'ast> CompilerArgumentPayload<'ast> {
+impl CompilerArgumentPayload {
     #[cfg(test)]
     pub(super) fn syntax(source: SourceId, syntax: SyntaxArgument) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            _ast: PhantomData,
         }
     }
 
@@ -1462,7 +1459,6 @@ impl<'ast> CompilerArgumentPayload<'ast> {
         Self {
             source: Some(source),
             syntax: None,
-            _ast: PhantomData,
         }
     }
 
@@ -1479,7 +1475,7 @@ impl<'ast> CompilerArgumentPayload<'ast> {
         self.syntax.as_ref().and_then(SyntaxArgument::name_text)
     }
 
-    pub(in crate::compiler) fn value_expression_payload(
+    pub(in crate::compiler) fn value_expression_payload<'ast>(
         &self,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> CompilerExpressionPayload<'ast> {

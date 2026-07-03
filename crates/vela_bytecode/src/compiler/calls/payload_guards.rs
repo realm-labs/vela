@@ -58,7 +58,7 @@ pub(super) fn reject_missing_call_callee_payload(
 
 pub(super) fn reject_mismatched_call_argument_payloads(
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+    arg_payloads: Option<&[CompilerArgumentPayload]>,
 ) -> CompileResult<()> {
     if callee_payload.is_some() && arg_payloads.is_none() {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

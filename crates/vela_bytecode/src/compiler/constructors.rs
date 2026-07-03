@@ -44,7 +44,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         enum_name: &str,
         variant: &str,
         args: &[Argument],
-        arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+        arg_payloads: Option<&[CompilerArgumentPayload]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         if !self.enum_constructor_variant_exists(enum_name, variant) {
             return Err(
@@ -284,7 +284,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
 fn argument_expression_payload<'ast>(
     args: &[Argument],
-    arg_payloads: Option<&[CompilerArgumentPayload<'ast>]>,
+    arg_payloads: Option<&[CompilerArgumentPayload]>,
     arg: &'ast Argument,
 ) -> CompileResult<Option<CompilerExpressionPayload<'ast>>> {
     let index = args
@@ -314,7 +314,7 @@ fn argument_expression_payload<'ast>(
 
 fn argument_names(
     args: &[Argument],
-    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+    arg_payloads: Option<&[CompilerArgumentPayload]>,
 ) -> Option<Vec<Option<String>>> {
     arg_payloads.map(|_| {
         args.iter()
@@ -325,7 +325,7 @@ fn argument_names(
 
 fn argument_name(
     args: &[Argument],
-    arg_payloads: Option<&[CompilerArgumentPayload<'_>]>,
+    arg_payloads: Option<&[CompilerArgumentPayload]>,
     arg: &Argument,
 ) -> Option<String> {
     let Some(arg_payloads) = arg_payloads else {
