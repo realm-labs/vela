@@ -370,6 +370,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
         CompilerExpressionPayload<'ast>,
     )> {
+        self.source?;
         let ExprKind::Index { base, index } = &self.fallback.kind else {
             return None;
         };

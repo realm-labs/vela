@@ -126,6 +126,32 @@ fn main(left, middle, right) {
 }
 
 #[test]
+fn source_less_index_payload_does_not_expose_operand_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main(values, index) {
+    let value = values[index];
+}
+"#,
+        |_, payload| {
+            let index_expression = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("index initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    index_expression
+                        .syntax_expression()
+                        .expect("index syntax")
+                        .clone(),
+                    index_expression.fallback(),
+                );
+
+            assert!(missing_source.index_operand_payloads().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"
