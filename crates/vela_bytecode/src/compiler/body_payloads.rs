@@ -1921,6 +1921,37 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .is_some_and(|kind| self.fallback_kind_matches_syntax_kind(kind))
     }
 
+    pub(in crate::compiler) fn fallback_kind_requires_matching_payload(&self) -> bool {
+        [
+            SyntaxExpressionKind::Block,
+            SyntaxExpressionKind::If,
+            SyntaxExpressionKind::Match,
+            SyntaxExpressionKind::Array,
+            SyntaxExpressionKind::Map,
+            SyntaxExpressionKind::Record,
+            SyntaxExpressionKind::Path,
+        ]
+        .into_iter()
+        .any(|kind| self.fallback_kind_matches_syntax_kind(kind))
+    }
+
+    pub(in crate::compiler) fn fallback_kind_rejects_missing_payload(&self) -> bool {
+        self.fallback_kind_requires_matching_payload()
+            || [
+                SyntaxExpressionKind::Assign,
+                SyntaxExpressionKind::Binary,
+                SyntaxExpressionKind::Call,
+                SyntaxExpressionKind::Field,
+                SyntaxExpressionKind::Index,
+                SyntaxExpressionKind::Literal,
+                SyntaxExpressionKind::Lambda,
+                SyntaxExpressionKind::Try,
+                SyntaxExpressionKind::Unary,
+            ]
+            .into_iter()
+            .any(|kind| self.fallback_kind_matches_syntax_kind(kind))
+    }
+
     pub(in crate::compiler) fn fallback_kind_matches_expr(
         &self,
         expr: &vela_syntax::ast::Expr,

@@ -17,10 +17,7 @@ use super::expression_checks::{
     payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
     reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
-use super::expression_payload_kinds::{
-    expression_payload_matches_expr, expression_rejects_missing_payload,
-    expression_requires_matching_payload,
-};
+use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -64,14 +61,15 @@ impl Compiler<'_, '_> {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
         if payload.is_some_and(|payload| payload.stored_syntax_kind().is_some())
-            && expression_requires_matching_payload(expr)
+            && payload
+                .is_some_and(CompilerExpressionPayload::fallback_kind_requires_matching_payload)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression payload",
             )));
         }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
-            && expression_rejects_missing_payload(expr)
+            && payload.is_some_and(CompilerExpressionPayload::fallback_kind_rejects_missing_payload)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression payload",

@@ -43,39 +43,6 @@ fn expression_payload_shape_matches_expr(
     }
 }
 
-pub(super) fn expression_requires_matching_payload(expr: &Expr) -> bool {
-    matches!(
-        expr.kind,
-        ExprKind::Block(_)
-            | ExprKind::If(_)
-            | ExprKind::Match(_)
-            | ExprKind::Array(_)
-            | ExprKind::Map(_)
-            | ExprKind::Record { .. }
-            | ExprKind::Path(_)
-            | ExprKind::SelfValue
-    )
-}
-
-pub(super) fn expression_rejects_missing_payload(expr: &Expr) -> bool {
-    expression_requires_matching_payload(expr)
-        || matches!(
-            expr.kind,
-            ExprKind::Assign { .. }
-                | ExprKind::Binary { .. }
-                | ExprKind::Call { .. }
-                | ExprKind::Field { .. }
-                | ExprKind::Index { .. }
-                | ExprKind::InterpolatedString(_)
-                | ExprKind::Lambda { .. }
-                | ExprKind::Literal(_)
-                | ExprKind::Path(_)
-                | ExprKind::SelfValue
-                | ExprKind::Try(_)
-                | ExprKind::Unary { .. }
-        )
-}
-
 fn expression_payload_overlaps_span(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
     payload
         .syntax_span()

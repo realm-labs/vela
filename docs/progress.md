@@ -651,6 +651,9 @@ That summary now also covers unary, try, binary, call, field, index, lambda,
 array, map, record, and interpolated string expression payload shapes, moving
 the remaining direct child payload accessors off full legacy expression-kind
 inspection.
+Payload mismatch and missing-payload rejection policy now also reads from that
+bytecode-owned fallback-kind summary instead of a free `ExprKind` classifier
+when a `CompilerExpressionPayload` is present.
 Typed native-call and value-method mutation argument lowering now rejects
 missing rowan CST argument payloads before expected-type compilation instead
 of compiling the temporary legacy owned-AST argument value.
