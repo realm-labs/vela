@@ -1008,6 +1008,7 @@ impl Compiler<'_, '_> {
                 return self.compile_assignment_value_with_syntax_kind(
                     value,
                     kind,
+                    syntax.expression,
                     syntax.payloads,
                 );
             }
@@ -1020,13 +1021,11 @@ impl Compiler<'_, '_> {
         &mut self,
         value: &Expr,
         kind: SyntaxExpressionKind,
+        expression_payload: Option<&CompilerExpressionPayload<'_>>,
         syntax_payloads: AssignmentValuePayloads<'_, '_>,
     ) -> CompileResult<Register> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(_) = &value.kind else {
-                    unreachable!("validated CST block assignment value kind");
-                };
                 let dst = self.alloc_register()?;
                 let Some(body_payload) = syntax_payloads.block_body else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -1037,10 +1036,14 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::If => {
-                let ExprKind::If(if_expr) = &value.kind else {
-                    unreachable!("validated CST if assignment value kind");
-                };
                 let dst = self.alloc_register()?;
+                let Some((if_expr, _)) = expression_payload
+                    .and_then(CompilerExpressionPayload::if_payload_with_fallback)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value if payload",
+                    )));
+                };
                 let Some(if_payload) = syntax_payloads.if_expr else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value if payload",
@@ -1050,13 +1053,12 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
-                let ExprKind::Match(match_expr) = &value.kind else {
-                    unreachable!("validated CST match assignment value kind");
-                };
                 let dst = self.alloc_register()?;
-                let Some(match_scrutinee) = syntax_payloads.match_scrutinee else {
+                let Some((match_expr, match_scrutinee, _)) = expression_payload
+                    .and_then(CompilerExpressionPayload::match_payloads_with_fallback)
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST assignment value match scrutinee payload",
+                        "missing CST assignment value match payload",
                     )));
                 };
                 let Some(match_arms) = syntax_payloads.match_arms else {
@@ -1067,7 +1069,7 @@ impl Compiler<'_, '_> {
                 self.compile_match_value_with_payloads(
                     match_expr,
                     dst,
-                    Some(match_scrutinee),
+                    Some(&match_scrutinee),
                     Some(match_arms),
                 )?;
                 Ok(dst)
