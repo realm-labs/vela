@@ -113,8 +113,7 @@ fn required_pattern_kind(
 fn reject_extra_record_pattern_payloads(
     payload: Option<&CompilerPatternPayload<'_>>,
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| !payload.record_pattern_field_count_does_not_exceed_fallback())
-    {
+    if payload.is_some_and(CompilerPatternPayload::has_extra_record_pattern_fields) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST record pattern fields",
         )));
@@ -125,8 +124,7 @@ fn reject_extra_record_pattern_payloads(
 fn reject_extra_tuple_pattern_payloads(
     payload: Option<&CompilerPatternPayload<'_>>,
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| !payload.tuple_pattern_field_count_does_not_exceed_fallback())
-    {
+    if payload.is_some_and(CompilerPatternPayload::has_extra_tuple_pattern_fields) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST tuple pattern fields",
         )));

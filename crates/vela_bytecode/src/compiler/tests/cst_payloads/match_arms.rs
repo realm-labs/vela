@@ -252,7 +252,7 @@ fn classify(result) {
     let missing_source_fields = missing_source_record
         .record_field_payloads()
         .expect("source-less record pattern should expose field payloads");
-    assert!(missing_source_record.record_pattern_field_count_does_not_exceed_fallback());
+    assert!(!missing_source_record.has_extra_record_pattern_fields());
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
     assert!(missing_source_fields[0].pattern_payload().is_none());
@@ -276,7 +276,7 @@ fn classify(result) {
             .clone(),
         first_return_match_fallback_pattern(payload.body.fallback()),
     );
-    assert!(missing_source_tuple.tuple_pattern_field_count_does_not_exceed_fallback());
+    assert!(!missing_source_tuple.has_extra_tuple_pattern_fields());
     let tuple_fields = tuple_pattern
         .tuple_pattern_payloads()
         .expect("tuple pattern should expose field payloads");

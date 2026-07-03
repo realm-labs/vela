@@ -834,17 +834,17 @@ impl<'ast> CompilerPatternPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn record_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_record_pattern_fields(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let Pattern::RecordVariant { fields, .. } = self.fallback else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::record_pattern) else {
-            return true;
+            return false;
         };
-        syntax.fields().count() <= fields.len()
+        syntax.fields().count() > fields.len()
     }
 
     pub(in crate::compiler) fn tuple_pattern_payloads(
@@ -872,17 +872,17 @@ impl<'ast> CompilerPatternPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn tuple_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_tuple_pattern_fields(&self) -> bool {
         if self.source.is_none() {
-            return true;
+            return false;
         }
         let Pattern::TupleVariant { fields, .. } = self.fallback else {
-            return true;
+            return false;
         };
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::tuple_pattern) else {
-            return true;
+            return false;
         };
-        syntax.patterns().count() <= fields.len()
+        syntax.patterns().count() > fields.len()
     }
 
     #[cfg(test)]
