@@ -1152,11 +1152,11 @@ fn first_statement_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::a
 
 fn assert_match_guard_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
-    fallback: Option<&vela_syntax::ast::Expr>,
+    _fallback: Option<&vela_syntax::ast::Expr>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
     let guard = arm
-        .guard_payload(fallback)
+        .guard_payload()
         .expect("match arm should expose guard payload");
     assert_eq!(guard.kind(), Some(SyntaxExpressionKind::Block));
     let body = guard
@@ -1170,10 +1170,10 @@ fn assert_match_guard_payload(
 
 fn assert_match_body_array_element_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
-    fallback: &vela_syntax::ast::Expr,
+    _fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    let body = arm.body_expression_payload(fallback);
+    let body = arm.body_expression_payload();
     assert_eq!(body.kind(), Some(SyntaxExpressionKind::Array));
     let _items = body.fallback_array_items().expect("fallback array items");
     let element_payloads = body

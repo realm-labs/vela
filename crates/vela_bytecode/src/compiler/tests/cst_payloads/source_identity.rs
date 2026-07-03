@@ -682,15 +682,11 @@ fn main(value) {
             assert_eq!(missing_pattern.syntax_pattern_kind(), None);
             assert!(
                 missing_arm
-                    .body_expression_payload(&fallback_match.arms[0].body)
+                    .body_expression_payload()
                     .syntax_expression()
                     .is_none()
             );
-            assert!(
-                missing_arm
-                    .guard_payload(fallback_match.arms[0].guard.as_ref())
-                    .is_none()
-            );
+            assert!(missing_arm.guard_payload().is_none());
         },
     );
 }

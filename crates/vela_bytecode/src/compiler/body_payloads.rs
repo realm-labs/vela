@@ -72,6 +72,7 @@ pub(super) struct CompilerStatementPayload<'ast> {
 pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
+    fallback: &'ast vela_syntax::ast::MatchArm,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -537,9 +538,10 @@ fn match_arm_payloads_for_expr<'ast>(
             .arms
             .iter()
             .enumerate()
-            .map(|(index, _fallback)| CompilerMatchArmPayload {
+            .map(|(index, fallback)| CompilerMatchArmPayload {
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
+                fallback,
                 _ast: PhantomData,
             })
             .collect(),
