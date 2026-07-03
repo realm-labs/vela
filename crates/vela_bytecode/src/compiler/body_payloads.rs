@@ -103,7 +103,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         }
     }
 
-    fn nested_syntax_optional(
+    pub(super) fn nested_syntax_optional(
         source: SourceId,
         body: SyntaxBlock,
         fallback: Option<&'ast Block>,
@@ -501,11 +501,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(super) fn let_initializer_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -602,15 +602,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax
                 .as_ref()?
                 .as_return()?
                 .expression()?
                 .as_block()?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(super) fn return_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -725,11 +725,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { body, .. } = &self.fallback?.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_for()?.body()?,
-            body,
-        ))
+            Some(body),
+        )
     }
 
     pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
@@ -859,11 +859,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &value.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.assignment_value_expression()?.as_block()?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(super) fn assignment_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -951,13 +951,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Block(block) = &expr.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::nested(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.expression()
                 .and_then(|expression| expression.as_block())
                 .or_else(|| self.syntax.as_ref()?.as_block())?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(super) fn expression_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {

@@ -42,11 +42,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Block(block) = &self.fallback.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {

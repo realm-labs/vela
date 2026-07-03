@@ -361,6 +361,32 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_let_initializer_block_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = {
+        let nested;
+        return;
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let body = payload.body.statement_payloads()[0]
+        .let_initializer_block_body_payload()
+        .expect("let initializer block body payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only let initializer block should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn empty_return_payload_with_array_fallback_uses_cst_empty_return() {
     let source = SourceId::new(1);
     let text = r#"
@@ -421,6 +447,32 @@ fn main() {
         error.kind,
         CompileErrorKind::UnsupportedSyntax("missing CST return block body payload")
     ));
+}
+
+#[test]
+fn syntax_only_return_value_block_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return {
+        let nested;
+        return;
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let body = payload.body.statement_payloads()[0]
+        .return_value_block_body_payload()
+        .expect("return value block body payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only return value block should not retain an owned body fallback"
+    );
 }
 
 #[test]
