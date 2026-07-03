@@ -275,3 +275,82 @@ fn main() {
         "CST nested empty array block let should emit the evaluated empty array constant"
     );
 }
+
+#[test]
+fn syntax_only_range_let_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values: Range = 1..=4;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only range let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only range let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeRange {
+                    inclusive: true,
+                    ..
+                }
+            )),
+        "CST range let should emit an inclusive range"
+    );
+}
+
+#[test]
+fn syntax_only_range_return_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> Range {
+    return 1..4;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only range return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only range return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeRange {
+                    inclusive: false,
+                    ..
+                }
+            )),
+        "CST range return should emit an exclusive range"
+    );
+}

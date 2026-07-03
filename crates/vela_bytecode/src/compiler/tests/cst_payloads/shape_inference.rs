@@ -186,30 +186,28 @@ fn main(input) {
     let cst_range = 1..3;
     let cst_compare = input < 3;
     let legacy_bool = input == false;
-    let legacy_range = 4..9;
+    let legacy_arithmetic = input + 4;
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_range = statements[0]
-                .let_initializer_expression_payload()
-                .expect("CST range initializer");
+                .let_initializer_syntax_expression_and_span()
+                .expect("CST range initializer")
+                .1;
             let cst_compare = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST comparison initializer");
             let legacy_bool = statements[2]
                 .let_initializer_expression_payload()
                 .expect("legacy boolean fallback");
-            let legacy_range = statements[3]
+            let legacy_arithmetic = statements[3]
                 .let_initializer_expression_payload()
-                .expect("legacy range fallback");
+                .expect("legacy arithmetic fallback");
 
             let range_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
-                cst_range
-                    .syntax_expression()
-                    .expect("CST range syntax")
-                    .clone(),
+                cst_range,
                 legacy_bool.fallback(),
             );
             assert_eq!(
@@ -227,7 +225,7 @@ fn main(input) {
                     .syntax_expression()
                     .expect("CST comparison syntax")
                     .clone(),
-                legacy_range.fallback(),
+                legacy_arithmetic.fallback(),
             );
             assert_eq!(
                 compiler.value_shape_for_expr_with_payload(
@@ -235,7 +233,7 @@ fn main(input) {
                     Some(&compare_payload),
                 ),
                 Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
-                "comparison CST payload must not use the old fallback range shape"
+                "comparison CST payload must not use the old fallback arithmetic shape"
             );
         },
     );
@@ -245,9 +243,9 @@ fn main(input) {
 fn arithmetic_shape_inference_prefers_cst_literal_operands() {
     with_cst_payload_compiler(
         r#"
-fn main() {
+fn main(input) {
     let cst_float = 1.0 + 2;
-    let legacy_range = 1..3;
+    let legacy_bool = input == false;
 }
 "#,
         |compiler, payload| {
@@ -255,16 +253,16 @@ fn main() {
             let cst_float = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST float arithmetic initializer");
-            let legacy_range = statements[1]
+            let legacy_bool = statements[1]
                 .let_initializer_expression_payload()
-                .expect("legacy range fallback");
+                .expect("legacy boolean fallback");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_float
                     .syntax_expression()
                     .expect("CST float arithmetic syntax")
                     .clone(),
-                legacy_range.fallback(),
+                legacy_bool.fallback(),
             );
 
             assert_eq!(
@@ -273,7 +271,7 @@ fn main() {
                     Some(&mismatched_payload),
                 ),
                 Some(record_shapes::ValueShape::Scalar("f64".to_owned())),
-                "arithmetic shape must use CST float operands instead of legacy range operands"
+                "arithmetic shape must use CST float operands instead of legacy boolean operands"
             );
         },
     );

@@ -38,7 +38,9 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
     }
 }
 
-pub(super) fn expression_syntax_path_or_self(expression: &SyntaxExpression) -> Option<Vec<String>> {
+pub(in crate::compiler) fn expression_syntax_path_or_self(
+    expression: &SyntaxExpression,
+) -> Option<Vec<String>> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_path_or_self(&inner);
     }
@@ -57,7 +59,7 @@ pub(super) fn expression_syntax_literal(expression: &SyntaxExpression) -> Option
     expression.as_literal()?.literal()
 }
 
-pub(super) fn expression_syntax_negated_number_literal(
+pub(in crate::compiler) fn expression_syntax_negated_number_literal(
     expression: &SyntaxExpression,
 ) -> Option<Literal> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
@@ -96,6 +98,40 @@ fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> boo
     expression
         .as_array()
         .is_some_and(|array| array.expressions().next().is_none())
+}
+
+pub(in crate::compiler) fn expression_syntax_range_operands(
+    expression: &SyntaxExpression,
+) -> Option<(SyntaxExpression, SyntaxExpression, bool)> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_syntax_range_operands(&inner);
+    }
+    let binary = expression.as_binary()?;
+    let inclusive = match binary.operator()? {
+        BinaryOp::Range => false,
+        BinaryOp::RangeInclusive => true,
+        _ => return None,
+    };
+    Some((binary.lhs()?, binary.rhs()?, inclusive))
+}
+
+fn syntax_expression_is_simple_range(expression: &SyntaxExpression) -> bool {
+    let Some((lhs, rhs, _)) = expression_syntax_range_operands(expression) else {
+        return false;
+    };
+    syntax_expression_is_simple_range_operand(&lhs)
+        && syntax_expression_is_simple_range_operand(&rhs)
+}
+
+fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_range_operand(&inner);
+    }
+    syntax_expression_is_simple_literal(expression)
+        || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_negated_number(expression)
+        || syntax_expression_is_simple_constant_unary(expression)
+        || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
@@ -364,4 +400,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_constant_comparison(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
         || syntax_expression_is_simple_constant_logical(expression)
+        || syntax_expression_is_simple_range(expression)
 }

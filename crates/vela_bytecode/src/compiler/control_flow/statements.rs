@@ -107,6 +107,16 @@ impl Compiler<'_, '_> {
                     && let Some(name) = stmt.let_name_text()
                     && let Some(span) = stmt.syntax_statement_span()
                     && let Some(compiled) =
+                        self.compile_let_syntax_range(name.clone(), span, source, &expression)?
+                {
+                    return Ok(compiled);
+                }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, _)) =
+                        stmt.let_initializer_syntax_expression_and_span()
+                    && let Some(name) = stmt.let_name_text()
+                    && let Some(span) = stmt.syntax_statement_span()
+                    && let Some(compiled) =
                         self.compile_let_syntax_constant(source, name, span, &expression)?
                 {
                     return Ok(compiled);
@@ -159,6 +169,14 @@ impl Compiler<'_, '_> {
                 }
                 if let Some((literal, span)) = stmt.return_value_syntax_negated_literal_and_span() {
                     return self.compile_return_negated_literal(literal, span);
+                }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, span)) =
+                        stmt.return_value_syntax_expression_and_span()
+                    && let Some(compiled) =
+                        self.compile_return_syntax_range(source, &expression, span)?
+                {
+                    return Ok(compiled);
                 }
                 if stmt.optional_fallback().is_none()
                     && let Some((source, expression, span)) =

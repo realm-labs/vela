@@ -11,10 +11,12 @@ use vela_syntax::ast::{
 mod expression_payloads;
 mod simple_values;
 
-use simple_values::{
-    expression_syntax_literal, expression_syntax_negated_number_literal,
-    expression_syntax_path_or_self, syntax_statement_requires_body_block_lookup,
+pub(super) use simple_values::{
+    expression_syntax_negated_number_literal, expression_syntax_path_or_self,
+    expression_syntax_range_operands,
 };
+
+use simple_values::{expression_syntax_literal, syntax_statement_requires_body_block_lookup};
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
