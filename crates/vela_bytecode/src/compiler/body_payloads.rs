@@ -28,11 +28,11 @@ mod simple_values;
 // that is scheduled for deletion when body payloads become CST-only.
 
 pub(super) use simple_values::{
-    expression_syntax_negated_number_literal, expression_syntax_path_or_self,
-    expression_syntax_range_operands,
+    expression_syntax_literal, expression_syntax_negated_number_literal,
+    expression_syntax_path_or_self, expression_syntax_range_operands,
 };
 
-use simple_values::{expression_syntax_literal, syntax_statement_requires_body_block_lookup};
+use simple_values::syntax_statement_requires_body_block_lookup;
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
@@ -632,6 +632,19 @@ impl<'ast> CompilerIfPayload<'ast> {
 }
 
 impl<'ast> CompilerStatementPayload<'ast> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax_only_for_test(
+        source: SourceId,
+        syntax: SyntaxStatement,
+    ) -> Self {
+        Self {
+            source: Some(source),
+            syntax: Some(syntax),
+            _ast: PhantomData,
+            fallback: None,
+        }
+    }
+
     #[cfg(test)]
     pub(super) fn syntax(source: SourceId, syntax: SyntaxStatement, fallback: &'ast Stmt) -> Self {
         Self {

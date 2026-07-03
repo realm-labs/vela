@@ -75,6 +75,37 @@ fn main(value) {
 }
 
 #[test]
+fn syntax_only_binary_let_initializer_compiles_without_owned_statement_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    let cst_value = value + 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let cst_binary_let = payload.body.statement_payloads()[0]
+        .syntax_statement()
+        .expect("CST binary let statement")
+        .clone();
+    let syntax_only =
+        body_payloads::CompilerStatementPayload::syntax_only_for_test(source, cst_binary_let);
+
+    compiler
+        .compile_statement_payload_for_test(&syntax_only)
+        .expect("CST binary let should compile without legacy statement fallback");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::Add { .. })),
+        "CST binary let should emit the syntax operator"
+    );
+}
+
+#[test]
 fn missing_let_initializer_payload_uses_cst_empty_let() {
     let source = SourceId::new(1);
     let text = r#"

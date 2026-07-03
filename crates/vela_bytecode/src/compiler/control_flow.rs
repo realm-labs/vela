@@ -9,6 +9,7 @@ mod matches;
 mod path_values;
 mod range_statement_values;
 mod statements;
+mod syntax_statement_values;
 mod value_syntax;
 
 use vela_common::{PrimitiveTag, Span};

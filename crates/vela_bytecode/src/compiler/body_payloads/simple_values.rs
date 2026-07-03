@@ -75,7 +75,9 @@ pub(in crate::compiler) fn expression_syntax_path_or_self(
     }
 }
 
-pub(super) fn expression_syntax_literal(expression: &SyntaxExpression) -> Option<Literal> {
+pub(in crate::compiler) fn expression_syntax_literal(
+    expression: &SyntaxExpression,
+) -> Option<Literal> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_literal(&inner);
     }

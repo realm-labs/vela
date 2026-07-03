@@ -154,6 +154,16 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_block_value(name, span, &body);
                 }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, _)) =
+                        stmt.let_initializer_syntax_expression_and_span()
+                    && let Some(name) = stmt.let_name_text()
+                    && let Some(span) = stmt.syntax_statement_span()
+                    && let Some(compiled) =
+                        self.compile_let_syntax_expression(source, name, span, &expression)?
+                {
+                    return Ok(compiled);
+                }
             }
             SyntaxStatementKind::Return if stmt.return_value_missing_in_syntax() => {
                 let Some(span) = stmt.syntax_statement_span() else {
@@ -203,6 +213,14 @@ impl Compiler<'_, '_> {
                         )));
                     };
                     return self.compile_return_block_value(span, &body);
+                }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, _)) =
+                        stmt.return_value_syntax_expression_and_span()
+                    && let Some(compiled) =
+                        self.compile_return_syntax_expression(source, &expression)?
+                {
+                    return Ok(compiled);
                 }
             }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
