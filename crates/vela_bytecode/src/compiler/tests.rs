@@ -190,59 +190,6 @@ fn assert_cst_for_body_payloads(
     );
 }
 
-fn assert_cst_if_body_payloads(
-    body: &body_payloads::CompilerBodyPayload<'_>,
-    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
-    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
-) {
-    let statements = body.statement_payloads();
-    let payloads = statements
-        .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
-        .collect::<Vec<_>>();
-    let then_actual = payloads
-        .iter()
-        .filter_map(body_payloads::CompilerIfPayload::then_body)
-        .map(cst_statement_texts)
-        .collect::<Vec<_>>();
-    let else_actual = payloads
-        .iter()
-        .filter_map(body_payloads::CompilerIfPayload::else_body)
-        .map(cst_statement_texts)
-        .collect::<Vec<_>>();
-    assert_eq!(then_actual, expected_statement_texts(expected_then));
-    assert_eq!(else_actual, expected_statement_texts(expected_else));
-}
-
-fn assert_cst_statement_else_if_body_payloads(
-    body: &body_payloads::CompilerBodyPayload<'_>,
-    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
-    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
-) {
-    let statements = body.statement_payloads();
-    let nested = statements
-        .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
-        .filter_map(|payload| {
-            let nested = payload.else_if()?;
-            Some((
-                nested.then_body().map(cst_statement_texts),
-                nested.else_body().map(cst_statement_texts),
-            ))
-        })
-        .collect::<Vec<_>>();
-    let then_actual = nested
-        .iter()
-        .filter_map(|(then, _)| then.clone())
-        .collect::<Vec<_>>();
-    let else_actual = nested
-        .iter()
-        .filter_map(|(_, else_body)| else_body.clone())
-        .collect::<Vec<_>>();
-    assert_eq!(then_actual, expected_statement_texts(expected_then));
-    assert_eq!(else_actual, expected_statement_texts(expected_else));
-}
-
 fn assert_cst_let_initializer_if_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_then: &[Vec<(SyntaxStatementKind, &str)>],
@@ -785,33 +732,6 @@ fn assert_cst_array_element_body_payloads(
     assert_eq!(then_actual, expected_statement_texts(expected_then));
     assert_eq!(else_actual, expected_statement_texts(expected_else));
     assert_eq!(match_actual, expected_statement_texts(expected_match));
-}
-
-fn assert_cst_let_initializer_block_tail_if_body_payloads(
-    body: &body_payloads::CompilerBodyPayload<'_>,
-    expected_then: &[Vec<(SyntaxStatementKind, &str)>],
-    expected_else: &[Vec<(SyntaxStatementKind, &str)>],
-) {
-    let statements = body.statement_payloads();
-    let payloads = statements
-        .iter()
-        .filter_map(|statement| statement.let_initializer_block_body_payload())
-        .flat_map(|block| block.statement_payloads())
-        .filter_map(|statement| statement.expression_if_payload_with_fallback())
-        .map(|(_, payload)| payload)
-        .collect::<Vec<_>>();
-    let then_actual = payloads
-        .iter()
-        .filter_map(body_payloads::CompilerIfPayload::then_body)
-        .map(cst_statement_texts)
-        .collect::<Vec<_>>();
-    let else_actual = payloads
-        .iter()
-        .filter_map(body_payloads::CompilerIfPayload::else_body)
-        .map(cst_statement_texts)
-        .collect::<Vec<_>>();
-    assert_eq!(then_actual, expected_statement_texts(expected_then));
-    assert_eq!(else_actual, expected_statement_texts(expected_else));
 }
 
 fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(

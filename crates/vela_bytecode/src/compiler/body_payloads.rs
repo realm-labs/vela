@@ -922,6 +922,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(in crate::compiler) fn syntax_if(&self) -> Option<(SourceId, SyntaxIfExpr)> {
+        Some((self.source?, self.syntax.as_ref()?.as_if()?))
+    }
+
     #[cfg(test)]
     pub(in crate::compiler) fn return_value_syntax_literal(
         &self,

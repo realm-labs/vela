@@ -71,7 +71,32 @@ fn condition_values(input) {
 }
 
 #[test]
-fn semantic_function_i64_condition_jump_uses_cst_operand_payloads() {
+fn syntax_only_statement_if_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose(input) {
+    if input.enabled {
+        return input.name;
+    } else if input.ready {
+        return "ready";
+    } else {
+        return "guest";
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "simple CST statement if should not retain an owned body fallback"
+    );
+
+    compile_program_source(source, text).expect("syntax-only statement if should compile");
+}
+
+#[test]
+fn semantic_function_i64_condition_jump_uses_cst_operands() {
     let source = SourceId::new(1);
     let text = r#"
 fn check_limit() {
@@ -87,7 +112,10 @@ fn check_limit() {
         .function("check_limit")
         .expect("check_limit function");
 
-    assert_cst_statement_if_condition_operand_payloads(&payload.body, &[("value", "5")]);
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "syntax-only i64 condition should not retain an owned body fallback"
+    );
 
     let program =
         compile_program_source(source, text).expect("CST-backed i64 condition should compile");
@@ -105,9 +133,9 @@ fn check_limit() {
 }
 
 #[test]
-fn i64_condition_jump_immediate_prefers_cst_rhs_payload() {
+fn i64_condition_jump_immediate_uses_cst_rhs() {
     let source = SourceId::new(1);
-    let cst_text = r#"
+    let text = r#"
 fn main() {
     let value: i64 = 10;
     if value > 5 {
@@ -116,55 +144,30 @@ fn main() {
     return 0;
 }
 "#;
-    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
-    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload.body.syntax_payload().body.clone();
+    let semantic = parse_semantic_source(source, text).expect("CST source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(!payload.body.has_fallback_statements());
 
-    with_cst_payload_compiler(
-        r#"
-fn main() {
-    let value: i64 = 10;
-    if value > 7 {
-        return 1;
-    }
-    return 0;
-}
-"#,
-        |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
-                source,
-                cst_body,
-                payload.body.fallback(),
-            );
-            let statements = mismatched_body.statement_payloads();
-
-            compiler
-                .compile_statement_payloads(&statements)
-                .expect("CST-backed i64 condition should compile");
-
-            assert!(
-                compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        instruction.kind,
-                        UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
-                            op: crate::I64CompareOp::Greater,
-                            imm: 5,
-                            ..
-                        }
-                    )),
-                "i64 immediate jump should use the CST right-hand literal"
-            );
-        },
+    let program =
+        compile_program_source(source, text).expect("CST-backed i64 condition should compile");
+    let function = program.function("main").expect("main bytecode");
+    assert!(
+        function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                op: crate::I64CompareOp::Greater,
+                imm: 5,
+                ..
+            }
+        )),
+        "i64 immediate jump should use the CST right-hand literal"
     );
 }
 
 #[test]
-fn i64_condition_jump_immediate_prefers_cst_operator_payload() {
+fn i64_condition_jump_immediate_uses_cst_operator() {
     let source = SourceId::new(1);
-    let cst_text = r#"
+    let text = r#"
 fn main() {
     let value: i64 = 10;
     if value > 5 {
@@ -173,48 +176,23 @@ fn main() {
     return 0;
 }
 "#;
-    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
-    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload.body.syntax_payload().body.clone();
+    let semantic = parse_semantic_source(source, text).expect("CST source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(!payload.body.has_fallback_statements());
 
-    with_cst_payload_compiler(
-        r#"
-fn main() {
-    let value: i64 = 10;
-    if value < 5 {
-        return 1;
-    }
-    return 0;
-}
-"#,
-        |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
-                source,
-                cst_body,
-                payload.body.fallback(),
-            );
-            let statements = mismatched_body.statement_payloads();
-
-            compiler
-                .compile_statement_payloads(&statements)
-                .expect("CST-backed i64 condition should compile");
-
-            assert!(
-                compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        instruction.kind,
-                        UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
-                            op: crate::I64CompareOp::Greater,
-                            imm: 5,
-                            ..
-                        }
-                    )),
-                "i64 immediate jump should use the CST comparison operator"
-            );
-        },
+    let program =
+        compile_program_source(source, text).expect("CST-backed i64 condition should compile");
+    let function = program.function("main").expect("main bytecode");
+    assert!(
+        function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+                op: crate::I64CompareOp::Greater,
+                imm: 5,
+                ..
+            }
+        )),
+        "i64 immediate jump should use the CST comparison operator"
     );
 }
 
@@ -421,9 +399,9 @@ fn main() {
 }
 
 #[test]
-fn mismatched_i64_condition_payload_does_not_use_legacy_operator() {
+fn syntax_only_i64_path_condition_drops_owned_body_lookup() {
     let source = SourceId::new(1);
-    let cst_text = r#"
+    let text = r#"
 fn main() {
     let value: i64 = 10;
     if value {
@@ -432,44 +410,19 @@ fn main() {
     return 0;
 }
 "#;
-    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
-    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload.body.syntax_payload().body.clone();
-
-    with_cst_payload_compiler(
-        r#"
-fn main() {
-    let value: i64 = 10;
-    if value < 5 {
-        return 1;
-    }
-    return 0;
-}
-"#,
-        |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
-                source,
-                cst_body,
-                payload.body.fallback(),
-            );
-            let statements = mismatched_body.statement_payloads();
-
-            let error = compiler
-                .compile_statement_payloads(&statements)
-                .expect_err("mismatched CST condition must not compile the legacy operator");
-
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST if condition payload")
-            ));
-        },
+    let semantic = parse_semantic_source(source, text).expect("CST source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "syntax-only i64 path condition should not retain an owned body fallback"
     );
+    compile_program_source(source, text).expect("CST-backed path condition should compile");
 }
 
 #[test]
-fn i64_condition_jump_immediate_does_not_use_legacy_rhs_without_cst_literal() {
+fn i64_condition_jump_immediate_not_emitted_without_cst_literal_rhs() {
     let source = SourceId::new(1);
-    let cst_text = r#"
+    let text = r#"
 fn main() {
     let value: i64 = 10;
     let other: i64 = 5;
@@ -479,45 +432,19 @@ fn main() {
     return 0;
 }
 "#;
-    let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
-    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload.body.syntax_payload().body.clone();
+    let semantic = parse_semantic_source(source, text).expect("CST source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(!payload.body.has_fallback_statements());
 
-    with_cst_payload_compiler(
-        r#"
-fn main() {
-    let value: i64 = 10;
-    let other: i64 = 5;
-    if value > 5 {
-        return 1;
-    }
-    return 0;
-}
-"#,
-        |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
-                source,
-                cst_body,
-                payload.body.fallback(),
-            );
-            let statements = mismatched_body.statement_payloads();
-
-            compiler
-                .compile_statement_payloads(&statements)
-                .expect("mismatched CST condition should compile through generic condition path");
-
-            assert!(
-                !compiler
-                    .code
-                    .instructions
-                    .iter()
-                    .any(|instruction| matches!(
-                        instruction.kind,
-                        UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
-                    )),
-                "i64 immediate jump must not use a legacy fallback right-hand literal"
-            );
-        },
+    let program =
+        compile_program_source(source, text).expect("CST-backed condition should compile");
+    let function = program.function("main").expect("main bytecode");
+    assert!(
+        !function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::I64CmpImmJumpIfFalse { .. }
+        )),
+        "i64 immediate jump must not be emitted without a CST literal right-hand side"
     );
 }
 
@@ -555,30 +482,6 @@ fn assert_cst_let_initializer_if_condition_block_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
-fn assert_cst_statement_if_condition_operand_payloads(
-    body: &body_payloads::CompilerBodyPayload<'_>,
-    expected: &[(&str, &str)],
-) {
-    let actual = body
-        .statement_payloads()
-        .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
-        .filter_map(|if_payload| {
-            let condition = if_payload.condition_payload()?;
-            let (_, fallback_left, fallback_right) = condition.fallback_binary_operands()?;
-            let (left, right) = condition.binary_operand_payloads(fallback_left, fallback_right)?;
-            Some((payload_text(&left)?, payload_text(&right)?))
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(
-        actual,
-        expected
-            .iter()
-            .map(|(left, right)| ((*left).to_owned(), (*right).to_owned()))
-            .collect::<Vec<_>>()
-    );
-}
-
 fn condition_block_body_payload<'ast>(
     condition: &body_payloads::CompilerExpressionPayload<'ast>,
 ) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
@@ -586,9 +489,4 @@ fn condition_block_body_payload<'ast>(
         .paren_inner_payload()
         .and_then(|inner| inner.block_body_payload())
         .or_else(|| condition.block_body_payload())
-}
-
-fn payload_text(payload: &body_payloads::CompilerExpressionPayload<'_>) -> Option<String> {
-    let expression = payload.syntax_expression()?;
-    Some(expression.syntax().text().to_string())
 }

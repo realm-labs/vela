@@ -80,6 +80,116 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_if_statement(
+        &mut self,
+        source: SourceId,
+        if_expr: &SyntaxIfExpr,
+    ) -> CompileResult<Option<bool>> {
+        let Some(condition_expression) = if_expr.condition() else {
+            return Ok(None);
+        };
+        let Some(then_block) = if_expr.then_block() else {
+            return Ok(None);
+        };
+        let Some(then_body) = CompilerBodyPayload::nested_syntax_optional(source, then_block, None)
+        else {
+            return Ok(None);
+        };
+
+        let jump_to_else = if let Some(jump) =
+            self.try_emit_syntax_i64_immediate_jump_if_false(source, &condition_expression)?
+        {
+            jump
+        } else {
+            let Some(condition) = self.compile_syntax_expression(source, &condition_expression)?
+            else {
+                return Ok(None);
+            };
+            self.emit_jump_if_false(condition)
+        };
+        let then_returned = self.compile_body_payload_statements(&then_body)?;
+        let jump_to_end = if then_returned {
+            None
+        } else {
+            Some(self.emit_jump())
+        };
+
+        self.patch_jump(jump_to_else, self.current_offset())?;
+        let else_returned = match if_expr.else_branch() {
+            Some(SyntaxElseBranch::If(else_if)) => {
+                let Some(returned) = self.compile_syntax_if_statement(source, &else_if)? else {
+                    return Ok(None);
+                };
+                returned
+            }
+            Some(SyntaxElseBranch::Block(block)) => {
+                let Some(else_body) =
+                    CompilerBodyPayload::nested_syntax_optional(source, block, None)
+                else {
+                    return Ok(None);
+                };
+                self.compile_body_payload_statements(&else_body)?
+            }
+            None => false,
+        };
+
+        if let Some(jump_to_end) = jump_to_end {
+            self.patch_jump(jump_to_end, self.current_offset())?;
+        }
+        Ok(Some(then_returned && else_returned))
+    }
+
+    fn try_emit_syntax_i64_immediate_jump_if_false(
+        &mut self,
+        source: SourceId,
+        condition: &SyntaxExpression,
+    ) -> CompileResult<Option<usize>> {
+        let Some(binary) = condition.as_binary() else {
+            return Ok(None);
+        };
+        let Some(op) = binary
+            .operator()
+            .and_then(crate::compiler::operators::i64_compare_op)
+        else {
+            return Ok(None);
+        };
+        let Some(lhs_expression) = binary.lhs() else {
+            return Ok(None);
+        };
+        let Some(rhs_expression) = binary.rhs() else {
+            return Ok(None);
+        };
+        let Some(lhs_path) = expression_syntax_path_or_field(&lhs_expression) else {
+            return Ok(None);
+        };
+        let lhs_span = syntax_expression_span(source, &lhs_expression);
+        if self.value_type_for_path(lhs_span, &lhs_path)
+            != Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        {
+            return Ok(None);
+        }
+        let Some(Literal::Integer(value)) = expression_syntax_literal(&rhs_expression) else {
+            return Ok(None);
+        };
+        let Some(Constant::Scalar(vela_common::ScalarValue::I64(imm))) =
+            compile_literal_constant_for_type(&Literal::Integer(value), PrimitiveTag::I64)
+                .map_err(|error| {
+                    error.with_span(syntax_expression_span(source, &rhs_expression))
+                })?
+        else {
+            return Ok(None);
+        };
+        let lhs = self.compile_path_expr(lhs_span, &lhs_path)?;
+        let offset = self.current_offset();
+        self.emit(UnlinkedInstructionKind::I64CmpImmJumpIfFalse {
+            op,
+            lhs,
+            imm,
+            target: crate::InstructionOffset(usize::MAX),
+        });
+        Ok(Some(offset))
+    }
+
     pub(in crate::compiler::control_flow) fn compile_syntax_value_expr_to(
         &mut self,
         source: SourceId,
@@ -244,7 +354,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    fn compile_syntax_if_value_to(
+    pub(in crate::compiler::control_flow) fn compile_syntax_if_value_to(
         &mut self,
         source: SourceId,
         if_expr: &SyntaxIfExpr,

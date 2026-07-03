@@ -92,6 +92,12 @@ impl Compiler<'_, '_> {
                     return self.compile_block_payload_value_to(&body, dst);
                 }
                 if tail.optional_fallback().is_none()
+                    && let Some((source, if_expr)) = tail.syntax_if()
+                    && let Some(done) = self.compile_syntax_if_value_to(source, &if_expr, dst)?
+                {
+                    return Ok(done);
+                }
+                if tail.optional_fallback().is_none()
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
                     && let Some(done) =

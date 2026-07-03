@@ -103,6 +103,9 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
         SyntaxStatementKind::Block => statement
             .as_block()
             .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
+        SyntaxStatementKind::If => statement
+            .as_if()
+            .is_none_or(|if_expr| !syntax_if_statement_is_cst_lowerable(&if_expr)),
         SyntaxStatementKind::Expr => statement.as_expr().is_none_or(|expr_statement| {
             if expr_statement.semicolon_token().is_some() || allow_unterminated_cst_expression {
                 return expr_statement.expression().is_none_or(|expression| {
@@ -265,6 +268,35 @@ fn syntax_if_is_simple_value(if_expr: &SyntaxIfExpr) -> bool {
         }
         None => true,
     }
+}
+
+fn syntax_if_statement_is_cst_lowerable(if_expr: &SyntaxIfExpr) -> bool {
+    let Some(condition) = if_expr.condition() else {
+        return false;
+    };
+    if !syntax_expression_is_simple_if_statement_condition(&condition) {
+        return false;
+    }
+    if if_expr
+        .then_block()
+        .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
+    {
+        return false;
+    }
+    match if_expr.else_branch() {
+        Some(SyntaxElseBranch::If(else_if)) => syntax_if_statement_is_cst_lowerable(&else_if),
+        Some(SyntaxElseBranch::Block(block)) => {
+            !CompilerBodyPayload::requires_body_block_lookup(&block)
+        }
+        None => true,
+    }
+}
+
+fn syntax_expression_is_simple_if_statement_condition(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_if_statement_condition(&inner);
+    }
+    expression.as_block().is_none() && syntax_expression_is_simple_interpolation_value(expression)
 }
 
 fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {

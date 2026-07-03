@@ -56,7 +56,10 @@ fn missing_block_tail_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"
 fn main(flag) {
-    if flag {
+    if ({
+        let selected = flag;
+        selected
+    }) {
         1
     } else {
         2

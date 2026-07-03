@@ -224,6 +224,13 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
+            SyntaxStatementKind::If if stmt.optional_fallback().is_none() => {
+                if let Some((source, if_expr)) = stmt.syntax_if()
+                    && let Some(compiled) = self.compile_syntax_if_statement(source, &if_expr)?
+                {
+                    return Ok(compiled);
+                }
+            }
             _ => {}
         }
 

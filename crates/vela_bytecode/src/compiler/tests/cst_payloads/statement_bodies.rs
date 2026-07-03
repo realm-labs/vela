@@ -230,7 +230,10 @@ fn missing_if_statement_payload_does_not_use_legacy_branches() {
     with_cst_payload_compiler(
         r#"
 fn main(flag) {
-    if flag {
+    if ({
+        let selected = flag;
+        selected
+    }) {
         return 1;
     }
 }
@@ -349,7 +352,10 @@ fn missing_if_statement_child_payloads_do_not_use_legacy_branches() {
     with_cst_payload_compiler(
         r#"
 fn main(flag) {
-    if flag {
+    if ({
+        let selected = flag;
+        selected
+    }) {
         return 1;
     } else {
         return 2;

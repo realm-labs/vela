@@ -840,13 +840,12 @@ fn block_tail_values() {
     let (payload, _, _) = semantic
         .function("block_tail_values")
         .expect("block_tail_values function");
-    assert_cst_let_initializer_block_tail_if_body_payloads(
-        &payload.body,
-        &[vec![
-            (SyntaxStatementKind::Let, "let high = seed;"),
-            (SyntaxStatementKind::Expr, "high"),
-        ]],
-        &[vec![(SyntaxStatementKind::Expr, "0")]],
+    let value_block = payload.body.statement_payloads()[0]
+        .let_initializer_block_body_payload()
+        .expect("value block payload");
+    assert!(
+        !value_block.has_fallback_statements(),
+        "simple CST block-tail if value should not retain an owned block fallback"
     );
     assert_cst_let_initializer_block_tail_match_arm_body_payloads(
         &payload.body,
@@ -1011,10 +1010,9 @@ fn check() {
             "value > 5",
         )],
     );
-    assert_cst_if_body_payloads(
-        &payload.body,
-        &[vec![(SyntaxStatementKind::Return, "return 1;")]],
-        &[vec![(SyntaxStatementKind::Return, "return 0;")]],
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "simple CST if statement should not retain an owned body fallback"
     );
 
     let program =
@@ -1049,21 +1047,9 @@ fn check() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("check").expect("check function");
-    assert_cst_if_body_payloads(
-        &payload.body,
-        &[vec![
-            (SyntaxStatementKind::Let, "let high = value;"),
-            (SyntaxStatementKind::Return, "return high;"),
-        ]],
-        &[],
-    );
-    assert_cst_statement_else_if_body_payloads(
-        &payload.body,
-        &[vec![
-            (SyntaxStatementKind::Let, "let mid = value - 1;"),
-            (SyntaxStatementKind::Return, "return mid;"),
-        ]],
-        &[vec![(SyntaxStatementKind::Return, "return 0;")]],
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "simple CST else-if statement should not retain an owned body fallback"
     );
 
     compile_program_source(source, text).expect("CST-backed else-if statement body should compile");
