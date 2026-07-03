@@ -162,6 +162,12 @@ impl Compiler<'_, '_> {
             let dst = self.alloc_register()?;
             return self.compile_block_payload_value_to(&body, dst);
         }
+        if stmt.optional_fallback().is_none()
+            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+            && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
+        {
+            return Ok(done);
+        }
         let expression_payload = stmt.expression_payload();
         if expression_payload.is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

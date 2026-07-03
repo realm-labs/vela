@@ -60,6 +60,17 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_value_expr_statement(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        let Some(_register) = self.compile_syntax_expression(source, expression)? else {
+            return Ok(None);
+        };
+        Ok(Some(false))
+    }
+
     fn compile_syntax_expression(
         &mut self,
         source: SourceId,

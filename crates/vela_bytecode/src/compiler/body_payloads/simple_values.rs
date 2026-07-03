@@ -97,6 +97,12 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_range(expression)
         || syntax_expression_is_statement_block(expression)
+        || syntax_expression_is_simple_path_unary(expression)
+        || syntax_expression_is_simple_path_binary(expression)
+        || syntax_expression_is_simple_path_comparison(expression)
+        || syntax_expression_is_simple_path_arithmetic(expression)
+        || syntax_expression_is_simple_path_numeric_comparison(expression)
+        || syntax_expression_is_simple_path_numeric_equality(expression)
 }
 
 pub(in crate::compiler) fn expression_syntax_path_or_self(

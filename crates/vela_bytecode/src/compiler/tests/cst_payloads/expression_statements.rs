@@ -54,6 +54,35 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_path_value_expression_statements_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input, other) {
+    !input;
+    input == other;
+    input < other;
+    input * other;
+    input > 0;
+    input == 0;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(
+        !payload.body.has_fallback_statements(),
+        "path value expression statement body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 6);
+    assert!(statements.iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    }));
+
+    compile_program_source(source, text)
+        .expect("CST-only path value expression statements should compile");
+}
+
+#[test]
 fn syntax_only_range_expression_statements_drop_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
