@@ -84,8 +84,8 @@ fn main(left, right) {
 fn source_less_unary_payload_does_not_expose_operand_payload() {
     with_cst_payload_compiler(
         r#"
-fn main(value) {
-    let negated = -value;
+fn main(value, other) {
+    let negated = -(value + other);
 }
 "#,
         |_, payload| {

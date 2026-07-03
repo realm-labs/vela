@@ -30,6 +30,9 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             if syntax_expression_is_simple_value(&initializer) {
                 return false;
             }
+            if syntax_expression_is_simple_path_unary(&initializer) {
+                return false;
+            }
             if syntax_expression_is_simple_path_numeric_add(&initializer) {
                 return false;
             }
@@ -40,6 +43,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
             return_statement.expression().is_some_and(|expression| {
                 !syntax_expression_is_simple_value(&expression)
+                    && !syntax_expression_is_simple_path_unary(&expression)
                     && !syntax_expression_is_simple_path_numeric_add(&expression)
             })
         }),
@@ -219,6 +223,21 @@ fn syntax_expression_is_simple_path_numeric_add(expression: &SyntaxExpression) -
         return false;
     };
     syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
+}
+
+fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_path_unary(&inner);
+    }
+    let Some(unary) = expression.as_unary() else {
+        return false;
+    };
+    if !matches!(unary.operator(), Some(UnaryOp::Not | UnaryOp::Negate)) {
+        return false;
+    }
+    unary
+        .expression()
+        .is_some_and(|operand| syntax_expression_is_simple_path(&operand))
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {

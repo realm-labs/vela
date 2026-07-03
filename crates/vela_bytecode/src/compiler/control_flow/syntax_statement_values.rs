@@ -1,6 +1,6 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression};
+use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression, UnaryOp};
 
 use crate::compiler::body_payloads::{expression_syntax_literal, expression_syntax_path_or_self};
 use crate::compiler::const_eval::compile_literal_constant_for_type;
@@ -78,6 +78,9 @@ impl Compiler<'_, '_> {
                 .compile_path_expr(syntax_expression_span(source, expression), &path)
                 .map(Some);
         }
+        if let Some(register) = self.compile_syntax_path_unary(source, expression)? {
+            return Ok(Some(register));
+        }
         let Some(binary) = expression.as_binary() else {
             return Ok(None);
         };
@@ -114,6 +117,34 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         let Some(instruction) = non_logical_binary_instruction(op, dst, lhs, rhs) else {
             return Ok(None);
+        };
+        self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_path_unary(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(unary) = expression.as_unary() else {
+            return Ok(None);
+        };
+        let Some(op) = unary.operator() else {
+            return Ok(None);
+        };
+        let Some(operand_expression) = unary.expression() else {
+            return Ok(None);
+        };
+        let Some(path) = expression_syntax_path_or_self(&operand_expression) else {
+            return Ok(None);
+        };
+        let src =
+            self.compile_path_expr(syntax_expression_span(source, &operand_expression), &path)?;
+        let dst = self.alloc_register()?;
+        let instruction = match op {
+            UnaryOp::Not => UnlinkedInstructionKind::Not { dst, src },
+            UnaryOp::Negate => UnlinkedInstructionKind::Negate { dst, src },
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
         Ok(Some(dst))

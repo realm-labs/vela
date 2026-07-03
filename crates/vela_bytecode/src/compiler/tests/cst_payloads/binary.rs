@@ -447,7 +447,7 @@ fn main(input) {
     let rhs = 2;
     let cst_sum = lhs + rhs;
     let cst_diff = lhs - rhs;
-    let legacy_bool = !input;
+    let legacy_bool = !(input == rhs);
 }
 "#,
         |compiler, payload| {

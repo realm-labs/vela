@@ -222,8 +222,8 @@ fn main(input) {
 fn missing_unary_expression_payload_does_not_use_legacy_unary() {
     let source = SourceId::new(1);
     let text = r#"
-fn main(input) {
-    let value = -input;
+fn main(input, other) {
+    let value = -(input + other);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
