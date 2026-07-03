@@ -10,6 +10,7 @@ use crate::compiler::operators::{
     binary_literal_op, i64_immediate_instruction, i64_immediate_op_supported,
     non_logical_binary_instruction,
 };
+use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
 use crate::{BinaryLiteralSide, Constant};
@@ -115,6 +116,9 @@ impl Compiler<'_, '_> {
             return Ok(Some(register));
         }
         if let Some(register) = self.compile_syntax_try(source, expression)? {
+            return Ok(Some(register));
+        }
+        if let Some(register) = self.compile_syntax_container(source, expression)? {
             return Ok(Some(register));
         }
         let Some(binary) = expression.as_binary() else {
@@ -326,6 +330,53 @@ impl Compiler<'_, '_> {
             syntax_expression_span(source, expression),
         );
         Ok(Some(dst))
+    }
+
+    fn compile_syntax_container(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+            return self.compile_syntax_container(source, &inner);
+        }
+        if let Some(array) = expression.as_array() {
+            let elements = array
+                .expressions()
+                .map(|element| self.compile_syntax_expression(source, &element))
+                .collect::<CompileResult<Option<Vec<_>>>>()?;
+            let Some(elements) = elements else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
+            return Ok(Some(dst));
+        }
+        if let Some(map) = expression.as_map() {
+            let entries = map
+                .entries()
+                .map(|entry| {
+                    let Some(key) = entry.key() else {
+                        return Ok(None);
+                    };
+                    let Some(value) = entry.value() else {
+                        return Ok(None);
+                    };
+                    let key = syntax_map_key_name(source, &key)?;
+                    let Some(value) = self.compile_syntax_expression(source, &value)? else {
+                        return Ok(None);
+                    };
+                    Ok(Some((key, value)))
+                })
+                .collect::<CompileResult<Option<Vec<_>>>>()?;
+            let Some(entries) = entries else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
+            return Ok(Some(dst));
+        }
+        Ok(None)
     }
 
     fn compile_syntax_path_numeric_literal_binary(

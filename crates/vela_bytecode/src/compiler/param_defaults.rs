@@ -928,7 +928,7 @@ fn logical_chain_syntax_operands(
     Some(operands)
 }
 
-fn syntax_map_key_supported(key: &SyntaxExpression) -> bool {
+pub(in crate::compiler) fn syntax_map_key_supported(key: &SyntaxExpression) -> bool {
     match key.expression_kind() {
         SyntaxExpressionKind::Literal => key
             .as_literal()
@@ -946,7 +946,10 @@ fn syntax_map_key_supported(key: &SyntaxExpression) -> bool {
     }
 }
 
-fn syntax_map_key_name(source: SourceId, key: &SyntaxExpression) -> CompileResult<String> {
+pub(in crate::compiler) fn syntax_map_key_name(
+    source: SourceId,
+    key: &SyntaxExpression,
+) -> CompileResult<String> {
     match key.expression_kind() {
         SyntaxExpressionKind::Literal => {
             let Some(literal) = key.as_literal().and_then(|literal| literal.literal()) else {

@@ -63,6 +63,11 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                 return false;
             }
             if let_statement.type_hint().is_none()
+                && syntax_expression_is_simple_container(&initializer)
+            {
+                return false;
+            }
+            if let_statement.type_hint().is_none()
                 && syntax_expression_is_simple_path_numeric_comparison(&initializer)
             {
                 return false;
@@ -89,6 +94,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                     && !syntax_expression_is_simple_path_arithmetic(&expression)
                     && !syntax_expression_is_simple_path_logical(&expression)
                     && !syntax_expression_is_simple_try(&expression)
+                    && !syntax_expression_is_simple_container(&expression)
                     && !syntax_expression_is_simple_path_numeric_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_equality(&expression)
                     && !syntax_expression_is_simple_path_numeric_arithmetic(&expression)
@@ -121,6 +127,7 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
         || syntax_expression_is_simple_path_arithmetic(expression)
         || syntax_expression_is_simple_path_logical(expression)
         || syntax_expression_is_simple_try(expression)
+        || syntax_expression_is_simple_container(expression)
         || syntax_expression_is_simple_path_numeric_comparison(expression)
         || syntax_expression_is_simple_path_numeric_equality(expression)
         || syntax_expression_is_simple_path_numeric_arithmetic(expression)
@@ -469,6 +476,72 @@ fn syntax_expression_is_simple_try(expression: &SyntaxExpression) -> bool {
             syntax_expression_is_simple_path(&operand)
                 || syntax_expression_is_simple_path_field(&operand)
         })
+}
+
+fn syntax_expression_is_simple_container(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_container(&inner);
+    }
+    match expression.expression_kind() {
+        SyntaxExpressionKind::Array => expression.as_array().is_some_and(|array| {
+            let mut has_field_value = false;
+            let all_supported = array.expressions().all(|element| {
+                has_field_value |= syntax_expression_contains_simple_field_value(&element);
+                syntax_expression_is_simple_container_value(&element)
+            });
+            all_supported && has_field_value
+        }),
+        SyntaxExpressionKind::Map => expression.as_map().is_some_and(|map| {
+            let mut has_field_value = false;
+            map.entries().all(|entry| {
+                entry.key().is_some_and(|key| {
+                    crate::compiler::param_defaults::syntax_map_key_supported(&key)
+                }) && entry.value().is_some_and(|value| {
+                    has_field_value |= syntax_expression_contains_simple_field_value(&value);
+                    syntax_expression_is_simple_container_value(&value)
+                })
+            }) && has_field_value
+        }),
+        _ => false,
+    }
+}
+
+fn syntax_expression_contains_simple_field_value(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_contains_simple_field_value(&inner);
+    }
+    syntax_expression_is_simple_path_field(expression)
+        || expression.as_array().is_some_and(|array| {
+            array
+                .expressions()
+                .any(|element| syntax_expression_contains_simple_field_value(&element))
+        })
+        || expression.as_map().is_some_and(|map| {
+            map.entries().any(|entry| {
+                entry
+                    .value()
+                    .is_some_and(|value| syntax_expression_contains_simple_field_value(&value))
+            })
+        })
+}
+
+fn syntax_expression_is_simple_container_value(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_container_value(&inner);
+    }
+    syntax_expression_is_simple_literal(expression)
+        || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_path_field(expression)
+        || syntax_expression_is_simple_path_unary(expression)
+        || syntax_expression_is_simple_path_binary(expression)
+        || syntax_expression_is_simple_path_comparison(expression)
+        || syntax_expression_is_simple_path_arithmetic(expression)
+        || syntax_expression_is_simple_path_logical(expression)
+        || syntax_expression_is_simple_try(expression)
+        || syntax_expression_is_simple_path_numeric_comparison(expression)
+        || syntax_expression_is_simple_path_numeric_equality(expression)
+        || syntax_expression_is_simple_path_numeric_arithmetic(expression)
+        || syntax_expression_is_simple_container(expression)
 }
 
 fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool {
