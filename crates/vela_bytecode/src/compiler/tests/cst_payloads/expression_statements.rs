@@ -1,6 +1,34 @@
 use super::*;
 
 #[test]
+fn syntax_only_constant_expression_statements_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    [1, 2, 3];
+    [[1], [2]];
+    ["score", "level"];
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let body_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+    assert!(
+        body_fallback.is_err(),
+        "constant expression statement body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 3);
+    assert!(statements.iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    }));
+
+    compile_program_source(source, text)
+        .expect("CST-only constant expression statements should compile");
+}
+
+#[test]
 fn semantic_function_generic_expression_statements_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
@@ -114,7 +142,8 @@ fn main() {
 "#;
     let legacy_text = r#"
 fn main() {
-    [1];
+    let values = [1];
+    values[0];
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -130,7 +159,7 @@ fn main() {
         .expect("CST expression statement");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let legacy_statement = legacy_payload.body.statement_payloads()[1].fallback();
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 

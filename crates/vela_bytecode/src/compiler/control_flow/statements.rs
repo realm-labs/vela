@@ -214,6 +214,9 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
+        if kind == SyntaxStatementKind::Expr {
+            return self.compile_expr_statement_payload(stmt);
+        }
         let fallback = aligned_statement(stmt).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST statement payload",
@@ -301,8 +304,6 @@ impl Compiler<'_, '_> {
             self.compile_if_statement(fallback, if_payload.as_ref())
         } else if kind == SyntaxStatementKind::Match {
             self.compile_match_statement_payload(stmt)
-        } else if kind == SyntaxStatementKind::Expr {
-            self.compile_expr_statement_payload(stmt)
         } else {
             self.compile_statement_as(kind, fallback)
         }

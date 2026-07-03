@@ -132,6 +132,23 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
+        let Some(kind) = stmt.stored_expression_kind() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST expression statement payload",
+            )));
+        };
+        if stmt.optional_fallback().is_none()
+            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+            && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?
+        {
+            return Ok(done);
+        }
+        let expression_payload = stmt.expression_payload();
+        if expression_payload.is_none() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST expression statement payload",
+            )));
+        }
         let fallback = aligned_statement(stmt).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression statement payload",
@@ -142,16 +159,6 @@ impl Compiler<'_, '_> {
                 "mismatched CST expression statement payload",
             )));
         };
-        let Some(kind) = stmt.stored_expression_kind() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST expression statement payload",
-            )));
-        };
-        if stmt.expression_payload().is_none() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST expression statement payload",
-            )));
-        }
         if kind == SyntaxExpressionKind::Assign {
             let value_body = stmt.assignment_value_block_body_payload();
             let value_if = stmt.assignment_value_if_payload();
@@ -194,7 +201,6 @@ impl Compiler<'_, '_> {
             )?;
             Ok(false)
         } else {
-            let expression_payload = stmt.expression_payload();
             self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
             Ok(false)
         }

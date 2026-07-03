@@ -430,6 +430,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
+    pub(in crate::compiler) fn expression_statement_syntax_expression(
+        &self,
+    ) -> Option<(SourceId, SyntaxExpression)> {
+        Some((self.source?, self.expression()?))
+    }
+
     #[cfg(test)]
     pub(super) fn value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;

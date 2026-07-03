@@ -366,6 +366,19 @@ impl Compiler<'_, '_> {
         Ok(Some(true))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_constant_expr_statement(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        else {
+            return Ok(None);
+        };
+        self.emit_constant(constant)?;
+        Ok(Some(false))
+    }
+
     fn compile_negated_literal_without_context(
         &mut self,
         literal: &Literal,
