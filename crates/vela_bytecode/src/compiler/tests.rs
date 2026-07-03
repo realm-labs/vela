@@ -667,9 +667,12 @@ fn assert_cst_let_initializer_map_entry_value_body_payloads(
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();
             };
-            payload.map_entry_payloads(entries).unwrap_or_default()
+            entries
+                .iter()
+                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect::<Vec<_>>()
         })
-        .map(|entry| entry.value_expression_payload())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
         &values,
@@ -692,9 +695,12 @@ fn assert_cst_assignment_value_map_entry_value_body_payloads(
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();
             };
-            payload.map_entry_payloads(entries).unwrap_or_default()
+            entries
+                .iter()
+                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect::<Vec<_>>()
         })
-        .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -715,9 +721,12 @@ fn assert_cst_return_value_map_entry_value_body_payloads(
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();
             };
-            payload.map_entry_payloads(entries).unwrap_or_default()
+            entries
+                .iter()
+                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect::<Vec<_>>()
         })
-        .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -739,9 +748,12 @@ fn assert_cst_call_argument_map_entry_value_body_payloads(
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();
             };
-            payload.map_entry_payloads(entries).unwrap_or_default()
+            entries
+                .iter()
+                .zip(payload.map_entry_payloads(entries).unwrap_or_default())
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect::<Vec<_>>()
         })
-        .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))

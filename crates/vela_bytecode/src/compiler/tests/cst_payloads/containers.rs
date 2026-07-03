@@ -186,7 +186,7 @@ fn main() {
             assert_eq!(map_entries[0].syntax_key_name().as_deref(), Some("value"));
             assert_eq!(
                 map_entries[0]
-                    .value_expression_payload()
+                    .value_expression_payload(&entries[0].value)
                     .syntax_expression()
                     .expect("CST map value")
                     .syntax()
@@ -1087,9 +1087,12 @@ fn block_tail_containers() {
             let Some(entries) = element.fallback_map_entries() else {
                 return Vec::new();
             };
-            element.map_entry_payloads(entries).unwrap_or_default()
+            entries
+                .iter()
+                .zip(element.map_entry_payloads(entries).unwrap_or_default())
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect::<Vec<_>>()
         })
-        .map(|entry| entry.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))

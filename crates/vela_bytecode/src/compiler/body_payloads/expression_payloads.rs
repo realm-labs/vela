@@ -728,10 +728,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             entries
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerMapEntryPayload {
+                .map(|(index, _fallback)| CompilerMapEntryPayload {
                     source: self.source,
                     syntax: syntax_entries.get(index).cloned(),
-                    value_fallback: &fallback.value,
+                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -918,12 +918,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     pub(in crate::compiler) fn syntax(
         source: SourceId,
         syntax: SyntaxMapEntry,
-        fallback: &'ast vela_syntax::ast::MapEntry,
+        _fallback: &'ast vela_syntax::ast::MapEntry,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            value_fallback: &fallback.value,
+            _ast: std::marker::PhantomData,
         }
     }
 
@@ -958,12 +958,15 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
                 .is_some_and(|entry| entry.value().is_some())
     }
 
-    pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn value_expression_payload(
+        &self,
+        fallback: &'ast Expr,
+    ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_fallback(
             self.source,
             self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
-            self.value_fallback,
+            fallback,
         )
     }
 }

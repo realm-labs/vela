@@ -383,7 +383,7 @@ fn main() {
             assert_eq!(entries[0].syntax_key_name(), None);
             assert!(
                 entries[0]
-                    .value_expression_payload()
+                    .value_expression_payload(&fallback_entries[0].value)
                     .syntax_expression()
                     .is_none()
             );

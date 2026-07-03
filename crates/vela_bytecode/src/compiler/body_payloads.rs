@@ -198,7 +198,7 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
-    value_fallback: &'ast vela_syntax::ast::Expr,
+    _ast: PhantomData<&'ast ()>,
 }
 
 pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
