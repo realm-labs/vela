@@ -1886,13 +1886,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
-    pub(in crate::compiler) fn is_aligned_with_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
-        std::ptr::eq(self.fallback, expr)
-            || self
-                .syntax_span()
-                .is_some_and(|span| spans_overlap(span, expr.span))
-    }
-
     #[cfg(test)]
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
@@ -1921,6 +1914,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.syntax
             .as_ref()
             .map(|expression| expression.expression_kind())
+    }
+
+    pub(in crate::compiler) fn fallback_kind_matches_stored_syntax_kind(&self) -> bool {
+        self.stored_syntax_kind()
+            .is_some_and(|kind| self.fallback_kind_matches_syntax_kind(kind))
     }
 
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {

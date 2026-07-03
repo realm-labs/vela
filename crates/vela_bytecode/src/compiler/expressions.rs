@@ -14,7 +14,7 @@ use super::const_eval::{
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_checks::{
     UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
-    payload_expr_is_aligned, payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
+    payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
     reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_payload_kinds::{
@@ -375,16 +375,16 @@ impl Compiler<'_, '_> {
                 let ExprKind::Literal(_) = &expr.kind else {
                     unreachable!("validated CST literal expression payload kind");
                 };
-                if !payload_expr_is_aligned(payload, expr) {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "mismatched CST literal expression",
-                    )));
-                }
                 let literal = payload.syntax_literal().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST literal expression",
                     ))
                 })?;
+                if !payload.fallback_kind_matches_stored_syntax_kind() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST literal expression",
+                    )));
+                }
                 self.compile_literal(Some(expr.span), &literal)
             }
         }

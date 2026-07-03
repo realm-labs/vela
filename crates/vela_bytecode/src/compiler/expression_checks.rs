@@ -304,13 +304,6 @@ pub(in crate::compiler) fn payload_syntax_overlaps_expr(
         .is_some_and(|span| spans_overlap(span, expr.span))
 }
 
-pub(in crate::compiler) fn payload_expr_is_aligned(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    payload.is_aligned_with_expr(expr)
-}
-
 pub(in crate::compiler) fn arithmetic_binary_operator(op: BinaryOp) -> bool {
     matches!(
         op,
