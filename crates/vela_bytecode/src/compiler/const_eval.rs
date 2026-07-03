@@ -372,7 +372,15 @@ fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Optio
         BinaryOp::LessEqual => evaluate_numeric_compare_const(left, right, |a, b| a <= b),
         BinaryOp::Greater => evaluate_numeric_compare_const(left, right, |a, b| a > b),
         BinaryOp::GreaterEqual => evaluate_numeric_compare_const(left, right, |a, b| a >= b),
-        BinaryOp::Range | BinaryOp::RangeInclusive | BinaryOp::Or | BinaryOp::And => None,
+        BinaryOp::And => match (left, right) {
+            (Constant::Bool(left), Constant::Bool(right)) => Some(Constant::Bool(left && right)),
+            _ => None,
+        },
+        BinaryOp::Or => match (left, right) {
+            (Constant::Bool(left), Constant::Bool(right)) => Some(Constant::Bool(left || right)),
+            _ => None,
+        },
+        BinaryOp::Range | BinaryOp::RangeInclusive => None,
     }
 }
 

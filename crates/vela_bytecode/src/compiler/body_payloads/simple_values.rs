@@ -184,6 +184,43 @@ fn syntax_expression_is_inline_constant_arithmetic_operand(expression: &SyntaxEx
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
+fn syntax_expression_is_simple_constant_logical(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_constant_logical(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if !matches!(binary.operator(), Some(BinaryOp::And | BinaryOp::Or)) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    if !syntax_expression_is_inline_constant_logical_operand(&lhs)
+        || !syntax_expression_is_inline_constant_logical_operand(&rhs)
+    {
+        return false;
+    }
+    evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+        .ok()
+        .flatten()
+        .is_some()
+}
+
+fn syntax_expression_is_inline_constant_logical_operand(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_inline_constant_logical_operand(&inner);
+    }
+    expression_syntax_bool_literal(expression).is_some()
+        || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_literal_comparison(expression)
+        || syntax_expression_is_simple_constant_logical(expression)
+}
+
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_bool_literal(&inner);
@@ -262,4 +299,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_boolean_not(expression)
         || syntax_expression_is_simple_literal_comparison(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
+        || syntax_expression_is_simple_constant_logical(expression)
 }
