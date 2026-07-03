@@ -586,6 +586,14 @@ fn numeric_left_divide(input) {
 fn numeric_left_remainder(input) {
     return 8 % input;
 }
+
+fn identity_equal(left, right) {
+    return left === right;
+}
+
+fn identity_not_equal(left, right) {
+    return left !== right;
+}
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     for function in [
@@ -595,6 +603,8 @@ fn numeric_left_remainder(input) {
         "numeric_left_multiply",
         "numeric_left_divide",
         "numeric_left_remainder",
+        "identity_equal",
+        "identity_not_equal",
     ] {
         let (payload, _, _) = semantic.function(function).expect("function payload");
         assert!(
