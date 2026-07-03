@@ -299,7 +299,6 @@ impl UnsuffixedNumericLiteral {
 }
 
 pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
-    _expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<UnsuffixedNumericLiteral> {
     if payload.is_none_or(|payload| payload.source().is_none()) {

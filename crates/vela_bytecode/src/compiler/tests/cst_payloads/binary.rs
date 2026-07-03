@@ -575,10 +575,9 @@ fn main() {
             );
 
             let literal =
-                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(
-                    mismatched_payload.fallback(),
-                    Some(&mismatched_payload),
-                );
+                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(Some(
+                    &mismatched_payload,
+                ));
 
             assert_eq!(
                 literal,
@@ -600,15 +599,9 @@ fn main() {
     let fallback_literal = 99;
 }
 "#,
-        |_compiler, payload| {
-            let statement = payload.body.statement_payloads()[0]
-                .let_initializer_expression_payload()
-                .expect("literal payload");
+        |_compiler, _payload| {
             let literal =
-                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(
-                    statement.fallback(),
-                    None,
-                );
+                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(None);
 
             assert_eq!(
                 literal, None,

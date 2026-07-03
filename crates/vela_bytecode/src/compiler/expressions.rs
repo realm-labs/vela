@@ -783,7 +783,7 @@ impl Compiler<'_, '_> {
         left_payload: Option<&CompilerExpressionPayload<'_>>,
         right_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<Register>> {
-        if let Some(literal) = unsuffixed_numeric_literal_with_payload(left, left_payload) {
+        if let Some(literal) = unsuffixed_numeric_literal_with_payload(left_payload) {
             return self.compile_binary_literal_candidate(
                 op,
                 span,
@@ -793,7 +793,7 @@ impl Compiler<'_, '_> {
                 BinaryLiteralSide::Left,
             );
         }
-        if let Some(literal) = unsuffixed_numeric_literal_with_payload(right, right_payload) {
+        if let Some(literal) = unsuffixed_numeric_literal_with_payload(right_payload) {
             return self.compile_binary_literal_candidate(
                 op,
                 span,
