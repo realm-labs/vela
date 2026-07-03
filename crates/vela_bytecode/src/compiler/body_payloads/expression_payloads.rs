@@ -401,6 +401,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Lambda { body, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         let syntax = match self.syntax.as_ref()?.as_lambda()?.body()? {
             SyntaxLambdaBody::Expression(expression) => Some(expression),
             SyntaxLambdaBody::Block(block) => SyntaxExpression::cast(block.syntax().clone()),

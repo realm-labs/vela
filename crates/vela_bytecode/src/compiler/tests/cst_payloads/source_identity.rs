@@ -152,6 +152,29 @@ fn main() {
 }
 
 #[test]
+fn source_less_lambda_payload_does_not_expose_body_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let callback = |input| value + input;
+}
+"#,
+        |_, payload| {
+            let lambda = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("lambda initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    lambda.syntax_expression().expect("lambda syntax").clone(),
+                    lambda.fallback(),
+                );
+
+            assert!(missing_source.lambda_body_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
     with_cst_payload_compiler(
         r#"
