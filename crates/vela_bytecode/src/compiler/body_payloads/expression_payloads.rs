@@ -207,7 +207,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_is_assignment(&self) -> bool {
-        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Assign)
+        self.matches_syntax_kind(SyntaxExpressionKind::Assign)
     }
 
     pub(in crate::compiler) fn paren_inner_payload(

@@ -60,15 +60,14 @@ impl Compiler<'_, '_> {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
         if payload.is_some_and(|payload| payload.stored_syntax_kind().is_some())
-            && payload
-                .is_some_and(CompilerExpressionPayload::fallback_expr_requires_matching_payload)
+            && payload.is_some_and(CompilerExpressionPayload::requires_matching_payload)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression payload",
             )));
         }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
-            && payload.is_some_and(CompilerExpressionPayload::fallback_expr_rejects_missing_payload)
+            && payload.is_some_and(CompilerExpressionPayload::rejects_missing_payload)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression payload",
@@ -377,7 +376,7 @@ impl Compiler<'_, '_> {
                         "mismatched CST literal expression",
                     ))
                 })?;
-                if !payload.payload_fallback_matches_stored_syntax_kind() {
+                if !payload.matches_stored_syntax_kind() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST literal expression",
                     )));
