@@ -353,6 +353,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Field { base, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_field()?.receiver(),
