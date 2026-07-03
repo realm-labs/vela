@@ -252,6 +252,18 @@ fn block_valued_return() {
     };
 }
 
+fn path_value_tail_block_let(input, other) {
+    let value = {
+        input * other
+    };
+}
+
+fn path_value_tail_block_return(input, other) {
+    return {
+        input == other
+    };
+}
+
 fn path_value_expression_statements(input, other) {
     !input;
     input == other;
@@ -333,11 +345,16 @@ fn parenthesized_simple_values() {
         let self_valued_return_body = bodies[31].body().expect("self valued return body");
         let block_valued_let_body = bodies[32].body().expect("block valued let body");
         let block_valued_return_body = bodies[33].body().expect("block valued return body");
-        let path_value_expression_statements_body = bodies[34]
+        let path_value_tail_block_let_body =
+            bodies[34].body().expect("path value tail block let body");
+        let path_value_tail_block_return_body = bodies[35]
+            .body()
+            .expect("path value tail block return body");
+        let path_value_expression_statements_body = bodies[36]
             .body()
             .expect("path value expression statements body");
         let parenthesized_simple_values_body =
-            bodies[35].body().expect("parenthesized simple values body");
+            bodies[37].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -491,6 +508,16 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &block_valued_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_value_tail_block_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_value_tail_block_return_body)
                 .is_none()
         );
         assert!(

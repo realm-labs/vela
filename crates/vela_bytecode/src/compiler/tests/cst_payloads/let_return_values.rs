@@ -1279,6 +1279,38 @@ fn block_return() {
 }
 
 #[test]
+fn syntax_only_path_value_block_tails_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_let(input, other) {
+    let value = {
+        input * other
+    };
+}
+
+fn block_return(input, other) {
+    return {
+        input == other
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (block_let, _, _) = semantic.function("block_let").expect("block_let");
+    let (block_return, _, _) = semantic.function("block_return").expect("block_return");
+
+    compile_program_source(source, text).expect("CST path value block tails should compile");
+
+    assert!(
+        !block_let.body.has_fallback_statements(),
+        "syntax-only path value block let should not retain an owned body fallback"
+    );
+    assert!(
+        !block_return.body.has_fallback_statements(),
+        "syntax-only path value block return should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn syntax_only_parenthesized_simple_let_and_return_compile_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

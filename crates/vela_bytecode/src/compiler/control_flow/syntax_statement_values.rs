@@ -71,6 +71,21 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_value_expr_to(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some(value) = self.compile_syntax_expression(source, expression)? else {
+            return Ok(None);
+        };
+        if value != dst {
+            self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+        }
+        Ok(Some(false))
+    }
+
     fn compile_syntax_expression(
         &mut self,
         source: SourceId,
