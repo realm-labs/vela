@@ -152,7 +152,7 @@ fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression
     let Some(binary) = expression.as_binary() else {
         return false;
     };
-    if binary.operator() != Some(BinaryOp::Rem) {
+    if !matches!(binary.operator(), Some(BinaryOp::Div | BinaryOp::Rem)) {
         return false;
     }
     evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
