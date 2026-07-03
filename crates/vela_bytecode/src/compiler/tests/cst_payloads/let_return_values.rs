@@ -1557,7 +1557,7 @@ fn missing_let_initializer_block_body_payload_does_not_use_legacy_block() {
 fn main() {
     let value = {
         let nested = 1;
-        nested + 1
+        nested && true
     };
 }
 "#;
@@ -1643,7 +1643,7 @@ fn missing_return_block_body_payload_does_not_use_legacy_block() {
 fn main() {
     return {
         let nested = 1;
-        nested + 1
+        nested && true
     };
 }
 "#;

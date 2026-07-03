@@ -30,7 +30,7 @@ fn main(player: Player) {
     let cst_value = {
         let selected = player;
         selected;
-        selected + 1
+        selected && true
     };
     player.level;
 }
@@ -196,7 +196,7 @@ fn main(player: Player) {
     let cst_value = {
         let selected = player;
         selected;
-        selected + 1
+        selected && true
     };
     player.inventory.items["gold"];
 }

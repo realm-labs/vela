@@ -13,7 +13,7 @@ fn main() {
     let cst_block = {
         let selected = legacy;
         selected;
-        selected + 1
+        selected && true
     };
     let legacy_amount = legacy.amount;
 }

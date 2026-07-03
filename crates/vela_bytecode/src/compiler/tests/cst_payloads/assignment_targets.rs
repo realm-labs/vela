@@ -46,7 +46,7 @@ fn main() {
     let cst_target = {
         let selected = legacy;
         selected;
-        selected + 1
+        selected && true
     };
     legacy.amount = true;
 }

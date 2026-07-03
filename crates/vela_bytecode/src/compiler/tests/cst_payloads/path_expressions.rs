@@ -272,7 +272,7 @@ fn cst_block(cst) {
     return {
         let selected = cst;
         selected;
-        selected + 1
+        selected && true
     };
 }
 
@@ -340,7 +340,7 @@ fn main(cst) {
     let value = {
         let selected = cst;
         selected;
-        selected + 1
+        selected && true
     };
 }
 "#,
@@ -449,7 +449,7 @@ fn main() {
     let cst_block = {
         let selected = cst_value;
         selected;
-        selected + 1
+        selected && true
     };
 }
 "#,
@@ -542,7 +542,7 @@ fn main(cst) {
     let value = {
         let selected = cst;
         selected;
-        selected + 1
+        selected && true
     };
 }
 "#,

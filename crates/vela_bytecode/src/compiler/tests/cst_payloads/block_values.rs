@@ -11,7 +11,7 @@ fn main() {
     let legacy_text = r#"
 fn main() {
     let guard = 0;
-    guard + 1
+    guard && true
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -102,7 +102,7 @@ fn main() {
 fn main() {
     let value = {
         let guard = 2;
-        guard + 0
+        guard && true
     };
 }
 "#;
@@ -153,7 +153,7 @@ fn main() {
 fn main() {
     let value = {
         let guard = 1;
-        guard + 0
+        guard && true
     };
 }
 "#;

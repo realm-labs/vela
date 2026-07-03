@@ -64,6 +64,7 @@ fn main(input, other) {
     input * other;
     input > 0;
     input == 0;
+    input + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -73,7 +74,7 @@ fn main(input, other) {
         "path value expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
-    assert_eq!(statements.len(), 6);
+    assert_eq!(statements.len(), 7);
     assert!(statements.iter().all(|statement| {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
     }));

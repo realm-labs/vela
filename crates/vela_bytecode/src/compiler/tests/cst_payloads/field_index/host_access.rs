@@ -59,7 +59,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
     let cst_value = {
         let selected = cst;
         selected;
-        selected + 1
+        selected && true
     };
     let legacy_value = legacy.amount;
 }
@@ -442,7 +442,7 @@ fn main(readonly: ReadOnlyHost) {
     let cst_target = {
         let selected = readonly;
         selected;
-        selected + 1
+        selected && true
     };
     readonly.amount = 1;
 }
