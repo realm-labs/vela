@@ -32,7 +32,9 @@ pub(super) struct SyntaxBodyPayload {
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
-    fallback: Option<&'ast Block>,
+    fallback_statements: Option<&'ast [Stmt]>,
+    #[cfg(test)]
+    fallback_block: Option<&'ast Block>,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
@@ -105,14 +107,18 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback: Some(fallback),
+            fallback_statements: Some(&fallback.statements),
+            #[cfg(test)]
+            fallback_block: Some(fallback),
         }
     }
 
     fn nested(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback: Some(fallback),
+            fallback_statements: Some(&fallback.statements),
+            #[cfg(test)]
+            fallback_block: Some(fallback),
         }
     }
 
@@ -133,7 +139,9 @@ impl<'ast> CompilerBodyPayload<'ast> {
     ) -> Option<Self> {
         (!Self::requires_body_block_lookup(&body)).then_some(Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback: None,
+            fallback_statements: None,
+            #[cfg(test)]
+            fallback_block: None,
         })
     }
 
@@ -169,15 +177,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn fallback(&self) -> &'ast Block {
-        self.fallback
+        self.fallback_block
             .expect("body payload has no owned body fallback")
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        match self.fallback {
-            Some(fallback) => fallback
-                .statements
+        match self.fallback_statements {
+            Some(fallback_statements) => fallback_statements
                 .iter()
                 .enumerate()
                 .map(|(index, fallback)| CompilerStatementPayload {
@@ -213,8 +220,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        match self.fallback {
-            Some(fallback) => syntax_statements.len() != fallback.statements.len(),
+        match self.fallback_statements {
+            Some(fallback_statements) => syntax_statements.len() != fallback_statements.len(),
             None => {
                 let tail_index = syntax_statements.len().saturating_sub(1);
                 syntax_statements

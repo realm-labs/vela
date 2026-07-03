@@ -305,6 +305,9 @@ Top-level body payload lowering no longer uses broad overlapping-body fallback
 when a CST statement payload is missing; unmatched statements now error unless
 they are explicitly marked as nested temporary fallback cases while body
 lowering coverage is completed.
+`CompilerBodyPayload` no longer stores the legacy owned `Block` in production;
+it carries only the rowan CST body plus temporary legacy statement slices while
+statement and expression payload fallbacks are retired.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement
