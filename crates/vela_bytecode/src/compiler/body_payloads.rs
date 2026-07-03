@@ -1062,14 +1062,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        #[cfg(test)]
         let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
             Some(StmtKind::For { body, .. }) => Some(CompilerBodyFallback::block(body)),
             Some(_) => return None,
             None => None,
         };
-        #[cfg(not(test))]
-        let fallback = None;
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_for()?.body()?,
@@ -1224,7 +1221,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn assignment_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        #[cfg(test)]
         let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
             Some(StmtKind::Expr(expr)) => match &expr.kind {
                 ExprKind::Assign { value, .. } => match &value.kind {
@@ -1236,8 +1232,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             Some(_) => return None,
             None => None,
         };
-        #[cfg(not(test))]
-        let fallback = None;
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.assignment_value_expression()?.as_block()?,
@@ -1346,7 +1340,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        #[cfg(test)]
         let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
             Some(StmtKind::Expr(expr)) => match &expr.kind {
                 ExprKind::Block(block) => Some(CompilerBodyFallback::block(block)),
@@ -1355,8 +1348,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             Some(_) => return None,
             None => None,
         };
-        #[cfg(not(test))]
-        let fallback = None;
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.expression()
