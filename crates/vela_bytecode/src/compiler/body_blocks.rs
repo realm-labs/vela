@@ -17,7 +17,11 @@ impl BodyBlockLookup {
         syntax: &SyntaxParse<SyntaxSourceFile>,
     ) -> Self {
         let required_spans = syntax_body_spans(source, syntax);
-        let bodies = parse_body_blocks_at_spans(source, text, &required_spans);
+        let bodies = if required_spans.is_empty() {
+            Vec::new()
+        } else {
+            parse_body_blocks_at_spans(source, text, &required_spans)
+        };
         Self { bodies }
     }
 
