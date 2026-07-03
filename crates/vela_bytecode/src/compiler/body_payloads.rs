@@ -70,8 +70,6 @@ pub(super) struct CompilerStatementPayload<'ast> {
 pub(super) struct CompilerMatchArmPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
-    #[cfg(test)]
-    body_block_fallback: Option<&'ast Block>,
     _ast: PhantomData<&'ast ()>,
 }
 
@@ -541,20 +539,10 @@ fn match_arm_payloads_for_expr<'ast>(
             .map(|(index, _fallback)| CompilerMatchArmPayload {
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
-                #[cfg(test)]
-                body_block_fallback: expression_fallback_block(&_fallback.body),
                 _ast: PhantomData,
             })
             .collect(),
     )
-}
-
-#[cfg(test)]
-fn expression_fallback_block(expr: &vela_syntax::ast::Expr) -> Option<&Block> {
-    match &expr.kind {
-        ExprKind::Block(block) => Some(block),
-        _ => None,
-    }
 }
 
 fn match_scrutinee_payload_for_expr<'ast>(

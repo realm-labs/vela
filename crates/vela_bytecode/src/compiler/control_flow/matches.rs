@@ -116,7 +116,12 @@ impl Compiler<'_, '_> {
         kind: SyntaxExpressionKind,
     ) -> CompileResult<bool> {
         if kind == SyntaxExpressionKind::Block {
-            if let Some(body) = payload.body_block_payload() {
+            let ExprKind::Block(block) = &arm.body.kind else {
+                return Err(missing_cst_match_arm_child_payload(
+                    "mismatched CST match arm block body",
+                ));
+            };
+            if let Some(body) = payload.body_block_payload(Some(block)) {
                 return self.compile_body_payload_statements(&body);
             }
             return Err(missing_cst_match_arm_child_payload(
@@ -284,7 +289,12 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                if let Some(body) = payload.body_block_payload() {
+                let ExprKind::Block(block) = &body.kind else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "mismatched CST match arm block body",
+                    ));
+                };
+                if let Some(body) = payload.body_block_payload(Some(block)) {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
                     Err(missing_cst_match_arm_child_payload(

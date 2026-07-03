@@ -188,6 +188,7 @@ fn classify(input) {
     );
     assert_match_body_block_payload(
         &return_arm_payloads[0],
+        &return_match.arms[0].body,
         &[
             (SyntaxStatementKind::Let, "let result = value + 10;"),
             (SyntaxStatementKind::Expr, "result"),
@@ -195,6 +196,7 @@ fn classify(input) {
     );
     assert_match_body_block_payload(
         &return_arm_payloads[1],
+        &return_match.arms[1].body,
         &[
             (SyntaxStatementKind::Let, "let other = total;"),
             (SyntaxStatementKind::Expr, "other"),
@@ -1023,7 +1025,7 @@ fn main(value) {
         .expect("match arm payloads")
         .remove(0);
     let body = arm
-        .body_block_payload()
+        .body_block_payload(None)
         .expect("match arm body block payload");
 
     assert!(
@@ -1192,10 +1194,14 @@ fn assert_match_body_array_element_payload(
 
 fn assert_match_body_block_payload(
     arm: &body_payloads::CompilerMatchArmPayload<'_>,
+    fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
+    let vela_syntax::ast::ExprKind::Block(fallback_block) = &fallback.kind else {
+        panic!("expected match arm block body");
+    };
     let body = arm
-        .body_block_payload()
+        .body_block_payload(Some(fallback_block))
         .expect("match arm should expose block body payload");
     assert_eq!(
         cst_statement_texts(&body),

@@ -8,8 +8,6 @@ use vela_syntax::ast::{
 
 #[cfg(test)]
 use super::CompilerBodyFallback;
-#[cfg(test)]
-use super::expression_fallback_block;
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionFallbackKind,
     CompilerExpressionPayload, CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload,
@@ -1038,13 +1036,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     pub(in crate::compiler) fn syntax(
         source: SourceId,
         syntax: SyntaxMatchArm,
-        fallback: &'ast vela_syntax::ast::MatchArm,
+        _fallback: &'ast vela_syntax::ast::MatchArm,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            #[cfg(test)]
-            body_block_fallback: expression_fallback_block(&fallback.body),
             _ast: std::marker::PhantomData,
         }
     }
@@ -1052,24 +1048,20 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(
         syntax: SyntaxMatchArm,
-        fallback: &'ast vela_syntax::ast::MatchArm,
+        _fallback: &'ast vela_syntax::ast::MatchArm,
     ) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
-            #[cfg(test)]
-            body_block_fallback: expression_fallback_block(&fallback.body),
             _ast: std::marker::PhantomData,
         }
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(fallback: &'ast vela_syntax::ast::MatchArm) -> Self {
+    pub(in crate::compiler) fn missing_syntax(_fallback: &'ast vela_syntax::ast::MatchArm) -> Self {
         Self {
             source: None,
             syntax: None,
-            #[cfg(test)]
-            body_block_fallback: expression_fallback_block(&fallback.body),
             _ast: std::marker::PhantomData,
         }
     }
@@ -1116,11 +1108,17 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         ))
     }
 
-    pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+    pub(in crate::compiler) fn body_block_payload(
+        &self,
+        fallback_block: Option<&'ast vela_syntax::ast::Block>,
+    ) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = self.body_block_fallback.map(CompilerBodyFallback::block);
+        let fallback = fallback_block.map(CompilerBodyFallback::block);
         #[cfg(not(test))]
-        let fallback = None;
+        let fallback = {
+            let _ = fallback_block;
+            None
+        };
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,

@@ -6,7 +6,7 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, SyntaxExpressionKind, SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, SyntaxExpressionKind, SyntaxStatementKind,
 };
 
 fn assert_cst_param_default(
@@ -356,11 +356,11 @@ fn assert_cst_match_arm_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.match_arm_payloads().unwrap_or_default())
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
+        .flat_map(|statement| {
+            statement
+                .expression_match_payloads_with_fallback()
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -375,13 +375,10 @@ fn assert_cst_let_initializer_match_arm_body_payloads(
         .iter()
         .flat_map(|statement| {
             statement
-                .let_initializer_match_arm_payloads()
+                .let_initializer_expression_payload()
+                .and_then(|payload| payload.match_payloads_with_fallback())
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
                 .unwrap_or_default()
-        })
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -396,13 +393,10 @@ fn assert_cst_return_value_match_arm_body_payloads(
         .iter()
         .flat_map(|statement| {
             statement
-                .return_value_match_arm_payloads()
+                .return_value_expression_payload()
+                .and_then(|payload| payload.match_payloads_with_fallback())
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
                 .unwrap_or_default()
-        })
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -480,13 +474,10 @@ fn assert_cst_assignment_value_match_arm_body_payloads(
         .iter()
         .flat_map(|statement| {
             statement
-                .assignment_value_match_arm_payloads()
+                .assignment_value_expression_payload()
+                .and_then(|payload| payload.match_payloads_with_fallback())
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
                 .unwrap_or_default()
-        })
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -541,11 +532,11 @@ fn assert_cst_call_argument_match_arm_body_payloads(
     let actual = statements
         .iter()
         .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
-        .flat_map(|argument| argument.match_arm_payloads().unwrap_or_default())
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
+        .flat_map(|argument| {
+            argument
+                .match_payloads_with_fallback()
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -783,11 +774,11 @@ fn assert_cst_array_element_body_payloads(
         .collect::<Vec<_>>();
     let match_actual = elements
         .iter()
-        .flat_map(|element| element.match_arm_payloads().unwrap_or_default())
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
+        .flat_map(|element| {
+            element
+                .match_payloads_with_fallback()
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_eq!(block_actual, expected_statement_texts(expected_block));
@@ -835,16 +826,30 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
         .flat_map(|statement| {
             statement
                 .expression_match_payloads_with_fallback()
-                .map(|(_, _, arms)| arms)
+                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
                 .unwrap_or_default()
-        })
-        .filter_map(|arm| {
-            let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload()?;
-            Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn cst_match_arm_body_texts<'ast>(
+    match_expr: &'ast MatchExpr,
+    arms: Vec<body_payloads::CompilerMatchArmPayload<'ast>>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    match_expr
+        .arms
+        .iter()
+        .zip(arms)
+        .filter_map(|(fallback_arm, arm)| {
+            let _syntax_arm = arm.syntax_arm()?;
+            let ExprKind::Block(block) = &fallback_arm.body.kind else {
+                return None;
+            };
+            let body = arm.body_block_payload(Some(block))?;
+            Some(cst_statement_texts(&body))
+        })
+        .collect()
 }
 
 fn cst_statement_texts(
