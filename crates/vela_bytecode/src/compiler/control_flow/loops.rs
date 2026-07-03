@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::ast::{Block, Expr, Pattern};
+use vela_syntax::ast::{Expr, Pattern};
 
 use crate::Register;
 
@@ -33,7 +33,6 @@ pub(super) struct ForStatementParts<'ast> {
     pub(super) index_pattern: Option<&'ast Pattern>,
     pub(super) pattern: &'ast Pattern,
     pub(super) iterable: &'ast Expr,
-    pub(super) body: &'ast Block,
     pub(super) index_pattern_payload: Option<CompilerPatternPayload<'ast>>,
     pub(super) pattern_payload: Option<CompilerPatternPayload<'ast>>,
     pub(super) iterable_payload: Option<CompilerExpressionPayload<'ast>>,

@@ -459,7 +459,7 @@ impl Compiler<'_, '_> {
             index_pattern,
             pattern,
             iterable,
-            body,
+            body: _,
         } = &stmt.kind
         else {
             return self.compile_statement(stmt);
@@ -469,7 +469,6 @@ impl Compiler<'_, '_> {
             index_pattern: index_pattern.as_ref(),
             pattern,
             iterable,
-            body,
             index_pattern_payload,
             pattern_payload,
             iterable_payload,
@@ -1031,12 +1030,13 @@ impl Compiler<'_, '_> {
             item_facts,
             LocalBindingKind::For,
         )?;
-        self.loop_stack.push(LoopContext::new(loop_start));
-        let body_returned = if let Some(body_payload) = parts.body_payload {
-            self.compile_body_payload_statements(&body_payload)?
-        } else {
-            self.compile_statements(&parts.body.statements)?
+        let Some(body_payload) = parts.body_payload else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST for statement body payload",
+            )));
         };
+        self.loop_stack.push(LoopContext::new(loop_start));
+        let body_returned = self.compile_body_payload_statements(&body_payload)?;
         let loop_context = self
             .loop_stack
             .pop()
