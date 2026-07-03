@@ -1555,8 +1555,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
-    pub(in crate::compiler) fn is_fallback_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
+    pub(in crate::compiler) fn is_aligned_with_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         std::ptr::eq(self.fallback, expr)
+            || self
+                .syntax_span()
+                .is_some_and(|span| spans_overlap(span, expr.span))
     }
 
     #[cfg(test)]

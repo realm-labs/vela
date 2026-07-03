@@ -327,6 +327,8 @@ callers must use alignment-scoped payload helpers while the remaining
 Expression payload alignment now asks the payload for an already-validated
 aligned fallback expression, removing the remaining production raw fallback
 getter used by alignment helpers.
+Expression payload identity alignment is now also hidden behind a payload-owned
+alignment query instead of exposing a production `is_fallback_expr` predicate.
 All `CompilerExpressionPayload` instances are now created through a single
 payload-boundary constructor, giving the next decomposition slice one
 bytecode-owned boundary for attaching expression fallback facts instead of
