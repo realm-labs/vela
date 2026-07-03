@@ -133,6 +133,13 @@ fn block_valued_return() {
         return;
     };
 }
+
+fn parenthesized_simple_values() {
+    let literal = (1);
+    let local = (literal);
+    let receiver = (self);
+    return (local);
+}
 "#;
         let parsed = parse_source_with_id(source, text);
         assert!(parsed.diagnostics().is_empty());
@@ -151,6 +158,8 @@ fn block_valued_return() {
         let self_valued_return_body = bodies[10].body().expect("self valued return body");
         let block_valued_let_body = bodies[11].body().expect("block valued let body");
         let block_valued_return_body = bodies[12].body().expect("block valued return body");
+        let parenthesized_simple_values_body =
+            bodies[13].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -199,6 +208,11 @@ fn block_valued_return() {
         assert!(
             lookup
                 .body_for_syntax(source, &block_valued_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &parenthesized_simple_values_body)
                 .is_none()
         );
     }

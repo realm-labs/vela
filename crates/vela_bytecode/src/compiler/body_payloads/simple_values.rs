@@ -1,5 +1,5 @@
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{SyntaxExpression, SyntaxStatement, SyntaxStatementKind};
+use vela_syntax::ast::{Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind};
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
 
@@ -25,6 +25,9 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
 }
 
 pub(super) fn expression_syntax_path_or_self(expression: &SyntaxExpression) -> Option<Vec<String>> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_syntax_path_or_self(&inner);
+    }
     let path = expression.as_path()?;
     if path.is_self() {
         Some(vec!["self".to_owned()])
@@ -33,7 +36,17 @@ pub(super) fn expression_syntax_path_or_self(expression: &SyntaxExpression) -> O
     }
 }
 
+pub(super) fn expression_syntax_literal(expression: &SyntaxExpression) -> Option<Literal> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_syntax_literal(&inner);
+    }
+    expression.as_literal()?.literal()
+}
+
 fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_literal(&inner);
+    }
     let Some(literal) = expression.as_literal() else {
         return false;
     };
@@ -42,12 +55,18 @@ fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
 }
 
 fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_path(&inner);
+    }
     expression
         .as_path()
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_block(&inner);
+    }
     expression
         .as_block()
         .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))

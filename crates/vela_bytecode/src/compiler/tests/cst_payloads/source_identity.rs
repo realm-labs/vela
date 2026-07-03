@@ -128,7 +128,7 @@ fn source_less_paren_payload_does_not_expose_inner_payload() {
     with_cst_payload_compiler(
         r#"
 fn main(value) {
-    let result = (value);
+    let result = (value + 1);
 }
 "#,
         |_, payload| {

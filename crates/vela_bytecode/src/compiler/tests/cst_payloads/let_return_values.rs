@@ -498,6 +498,32 @@ fn block_return() {
 }
 
 #[test]
+fn syntax_only_parenthesized_simple_let_and_return_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn parenthesized_simple_values(input) {
+    let literal = (1);
+    let local = (input);
+    return (local);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic
+        .function("parenthesized_simple_values")
+        .expect("parenthesized_simple_values");
+
+    compile_program_source(source, text).expect("CST parenthesized simple values should compile");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only parenthesized simple values should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"

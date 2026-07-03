@@ -3,15 +3,18 @@ use vela_common::Span;
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
-    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLiteral,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
 mod expression_payloads;
 mod simple_values;
 
-use simple_values::{expression_syntax_path_or_self, syntax_statement_requires_body_block_lookup};
+use simple_values::{
+    expression_syntax_literal, expression_syntax_path_or_self,
+    syntax_statement_requires_body_block_lookup,
+};
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
@@ -496,7 +499,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
-        let literal = SyntaxLiteral::cast(expression.syntax().clone())?.literal()?;
+        let literal = expression_syntax_literal(&expression)?;
         Some((literal, span))
     }
 
@@ -616,7 +619,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let expression = self.syntax.as_ref()?.as_return()?.expression()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
-        let literal = SyntaxLiteral::cast(expression.syntax().clone())?.literal()?;
+        let literal = expression_syntax_literal(&expression)?;
         Some((literal, span))
     }
 
