@@ -53,20 +53,33 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
-            return None;
-        };
+        let if_expr = self.fallback_if_expr()?;
         if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
     pub(in crate::compiler) fn if_payload_with_fallback(
         &self,
     ) -> Option<(&'ast IfExpr, CompilerIfPayload<'ast>)> {
-        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
-            return None;
-        };
+        let if_expr = self.fallback_if_expr()?;
         let payload = if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)?;
         Some((if_expr, payload))
+    }
+
+    fn fallback_if_expr(&self) -> Option<&'ast IfExpr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
+                return None;
+            };
+            Some(if_expr)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::If(if_expr) = &self.fallback.kind else {
+                return None;
+            };
+            Some(if_expr)
+        }
     }
 
     pub(in crate::compiler) fn match_arm_payloads(
