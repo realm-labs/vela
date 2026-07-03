@@ -157,7 +157,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
                 .map(|(index, fallback)| CompilerStatementPayload {
                     source: Some(self.syntax.source),
                     syntax: syntax_statements.get(index).cloned(),
-                    fallback: Some(fallback),
+                    fallback: syntax_statements
+                        .get(index)
+                        .is_none_or(syntax_statement_requires_body_block_lookup)
+                        .then_some(fallback),
                 })
                 .collect(),
             None => syntax_statements
