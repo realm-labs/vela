@@ -305,12 +305,12 @@ Top-level body payload lowering no longer uses broad overlapping-body fallback
 when a CST statement payload is missing; unmatched statements now error unless
 they are explicitly marked as nested temporary fallback cases while body
 lowering coverage is completed.
-`CompilerBodyPayload` no longer stores the legacy owned `Block` in production;
-it carries only the rowan CST body plus temporary legacy statement slices while
-statement and expression payload fallbacks are retired.
-`BodyBlockLookup` now stores span-keyed legacy statement vectors instead of
-carrying old `Block` values through production body lookup; parsed blocks are
-retained only under test cfg for legacy fixture assertions.
+`CompilerBodyPayload` no longer stores legacy owned body data in production;
+it carries only the rowan CST body while temporary legacy statement slices are
+kept under test cfg for remaining CST payload fixture pairing.
+`BodyBlockLookup` now stores span-keyed legacy statement vectors only under
+test cfg instead of carrying old `Block` values through production body lookup;
+parsed blocks are retained only for legacy fixture assertions.
 The old `parse_body_blocks_at_spans` parser entrypoint and its supporting
 owned-AST parser helpers are now compiled only behind the explicit
 `legacy-body-parser` feature, which `vela_bytecode` enables only for its

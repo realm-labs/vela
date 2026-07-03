@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use vela_common::SourceId;
 use vela_common::Span;
 use vela_syntax::ast::{
@@ -32,6 +34,8 @@ pub(super) struct SyntaxBodyPayload {
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
+    _ast: PhantomData<&'ast ()>,
+    #[cfg(test)]
     fallback_statements: Option<&'ast [Stmt]>,
     #[cfg(test)]
     fallback_block: Option<&'ast Block>,
@@ -39,6 +43,8 @@ pub(super) struct CompilerBodyPayload<'ast> {
 
 #[derive(Clone, Copy)]
 pub(super) struct CompilerBodyFallback<'ast> {
+    _ast: PhantomData<&'ast ()>,
+    #[cfg(test)]
     statements: &'ast [Stmt],
     #[cfg(test)]
     block: Option<&'ast Block>,
@@ -121,8 +127,12 @@ impl<'ast> CompilerBodyPayload<'ast> {
         body: SyntaxBlock,
         fallback: CompilerBodyFallback<'ast>,
     ) -> Self {
+        #[cfg(not(test))]
+        let _ = fallback;
         Self {
             syntax: SyntaxBodyPayload { source, body },
+            _ast: PhantomData,
+            #[cfg(test)]
             fallback_statements: Some(fallback.statements),
             #[cfg(test)]
             fallback_block: fallback.block,
@@ -150,6 +160,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
     ) -> Option<Self> {
         (!Self::requires_body_block_lookup(&body)).then_some(Self {
             syntax: SyntaxBodyPayload { source, body },
+            _ast: PhantomData,
+            #[cfg(test)]
             fallback_statements: None,
             #[cfg(test)]
             fallback_block: None,
@@ -199,34 +211,48 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        match self.fallback_statements {
-            Some(fallback_statements) => fallback_statements
-                .iter()
-                .enumerate()
-                .map(|(index, fallback)| CompilerStatementPayload {
-                    source: Some(self.syntax.source),
-                    syntax: syntax_statements.get(index).cloned(),
-                    fallback: syntax_statements
-                        .get(index)
-                        .is_none_or(|statement| {
-                            let is_unterminated_tail =
-                                index == syntax_statements.len().saturating_sub(1);
-                            syntax_statement_requires_body_block_lookup(
-                                statement,
-                                is_unterminated_tail,
-                            )
-                        })
-                        .then_some(fallback),
-                })
-                .collect(),
-            None => syntax_statements
+        #[cfg(not(test))]
+        {
+            syntax_statements
                 .into_iter()
                 .map(|syntax| CompilerStatementPayload {
                     source: Some(self.syntax.source),
                     syntax: Some(syntax),
                     fallback: None,
                 })
-                .collect(),
+                .collect()
+        }
+        #[cfg(test)]
+        {
+            match self.fallback_statements {
+                Some(fallback_statements) => fallback_statements
+                    .iter()
+                    .enumerate()
+                    .map(|(index, fallback)| CompilerStatementPayload {
+                        source: Some(self.syntax.source),
+                        syntax: syntax_statements.get(index).cloned(),
+                        fallback: syntax_statements
+                            .get(index)
+                            .is_none_or(|statement| {
+                                let is_unterminated_tail =
+                                    index == syntax_statements.len().saturating_sub(1);
+                                syntax_statement_requires_body_block_lookup(
+                                    statement,
+                                    is_unterminated_tail,
+                                )
+                            })
+                            .then_some(fallback),
+                    })
+                    .collect(),
+                None => syntax_statements
+                    .into_iter()
+                    .map(|syntax| CompilerStatementPayload {
+                        source: Some(self.syntax.source),
+                        syntax: Some(syntax),
+                        fallback: None,
+                    })
+                    .collect(),
+            }
         }
     }
 
@@ -236,16 +262,32 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        match self.fallback_statements {
-            Some(fallback_statements) => syntax_statements.len() != fallback_statements.len(),
-            None => {
-                let tail_index = syntax_statements.len().saturating_sub(1);
-                syntax_statements
-                    .iter()
-                    .enumerate()
-                    .any(|(index, statement)| {
-                        syntax_statement_requires_body_block_lookup(statement, index == tail_index)
-                    })
+        #[cfg(not(test))]
+        {
+            let tail_index = syntax_statements.len().saturating_sub(1);
+            syntax_statements
+                .iter()
+                .enumerate()
+                .any(|(index, statement)| {
+                    syntax_statement_requires_body_block_lookup(statement, index == tail_index)
+                })
+        }
+        #[cfg(test)]
+        {
+            match self.fallback_statements {
+                Some(fallback_statements) => syntax_statements.len() != fallback_statements.len(),
+                None => {
+                    let tail_index = syntax_statements.len().saturating_sub(1);
+                    syntax_statements
+                        .iter()
+                        .enumerate()
+                        .any(|(index, statement)| {
+                            syntax_statement_requires_body_block_lookup(
+                                statement,
+                                index == tail_index,
+                            )
+                        })
+                }
             }
         }
     }
@@ -275,7 +317,11 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
 impl<'ast> CompilerBodyFallback<'ast> {
     pub(super) fn block(block: &'ast Block) -> Self {
+        #[cfg(not(test))]
+        let _ = block;
         Self {
+            _ast: PhantomData,
+            #[cfg(test)]
             statements: &block.statements,
             #[cfg(test)]
             block: Some(block),
@@ -288,6 +334,7 @@ impl<'ast> CompilerBodyFallback<'ast> {
         block: &'ast Block,
     ) -> Self {
         Self {
+            _ast: PhantomData,
             statements,
             block: Some(block),
         }
