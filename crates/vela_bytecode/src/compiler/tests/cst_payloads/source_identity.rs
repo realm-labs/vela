@@ -427,3 +427,31 @@ fn main(value) {
         },
     );
 }
+
+#[test]
+fn source_less_match_payload_does_not_expose_scrutinee_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    return match value {
+        _ => 1,
+    };
+}
+"#,
+        |_, payload| {
+            let match_value = payload.body.statement_payloads()[0]
+                .return_value_expression_payload()
+                .expect("match return payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    match_value
+                        .syntax_expression()
+                        .expect("match syntax")
+                        .clone(),
+                    match_value.fallback(),
+                );
+
+            assert!(missing_source.match_scrutinee_payload().is_none());
+        },
+    );
+}

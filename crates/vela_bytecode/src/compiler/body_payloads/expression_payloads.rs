@@ -71,6 +71,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(match_scrutinee_payload_for_fallback(
             self.source,
             self.syntax.as_ref()?.as_match()?,
