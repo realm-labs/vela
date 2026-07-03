@@ -5,6 +5,8 @@ use vela_syntax::ast::{
     SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
+#[cfg(test)]
+use super::expression_fallback_block;
 use super::{
     CompilerArgumentPayload, CompilerBodyFallback, CompilerBodyPayload,
     CompilerExpressionFallbackKind, CompilerExpressionPayload, CompilerIfPayload,
@@ -673,6 +675,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
 
@@ -687,6 +690,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
 
@@ -698,6 +702,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
 
@@ -738,13 +743,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let ExprKind::Block(block) = &self.body_fallback.kind else {
-            return None;
-        };
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-            Some(CompilerBodyFallback::block(block)),
+            self.body_block_fallback.map(CompilerBodyFallback::block),
         )
     }
 

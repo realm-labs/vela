@@ -64,6 +64,7 @@ pub(super) struct CompilerMatchArmPayload<'ast> {
     pattern_fallback: &'ast Pattern,
     guard_fallback: Option<&'ast vela_syntax::ast::Expr>,
     body_fallback: &'ast vela_syntax::ast::Expr,
+    body_block_fallback: Option<&'ast Block>,
 }
 
 #[derive(Clone)]
@@ -468,9 +469,17 @@ fn match_arm_payloads_for_expr<'ast>(
                 pattern_fallback: &fallback.pattern,
                 guard_fallback: fallback.guard.as_ref(),
                 body_fallback: &fallback.body,
+                body_block_fallback: expression_fallback_block(&fallback.body),
             })
             .collect(),
     )
+}
+
+fn expression_fallback_block(expr: &vela_syntax::ast::Expr) -> Option<&Block> {
+    match &expr.kind {
+        ExprKind::Block(block) => Some(block),
+        _ => None,
+    }
 }
 
 fn match_scrutinee_payload_for_expr<'ast>(
