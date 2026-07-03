@@ -1674,18 +1674,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self::from_fallback(Some(source), None, fallback)
     }
 
-    pub(super) fn aligned_fallback_expr(&self) -> Option<&'ast vela_syntax::ast::Expr> {
-        let syntax_kind = self.stored_syntax_kind()?;
-        if !self.fallback_kind_matches_syntax_kind(syntax_kind) {
-            return None;
-        }
-        if syntax_kind == SyntaxExpressionKind::Path && !self.fallback_path_shape_matches_syntax() {
-            return None;
-        }
-        let syntax_span = self.syntax_span()?;
-        spans_overlap(syntax_span, self.fallback.span).then_some(self.fallback)
-    }
-
     fn fallback_kind_matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
         match syntax_kind {
             SyntaxExpressionKind::Literal => {
@@ -1878,14 +1866,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
-    fn fallback_path_shape_matches_syntax(&self) -> bool {
-        match self.fallback_kind {
-            CompilerExpressionFallbackKind::Path => !self.syntax_is_self(),
-            CompilerExpressionFallbackKind::SelfValue => self.syntax_is_self(),
-            _ => false,
-        }
-    }
-
     #[cfg(test)]
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
@@ -1967,10 +1947,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source?;
         self.syntax.as_ref()
     }
-}
-
-fn spans_overlap(left: Span, right: Span) -> bool {
-    left.start < right.end && right.start < left.end
 }
 
 fn fallback_expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {

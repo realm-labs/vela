@@ -102,8 +102,9 @@ impl Compiler<'_, '_> {
         match payload.syntax_kind()? {
             SyntaxExpressionKind::Field => {
                 let name = payload.syntax_field_name()?;
-                let base_payload = payload.field_base_payload()?;
-                let mut receiver = self.resolve_host_path_receiver_from_payload(base_payload)?;
+                let (base, base_payload) = payload.field_base_payload_with_fallback()?;
+                let mut receiver =
+                    self.resolve_host_path_receiver_from_payload(base, base_payload)?;
                 let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
                 receiver.path.segments.push(field.part);
                 Some(ResolvedHostPath {
@@ -171,11 +172,14 @@ impl Compiler<'_, '_> {
 
     fn resolve_host_path_receiver_from_payload<'ast>(
         &self,
+        fallback: &'ast Expr,
         payload: CompilerExpressionPayload<'ast>,
     ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_from_payload(payload.clone())
             .or_else(|| {
-                let fallback = payload.aligned_fallback_expr()?;
+                if !expression_payload_is_aligned(&payload, fallback) {
+                    return None;
+                }
                 Some(self.expr_host_path_receiver_with_payload(fallback, Some(payload)))
             })
     }

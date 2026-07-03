@@ -555,6 +555,9 @@ field names before falling back to temporary legacy target names.
 Host path resolution now prefers rowan CST field names and index operand
 payloads for aligned host field/index chains before falling back to temporary
 legacy host path expressions.
+Expression-backed host path receiver resolution now gets its temporary
+receiver expression only from the field-base operand helper, removing the
+generic aligned fallback expression accessor from production payloads.
 Dynamic host-index path segment construction now resolves the index expression
 through a CST index-operand payload helper instead of asking the index payload
 for a generic aligned legacy expression.
