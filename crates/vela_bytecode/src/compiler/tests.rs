@@ -753,9 +753,9 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
-fn cst_match_arm_body_texts<'ast>(
-    match_expr: &'ast MatchExpr,
-    arms: Vec<body_payloads::CompilerMatchArmPayload<'ast>>,
+fn cst_match_arm_body_texts(
+    match_expr: &MatchExpr,
+    arms: Vec<body_payloads::CompilerMatchArmPayload>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
     match_expr
         .arms

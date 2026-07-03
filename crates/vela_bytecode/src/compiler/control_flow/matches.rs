@@ -18,7 +18,7 @@ impl Compiler<'_, '_> {
         &mut self,
         match_expr: &MatchExpr,
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
-        arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
+        arm_payloads: Option<&[CompilerMatchArmPayload]>,
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         reject_missing_match_arm_payloads(scrutinee_payload, arm_payloads)?;
@@ -89,7 +89,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_statement(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
-        payload: Option<&CompilerMatchArmPayload<'_>>,
+        payload: Option<&CompilerMatchArmPayload>,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
             && let Some(kind) = payload.syntax_body_expression_kind()
@@ -113,7 +113,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_statement_with_syntax_kind(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
-        payload: &CompilerMatchArmPayload<'_>,
+        payload: &CompilerMatchArmPayload,
         kind: SyntaxExpressionKind,
     ) -> CompileResult<bool> {
         if kind == SyntaxExpressionKind::Block {
@@ -145,7 +145,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_statement_without_payload(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
-        payload: Option<&CompilerMatchArmPayload<'_>>,
+        payload: Option<&CompilerMatchArmPayload>,
     ) -> CompileResult<bool> {
         match &arm.body.kind {
             ExprKind::Block(block) => self.compile_statements(&block.statements),
@@ -171,7 +171,7 @@ impl Compiler<'_, '_> {
         match_expr: &MatchExpr,
         dst: Register,
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
-        arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
+        arm_payloads: Option<&[CompilerMatchArmPayload]>,
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         reject_missing_match_arm_payloads(scrutinee_payload, arm_payloads)?;
@@ -269,7 +269,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_value_to(
         &mut self,
         body: &Expr,
-        payload: Option<&CompilerMatchArmPayload<'_>>,
+        payload: Option<&CompilerMatchArmPayload>,
         dst: Register,
     ) -> CompileResult<bool> {
         if let Some(payload) = payload
@@ -294,7 +294,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_value_with_syntax_kind(
         &mut self,
         body: &Expr,
-        payload: &CompilerMatchArmPayload<'_>,
+        payload: &CompilerMatchArmPayload,
         kind: SyntaxExpressionKind,
         dst: Register,
     ) -> CompileResult<bool> {
@@ -358,7 +358,7 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_value_without_payload_to(
         &mut self,
         body: &Expr,
-        payload: Option<&CompilerMatchArmPayload<'_>>,
+        payload: Option<&CompilerMatchArmPayload>,
         dst: Register,
     ) -> CompileResult<bool> {
         match &body.kind {
@@ -373,10 +373,10 @@ impl Compiler<'_, '_> {
     }
 }
 
-fn match_arm_payload_at<'payload, 'ast>(
-    payloads: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+fn match_arm_payload_at(
+    payloads: Option<&[CompilerMatchArmPayload]>,
     index: usize,
-) -> CompileResult<Option<&'payload CompilerMatchArmPayload<'ast>>> {
+) -> CompileResult<Option<&CompilerMatchArmPayload>> {
     let Some(payloads) = payloads else {
         return Ok(None);
     };
@@ -410,7 +410,7 @@ fn reject_missing_match_scrutinee_payload(
 
 fn reject_missing_match_arm_payloads(
     scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
-    arm_payloads: Option<&[CompilerMatchArmPayload<'_>]>,
+    arm_payloads: Option<&[CompilerMatchArmPayload]>,
 ) -> CompileResult<()> {
     if scrutinee_payload.is_some() && arm_payloads.is_none() {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

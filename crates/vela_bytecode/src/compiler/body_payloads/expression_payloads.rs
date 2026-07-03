@@ -73,9 +73,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(if_expr)
     }
 
-    pub(in crate::compiler) fn match_arm_payloads(
-        &self,
-    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    pub(in crate::compiler) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
         let match_expr = self.fallback_match_expr()?;
         match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
@@ -97,7 +95,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<(
         &'ast MatchExpr,
         CompilerExpressionPayload<'ast>,
-        Vec<CompilerMatchArmPayload<'ast>>,
+        Vec<CompilerMatchArmPayload>,
     )> {
         let match_expr = self.fallback_match_expr()?;
         self.source?;
@@ -811,13 +809,12 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     }
 }
 
-impl<'ast> CompilerMatchArmPayload<'ast> {
+impl CompilerMatchArmPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMatchArm) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            _ast: std::marker::PhantomData,
         }
     }
 
@@ -826,7 +823,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: Some(syntax),
-            _ast: std::marker::PhantomData,
         }
     }
 
@@ -835,11 +831,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: None,
-            _ast: std::marker::PhantomData,
         }
     }
 
-    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'_> {
         CompilerPatternPayload::from_fallback(
             self.source,
             self.source
@@ -865,7 +860,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             .map(|body| body.expression_kind())
     }
 
-    pub(in crate::compiler) fn guard_payload(
+    pub(in crate::compiler) fn guard_payload<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -878,7 +873,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn body_block_payload(
+    pub(in crate::compiler) fn body_block_payload<'ast>(
         &self,
         fallback_block: Option<&'ast vela_syntax::ast::Block>,
     ) -> Option<CompilerBodyPayload<'ast>> {
@@ -891,14 +886,14 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     #[cfg(not(test))]
-    pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+    pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'_>> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
         )
     }
 
-    pub(in crate::compiler) fn body_expression_payload(
+    pub(in crate::compiler) fn body_expression_payload<'ast>(
         &self,
         fallback_body: &'ast Expr,
     ) -> CompilerExpressionPayload<'ast> {

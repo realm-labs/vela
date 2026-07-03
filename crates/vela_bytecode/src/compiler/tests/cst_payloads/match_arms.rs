@@ -766,7 +766,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_statement_match_expr(payload.body.fallback());
-    let arm_payloads: [body_payloads::CompilerMatchArmPayload<'_>; 0] = [];
+    let arm_payloads: [body_payloads::CompilerMatchArmPayload; 0] = [];
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
@@ -796,7 +796,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_return_match_expr(payload.body.fallback());
-    let arm_payloads: [body_payloads::CompilerMatchArmPayload<'_>; 0] = [];
+    let arm_payloads: [body_payloads::CompilerMatchArmPayload; 0] = [];
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
@@ -1131,7 +1131,7 @@ fn first_statement_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::a
 }
 
 fn assert_match_guard_payload(
-    arm: &body_payloads::CompilerMatchArmPayload<'_>,
+    arm: &body_payloads::CompilerMatchArmPayload,
     fallback: Option<&vela_syntax::ast::Expr>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
@@ -1149,7 +1149,7 @@ fn assert_match_guard_payload(
 }
 
 fn assert_match_body_array_element_payload(
-    arm: &body_payloads::CompilerMatchArmPayload<'_>,
+    arm: &body_payloads::CompilerMatchArmPayload,
     fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
@@ -1169,7 +1169,7 @@ fn assert_match_body_array_element_payload(
 }
 
 fn assert_match_body_block_payload(
-    arm: &body_payloads::CompilerMatchArmPayload<'_>,
+    arm: &body_payloads::CompilerMatchArmPayload,
     fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {

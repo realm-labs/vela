@@ -65,10 +65,9 @@ pub(super) struct CompilerStatementPayload<'ast> {
     fallback: Option<&'ast Stmt>,
 }
 
-pub(super) struct CompilerMatchArmPayload<'ast> {
+pub(super) struct CompilerMatchArmPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxMatchArm>,
-    _ast: PhantomData<&'ast ()>,
 }
 
 #[derive(Clone)]
@@ -453,11 +452,11 @@ fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock>
     expression.as_block()
 }
 
-fn match_arm_payloads_for_expr<'ast>(
+fn match_arm_payloads_for_expr(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
-    fallback: &'ast MatchExpr,
-) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    fallback: &MatchExpr,
+) -> Option<Vec<CompilerMatchArmPayload>> {
     let syntax_arms = syntax.arms();
     if source.is_some() && syntax_arms.len() > fallback.arms.len() {
         return None;
@@ -470,7 +469,6 @@ fn match_arm_payloads_for_expr<'ast>(
             .map(|(index, _fallback)| CompilerMatchArmPayload {
                 source,
                 syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
-                _ast: PhantomData,
             })
             .collect(),
     )
@@ -806,7 +804,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     #[cfg(test)]
     pub(super) fn let_initializer_match_arm_payloads(
         &self,
-    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    ) -> Option<Vec<CompilerMatchArmPayload>> {
         let StmtKind::Let {
             value: Some(value), ..
         } = &self.optional_fallback()?.kind
@@ -970,9 +968,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn return_value_match_arm_payloads(
-        &self,
-    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    pub(super) fn return_value_match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
         let StmtKind::Return(Some(value)) = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1089,7 +1085,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1277,7 +1273,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     #[cfg(test)]
     pub(super) fn assignment_value_match_arm_payloads(
         &self,
-    ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
+    ) -> Option<Vec<CompilerMatchArmPayload>> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1425,7 +1421,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     ) -> Option<(
         &'ast MatchExpr,
         CompilerExpressionPayload<'ast>,
-        Vec<CompilerMatchArmPayload<'ast>>,
+        Vec<CompilerMatchArmPayload>,
     )> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;

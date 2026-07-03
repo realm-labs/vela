@@ -11,7 +11,7 @@ pub(super) struct ValueSyntaxPayloads<'payload, 'ast> {
     pub(super) expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     pub(super) block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     pub(super) if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-    pub(super) match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+    pub(super) match_arms: Option<&'payload [CompilerMatchArmPayload]>,
     pub(super) syntax_value_missing: bool,
 }
 
@@ -21,7 +21,7 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-        match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+        match_arms: Option<&'payload [CompilerMatchArmPayload]>,
         syntax_value_missing: bool,
     ) -> Self {
         Self {

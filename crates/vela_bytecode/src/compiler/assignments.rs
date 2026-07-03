@@ -86,7 +86,7 @@ pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
     block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     if_expr: Option<&'payload CompilerIfPayload<'ast>>,
     match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
-    match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+    match_arms: Option<&'payload [CompilerMatchArmPayload]>,
 }
 
 impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
@@ -94,7 +94,7 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
         match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
-        match_arms: Option<&'payload [CompilerMatchArmPayload<'ast>]>,
+        match_arms: Option<&'payload [CompilerMatchArmPayload]>,
     ) -> Self {
         Self {
             block_body,
