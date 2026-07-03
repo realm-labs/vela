@@ -1,6 +1,6 @@
 use vela_common::{Diagnostic, PrimitiveTag, Span};
 use vela_def::MethodId;
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal};
+use vela_syntax::ast::{BinaryOp, Expr, Literal};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::record_shapes::ValueShape;
@@ -298,30 +298,16 @@ impl UnsuffixedNumericLiteral {
     }
 }
 
-pub(in crate::compiler) fn unsuffixed_numeric_literal(
-    expr: &Expr,
-) -> Option<UnsuffixedNumericLiteral> {
-    match &expr.kind {
-        ExprKind::Literal(Literal::Integer(value)) if value.suffix.is_none() => Some(
-            UnsuffixedNumericLiteral::Integer(value.source_text().to_owned()),
-        ),
-        ExprKind::Literal(Literal::Float(value)) if value.suffix.is_none() => Some(
-            UnsuffixedNumericLiteral::Float(value.source_text().to_owned()),
-        ),
-        _ => None,
-    }
-}
-
 pub(in crate::compiler) fn unsuffixed_numeric_literal_with_payload(
-    expr: &Expr,
+    _expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<UnsuffixedNumericLiteral> {
-    if payload.is_some_and(|payload| payload.source().is_some()) {
-        return payload
-            .and_then(CompilerExpressionPayload::syntax_literal)
-            .and_then(|literal| unsuffixed_numeric_literal_from_literal(&literal));
+    if payload.is_none_or(|payload| payload.source().is_none()) {
+        return None;
     }
-    unsuffixed_numeric_literal(expr)
+    payload
+        .and_then(CompilerExpressionPayload::syntax_literal)
+        .and_then(|literal| unsuffixed_numeric_literal_from_literal(&literal))
 }
 
 fn unsuffixed_numeric_literal_from_literal(literal: &Literal) -> Option<UnsuffixedNumericLiteral> {

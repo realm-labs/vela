@@ -592,6 +592,32 @@ fn main() {
     );
 }
 
+#[test]
+fn inline_binary_numeric_literals_require_cst_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let fallback_literal = 99;
+}
+"#,
+        |_compiler, payload| {
+            let statement = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("literal payload");
+            let literal =
+                crate::compiler::expression_checks::unsuffixed_numeric_literal_with_payload(
+                    statement.fallback(),
+                    None,
+                );
+
+            assert_eq!(
+                literal, None,
+                "old literal fallback must not drive CST inline literal lowering"
+            );
+        },
+    );
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
