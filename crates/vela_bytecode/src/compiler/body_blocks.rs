@@ -150,6 +150,14 @@ fn binary_valued_return(input) {
     return input + 1;
 }
 
+fn path_binary_valued_let(input, other) {
+    let value = input == other;
+}
+
+fn path_binary_valued_return(input, other) {
+    return input == other;
+}
+
 fn unary_valued_let(input) {
     let value = !input;
 }
@@ -201,14 +209,17 @@ fn parenthesized_simple_values() {
         let nonliteral_valued_let_body = bodies[7].body().expect("path valued let body");
         let binary_valued_let_body = bodies[8].body().expect("binary valued let body");
         let binary_valued_return_body = bodies[9].body().expect("binary valued return body");
-        let unary_valued_let_body = bodies[10].body().expect("unary valued let body");
-        let unary_valued_return_body = bodies[11].body().expect("unary valued return body");
-        let self_valued_let_body = bodies[12].body().expect("self valued let body");
-        let self_valued_return_body = bodies[13].body().expect("self valued return body");
-        let block_valued_let_body = bodies[14].body().expect("block valued let body");
-        let block_valued_return_body = bodies[15].body().expect("block valued return body");
+        let path_binary_valued_let_body = bodies[10].body().expect("path binary valued let body");
+        let path_binary_valued_return_body =
+            bodies[11].body().expect("path binary valued return body");
+        let unary_valued_let_body = bodies[12].body().expect("unary valued let body");
+        let unary_valued_return_body = bodies[13].body().expect("unary valued return body");
+        let self_valued_let_body = bodies[14].body().expect("self valued let body");
+        let self_valued_return_body = bodies[15].body().expect("self valued return body");
+        let block_valued_let_body = bodies[16].body().expect("block valued let body");
+        let block_valued_return_body = bodies[17].body().expect("block valued return body");
         let parenthesized_simple_values_body =
-            bodies[16].body().expect("parenthesized simple values body");
+            bodies[18].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -242,6 +253,16 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &binary_valued_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_binary_valued_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_binary_valued_return_body)
                 .is_none()
         );
         assert!(

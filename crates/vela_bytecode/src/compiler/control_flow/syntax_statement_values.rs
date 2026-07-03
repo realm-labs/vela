@@ -108,6 +108,13 @@ impl Compiler<'_, '_> {
         )? {
             return Ok(Some(register));
         }
+        self.reject_static_syntax_path_binary_operands(
+            source,
+            op,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )?;
         let Some(lhs) = self.compile_syntax_expression(source, &lhs_expression)? else {
             return Ok(None);
         };
@@ -120,6 +127,36 @@ impl Compiler<'_, '_> {
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
         Ok(Some(dst))
+    }
+
+    fn reject_static_syntax_path_binary_operands(
+        &self,
+        source: SourceId,
+        op: BinaryOp,
+        expression: &SyntaxExpression,
+        lhs_expression: &SyntaxExpression,
+        rhs_expression: &SyntaxExpression,
+    ) -> CompileResult<()> {
+        let Some(lhs_path) = expression_syntax_path_or_self(lhs_expression) else {
+            return Ok(());
+        };
+        let Some(rhs_path) = expression_syntax_path_or_self(rhs_expression) else {
+            return Ok(());
+        };
+        let lhs_span = syntax_expression_span(source, lhs_expression);
+        let rhs_span = syntax_expression_span(source, rhs_expression);
+        let lhs_type = self
+            .script_fact_for_path(lhs_span, &lhs_path)
+            .map(|fact| fact.type_name);
+        let rhs_type = self
+            .script_fact_for_path(rhs_span, &rhs_path)
+            .map(|fact| fact.type_name);
+        self.reject_static_script_path_binary_operands(
+            op,
+            syntax_expression_span(source, expression),
+            lhs_type.as_deref(),
+            rhs_type.as_deref(),
+        )
     }
 
     fn compile_syntax_path_unary(

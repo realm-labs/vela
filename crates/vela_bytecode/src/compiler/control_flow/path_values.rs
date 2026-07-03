@@ -202,7 +202,11 @@ impl Compiler<'_, '_> {
             .or_else(|| self.value_types.name(name))
     }
 
-    fn script_fact_for_path(&self, span: Span, path: &[String]) -> Option<ScriptTypeFact> {
+    pub(in crate::compiler::control_flow) fn script_fact_for_path(
+        &self,
+        span: Span,
+        path: &[String],
+    ) -> Option<ScriptTypeFact> {
         let [name] = path else {
             return self.script_types.local_fact_at_span(self.bindings, span);
         };
