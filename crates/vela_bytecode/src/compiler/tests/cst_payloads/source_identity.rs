@@ -425,7 +425,12 @@ fn main() {
             assert_eq!(fields[0].syntax_label_name(), None);
             assert!(
                 fields[0]
-                    .value_expression_payload()
+                    .value_expression_payload(
+                        fallback_fields[0]
+                            .value
+                            .as_ref()
+                            .expect("fallback record field value"),
+                    )
                     .expect("record field value payload")
                     .syntax_expression()
                     .is_none()

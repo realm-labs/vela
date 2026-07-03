@@ -784,10 +784,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             fields
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerRecordFieldPayload {
+                .map(|(index, _fallback)| CompilerRecordFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    value_fallback: fallback.value.as_ref(),
+                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -976,12 +976,12 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     pub(in crate::compiler) fn syntax(
         source: SourceId,
         syntax: SyntaxRecordExprField,
-        fallback: &'ast vela_syntax::ast::RecordField,
+        _fallback: &'ast vela_syntax::ast::RecordField,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            value_fallback: fallback.value.as_ref(),
+            _ast: std::marker::PhantomData,
         }
     }
 
@@ -1006,6 +1006,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
 
     pub(in crate::compiler) fn value_expression_payload(
         &self,
+        fallback: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -1014,7 +1015,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxRecordExprField::expression)
             }),
-            self.value_fallback?,
+            fallback,
         ))
     }
 }

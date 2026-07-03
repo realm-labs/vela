@@ -222,7 +222,12 @@ fn main() {
             );
             assert_eq!(
                 record_fields[0]
-                    .value_expression_payload()
+                    .value_expression_payload(
+                        fallback_fields[0]
+                            .value
+                            .as_ref()
+                            .expect("fallback field value"),
+                    )
                     .expect("record field value payload")
                     .syntax_expression()
                     .expect("CST record field value")
@@ -1114,10 +1119,20 @@ fn block_tail_containers() {
         .expect("record tail expression payload");
     let record_actual = record_tail
         .fallback_record_fields()
-        .and_then(|fields| record_tail.record_field_payloads(fields))
+        .and_then(|fields| {
+            let payloads = record_tail.record_field_payloads(fields)?;
+            Some(
+                fields
+                    .iter()
+                    .zip(payloads)
+                    .filter_map(|(fallback, payload)| {
+                        payload.value_expression_payload(fallback.value.as_ref()?)
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        })
         .expect("record field payloads")
-        .iter()
-        .filter_map(|field| field.value_expression_payload())
+        .into_iter()
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -1146,12 +1161,17 @@ fn assert_cst_let_initializer_record_field_value_body_payloads(
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {
-            payload
-                .fallback_record_fields()
-                .and_then(|fields| payload.record_field_payloads(fields))
-                .unwrap_or_default()
+            let Some(fields) = payload.fallback_record_fields() else {
+                return Vec::new();
+            };
+            fields
+                .iter()
+                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .filter_map(|(fallback, payload)| {
+                    payload.value_expression_payload(fallback.value.as_ref()?)
+                })
+                .collect::<Vec<_>>()
         })
-        .filter_map(|field| field.value_expression_payload())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
         &values,
@@ -1171,12 +1191,17 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
         .flat_map(|payload| {
-            payload
-                .fallback_record_fields()
-                .and_then(|fields| payload.record_field_payloads(fields))
-                .unwrap_or_default()
+            let Some(fields) = payload.fallback_record_fields() else {
+                return Vec::new();
+            };
+            fields
+                .iter()
+                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .filter_map(|(fallback, payload)| {
+                    payload.value_expression_payload(fallback.value.as_ref()?)
+                })
+                .collect::<Vec<_>>()
         })
-        .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -1195,12 +1220,17 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
         .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
         .map(|argument| argument.value_expression_payload())
         .flat_map(|payload| {
-            payload
-                .fallback_record_fields()
-                .and_then(|fields| payload.record_field_payloads(fields))
-                .unwrap_or_default()
+            let Some(fields) = payload.fallback_record_fields() else {
+                return Vec::new();
+            };
+            fields
+                .iter()
+                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .filter_map(|(fallback, payload)| {
+                    payload.value_expression_payload(fallback.value.as_ref()?)
+                })
+                .collect::<Vec<_>>()
         })
-        .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -1218,12 +1248,17 @@ fn assert_cst_return_value_record_field_value_body_payloads(
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(|payload| {
-            payload
-                .fallback_record_fields()
-                .and_then(|fields| payload.record_field_payloads(fields))
-                .unwrap_or_default()
+            let Some(fields) = payload.fallback_record_fields() else {
+                return Vec::new();
+            };
+            fields
+                .iter()
+                .zip(payload.record_field_payloads(fields).unwrap_or_default())
+                .filter_map(|(fallback, payload)| {
+                    payload.value_expression_payload(fallback.value.as_ref()?)
+                })
+                .collect::<Vec<_>>()
         })
-        .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))

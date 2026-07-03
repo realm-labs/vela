@@ -204,7 +204,7 @@ pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
 pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordExprField>,
-    value_fallback: Option<&'ast vela_syntax::ast::Expr>,
+    _ast: PhantomData<&'ast ()>,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {

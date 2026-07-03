@@ -205,7 +205,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                 value,
                 field_name,
                 expected,
-                payload.and_then(CompilerRecordFieldPayload::value_expression_payload),
+                payload.and_then(|payload| payload.value_expression_payload(value)),
             )?
         } else {
             self.local_register_at_span(field.span, field_name)?
