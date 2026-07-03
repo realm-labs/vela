@@ -8,11 +8,13 @@ use vela_syntax::ast::{
 
 #[cfg(test)]
 use super::CompilerBodyFallback;
+#[cfg(test)]
+use super::CompilerExpressionFallbackKind;
 use super::{
-    CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionFallbackKind,
-    CompilerExpressionPayload, CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload,
-    CompilerPatternPayload, CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload,
-    if_payload_for_expr, match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
+    CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
+    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
+    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_expr,
+    match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
 
 type FallbackExpressionPayload<'ast> = (&'ast Expr, CompilerExpressionPayload<'ast>);
@@ -253,7 +255,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Assign)
+            matches!(self.fallback.kind, ExprKind::Assign { .. })
         }
     }
 
@@ -293,7 +295,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Unary)
+            matches!(self.fallback.kind, ExprKind::Unary { .. })
         }
     }
 
@@ -332,7 +334,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try)
+            matches!(self.fallback.kind, ExprKind::Try(_))
         }
     }
 
@@ -373,7 +375,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Binary)
+            matches!(self.fallback.kind, ExprKind::Binary { .. })
         }
     }
 
@@ -676,7 +678,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Lambda)
+            matches!(self.fallback.kind, ExprKind::Lambda { .. })
         }
     }
 
@@ -736,7 +738,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array)
+            matches!(self.fallback.kind, ExprKind::Array(_))
         }
     }
 
@@ -797,7 +799,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Map)
+            matches!(self.fallback.kind, ExprKind::Map(_))
         }
     }
 
@@ -853,7 +855,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Record)
+            matches!(self.fallback.kind, ExprKind::Record { .. })
         }
     }
 
@@ -927,10 +929,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
         #[cfg(not(test))]
         {
-            matches!(
-                self.fallback_kind,
-                CompilerExpressionFallbackKind::InterpolatedString
-            )
+            matches!(self.fallback.kind, ExprKind::InterpolatedString(_))
         }
     }
 
