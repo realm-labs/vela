@@ -704,6 +704,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
@@ -719,6 +720,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
@@ -731,6 +733,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             pattern_fallback: &fallback.pattern,
             guard_fallback: fallback.guard.as_ref(),
             body_fallback: &fallback.body,
+            #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
     }
@@ -772,10 +775,14 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        #[cfg(test)]
+        let fallback = self.body_block_fallback.map(CompilerBodyFallback::block);
+        #[cfg(not(test))]
+        let fallback = None;
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-            self.body_block_fallback.map(CompilerBodyFallback::block),
+            fallback,
         )
     }
 
