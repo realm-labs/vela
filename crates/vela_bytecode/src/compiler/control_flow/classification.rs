@@ -78,23 +78,6 @@ pub(super) fn range_iterable_for_payload<'ast>(
     ) {
         (Some(BinaryOp::Range), _) => Some((left.as_ref(), right.as_ref(), false)),
         (Some(BinaryOp::RangeInclusive), _) => Some((left.as_ref(), right.as_ref(), true)),
-        (Some(_), _) | (None, true) => None,
-        (None, false) => range_iterable_from_fallback(expr),
-    }
-}
-
-fn range_iterable_from_fallback(expr: &Expr) -> Option<(&Expr, &Expr, bool)> {
-    match &expr.kind {
-        ExprKind::Binary {
-            op: BinaryOp::Range,
-            left,
-            right,
-        } => Some((left.as_ref(), right.as_ref(), false)),
-        ExprKind::Binary {
-            op: BinaryOp::RangeInclusive,
-            left,
-            right,
-        } => Some((left.as_ref(), right.as_ref(), true)),
         _ => None,
     }
 }
@@ -109,19 +92,11 @@ pub(super) fn condition_operator_for_payload(
             payload.is_some(),
         ) {
             (Some(op), _) => Some(op),
-            (None, false) => condition_operator_from_fallback(expr),
-            (None, true) => None,
+            (None, _) => None,
         }
     } else {
         None
     }
-}
-
-fn condition_operator_from_fallback(expr: &Expr) -> Option<BinaryOp> {
-    let ExprKind::Binary { op, .. } = &expr.kind else {
-        return None;
-    };
-    Some(*op)
 }
 
 pub(super) fn merge_type_hint_and_value_fact(
