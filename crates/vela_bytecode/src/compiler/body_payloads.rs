@@ -52,7 +52,6 @@ pub(super) struct CompilerBodyPayload<'ast> {
 #[derive(Clone, Copy)]
 #[cfg(test)]
 pub(super) struct CompilerBodyFallback<'ast> {
-    _ast: PhantomData<&'ast ()>,
     statements: &'ast [Stmt],
     block: Option<&'ast Block>,
 }
@@ -341,7 +340,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
 impl<'ast> CompilerBodyFallback<'ast> {
     pub(super) fn block(block: &'ast Block) -> Self {
         Self {
-            _ast: PhantomData,
             statements: &block.statements,
             block: Some(block),
         }
