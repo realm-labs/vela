@@ -3,6 +3,7 @@ use vela_syntax::ast::{Block, Expr, ExprKind, StmtKind, SyntaxExpressionKind};
 use crate::compiler::body_payloads::{
     CompilerBlockValue, CompilerBodyPayload, CompilerStatementPayload,
 };
+use crate::compiler::control_flow::classification::aligned_statement_fallback;
 use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
@@ -61,7 +62,14 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
-                let StmtKind::Expr(expr) = &tail.fallback().kind else {
+                let fallback = aligned_statement_fallback(tail).ok_or_else(|| {
+                    crate::compiler::CompileError::new(
+                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST block tail expression",
+                        ),
+                    )
+                })?;
+                let StmtKind::Expr(expr) = &fallback.kind else {
                     return Err(crate::compiler::CompileError::new(
                         crate::compiler::CompileErrorKind::UnsupportedSyntax(
                             "mismatched CST block tail expression",
