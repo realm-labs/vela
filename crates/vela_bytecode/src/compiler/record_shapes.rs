@@ -1027,7 +1027,7 @@ impl super::Compiler<'_, '_> {
         }) {
             return None;
         }
-        if syntax_shapes::payload_shape_must_come_from_syntax(kind_matched_payload, expr) {
+        if syntax_shapes::payload_shape_must_come_from_syntax(kind_matched_payload) {
             return None;
         }
         if payload.is_some() && kind_matched_payload.is_none() {
