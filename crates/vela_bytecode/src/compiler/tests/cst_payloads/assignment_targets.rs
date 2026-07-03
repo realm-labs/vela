@@ -45,7 +45,8 @@ fn main() {
     let legacy = LegacyBox { amount: false };
     let cst_target = {
         let selected = legacy;
-        selected
+        selected;
+        selected + 1
     };
     legacy.amount = true;
 }

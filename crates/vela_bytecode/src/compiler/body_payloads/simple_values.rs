@@ -202,7 +202,7 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     }
     expression
         .as_block()
-        .is_some_and(|block| !CompilerBodyPayload::requires_strict_body_block_lookup(&block))
+        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
 }
 
 fn syntax_expression_is_statement_block(expression: &SyntaxExpression) -> bool {

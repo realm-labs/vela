@@ -275,7 +275,8 @@ enum LegacyResult {
 fn cst_block(cst) {
     return {
         let selected = cst;
-        selected
+        selected;
+        selected + 1
     };
 }
 
@@ -453,7 +454,8 @@ fn main() {
     take(legacy_value);
     let cst_block = {
         let selected = cst_value;
-        selected
+        selected;
+        selected + 1
     };
 }
 "#,

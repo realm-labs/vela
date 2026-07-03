@@ -29,7 +29,8 @@ fn host_path_with_non_path_cst_payload_does_not_use_legacy_path() {
 fn main(player: Player) {
     let cst_value = {
         let selected = player;
-        selected
+        selected;
+        selected + 1
     };
     player.level;
 }
@@ -195,7 +196,8 @@ fn indexed_host_path_with_non_index_cst_payload_does_not_use_legacy_index() {
 fn main(player: Player) {
     let cst_value = {
         let selected = player;
-        selected
+        selected;
+        selected + 1
     };
     player.inventory.items["gold"];
 }

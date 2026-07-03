@@ -58,7 +58,8 @@ fn host_field_path_with_non_field_cst_payload_does_not_use_legacy_field_name() {
 fn main(cst: CstHost, legacy: LegacyHost) {
     let cst_value = {
         let selected = cst;
-        selected
+        selected;
+        selected + 1
     };
     let legacy_value = legacy.amount;
 }
@@ -440,7 +441,8 @@ fn read_only_host_assignment_with_non_field_cst_payload_does_not_use_legacy_fiel
 fn main(readonly: ReadOnlyHost) {
     let cst_target = {
         let selected = readonly;
-        selected
+        selected;
+        selected + 1
     };
     readonly.amount = 1;
 }

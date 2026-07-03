@@ -1,5 +1,10 @@
 use super::*;
 
+// Temporary 1200-line exception: this suite owns paired let/return CST payload
+// and old-body-fallback sentinels during the body-payload hard switch. Splitting
+// it before the fallback side is deleted would separate shared mismatch
+// fixtures from the helper assertions they are meant to protect.
+
 #[test]
 fn mismatched_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
@@ -1402,7 +1407,7 @@ fn missing_let_initializer_block_body_payload_does_not_use_legacy_block() {
 fn main() {
     let value = {
         let nested = 1;
-        nested
+        nested + 1
     };
 }
 "#;
@@ -1491,7 +1496,7 @@ fn missing_return_block_body_payload_does_not_use_legacy_block() {
 fn main() {
     return {
         let nested = 1;
-        nested
+        nested + 1
     };
 }
 "#;

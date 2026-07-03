@@ -141,10 +141,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self::requires_body_block_lookup_with_tail(body, true)
     }
 
-    pub(super) fn requires_strict_body_block_lookup(body: &SyntaxBlock) -> bool {
-        Self::requires_body_block_lookup_with_tail(body, false)
-    }
-
     fn requires_body_block_lookup_with_tail(
         body: &SyntaxBlock,
         allow_unterminated_tail: bool,

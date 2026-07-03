@@ -12,7 +12,8 @@ fn main() {
     let legacy = LegacyBox { amount: 1 };
     let cst_block = {
         let selected = legacy;
-        selected
+        selected;
+        selected + 1
     };
     let legacy_amount = legacy.amount;
 }

@@ -114,12 +114,12 @@ fn paren_values() {
     let (payload, _, _) = semantic
         .function("paren_values")
         .expect("paren_values function");
-    assert_cst_let_initializer_paren_body_payloads(
-        &payload.body,
-        &[vec![
-            (SyntaxStatementKind::Let, "let inner = 1;"),
-            (SyntaxStatementKind::Expr, "inner"),
-        ]],
+    let statements = payload.body.statement_payloads();
+    let value_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+    assert!(
+        value_fallback.is_err(),
+        "parenthesized simple block initializer should not require owned fallback"
     );
     assert_cst_assignment_value_paren_body_payloads(
         &payload.body,
@@ -152,21 +152,11 @@ fn block_tail_paren() {
         .function("block_tail_paren")
         .expect("block_tail_paren function");
     let statements = payload.body.statement_payloads();
-    let block = statements[0]
-        .let_initializer_expression_payload()
-        .expect("let initializer should expose CST payload");
-    let block_body = block
-        .block_body_payload()
-        .expect("let initializer block should expose body payload");
-    let block_statements = block_body.statement_payloads();
-    let body_payloads::CompilerBlockValue::TailExpression { tail, .. } =
-        block_body.block_value(&block_statements)
-    else {
-        panic!("expected parenthesized block tail expression");
-    };
-    assert_eq!(
-        tail.value_expression_kind(),
-        Some(SyntaxExpressionKind::Paren)
+    let let_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+    assert!(
+        let_fallback.is_err(),
+        "parenthesized block tail initializer should not require owned fallback"
     );
 
     compile_program_source(source, text)
@@ -372,24 +362,6 @@ fn assert_cst_return_value_try_operand_body_payloads(
         .filter_map(|payload| payload.try_operand_payload())
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
-            Some(cst_statement_texts(&body))
-        })
-        .collect::<Vec<_>>();
-    assert_eq!(actual, expected_statement_texts(expected));
-}
-
-fn assert_cst_let_initializer_paren_body_payloads(
-    body: &body_payloads::CompilerBodyPayload<'_>,
-    expected: &[Vec<(SyntaxStatementKind, &str)>],
-) {
-    let actual = body
-        .statement_payloads()
-        .iter()
-        .filter_map(|statement| statement.let_initializer_expression_payload())
-        .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
-        .filter_map(|payload| payload.paren_inner_payload())
-        .filter_map(|inner| {
-            let body = inner.block_body_payload()?;
             Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();

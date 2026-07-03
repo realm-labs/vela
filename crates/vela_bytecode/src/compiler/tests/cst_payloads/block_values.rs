@@ -101,7 +101,8 @@ fn main() {
     let legacy_text = r#"
 fn main() {
     let value = {
-        2
+        let guard = 2;
+        guard + 0
     };
 }
 "#;
@@ -151,7 +152,8 @@ fn main() {
     let legacy_text = r#"
 fn main() {
     let value = {
-        1
+        let guard = 1;
+        guard + 0
     };
 }
 "#;
