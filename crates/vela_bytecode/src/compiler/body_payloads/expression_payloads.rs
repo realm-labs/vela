@@ -1044,7 +1044,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             source: Some(source),
             syntax: Some(syntax),
             pattern_fallback: &fallback.pattern,
-            body_fallback: &fallback.body,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
@@ -1059,7 +1058,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             source: None,
             syntax: Some(syntax),
             pattern_fallback: &fallback.pattern,
-            body_fallback: &fallback.body,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
@@ -1071,7 +1069,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
             source: None,
             syntax: None,
             pattern_fallback: &fallback.pattern,
-            body_fallback: &fallback.body,
             #[cfg(test)]
             body_block_fallback: expression_fallback_block(&fallback.body),
         }
@@ -1128,7 +1125,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn body_expression_payload(
+        &self,
+        fallback: &'ast Expr,
+    ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_fallback(
             self.source,
             self.source.and_then(|_| {
@@ -1136,7 +1136,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-            self.body_fallback,
+            fallback,
         )
     }
 
