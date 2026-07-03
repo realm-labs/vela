@@ -372,11 +372,10 @@ fn first_return_match_pattern_syntax(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxPattern {
     let statements = body.statement_payloads();
-    let fallback = first_return_match_fallback_pattern(body.fallback());
     statements[0]
         .return_value_match_arm_payloads()
         .expect("return match")[0]
-        .pattern_payload(fallback)
+        .pattern_payload()
         .syntax_pattern()
         .expect("CST pattern")
         .clone()

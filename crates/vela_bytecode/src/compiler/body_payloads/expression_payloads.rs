@@ -1066,15 +1066,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         }
     }
 
-    pub(in crate::compiler) fn pattern_payload(
-        &self,
-        fallback: &'ast Pattern,
-    ) -> CompilerPatternPayload<'ast> {
+    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'ast> {
         CompilerPatternPayload::from_fallback(
             self.source,
             self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
-            fallback,
         )
     }
 
@@ -1152,9 +1148,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     pub(in crate::compiler) fn from_fallback(
         source: Option<SourceId>,
         syntax: Option<SyntaxPattern>,
-        fallback: &'ast Pattern,
     ) -> Self {
-        let _ = fallback;
         Self {
             source,
             syntax,
@@ -1237,11 +1231,10 @@ impl<'ast> CompilerPatternPayload<'ast> {
             fields
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| {
+                .map(|(index, _fallback)| {
                     CompilerPatternPayload::from_fallback(
                         self.source,
                         syntax_fields.get(index).cloned(),
-                        fallback,
                     )
                 })
                 .collect(),
@@ -1261,22 +1254,22 @@ impl<'ast> CompilerPatternPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(
         syntax: vela_syntax::ast::SyntaxPattern,
-        fallback: &'ast Pattern,
+        _fallback: &'ast Pattern,
     ) -> Self {
-        Self::from_fallback(Some(SourceId::new(1)), Some(syntax), fallback)
+        Self::from_fallback(Some(SourceId::new(1)), Some(syntax))
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(
         syntax: vela_syntax::ast::SyntaxPattern,
-        fallback: &'ast Pattern,
+        _fallback: &'ast Pattern,
     ) -> Self {
-        Self::from_fallback(None, Some(syntax), fallback)
+        Self::from_fallback(None, Some(syntax))
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(source: SourceId, fallback: &'ast Pattern) -> Self {
-        Self::from_fallback(Some(source), None, fallback)
+    pub(in crate::compiler) fn missing_syntax(source: SourceId, _fallback: &'ast Pattern) -> Self {
+        Self::from_fallback(Some(source), None)
     }
 
     #[cfg(test)]
@@ -1314,13 +1307,13 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
         &self,
         fallback: Option<&'ast Pattern>,
     ) -> Option<CompilerPatternPayload<'ast>> {
+        fallback?;
         self.source?;
         Some(CompilerPatternPayload::from_fallback(
             self.source,
             self.syntax
                 .as_ref()
                 .and_then(SyntaxRecordPatternField::pattern),
-            fallback?,
         ))
     }
 

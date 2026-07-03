@@ -31,7 +31,7 @@ impl Compiler<'_, '_> {
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
             let arm_payload = match_arm_payload_at(arm_payloads, index)?;
-            let pattern_payload = arm_payload.map(|payload| payload.pattern_payload(&arm.pattern));
+            let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
             let mut next_arm_jumps =
                 self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
             let previous_locals = self.locals.clone();
@@ -175,7 +175,7 @@ impl Compiler<'_, '_> {
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
             let arm_payload = match_arm_payload_at(arm_payloads, index)?;
-            let pattern_payload = arm_payload.map(|payload| payload.pattern_payload(&arm.pattern));
+            let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
             let mut next_arm_jumps =
                 self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
             let previous_locals = self.locals.clone();

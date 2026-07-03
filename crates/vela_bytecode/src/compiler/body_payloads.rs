@@ -1062,23 +1062,22 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { index_pattern, .. } = &self.optional_fallback()?.kind else {
             return None;
         };
+        index_pattern.as_ref()?;
         self.source?;
         Some(CompilerPatternPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_for()?.index_pattern(),
-            index_pattern.as_ref()?,
         ))
     }
 
     pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
-        let StmtKind::For { pattern, .. } = &self.optional_fallback()?.kind else {
+        let StmtKind::For { .. } = &self.optional_fallback()?.kind else {
             return None;
         };
         self.source?;
         Some(CompilerPatternPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_for()?.value_pattern(),
-            pattern,
         ))
     }
 
