@@ -370,6 +370,9 @@ literal access instead.
 The free expression alignment helper that returned an old owned `Expr` has
 been removed; the remaining checked fallback expression access is localized on
 `CompilerExpressionPayload` while host-path and method-call lowering migrate.
+Host collection method targets built from CST payloads no longer store the old
+receiver `Expr`; terminal host-index validation resolves the checked fallback
+only when that validation is needed.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy

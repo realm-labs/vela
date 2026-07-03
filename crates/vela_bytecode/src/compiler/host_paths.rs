@@ -705,14 +705,8 @@ impl Compiler<'_, '_> {
                 "host path remove arity",
             )));
         }
-        if let Some(base) = target.field_receiver
-            && let Some(expr) = base.expr
-        {
-            self.reject_terminal_host_index_access(
-                expr,
-                base.payload.as_ref(),
-                HostIndexAccessKind::Remove,
-            )?;
+        if let Some(base) = target.field_receiver {
+            self.reject_terminal_host_index_receiver_access(base, HostIndexAccessKind::Remove)?;
         }
         let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_remove(root, path, callee.span)?;
@@ -734,12 +728,11 @@ impl Compiler<'_, '_> {
                         return None;
                     }
                     let base_payload = payload.field_base_payload()?;
-                    let base = base_payload.aligned_fallback_expr();
                     let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: base,
+                            expr: None,
                             payload: Some(base_payload),
                         }),
                     })
@@ -779,6 +772,23 @@ impl Compiler<'_, '_> {
                 }),
             _ => None,
         }
+    }
+
+    fn reject_terminal_host_index_receiver_access(
+        &self,
+        receiver: HostCollectionFieldReceiver<'_>,
+        kind: HostIndexAccessKind,
+    ) -> CompileResult<()> {
+        if let Some(payload) = receiver.payload.as_ref() {
+            let Some(expr) = payload.aligned_fallback_expr() else {
+                return Ok(());
+            };
+            return self.reject_terminal_host_index_access(expr, Some(payload), kind);
+        }
+        let Some(expr) = receiver.expr else {
+            return Ok(());
+        };
+        self.reject_terminal_host_index_access(expr, None, kind)
     }
 
     #[cfg(test)]
