@@ -241,3 +241,37 @@ fn main() {
         "CST empty array return should emit the evaluated empty array constant"
     );
 }
+
+#[test]
+fn syntax_only_nested_empty_array_block_let_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = {
+        let nested: Array<i64> = [];
+    };
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only nested empty array block let should not retain an owned body fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only nested empty array block let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Array(Vec::new())),
+        "CST nested empty array block let should emit the evaluated empty array constant"
+    );
+}
