@@ -36,7 +36,8 @@ fn missing_block_statement_body_payload_does_not_use_legacy_body() {
         r#"
 fn main() {
     {
-        return 1;
+        let value = 1;
+        return value;
     }
 }
 "#,
@@ -269,7 +270,8 @@ fn cst_body() {
 }
 
 fn fallback_body() {
-    return 1;
+    let value = 1;
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -281,7 +283,7 @@ fn fallback_body() {
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
@@ -305,7 +307,8 @@ fn cst_body() {
 }
 
 fn fallback_body() {
-    return 1;
+    let value = 1;
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -317,7 +320,7 @@ fn fallback_body() {
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");

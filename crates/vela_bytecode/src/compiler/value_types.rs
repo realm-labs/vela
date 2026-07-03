@@ -652,7 +652,7 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
     Span::new(source, range.start().into(), range.end().into())
 }
 
-fn static_literal_type(literal: &Literal) -> StaticExprType {
+pub(super) fn static_literal_type(literal: &Literal) -> StaticExprType {
     match literal {
         Literal::Integer(value) if value.suffix.is_none() => {
             StaticExprType::UnsuffixedIntegerLiteral

@@ -168,6 +168,51 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_literal_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only literal return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(1)),
+        "CST literal return should emit the literal constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_numeric_literal_return_body_uses_contextual_type() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> i8 {
+    return 12;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed literal return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12))),
+        "typed CST literal return should use the function return type"
+    );
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -266,8 +311,8 @@ fn main() {
 fn unclassified_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    return 1;
+fn main(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -292,8 +337,8 @@ fn main() {
 fn return_value_kind_without_expression_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    return 1;
+fn main(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -304,15 +349,12 @@ fn main() {
     };
 
     let error = compiler
-        .compile_return_kind_without_expression_payload_for_test(
-            value,
-            SyntaxExpressionKind::Literal,
-        )
+        .compile_return_kind_without_expression_payload_for_test(value, SyntaxExpressionKind::Path)
         .expect_err("kind-only CST return payload must not compile legacy expression");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
     ));
 }
 
@@ -536,7 +578,8 @@ fn cst_body() {
 }
 
 fn fallback_body() {
-    return 1;
+    let value = 1;
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -548,7 +591,7 @@ fn fallback_body() {
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[0].fallback();
+    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
@@ -566,7 +609,8 @@ fn empty_return_payload_with_literal_fallback_uses_cst_empty_return() {
     let text = r#"
 fn main() {
     return;
-    return 1;
+    let value = 1;
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -576,7 +620,7 @@ fn main() {
         .syntax_statement()
         .expect("CST return statement")
         .clone();
-    let legacy_literal_return = statements[1].fallback();
+    let legacy_literal_return = statements[2].fallback();
     let mismatched = body_payloads::CompilerStatementPayload::syntax(
         source,
         cst_return_without_value,

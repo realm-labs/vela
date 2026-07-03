@@ -449,8 +449,7 @@ fn assert_cst_return_value_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.return_value_expression_payload())
-        .filter_map(literal_payload_value)
+        .filter_map(body_payloads::CompilerStatementPayload::return_value_syntax_literal)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }

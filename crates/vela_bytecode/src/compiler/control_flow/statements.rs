@@ -78,6 +78,11 @@ impl Compiler<'_, '_> {
                 };
                 return self.compile_empty_return(span);
             }
+            SyntaxStatementKind::Return => {
+                if let Some((literal, span)) = stmt.return_value_syntax_literal_and_span() {
+                    return self.compile_return_literal(literal, span);
+                }
+            }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
             _ => {}
         }

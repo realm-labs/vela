@@ -1,10 +1,11 @@
 use vela_common::SourceId;
 use vela_common::Span;
+use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
-    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry,
-    SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxLiteral,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
     SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 
@@ -265,14 +266,24 @@ fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> b
             let_statement.name_text().is_none() || let_statement.initializer().is_some()
         }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
-        SyntaxStatementKind::Return => statement
-            .as_return()
-            .is_none_or(|return_statement| return_statement.expression().is_some()),
+        SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
+            return_statement
+                .expression()
+                .is_some_and(|expression| !syntax_expression_is_simple_literal(&expression))
+        }),
         SyntaxStatementKind::Block => statement
             .as_block()
             .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
         _ => true,
     }
+}
+
+fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
+    let Some(literal) = expression.as_literal() else {
+        return false;
+    };
+    !matches!(literal.token_kind(), Some(SyntaxKind::InterpolatedString))
+        && literal.literal().is_some()
 }
 
 fn match_arm_payloads_for_expr<'ast>(
@@ -581,6 +592,25 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_return()?
             .expression()
             .map(|expression| expression.expression_kind())
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn return_value_syntax_literal(
+        &self,
+    ) -> Option<vela_syntax::ast::Literal> {
+        self.return_value_syntax_literal_and_span()
+            .map(|(literal, _)| literal)
+    }
+
+    pub(in crate::compiler) fn return_value_syntax_literal_and_span(
+        &self,
+    ) -> Option<(vela_syntax::ast::Literal, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let literal = SyntaxLiteral::cast(expression.syntax().clone())?.literal()?;
+        Some((literal, span))
     }
 
     pub(super) fn syntax_statement_span(&self) -> Option<Span> {

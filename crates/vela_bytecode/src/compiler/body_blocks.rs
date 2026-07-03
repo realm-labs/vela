@@ -95,6 +95,14 @@ fn syntax_only_block() {
 fn valued_return() {
     return 1;
 }
+
+fn typed_valued_return() -> i8 {
+    return 12;
+}
+
+fn valued_let() {
+    let value = 1;
+}
 "#;
         let parsed = parse_source_with_id(source, text);
         assert!(parsed.diagnostics().is_empty());
@@ -105,6 +113,8 @@ fn valued_return() {
         let empty_let_body = bodies[2].body().expect("empty let body");
         let syntax_only_block_body = bodies[3].body().expect("syntax-only block body");
         let valued_return_body = bodies[4].body().expect("valued return body");
+        let typed_valued_return_body = bodies[5].body().expect("typed return body");
+        let valued_let_body = bodies[6].body().expect("valued let body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -117,7 +127,13 @@ fn valued_return() {
         assert!(
             lookup
                 .body_for_syntax(source, &valued_return_body)
-                .is_some()
+                .is_none()
         );
+        assert!(
+            lookup
+                .body_for_syntax(source, &typed_valued_return_body)
+                .is_none()
+        );
+        assert!(lookup.body_for_syntax(source, &valued_let_body).is_some());
     }
 }

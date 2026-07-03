@@ -21,11 +21,13 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
+use super::const_eval::compile_literal_constant_for_type;
 use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
-    RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
+    RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, static_literal_type,
+    type_hint_value_type,
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
@@ -416,6 +418,42 @@ impl Compiler<'_, '_> {
         if !returned {
             self.emit(UnlinkedInstructionKind::Return { src: register });
         }
+        Ok(true)
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_return_literal(
+        &mut self,
+        literal: vela_syntax::ast::Literal,
+        span: Span,
+    ) -> CompileResult<bool> {
+        let register = match self.return_type.clone() {
+            Some(expected @ RuntimeTypeFact::Primitive(tag)) => {
+                if let Some(constant) = compile_literal_constant_for_type(&literal, tag)
+                    .map_err(|error| error.with_span(span))?
+                {
+                    self.emit_constant(constant)?
+                } else {
+                    check_expected_type(
+                        static_literal_type(&literal),
+                        expected,
+                        span,
+                        TypeContractContext::Return,
+                    )?;
+                    self.compile_literal(Some(span), &literal)?
+                }
+            }
+            Some(expected) => {
+                check_expected_type(
+                    static_literal_type(&literal),
+                    expected,
+                    span,
+                    TypeContractContext::Return,
+                )?;
+                self.compile_literal(Some(span), &literal)?
+            }
+            None => self.compile_literal(Some(span), &literal)?,
+        };
+        self.emit(UnlinkedInstructionKind::Return { src: register });
         Ok(true)
     }
 
