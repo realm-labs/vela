@@ -6,8 +6,8 @@ use vela_syntax::ast::{
 };
 
 use super::{
-    CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
-    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
+    CompilerArgumentPayload, CompilerBodyFallback, CompilerBodyPayload, CompilerExpressionPayload,
+    CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_expr,
     match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
@@ -45,7 +45,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
-            Some(block),
+            Some(CompilerBodyFallback::block(block)),
         )
     }
 
@@ -758,7 +758,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-            Some(block),
+            Some(CompilerBodyFallback::block(block)),
         )
     }
 

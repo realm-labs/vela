@@ -37,6 +37,13 @@ pub(super) struct CompilerBodyPayload<'ast> {
     fallback_block: Option<&'ast Block>,
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct CompilerBodyFallback<'ast> {
+    statements: &'ast [Stmt],
+    #[cfg(test)]
+    block: Option<&'ast Block>,
+}
+
 pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
@@ -104,28 +111,32 @@ pub(super) enum CompilerBlockValue<'payload, 'ast> {
 }
 
 impl<'ast> CompilerBodyPayload<'ast> {
+    #[cfg(test)]
     pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
+        Self::with_fallback(source, body, CompilerBodyFallback::block(fallback))
+    }
+
+    fn with_fallback(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback: CompilerBodyFallback<'ast>,
+    ) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback_statements: Some(&fallback.statements),
+            fallback_statements: Some(fallback.statements),
             #[cfg(test)]
-            fallback_block: Some(fallback),
+            fallback_block: fallback.block,
         }
     }
 
-    fn nested(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
-        Self {
-            syntax: SyntaxBodyPayload { source, body },
-            fallback_statements: Some(&fallback.statements),
-            #[cfg(test)]
-            fallback_block: Some(fallback),
-        }
+    fn nested(source: SourceId, body: SyntaxBlock, fallback: CompilerBodyFallback<'ast>) -> Self {
+        Self::with_fallback(source, body, fallback)
     }
 
     pub(super) fn nested_syntax_optional(
         source: SourceId,
         body: SyntaxBlock,
-        fallback: Option<&'ast Block>,
+        fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
         if !Self::requires_body_block_lookup(&body) {
             return Self::syntax_only_without_body_lookup(source, body);
@@ -167,10 +178,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn syntax_with_optional_body(
         source: SourceId,
         body: SyntaxBlock,
-        fallback: Option<&'ast Block>,
+        fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
         match fallback {
-            Some(fallback) => Some(Self::syntax(source, body, fallback)),
+            Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
             None => Self::syntax_only_without_body_lookup(source, body),
         }
     }
@@ -259,6 +270,36 @@ impl<'ast> CompilerBodyPayload<'ast> {
     #[cfg(test)]
     pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
         &self.syntax
+    }
+}
+
+impl<'ast> CompilerBodyFallback<'ast> {
+    #[cfg(not(test))]
+    pub(super) const fn statements(statements: &'ast [Stmt]) -> Self {
+        Self {
+            statements,
+            #[cfg(test)]
+            block: None,
+        }
+    }
+
+    pub(super) fn block(block: &'ast Block) -> Self {
+        Self {
+            statements: &block.statements,
+            #[cfg(test)]
+            block: Some(block),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) const fn statements_with_block(
+        statements: &'ast [Stmt],
+        block: &'ast Block,
+    ) -> Self {
+        Self {
+            statements,
+            block: Some(block),
+        }
     }
 }
 
@@ -365,11 +406,19 @@ fn if_payload_for_expr<'ast>(
         fallback: &fallback.condition,
     });
     let then_body = syntax.then_block().and_then(|body| {
-        CompilerBodyPayload::nested_syntax_optional(source, body, Some(&fallback.then_branch))
+        CompilerBodyPayload::nested_syntax_optional(
+            source,
+            body,
+            Some(CompilerBodyFallback::block(&fallback.then_branch)),
+        )
     });
     let else_body = match fallback.else_branch.as_ref() {
         Some(ElseBranch::Block(block)) => syntax.else_block().and_then(|body| {
-            CompilerBodyPayload::nested_syntax_optional(source, body, Some(block))
+            CompilerBodyPayload::nested_syntax_optional(
+                source,
+                body,
+                Some(CompilerBodyFallback::block(block)),
+            )
         }),
         Some(ElseBranch::If(_)) | None => None,
     };
@@ -607,7 +656,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
-            fallback,
+            fallback.map(CompilerBodyFallback::block),
         )
     }
 
@@ -765,7 +814,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .as_return()?
                 .expression()?
                 .as_block()?,
-            fallback,
+            fallback.map(CompilerBodyFallback::block),
         )
     }
 
@@ -873,7 +922,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_block()?,
-            fallback,
+            fallback.map(CompilerBodyFallback::block),
         )
     }
 
@@ -884,7 +933,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_for()?.body()?,
-            Some(body),
+            Some(CompilerBodyFallback::block(body)),
         )
     }
 
@@ -1018,7 +1067,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.assignment_value_expression()?.as_block()?,
-            Some(block),
+            Some(CompilerBodyFallback::block(block)),
         )
     }
 
@@ -1112,7 +1161,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             self.expression()
                 .and_then(|expression| expression.as_block())
                 .or_else(|| self.syntax.as_ref()?.as_block())?,
-            Some(block),
+            Some(CompilerBodyFallback::block(block)),
         )
     }
 
@@ -1130,7 +1179,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             expression_block_syntax(&self.expression()?)?,
-            fallback,
+            fallback.map(CompilerBodyFallback::block),
         )
     }
 

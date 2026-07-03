@@ -1,13 +1,20 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::Parse as SyntaxParse;
 use vela_syntax::ast::SyntaxSourceFile;
-use vela_syntax::ast::{AstNode, Block, SyntaxBlock};
+use vela_syntax::ast::{AstNode, Block, Stmt, SyntaxBlock};
 use vela_syntax::parse_body_blocks_at_spans;
 
-use crate::compiler::body_payloads::CompilerBodyPayload;
+use crate::compiler::body_payloads::{CompilerBodyFallback, CompilerBodyPayload};
 
 pub(super) struct BodyBlockLookup {
-    bodies: Vec<Block>,
+    bodies: Vec<BodyBlockEntry>,
+}
+
+struct BodyBlockEntry {
+    span: Span,
+    statements: Vec<Stmt>,
+    #[cfg(test)]
+    block: Block,
 }
 
 impl BodyBlockLookup {
@@ -21,16 +28,57 @@ impl BodyBlockLookup {
             Vec::new()
         } else {
             parse_body_blocks_at_spans(source, text, &required_spans)
+                .into_iter()
+                .map(BodyBlockEntry::new)
+                .collect()
         };
         Self { bodies }
     }
 
-    pub(super) fn body_for_syntax(&self, source: SourceId, body: &SyntaxBlock) -> Option<&Block> {
+    pub(super) fn body_for_syntax(
+        &self,
+        source: SourceId,
+        body: &SyntaxBlock,
+    ) -> Option<CompilerBodyFallback<'_>> {
         self.body_by_span(syntax_body_span(source, body))
     }
 
-    fn body_by_span(&self, span: Span) -> Option<&Block> {
-        self.bodies.iter().find(|body| body.span == span)
+    fn body_by_span(&self, span: Span) -> Option<CompilerBodyFallback<'_>> {
+        self.bodies
+            .iter()
+            .find(|body| body.span == span)
+            .map(BodyBlockEntry::fallback)
+    }
+}
+
+impl BodyBlockEntry {
+    #[cfg(test)]
+    fn new(block: Block) -> Self {
+        Self {
+            span: block.span,
+            statements: block.statements.clone(),
+            block,
+        }
+    }
+
+    #[cfg(not(test))]
+    fn new(block: Block) -> Self {
+        let span = block.span;
+        Self {
+            span,
+            statements: block.statements,
+        }
+    }
+
+    fn fallback(&self) -> CompilerBodyFallback<'_> {
+        #[cfg(test)]
+        {
+            CompilerBodyFallback::statements_with_block(&self.statements, &self.block)
+        }
+        #[cfg(not(test))]
+        {
+            CompilerBodyFallback::statements(&self.statements)
+        }
     }
 }
 

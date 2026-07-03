@@ -308,6 +308,9 @@ lowering coverage is completed.
 `CompilerBodyPayload` no longer stores the legacy owned `Block` in production;
 it carries only the rowan CST body plus temporary legacy statement slices while
 statement and expression payload fallbacks are retired.
+`BodyBlockLookup` now stores span-keyed legacy statement vectors instead of
+carrying old `Block` values through production body lookup; parsed blocks are
+retained only under test cfg for legacy fixture assertions.
 The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement
