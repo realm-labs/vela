@@ -86,6 +86,11 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
+                if tail.optional_fallback().is_none()
+                    && let Some(body) = tail.expression_statement_block_body_payload()
+                {
+                    return self.compile_block_payload_value_to(&body, dst);
+                }
                 let fallback = aligned_statement(tail).ok_or_else(|| {
                     crate::compiler::CompileError::new(
                         crate::compiler::CompileErrorKind::UnsupportedSyntax(

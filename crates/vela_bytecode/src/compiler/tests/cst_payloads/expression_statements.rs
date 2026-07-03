@@ -174,6 +174,46 @@ fn range_tail(input) {
 }
 
 #[test]
+fn syntax_only_block_expression_tails_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    ({
+        let copied = input;
+        copied;
+    })
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let body_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+    assert!(
+        body_fallback.is_err(),
+        "block expression tail body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 1);
+    let statement_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+    assert!(
+        statement_fallback.is_err(),
+        "block expression tail statement should not require owned fallback"
+    );
+    let nested_body = statements[0]
+        .expression_statement_block_body_payload()
+        .expect("block expression tail body payload");
+    let nested_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| nested_body.fallback()));
+    assert!(
+        nested_fallback.is_err(),
+        "nested block expression tail body should not require owned fallback"
+    );
+
+    compile_program_source(source, text).expect("CST-only block expression tails should compile");
+}
+
+#[test]
 fn semantic_function_generic_expression_statements_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"
