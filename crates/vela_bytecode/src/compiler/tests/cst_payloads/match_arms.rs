@@ -948,7 +948,7 @@ fn value_form(value, flag) {
         .expect_err("source-less CST match arm payload must not use legacy pattern or body");
     assert!(matches!(
         statement_error.kind,
-        CompileErrorKind::UnsupportedSyntax("match pattern")
+        CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
     ));
 
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
@@ -970,7 +970,7 @@ fn value_form(value, flag) {
         .expect_err("source-less CST match arm payload must not use legacy pattern or body");
     assert!(matches!(
         value_error.kind,
-        CompileErrorKind::UnsupportedSyntax("match pattern")
+        CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
     ));
 }
 

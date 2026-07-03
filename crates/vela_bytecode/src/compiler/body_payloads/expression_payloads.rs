@@ -730,10 +730,6 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         self.source.is_some() && self.syntax.is_some()
     }
 
-    pub(in crate::compiler) fn stored_syntax_exists(&self) -> bool {
-        self.syntax.is_some()
-    }
-
     #[cfg(test)]
     pub(in crate::compiler) fn body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;

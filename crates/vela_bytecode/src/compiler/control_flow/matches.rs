@@ -368,7 +368,7 @@ fn match_arm_payload_at<'payload, 'ast>(
             "missing CST match arm payload",
         ))
     })?;
-    if !payload.stored_syntax_exists() {
+    if !payload.has_syntax() {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "missing CST match arm payload",
         )));
