@@ -60,9 +60,14 @@ impl Compiler<'_, '_> {
         reject_mismatched_call_argument_payloads(callee_payload, arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
-        let callee_span = callee_payload
-            .and_then(CompilerExpressionPayload::syntax_span)
-            .unwrap_or(callee.span);
+        let callee_span = match callee_payload {
+            Some(payload) => payload.syntax_span().ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST call callee",
+                ))
+            })?,
+            None => callee.span,
+        };
         let has_callee_payload = callee_payload.is_some();
         let has_authoritative_callee_path =
             callee_path_segments(callee_path, has_callee_payload, callee).is_some();

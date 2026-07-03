@@ -265,10 +265,7 @@ impl Compiler<'_, '_> {
             {
                 Some(SyntaxExpressionKind::Path) => {
                     let path = payload.as_ref()?.syntax_path_segments()?;
-                    let span = payload
-                        .as_ref()
-                        .and_then(CompilerExpressionPayload::syntax_span)
-                        .unwrap_or(expr.span);
+                    let span = payload.as_ref()?.syntax_span()?;
                     self.owned_host_field_path_parts(span, &path)
                 }
                 Some(_) => None,
