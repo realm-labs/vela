@@ -29,9 +29,10 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    control_flow_expression_requires_matching_syntax, fallback_statement_kind, i64_pattern_facts,
-    is_map_or_set_type_hint, iterable_item_shape, merge_type_hint_and_value_fact,
-    range_iterable_for_payload, value_expression_requires_matching_syntax,
+    aligned_statement_fallback, control_flow_expression_requires_matching_syntax,
+    fallback_statement_kind, i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape,
+    merge_type_hint_and_value_fact, range_iterable_for_payload,
+    value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -128,7 +129,12 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let StmtKind::Expr(expr) = &stmt.fallback().kind else {
+        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression statement payload",
+            ))
+        })?;
+        let StmtKind::Expr(expr) = &fallback.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression statement payload",
             )));
@@ -458,7 +464,12 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let StmtKind::Expr(expr) = &stmt.fallback().kind else {
+        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match statement payload",
+            ))
+        })?;
+        let StmtKind::Expr(expr) = &fallback.kind else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match statement payload",
             )));

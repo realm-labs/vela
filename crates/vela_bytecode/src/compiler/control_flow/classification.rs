@@ -2,7 +2,7 @@ use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Stmt, StmtKind, SyntaxStatementKind};
 
-use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerStatementPayload};
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::ScriptTypeFact;
@@ -34,6 +34,17 @@ pub(super) fn fallback_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
             _ => SyntaxStatementKind::Expr,
         },
     }
+}
+
+pub(super) fn aligned_statement_fallback<'ast>(
+    payload: &CompilerStatementPayload<'ast>,
+) -> Option<&'ast Stmt> {
+    let fallback = payload.fallback();
+    (payload.stored_statement_kind()? == fallback_statement_kind(fallback)
+        && payload
+            .syntax_statement_span()
+            .is_some_and(|span| spans_overlap(span, fallback.span)))
+    .then_some(fallback)
 }
 
 pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
@@ -80,6 +91,10 @@ pub(super) fn range_iterable_for_payload<'ast>(
         (Some(BinaryOp::RangeInclusive), _) => Some((left.as_ref(), right.as_ref(), true)),
         _ => None,
     }
+}
+
+fn spans_overlap(left: vela_common::Span, right: vela_common::Span) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 pub(super) fn condition_operator_for_payload(
