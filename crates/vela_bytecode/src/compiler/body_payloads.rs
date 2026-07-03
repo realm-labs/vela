@@ -8,9 +8,6 @@ use vela_syntax::ast::AssignOp;
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
 use vela_syntax::ast::Block;
-use vela_syntax::ast::InterpolatedStringPart;
-use vela_syntax::ast::MapEntry;
-use vela_syntax::ast::RecordField;
 #[cfg(test)]
 use vela_syntax::ast::Stmt;
 #[cfg(test)]
@@ -168,12 +165,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Lambda {
         body: &'ast vela_syntax::ast::Expr,
     },
-    Array(&'ast [vela_syntax::ast::Expr]),
-    Map(&'ast [MapEntry]),
-    Record {
-        fields: &'ast [RecordField],
-    },
-    InterpolatedString(&'ast [InterpolatedStringPart]),
+    Array,
+    Map,
+    Record,
+    InterpolatedString,
     Other,
 }
 
@@ -1622,12 +1617,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 CompilerExpressionFallbackKind::Index { base, index }
             }
             ExprKind::Lambda { body, .. } => CompilerExpressionFallbackKind::Lambda { body },
-            ExprKind::Array(items) => CompilerExpressionFallbackKind::Array(items),
-            ExprKind::Map(entries) => CompilerExpressionFallbackKind::Map(entries),
-            ExprKind::Record { fields, .. } => CompilerExpressionFallbackKind::Record { fields },
-            ExprKind::InterpolatedString(parts) => {
-                CompilerExpressionFallbackKind::InterpolatedString(parts)
-            }
+            ExprKind::Array(_) => CompilerExpressionFallbackKind::Array,
+            ExprKind::Map(_) => CompilerExpressionFallbackKind::Map,
+            ExprKind::Record { .. } => CompilerExpressionFallbackKind::Record,
+            ExprKind::InterpolatedString(_) => CompilerExpressionFallbackKind::InterpolatedString,
             _ => CompilerExpressionFallbackKind::Other,
         };
         Self {

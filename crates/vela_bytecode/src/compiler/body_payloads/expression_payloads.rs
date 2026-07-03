@@ -562,7 +562,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_array_items(&self) -> Option<&'ast [Expr]> {
-        let CompilerExpressionFallbackKind::Array(items) = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::Array = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::Array(items) = &self.fallback.kind else {
             return None;
         };
         Some(items)
@@ -605,7 +608,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_map_entries(&self) -> Option<&'ast [MapEntry]> {
-        let CompilerExpressionFallbackKind::Map(entries) = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::Map = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::Map(entries) = &self.fallback.kind else {
             return None;
         };
         Some(entries)
@@ -643,7 +649,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_record_fields(&self) -> Option<&'ast [RecordField]> {
-        let CompilerExpressionFallbackKind::Record { fields } = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::Record = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::Record { fields, .. } = &self.fallback.kind else {
             return None;
         };
         Some(fields)
@@ -698,7 +707,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn fallback_interpolated_string_parts(
         &self,
     ) -> Option<&'ast [InterpolatedStringPart]> {
-        let CompilerExpressionFallbackKind::InterpolatedString(parts) = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::InterpolatedString = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
             return None;
         };
         Some(parts)
