@@ -997,11 +997,8 @@ fn main(value) {
         .body_block_payload()
         .expect("match arm body block payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !body.has_fallback_statements(),
         "syntax-only match arm block should not retain an owned body fallback"
     );
 }

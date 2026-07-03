@@ -363,11 +363,8 @@ fn main() {
         .expect("if initializer payload");
     let then_body = if_payload.then_body().expect("then body payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| then_body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !then_body.has_fallback_statements(),
         "syntax-only if then body should not retain an owned body fallback"
     );
 }
@@ -393,11 +390,8 @@ fn main() {
         .expect("if initializer payload");
     let else_body = if_payload.else_body().expect("else body payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| else_body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !else_body.has_fallback_statements(),
         "syntax-only if else body should not retain an owned body fallback"
     );
 }

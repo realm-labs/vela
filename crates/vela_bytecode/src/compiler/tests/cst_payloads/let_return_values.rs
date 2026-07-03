@@ -1108,11 +1108,8 @@ impl CstBox {
 
     compile_program_source(source, text).expect("CST self let and return method should compile");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| method.body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !method.body.has_fallback_statements(),
         "syntax-only self let/return method should not retain an owned body fallback"
     );
 }
@@ -1141,18 +1138,12 @@ fn block_return() {
 
     compile_program_source(source, text).expect("CST block let/return should compile");
 
-    let block_let_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| block_let.body.fallback()));
-    let block_return_fallback = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        block_return.body.fallback()
-    }));
-
     assert!(
-        block_let_fallback.is_err(),
+        !block_let.body.has_fallback_statements(),
         "syntax-only block let body should not retain an owned body fallback"
     );
     assert!(
-        block_return_fallback.is_err(),
+        !block_return.body.has_fallback_statements(),
         "syntax-only block return body should not retain an owned body fallback"
     );
 }
@@ -1174,11 +1165,8 @@ fn parenthesized_simple_values(input) {
 
     compile_program_source(source, text).expect("CST parenthesized simple values should compile");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !payload.body.has_fallback_statements(),
         "syntax-only parenthesized simple values should not retain an owned body fallback"
     );
 }
@@ -1449,11 +1437,8 @@ fn main() {
         .let_initializer_block_body_payload()
         .expect("let initializer block body payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !body.has_fallback_statements(),
         "syntax-only let initializer block should not retain an owned body fallback"
     );
 }
@@ -1538,11 +1523,8 @@ fn main() {
         .return_value_block_body_payload()
         .expect("return value block body payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !body.has_fallback_statements(),
         "syntax-only return value block should not retain an owned body fallback"
     );
 }

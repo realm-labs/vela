@@ -14,10 +14,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let body_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
     assert!(
-        body_fallback.is_err(),
+        !payload.body.has_fallback_statements(),
         "constant expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -41,10 +39,8 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let body_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
     assert!(
-        body_fallback.is_err(),
+        !payload.body.has_fallback_statements(),
         "path expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -69,10 +65,8 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let body_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
     assert!(
-        body_fallback.is_err(),
+        !payload.body.has_fallback_statements(),
         "range expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -101,10 +95,8 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let body_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
     assert!(
-        body_fallback.is_err(),
+        !payload.body.has_fallback_statements(),
         "block expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -122,10 +114,8 @@ fn main(input) {
         })
         .collect::<Vec<_>>();
     for body in &nested_bodies {
-        let nested_fallback =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
         assert!(
-            nested_fallback.is_err(),
+            !body.has_fallback_statements(),
             "nested block expression body should not require owned fallback"
         );
     }
@@ -153,10 +143,8 @@ fn range_tail(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     for function in ["constant_tail", "path_tail", "range_tail"] {
         let (payload, _, _) = semantic.function(function).expect("function payload");
-        let body_fallback =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
         assert!(
-            body_fallback.is_err(),
+            !payload.body.has_fallback_statements(),
             "{function} body should not require owned fallback"
         );
         let statements = payload.body.statement_payloads();
@@ -186,10 +174,8 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let body_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
     assert!(
-        body_fallback.is_err(),
+        !payload.body.has_fallback_statements(),
         "block expression tail body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -203,10 +189,8 @@ fn main(input) {
     let nested_body = statements[0]
         .expression_statement_block_body_payload()
         .expect("block expression tail body payload");
-    let nested_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| nested_body.fallback()));
     assert!(
-        nested_fallback.is_err(),
+        !nested_body.has_fallback_statements(),
         "nested block expression tail body should not require owned fallback"
     );
 

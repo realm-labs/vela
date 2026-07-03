@@ -329,11 +329,8 @@ fn main() {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !payload.body.has_fallback_statements(),
         "syntax-only nested empty array block let should not retain an owned body fallback"
     );
     compiler

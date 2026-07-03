@@ -220,11 +220,8 @@ fn main() {
         .and_then(|payload| payload.block_body_payload())
         .expect("lambda block body payload");
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        !body.has_fallback_statements(),
         "syntax-only lambda block body should not retain an owned body fallback"
     );
 }
