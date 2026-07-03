@@ -5,6 +5,7 @@ mod binary;
 mod block_values;
 mod call_counts;
 mod calls;
+mod constant_expressions;
 mod constructors;
 mod containers;
 mod control_flow_values;

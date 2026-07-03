@@ -118,9 +118,9 @@ fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> boo
     expression_syntax_bool_literal(&operand).is_some()
 }
 
-fn syntax_expression_is_simple_literal_comparison(expression: &SyntaxExpression) -> bool {
+fn syntax_expression_is_simple_constant_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_simple_literal_comparison(&inner);
+        return syntax_expression_is_simple_constant_comparison(&inner);
     }
     let Some(binary) = expression.as_binary() else {
         return false;
@@ -131,18 +131,24 @@ fn syntax_expression_is_simple_literal_comparison(expression: &SyntaxExpression)
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    match binary.operator() {
+    let operands_are_constant = match binary.operator() {
         Some(BinaryOp::Equal | BinaryOp::NotEqual) => {
-            expression_syntax_comparable_literal(&lhs).is_some()
-                && expression_syntax_comparable_literal(&rhs).is_some()
+            syntax_expression_is_inline_comparable_constant_operand(&lhs)
+                && syntax_expression_is_inline_comparable_constant_operand(&rhs)
         }
         Some(BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual) => {
-            expression_syntax_numeric_literal_kind(&lhs)
-                .zip(expression_syntax_numeric_literal_kind(&rhs))
-                .is_some_and(|(lhs, rhs)| lhs == rhs)
+            syntax_expression_is_inline_numeric_constant_operand(&lhs)
+                && syntax_expression_is_inline_numeric_constant_operand(&rhs)
         }
         _ => false,
+    };
+    if !operands_are_constant {
+        return false;
     }
+    evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+        .ok()
+        .flatten()
+        .is_some()
 }
 
 fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression) -> bool {
@@ -179,9 +185,29 @@ fn syntax_expression_is_inline_constant_arithmetic_operand(expression: &SyntaxEx
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_constant_arithmetic_operand(&inner);
     }
+    syntax_expression_is_inline_numeric_constant_operand(expression)
+        || syntax_expression_is_simple_constant_arithmetic(expression)
+}
+
+fn syntax_expression_is_inline_numeric_constant_operand(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_inline_numeric_constant_operand(&inner);
+    }
     expression_syntax_numeric_literal_kind(expression).is_some()
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
+}
+
+fn syntax_expression_is_inline_comparable_constant_operand(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_inline_comparable_constant_operand(&inner);
+    }
+    expression_syntax_comparable_literal(expression).is_some()
+        || syntax_expression_is_simple_negated_number(expression)
+        || syntax_expression_is_simple_boolean_not(expression)
+        || syntax_expression_is_simple_constant_arithmetic(expression)
+        || syntax_expression_is_simple_constant_logical(expression)
+        || syntax_expression_is_simple_constant_comparison(expression)
 }
 
 fn syntax_expression_is_simple_constant_logical(expression: &SyntaxExpression) -> bool {
@@ -217,7 +243,7 @@ fn syntax_expression_is_inline_constant_logical_operand(expression: &SyntaxExpre
     }
     expression_syntax_bool_literal(expression).is_some()
         || syntax_expression_is_simple_boolean_not(expression)
-        || syntax_expression_is_simple_literal_comparison(expression)
+        || syntax_expression_is_simple_constant_comparison(expression)
         || syntax_expression_is_simple_constant_logical(expression)
 }
 
@@ -297,7 +323,7 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
         || syntax_expression_is_simple_block(expression)
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_boolean_not(expression)
-        || syntax_expression_is_simple_literal_comparison(expression)
+        || syntax_expression_is_simple_constant_comparison(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
         || syntax_expression_is_simple_constant_logical(expression)
 }
