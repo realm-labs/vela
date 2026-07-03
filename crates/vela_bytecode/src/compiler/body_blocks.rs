@@ -166,6 +166,14 @@ fn path_numeric_comparison_return(input) {
     return input < 10;
 }
 
+fn path_numeric_equality_let(input) {
+    let value = input == 0;
+}
+
+fn path_numeric_equality_return(input) {
+    return input != 10;
+}
+
 fn unary_valued_let(input) {
     let value = !input;
 }
@@ -225,14 +233,19 @@ fn parenthesized_simple_values() {
         let path_numeric_comparison_return_body = bodies[13]
             .body()
             .expect("path numeric comparison return body");
-        let unary_valued_let_body = bodies[14].body().expect("unary valued let body");
-        let unary_valued_return_body = bodies[15].body().expect("unary valued return body");
-        let self_valued_let_body = bodies[16].body().expect("self valued let body");
-        let self_valued_return_body = bodies[17].body().expect("self valued return body");
-        let block_valued_let_body = bodies[18].body().expect("block valued let body");
-        let block_valued_return_body = bodies[19].body().expect("block valued return body");
+        let path_numeric_equality_let_body =
+            bodies[14].body().expect("path numeric equality let body");
+        let path_numeric_equality_return_body = bodies[15]
+            .body()
+            .expect("path numeric equality return body");
+        let unary_valued_let_body = bodies[16].body().expect("unary valued let body");
+        let unary_valued_return_body = bodies[17].body().expect("unary valued return body");
+        let self_valued_let_body = bodies[18].body().expect("self valued let body");
+        let self_valued_return_body = bodies[19].body().expect("self valued return body");
+        let block_valued_let_body = bodies[20].body().expect("block valued let body");
+        let block_valued_return_body = bodies[21].body().expect("block valued return body");
         let parenthesized_simple_values_body =
-            bodies[20].body().expect("parenthesized simple values body");
+            bodies[22].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -286,6 +299,16 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &path_numeric_comparison_return_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_numeric_equality_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &path_numeric_equality_return_body)
                 .is_none()
         );
         assert!(

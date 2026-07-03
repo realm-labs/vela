@@ -43,6 +43,11 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             {
                 return false;
             }
+            if let_statement.type_hint().is_none()
+                && syntax_expression_is_simple_path_numeric_equality(&initializer)
+            {
+                return false;
+            }
             if syntax_expression_is_simple_path_numeric_add(&initializer) {
                 return false;
             }
@@ -56,6 +61,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                     && !syntax_expression_is_simple_path_unary(&expression)
                     && !syntax_expression_is_simple_path_binary(&expression)
                     && !syntax_expression_is_simple_path_numeric_comparison(&expression)
+                    && !syntax_expression_is_simple_path_numeric_equality(&expression)
                     && !syntax_expression_is_simple_path_numeric_add(&expression)
             })
         }),
@@ -247,6 +253,28 @@ fn syntax_expression_is_simple_path_numeric_comparison(expression: &SyntaxExpres
     if !matches!(
         binary.operator(),
         Some(BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual)
+    ) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
+}
+
+fn syntax_expression_is_simple_path_numeric_equality(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_path_numeric_equality(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if !matches!(
+        binary.operator(),
+        Some(BinaryOp::Equal | BinaryOp::NotEqual)
     ) {
         return false;
     }
