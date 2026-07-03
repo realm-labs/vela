@@ -3,7 +3,7 @@ use vela_syntax::ast::SyntaxStatementKind;
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerStatementPayload,
 };
-use crate::compiler::control_flow::classification::aligned_statement_fallback;
+use crate::compiler::control_flow::classification::aligned_statement;
 use crate::compiler::control_flow::loops::reject_missing_for_pattern_payloads;
 use crate::compiler::control_flow::value_syntax::ValueSyntaxPayloads;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -73,7 +73,7 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
-        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+        let fallback = aligned_statement(stmt).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST statement payload",
             ))

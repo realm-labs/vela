@@ -38,7 +38,7 @@ pub(super) fn expression_payload_is_aligned(
         && expression_payload_overlaps_span(payload, expr.span)
 }
 
-pub(super) fn aligned_payload_fallback_expr<'ast>(
+pub(super) fn aligned_payload_expr<'ast>(
     payload: &CompilerExpressionPayload<'ast>,
 ) -> Option<&'ast Expr> {
     let fallback = payload.fallback();

@@ -20,7 +20,7 @@ pub(super) fn i64_pattern_facts() -> PatternBindingFacts {
     PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
 }
 
-pub(super) fn fallback_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
+pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
     match &stmt.kind {
         StmtKind::Let { .. } => SyntaxStatementKind::Let,
         StmtKind::Return(_) => SyntaxStatementKind::Return,
@@ -36,11 +36,11 @@ pub(super) fn fallback_statement_kind(stmt: &Stmt) -> SyntaxStatementKind {
     }
 }
 
-pub(super) fn aligned_statement_fallback<'ast>(
+pub(super) fn aligned_statement<'ast>(
     payload: &CompilerStatementPayload<'ast>,
 ) -> Option<&'ast Stmt> {
     let fallback = payload.fallback();
-    (payload.stored_statement_kind()? == fallback_statement_kind(fallback)).then_some(fallback)
+    (payload.stored_statement_kind()? == statement_kind_for_stmt(fallback)).then_some(fallback)
 }
 
 pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {

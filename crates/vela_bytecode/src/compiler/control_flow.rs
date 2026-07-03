@@ -29,10 +29,9 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 use classification::{
-    aligned_statement_fallback, control_flow_expression_requires_matching_syntax,
-    fallback_statement_kind, i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape,
-    merge_type_hint_and_value_fact, range_iterable_for_payload,
-    value_expression_requires_matching_syntax,
+    aligned_statement, control_flow_expression_requires_matching_syntax, i64_pattern_facts,
+    is_map_or_set_type_hint, iterable_item_shape, merge_type_hint_and_value_fact,
+    range_iterable_for_payload, statement_kind_for_stmt, value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -129,7 +128,7 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+        let fallback = aligned_statement(stmt).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST expression statement payload",
             ))
@@ -207,7 +206,7 @@ impl Compiler<'_, '_> {
     }
 
     pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
-        self.compile_statement_as(fallback_statement_kind(stmt), stmt)
+        self.compile_statement_as(statement_kind_for_stmt(stmt), stmt)
     }
 
     fn compile_statement_as(
@@ -464,7 +463,7 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+        let fallback = aligned_statement(stmt).ok_or_else(|| {
             CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match statement payload",
             ))
