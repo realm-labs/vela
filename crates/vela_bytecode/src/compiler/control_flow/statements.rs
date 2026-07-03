@@ -1,10 +1,13 @@
 use vela_syntax::ast::{SyntaxExpressionKind, SyntaxStatementKind};
 
-use crate::compiler::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerStatementPayload,
-};
+#[cfg(test)]
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
+#[cfg(test)]
 use crate::compiler::control_flow::classification::aligned_statement;
+#[cfg(test)]
 use crate::compiler::control_flow::loops::reject_missing_for_pattern_payloads;
+#[cfg(test)]
 use crate::compiler::control_flow::value_syntax::ValueSyntaxPayloads;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -242,95 +245,106 @@ impl Compiler<'_, '_> {
         if kind == SyntaxStatementKind::Expr {
             return self.compile_expr_statement_payload(stmt);
         }
-        let fallback = aligned_statement(stmt).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST statement payload",
-            ))
-        })?;
-        if kind == SyntaxStatementKind::Let {
-            let initializer_body = stmt.let_initializer_block_body_payload();
-            let initializer_if = stmt.let_initializer_if_payload();
-            let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
-            let initializer_expression = stmt.let_initializer_expression_payload();
-            if stmt.stored_let_initializer_kind().is_some() && initializer_expression.is_none() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST let initializer payload",
-                )));
+        #[cfg(not(test))]
+        {
+            let _ = kind;
+            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "unsupported CST statement payload",
+            )))
+        }
+        #[cfg(test)]
+        {
+            let fallback = aligned_statement(stmt).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "mismatched CST statement payload",
+                ))
+            })?;
+            if kind == SyntaxStatementKind::Let {
+                let initializer_body = stmt.let_initializer_block_body_payload();
+                let initializer_if = stmt.let_initializer_if_payload();
+                let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
+                let initializer_expression = stmt.let_initializer_expression_payload();
+                if stmt.stored_let_initializer_kind().is_some() && initializer_expression.is_none()
+                {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let initializer payload",
+                    )));
+                }
+                self.compile_let_statement(
+                    fallback,
+                    ValueSyntaxPayloads::new(
+                        stmt.stored_let_initializer_kind(),
+                        initializer_expression.as_ref(),
+                        initializer_body.as_ref(),
+                        initializer_if.as_ref(),
+                        initializer_match_arms.as_deref(),
+                        stmt.let_initializer_missing_in_syntax(),
+                    ),
+                )
+            } else if kind == SyntaxStatementKind::Return {
+                let value_body = stmt.return_value_block_body_payload();
+                let value_if = stmt.return_value_if_payload();
+                let value_match_arms = stmt.return_value_match_arm_payloads();
+                let value_expression = stmt.return_value_expression_payload();
+                if stmt.stored_return_value_kind().is_some() && value_expression.is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST return value payload",
+                    )));
+                }
+                self.compile_return_statement(
+                    fallback,
+                    ValueSyntaxPayloads::new(
+                        stmt.stored_return_value_kind(),
+                        value_expression.as_ref(),
+                        value_body.as_ref(),
+                        value_if.as_ref(),
+                        value_match_arms.as_deref(),
+                        stmt.return_value_missing_in_syntax(),
+                    ),
+                )
+            } else if kind == SyntaxStatementKind::For {
+                let body_payload = stmt.for_body_payload();
+                if body_payload.is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST for statement body payload",
+                    )));
+                }
+                let iterable_payload = stmt.for_iterable_expression_payload();
+                if iterable_payload
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::syntax_kind)
+                    .is_none()
+                {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST for iterable payload",
+                    )));
+                }
+                let index_pattern_payload = stmt.for_index_pattern_payload();
+                let value_pattern_payload = stmt.for_value_pattern_payload();
+                reject_missing_for_pattern_payloads(
+                    index_pattern_payload.as_ref(),
+                    value_pattern_payload.as_ref(),
+                )?;
+                self.compile_for_statement(
+                    fallback,
+                    iterable_payload,
+                    body_payload,
+                    index_pattern_payload,
+                    value_pattern_payload,
+                )
+            } else if kind == SyntaxStatementKind::If {
+                let if_payload = stmt.if_payload();
+                if if_payload.is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST if statement payload",
+                    )));
+                }
+                self.compile_if_statement(fallback, if_payload.as_ref())
+            } else if kind == SyntaxStatementKind::Match {
+                self.compile_match_statement_payload(stmt)
+            } else {
+                self.compile_statement_as(kind, fallback)
             }
-            self.compile_let_statement(
-                fallback,
-                ValueSyntaxPayloads::new(
-                    stmt.stored_let_initializer_kind(),
-                    initializer_expression.as_ref(),
-                    initializer_body.as_ref(),
-                    initializer_if.as_ref(),
-                    initializer_match_arms.as_deref(),
-                    stmt.let_initializer_missing_in_syntax(),
-                ),
-            )
-        } else if kind == SyntaxStatementKind::Return {
-            let value_body = stmt.return_value_block_body_payload();
-            let value_if = stmt.return_value_if_payload();
-            let value_match_arms = stmt.return_value_match_arm_payloads();
-            let value_expression = stmt.return_value_expression_payload();
-            if stmt.stored_return_value_kind().is_some() && value_expression.is_none() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST return value payload",
-                )));
-            }
-            self.compile_return_statement(
-                fallback,
-                ValueSyntaxPayloads::new(
-                    stmt.stored_return_value_kind(),
-                    value_expression.as_ref(),
-                    value_body.as_ref(),
-                    value_if.as_ref(),
-                    value_match_arms.as_deref(),
-                    stmt.return_value_missing_in_syntax(),
-                ),
-            )
-        } else if kind == SyntaxStatementKind::For {
-            let body_payload = stmt.for_body_payload();
-            if body_payload.is_none() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST for statement body payload",
-                )));
-            }
-            let iterable_payload = stmt.for_iterable_expression_payload();
-            if iterable_payload
-                .as_ref()
-                .and_then(CompilerExpressionPayload::syntax_kind)
-                .is_none()
-            {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST for iterable payload",
-                )));
-            }
-            let index_pattern_payload = stmt.for_index_pattern_payload();
-            let value_pattern_payload = stmt.for_value_pattern_payload();
-            reject_missing_for_pattern_payloads(
-                index_pattern_payload.as_ref(),
-                value_pattern_payload.as_ref(),
-            )?;
-            self.compile_for_statement(
-                fallback,
-                iterable_payload,
-                body_payload,
-                index_pattern_payload,
-                value_pattern_payload,
-            )
-        } else if kind == SyntaxStatementKind::If {
-            let if_payload = stmt.if_payload();
-            if if_payload.is_none() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST if statement payload",
-                )));
-            }
-            self.compile_if_statement(fallback, if_payload.as_ref())
-        } else if kind == SyntaxStatementKind::Match {
-            self.compile_match_statement_payload(stmt)
-        } else {
-            self.compile_statement_as(kind, fallback)
         }
     }
 

@@ -350,10 +350,17 @@ lowering migrates.
 Top-level compiler statement dispatch now reads rowan `SyntaxStatementKind`
 from aligned payloads and falls back to the legacy statement category only when
 temporary CST-to-owned association still disagrees during expression lowering.
+The remaining aligned-statement fallback branch in statement-payload dispatch
+is now test-only, so production statement payload lowering either uses the
+CST-specific path or reports unsupported syntax instead of compiling through a
+legacy owned `Stmt`.
 Top-level expression statement payloads now also expose rowan
 `SyntaxExpressionKind`, letting assignment statements dispatch through the CST
 expression category while preserving legacy fallback for temporary association
 mismatches.
+Expression-statement payload fallback dispatch is now also test-only, removing
+production use of legacy owned statements for aligned expression-statement
+payload recovery while CST coverage continues to expand.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy

@@ -21,6 +21,7 @@ use vela_syntax::ast::{
 
 use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
 
+#[cfg(test)]
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
@@ -33,10 +34,12 @@ use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
+#[cfg(test)]
+use classification::aligned_statement;
 use classification::{
-    aligned_statement, control_flow_expression_requires_matching_syntax, i64_pattern_facts,
-    is_map_or_set_type_hint, iterable_item_shape, merge_type_hint_and_value_fact,
-    range_iterable_for_payload, statement_kind_for_stmt, value_expression_requires_matching_syntax,
+    control_flow_expression_requires_matching_syntax, i64_pattern_facts, is_map_or_set_type_hint,
+    iterable_item_shape, merge_type_hint_and_value_fact, range_iterable_for_payload,
+    statement_kind_for_stmt, value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
 use loops::{ForStatementParts, LoopIterable};
@@ -174,60 +177,70 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         }
-        let fallback = aligned_statement(stmt).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST expression statement payload",
-            ))
-        })?;
-        let StmtKind::Expr(expr) = &fallback.kind else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST expression statement payload",
-            )));
-        };
-        if kind == SyntaxExpressionKind::Assign {
-            let value_body = stmt.assignment_value_block_body_payload();
-            let value_if = stmt.assignment_value_if_payload();
-            let value_match_arms = stmt.assignment_value_match_arm_payloads();
-            let value_expression = stmt.assignment_value_expression_payload();
-            let target_expression = stmt.assignment_target_expression_payload();
-            let value_match_scrutinee = value_expression
-                .as_ref()
-                .and_then(CompilerExpressionPayload::match_scrutinee_payload);
-            self.compile_assignment_with_payloads(
-                expr,
-                AssignmentTargetSyntax::new(target_expression.as_ref()),
-                AssignmentValueSyntax::new(
-                    stmt.stored_assignment_value_kind(),
-                    stmt.stored_assignment_operator(),
-                    value_expression.as_ref(),
-                    AssignmentValuePayloads::new(
-                        value_body.as_ref(),
-                        value_if.as_ref(),
-                        value_match_scrutinee.as_ref(),
-                        value_match_arms.as_deref(),
-                    ),
-                ),
-            )?;
-            Ok(false)
-        } else if kind == SyntaxExpressionKind::Call {
-            let ExprKind::Call { callee, args } = &expr.kind else {
+        #[cfg(not(test))]
+        {
+            let _ = kind;
+            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "unsupported CST expression statement payload",
+            )))
+        }
+        #[cfg(test)]
+        {
+            let fallback = aligned_statement(stmt).ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "mismatched CST expression statement payload",
+                ))
+            })?;
+            let StmtKind::Expr(expr) = &fallback.kind else {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "mismatched CST expression statement payload",
                 )));
             };
-            let callee_payload = stmt.call_callee_payload();
-            let argument_payloads = stmt.call_argument_payloads();
-            self.compile_call_expr_with_arg_payloads(
-                expr,
-                callee,
-                args,
-                callee_payload.as_ref(),
-                argument_payloads.as_deref(),
-            )?;
-            Ok(false)
-        } else {
-            self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
-            Ok(false)
+            if kind == SyntaxExpressionKind::Assign {
+                let value_body = stmt.assignment_value_block_body_payload();
+                let value_if = stmt.assignment_value_if_payload();
+                let value_match_arms = stmt.assignment_value_match_arm_payloads();
+                let value_expression = stmt.assignment_value_expression_payload();
+                let target_expression = stmt.assignment_target_expression_payload();
+                let value_match_scrutinee = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
+                self.compile_assignment_with_payloads(
+                    expr,
+                    AssignmentTargetSyntax::new(target_expression.as_ref()),
+                    AssignmentValueSyntax::new(
+                        stmt.stored_assignment_value_kind(),
+                        stmt.stored_assignment_operator(),
+                        value_expression.as_ref(),
+                        AssignmentValuePayloads::new(
+                            value_body.as_ref(),
+                            value_if.as_ref(),
+                            value_match_scrutinee.as_ref(),
+                            value_match_arms.as_deref(),
+                        ),
+                    ),
+                )?;
+                Ok(false)
+            } else if kind == SyntaxExpressionKind::Call {
+                let ExprKind::Call { callee, args } = &expr.kind else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST expression statement payload",
+                    )));
+                };
+                let callee_payload = stmt.call_callee_payload();
+                let argument_payloads = stmt.call_argument_payloads();
+                self.compile_call_expr_with_arg_payloads(
+                    expr,
+                    callee,
+                    args,
+                    callee_payload.as_ref(),
+                    argument_payloads.as_deref(),
+                )?;
+                Ok(false)
+            } else {
+                self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
+                Ok(false)
+            }
         }
     }
 
@@ -521,6 +534,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    #[cfg(test)]
     fn compile_match_statement_payload(
         &mut self,
         stmt: &CompilerStatementPayload<'_>,

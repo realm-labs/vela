@@ -6,6 +6,7 @@ use crate::Register;
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerPatternPayload,
 };
+#[cfg(test)]
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -39,6 +40,7 @@ pub(super) struct ForStatementParts<'ast> {
     pub(super) body_payload: Option<CompilerBodyPayload<'ast>>,
 }
 
+#[cfg(test)]
 pub(super) fn reject_missing_for_pattern_payloads(
     index_pattern_payload: Option<&CompilerPatternPayload<'_>>,
     value_pattern_payload: Option<&CompilerPatternPayload<'_>>,
