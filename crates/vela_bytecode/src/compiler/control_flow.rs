@@ -473,8 +473,8 @@ impl Compiler<'_, '_> {
         stmt: &'ast Stmt,
         iterable_payload: Option<CompilerExpressionPayload<'ast>>,
         body_payload: Option<CompilerBodyPayload<'ast>>,
-        index_pattern_payload: Option<CompilerPatternPayload<'ast>>,
-        pattern_payload: Option<CompilerPatternPayload<'ast>>,
+        index_pattern_payload: Option<CompilerPatternPayload>,
+        pattern_payload: Option<CompilerPatternPayload>,
     ) -> CompileResult<bool> {
         let StmtKind::For {
             index_pattern,

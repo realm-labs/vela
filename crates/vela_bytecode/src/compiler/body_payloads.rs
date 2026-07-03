@@ -71,16 +71,14 @@ pub(super) struct CompilerMatchArmPayload {
 }
 
 #[derive(Clone)]
-pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
+pub(in crate::compiler) struct CompilerPatternPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxPattern>,
-    _ast: PhantomData<&'ast ()>,
 }
 
-pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
+pub(in crate::compiler) struct CompilerRecordPatternFieldPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordPatternField>,
-    _ast: PhantomData<&'ast ()>,
 }
 
 pub(in crate::compiler) struct CompilerArgumentPayload {
@@ -1013,7 +1011,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+    pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload> {
         let StmtKind::For { index_pattern, .. } = &self.optional_fallback()?.kind else {
             return None;
         };
@@ -1026,7 +1024,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+    pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload> {
         let StmtKind::For { .. } = &self.optional_fallback()?.kind else {
             return None;
         };

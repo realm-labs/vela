@@ -34,7 +34,7 @@ pub(crate) fn tuple_variant_field_name(index: usize) -> String {
 }
 
 fn record_pattern_field_name(
-    payload: Option<&CompilerRecordPatternFieldPayload<'_>>,
+    payload: Option<&CompilerRecordPatternFieldPayload>,
     field: &RecordPatternField,
 ) -> CompileResult<String> {
     let Some(payload) = payload else {
@@ -46,7 +46,7 @@ fn record_pattern_field_name(
 }
 
 pub(in crate::compiler) fn record_pattern_field_payload_declares_locals(
-    payload: &CompilerRecordPatternFieldPayload<'_>,
+    payload: &CompilerRecordPatternFieldPayload,
     field: &RecordPatternField,
 ) -> CompileResult<bool> {
     if payload.syntax_is_shorthand() == Some(true) {
@@ -66,7 +66,7 @@ pub(in crate::compiler) fn record_pattern_field_payload_declares_locals(
 }
 
 fn pattern_literal_payload(
-    payload: Option<&CompilerPatternPayload<'_>>,
+    payload: Option<&CompilerPatternPayload>,
     fallback: &Literal,
 ) -> CompileResult<Literal> {
     let Some(payload) = payload else {
@@ -78,7 +78,7 @@ fn pattern_literal_payload(
 }
 
 fn pattern_path_segments(
-    payload: Option<&CompilerPatternPayload<'_>>,
+    payload: Option<&CompilerPatternPayload>,
     fallback: &[String],
 ) -> CompileResult<Vec<String>> {
     let Some(payload) = payload else {
@@ -90,7 +90,7 @@ fn pattern_path_segments(
 }
 
 fn pattern_binding_name(
-    payload: Option<&CompilerPatternPayload<'_>>,
+    payload: Option<&CompilerPatternPayload>,
     fallback: &str,
 ) -> CompileResult<String> {
     let Some(payload) = payload else {
@@ -102,7 +102,7 @@ fn pattern_binding_name(
 }
 
 fn required_pattern_kind(
-    payload: &CompilerPatternPayload<'_>,
+    payload: &CompilerPatternPayload,
     context: &'static str,
 ) -> CompileResult<SyntaxPatternKind> {
     payload
@@ -111,7 +111,7 @@ fn required_pattern_kind(
 }
 
 fn reject_extra_record_pattern_payloads(
-    payload: Option<&CompilerPatternPayload<'_>>,
+    payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::RecordPatternField],
 ) -> CompileResult<()> {
     if payload.is_some_and(|payload| payload.has_extra_record_pattern_fields(fields)) {
@@ -123,7 +123,7 @@ fn reject_extra_record_pattern_payloads(
 }
 
 fn reject_extra_tuple_pattern_payloads(
-    payload: Option<&CompilerPatternPayload<'_>>,
+    payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::Pattern],
 ) -> CompileResult<()> {
     if payload.is_some_and(|payload| payload.has_extra_tuple_pattern_fields(fields)) {
@@ -134,10 +134,10 @@ fn reject_extra_tuple_pattern_payloads(
     Ok(())
 }
 
-pub(in crate::compiler) fn record_pattern_field_payload_at<'payload, 'ast>(
-    payloads: Option<&'payload [CompilerRecordPatternFieldPayload<'ast>]>,
+pub(in crate::compiler) fn record_pattern_field_payload_at(
+    payloads: Option<&[CompilerRecordPatternFieldPayload]>,
     index: usize,
-) -> CompileResult<Option<&'payload CompilerRecordPatternFieldPayload<'ast>>> {
+) -> CompileResult<Option<&CompilerRecordPatternFieldPayload>> {
     let Some(payloads) = payloads else {
         return Ok(None);
     };
@@ -154,10 +154,10 @@ pub(in crate::compiler) fn record_pattern_field_payload_at<'payload, 'ast>(
     Ok(Some(payload))
 }
 
-pub(in crate::compiler) fn tuple_pattern_payload_at<'payload, 'ast>(
-    payloads: Option<&'payload [CompilerPatternPayload<'ast>]>,
+pub(in crate::compiler) fn tuple_pattern_payload_at(
+    payloads: Option<&[CompilerPatternPayload]>,
     index: usize,
-) -> CompileResult<Option<&'payload CompilerPatternPayload<'ast>>> {
+) -> CompileResult<Option<&CompilerPatternPayload>> {
     let Some(payloads) = payloads else {
         return Ok(None);
     };
@@ -277,7 +277,7 @@ impl Compiler<'_, '_> {
         &mut self,
         scrutinee: Register,
         pattern: &Pattern,
-        payload: Option<&CompilerPatternPayload<'_>>,
+        payload: Option<&CompilerPatternPayload>,
     ) -> CompileResult<Vec<usize>> {
         if let Some(payload) = payload {
             let Some(kind) = payload.syntax_pattern_kind() else {
@@ -439,7 +439,7 @@ impl Compiler<'_, '_> {
         &mut self,
         scrutinee: Register,
         pattern: &Pattern,
-        payload: Option<&CompilerPatternPayload<'_>>,
+        payload: Option<&CompilerPatternPayload>,
         body_span: Span,
         facts: PatternBindingFacts,
         kind: LocalBindingKind,

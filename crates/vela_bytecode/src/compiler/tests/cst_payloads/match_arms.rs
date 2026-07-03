@@ -567,7 +567,7 @@ fn legacy_tuple(value) {
 
 #[test]
 fn missing_pattern_child_payloads_do_not_use_legacy_pattern_fields() {
-    let no_record_payloads: [body_payloads::CompilerRecordPatternFieldPayload<'_>; 0] = [];
+    let no_record_payloads: [body_payloads::CompilerRecordPatternFieldPayload; 0] = [];
     let record_error = match crate::compiler::patterns::record_pattern_field_payload_at(
         Some(&no_record_payloads),
         0,
@@ -580,7 +580,7 @@ fn missing_pattern_child_payloads_do_not_use_legacy_pattern_fields() {
         CompileErrorKind::UnsupportedSyntax("missing CST record pattern field payload")
     ));
 
-    let no_tuple_payloads: [body_payloads::CompilerPatternPayload<'_>; 0] = [];
+    let no_tuple_payloads: [body_payloads::CompilerPatternPayload; 0] = [];
     let tuple_error =
         match crate::compiler::patterns::tuple_pattern_payload_at(Some(&no_tuple_payloads), 0) {
             Ok(_) => panic!("missing tuple pattern child payload must not look at legacy field"),

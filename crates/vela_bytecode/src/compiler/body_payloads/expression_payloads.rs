@@ -827,7 +827,7 @@ impl CompilerMatchArmPayload {
         }
     }
 
-    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload<'_> {
+    pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload {
         CompilerPatternPayload::from_fallback(
             self.source,
             self.source
@@ -908,16 +908,12 @@ impl CompilerMatchArmPayload {
     }
 }
 
-impl<'ast> CompilerPatternPayload<'ast> {
+impl CompilerPatternPayload {
     pub(in crate::compiler) fn from_fallback(
         source: Option<SourceId>,
         syntax: Option<SyntaxPattern>,
     ) -> Self {
-        Self {
-            source,
-            syntax,
-            _ast: std::marker::PhantomData,
-        }
+        Self { source, syntax }
     }
 
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
@@ -947,8 +943,8 @@ impl<'ast> CompilerPatternPayload<'ast> {
 
     pub(in crate::compiler) fn record_field_payloads(
         &self,
-        fields: &'ast [RecordPatternField],
-    ) -> Option<Vec<CompilerRecordPatternFieldPayload<'ast>>> {
+        fields: &[RecordPatternField],
+    ) -> Option<Vec<CompilerRecordPatternFieldPayload>> {
         let syntax_fields = self
             .syntax
             .as_ref()?
@@ -962,7 +958,6 @@ impl<'ast> CompilerPatternPayload<'ast> {
                 .map(|(index, _fallback)| CompilerRecordPatternFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -983,8 +978,8 @@ impl<'ast> CompilerPatternPayload<'ast> {
 
     pub(in crate::compiler) fn tuple_pattern_payloads(
         &self,
-        fields: &'ast [Pattern],
-    ) -> Option<Vec<CompilerPatternPayload<'ast>>> {
+        fields: &[Pattern],
+    ) -> Option<Vec<CompilerPatternPayload>> {
         let syntax_fields = self
             .syntax
             .as_ref()?
@@ -1039,7 +1034,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 }
 
-impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
+impl CompilerRecordPatternFieldPayload {
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
         self.source.is_some() && self.syntax.is_some()
     }
@@ -1065,8 +1060,8 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
 
     pub(in crate::compiler) fn pattern_payload(
         &self,
-        fallback: Option<&'ast Pattern>,
-    ) -> Option<CompilerPatternPayload<'ast>> {
+        fallback: Option<&Pattern>,
+    ) -> Option<CompilerPatternPayload> {
         fallback?;
         self.source?;
         Some(CompilerPatternPayload::from_fallback(
@@ -1082,7 +1077,6 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
         Self {
             source: Some(SourceId::new(1)),
             syntax: Some(syntax),
-            _ast: std::marker::PhantomData,
         }
     }
 }

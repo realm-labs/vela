@@ -34,16 +34,16 @@ pub(super) struct ForStatementParts<'ast> {
     pub(super) index_pattern: Option<&'ast Pattern>,
     pub(super) pattern: &'ast Pattern,
     pub(super) iterable: &'ast Expr,
-    pub(super) index_pattern_payload: Option<CompilerPatternPayload<'ast>>,
-    pub(super) pattern_payload: Option<CompilerPatternPayload<'ast>>,
+    pub(super) index_pattern_payload: Option<CompilerPatternPayload>,
+    pub(super) pattern_payload: Option<CompilerPatternPayload>,
     pub(super) iterable_payload: Option<CompilerExpressionPayload<'ast>>,
     pub(super) body_payload: Option<CompilerBodyPayload<'ast>>,
 }
 
 #[cfg(test)]
 pub(super) fn reject_missing_for_pattern_payloads(
-    index_pattern_payload: Option<&CompilerPatternPayload<'_>>,
-    value_pattern_payload: Option<&CompilerPatternPayload<'_>>,
+    index_pattern_payload: Option<&CompilerPatternPayload>,
+    value_pattern_payload: Option<&CompilerPatternPayload>,
 ) -> CompileResult<()> {
     if index_pattern_payload.is_some_and(|payload| payload.syntax_pattern_kind().is_none()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
