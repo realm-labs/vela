@@ -902,7 +902,8 @@ fn value_form(value) {
     let missing_statement_arm = body_payloads::CompilerMatchArmPayload::syntax(
         source,
         cst_arm.clone(),
-        &statement_match.arms[0],
+        statement_match.arms[0].guard.as_ref(),
+        &statement_match.arms[0].body,
     );
     let (mut statement_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "statement_form");
@@ -917,8 +918,12 @@ fn value_form(value) {
 
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
     let value_match = first_return_match_expr(value_payload.body.fallback());
-    let missing_value_arm =
-        body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm, &value_match.arms[0]);
+    let missing_value_arm = body_payloads::CompilerMatchArmPayload::syntax(
+        source,
+        cst_arm,
+        value_match.arms[0].guard.as_ref(),
+        &value_match.arms[0].body,
+    );
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
@@ -966,7 +971,8 @@ fn value_form(value, flag) {
     let missing_statement_arm =
         body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
             statement_syntax_arm,
-            &statement_match.arms[0],
+            statement_match.arms[0].guard.as_ref(),
+            &statement_match.arms[0].body,
         );
     let (mut statement_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "statement_form");
@@ -984,7 +990,8 @@ fn value_form(value, flag) {
     let value_syntax_arm = first_return_match_syntax_arm(&value_payload.body);
     let missing_value_arm = body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
         value_syntax_arm,
-        &value_match.arms[0],
+        value_match.arms[0].guard.as_ref(),
+        &value_match.arms[0].body,
     );
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 

@@ -822,13 +822,14 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     pub(in crate::compiler) fn syntax(
         source: SourceId,
         syntax: SyntaxMatchArm,
-        fallback: &'ast vela_syntax::ast::MatchArm,
+        fallback_guard: Option<&'ast Expr>,
+        fallback_body: &'ast Expr,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback_guard: fallback.guard.as_ref(),
-            fallback_body: &fallback.body,
+            fallback_guard,
+            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }
@@ -836,24 +837,28 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(
         syntax: SyntaxMatchArm,
-        fallback: &'ast vela_syntax::ast::MatchArm,
+        fallback_guard: Option<&'ast Expr>,
+        fallback_body: &'ast Expr,
     ) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
-            fallback_guard: fallback.guard.as_ref(),
-            fallback_body: &fallback.body,
+            fallback_guard,
+            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(fallback: &'ast vela_syntax::ast::MatchArm) -> Self {
+    pub(in crate::compiler) fn missing_syntax(
+        fallback_guard: Option<&'ast Expr>,
+        fallback_body: &'ast Expr,
+    ) -> Self {
         Self {
             source: None,
             syntax: None,
-            fallback_guard: fallback.guard.as_ref(),
-            fallback_body: &fallback.body,
+            fallback_guard,
+            fallback_body,
             _ast: std::marker::PhantomData,
         }
     }

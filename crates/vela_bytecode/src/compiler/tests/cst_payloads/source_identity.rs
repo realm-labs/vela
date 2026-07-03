@@ -670,7 +670,8 @@ fn main(value) {
                 .expect("match arm payloads");
             let missing_arm = body_payloads::CompilerMatchArmPayload::missing_child_payload_context(
                 arms[0].syntax_arm().expect("arm syntax").clone(),
-                &fallback_match.arms[0],
+                fallback_match.arms[0].guard.as_ref(),
+                &fallback_match.arms[0].body,
             );
 
             assert!(!missing_arm.has_syntax());
