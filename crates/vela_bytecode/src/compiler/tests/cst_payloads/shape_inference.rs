@@ -280,6 +280,47 @@ fn main() {
 }
 
 #[test]
+fn fallback_arithmetic_shape_requires_numeric_literal_operands() {
+    with_cst_payload_compiler(
+        r#"
+fn main(input) {
+    let dynamic = input + 1;
+    let integer = 1 + 2;
+    let float = 1 + 2.0;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let dynamic = statements[0]
+                .let_initializer_expression_payload()
+                .expect("dynamic arithmetic initializer");
+            let integer = statements[1]
+                .let_initializer_expression_payload()
+                .expect("integer arithmetic initializer");
+            let float = statements[2]
+                .let_initializer_expression_payload()
+                .expect("float arithmetic initializer");
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(dynamic.fallback(), None),
+                None,
+                "fallback arithmetic shape must not invent a numeric type for dynamic operands"
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(integer.fallback(), None),
+                Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
+                "integer literal arithmetic should keep its fallback scalar shape"
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(float.fallback(), None),
+                Some(record_shapes::ValueShape::Scalar("f64".to_owned())),
+                "float literal arithmetic should keep its fallback scalar shape"
+            );
+        },
+    );
+}
+
+#[test]
 fn unsupported_binary_shape_payload_does_not_use_legacy_binary_shape() {
     with_cst_payload_compiler(
         r#"

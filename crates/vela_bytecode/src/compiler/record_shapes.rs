@@ -537,13 +537,29 @@ fn binary_shape(op: &BinaryOp, left: &Expr, right: &Expr) -> Option<ValueShape> 
 }
 
 fn arithmetic_shape(left: &Expr, right: &Expr) -> Option<String> {
-    let left_float = matches!(left.kind, ExprKind::Literal(Literal::Float(_)));
-    let right_float = matches!(right.kind, ExprKind::Literal(Literal::Float(_)));
-    Some(if left_float || right_float {
-        "f64".to_owned()
-    } else {
-        "i64".to_owned()
-    })
+    let left = numeric_literal_kind(left)?;
+    let right = numeric_literal_kind(right)?;
+    Some(
+        if matches!(left, NumericLiteralKind::Float) || matches!(right, NumericLiteralKind::Float) {
+            "f64".to_owned()
+        } else {
+            "i64".to_owned()
+        },
+    )
+}
+
+fn numeric_literal_kind(expr: &Expr) -> Option<NumericLiteralKind> {
+    match &expr.kind {
+        ExprKind::Literal(Literal::Integer(_)) => Some(NumericLiteralKind::Integer),
+        ExprKind::Literal(Literal::Float(_)) => Some(NumericLiteralKind::Float),
+        _ => None,
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NumericLiteralKind {
+    Integer,
+    Float,
 }
 
 fn common_shape(mut shapes: Vec<ValueShape>) -> Option<ValueShape> {
