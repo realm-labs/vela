@@ -326,7 +326,7 @@ impl Compiler<'_, '_> {
                         "mismatched CST lambda expression payload",
                     )));
                 }
-                let body_payload = payload.lambda_body_payload(body);
+                let body_payload = payload.lambda_body_payload();
                 if body_payload.is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST lambda body",

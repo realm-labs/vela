@@ -533,11 +533,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn lambda_body_payload(
         &self,
-        body: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        if !self.fallback_is_lambda() {
-            return None;
-        }
+        let body = self.fallback_lambda_body()?;
         self.source?;
         let syntax = match self.syntax.as_ref()?.as_lambda()?.body()? {
             SyntaxLambdaBody::Expression(expression) => Some(expression),
@@ -550,11 +547,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    fn fallback_is_lambda(&self) -> bool {
-        self.fallback_expr_matches_syntax_kind(SyntaxExpressionKind::Lambda)
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn fallback_lambda_body(&self) -> Option<&'ast Expr> {
         let CompilerExpressionFallbackKind::Lambda { body } = self.fallback_kind else {
             return None;
