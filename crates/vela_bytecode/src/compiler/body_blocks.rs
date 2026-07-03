@@ -67,13 +67,17 @@ mod tests {
     use super::BodyBlockLookup;
 
     #[test]
-    fn empty_cst_bodies_do_not_require_owned_body_lookup() {
+    fn syntax_only_cst_bodies_do_not_require_owned_body_lookup() {
         let source = SourceId::new(1);
         let text = r#"
 fn empty() {
 }
 
-fn nonempty() {
+fn bare_return() {
+    return;
+}
+
+fn valued_return() {
     return 1;
 }
 "#;
@@ -82,9 +86,15 @@ fn nonempty() {
         let lookup = BodyBlockLookup::from_syntax(source, text, &parsed);
         let bodies = parsed.tree().functions().collect::<Vec<_>>();
         let empty_body = bodies[0].body().expect("empty body");
-        let nonempty_body = bodies[1].body().expect("nonempty body");
+        let bare_return_body = bodies[1].body().expect("bare return body");
+        let valued_return_body = bodies[2].body().expect("valued return body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
-        assert!(lookup.body_for_syntax(source, &nonempty_body).is_some());
+        assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
+        assert!(
+            lookup
+                .body_for_syntax(source, &valued_return_body)
+                .is_some()
+        );
     }
 }
