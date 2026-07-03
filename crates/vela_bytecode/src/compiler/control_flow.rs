@@ -518,26 +518,16 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let fallback = aligned_statement(stmt).ok_or_else(|| {
-            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            ))
-        })?;
-        let StmtKind::Expr(expr) = &fallback.kind else {
+        let Some((match_expr, scrutinee_payload)) = stmt.match_scrutinee_payload_with_fallback()
+        else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match statement payload",
             )));
         };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let scrutinee_payload = stmt.match_scrutinee_payload();
         let arm_payloads = stmt.match_arm_payloads();
         self.compile_match_with_payloads(
             match_expr,
-            scrutinee_payload.as_ref(),
+            Some(&scrutinee_payload),
             arm_payloads.as_deref(),
         )
     }

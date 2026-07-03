@@ -1057,6 +1057,25 @@ impl<'ast> CompilerStatementPayload<'ast> {
         match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
+    pub(in crate::compiler) fn match_scrutinee_payload_with_fallback(
+        &self,
+    ) -> Option<(&'ast MatchExpr, CompilerExpressionPayload<'ast>)> {
+        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return None;
+        };
+        self.source?;
+        let payload = match_scrutinee_payload_for_expr(
+            self.source,
+            self.syntax.as_ref()?.as_match()?,
+            match_expr,
+        );
+        Some((match_expr, payload))
+    }
+
+    #[cfg(test)]
     pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
