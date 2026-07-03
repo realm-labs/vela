@@ -1,5 +1,5 @@
 use vela_common::Span;
-use vela_syntax::ast::{Expr, ExprKind, Literal};
+use vela_syntax::ast::{Expr, Literal, SyntaxExpressionKind};
 
 use crate::{
     GuardKind, GuardLocation, Register, UnlinkedGuardContext, UnlinkedInstructionKind,
@@ -80,18 +80,15 @@ fn contextual_literal_payload(
         if let Some(literal) = payload.syntax_literal() {
             return Ok(Some((literal, payload.syntax_span().unwrap_or(expr.span))));
         }
-        return match &expr.kind {
-            ExprKind::Literal(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST literal expression",
-            ))),
+        return match payload.syntax_kind() {
+            Some(SyntaxExpressionKind::Literal) => Err(CompileError::new(
+                CompileErrorKind::UnsupportedSyntax("mismatched CST literal expression"),
+            )),
             _ => Ok(None),
         };
     }
 
-    Ok(match &expr.kind {
-        ExprKind::Literal(literal) => Some((literal.clone(), expr.span)),
-        _ => None,
-    })
+    Ok(None)
 }
 
 fn guard_location_and_name(context: TypeContractContext) -> Option<(GuardLocation, String)> {
