@@ -265,7 +265,8 @@ impl Compiler<'_, '_> {
     }
 
     fn binary_shape(&self, expression: &SyntaxExpression) -> Option<ValueShape> {
-        match expression.as_binary()?.operator()? {
+        let binary = expression.as_binary()?;
+        match binary.operator()? {
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::IdentityEqual
@@ -279,7 +280,9 @@ impl Compiler<'_, '_> {
             BinaryOp::Range | BinaryOp::RangeInclusive => {
                 Some(ValueShape::Scalar("Range".to_owned()))
             }
-            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => None,
+            BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div | BinaryOp::Rem => {
+                Some(ValueShape::Scalar(arithmetic_shape(&binary)?))
+            }
         }
     }
 
@@ -806,6 +809,37 @@ fn io_error_shape() -> ValueShape {
 
 fn string_shape() -> ValueShape {
     ValueShape::Scalar("String".to_owned())
+}
+
+fn arithmetic_shape(binary: &vela_syntax::ast::SyntaxBinaryExpr) -> Option<String> {
+    let left = syntax_numeric_literal_kind(&binary.lhs()?)?;
+    let right = syntax_numeric_literal_kind(&binary.rhs()?)?;
+    Some(if left_float_or_right_float(left, right) {
+        "f64".to_owned()
+    } else {
+        "i64".to_owned()
+    })
+}
+
+fn syntax_numeric_literal_kind(expression: &SyntaxExpression) -> Option<NumericLiteralKind> {
+    expression
+        .as_literal()
+        .and_then(|literal| literal.literal())
+        .and_then(|literal| match literal {
+            Literal::Integer(_) => Some(NumericLiteralKind::Integer),
+            Literal::Float(_) => Some(NumericLiteralKind::Float),
+            _ => None,
+        })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NumericLiteralKind {
+    Integer,
+    Float,
+}
+
+fn left_float_or_right_float(left: NumericLiteralKind, right: NumericLiteralKind) -> bool {
+    matches!(left, NumericLiteralKind::Float) || matches!(right, NumericLiteralKind::Float)
 }
 
 fn literal_type(literal: Literal) -> RuntimeTypeFact {

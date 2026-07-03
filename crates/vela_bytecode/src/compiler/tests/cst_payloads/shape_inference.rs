@@ -242,6 +242,44 @@ fn main() {
 }
 
 #[test]
+fn arithmetic_shape_inference_prefers_cst_literal_operands() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let cst_float = 1.0 + 2;
+    let legacy_int = 1 + 2;
+}
+"#,
+        |compiler, payload| {
+            let statements = payload.body.statement_payloads();
+            let cst_float = statements[0]
+                .let_initializer_expression_payload()
+                .expect("CST float arithmetic initializer");
+            let legacy_int = statements[1]
+                .let_initializer_expression_payload()
+                .expect("legacy int arithmetic fallback");
+            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+                SourceId::new(1),
+                cst_float
+                    .syntax_expression()
+                    .expect("CST float arithmetic syntax")
+                    .clone(),
+                legacy_int.fallback(),
+            );
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                Some(record_shapes::ValueShape::Scalar("f64".to_owned())),
+                "arithmetic shape must use CST float operands instead of legacy integer operands"
+            );
+        },
+    );
+}
+
+#[test]
 fn unsupported_binary_shape_payload_does_not_use_legacy_binary_shape() {
     with_cst_payload_compiler(
         r#"
