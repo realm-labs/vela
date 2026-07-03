@@ -166,9 +166,17 @@ fn build() {
         .collect::<Vec<_>>();
     assert_eq!(names, ["element", "amount"]);
 
-    let argument_bodies = argument_payloads
-        .into_iter()
-        .filter_map(|argument| argument.value_expression_payload().block_body_payload())
+    let argument_bodies = payload
+        .body
+        .statement_payloads()
+        .iter()
+        .filter_map(|statement| statement.return_value_expression_payload())
+        .flat_map(|expression| {
+            expression
+                .call_argument_value_payloads()
+                .unwrap_or_default()
+        })
+        .filter_map(|argument| argument.block_body_payload())
         .map(|body| cst_statement_texts(&body))
         .collect::<Vec<_>>();
     assert_eq!(

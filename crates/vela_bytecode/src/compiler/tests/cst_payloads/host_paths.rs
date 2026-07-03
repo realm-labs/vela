@@ -121,10 +121,9 @@ fn main(player: Player) {
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let legacy_path = payload.body.statement_payloads()[0]
-        .call_argument_payloads()
+        .call_argument_value_payloads()
         .expect("host path call argument payloads")
-        .remove(0)
-        .value_expression_payload();
+        .remove(0);
     let missing_path =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
     let compiler = Compiler::new_with_param_defaults(

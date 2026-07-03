@@ -41,10 +41,9 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_path = payload.body.statement_payloads()[0]
-        .call_argument_payloads()
+        .call_argument_value_payloads()
         .expect("call argument payloads")
-        .remove(0)
-        .value_expression_payload();
+        .remove(0);
     let missing_path =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
 
@@ -135,10 +134,9 @@ fn main(value) {
 "#,
         |_, payload| {
             let path = payload.body.statement_payloads()[0]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     path.syntax_expression().expect("path syntax").clone(),
@@ -166,15 +164,13 @@ fn main(value) {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let path = statements[0]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("path call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             let self_value = statements[1]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("self call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 path.syntax_expression()
@@ -405,16 +401,14 @@ fn legacy_path(consumer, legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .find(|payload| payload.syntax_path_segments() == Some(vec!["cst".to_owned()]))
         .expect("CST path argument expression");
     let legacy_return = legacy_payload
         .body
         .statement_payloads()
         .into_iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
         .expect("legacy path argument expression");
     let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
@@ -474,15 +468,13 @@ fn main() {
             );
             let statements = payload.body.statement_payloads();
             let cst_path = statements[2]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("CST path call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             let legacy_path = statements[3]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("legacy path call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             let cst_block = statements[4]
                 .let_initializer_expression_payload()
                 .expect("CST block initializer");
@@ -616,8 +608,7 @@ fn legacy_path(consumer, legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .find(|payload| payload.syntax_is_self())
         .expect("self argument expression");
     let fact = script_types::expression_script_fact_with_payload(
@@ -639,8 +630,7 @@ fn legacy_path(consumer, legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
         .expect("legacy path argument expression");
     let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
@@ -715,10 +705,9 @@ fn main(input) {
                 .let_initializer_expression_payload()
                 .expect("legacy path initializer");
             let cst_self = statements[1]
-                .call_argument_payloads()
+                .call_argument_value_payloads()
                 .expect("self call argument payloads")
-                .remove(0)
-                .value_expression_payload();
+                .remove(0);
             assert_eq!(
                 compiler.static_type_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -782,8 +771,7 @@ fn assert_cst_call_argument_path_segments(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .filter_map(path_payload_segments)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_segments(expected));

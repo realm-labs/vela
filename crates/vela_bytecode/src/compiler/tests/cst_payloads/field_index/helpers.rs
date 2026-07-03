@@ -163,11 +163,10 @@ fn nested_block_payloads(
         return nested_block_payloads(base);
     }
     payload
-        .call_argument_payloads()
+        .call_argument_value_payloads()
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|argument| {
-            let value = argument.value_expression_payload();
+        .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(super::cst_statement_texts(&body))
         })

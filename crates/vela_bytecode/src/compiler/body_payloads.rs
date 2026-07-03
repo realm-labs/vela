@@ -93,7 +93,7 @@ pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
 pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxArgument>,
-    value_fallback: &'ast vela_syntax::ast::Expr,
+    _ast: PhantomData<&'ast ()>,
 }
 
 #[derive(Clone)]
@@ -1350,11 +1350,29 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some(
             args.iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerArgumentPayload {
+                .map(|(index, _fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    value_fallback: &fallback.value,
+                    _ast: PhantomData,
                 })
+                .collect(),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn call_argument_value_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+            return None;
+        };
+        let ExprKind::Call { args, .. } = &expr.kind else {
+            return None;
+        };
+        Some(
+            args.iter()
+                .zip(self.call_argument_payloads()?)
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect(),
         )
     }
@@ -1473,24 +1491,24 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     pub(super) fn syntax(
         source: SourceId,
         syntax: SyntaxArgument,
-        fallback: &'ast vela_syntax::ast::Argument,
+        _fallback: &'ast vela_syntax::ast::Argument,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            value_fallback: &fallback.value,
+            _ast: PhantomData,
         }
     }
 
     #[cfg(test)]
     pub(super) fn missing_value_syntax(
         source: SourceId,
-        fallback: &'ast vela_syntax::ast::Argument,
+        _fallback: &'ast vela_syntax::ast::Argument,
     ) -> Self {
         Self {
             source: Some(source),
             syntax: None,
-            value_fallback: &fallback.value,
+            _ast: PhantomData,
         }
     }
 
@@ -1507,12 +1525,15 @@ impl<'ast> CompilerArgumentPayload<'ast> {
         self.syntax.as_ref().and_then(SyntaxArgument::name_text)
     }
 
-    pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn value_expression_payload(
+        &self,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_fallback(
             self.source,
             self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
-            self.value_fallback,
+            fallback,
         )
     }
 

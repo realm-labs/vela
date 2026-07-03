@@ -489,11 +489,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(
             args.iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerArgumentPayload {
+                .map(|(index, _fallback)| CompilerArgumentPayload {
                     source: self.source,
                     syntax: syntax_args.get(index).cloned(),
-                    value_fallback: &fallback.value,
+                    _ast: std::marker::PhantomData,
                 })
+                .collect(),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn call_argument_value_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        let args = self.fallback_call_args()?;
+        Some(
+            args.iter()
+                .zip(self.call_argument_payloads()?)
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
                 .collect(),
         )
     }

@@ -142,11 +142,17 @@ fn main() {
             let args = mismatched_payload
                 .call_argument_payloads()
                 .expect("call argument payloads");
+            let vela_syntax::ast::ExprKind::Call {
+                args: legacy_args, ..
+            } = &legacy_call.fallback().kind
+            else {
+                panic!("expected legacy call fallback");
+            };
             assert_eq!(args.len(), 1);
             assert_eq!(args[0].syntax_name().as_deref(), Some("value"));
             assert_eq!(
                 args[0]
-                    .value_expression_payload()
+                    .value_expression_payload(&legacy_args[0].value)
                     .syntax_expression()
                     .expect("CST argument value")
                     .syntax()
@@ -797,8 +803,7 @@ fn assert_cst_nested_call_argument_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .flat_map(call_argument_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -849,11 +854,10 @@ fn call_argument_block_payloads(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
     payload
-        .call_argument_payloads()
+        .call_argument_value_payloads()
         .unwrap_or_default()
         .into_iter()
-        .filter_map(|argument| {
-            let value = argument.value_expression_payload();
+        .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
         })
@@ -932,8 +936,7 @@ fn callback_method() {
         .body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .filter_map(|lambda| {
             let body = lambda.fallback_lambda_body()?;
             lambda.lambda_body_payload(body)
@@ -1121,8 +1124,7 @@ fn collect_chained_call_callee_names(
         }
         collect_chained_call_callee_names(callee, names);
     }
-    for argument in payload.call_argument_payloads().unwrap_or_default() {
-        let value = argument.value_expression_payload();
+    for value in payload.call_argument_value_payloads().unwrap_or_default() {
         collect_chained_call_callee_names(value.clone(), names);
         let lambda_body = value
             .fallback_lambda_body()

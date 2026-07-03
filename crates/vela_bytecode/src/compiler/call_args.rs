@@ -26,19 +26,19 @@ pub(in crate::compiler) struct SyntaxCallArgument {
 
 #[derive(Clone, Copy)]
 pub(in crate::compiler) struct CallArgumentSyntax<'payload, 'ast> {
-    args: &'payload [Argument],
+    args: &'ast [Argument],
     payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
 }
 
 impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
     pub(in crate::compiler) fn new(
-        args: &'payload [Argument],
+        args: &'ast [Argument],
         payloads: Option<&'payload [CompilerArgumentPayload<'ast>]>,
     ) -> Self {
         Self { args, payloads }
     }
 
-    fn payload_for(self, arg: &Argument) -> Option<&'payload CompilerArgumentPayload<'ast>> {
+    fn payload_for(self, arg: &'ast Argument) -> Option<&'payload CompilerArgumentPayload<'ast>> {
         let index = self
             .args
             .iter()
@@ -48,12 +48,12 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
 
     pub(in crate::compiler) fn value_expression_payload_for(
         self,
-        arg: &Argument,
+        arg: &'ast Argument,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        Some(self.payload_for(arg)?.value_expression_payload())
+        Some(self.payload_for(arg)?.value_expression_payload(&arg.value))
     }
 
-    pub(in crate::compiler) fn has_missing_value_payload(self, arg: &Argument) -> bool {
+    pub(in crate::compiler) fn has_missing_value_payload(self, arg: &'ast Argument) -> bool {
         if self.payloads.is_some() && self.payload_for(arg).is_none() {
             return true;
         }
@@ -61,7 +61,7 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
             .is_some_and(|payload| !payload.has_value_syntax())
     }
 
-    pub(in crate::compiler) fn name_for(self, arg: &Argument) -> Option<String> {
+    pub(in crate::compiler) fn name_for(self, arg: &'ast Argument) -> Option<String> {
         if self.payloads.is_some() {
             self.payload_for(arg)
                 .and_then(CompilerArgumentPayload::syntax_name)

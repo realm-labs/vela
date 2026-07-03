@@ -328,8 +328,7 @@ fn assert_cst_call_argument_unary_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .filter_map(|payload| {
             let operand = payload.fallback_unary_operand()?;
             payload.unary_operand_payload(operand)
@@ -349,8 +348,7 @@ fn assert_cst_call_argument_try_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .filter_map(|payload| {
             let operand = payload.fallback_try_operand()?;
             payload.try_operand_payload(operand)

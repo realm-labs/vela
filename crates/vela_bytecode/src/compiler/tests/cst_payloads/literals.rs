@@ -413,8 +413,7 @@ fn assert_cst_call_argument_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
-        .map(|argument| argument.value_expression_payload())
+        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
         .filter_map(literal_payload_value)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
@@ -451,12 +450,11 @@ fn first_call_argument_value_payload<'ast>(
     statement_index: usize,
 ) -> body_payloads::CompilerExpressionPayload<'ast> {
     body.statement_payloads()[statement_index]
-        .call_argument_payloads()
+        .call_argument_value_payloads()
         .expect("call argument payloads")
         .into_iter()
         .next()
         .expect("call argument")
-        .value_expression_payload()
 }
 
 fn literal_int(text: &str) -> vela_syntax::ast::Literal {

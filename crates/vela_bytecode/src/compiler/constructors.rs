@@ -112,7 +112,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
                                     "missing CST tuple variant argument payload",
                                 ))
                             })
-                            .map(CompilerArgumentPayload::value_expression_payload)
+                            .map(|payload| payload.value_expression_payload(&arg.value))
                     })
                     .transpose()?;
                 let value = self.compile_expr_with_payload(&arg.value, payload.as_ref())?;
@@ -285,7 +285,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 fn argument_expression_payload<'ast>(
     args: &[Argument],
     arg_payloads: Option<&[CompilerArgumentPayload<'ast>]>,
-    arg: &Argument,
+    arg: &'ast Argument,
 ) -> CompileResult<Option<CompilerExpressionPayload<'ast>>> {
     let index = args
         .iter()
@@ -307,7 +307,7 @@ fn argument_expression_payload<'ast>(
                     "missing CST tuple variant argument payload",
                 )));
             }
-            Ok(payload.value_expression_payload())
+            Ok(payload.value_expression_payload(&arg.value))
         })
         .transpose()
 }
