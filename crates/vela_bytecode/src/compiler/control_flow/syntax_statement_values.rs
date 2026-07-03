@@ -114,6 +114,9 @@ impl Compiler<'_, '_> {
         if let Some(register) = self.compile_syntax_path_unary(source, expression)? {
             return Ok(Some(register));
         }
+        if let Some(register) = self.compile_syntax_try(source, expression)? {
+            return Ok(Some(register));
+        }
         let Some(binary) = expression.as_binary() else {
             return Ok(None);
         };
@@ -300,6 +303,28 @@ impl Compiler<'_, '_> {
             UnaryOp::Negate => UnlinkedInstructionKind::Negate { dst, src },
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_try(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(operand_expression) = expression
+            .as_try()
+            .and_then(|try_expression| try_expression.expression())
+        else {
+            return Ok(None);
+        };
+        let Some(src) = self.compile_syntax_expression(source, &operand_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        self.emit_spanned(
+            UnlinkedInstructionKind::TryPropagate { dst, src },
+            syntax_expression_span(source, expression),
+        );
         Ok(Some(dst))
     }
 

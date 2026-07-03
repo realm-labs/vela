@@ -123,8 +123,12 @@ fn main(value, other) {
 fn source_less_try_payload_does_not_expose_operand_payload() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(value) {
-    let result = value?;
+    let result = make(value)?;
 }
 "#,
         |_, payload| {

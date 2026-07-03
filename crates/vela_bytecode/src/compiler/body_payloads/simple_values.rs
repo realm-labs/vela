@@ -58,6 +58,10 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             {
                 return false;
             }
+            if let_statement.type_hint().is_none() && syntax_expression_is_simple_try(&initializer)
+            {
+                return false;
+            }
             if let_statement.type_hint().is_none()
                 && syntax_expression_is_simple_path_numeric_comparison(&initializer)
             {
@@ -84,6 +88,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                     && !syntax_expression_is_simple_path_comparison(&expression)
                     && !syntax_expression_is_simple_path_arithmetic(&expression)
                     && !syntax_expression_is_simple_path_logical(&expression)
+                    && !syntax_expression_is_simple_try(&expression)
                     && !syntax_expression_is_simple_path_numeric_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_equality(&expression)
                     && !syntax_expression_is_simple_path_numeric_arithmetic(&expression)
@@ -115,6 +120,7 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
         || syntax_expression_is_simple_path_comparison(expression)
         || syntax_expression_is_simple_path_arithmetic(expression)
         || syntax_expression_is_simple_path_logical(expression)
+        || syntax_expression_is_simple_try(expression)
         || syntax_expression_is_simple_path_numeric_comparison(expression)
         || syntax_expression_is_simple_path_numeric_equality(expression)
         || syntax_expression_is_simple_path_numeric_arithmetic(expression)
@@ -450,6 +456,19 @@ fn syntax_expression_is_simple_path_logical_operand(expression: &SyntaxExpressio
         || syntax_expression_is_simple_path_comparison(expression)
         || syntax_expression_is_simple_path_arithmetic(expression)
         || syntax_expression_is_simple_path_logical(expression)
+}
+
+fn syntax_expression_is_simple_try(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_try(&inner);
+    }
+    expression
+        .as_try()
+        .and_then(|try_expression| try_expression.expression())
+        .is_some_and(|operand| {
+            syntax_expression_is_simple_path(&operand)
+                || syntax_expression_is_simple_path_field(&operand)
+        })
 }
 
 fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool {
