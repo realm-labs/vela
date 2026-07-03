@@ -582,4 +582,25 @@ fn parenthesized_simple_values() {
                 .is_none()
         );
     }
+
+    #[test]
+    fn simple_interpolated_string_bodies_do_not_require_owned_body_lookup() {
+        let source = SourceId::new(1);
+        let text = r#"
+fn interpolated_let(input) {
+    let text = f"value {input.name} {1}";
+}
+
+fn interpolated_return(input) {
+    return f"value {input.name}";
+}
+"#;
+        let parsed = parse_source_with_id(source, text);
+        assert!(parsed.diagnostics().is_empty());
+        let lookup = BodyBlockLookup::from_syntax(source, text, &parsed);
+        for function in parsed.tree().functions() {
+            let body = function.body().expect("function body");
+            assert!(lookup.body_for_syntax(source, &body).is_none());
+        }
+    }
 }

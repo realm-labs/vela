@@ -1,6 +1,23 @@
 use super::*;
 
 #[test]
+fn simple_interpolated_let_and_return_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn messages(input) {
+    let text = f"value {input.name} {1}";
+    return f"done {input.name}";
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("messages").expect("messages function");
+
+    assert!(!payload.body.has_fallback_statements());
+    compile_program_source(source, text)
+        .expect("simple CST-backed interpolated string bodies should compile");
+}
+
+#[test]
 fn semantic_function_interpolated_expressions_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

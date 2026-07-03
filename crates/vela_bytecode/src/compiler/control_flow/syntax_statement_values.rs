@@ -1,6 +1,8 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression, UnaryOp};
+use vela_syntax::SyntaxKind;
+use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxLiteral, UnaryOp};
+use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::{
     expression_syntax_literal, expression_syntax_path_field, expression_syntax_path_or_self,
@@ -13,7 +15,7 @@ use crate::compiler::operators::{
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
-use crate::{BinaryLiteralSide, Constant};
+use crate::{BinaryLiteralSide, Constant, FormatStringPart};
 use crate::{Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
@@ -102,6 +104,9 @@ impl Compiler<'_, '_> {
                 .compile_literal(Some(syntax_expression_span(source, expression)), &literal)
                 .map(Some);
         }
+        if let Some(register) = self.compile_syntax_interpolated_string(source, expression)? {
+            return Ok(Some(register));
+        }
         if let Some(path) = expression_syntax_path_or_self(expression) {
             return self
                 .compile_path_expr(syntax_expression_span(source, expression), &path)
@@ -166,6 +171,50 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_interpolated_string(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(literal) = expression.as_literal() else {
+            return Ok(None);
+        };
+        if literal.token_kind() != Some(SyntaxKind::InterpolatedString) {
+            return Ok(None);
+        }
+        let Some(parts) = interpolated_string_parts(&literal) else {
+            return Ok(None);
+        };
+        let mut interpolation_expressions = literal.interpolation_expressions();
+        let mut compiled = Vec::with_capacity(parts.len());
+        for part in parts {
+            match part {
+                InterpolatedStringTokenPart::Text(value) => {
+                    let constant = self.code.push_constant(Constant::String(value));
+                    compiled.push(FormatStringPart::Text(constant));
+                }
+                InterpolatedStringTokenPart::Expr { .. } => {
+                    let Some(expression) = interpolation_expressions.next() else {
+                        return Ok(None);
+                    };
+                    let Some(value) = self.compile_syntax_expression(source, &expression)? else {
+                        return Ok(None);
+                    };
+                    compiled.push(FormatStringPart::Value(value));
+                }
+            }
+        }
+        if interpolation_expressions.next().is_some() {
+            return Ok(None);
+        }
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::FormatString {
+            dst,
+            parts: compiled,
+        });
         Ok(Some(dst))
     }
 
@@ -528,6 +577,17 @@ fn logical_chain_syntax_operands(
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {
+    let text = literal.token_text()?;
+    vela_syntax::lexer::lex(SourceId::new(0), &text)
+        .tokens
+        .into_iter()
+        .find_map(|token| match token.kind {
+            TokenKind::InterpolatedString(parts) => Some(parts),
+            _ => None,
+        })
 }
 
 #[derive(Clone)]

@@ -193,6 +193,41 @@ fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
         && literal.literal().is_some()
 }
 
+fn syntax_expression_is_simple_interpolated_string(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_interpolated_string(&inner);
+    }
+    let Some(literal) = expression.as_literal() else {
+        return false;
+    };
+    if literal.token_kind() != Some(SyntaxKind::InterpolatedString) {
+        return false;
+    }
+    let mut has_field_value = false;
+    let all_supported = literal.interpolation_expressions().all(|expression| {
+        has_field_value |= syntax_expression_contains_simple_field_value(&expression);
+        syntax_expression_is_simple_interpolation_value(&expression)
+    });
+    all_supported && has_field_value
+}
+
+fn syntax_expression_is_simple_interpolation_value(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_interpolation_value(&inner);
+    }
+    syntax_expression_is_simple_value(expression)
+        || syntax_expression_is_simple_path_field(expression)
+        || syntax_expression_is_simple_path_unary(expression)
+        || syntax_expression_is_simple_path_binary(expression)
+        || syntax_expression_is_simple_path_comparison(expression)
+        || syntax_expression_is_simple_path_arithmetic(expression)
+        || syntax_expression_is_simple_path_logical(expression)
+        || syntax_expression_is_simple_try(expression)
+        || syntax_expression_is_simple_path_numeric_comparison(expression)
+        || syntax_expression_is_simple_path_numeric_equality(expression)
+        || syntax_expression_is_simple_path_numeric_arithmetic(expression)
+}
+
 fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path(&inner);
@@ -530,6 +565,7 @@ fn syntax_expression_is_simple_container_value(expression: &SyntaxExpression) ->
         return syntax_expression_is_simple_container_value(&inner);
     }
     syntax_expression_is_simple_literal(expression)
+        || syntax_expression_is_simple_interpolated_string(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_path_field(expression)
         || syntax_expression_is_simple_path_unary(expression)
@@ -825,6 +861,7 @@ fn expression_syntax_negatable_number_literal(expression: &SyntaxExpression) -> 
 
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_simple_literal(expression)
+        || syntax_expression_is_simple_interpolated_string(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_empty_array(expression)
         || syntax_expression_is_simple_block(expression)
