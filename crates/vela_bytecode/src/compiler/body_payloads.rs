@@ -1921,6 +1921,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .is_some_and(|kind| self.fallback_kind_matches_syntax_kind(kind))
     }
 
+    pub(in crate::compiler) fn fallback_kind_matches_expr(
+        &self,
+        expr: &vela_syntax::ast::Expr,
+    ) -> bool {
+        match fallback_expr_syntax_kind(expr) {
+            Some(SyntaxExpressionKind::Paren) => true,
+            Some(kind) => self.fallback_kind_matches_syntax_kind(kind),
+            None => matches!(self.fallback_kind, CompilerExpressionFallbackKind::Other),
+        }
+    }
+
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
         self.source?;
         self.syntax.as_ref()
@@ -1929,6 +1940,28 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
 fn spans_overlap(left: Span, right: Span) -> bool {
     left.start < right.end && right.start < left.end
+}
+
+fn fallback_expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
+    Some(match expr.kind {
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
+        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
+        ExprKind::Block(_) => SyntaxExpressionKind::Block,
+        ExprKind::If(_) => SyntaxExpressionKind::If,
+        ExprKind::Match(_) => SyntaxExpressionKind::Match,
+        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
+        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
+        ExprKind::Try(_) => SyntaxExpressionKind::Try,
+        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
+        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
+        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
+        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
+        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
+        ExprKind::Array(_) => SyntaxExpressionKind::Array,
+        ExprKind::Map(_) => SyntaxExpressionKind::Map,
+        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
+        ExprKind::Error => return None,
+    })
 }
 
 impl<'ast> CompilerIfPayload<'ast> {

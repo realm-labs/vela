@@ -373,6 +373,10 @@ been removed; the remaining checked fallback expression access is localized on
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.
+Expression payload matching no longer keeps a free syntax-kind to old-`ExprKind`
+dispatch table; caller expression category checks now route through the
+payload-owned fallback-kind boundary, with only literal-family syntax dispatch
+kept in the matcher for CST literal diagnostics.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy

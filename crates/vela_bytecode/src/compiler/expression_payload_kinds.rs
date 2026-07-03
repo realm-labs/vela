@@ -3,33 +3,6 @@ use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 
-fn expression_payload_kind_matches(kind: SyntaxExpressionKind, expr: &Expr) -> bool {
-    match kind {
-        SyntaxExpressionKind::Paren => true,
-        SyntaxExpressionKind::Block => matches!(expr.kind, ExprKind::Block(_)),
-        SyntaxExpressionKind::If => matches!(expr.kind, ExprKind::If(_)),
-        SyntaxExpressionKind::Match => matches!(expr.kind, ExprKind::Match(_)),
-        SyntaxExpressionKind::Path => matches!(expr.kind, ExprKind::Path(_) | ExprKind::SelfValue),
-        SyntaxExpressionKind::Literal => {
-            matches!(
-                expr.kind,
-                ExprKind::Literal(_) | ExprKind::InterpolatedString(_)
-            )
-        }
-        SyntaxExpressionKind::Array => matches!(expr.kind, ExprKind::Array(_)),
-        SyntaxExpressionKind::Map => matches!(expr.kind, ExprKind::Map(_)),
-        SyntaxExpressionKind::Record => matches!(expr.kind, ExprKind::Record { .. }),
-        SyntaxExpressionKind::Assign => matches!(expr.kind, ExprKind::Assign { .. }),
-        SyntaxExpressionKind::Binary => matches!(expr.kind, ExprKind::Binary { .. }),
-        SyntaxExpressionKind::Call => matches!(expr.kind, ExprKind::Call { .. }),
-        SyntaxExpressionKind::Unary => matches!(expr.kind, ExprKind::Unary { .. }),
-        SyntaxExpressionKind::Try => matches!(expr.kind, ExprKind::Try(_)),
-        SyntaxExpressionKind::Field => matches!(expr.kind, ExprKind::Field { .. }),
-        SyntaxExpressionKind::Index => matches!(expr.kind, ExprKind::Index { .. }),
-        SyntaxExpressionKind::Lambda => matches!(expr.kind, ExprKind::Lambda { .. }),
-    }
-}
-
 pub(super) fn expression_payload_is_aligned(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
@@ -45,7 +18,14 @@ pub(super) fn expression_payload_matches_expr(
     let Some(kind) = payload.stored_syntax_kind() else {
         return true;
     };
-    expression_payload_kind_matches(kind, expr)
+    if kind == SyntaxExpressionKind::Literal {
+        return matches!(
+            expr.kind,
+            ExprKind::Literal(_) | ExprKind::InterpolatedString(_)
+        ) && expression_payload_shape_matches_expr(payload, expr);
+    }
+    payload.fallback_kind_matches_stored_syntax_kind()
+        && payload.fallback_kind_matches_expr(expr)
         && expression_payload_shape_matches_expr(payload, expr)
 }
 
