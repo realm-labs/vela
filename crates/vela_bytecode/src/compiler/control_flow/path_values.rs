@@ -189,7 +189,11 @@ impl Compiler<'_, '_> {
             .unwrap_or(StaticExprType::Dynamic)
     }
 
-    fn value_type_for_path(&self, span: Span, path: &[String]) -> Option<RuntimeTypeFact> {
+    pub(in crate::compiler::control_flow) fn value_type_for_path(
+        &self,
+        span: Span,
+        path: &[String],
+    ) -> Option<RuntimeTypeFact> {
         let [name] = path else {
             return self.value_types.local_at_span(self.bindings, span);
         };

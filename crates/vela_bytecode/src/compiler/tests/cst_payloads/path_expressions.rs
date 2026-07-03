@@ -74,7 +74,7 @@ fn main(cst_value) {
         r#"
 fn main() {
     let legacy_value = 1;
-    let selected = legacy_value + 1;
+    let selected = legacy_value + legacy_value;
 }
 "#,
         |compiler, payload| {
@@ -208,7 +208,7 @@ fn cst_record() {
 }
 
 fn legacy_path(legacy) {
-    return legacy + 1;
+    return legacy + legacy;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -281,7 +281,7 @@ fn legacy_record() {
 }
 
 fn legacy_path(legacy) {
-    return legacy + 1;
+    return legacy + legacy;
 }
 
 fn legacy_call(legacy) {
@@ -687,7 +687,7 @@ fn legacy_path(consumer, legacy) {
     with_cst_payload_compiler(
         r#"
 fn main(input) {
-    let legacy = input + 1;
+    let legacy = input + input;
     consumer(self);
 }
 "#,

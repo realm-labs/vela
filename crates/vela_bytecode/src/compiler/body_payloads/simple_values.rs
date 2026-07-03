@@ -30,14 +30,18 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             if syntax_expression_is_simple_value(&initializer) {
                 return false;
             }
+            if syntax_expression_is_simple_path_numeric_add(&initializer) {
+                return false;
+            }
             let_statement.type_hint().is_some()
                 || !syntax_expression_is_simple_negated_number(&initializer)
         }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
-            return_statement
-                .expression()
-                .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
+            return_statement.expression().is_some_and(|expression| {
+                !syntax_expression_is_simple_value(&expression)
+                    && !syntax_expression_is_simple_path_numeric_add(&expression)
+            })
         }),
         SyntaxStatementKind::Block => statement
             .as_block()
@@ -196,6 +200,25 @@ fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> b
         || syntax_expression_is_simple_negated_number(expression)
         || syntax_expression_is_simple_constant_unary(expression)
         || syntax_expression_is_simple_constant_arithmetic(expression)
+}
+
+fn syntax_expression_is_simple_path_numeric_add(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_path_numeric_add(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if binary.operator() != Some(BinaryOp::Add) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
 }
 
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {

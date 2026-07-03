@@ -1,10 +1,16 @@
-use vela_common::{SourceId, Span};
+use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{AstNode, BinaryOp, SyntaxExpression};
+use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression};
 
 use crate::compiler::body_payloads::{expression_syntax_literal, expression_syntax_path_or_self};
-use crate::compiler::operators::non_logical_binary_instruction;
+use crate::compiler::const_eval::compile_literal_constant_for_type;
+use crate::compiler::operators::{
+    binary_literal_op, i64_immediate_instruction, i64_immediate_op_supported,
+    non_logical_binary_instruction,
+};
+use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
+use crate::{BinaryLiteralSide, Constant};
 use crate::{Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
@@ -90,6 +96,15 @@ impl Compiler<'_, '_> {
         let Some(rhs_expression) = binary.rhs() else {
             return Ok(None);
         };
+        if let Some(register) = self.compile_syntax_path_numeric_literal_binary(
+            source,
+            op,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )? {
+            return Ok(Some(register));
+        }
         let Some(lhs) = self.compile_syntax_expression(source, &lhs_expression)? else {
             return Ok(None);
         };
@@ -103,9 +118,158 @@ impl Compiler<'_, '_> {
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
         Ok(Some(dst))
     }
+
+    fn compile_syntax_path_numeric_literal_binary(
+        &mut self,
+        source: SourceId,
+        op: BinaryOp,
+        expression: &SyntaxExpression,
+        lhs_expression: &SyntaxExpression,
+        rhs_expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(path) = expression_syntax_path_or_self(lhs_expression) else {
+            return Ok(None);
+        };
+        let Some(literal) =
+            expression_syntax_literal(rhs_expression).and_then(InlineNumericLiteral::from_literal)
+        else {
+            return Ok(None);
+        };
+        let span = syntax_expression_span(source, expression);
+        let value_type =
+            self.value_type_for_path(syntax_expression_span(source, lhs_expression), &path);
+        if value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+            && let Some(imm) = i64_immediate_value(&literal, span)?
+            && i64_immediate_op_supported(op, imm)
+        {
+            let value =
+                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
+            let dst = self.alloc_register()?;
+            let instruction = i64_immediate_instruction(op, dst, value, imm)
+                .expect("support was checked before compiling the syntax value expression");
+            self.emit_spanned(instruction, span);
+            return Ok(Some(dst));
+        }
+        if let Some(RuntimeTypeFact::Primitive(tag)) = value_type.as_ref()
+            && literal.matches_primitive_tag(*tag)
+        {
+            let value =
+                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
+            let rhs = self.emit_constant(inline_numeric_literal_as(&literal, *tag, span)?)?;
+            let dst = self.alloc_register()?;
+            let Some(instruction) = non_logical_binary_instruction(op, dst, value, rhs) else {
+                return Ok(None);
+            };
+            self.emit_spanned(instruction, span);
+            return Ok(Some(dst));
+        }
+        if value_type.is_none()
+            && let Some(literal_op) = binary_literal_op(op)
+        {
+            let value =
+                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
+            let dst = self.alloc_register()?;
+            match literal {
+                InlineNumericLiteral::Integer(text) => {
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::BinaryIntLiteral {
+                            dst,
+                            op: literal_op,
+                            value,
+                            literal: text,
+                            side: BinaryLiteralSide::Right,
+                        },
+                        span,
+                    );
+                }
+                InlineNumericLiteral::Float(text) => {
+                    self.emit_spanned(
+                        UnlinkedInstructionKind::BinaryFloatLiteral {
+                            dst,
+                            op: literal_op,
+                            value,
+                            literal: text,
+                            side: BinaryLiteralSide::Right,
+                        },
+                        span,
+                    );
+                }
+            }
+            return Ok(Some(dst));
+        }
+        Ok(None)
+    }
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+#[derive(Clone)]
+enum InlineNumericLiteral {
+    Integer(String),
+    Float(String),
+}
+
+impl InlineNumericLiteral {
+    fn from_literal(literal: Literal) -> Option<Self> {
+        match literal {
+            Literal::Integer(value) if value.suffix.is_none() => {
+                Some(Self::Integer(value.source_text().to_owned()))
+            }
+            Literal::Float(value) if value.suffix.is_none() => {
+                Some(Self::Float(value.source_text().to_owned()))
+            }
+            _ => None,
+        }
+    }
+
+    fn matches_primitive_tag(&self, tag: PrimitiveTag) -> bool {
+        match self {
+            Self::Integer(_) => matches!(
+                tag,
+                PrimitiveTag::I8
+                    | PrimitiveTag::I16
+                    | PrimitiveTag::I32
+                    | PrimitiveTag::I64
+                    | PrimitiveTag::U8
+                    | PrimitiveTag::U16
+                    | PrimitiveTag::U32
+                    | PrimitiveTag::U64
+            ),
+            Self::Float(_) => matches!(tag, PrimitiveTag::F32 | PrimitiveTag::F64),
+        }
+    }
+}
+
+fn i64_immediate_value(literal: &InlineNumericLiteral, span: Span) -> CompileResult<Option<i64>> {
+    let InlineNumericLiteral::Integer(_) = literal else {
+        return Ok(None);
+    };
+    let Constant::Scalar(vela_common::ScalarValue::I64(value)) =
+        inline_numeric_literal_as(literal, PrimitiveTag::I64, span)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(value))
+}
+
+fn inline_numeric_literal_as(
+    literal: &InlineNumericLiteral,
+    tag: PrimitiveTag,
+    span: Span,
+) -> CompileResult<Constant> {
+    match literal {
+        InlineNumericLiteral::Integer(text) => compile_literal_constant_for_type(
+            &Literal::Integer(vela_syntax::ast::IntegerLiteral::unsuffixed(text)),
+            tag,
+        ),
+        InlineNumericLiteral::Float(text) => compile_literal_constant_for_type(
+            &Literal::Float(vela_syntax::ast::FloatLiteral::unsuffixed(text)),
+            tag,
+        ),
+    }
+    .map_err(|error| error.with_span(span))
+    .map(|constant| constant.expect("literal kind and primitive tag were checked by caller"))
 }

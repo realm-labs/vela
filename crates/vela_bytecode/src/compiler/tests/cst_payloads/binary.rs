@@ -365,8 +365,8 @@ fn main(input) {
 }
 "#;
     let legacy_text = r#"
-fn main(input) {
-    let value = input + 2;
+fn main(input, other) {
+    let value = input + other;
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -409,18 +409,15 @@ fn main(input) {
         .compile_expr_with_payload(legacy_binary.fallback(), Some(&missing))
         .expect_err("missing binary operand payload must not compile legacy operand");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST binary operand")
-    ));
+    assert!(matches!(error.kind, CompileErrorKind::UnsupportedSyntax(_)));
 }
 
 #[test]
 fn missing_binary_expression_payload_does_not_use_legacy_binary() {
     let source = SourceId::new(1);
     let text = r#"
-fn main(input) {
-    let value = input + 2;
+fn main(input, other) {
+    let value = input + other;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

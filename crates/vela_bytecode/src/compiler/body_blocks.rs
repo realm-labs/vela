@@ -146,6 +146,10 @@ fn binary_valued_let(input) {
     let value = input + 1;
 }
 
+fn binary_valued_return(input) {
+    return input + 1;
+}
+
 fn self_valued_let() {
     let value = self;
 }
@@ -188,12 +192,13 @@ fn parenthesized_simple_values() {
         let valued_let_body = bodies[6].body().expect("valued let body");
         let nonliteral_valued_let_body = bodies[7].body().expect("path valued let body");
         let binary_valued_let_body = bodies[8].body().expect("binary valued let body");
-        let self_valued_let_body = bodies[9].body().expect("self valued let body");
-        let self_valued_return_body = bodies[10].body().expect("self valued return body");
-        let block_valued_let_body = bodies[11].body().expect("block valued let body");
-        let block_valued_return_body = bodies[12].body().expect("block valued return body");
+        let binary_valued_return_body = bodies[9].body().expect("binary valued return body");
+        let self_valued_let_body = bodies[10].body().expect("self valued let body");
+        let self_valued_return_body = bodies[11].body().expect("self valued return body");
+        let block_valued_let_body = bodies[12].body().expect("block valued let body");
+        let block_valued_return_body = bodies[13].body().expect("block valued return body");
         let parenthesized_simple_values_body =
-            bodies[13].body().expect("parenthesized simple values body");
+            bodies[14].body().expect("parenthesized simple values body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -222,7 +227,12 @@ fn parenthesized_simple_values() {
         assert!(
             lookup
                 .body_for_syntax(source, &binary_valued_let_body)
-                .is_some()
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &binary_valued_return_body)
+                .is_none()
         );
         assert!(
             lookup

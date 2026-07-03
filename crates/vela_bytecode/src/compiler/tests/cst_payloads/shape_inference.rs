@@ -67,7 +67,7 @@ struct LegacyBox {
 }
 
 fn main(input) {
-    let cst_binary = input + 1;
+    let cst_binary = input + input;
     let legacy = LegacyBox { amount: 1 };
 }
 "#,
@@ -187,7 +187,7 @@ fn main(input) {
     let cst_range = 1..3;
     let cst_compare = input < 3;
     let legacy_bool = input == false;
-    let legacy_arithmetic = input + 4;
+    let legacy_arithmetic = input + input;
 }
 "#,
         |compiler, payload| {
@@ -283,7 +283,7 @@ fn fallback_dynamic_arithmetic_shape_does_not_invent_numeric_literal_shape() {
     with_cst_payload_compiler(
         r#"
 fn main(input) {
-    let dynamic = input + 1;
+    let dynamic = input + input;
 }
 "#,
         |compiler, payload| {
@@ -306,7 +306,7 @@ fn unsupported_binary_shape_payload_does_not_use_legacy_binary_shape() {
     with_cst_payload_compiler(
         r#"
 fn main(input) {
-    let cst_add = input + 1;
+    let cst_add = input + input;
     let legacy_compare = true == input;
 }
 "#,
