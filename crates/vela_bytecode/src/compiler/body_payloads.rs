@@ -99,29 +99,6 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     fallback: &'ast vela_syntax::ast::Expr,
 }
 
-#[derive(Clone, Copy)]
-struct CompilerExpressionFallbackSummary {
-    kind: Option<SyntaxExpressionKind>,
-    is_self_value: bool,
-}
-
-impl CompilerExpressionFallbackSummary {
-    fn matches_syntax_kind(self, syntax_kind: SyntaxExpressionKind) -> bool {
-        if syntax_kind == SyntaxExpressionKind::Paren {
-            return true;
-        }
-        self.kind == Some(syntax_kind)
-    }
-
-    fn matches_summary(self, other: Self) -> bool {
-        self.kind == other.kind
-    }
-
-    fn matches_path_self_shape(self, syntax_is_self: bool) -> bool {
-        self.kind == Some(SyntaxExpressionKind::Path) && self.is_self_value == syntax_is_self
-    }
-}
-
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
@@ -438,9 +415,8 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressionFallbackSummary {
-    let is_self_value = matches!(fallback.kind, ExprKind::SelfValue);
-    let kind = match fallback.kind {
+fn fallback_expr_syntax_kind(fallback: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
+    match fallback.kind {
         ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
             Some(SyntaxExpressionKind::Literal)
         }
@@ -460,11 +436,23 @@ fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressio
         ExprKind::If(_) => Some(SyntaxExpressionKind::If),
         ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
         ExprKind::Error => None,
-    };
-    CompilerExpressionFallbackSummary {
-        kind,
-        is_self_value,
     }
+}
+
+fn fallback_expr_matches_syntax_kind(
+    fallback: &vela_syntax::ast::Expr,
+    syntax_kind: SyntaxExpressionKind,
+) -> bool {
+    syntax_kind == SyntaxExpressionKind::Paren
+        || fallback_expr_syntax_kind(fallback) == Some(syntax_kind)
+}
+
+fn fallback_path_self_shape_matches(
+    fallback: &vela_syntax::ast::Expr,
+    syntax_is_self: bool,
+) -> bool {
+    fallback_expr_syntax_kind(fallback) == Some(SyntaxExpressionKind::Path)
+        && matches!(fallback.kind, ExprKind::SelfValue) == syntax_is_self
 }
 
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
@@ -1550,7 +1538,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
         syntax_kind: SyntaxExpressionKind,
     ) -> bool {
-        self.fallback_summary().matches_syntax_kind(syntax_kind)
+        fallback_expr_matches_syntax_kind(self.fallback, syntax_kind)
     }
 
     pub(in crate::compiler) fn fallback_expr_matches_stored_syntax_expr(
@@ -1560,27 +1548,19 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let Some(kind) = self.stored_syntax_kind() else {
             return true;
         };
-        let expr_summary = fallback_expr_summary(expr);
-        if !expr_summary.matches_syntax_kind(kind) {
+        if !fallback_expr_matches_syntax_kind(expr, kind) {
             return false;
         }
         (kind == SyntaxExpressionKind::Literal
-            || self.fallback_summary().matches_summary(expr_summary))
-            && self.fallback_expr_matches_stored_syntax_shape(expr_summary)
+            || fallback_expr_syntax_kind(self.fallback) == fallback_expr_syntax_kind(expr))
+            && self.fallback_expr_matches_stored_syntax_shape(expr)
     }
 
-    fn fallback_summary(&self) -> CompilerExpressionFallbackSummary {
-        fallback_expr_summary(self.fallback)
-    }
-
-    fn fallback_expr_matches_stored_syntax_shape(
-        &self,
-        expr_summary: CompilerExpressionFallbackSummary,
-    ) -> bool {
+    fn fallback_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {
         if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
             return true;
         }
-        expr_summary.matches_path_self_shape(self.syntax_is_self())
+        fallback_path_self_shape_matches(expr, self.syntax_is_self())
     }
 
     #[cfg(test)]
