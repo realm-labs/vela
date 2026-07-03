@@ -1,6 +1,5 @@
 use vela_common::SourceId;
 use vela_common::Span;
-use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, Block, ElseBranch, ExprKind, IfExpr, MapEntry, MatchArm,
     MatchExpr, Pattern, RecordField, RecordPatternField, Stmt, StmtKind, SyntaxArgument,
@@ -10,6 +9,9 @@ use vela_syntax::ast::{
 };
 
 mod expression_payloads;
+mod simple_values;
+
+use simple_values::{expression_syntax_path_or_self, syntax_statement_requires_body_block_lookup};
 
 #[derive(Clone)]
 pub(super) struct SyntaxBodyPayload {
@@ -260,45 +262,6 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
-    match statement.statement_kind() {
-        SyntaxStatementKind::Let => statement.as_let().is_none_or(|let_statement| {
-            let_statement.name_text().is_none()
-                || let_statement
-                    .initializer()
-                    .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
-        }),
-        SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
-        SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
-            return_statement
-                .expression()
-                .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
-        }),
-        SyntaxStatementKind::Block => statement
-            .as_block()
-            .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
-        _ => true,
-    }
-}
-
-fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
-    let Some(literal) = expression.as_literal() else {
-        return false;
-    };
-    !matches!(literal.token_kind(), Some(SyntaxKind::InterpolatedString))
-        && literal.literal().is_some()
-}
-
-fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
-    expression
-        .as_path()
-        .is_some_and(|path| !path.path_segments().is_empty())
-}
-
-fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
-    syntax_expression_is_simple_literal(expression) || syntax_expression_is_simple_path(expression)
-}
-
 fn match_arm_payloads_for_expr<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
@@ -544,7 +507,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
-        let path = expression.as_path()?.path_segments();
+        let path = expression_syntax_path_or_self(&expression)?;
         (!path.is_empty()).then_some((path, span))
     }
 
@@ -663,7 +626,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let expression = self.syntax.as_ref()?.as_return()?.expression()?;
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
-        let path = expression.as_path()?.path_segments();
+        let path = expression_syntax_path_or_self(&expression)?;
         (!path.is_empty()).then_some((path, span))
     }
 

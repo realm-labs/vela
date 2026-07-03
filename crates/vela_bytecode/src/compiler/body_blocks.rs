@@ -111,6 +111,14 @@ fn nonliteral_valued_let(input) {
 fn binary_valued_let(input) {
     let value = input + 1;
 }
+
+fn self_valued_let() {
+    let value = self;
+}
+
+fn self_valued_return() {
+    return self;
+}
 "#;
         let parsed = parse_source_with_id(source, text);
         assert!(parsed.diagnostics().is_empty());
@@ -125,6 +133,8 @@ fn binary_valued_let(input) {
         let valued_let_body = bodies[6].body().expect("valued let body");
         let nonliteral_valued_let_body = bodies[7].body().expect("path valued let body");
         let binary_valued_let_body = bodies[8].body().expect("binary valued let body");
+        let self_valued_let_body = bodies[9].body().expect("self valued let body");
+        let self_valued_return_body = bodies[10].body().expect("self valued return body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -154,6 +164,16 @@ fn binary_valued_let(input) {
             lookup
                 .body_for_syntax(source, &binary_valued_let_body)
                 .is_some()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &self_valued_let_body)
+                .is_none()
+        );
+        assert!(
+            lookup
+                .body_for_syntax(source, &self_valued_return_body)
+                .is_none()
         );
     }
 }

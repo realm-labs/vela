@@ -427,6 +427,37 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_self_let_and_return_method_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct CstBox {}
+
+impl CstBox {
+    fn id(self) {
+        let copy = self;
+        return copy;
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let method = semantic
+        .script_impl_methods()
+        .into_iter()
+        .find(|method| method.method_name == "id")
+        .expect("id method");
+
+    compile_program_source(source, text).expect("CST self let and return method should compile");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| method.body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only self let/return method should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
