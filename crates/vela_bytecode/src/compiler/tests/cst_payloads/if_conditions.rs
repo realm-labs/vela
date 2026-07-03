@@ -1,6 +1,30 @@
 use super::*;
 
 #[test]
+fn simple_if_let_and_return_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn choose(input) {
+    let selected = if input.enabled {
+        input.name
+    } else {
+        "guest"
+    };
+    return if input.enabled {
+        selected
+    } else {
+        "guest"
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("choose").expect("choose function");
+
+    assert!(!payload.body.has_fallback_statements());
+    compile_program_source(source, text).expect("simple CST-backed if value bodies should compile");
+}
+
+#[test]
 fn semantic_function_if_conditions_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

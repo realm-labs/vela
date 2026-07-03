@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use vela_common::SourceId;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxStatement, SyntaxStatementKind, UnaryOp,
+    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxElseBranch, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxStatement, SyntaxStatementKind, UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
@@ -226,6 +226,39 @@ fn syntax_expression_is_simple_interpolation_value(expression: &SyntaxExpression
         || syntax_expression_is_simple_path_numeric_comparison(expression)
         || syntax_expression_is_simple_path_numeric_equality(expression)
         || syntax_expression_is_simple_path_numeric_arithmetic(expression)
+}
+
+fn syntax_expression_is_simple_if_value(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_if_value(&inner);
+    }
+    expression
+        .as_if()
+        .is_some_and(|if_expr| syntax_if_is_simple_value(&if_expr))
+}
+
+fn syntax_if_is_simple_value(if_expr: &SyntaxIfExpr) -> bool {
+    let Some(condition) = if_expr.condition() else {
+        return false;
+    };
+    if !syntax_expression_is_simple_interpolation_value(&condition)
+        || !syntax_expression_contains_simple_field_value(&condition)
+    {
+        return false;
+    }
+    if if_expr
+        .then_block()
+        .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
+    {
+        return false;
+    }
+    match if_expr.else_branch() {
+        Some(SyntaxElseBranch::If(else_if)) => syntax_if_is_simple_value(&else_if),
+        Some(SyntaxElseBranch::Block(block)) => {
+            !CompilerBodyPayload::requires_body_block_lookup(&block)
+        }
+        None => true,
+    }
 }
 
 fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
@@ -862,6 +895,7 @@ fn expression_syntax_negatable_number_literal(expression: &SyntaxExpression) -> 
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_simple_literal(expression)
         || syntax_expression_is_simple_interpolated_string(expression)
+        || syntax_expression_is_simple_if_value(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_empty_array(expression)
         || syntax_expression_is_simple_block(expression)

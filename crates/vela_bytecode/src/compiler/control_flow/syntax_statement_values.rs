@@ -1,11 +1,15 @@
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxLiteral, UnaryOp};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr, SyntaxLiteral,
+    UnaryOp,
+};
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
 use crate::compiler::body_payloads::{
-    expression_syntax_literal, expression_syntax_path_field, expression_syntax_path_or_self,
+    CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
+    expression_syntax_path_or_self,
 };
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::operators::{
@@ -126,6 +130,9 @@ impl Compiler<'_, '_> {
         if let Some(register) = self.compile_syntax_container(source, expression)? {
             return Ok(Some(register));
         }
+        if let Some(register) = self.compile_syntax_if_value(source, expression)? {
+            return Ok(Some(register));
+        }
         let Some(binary) = expression.as_binary() else {
             return Ok(None);
         };
@@ -216,6 +223,81 @@ impl Compiler<'_, '_> {
             parts: compiled,
         });
         Ok(Some(dst))
+    }
+
+    fn compile_syntax_if_value(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(if_expr) = expression.as_if() else {
+            return Ok(None);
+        };
+        if !syntax_if_value_lowering_covers(&if_expr) {
+            return Ok(None);
+        }
+        let dst = self.alloc_register()?;
+        let Some(returned) = self.compile_syntax_if_value_to(source, &if_expr, dst)? else {
+            return Ok(None);
+        };
+        let _ = returned;
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_if_value_to(
+        &mut self,
+        source: SourceId,
+        if_expr: &SyntaxIfExpr,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some(condition_expression) = if_expr.condition() else {
+            return Ok(None);
+        };
+        let Some(condition) = self.compile_syntax_expression(source, &condition_expression)? else {
+            return Ok(None);
+        };
+        let Some(then_block) = if_expr.then_block() else {
+            return Ok(None);
+        };
+        let Some(then_body) = CompilerBodyPayload::nested_syntax_optional(source, then_block, None)
+        else {
+            return Ok(None);
+        };
+
+        let jump_to_else = self.emit_jump_if_false(condition);
+        let then_returned = self.compile_block_payload_value_to(&then_body, dst)?;
+        let jump_to_end = if then_returned {
+            None
+        } else {
+            Some(self.emit_jump())
+        };
+
+        self.patch_jump(jump_to_else, self.current_offset())?;
+        let else_returned = match if_expr.else_branch() {
+            Some(SyntaxElseBranch::If(else_if)) => {
+                let Some(returned) = self.compile_syntax_if_value_to(source, &else_if, dst)? else {
+                    return Ok(None);
+                };
+                returned
+            }
+            Some(SyntaxElseBranch::Block(block)) => {
+                let Some(else_body) =
+                    CompilerBodyPayload::nested_syntax_optional(source, block, None)
+                else {
+                    return Ok(None);
+                };
+                self.compile_block_payload_value_to(&else_body, dst)?
+            }
+            None => {
+                self.emit_constant_to(dst, Constant::Null);
+                false
+            }
+        };
+
+        if let Some(jump_to_end) = jump_to_end {
+            self.patch_jump(jump_to_end, self.current_offset())?;
+        }
+        Ok(Some(then_returned && else_returned))
     }
 
     fn compile_syntax_logical_chain(
@@ -577,6 +659,25 @@ fn logical_chain_syntax_operands(
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_if_value_lowering_covers(if_expr: &SyntaxIfExpr) -> bool {
+    if if_expr.condition().is_none() || if_expr.then_block().is_none() {
+        return false;
+    }
+    if if_expr
+        .then_block()
+        .is_some_and(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
+    {
+        return false;
+    }
+    match if_expr.else_branch() {
+        Some(SyntaxElseBranch::If(else_if)) => syntax_if_value_lowering_covers(&else_if),
+        Some(SyntaxElseBranch::Block(block)) => {
+            !CompilerBodyPayload::requires_body_block_lookup(&block)
+        }
+        None => true,
+    }
 }
 
 fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {
