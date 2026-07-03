@@ -129,6 +129,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Assign { target, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_assign()?.target(),
@@ -142,6 +143,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Assign { value, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_assign()?.value(),
@@ -153,6 +155,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Assign { .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         self.syntax.as_ref()?.as_assign()?.operator()
     }
 

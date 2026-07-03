@@ -123,6 +123,35 @@ fn main(value) {
 }
 
 #[test]
+fn source_less_assignment_payload_does_not_expose_operator_or_operands() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let value = 1;
+    let assigned = value += 2;
+}
+"#,
+        |_, payload| {
+            let assignment = payload.body.statement_payloads()[1]
+                .let_initializer_expression_payload()
+                .expect("assignment initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    assignment
+                        .syntax_expression()
+                        .expect("assignment syntax")
+                        .clone(),
+                    assignment.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_assignment_operator(), None);
+            assert!(missing_source.assignment_target_payload().is_none());
+            assert!(missing_source.assignment_value_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
     with_cst_payload_compiler(
         r#"
