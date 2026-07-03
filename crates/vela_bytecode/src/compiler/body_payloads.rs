@@ -319,13 +319,13 @@ fn if_payload_for_expr<'ast>(
         syntax: condition_syntax,
         fallback: &fallback.condition,
     });
-    let then_body = syntax
-        .then_block()
-        .map(|body| CompilerBodyPayload::nested(source, body, &fallback.then_branch));
+    let then_body = syntax.then_block().and_then(|body| {
+        CompilerBodyPayload::nested_syntax_optional(source, body, Some(&fallback.then_branch))
+    });
     let else_body = match fallback.else_branch.as_ref() {
-        Some(ElseBranch::Block(block)) => syntax
-            .else_block()
-            .map(|body| CompilerBodyPayload::nested(source, body, block)),
+        Some(ElseBranch::Block(block)) => syntax.else_block().and_then(|body| {
+            CompilerBodyPayload::nested_syntax_optional(source, body, Some(block))
+        }),
         Some(ElseBranch::If(_)) | None => None,
     };
     let else_if = match fallback.else_branch.as_ref() {

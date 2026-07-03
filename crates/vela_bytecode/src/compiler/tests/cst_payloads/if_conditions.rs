@@ -343,6 +343,66 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_if_then_body_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let selected = if true {
+        let nested;
+        return;
+    } else {
+        2
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let if_payload = payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .and_then(|payload| payload.if_payload())
+        .expect("if initializer payload");
+    let then_body = if_payload.then_body().expect("then body payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| then_body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only if then body should not retain an owned body fallback"
+    );
+}
+
+#[test]
+fn syntax_only_if_else_body_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let selected = if false {
+        1
+    } else {
+        let nested;
+        return;
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let if_payload = payload.body.statement_payloads()[0]
+        .let_initializer_expression_payload()
+        .and_then(|payload| payload.if_payload())
+        .expect("if initializer payload");
+    let else_body = if_payload.else_body().expect("else body payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| else_body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only if else body should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn mismatched_i64_condition_payload_does_not_use_legacy_operator() {
     let source = SourceId::new(1);
     let cst_text = r#"
