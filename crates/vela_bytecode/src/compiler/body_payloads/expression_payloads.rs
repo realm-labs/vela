@@ -1,7 +1,7 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, ExprKind, IfExpr, InterpolatedStringPart, Literal, MatchExpr,
-    Pattern, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
+    AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal,
+    MatchExpr, Pattern, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
@@ -226,16 +226,36 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn try_operand_payload(
         &self,
+        expr: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Try(expr) = self.fallback_kind else {
+        if !self.fallback_is_try() {
             return None;
-        };
+        }
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_try()?.expression(),
             expr,
         ))
+    }
+
+    fn fallback_is_try(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_try_operand(&self) -> Option<&'ast Expr> {
+        let CompilerExpressionFallbackKind::Try(expr) = self.fallback_kind else {
+            return None;
+        };
+        Some(expr)
     }
 
     pub(in crate::compiler) fn binary_operand_payloads(

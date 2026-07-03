@@ -352,7 +352,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Try(operand) = &expr.kind else {
                     unreachable!("validated CST try expression payload kind");
                 };
-                let operand_payload = payload.try_operand_payload();
+                let operand_payload = payload.try_operand_payload(operand);
                 reject_missing_expression_payload(
                     operand_payload.as_ref(),
                     "missing CST try operand",

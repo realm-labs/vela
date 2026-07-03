@@ -342,7 +342,10 @@ fn assert_cst_call_argument_try_operand_body_payloads(
         .iter()
         .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
         .map(|argument| argument.value_expression_payload())
-        .filter_map(|payload| payload.try_operand_payload())
+        .filter_map(|payload| {
+            let operand = payload.fallback_try_operand()?;
+            payload.try_operand_payload(operand)
+        })
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -359,7 +362,10 @@ fn assert_cst_return_value_try_operand_body_payloads(
         .statement_payloads()
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
-        .filter_map(|payload| payload.try_operand_payload())
+        .filter_map(|payload| {
+            let operand = payload.fallback_try_operand()?;
+            payload.try_operand_payload(operand)
+        })
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
             Some(cst_statement_texts(&body))

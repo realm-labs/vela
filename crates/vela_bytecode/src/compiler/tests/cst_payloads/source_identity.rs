@@ -118,7 +118,10 @@ fn main(value) {
                     try_expression.fallback(),
                 );
 
-            assert!(missing_source.try_operand_payload().is_none());
+            let operand = try_expression
+                .fallback_try_operand()
+                .expect("try fallback operand");
+            assert!(missing_source.try_operand_payload(operand).is_none());
         },
     );
 }

@@ -114,7 +114,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Unary {
         expr: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(test)]
     Try(&'ast vela_syntax::ast::Expr),
+    #[cfg(not(test))]
+    Try,
     Binary {
         op: BinaryOp,
         left: &'ast vela_syntax::ast::Expr,
@@ -1491,7 +1494,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 CompilerExpressionFallbackKind::Assign { target, value }
             }
             ExprKind::Unary { expr, .. } => CompilerExpressionFallbackKind::Unary { expr },
+            #[cfg(test)]
             ExprKind::Try(expr) => CompilerExpressionFallbackKind::Try(expr),
+            #[cfg(not(test))]
+            ExprKind::Try(_) => CompilerExpressionFallbackKind::Try,
             ExprKind::Binary { op, left, right } => CompilerExpressionFallbackKind::Binary {
                 op: *op,
                 left,
@@ -1590,7 +1596,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 )
             }
             SyntaxExpressionKind::Try => {
-                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
+                #[cfg(test)]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try(_))
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Try)
+                }
             }
             SyntaxExpressionKind::Array => {
                 matches!(self.fallback_kind, CompilerExpressionFallbackKind::Array(_))

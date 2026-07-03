@@ -386,7 +386,7 @@ fn static_expr_type_with_payload(
         ExprKind::Try(value) => match expression_value_type_with_payload(
             value,
             aligned_payload
-                .and_then(CompilerExpressionPayload::try_operand_payload)
+                .and_then(|payload| payload.try_operand_payload(value))
                 .as_ref(),
             local_type_at_span,
             local_type_named,
