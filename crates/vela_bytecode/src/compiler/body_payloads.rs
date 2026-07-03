@@ -118,7 +118,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     If(&'ast IfExpr),
     #[cfg(not(test))]
     If,
+    #[cfg(test)]
     Match(&'ast MatchExpr),
+    #[cfg(not(test))]
+    Match,
     #[cfg(test)]
     Assign {
         target: &'ast vela_syntax::ast::Expr,
@@ -188,6 +191,8 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     InterpolatedString(&'ast [InterpolatedStringPart]),
     #[cfg(not(test))]
     InterpolatedString,
+    #[cfg(not(test))]
+    _Ast(PhantomData<&'ast ()>),
     Other,
 }
 
@@ -1537,7 +1542,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
             #[cfg(not(test))]
             ExprKind::If(_) => CompilerExpressionFallbackKind::If,
+            #[cfg(test)]
             ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
+            #[cfg(not(test))]
+            ExprKind::Match(_) => CompilerExpressionFallbackKind::Match,
             #[cfg(test)]
             ExprKind::Assign { target, value, .. } => {
                 CompilerExpressionFallbackKind::Assign { target, value }
@@ -1808,7 +1816,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 }
             }
             SyntaxExpressionKind::Match => {
-                matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match(_))
+                #[cfg(test)]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match(_))
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Match)
+                }
             }
         }
     }

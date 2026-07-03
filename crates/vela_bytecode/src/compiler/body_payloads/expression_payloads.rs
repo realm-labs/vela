@@ -85,18 +85,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn match_arm_payloads(
         &self,
     ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
-            return None;
-        };
+        let match_expr = self.fallback_match_expr()?;
         match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(in crate::compiler) fn match_scrutinee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
-            return None;
-        };
+        let match_expr = self.fallback_match_expr()?;
         self.source?;
         Some(match_scrutinee_payload_for_expr(
             self.source,
@@ -112,15 +108,30 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
         Vec<CompilerMatchArmPayload<'ast>>,
     )> {
-        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
-            return None;
-        };
+        let match_expr = self.fallback_match_expr()?;
         self.source?;
         let syntax = self.syntax.as_ref()?.as_match()?;
         let scrutinee_payload =
             match_scrutinee_payload_for_expr(self.source, syntax.clone(), match_expr);
         let arm_payloads = match_arm_payloads_for_expr(self.source, syntax, match_expr)?;
         Some((match_expr, scrutinee_payload, arm_payloads))
+    }
+
+    fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
+                return None;
+            };
+            Some(match_expr)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Match(match_expr) = &self.fallback.kind else {
+                return None;
+            };
+            Some(match_expr)
+        }
     }
 
     pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
