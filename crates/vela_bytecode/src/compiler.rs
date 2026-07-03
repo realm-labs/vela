@@ -14,7 +14,6 @@ mod control_flow;
 pub mod error;
 mod expected_exprs;
 mod expression_checks;
-mod expression_payload_kinds;
 mod expressions;
 mod field_slots;
 mod function_payloads;

@@ -5,7 +5,6 @@ use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::{
     condition_operator_for_payload, control_flow_expression_requires_matching_syntax,
 };
-use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind};
@@ -19,7 +18,7 @@ impl Compiler<'_, '_> {
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
         if let Some(payload) = condition_payload
-            && !expression_payload_matches_expr(payload, condition)
+            && !payload.matches_fallback_expr(condition)
             && control_flow_expression_requires_matching_syntax(condition)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

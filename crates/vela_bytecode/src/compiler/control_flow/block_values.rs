@@ -9,8 +9,6 @@ use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
 #[cfg(test)]
 use crate::compiler::control_flow::classification::aligned_statement;
-#[cfg(test)]
-use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -170,7 +168,7 @@ impl Compiler<'_, '_> {
                     ),
                 ));
             };
-            if expression_payload_matches_expr(&expression_payload, expr) {
+            if expression_payload.matches_fallback_expr(expr) {
                 return self.compile_cst_block_tail_expr_to(expr, payload, kind, dst);
             }
             return Err(crate::compiler::CompileError::new(

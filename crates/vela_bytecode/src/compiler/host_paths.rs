@@ -9,7 +9,6 @@ use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::call_args::CallArgumentSyntax;
-use super::expression_payload_kinds::expression_payload_is_aligned;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 pub(super) struct HostPath<'ast> {
@@ -118,7 +117,7 @@ impl Compiler<'_, '_> {
                     payload.index_operand_payloads_with_fallback()?;
                 let mut receiver =
                     self.resolve_host_path_index_receiver_from_payload(base_payload)?;
-                if !expression_payload_is_aligned(&index_payload, index) {
+                if !index_payload.is_aligned_with_fallback_expr(index) {
                     return None;
                 }
                 let dynamic_kind = receiver
@@ -177,7 +176,7 @@ impl Compiler<'_, '_> {
     ) -> Option<ResolvedHostPath<'ast>> {
         self.resolve_host_path_from_payload(payload.clone())
             .or_else(|| {
-                if !expression_payload_is_aligned(&payload, fallback) {
+                if !payload.is_aligned_with_fallback_expr(fallback) {
                     return None;
                 }
                 Some(self.expr_host_path_receiver_with_payload(fallback, Some(payload)))
@@ -736,8 +735,9 @@ impl Compiler<'_, '_> {
                         return None;
                     }
                     let (base, base_payload) = payload.field_base_payload_with_fallback()?;
-                    let base_expr =
-                        expression_payload_is_aligned(&base_payload, base).then_some(base);
+                    let base_expr = base_payload
+                        .is_aligned_with_fallback_expr(base)
+                        .then_some(base);
                     let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {
                         path,

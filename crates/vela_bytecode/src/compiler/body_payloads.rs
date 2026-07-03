@@ -455,6 +455,10 @@ fn fallback_path_self_shape_matches(
         && matches!(fallback.kind, ExprKind::SelfValue) == syntax_is_self
 }
 
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
+}
+
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_block_syntax(&inner);
@@ -1554,6 +1558,20 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         (kind == SyntaxExpressionKind::Literal
             || fallback_expr_syntax_kind(self.fallback) == fallback_expr_syntax_kind(expr))
             && self.fallback_expr_matches_stored_syntax_shape(expr)
+    }
+
+    pub(in crate::compiler) fn matches_fallback_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
+        self.fallback_expr_matches_stored_syntax_expr(expr)
+    }
+
+    pub(in crate::compiler) fn is_aligned_with_fallback_expr(
+        &self,
+        expr: &vela_syntax::ast::Expr,
+    ) -> bool {
+        self.matches_fallback_expr(expr)
+            && self
+                .syntax_span()
+                .is_some_and(|syntax_span| spans_overlap(syntax_span, expr.span))
     }
 
     fn fallback_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {

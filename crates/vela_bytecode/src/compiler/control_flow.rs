@@ -27,7 +27,6 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
-use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -909,7 +908,7 @@ impl Compiler<'_, '_> {
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
-            && !expression_payload_matches_expr(payload, parts.iterable)
+            && !payload.matches_fallback_expr(parts.iterable)
             && control_flow_expression_requires_matching_syntax(parts.iterable)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

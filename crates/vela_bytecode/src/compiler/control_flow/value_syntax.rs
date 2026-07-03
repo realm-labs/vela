@@ -1,7 +1,6 @@
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
-use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::value_types::{RuntimeTypeFact, TypeContractContext};
 use crate::compiler::{CompileResult, Compiler};
 use vela_syntax::ast::{Expr, SyntaxExpressionKind};
@@ -48,7 +47,7 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
             return false;
         }
         self.expression
-            .is_some_and(|payload| expression_payload_matches_expr(payload, value))
+            .is_some_and(|payload| payload.matches_fallback_expr(value))
     }
 }
 

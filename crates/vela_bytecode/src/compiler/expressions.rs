@@ -17,7 +17,6 @@ use super::expression_checks::{
     payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
     reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
-use super::expression_payload_kinds::expression_payload_matches_expr;
 use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -56,7 +55,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
-            && expression_payload_matches_expr(payload, expr)
+            && payload.matches_fallback_expr(expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }

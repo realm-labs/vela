@@ -1,7 +1,6 @@
 use vela_syntax::ast::{Expr, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
-use crate::compiler::expression_payload_kinds::expression_payload_is_aligned;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 pub(super) fn callback_lambda_payload_is_authoritative(
@@ -12,7 +11,7 @@ pub(super) fn callback_lambda_payload_is_authoritative(
         return true;
     };
     match payload.syntax_kind() {
-        Some(SyntaxExpressionKind::Lambda) => expression_payload_is_aligned(payload, arg_value),
+        Some(SyntaxExpressionKind::Lambda) => payload.is_aligned_with_fallback_expr(arg_value),
         Some(_) => false,
         None => true,
     }
@@ -37,7 +36,7 @@ pub(super) fn reject_mismatched_call_callee_payload(
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if expression_payload_is_aligned(payload, callee) {
+    if payload.is_aligned_with_fallback_expr(callee) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
