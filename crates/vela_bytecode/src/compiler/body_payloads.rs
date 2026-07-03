@@ -203,7 +203,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-fn match_arm_payloads_for_fallback<'ast>(
+fn match_arm_payloads_for_expr<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
     fallback: &'ast MatchExpr,
@@ -226,7 +226,7 @@ fn match_arm_payloads_for_fallback<'ast>(
     )
 }
 
-fn match_scrutinee_payload_for_fallback<'ast>(
+fn match_scrutinee_payload_for_expr<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
     fallback: &'ast MatchExpr,
@@ -238,7 +238,7 @@ fn match_scrutinee_payload_for_fallback<'ast>(
     }
 }
 
-fn if_payload_for_fallback<'ast>(
+fn if_payload_for_expr<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxIfExpr,
     fallback: &'ast IfExpr,
@@ -262,7 +262,7 @@ fn if_payload_for_fallback<'ast>(
     let else_if = match fallback.else_branch.as_ref() {
         Some(ElseBranch::If(if_expr)) => {
             let syntax_if = syntax.else_if()?;
-            if_payload_for_fallback(Some(source), syntax_if, if_expr).map(Box::new)
+            if_payload_for_expr(Some(source), syntax_if, if_expr).map(Box::new)
         }
         Some(ElseBranch::Block(_)) | None => None,
     };
@@ -438,7 +438,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::If(if_expr) = &value.kind else {
             return None;
         };
-        if_payload_for_fallback(
+        if_payload_for_expr(
             self.source,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_if()?,
             if_expr,
@@ -457,7 +457,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(
+        match_arm_payloads_for_expr(
             self.source,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_match()?,
             match_expr,
@@ -540,7 +540,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::If(if_expr) = &value.kind else {
             return None;
         };
-        if_payload_for_fallback(
+        if_payload_for_expr(
             self.source,
             self.syntax.as_ref()?.as_return()?.expression()?.as_if()?,
             if_expr,
@@ -556,7 +556,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(
+        match_arm_payloads_for_expr(
             self.source,
             self.syntax
                 .as_ref()?
@@ -625,7 +625,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::If(if_expr) = &expr.kind else {
             return None;
         };
-        if_payload_for_fallback(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
+        if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -657,7 +657,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
+        match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
@@ -668,7 +668,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(match_scrutinee_payload_for_fallback(
+        Some(match_scrutinee_payload_for_expr(
             self.source,
             self.syntax.as_ref()?.as_match()?,
             match_expr,
@@ -794,7 +794,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::If(if_expr) = &value.kind else {
             return None;
         };
-        if_payload_for_fallback(
+        if_payload_for_expr(
             self.source,
             self.assignment_value_expression()?.as_if()?,
             if_expr,
@@ -813,7 +813,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &value.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(
+        match_arm_payloads_for_expr(
             self.source,
             self.assignment_value_expression()?.as_match()?,
             match_expr,
@@ -885,7 +885,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::If(if_expr) = &expr.kind else {
             return None;
         };
-        if_payload_for_fallback(
+        if_payload_for_expr(
             self.source,
             self.expression()
                 .and_then(|expression| expression.as_if())
@@ -903,7 +903,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Match(match_expr) = &expr.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(
+        match_arm_payloads_for_expr(
             self.source,
             self.expression()
                 .and_then(|expression| expression.as_match())
@@ -922,7 +922,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(match_scrutinee_payload_for_fallback(
+        Some(match_scrutinee_payload_for_expr(
             self.source,
             self.expression()
                 .and_then(|expression| expression.as_match())

@@ -8,8 +8,8 @@ use vela_syntax::ast::{
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
-    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_fallback,
-    match_arm_payloads_for_fallback, match_scrutinee_payload_for_fallback,
+    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_expr,
+    match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -53,7 +53,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::If(if_expr) = &self.fallback.kind else {
             return None;
         };
-        if_payload_for_fallback(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
+        if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
     pub(in crate::compiler) fn match_arm_payloads(
@@ -62,7 +62,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
         };
-        match_arm_payloads_for_fallback(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
+        match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(in crate::compiler) fn match_scrutinee_payload(
@@ -72,7 +72,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(match_scrutinee_payload_for_fallback(
+        Some(match_scrutinee_payload_for_expr(
             self.source,
             self.syntax.as_ref()?.as_match()?,
             match_expr,

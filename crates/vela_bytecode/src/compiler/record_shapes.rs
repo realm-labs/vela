@@ -1043,11 +1043,11 @@ impl super::Compiler<'_, '_> {
                     .field_value_shape(&field_name)
                     .cloned()
             }
-            _ => self.value_shape_for_expr_legacy(expr),
+            _ => self.value_shape_for_expr_without_payload(expr),
         }
     }
 
-    fn value_shape_for_expr_legacy(&self, expr: &Expr) -> Option<ValueShape> {
+    fn value_shape_for_expr_without_payload(&self, expr: &Expr) -> Option<ValueShape> {
         expression_value_shape(
             expr,
             &|span| {
@@ -1090,7 +1090,7 @@ impl super::Compiler<'_, '_> {
     fn value_shape_for_path_expr(
         &self,
         span: Span,
-        fallback_path: &[String],
+        path_segments: &[String],
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
         if let Some(payload) = payload {
@@ -1108,7 +1108,7 @@ impl super::Compiler<'_, '_> {
         }
 
         let local_shape = self.value_shapes.local_at_span(self.bindings, span);
-        let [root] = fallback_path else {
+        let [root] = path_segments else {
             return local_shape;
         };
         local_shape
