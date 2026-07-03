@@ -827,7 +827,8 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            fallback,
+            fallback_guard: fallback.guard.as_ref(),
+            fallback_body: &fallback.body,
             _ast: std::marker::PhantomData,
         }
     }
@@ -840,7 +841,8 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: Some(syntax),
-            fallback,
+            fallback_guard: fallback.guard.as_ref(),
+            fallback_body: &fallback.body,
             _ast: std::marker::PhantomData,
         }
     }
@@ -850,7 +852,8 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         Self {
             source: None,
             syntax: None,
-            fallback,
+            fallback_guard: fallback.guard.as_ref(),
+            fallback_body: &fallback.body,
             _ast: std::marker::PhantomData,
         }
     }
@@ -883,7 +886,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 
     pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
-        let fallback = self.fallback.guard.as_ref()?;
+        let fallback = self.fallback_guard?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.guard(),
@@ -920,7 +923,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-            &self.fallback.body,
+            self.fallback_body,
         )
     }
 
