@@ -105,97 +105,78 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
     fallback: &'ast vela_syntax::ast::Expr,
+    #[cfg(test)]
     fallback_kind: CompilerExpressionFallbackKind<'ast>,
+    #[cfg(not(test))]
+    fallback_kind: CompilerExpressionFallbackKind,
 }
 
 #[derive(Clone, Copy)]
+#[cfg(test)]
 pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Literal,
     Path,
     SelfValue,
-    #[cfg(test)]
     Block(&'ast Block),
-    #[cfg(not(test))]
-    Block,
-    #[cfg(test)]
     If(&'ast IfExpr),
-    #[cfg(not(test))]
-    If,
-    #[cfg(test)]
     Match(&'ast MatchExpr),
-    #[cfg(not(test))]
-    Match,
-    #[cfg(test)]
     Assign {
         target: &'ast vela_syntax::ast::Expr,
         value: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Assign,
-    #[cfg(test)]
     Unary {
         expr: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Unary,
-    #[cfg(test)]
     Try(&'ast vela_syntax::ast::Expr),
-    #[cfg(not(test))]
-    Try,
-    #[cfg(test)]
     Binary {
         op: BinaryOp,
         left: &'ast vela_syntax::ast::Expr,
         right: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Binary,
-    #[cfg(test)]
     Call {
         callee: &'ast vela_syntax::ast::Expr,
         args: &'ast [Argument],
     },
-    #[cfg(not(test))]
-    Call,
-    #[cfg(test)]
     Field {
         base: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Field,
-    #[cfg(test)]
     Index {
         base: &'ast vela_syntax::ast::Expr,
         index: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Index,
-    #[cfg(test)]
     Lambda {
         body: &'ast vela_syntax::ast::Expr,
     },
-    #[cfg(not(test))]
-    Lambda,
-    #[cfg(test)]
     Array(&'ast [vela_syntax::ast::Expr]),
-    #[cfg(not(test))]
-    Array,
-    #[cfg(test)]
     Map(&'ast [MapEntry]),
-    #[cfg(not(test))]
-    Map,
-    #[cfg(test)]
     Record {
         fields: &'ast [RecordField],
     },
-    #[cfg(not(test))]
-    Record,
-    #[cfg(test)]
     InterpolatedString(&'ast [InterpolatedStringPart]),
-    #[cfg(not(test))]
+    Other,
+}
+
+#[derive(Clone, Copy)]
+#[cfg(not(test))]
+pub(in crate::compiler) enum CompilerExpressionFallbackKind {
+    Literal,
+    Path,
+    SelfValue,
+    Block,
+    If,
+    Match,
+    Assign,
+    Unary,
+    Try,
+    Binary,
+    Call,
+    Field,
+    Index,
+    Lambda,
+    Array,
+    Map,
+    Record,
     InterpolatedString,
-    #[cfg(not(test))]
-    _Ast(PhantomData<&'ast ()>),
     Other,
 }
 
