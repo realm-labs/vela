@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use vela_common::{Diagnostic, SourceId};
 
 use crate::ast::{AstNode, SyntaxSourceFile};
+use crate::cst_parser;
 use crate::lexer::lex;
-use crate::parser::cst;
 use crate::syntax_validation::validate_source;
 use crate::{SyntaxNode, SyntaxTreeBuilder};
 
@@ -18,7 +18,7 @@ pub fn parse_source_with_id(source: SourceId, text: &str) -> Parse<SyntaxSourceF
     let lexed = lex(source, text);
     let mut builder = SyntaxTreeBuilder::default();
     let mut diagnostics = lexed.diagnostics.clone();
-    diagnostics.extend(cst::build_source_tree(&lexed, &mut builder));
+    diagnostics.extend(cst_parser::build_source_tree(&lexed, &mut builder));
 
     let parse = builder.finish_with_diagnostics(diagnostics);
     let mut diagnostics = parse.diagnostics().to_vec();

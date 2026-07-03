@@ -3,6 +3,7 @@
 pub mod ast;
 #[cfg(feature = "legacy-body-parser")]
 mod attribute;
+mod cst_parser;
 pub mod formatting;
 pub mod lexer;
 pub mod parse;

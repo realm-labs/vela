@@ -88,7 +88,6 @@ impl Parser {
     }
 }
 
-pub(crate) mod cst;
 #[cfg(feature = "legacy-body-parser")]
 mod expressions;
 #[cfg(feature = "legacy-body-parser")]

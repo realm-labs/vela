@@ -4,9 +4,9 @@ use crate::lexer::Lexed;
 use crate::token::LosslessToken;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
 
-#[path = "cst_expr.rs"]
+#[path = "parser/cst_expr.rs"]
 mod cst_expr;
-#[path = "cst_items.rs"]
+#[path = "parser/cst_items.rs"]
 mod cst_items;
 
 pub(crate) fn build_source_tree(lexed: &Lexed, builder: &mut SyntaxTreeBuilder) -> Vec<Diagnostic> {
