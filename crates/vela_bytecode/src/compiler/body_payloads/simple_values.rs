@@ -1,15 +1,24 @@
 use vela_syntax::SyntaxKind;
-use vela_syntax::ast::{Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind};
+use vela_syntax::ast::{
+    IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement, SyntaxStatementKind, UnaryOp,
+};
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
 
 pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
     match statement.statement_kind() {
         SyntaxStatementKind::Let => statement.as_let().is_none_or(|let_statement| {
-            let_statement.name_text().is_none()
-                || let_statement
-                    .initializer()
-                    .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
+            if let_statement.name_text().is_none() {
+                return true;
+            }
+            let Some(initializer) = let_statement.initializer() else {
+                return false;
+            };
+            if syntax_expression_is_simple_value(&initializer) {
+                return false;
+            }
+            let_statement.type_hint().is_some()
+                || !syntax_expression_is_simple_negated_number(&initializer)
         }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
@@ -70,6 +79,42 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     expression
         .as_block()
         .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
+}
+
+fn syntax_expression_is_simple_negated_number(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_negated_number(&inner);
+    }
+    let Some(unary) = expression.as_unary() else {
+        return false;
+    };
+    if unary.operator() != Some(UnaryOp::Negate) {
+        return false;
+    }
+    let Some(operand) = unary.expression() else {
+        return false;
+    };
+    syntax_expression_is_negatable_number(&operand)
+}
+
+fn syntax_expression_is_negatable_number(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_negatable_number(&inner);
+    }
+    let Some(literal) = expression
+        .as_literal()
+        .and_then(|literal| literal.literal())
+    else {
+        return false;
+    };
+    match literal {
+        Literal::Integer(value) => !matches!(
+            value.suffix,
+            Some(IntegerSuffix::U8 | IntegerSuffix::U16 | IntegerSuffix::U32 | IntegerSuffix::U64)
+        ),
+        Literal::Float(_) => true,
+        _ => false,
+    }
 }
 
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {

@@ -514,6 +514,16 @@ impl<'ast> CompilerStatementPayload<'ast> {
         (!path.is_empty()).then_some((path, span))
     }
 
+    pub(in crate::compiler) fn let_initializer_syntax_expression_and_span(
+        &self,
+    ) -> Option<(SourceId, SyntaxExpression, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        Some((source, expression, span))
+    }
+
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Let {

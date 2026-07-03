@@ -86,6 +86,16 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_literal(name, span, literal, literal_span);
                 }
+                if stmt.optional_fallback().is_none()
+                    && let Some((source, expression, _)) =
+                        stmt.let_initializer_syntax_expression_and_span()
+                    && let Some(name) = stmt.let_name_text()
+                    && let Some(span) = stmt.syntax_statement_span()
+                    && let Some(compiled) =
+                        self.compile_let_syntax_constant(source, name, span, &expression)?
+                {
+                    return Ok(compiled);
+                }
                 if let Some((path, path_span)) = stmt.let_initializer_syntax_path_and_span() {
                     let Some(name) = stmt.let_name_text() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

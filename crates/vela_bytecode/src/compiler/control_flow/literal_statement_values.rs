@@ -1,15 +1,17 @@
-use vela_common::Span;
-use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::Literal;
+use std::collections::BTreeMap;
 
-use crate::UnlinkedInstructionKind;
-use crate::compiler::const_eval::compile_literal_constant_for_type;
+use vela_common::{PrimitiveTag, SourceId, Span};
+use vela_hir::binding::LocalBindingKind;
+use vela_syntax::ast::{Literal, SyntaxExpression};
+
+use crate::compiler::const_eval::{compile_literal_constant_for_type, evaluate_syntax_const_expr};
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
     RuntimeTypeFact, TypeContractContext, check_expected_type, static_literal_type,
     type_hint_value_type,
 };
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
+use crate::{Constant, UnlinkedInstructionKind};
 
 use super::static_type_runtime_fact;
 
@@ -95,6 +97,51 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    pub(in crate::compiler::control_flow) fn compile_let_syntax_constant(
+        &mut self,
+        source: SourceId,
+        name: String,
+        span: Span,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
+        else {
+            return Ok(None);
+        };
+        let local_binding = self
+            .bindings
+            .local_named_at(&name, LocalBindingKind::Let, span)
+            .and_then(|local| self.bindings.local(local).map(|binding| (local, binding)));
+        let register = self.emit_constant(constant.clone())?;
+        let value_type = runtime_type_for_constant(&constant);
+        self.locals.insert(name.clone(), register);
+        if let Some((local, _)) = local_binding {
+            self.hir_locals.insert(local, register);
+            self.record_frame_slot(
+                name.clone(),
+                register,
+                frame_slot_kind(LocalBindingKind::Let),
+                Some(local),
+                Some(span),
+            );
+            self.script_types.set_local_fact(local, name.clone(), None);
+            self.value_types.set_local(local, name.clone(), value_type);
+            self.value_shapes.set_local(local, name, None);
+        } else {
+            self.record_frame_slot(
+                name.clone(),
+                register,
+                frame_slot_kind(LocalBindingKind::Let),
+                None,
+                Some(span),
+            );
+            self.script_types.set_name_fact(name.clone(), None);
+            self.value_types.set_name(name.clone(), value_type);
+            self.value_shapes.set_name(name, None);
+        }
+        Ok(Some(false))
+    }
+
     pub(in crate::compiler::control_flow) fn compile_return_literal(
         &mut self,
         literal: Literal,
@@ -129,5 +176,17 @@ impl Compiler<'_, '_> {
         };
         self.emit(UnlinkedInstructionKind::Return { src: register });
         Ok(true)
+    }
+}
+
+fn runtime_type_for_constant(value: &Constant) -> Option<RuntimeTypeFact> {
+    match value {
+        Constant::Null => Some(RuntimeTypeFact::primitive(PrimitiveTag::Null)),
+        Constant::Bool(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bool)),
+        Constant::Char(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Char)),
+        Constant::Scalar(value) => Some(RuntimeTypeFact::primitive(value.primitive_tag())),
+        Constant::String(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::String)),
+        Constant::Bytes(_) => Some(RuntimeTypeFact::primitive(PrimitiveTag::Bytes)),
+        Constant::Array(_) | Constant::Map(_) => None,
     }
 }
