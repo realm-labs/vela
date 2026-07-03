@@ -155,6 +155,12 @@ impl Compiler<'_, '_> {
         {
             return Ok(done);
         }
+        if stmt.optional_fallback().is_none()
+            && let Some(body) = stmt.expression_statement_block_body_payload()
+        {
+            let dst = self.alloc_register()?;
+            return self.compile_block_payload_value_to(&body, dst);
+        }
         let expression_payload = stmt.expression_payload();
         if expression_payload.is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

@@ -86,6 +86,55 @@ fn main(input) {
 }
 
 #[test]
+fn syntax_only_block_expression_statements_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    ({
+        let copied = input;
+        copied;
+    });
+    ({
+        return input;
+    });
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let body_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+    assert!(
+        body_fallback.is_err(),
+        "block expression statement body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 2);
+    assert!(statements.iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    }));
+
+    let nested_bodies = statements
+        .iter()
+        .map(|statement| {
+            statement
+                .expression_statement_block_body_payload()
+                .expect("block expression statement body payload")
+        })
+        .collect::<Vec<_>>();
+    for body in &nested_bodies {
+        let nested_fallback =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
+        assert!(
+            nested_fallback.is_err(),
+            "nested block expression body should not require owned fallback"
+        );
+    }
+
+    compile_program_source(source, text)
+        .expect("CST-only block expression statements should compile");
+}
+
+#[test]
 fn syntax_only_unterminated_expression_tails_drop_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

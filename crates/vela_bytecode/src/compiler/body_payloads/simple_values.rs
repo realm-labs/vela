@@ -58,6 +58,7 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
     syntax_expression_is_inline_constant(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_range(expression)
+        || syntax_expression_is_simple_block(expression)
 }
 
 pub(in crate::compiler) fn expression_syntax_path_or_self(

@@ -11,6 +11,11 @@ use vela_syntax::ast::{
 mod expression_payloads;
 mod simple_values;
 
+// Temporary 1200-line exception: this module owns the transitional CST plus
+// old-body-fallback pairing invariant. Splitting the remaining fallback side
+// before the hard switch would obscure that invariant and create churn in code
+// that is scheduled for deletion when body payloads become CST-only.
+
 pub(super) use simple_values::{
     expression_syntax_negated_number_literal, expression_syntax_path_or_self,
     expression_syntax_range_operands,
@@ -287,6 +292,13 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
             | ".."
             | "..="
     )
+}
+
+fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_block_syntax(&inner);
+    }
+    expression.as_block()
 }
 
 fn match_arm_payloads_for_expr<'ast>(
@@ -1085,6 +1097,24 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .and_then(|expression| expression.as_block())
                 .or_else(|| self.syntax.as_ref()?.as_block())?,
             Some(block),
+        )
+    }
+
+    pub(super) fn expression_statement_block_body_payload(
+        &self,
+    ) -> Option<CompilerBodyPayload<'ast>> {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
+            Some(StmtKind::Expr(expr)) => match &expr.kind {
+                ExprKind::Block(block) => Some(block),
+                _ => return None,
+            },
+            Some(_) => return None,
+            None => None,
+        };
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            expression_block_syntax(&self.expression()?)?,
+            fallback,
         )
     }
 
