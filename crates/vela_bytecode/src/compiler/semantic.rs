@@ -13,7 +13,9 @@ use vela_syntax::parse::parse_source_with_id as parse_syntax_source;
 
 use crate::Constant;
 
+#[cfg(test)]
 use super::body_blocks::BodyBlockLookup;
+use super::body_payloads::CompilerBodyFallback;
 use super::const_eval::evaluate_syntax_const_expr;
 use super::error::{CompileError, CompileErrorKind, CompileResult};
 use super::field_slots::ScriptFieldSlots;
@@ -29,6 +31,7 @@ pub(super) struct SemanticSource {
     source: SourceId,
     text: String,
     syntax: SyntaxParse<SyntaxSourceFile>,
+    #[cfg(test)]
     body_blocks: BodyBlockLookup,
     graph: ModuleGraph,
     module: ModuleId,
@@ -36,6 +39,7 @@ pub(super) struct SemanticSource {
 
 pub(super) struct SemanticModules {
     syntax: BTreeMap<ModuleId, SyntaxParse<SyntaxSourceFile>>,
+    #[cfg(test)]
     body_blocks: BTreeMap<ModuleId, BodyBlockLookup>,
     source_ids: BTreeMap<ModuleId, SourceId>,
     graph: ModuleGraph,
@@ -65,6 +69,7 @@ impl SemanticSource {
         let payload = function_body_payload(
             self.source,
             &self.syntax,
+            #[cfg(test)]
             &self.body_blocks,
             metadata.name.as_str(),
             signature,
@@ -195,6 +200,7 @@ impl SemanticSource {
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
         script_impls::source_methods(
+            #[cfg(test)]
             &self.body_blocks,
             &self.syntax,
             self.source,
@@ -236,12 +242,14 @@ impl SemanticModules {
         let metadata = self.graph.declaration(declaration)?;
         let signature = self.graph.function_signature(declaration)?;
         let bindings = self.graph.bindings(declaration)?;
+        #[cfg(test)]
         let body_blocks = self.body_blocks.get(&metadata.module)?;
         let syntax = self.syntax.get(&metadata.module)?;
         let source = self.source_ids.get(&metadata.module).copied()?;
         let payload = function_body_payload(
             source,
             syntax,
+            #[cfg(test)]
             body_blocks,
             metadata.name.as_str(),
             signature,
@@ -420,6 +428,7 @@ impl SemanticModules {
 
     pub(super) fn script_impl_methods(&self) -> Vec<script_impls::ScriptImplMethod<'_>> {
         script_impls::module_methods(
+            #[cfg(test)]
             &self.body_blocks,
             &self.syntax,
             &self.source_ids,
@@ -492,7 +501,7 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<(HirD
 fn function_body_payload<'ast>(
     source: SourceId,
     syntax: &SyntaxParse<SyntaxSourceFile>,
-    body_blocks: &'ast BodyBlockLookup,
+    #[cfg(test)] body_blocks: &'ast BodyBlockLookup,
     name: &str,
     signature: &FunctionSignature,
 ) -> Option<FunctionBodyPayload<'ast>> {
@@ -501,7 +510,10 @@ fn function_body_payload<'ast>(
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
     let syntax_body = syntax_function.body()?;
-    let body_block = body_blocks.body_for_syntax(source, &syntax_body);
+    #[cfg(test)]
+    let body_block = body_fallback(source, &syntax_body, body_blocks);
+    #[cfg(not(test))]
+    let body_block = body_fallback(source, &syntax_body);
     let body = super::body_payloads::CompilerBodyPayload::syntax_with_optional_body(
         source,
         syntax_body,
@@ -524,6 +536,24 @@ fn function_param_defaults(
     param_default_values(&syntax_defaults)
 }
 
+#[cfg(test)]
+fn body_fallback<'ast>(
+    source: SourceId,
+    syntax_body: &vela_syntax::ast::SyntaxBlock,
+    body_blocks: &'ast BodyBlockLookup,
+) -> Option<CompilerBodyFallback<'ast>> {
+    body_blocks.body_for_syntax(source, syntax_body)
+}
+
+#[cfg(not(test))]
+fn body_fallback<'ast>(
+    source: SourceId,
+    syntax_body: &vela_syntax::ast::SyntaxBlock,
+) -> Option<CompilerBodyFallback<'ast>> {
+    let _ = (source, syntax_body);
+    None
+}
+
 pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResult<SemanticSource> {
     let syntax = parse_syntax_source(source, text);
     if !syntax.diagnostics().is_empty() {
@@ -531,6 +561,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             syntax.diagnostics().to_vec(),
         )));
     }
+    #[cfg(test)]
     let body_blocks = BodyBlockLookup::from_syntax(source, text, &syntax);
     let mut graph = ModuleGraph::new();
     let module = graph.add_source(ModuleSource::new(
@@ -544,6 +575,7 @@ pub(super) fn parse_semantic_source(source: SourceId, text: &str) -> CompileResu
             source,
             text: text.to_owned(),
             syntax,
+            #[cfg(test)]
             body_blocks,
             graph,
             module,
@@ -571,6 +603,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     }
 
     let mut syntax = BTreeMap::new();
+    #[cfg(test)]
     let mut body_blocks = BTreeMap::new();
     let mut source_ids = BTreeMap::new();
     let mut graph = ModuleGraph::new();
@@ -578,8 +611,10 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
 
     for (source, syntax_file) in syntax_sources {
         let module = graph.add_source(source.clone());
+        #[cfg(test)]
         let body_lookup = BodyBlockLookup::from_syntax(source.id, &source.text, &syntax_file);
         syntax.insert(module, syntax_file);
+        #[cfg(test)]
         body_blocks.insert(module, body_lookup);
         source_ids.insert(module, source.id);
         modules.push(module);
@@ -589,6 +624,7 @@ pub(super) fn parse_semantic_modules(sources: &[ModuleSource]) -> CompileResult<
     if graph.diagnostics().is_empty() {
         Ok(SemanticModules {
             syntax,
+            #[cfg(test)]
             body_blocks,
             source_ids,
             graph,
