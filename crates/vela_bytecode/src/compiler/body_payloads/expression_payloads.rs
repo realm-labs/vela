@@ -38,12 +38,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = match self.fallback_kind {
-            CompilerExpressionFallbackKind::Block(block) => {
-                Some(CompilerBodyFallback::block(block))
-            }
-            _ => return None,
+        let fallback = if matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block) {
+            let ExprKind::Block(block) = &self.fallback.kind else {
+                return None;
+            };
+            Some(CompilerBodyFallback::block(block))
+        } else {
+            return None;
         };
+        #[cfg(not(test))]
+        if !matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block) {
+            return None;
+        }
         let body = self.syntax.as_ref()?.as_block()?;
         #[cfg(test)]
         return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
@@ -65,7 +71,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_if_expr(&self) -> Option<&'ast IfExpr> {
-        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::If = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &self.fallback.kind else {
             return None;
         };
         Some(if_expr)
@@ -107,7 +116,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
-        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
+        let CompilerExpressionFallbackKind::Match = self.fallback_kind else {
+            return None;
+        };
+        let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
         };
         Some(match_expr)

@@ -98,7 +98,7 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     syntax: Option<SyntaxExpression>,
     fallback_summary: CompilerExpressionFallbackSummary,
     fallback: &'ast vela_syntax::ast::Expr,
-    fallback_kind: CompilerExpressionFallbackKind<'ast>,
+    fallback_kind: CompilerExpressionFallbackKind,
 }
 
 #[derive(Clone, Copy)]
@@ -126,16 +126,13 @@ impl CompilerExpressionFallbackSummary {
 
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
-pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
+pub(in crate::compiler) enum CompilerExpressionFallbackKind {
     Literal,
     Path,
     SelfValue,
-    #[cfg(test)]
-    Block(&'ast Block),
-    #[cfg(not(test))]
     Block,
-    If(&'ast IfExpr),
-    Match(&'ast MatchExpr),
+    If,
+    Match,
     Assign,
     Unary,
     Try,
@@ -1565,19 +1562,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
             ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
             ExprKind::SelfValue => CompilerExpressionFallbackKind::SelfValue,
-            ExprKind::Block(block) => {
-                #[cfg(test)]
-                {
-                    CompilerExpressionFallbackKind::Block(block)
-                }
-                #[cfg(not(test))]
-                {
-                    let _ = block;
-                    CompilerExpressionFallbackKind::Block
-                }
-            }
-            ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
-            ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
+            ExprKind::Block(_) => CompilerExpressionFallbackKind::Block,
+            ExprKind::If(_) => CompilerExpressionFallbackKind::If,
+            ExprKind::Match(_) => CompilerExpressionFallbackKind::Match,
             ExprKind::Assign { .. } => CompilerExpressionFallbackKind::Assign,
             ExprKind::Unary { .. } => CompilerExpressionFallbackKind::Unary,
             ExprKind::Try(_) => CompilerExpressionFallbackKind::Try,
