@@ -207,16 +207,39 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn unary_operand_payload(
         &self,
+        expr: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Unary { expr } = self.fallback_kind else {
+        if !self.fallback_is_unary() {
             return None;
-        };
+        }
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_unary()?.expression(),
             expr,
         ))
+    }
+
+    fn fallback_is_unary(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Unary { .. }
+            )
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Unary)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_unary_operand(&self) -> Option<&'ast Expr> {
+        let CompilerExpressionFallbackKind::Unary { expr } = self.fallback_kind else {
+            return None;
+        };
+        Some(expr)
     }
 
     pub(in crate::compiler) fn syntax_unary_operator(&self) -> Option<vela_syntax::ast::UnaryOp> {

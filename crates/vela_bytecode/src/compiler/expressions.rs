@@ -341,7 +341,7 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST unary expression payload kind");
                 };
                 let op = payload.syntax_unary_operator().unwrap_or(*op);
-                let operand_payload = payload.unary_operand_payload();
+                let operand_payload = payload.unary_operand_payload(operand);
                 reject_missing_expression_payload(
                     operand_payload.as_ref(),
                     "missing CST unary operand",

@@ -92,7 +92,10 @@ fn main(value) {
                 );
 
             assert_eq!(missing_source.syntax_unary_operator(), None);
-            assert!(missing_source.unary_operand_payload().is_none());
+            let operand = missing_source
+                .fallback_unary_operand()
+                .expect("fallback unary operand");
+            assert!(missing_source.unary_operand_payload(operand).is_none());
         },
     );
 }

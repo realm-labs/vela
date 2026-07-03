@@ -696,7 +696,10 @@ fn binary_block_operand_payloads(
     if let Some(operand) = payload.paren_inner_payload() {
         return binary_block_operand_payloads(operand);
     }
-    if let Some(operand) = payload.unary_operand_payload() {
+    if let Some(operand) = payload
+        .fallback_unary_operand()
+        .and_then(|expr| payload.unary_operand_payload(expr))
+    {
         return binary_block_operand_payloads(operand);
     }
     let Some((left, right)) = payload.binary_operand_payloads() else {
@@ -717,7 +720,10 @@ fn block_operand_payloads(
     if let Some(operand) = payload.paren_inner_payload() {
         return block_operand_payloads(operand);
     }
-    if let Some(operand) = payload.unary_operand_payload() {
+    if let Some(operand) = payload
+        .fallback_unary_operand()
+        .and_then(|expr| payload.unary_operand_payload(expr))
+    {
         return block_operand_payloads(operand);
     }
     Vec::new()

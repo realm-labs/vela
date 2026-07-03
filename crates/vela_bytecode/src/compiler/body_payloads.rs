@@ -111,9 +111,12 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
         target: &'ast vela_syntax::ast::Expr,
         value: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(test)]
     Unary {
         expr: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(not(test))]
+    Unary,
     #[cfg(test)]
     Try(&'ast vela_syntax::ast::Expr),
     #[cfg(not(test))]
@@ -1493,7 +1496,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Assign { target, value, .. } => {
                 CompilerExpressionFallbackKind::Assign { target, value }
             }
+            #[cfg(test)]
             ExprKind::Unary { expr, .. } => CompilerExpressionFallbackKind::Unary { expr },
+            #[cfg(not(test))]
+            ExprKind::Unary { .. } => CompilerExpressionFallbackKind::Unary,
             #[cfg(test)]
             ExprKind::Try(expr) => CompilerExpressionFallbackKind::Try(expr),
             #[cfg(not(test))]
@@ -1560,10 +1566,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ),
             SyntaxExpressionKind::Paren => true,
             SyntaxExpressionKind::Unary => {
-                matches!(
-                    self.fallback_kind,
-                    CompilerExpressionFallbackKind::Unary { .. }
-                )
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Unary { .. }
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Unary)
+                }
             }
             SyntaxExpressionKind::Binary => {
                 matches!(
