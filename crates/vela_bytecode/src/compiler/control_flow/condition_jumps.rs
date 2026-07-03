@@ -40,7 +40,7 @@ impl Compiler<'_, '_> {
         condition: &Expr,
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<usize>> {
-        let ExprKind::Binary { left, right, .. } = &condition.kind else {
+        let ExprKind::Binary { left, .. } = &condition.kind else {
             return Ok(None);
         };
         let operand_payloads =
@@ -57,7 +57,7 @@ impl Compiler<'_, '_> {
         {
             return Ok(None);
         }
-        let Some(imm) = self.i64_literal_value(right, right_payload)? else {
+        let Some(imm) = self.i64_literal_value(right_payload)? else {
             return Ok(None);
         };
         let lhs = self.compile_expr_with_payload(left, left_payload)?;
@@ -73,16 +73,12 @@ impl Compiler<'_, '_> {
 
     fn i64_literal_value(
         &self,
-        expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<Option<i64>> {
-        let literal = match payload {
-            Some(payload) => payload.syntax_literal(),
-            None => match &expr.kind {
-                ExprKind::Literal(literal) => Some(literal.clone()),
-                _ => None,
-            },
+        let Some(payload) = payload else {
+            return Ok(None);
         };
+        let literal = payload.syntax_literal();
         let Some(Literal::Integer(value)) = literal else {
             return Ok(None);
         };
