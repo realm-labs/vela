@@ -57,6 +57,10 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
+        #[cfg(test)]
+        let syntax_only = stmt.optional_fallback().is_none();
+        #[cfg(not(test))]
+        let syntax_only = true;
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
@@ -104,7 +108,7 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_negated_literal(name, span, literal, literal_span);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -114,7 +118,7 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -137,7 +141,7 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_path(name, span, path, path_span);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block)
                 {
                     let Some(name) = stmt.let_name_text() else {
@@ -157,7 +161,7 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_block_value(name, span, &body);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -183,7 +187,7 @@ impl Compiler<'_, '_> {
                 if let Some((literal, span)) = stmt.return_value_syntax_negated_literal_and_span() {
                     return self.compile_return_negated_literal(literal, span);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, span)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -191,7 +195,7 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, span)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -202,7 +206,7 @@ impl Compiler<'_, '_> {
                 if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
                     return self.compile_return_path(path, span);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block)
                 {
                     let Some(span) = stmt.syntax_statement_span() else {
@@ -217,7 +221,7 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_return_block_value(span, &body);
                 }
-                if stmt.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression, _)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -227,7 +231,7 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
-            SyntaxStatementKind::If if stmt.optional_fallback().is_none() => {
+            SyntaxStatementKind::If if syntax_only => {
                 if let Some((source, if_expr)) = stmt.syntax_if()
                     && let Some(compiled) = self.compile_syntax_if_statement(source, &if_expr)?
                 {

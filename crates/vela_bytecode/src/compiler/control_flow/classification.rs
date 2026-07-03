@@ -2,7 +2,9 @@ use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Stmt, StmtKind, SyntaxStatementKind};
 
-use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerStatementPayload};
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+#[cfg(test)]
+use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::ScriptTypeFact;
@@ -36,6 +38,7 @@ pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
     }
 }
 
+#[cfg(test)]
 pub(super) fn aligned_statement<'ast>(
     payload: &CompilerStatementPayload<'ast>,
 ) -> Option<&'ast Stmt> {

@@ -141,41 +141,37 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        if stmt.optional_fallback().is_none()
+        #[cfg(test)]
+        let syntax_only = stmt.optional_fallback().is_none();
+        #[cfg(not(test))]
+        let syntax_only = true;
+        if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if stmt.optional_fallback().is_none()
+        if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_path_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if stmt.optional_fallback().is_none()
+        if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_range_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if stmt.optional_fallback().is_none()
-            && let Some(body) = stmt.expression_statement_block_body_payload()
-        {
+        if syntax_only && let Some(body) = stmt.expression_statement_block_body_payload() {
             let dst = self.alloc_register()?;
             return self.compile_block_payload_value_to(&body, dst);
         }
-        if stmt.optional_fallback().is_none()
+        if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
         {
             return Ok(done);
-        }
-        let expression_payload = stmt.expression_payload();
-        if expression_payload.is_none() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST expression statement payload",
-            )));
         }
         #[cfg(not(test))]
         {
@@ -186,6 +182,12 @@ impl Compiler<'_, '_> {
         }
         #[cfg(test)]
         {
+            let expression_payload = stmt.expression_payload();
+            if expression_payload.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST expression statement payload",
+                )));
+            }
             let fallback = aligned_statement(stmt).ok_or_else(|| {
                 CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "mismatched CST expression statement payload",

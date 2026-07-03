@@ -1,9 +1,15 @@
-use vela_syntax::ast::{Block, Expr, ExprKind, StmtKind, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::StmtKind;
+#[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
+use vela_syntax::ast::{Block, Expr, ExprKind};
 
-use crate::compiler::body_payloads::{
-    CompilerBlockValue, CompilerBodyPayload, CompilerStatementPayload,
-};
+#[cfg(test)]
+use crate::compiler::body_payloads::CompilerStatementPayload;
+use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
+#[cfg(test)]
 use crate::compiler::control_flow::classification::aligned_statement;
+#[cfg(test)]
 use crate::compiler::expression_payload_kinds::expression_payload_matches_expr;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
@@ -26,9 +32,7 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
-                let value = self.compile_expr(expr)?;
-                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
-                Ok(false)
+                self.compile_block_tail_expr_without_payload_to(expr, dst)
             }
             BlockValue::Statements(statements) => {
                 let returned = self.compile_statements(statements)?;
@@ -62,7 +66,11 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
-                if tail.optional_fallback().is_none()
+                #[cfg(test)]
+                let syntax_only = tail.optional_fallback().is_none();
+                #[cfg(not(test))]
+                let syntax_only = true;
+                if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
                     && let Some(done) =
@@ -70,7 +78,7 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
-                if tail.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
                     && let Some(done) =
@@ -78,7 +86,7 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
-                if tail.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
                     && let Some(done) =
@@ -86,18 +94,16 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
-                if tail.optional_fallback().is_none()
-                    && let Some(body) = tail.expression_statement_block_body_payload()
-                {
+                if syntax_only && let Some(body) = tail.expression_statement_block_body_payload() {
                     return self.compile_block_payload_value_to(&body, dst);
                 }
-                if tail.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, if_expr)) = tail.syntax_if()
                     && let Some(done) = self.compile_syntax_if_value_to(source, &if_expr, dst)?
                 {
                     return Ok(done);
                 }
-                if tail.optional_fallback().is_none()
+                if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
                     && let Some(done) =
@@ -105,6 +111,15 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
+                #[cfg(not(test))]
+                {
+                    Err(crate::compiler::CompileError::new(
+                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                            "unsupported CST block tail expression payload",
+                        ),
+                    ))
+                }
+                #[cfg(test)]
                 let fallback = aligned_statement(tail).ok_or_else(|| {
                     crate::compiler::CompileError::new(
                         crate::compiler::CompileErrorKind::UnsupportedSyntax(
@@ -112,6 +127,7 @@ impl Compiler<'_, '_> {
                         ),
                     )
                 })?;
+                #[cfg(test)]
                 let StmtKind::Expr(expr) = &fallback.kind else {
                     return Err(crate::compiler::CompileError::new(
                         crate::compiler::CompileErrorKind::UnsupportedSyntax(
@@ -119,6 +135,7 @@ impl Compiler<'_, '_> {
                         ),
                     ));
                 };
+                #[cfg(test)]
                 self.compile_block_tail_expr_to(expr, Some(tail), dst)
             }
             CompilerBlockValue::Statements(statements) => {
@@ -131,6 +148,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_block_tail_expr_to(
         &mut self,
         expr: &Expr,
@@ -164,6 +182,7 @@ impl Compiler<'_, '_> {
         self.compile_block_tail_expr_without_payload_to(expr, dst)
     }
 
+    #[cfg(test)]
     fn compile_cst_block_tail_expr_to(
         &mut self,
         expr: &Expr,
@@ -242,6 +261,7 @@ impl Compiler<'_, '_> {
     }
 }
 
+#[cfg(test)]
 fn missing_cst_block_tail_payload(message: &'static str) -> crate::compiler::CompileError {
     crate::compiler::CompileError::new(crate::compiler::CompileErrorKind::UnsupportedSyntax(
         message,

@@ -361,6 +361,9 @@ mismatches.
 Expression-statement payload fallback dispatch is now also test-only, removing
 production use of legacy owned statements for aligned expression-statement
 payload recovery while CST coverage continues to expand.
+The statement payload fallback accessor is now test-only; production CST
+statement, expression-statement, and block-tail dispatch no longer query
+whether a legacy owned statement is attached before taking syntax-owned paths.
 Top-level assignment expression statements now expose rowan RHS expression
 kinds and block/if/match body payloads, letting assignment values reuse the
 CST-aware nested statement dispatcher while preserving checked legacy
