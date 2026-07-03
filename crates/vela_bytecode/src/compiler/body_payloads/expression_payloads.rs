@@ -42,10 +42,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         } else {
             return None;
         };
-        #[cfg(not(test))]
-        if !matches!(self.fallback.kind, ExprKind::Block(_)) {
-            return None;
-        }
         let body = self.syntax.as_ref()?.as_block()?;
         #[cfg(test)]
         return CompilerBodyPayload::nested_syntax_optional(self.source?, body, fallback);
