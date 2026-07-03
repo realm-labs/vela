@@ -558,6 +558,47 @@ fn main(left, right) {
 }
 
 #[test]
+fn syntax_only_numeric_left_path_values_compile_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn numeric_left_let(input) {
+    let value = 1 + input;
+}
+
+fn numeric_left_return(input) {
+    return 10 > input;
+}
+
+fn numeric_left_block_tail(input) {
+    return {
+        0 == input
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    for function in [
+        "numeric_left_let",
+        "numeric_left_return",
+        "numeric_left_block_tail",
+    ] {
+        let (payload, _, _) = semantic.function(function).expect("function payload");
+        assert!(
+            !payload.body.has_fallback_statements(),
+            "{function} should not retain an owned body fallback"
+        );
+        assert!(
+            payload.body.statement_payloads().iter().all(|statement| {
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback()))
+                    .is_err()
+            }),
+            "{function} should not retain owned statement fallbacks"
+        );
+    }
+
+    compile_program_source(source, text).expect("CST numeric-left path values should compile");
+}
+
+#[test]
 fn syntax_only_numeric_division_return_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

@@ -272,6 +272,9 @@ fn path_value_expression_statements(input, other) {
     input > 0;
     input == 0;
     input + 1;
+    10 > input;
+    0 == input;
+    1 + input;
 }
 
 fn parenthesized_simple_values() {

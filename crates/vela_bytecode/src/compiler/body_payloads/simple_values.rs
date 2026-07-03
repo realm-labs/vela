@@ -262,7 +262,7 @@ fn syntax_expression_is_simple_path_numeric_arithmetic(expression: &SyntaxExpres
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
+    syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
 }
 
 fn syntax_expression_is_simple_path_numeric_comparison(expression: &SyntaxExpression) -> bool {
@@ -284,7 +284,7 @@ fn syntax_expression_is_simple_path_numeric_comparison(expression: &SyntaxExpres
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
+    syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
 }
 
 fn syntax_expression_is_simple_path_numeric_equality(expression: &SyntaxExpression) -> bool {
@@ -306,7 +306,16 @@ fn syntax_expression_is_simple_path_numeric_equality(expression: &SyntaxExpressi
     let Some(rhs) = binary.rhs() else {
         return false;
     };
-    syntax_expression_is_simple_path(&lhs) && expression_syntax_numeric_literal_kind(&rhs).is_some()
+    syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
+}
+
+fn syntax_expression_has_path_and_numeric_literal_operands(
+    lhs: &SyntaxExpression,
+    rhs: &SyntaxExpression,
+) -> bool {
+    (syntax_expression_is_simple_path(lhs) && expression_syntax_numeric_literal_kind(rhs).is_some())
+        || (expression_syntax_numeric_literal_kind(lhs).is_some()
+            && syntax_expression_is_simple_path(rhs))
 }
 
 fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> bool {

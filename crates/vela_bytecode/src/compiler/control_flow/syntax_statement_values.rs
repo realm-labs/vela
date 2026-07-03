@@ -221,27 +221,30 @@ impl Compiler<'_, '_> {
         lhs_expression: &SyntaxExpression,
         rhs_expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
-        let Some(path) = expression_syntax_path_or_self(lhs_expression) else {
-            return Ok(None);
-        };
-        let Some(literal) =
-            expression_syntax_literal(rhs_expression).and_then(InlineNumericLiteral::from_literal)
+        let Some((path_expression, literal_expression, side)) =
+            syntax_path_numeric_literal_operands(lhs_expression, rhs_expression)
         else {
             return Ok(None);
         };
+        let Some(path) = expression_syntax_path_or_self(path_expression) else {
+            return Ok(None);
+        };
+        let literal = expression_syntax_literal(literal_expression)
+            .and_then(InlineNumericLiteral::from_literal)
+            .expect("numeric literal operand helper checks literal availability");
         let span = syntax_expression_span(source, expression);
-        let path_span = syntax_expression_span(source, lhs_expression);
+        let path_span = syntax_expression_span(source, path_expression);
         let script_type = self
             .script_fact_for_path(path_span, &path)
             .map(|fact| fact.type_name);
         self.reject_static_script_path_binary_operands(op, span, script_type.as_deref(), None)?;
         let value_type = self.value_type_for_path(path_span, &path);
-        if value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        if side == BinaryLiteralSide::Right
+            && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
             && let Some(imm) = i64_immediate_value(&literal, span)?
             && i64_immediate_op_supported(op, imm)
         {
-            let value =
-                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
+            let value = self.compile_path_expr(path_span, &path)?;
             let dst = self.alloc_register()?;
             let instruction = i64_immediate_instruction(op, dst, value, imm)
                 .expect("support was checked before compiling the syntax value expression");
@@ -251,11 +254,18 @@ impl Compiler<'_, '_> {
         if let Some(RuntimeTypeFact::Primitive(tag)) = value_type.as_ref()
             && literal.matches_primitive_tag(*tag)
         {
-            let value =
-                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
-            let rhs = self.emit_constant(inline_numeric_literal_as(&literal, *tag, span)?)?;
+            let value = self.compile_path_expr(path_span, &path)?;
+            let literal_register =
+                self.emit_constant(inline_numeric_literal_as(&literal, *tag, span)?)?;
             let dst = self.alloc_register()?;
-            let Some(instruction) = non_logical_binary_instruction(op, dst, value, rhs) else {
+            let Some(instruction) = (match side {
+                BinaryLiteralSide::Left => {
+                    non_logical_binary_instruction(op, dst, literal_register, value)
+                }
+                BinaryLiteralSide::Right => {
+                    non_logical_binary_instruction(op, dst, value, literal_register)
+                }
+            }) else {
                 return Ok(None);
             };
             self.emit_spanned(instruction, span);
@@ -264,8 +274,7 @@ impl Compiler<'_, '_> {
         if value_type.is_none()
             && let Some(literal_op) = binary_literal_op(op)
         {
-            let value =
-                self.compile_path_expr(syntax_expression_span(source, lhs_expression), &path)?;
+            let value = self.compile_path_expr(path_span, &path)?;
             let dst = self.alloc_register()?;
             match literal {
                 InlineNumericLiteral::Integer(text) => {
@@ -275,7 +284,7 @@ impl Compiler<'_, '_> {
                             op: literal_op,
                             value,
                             literal: text,
-                            side: BinaryLiteralSide::Right,
+                            side,
                         },
                         span,
                     );
@@ -287,7 +296,7 @@ impl Compiler<'_, '_> {
                             op: literal_op,
                             value,
                             literal: text,
-                            side: BinaryLiteralSide::Right,
+                            side,
                         },
                         span,
                     );
@@ -297,6 +306,31 @@ impl Compiler<'_, '_> {
         }
         Ok(None)
     }
+}
+
+fn syntax_path_numeric_literal_operands<'expression>(
+    lhs: &'expression SyntaxExpression,
+    rhs: &'expression SyntaxExpression,
+) -> Option<(
+    &'expression SyntaxExpression,
+    &'expression SyntaxExpression,
+    BinaryLiteralSide,
+)> {
+    if expression_syntax_path_or_self(lhs).is_some()
+        && expression_syntax_literal(rhs)
+            .and_then(InlineNumericLiteral::from_literal)
+            .is_some()
+    {
+        return Some((lhs, rhs, BinaryLiteralSide::Right));
+    }
+    if expression_syntax_literal(lhs)
+        .and_then(InlineNumericLiteral::from_literal)
+        .is_some()
+        && expression_syntax_path_or_self(rhs).is_some()
+    {
+        return Some((rhs, lhs, BinaryLiteralSide::Left));
+    }
+    None
 }
 
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
