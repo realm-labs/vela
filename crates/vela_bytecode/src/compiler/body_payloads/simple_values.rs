@@ -58,7 +58,7 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
     syntax_expression_is_inline_constant(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_range(expression)
-        || syntax_expression_is_simple_block(expression)
+        || syntax_expression_is_statement_block(expression)
 }
 
 pub(in crate::compiler) fn expression_syntax_path_or_self(
@@ -203,6 +203,15 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     expression
         .as_block()
         .is_some_and(|block| !CompilerBodyPayload::requires_strict_body_block_lookup(&block))
+}
+
+fn syntax_expression_is_statement_block(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_statement_block(&inner);
+    }
+    expression
+        .as_block()
+        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
 }
 
 fn syntax_expression_is_simple_negated_number(expression: &SyntaxExpression) -> bool {

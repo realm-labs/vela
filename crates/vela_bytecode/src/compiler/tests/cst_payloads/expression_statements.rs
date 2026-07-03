@@ -180,7 +180,7 @@ fn syntax_only_block_expression_tails_drop_owned_body_lookup() {
 fn main(input) {
     ({
         let copied = input;
-        copied;
+        copied
     })
 }
 "#;

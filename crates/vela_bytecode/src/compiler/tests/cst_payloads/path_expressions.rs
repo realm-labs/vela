@@ -342,7 +342,8 @@ fn script_type_facts_with_overlapping_child_cst_payload_do_not_use_child_shape()
 fn main(cst) {
     let value = {
         let selected = cst;
-        selected
+        selected;
+        selected + 1
     };
 }
 "#,
@@ -354,17 +355,14 @@ fn main(cst) {
             assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
             let block_statements = block_body.statement_payloads();
-            let child_path = block_statements[1]
-                .expression_payload()
-                .expect("block tail path");
-            assert_eq!(child_path.kind(), Some(SyntaxExpressionKind::Path));
+            let (_, child_path) = block_statements[1]
+                .expression_statement_syntax_expression()
+                .expect("block child path syntax");
+            assert_eq!(child_path.expression_kind(), SyntaxExpressionKind::Path);
 
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
-                child_path
-                    .syntax_expression()
-                    .expect("child path CST expression")
-                    .clone(),
+                child_path,
                 block.fallback(),
             );
 
@@ -549,7 +547,8 @@ fn static_value_type_facts_with_overlapping_child_cst_payload_do_not_use_child_f
 fn main(cst) {
     let value = {
         let selected = cst;
-        selected
+        selected;
+        selected + 1
     };
 }
 "#,
@@ -565,17 +564,14 @@ fn main(cst) {
             assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
             let block_statements = block_body.statement_payloads();
-            let child_path = block_statements[1]
-                .expression_payload()
-                .expect("block tail path");
-            assert_eq!(child_path.kind(), Some(SyntaxExpressionKind::Path));
+            let (_, child_path) = block_statements[1]
+                .expression_statement_syntax_expression()
+                .expect("block child path syntax");
+            assert_eq!(child_path.expression_kind(), SyntaxExpressionKind::Path);
 
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
-                child_path
-                    .syntax_expression()
-                    .expect("child path CST expression")
-                    .clone(),
+                child_path,
                 block.fallback(),
             );
 

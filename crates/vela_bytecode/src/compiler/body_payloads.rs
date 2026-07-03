@@ -138,26 +138,26 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
-        Self::requires_body_block_lookup_with_single_tail(body, true)
+        Self::requires_body_block_lookup_with_tail(body, true)
     }
 
     pub(super) fn requires_strict_body_block_lookup(body: &SyntaxBlock) -> bool {
-        Self::requires_body_block_lookup_with_single_tail(body, false)
+        Self::requires_body_block_lookup_with_tail(body, false)
     }
 
-    fn requires_body_block_lookup_with_single_tail(
+    fn requires_body_block_lookup_with_tail(
         body: &SyntaxBlock,
-        allow_single_unterminated_tail: bool,
+        allow_unterminated_tail: bool,
     ) -> bool {
         let syntax_statements = syntax_body_statements(body);
-        let allow_unterminated_cst_expression =
-            allow_single_unterminated_tail && syntax_statements.len() == 1;
-        syntax_statements.iter().any(|statement| {
-            syntax_statement_requires_body_block_lookup(
-                statement,
-                allow_unterminated_cst_expression,
-            )
-        })
+        let tail_index = syntax_statements.len().saturating_sub(1);
+        syntax_statements
+            .iter()
+            .enumerate()
+            .any(|(index, statement)| {
+                let is_unterminated_tail = allow_unterminated_tail && index == tail_index;
+                syntax_statement_requires_body_block_lookup(statement, is_unterminated_tail)
+            })
     }
 
     pub(super) fn syntax_with_optional_body(
@@ -190,9 +190,11 @@ impl<'ast> CompilerBodyPayload<'ast> {
                     fallback: syntax_statements
                         .get(index)
                         .is_none_or(|statement| {
+                            let is_unterminated_tail =
+                                index == syntax_statements.len().saturating_sub(1);
                             syntax_statement_requires_body_block_lookup(
                                 statement,
-                                syntax_statements.len() == 1,
+                                is_unterminated_tail,
                             )
                         })
                         .then_some(fallback),
@@ -217,9 +219,15 @@ impl<'ast> CompilerBodyPayload<'ast> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
         match self.fallback {
             Some(fallback) => syntax_statements.len() != fallback.statements.len(),
-            None => syntax_statements
-                .iter()
-                .any(|statement| syntax_statement_requires_body_block_lookup(statement, true)),
+            None => {
+                let tail_index = syntax_statements.len().saturating_sub(1);
+                syntax_statements
+                    .iter()
+                    .enumerate()
+                    .any(|(index, statement)| {
+                        syntax_statement_requires_body_block_lookup(statement, index == tail_index)
+                    })
+            }
         }
     }
 
