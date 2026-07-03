@@ -97,6 +97,25 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_empty_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let cst_value;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only empty let body should compile");
+
+    assert_empty_let_without_i64_fallback(&compiler);
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"

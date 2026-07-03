@@ -274,14 +274,37 @@ impl Compiler<'_, '_> {
         else {
             return self.compile_statement(stmt);
         };
+        self.compile_let_binding(name.clone(), stmt.span, value.as_ref(), syntax_payloads)
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_let_without_initializer(
+        &mut self,
+        name: String,
+        span: Span,
+    ) -> CompileResult<bool> {
+        self.compile_let_binding(
+            name,
+            span,
+            None,
+            ValueSyntaxPayloads::new(None, None, None, None, None, true),
+        )
+    }
+
+    fn compile_let_binding(
+        &mut self,
+        name: String,
+        span: Span,
+        value: Option<&Expr>,
+        syntax_payloads: ValueSyntaxPayloads<'_, '_>,
+    ) -> CompileResult<bool> {
         let value = if syntax_payloads.syntax_value_missing {
             None
         } else {
-            value.as_ref()
+            value
         };
         let local_binding = self
             .bindings
-            .local_named_at(name, LocalBindingKind::Let, stmt.span)
+            .local_named_at(&name, LocalBindingKind::Let, span)
             .and_then(|local| {
                 self.bindings
                     .local(local)
@@ -321,8 +344,12 @@ impl Compiler<'_, '_> {
         if let (Some(value), Some(hint), None) = (value, hir_type_hint, hinted_value_type.as_ref())
             && is_map_or_set_type_hint(hint)
             && !script_hint_proven
-            && let Some(guard) =
-                super::type_guard_for_hint(hint, crate::GuardLocation::Local, name, &self.facts)
+            && let Some(guard) = super::type_guard_for_hint(
+                hint,
+                crate::GuardLocation::Local,
+                name.clone(),
+                &self.facts,
+            )
         {
             self.emit_spanned(
                 UnlinkedInstructionKind::GuardType {
@@ -340,10 +367,11 @@ impl Compiler<'_, '_> {
                 register,
                 frame_slot_kind(LocalBindingKind::Let),
                 Some(local),
-                Some(stmt.span),
+                Some(span),
             );
-            self.script_types.set_local_fact(local, name, script_fact);
-            self.value_types.set_local(local, name, value_type);
+            self.script_types
+                .set_local_fact(local, name.clone(), script_fact);
+            self.value_types.set_local(local, name.clone(), value_type);
             self.value_shapes.set_local(local, name, value_shape);
         } else {
             self.record_frame_slot(
@@ -351,10 +379,10 @@ impl Compiler<'_, '_> {
                 register,
                 frame_slot_kind(LocalBindingKind::Let),
                 None,
-                Some(stmt.span),
+                Some(span),
             );
-            self.script_types.set_name_fact(name, script_fact);
-            self.value_types.set_name(name, value_type);
+            self.script_types.set_name_fact(name.clone(), script_fact);
+            self.value_types.set_name(name.clone(), value_type);
             self.value_shapes.set_name(name, value_shape);
         }
         Ok(returned)

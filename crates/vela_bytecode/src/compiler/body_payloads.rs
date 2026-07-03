@@ -247,6 +247,9 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 
 fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
     match statement.statement_kind() {
+        SyntaxStatementKind::Let => statement.as_let().is_none_or(|let_statement| {
+            let_statement.name_text().is_none() || let_statement.initializer().is_some()
+        }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
         SyntaxStatementKind::Return => statement
             .as_return()
@@ -467,6 +470,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .as_ref()
                 .and_then(SyntaxStatement::as_let)
                 .is_some_and(|statement| statement.initializer().is_none())
+    }
+
+    pub(super) fn let_name_text(&self) -> Option<String> {
+        self.source?;
+        self.syntax.as_ref()?.as_let()?.name_text()
     }
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {

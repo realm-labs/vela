@@ -77,6 +77,10 @@ fn bare_return() {
     return;
 }
 
+fn empty_let() {
+    let value;
+}
+
 fn valued_return() {
     return 1;
 }
@@ -87,10 +91,12 @@ fn valued_return() {
         let bodies = parsed.tree().functions().collect::<Vec<_>>();
         let empty_body = bodies[0].body().expect("empty body");
         let bare_return_body = bodies[1].body().expect("bare return body");
-        let valued_return_body = bodies[2].body().expect("valued return body");
+        let empty_let_body = bodies[2].body().expect("empty let body");
+        let valued_return_body = bodies[3].body().expect("valued return body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
+        assert!(lookup.body_for_syntax(source, &empty_let_body).is_none());
         assert!(
             lookup
                 .body_for_syntax(source, &valued_return_body)

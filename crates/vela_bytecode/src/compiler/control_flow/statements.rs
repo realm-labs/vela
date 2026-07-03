@@ -57,6 +57,19 @@ impl Compiler<'_, '_> {
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
+            SyntaxStatementKind::Let if stmt.let_initializer_missing_in_syntax() => {
+                let Some(name) = stmt.let_name_text() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST let binding name",
+                    )));
+                };
+                let Some(span) = stmt.syntax_statement_span() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST statement payload",
+                    )));
+                };
+                return self.compile_let_without_initializer(name, span);
+            }
             SyntaxStatementKind::Return if stmt.return_value_missing_in_syntax() => {
                 let Some(span) = stmt.syntax_statement_span() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
