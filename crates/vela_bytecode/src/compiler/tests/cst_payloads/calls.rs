@@ -934,7 +934,10 @@ fn callback_method() {
         .iter()
         .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
         .map(|argument| argument.value_expression_payload())
-        .filter_map(|lambda| lambda.lambda_body_payload())
+        .filter_map(|lambda| {
+            let body = lambda.fallback_lambda_body()?;
+            lambda.lambda_body_payload(body)
+        })
         .filter_map(|body| body.call_callee_payload())
         .filter_map(|callee| callee.syntax_field_name())
         .collect::<Vec<_>>();
@@ -1121,7 +1124,10 @@ fn collect_chained_call_callee_names(
     for argument in payload.call_argument_payloads().unwrap_or_default() {
         let value = argument.value_expression_payload();
         collect_chained_call_callee_names(value.clone(), names);
-        if let Some(lambda_body) = value.lambda_body_payload() {
+        let lambda_body = value
+            .fallback_lambda_body()
+            .and_then(|body| value.lambda_body_payload(body));
+        if let Some(lambda_body) = lambda_body {
             collect_chained_call_callee_names(lambda_body, names);
         }
     }

@@ -142,9 +142,12 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
         base: &'ast vela_syntax::ast::Expr,
         index: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(test)]
     Lambda {
         body: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(not(test))]
+    Lambda,
     Array(&'ast [vela_syntax::ast::Expr]),
     Map(&'ast [MapEntry]),
     Record {
@@ -1524,7 +1527,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Index { base, index } => {
                 CompilerExpressionFallbackKind::Index { base, index }
             }
+            #[cfg(test)]
             ExprKind::Lambda { body, .. } => CompilerExpressionFallbackKind::Lambda { body },
+            #[cfg(not(test))]
+            ExprKind::Lambda { .. } => CompilerExpressionFallbackKind::Lambda,
             ExprKind::Array(items) => CompilerExpressionFallbackKind::Array(items),
             ExprKind::Map(entries) => CompilerExpressionFallbackKind::Map(entries),
             ExprKind::Record { fields, .. } => CompilerExpressionFallbackKind::Record { fields },
@@ -1646,10 +1652,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 )
             }
             SyntaxExpressionKind::Lambda => {
-                matches!(
-                    self.fallback_kind,
-                    CompilerExpressionFallbackKind::Lambda { .. }
-                )
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Lambda { .. }
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Lambda)
+                }
             }
             SyntaxExpressionKind::Block => {
                 #[cfg(test)]

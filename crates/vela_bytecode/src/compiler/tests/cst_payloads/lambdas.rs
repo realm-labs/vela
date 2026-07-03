@@ -139,8 +139,11 @@ fn main() {
         cst_lambda,
         legacy_lambda.fallback(),
     );
+    let body = missing
+        .fallback_lambda_body()
+        .expect("fallback lambda body");
     assert!(
-        missing.lambda_body_payload().is_none(),
+        missing.lambda_body_payload(body).is_none(),
         "recovered CST lambda should not expose a body payload"
     );
 
@@ -169,8 +172,11 @@ fn main() {
             let lambda_payload = payload.body.statement_payloads()[0]
                 .let_initializer_expression_payload()
                 .expect("CST lambda initializer");
+            let body = lambda_payload
+                .fallback_lambda_body()
+                .expect("fallback lambda body");
             let body_payload = lambda_payload
-                .lambda_body_payload()
+                .lambda_body_payload(body)
                 .expect("CST lambda body payload");
             let missing_block_body =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
@@ -216,7 +222,10 @@ fn main() {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let body = payload.body.statement_payloads()[0]
         .let_initializer_expression_payload()
-        .and_then(|payload| payload.lambda_body_payload())
+        .and_then(|payload| {
+            let body = payload.fallback_lambda_body()?;
+            payload.lambda_body_payload(body)
+        })
         .and_then(|payload| payload.block_body_payload())
         .expect("lambda block body payload");
 
@@ -295,7 +304,10 @@ fn assert_cst_call_argument_lambda_body_payloads(
 fn lambda_body_block_payloads(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
-    let Some(body_payload) = payload.lambda_body_payload() else {
+    let Some(body) = payload.fallback_lambda_body() else {
+        return Vec::new();
+    };
+    let Some(body_payload) = payload.lambda_body_payload(body) else {
         return Vec::new();
     };
     if let Some(block_payload) = body_payload.block_body_payload() {

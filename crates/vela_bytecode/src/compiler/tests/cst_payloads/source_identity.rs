@@ -206,7 +206,10 @@ fn main(value) {
                     lambda.fallback(),
                 );
 
-            assert!(missing_source.lambda_body_payload().is_none());
+            let body = missing_source
+                .fallback_lambda_body()
+                .expect("fallback lambda body");
+            assert!(missing_source.lambda_body_payload(body).is_none());
         },
     );
 }

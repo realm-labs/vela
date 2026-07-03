@@ -671,7 +671,7 @@ impl Compiler<'_, '_> {
         };
         let body_payload = arg_payload
             .as_ref()
-            .and_then(CompilerExpressionPayload::lambda_body_payload);
+            .and_then(|payload| payload.lambda_body_payload(body));
         reject_missing_callback_lambda_body(arg_payload.as_ref(), body_payload.as_ref())?;
         self.compile_lambda_with_callback_shapes(
             &arg.value,
