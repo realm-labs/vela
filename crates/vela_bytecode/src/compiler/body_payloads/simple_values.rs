@@ -39,6 +39,11 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                 return false;
             }
             if let_statement.type_hint().is_none()
+                && syntax_expression_is_simple_path_comparison(&initializer)
+            {
+                return false;
+            }
+            if let_statement.type_hint().is_none()
                 && syntax_expression_is_simple_path_numeric_comparison(&initializer)
             {
                 return false;
@@ -60,6 +65,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                 !syntax_expression_is_simple_value(&expression)
                     && !syntax_expression_is_simple_path_unary(&expression)
                     && !syntax_expression_is_simple_path_binary(&expression)
+                    && !syntax_expression_is_simple_path_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_comparison(&expression)
                     && !syntax_expression_is_simple_path_numeric_equality(&expression)
                     && !syntax_expression_is_simple_path_numeric_add_sub_mul(&expression)
@@ -305,6 +311,28 @@ fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> boo
                 | BinaryOp::IdentityEqual
                 | BinaryOp::IdentityNotEqual
         )
+    ) {
+        return false;
+    }
+    let Some(lhs) = binary.lhs() else {
+        return false;
+    };
+    let Some(rhs) = binary.rhs() else {
+        return false;
+    };
+    syntax_expression_is_simple_path(&lhs) && syntax_expression_is_simple_path(&rhs)
+}
+
+fn syntax_expression_is_simple_path_comparison(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_expression_is_simple_path_comparison(&inner);
+    }
+    let Some(binary) = expression.as_binary() else {
+        return false;
+    };
+    if !matches!(
+        binary.operator(),
+        Some(BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual)
     ) {
         return false;
     }

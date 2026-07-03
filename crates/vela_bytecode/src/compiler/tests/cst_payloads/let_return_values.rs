@@ -465,6 +465,37 @@ fn main(left: Reward) {
 }
 
 #[test]
+fn syntax_only_path_comparison_preserves_record_trait_diagnostic() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct Score { amount: i64 }
+
+fn main(left: Score, right: Score) {
+    return left < right;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only path comparison should not retain an owned statement fallback"
+    );
+    let error = compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect_err("known record comparison without PartialOrd should be a compile error");
+
+    assert_eq!(
+        semantic_diagnostic_codes(error),
+        ["compiler::missing_comparison_trait"]
+    );
+}
+
+#[test]
 fn syntax_only_numeric_arithmetic_return_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
