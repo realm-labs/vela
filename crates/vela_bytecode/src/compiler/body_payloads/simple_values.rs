@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use vela_common::SourceId;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxExpression, SyntaxStatement,
-    SyntaxStatementKind, UnaryOp,
+    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxStatement, SyntaxStatementKind, UnaryOp,
 };
 
 use crate::compiler::body_payloads::CompilerBodyPayload;
@@ -20,7 +20,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
                 return false;
             };
             if let_statement.type_hint().is_some()
-                && syntax_expression_is_simple_constant_array(&initializer)
+                && syntax_expression_is_constant_container(&initializer)
             {
                 return false;
             }
@@ -105,25 +105,17 @@ fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> boo
         .is_some_and(|array| array.expressions().next().is_none())
 }
 
-fn syntax_expression_is_simple_constant_array(expression: &SyntaxExpression) -> bool {
+fn syntax_expression_is_constant_container(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_simple_constant_array(&inner);
+        return syntax_expression_is_constant_container(&inner);
     }
-    let Some(array) = expression.as_array() else {
-        return false;
-    };
-    let mut saw_element = false;
-    for element in array.expressions() {
-        saw_element = true;
-        if evaluate_syntax_const_expr(SourceId::new(0), &element, &BTreeMap::new())
-            .ok()
-            .flatten()
-            .is_none()
-        {
-            return false;
-        }
-    }
-    saw_element
+    matches!(
+        expression.expression_kind(),
+        SyntaxExpressionKind::Array | SyntaxExpressionKind::Map
+    ) && evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+        .ok()
+        .flatten()
+        .is_some()
 }
 
 pub(in crate::compiler) fn expression_syntax_range_operands(

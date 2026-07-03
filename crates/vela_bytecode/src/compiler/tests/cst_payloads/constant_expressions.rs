@@ -277,6 +277,45 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_constant_map_let_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values: Map<String, i64> = { one: 1, "two": 2 + 3 };
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only constant map let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only constant map let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Map(vec![
+            (
+                "one".to_owned(),
+                Constant::Scalar(vela_common::ScalarValue::I64(1))
+            ),
+            (
+                "two".to_owned(),
+                Constant::Scalar(vela_common::ScalarValue::I64(5))
+            ),
+        ])),
+        "CST constant map let should emit the evaluated map constant"
+    );
+}
+
+#[test]
 fn syntax_only_nested_empty_array_block_let_drops_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
