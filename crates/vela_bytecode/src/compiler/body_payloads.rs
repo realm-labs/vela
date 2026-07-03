@@ -104,9 +104,28 @@ pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {
 pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
+    fallback_summary: CompilerExpressionFallbackSummary,
     fallback: &'ast vela_syntax::ast::Expr,
     #[cfg(test)]
     fallback_kind: CompilerExpressionFallbackKind<'ast>,
+}
+
+#[derive(Clone, Copy)]
+struct CompilerExpressionFallbackSummary {
+    kind: Option<SyntaxExpressionKind>,
+}
+
+impl CompilerExpressionFallbackSummary {
+    fn matches_syntax_kind(self, syntax_kind: SyntaxExpressionKind) -> bool {
+        if syntax_kind == SyntaxExpressionKind::Paren {
+            return true;
+        }
+        self.kind == Some(syntax_kind)
+    }
+
+    fn is_error(self) -> bool {
+        self.kind.is_none()
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -152,54 +171,6 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     },
     InterpolatedString(&'ast [InterpolatedStringPart]),
     Other,
-}
-
-#[cfg(test)]
-impl CompilerExpressionFallbackKind<'_> {
-    fn matches_syntax_kind(self, syntax_kind: SyntaxExpressionKind) -> bool {
-        match syntax_kind {
-            SyntaxExpressionKind::Literal => matches!(
-                self,
-                CompilerExpressionFallbackKind::Literal
-                    | CompilerExpressionFallbackKind::InterpolatedString(_)
-            ),
-            SyntaxExpressionKind::Path => matches!(
-                self,
-                CompilerExpressionFallbackKind::Path | CompilerExpressionFallbackKind::SelfValue
-            ),
-            SyntaxExpressionKind::Paren => true,
-            SyntaxExpressionKind::Unary => {
-                matches!(self, CompilerExpressionFallbackKind::Unary { .. })
-            }
-            SyntaxExpressionKind::Binary => {
-                matches!(self, CompilerExpressionFallbackKind::Binary { .. })
-            }
-            SyntaxExpressionKind::Assign => {
-                matches!(self, CompilerExpressionFallbackKind::Assign { .. })
-            }
-            SyntaxExpressionKind::Field => {
-                matches!(self, CompilerExpressionFallbackKind::Field { .. })
-            }
-            SyntaxExpressionKind::Call => {
-                matches!(self, CompilerExpressionFallbackKind::Call { .. })
-            }
-            SyntaxExpressionKind::Index => {
-                matches!(self, CompilerExpressionFallbackKind::Index { .. })
-            }
-            SyntaxExpressionKind::Try => matches!(self, CompilerExpressionFallbackKind::Try(_)),
-            SyntaxExpressionKind::Array => matches!(self, CompilerExpressionFallbackKind::Array(_)),
-            SyntaxExpressionKind::Map => matches!(self, CompilerExpressionFallbackKind::Map(_)),
-            SyntaxExpressionKind::Record => {
-                matches!(self, CompilerExpressionFallbackKind::Record { .. })
-            }
-            SyntaxExpressionKind::Lambda => {
-                matches!(self, CompilerExpressionFallbackKind::Lambda { .. })
-            }
-            SyntaxExpressionKind::Block => matches!(self, CompilerExpressionFallbackKind::Block(_)),
-            SyntaxExpressionKind::If => matches!(self, CompilerExpressionFallbackKind::If(_)),
-            SyntaxExpressionKind::Match => matches!(self, CompilerExpressionFallbackKind::Match(_)),
-        }
-    }
 }
 
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
@@ -518,35 +489,29 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-#[cfg(not(test))]
-fn fallback_expr_matches_syntax_kind(
-    fallback: &vela_syntax::ast::Expr,
-    syntax_kind: SyntaxExpressionKind,
-) -> bool {
-    match syntax_kind {
-        SyntaxExpressionKind::Literal => matches!(
-            fallback.kind,
-            ExprKind::Literal(_) | ExprKind::InterpolatedString(_)
-        ),
-        SyntaxExpressionKind::Path => {
-            matches!(fallback.kind, ExprKind::Path(_) | ExprKind::SelfValue)
+fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressionFallbackSummary {
+    let kind = match fallback.kind {
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
+            Some(SyntaxExpressionKind::Literal)
         }
-        SyntaxExpressionKind::Paren => true,
-        SyntaxExpressionKind::Unary => matches!(fallback.kind, ExprKind::Unary { .. }),
-        SyntaxExpressionKind::Binary => matches!(fallback.kind, ExprKind::Binary { .. }),
-        SyntaxExpressionKind::Assign => matches!(fallback.kind, ExprKind::Assign { .. }),
-        SyntaxExpressionKind::Field => matches!(fallback.kind, ExprKind::Field { .. }),
-        SyntaxExpressionKind::Call => matches!(fallback.kind, ExprKind::Call { .. }),
-        SyntaxExpressionKind::Index => matches!(fallback.kind, ExprKind::Index { .. }),
-        SyntaxExpressionKind::Try => matches!(fallback.kind, ExprKind::Try(_)),
-        SyntaxExpressionKind::Array => matches!(fallback.kind, ExprKind::Array(_)),
-        SyntaxExpressionKind::Map => matches!(fallback.kind, ExprKind::Map(_)),
-        SyntaxExpressionKind::Record => matches!(fallback.kind, ExprKind::Record { .. }),
-        SyntaxExpressionKind::Lambda => matches!(fallback.kind, ExprKind::Lambda { .. }),
-        SyntaxExpressionKind::Block => matches!(fallback.kind, ExprKind::Block(_)),
-        SyntaxExpressionKind::If => matches!(fallback.kind, ExprKind::If(_)),
-        SyntaxExpressionKind::Match => matches!(fallback.kind, ExprKind::Match(_)),
-    }
+        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
+        ExprKind::Unary { .. } => Some(SyntaxExpressionKind::Unary),
+        ExprKind::Binary { .. } => Some(SyntaxExpressionKind::Binary),
+        ExprKind::Assign { .. } => Some(SyntaxExpressionKind::Assign),
+        ExprKind::Field { .. } => Some(SyntaxExpressionKind::Field),
+        ExprKind::Call { .. } => Some(SyntaxExpressionKind::Call),
+        ExprKind::Index { .. } => Some(SyntaxExpressionKind::Index),
+        ExprKind::Try(_) => Some(SyntaxExpressionKind::Try),
+        ExprKind::Array(_) => Some(SyntaxExpressionKind::Array),
+        ExprKind::Map(_) => Some(SyntaxExpressionKind::Map),
+        ExprKind::Record { .. } => Some(SyntaxExpressionKind::Record),
+        ExprKind::Lambda { .. } => Some(SyntaxExpressionKind::Lambda),
+        ExprKind::Block(_) => Some(SyntaxExpressionKind::Block),
+        ExprKind::If(_) => Some(SyntaxExpressionKind::If),
+        ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
+        ExprKind::Error => None,
+    };
+    CompilerExpressionFallbackSummary { kind }
 }
 
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
@@ -1618,6 +1583,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax: Option<SyntaxExpression>,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
+        let fallback_summary = fallback_expr_summary(fallback);
         #[cfg(test)]
         let fallback_kind = match &fallback.kind {
             ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
@@ -1655,6 +1621,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self {
             source,
             syntax,
+            fallback_summary,
             fallback,
             #[cfg(test)]
             fallback_kind,
@@ -1673,14 +1640,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
         syntax_kind: SyntaxExpressionKind,
     ) -> bool {
-        #[cfg(test)]
-        {
-            self.fallback_kind.matches_syntax_kind(syntax_kind)
-        }
-        #[cfg(not(test))]
-        {
-            fallback_expr_matches_syntax_kind(self.fallback, syntax_kind)
-        }
+        self.fallback_summary.matches_syntax_kind(syntax_kind)
     }
 
     #[cfg(test)]
@@ -1719,14 +1679,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_expr_is_error(&self) -> bool {
-        #[cfg(test)]
-        {
-            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Other)
-        }
-        #[cfg(not(test))]
-        {
-            matches!(self.fallback.kind, ExprKind::Error)
-        }
+        self.fallback_summary.is_error()
     }
 
     pub(in crate::compiler) fn fallback_expr_requires_matching_payload(&self) -> bool {
