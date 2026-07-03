@@ -239,7 +239,7 @@ pub(in crate::compiler) fn payload_expr_is_aligned(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
-    std::ptr::eq(payload.fallback(), expr) || payload_syntax_overlaps_expr(payload, expr)
+    payload.is_fallback_expr(expr) || payload_syntax_overlaps_expr(payload, expr)
 }
 
 pub(in crate::compiler) fn arithmetic_binary_operator(op: BinaryOp) -> bool {

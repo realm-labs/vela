@@ -321,6 +321,9 @@ Pattern and record-pattern-field child payloads no longer carry full legacy
 owned pattern nodes; they retain only tuple/record child fallback slices and
 explicit nested field pattern handles while pattern lowering continues
 migrating.
+The raw expression payload fallback accessor is now test-only; production
+callers must use alignment-scoped payload helpers while the remaining
+`CompilerExpressionPayload` storage is decomposed.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors only under
 test cfg instead of carrying old `Block` values through production body lookup;
 parsed blocks are retained only for legacy fixture assertions.

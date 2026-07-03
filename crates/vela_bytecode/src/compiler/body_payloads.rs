@@ -1367,6 +1367,15 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
     }
 
+    pub(super) fn alignment_fallback_expr(&self) -> &'ast vela_syntax::ast::Expr {
+        self.fallback
+    }
+
+    pub(in crate::compiler) fn is_fallback_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
+        std::ptr::eq(self.fallback, expr)
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
     }

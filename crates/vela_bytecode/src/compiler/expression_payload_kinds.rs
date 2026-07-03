@@ -41,7 +41,7 @@ pub(super) fn expression_payload_is_aligned(
 pub(super) fn aligned_payload_expr<'ast>(
     payload: &CompilerExpressionPayload<'ast>,
 ) -> Option<&'ast Expr> {
-    let fallback = payload.fallback();
+    let fallback = payload.alignment_fallback_expr();
     expression_payload_is_aligned(payload, fallback).then_some(fallback)
 }
 

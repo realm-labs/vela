@@ -49,7 +49,7 @@ struct HostCollectionMethodTarget<'ast> {
 }
 
 struct HostCollectionFieldReceiver<'ast> {
-    expr: &'ast Expr,
+    expr: Option<&'ast Expr>,
     payload: Option<CompilerExpressionPayload<'ast>>,
 }
 
@@ -706,9 +706,11 @@ impl Compiler<'_, '_> {
                 "host path remove arity",
             )));
         }
-        if let Some(base) = target.field_receiver {
+        if let Some(base) = target.field_receiver
+            && let Some(expr) = base.expr
+        {
             self.reject_terminal_host_index_access(
-                base.expr,
+                expr,
                 base.payload.as_ref(),
                 HostIndexAccessKind::Remove,
             )?;
@@ -733,11 +735,12 @@ impl Compiler<'_, '_> {
                         return None;
                     }
                     let base_payload = payload.field_base_payload()?;
+                    let base = aligned_payload_expr(&base_payload);
                     let path = self.host_field_path_from_payload(base_payload.clone())?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: base_payload.fallback(),
+                            expr: base,
                             payload: Some(base_payload),
                         }),
                     })
@@ -764,7 +767,7 @@ impl Compiler<'_, '_> {
                     .map(|path| HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: base,
+                            expr: Some(base),
                             payload: None,
                         }),
                     })
