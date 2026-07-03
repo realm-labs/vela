@@ -328,7 +328,7 @@ impl Compiler<'_, '_> {
             let [name] = path.as_slice() else {
                 return None;
             };
-            (payload.syntax_span().unwrap_or(target.span), name.clone())
+            (payload.syntax_span()?, name.clone())
         } else {
             let ExprKind::Path(path) = &target.kind else {
                 return None;
