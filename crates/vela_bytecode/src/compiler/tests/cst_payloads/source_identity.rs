@@ -256,6 +256,34 @@ fn main() {
 }
 
 #[test]
+fn source_less_statement_call_payload_does_not_expose_callee_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn make() {
+    return 1;
+}
+
+fn main() {
+    make();
+}
+"#,
+        |_, payload| {
+            let statement = &payload.body.statement_payloads()[0];
+            let missing_source =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statement
+                        .syntax_statement()
+                        .expect("call statement syntax")
+                        .clone(),
+                    statement.fallback(),
+                );
+
+            assert!(missing_source.call_callee_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"

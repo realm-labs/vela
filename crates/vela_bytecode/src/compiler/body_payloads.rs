@@ -804,6 +804,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let ExprKind::Call { callee, .. } = &expr.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.expression()?.as_call()?.callee(),
