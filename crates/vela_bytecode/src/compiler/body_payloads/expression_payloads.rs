@@ -172,6 +172,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Unary { expr, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_unary()?.expression(),
@@ -190,6 +191,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Try(expr) = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_try()?.expression(),

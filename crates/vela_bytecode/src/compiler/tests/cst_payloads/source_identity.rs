@@ -49,6 +49,56 @@ fn main(left, right) {
 }
 
 #[test]
+fn source_less_unary_payload_does_not_expose_operand_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let negated = -value;
+}
+"#,
+        |_, payload| {
+            let unary = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("unary initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    unary.syntax_expression().expect("unary syntax").clone(),
+                    unary.fallback(),
+                );
+
+            assert_eq!(missing_source.syntax_unary_operator(), None);
+            assert!(missing_source.unary_operand_payload().is_none());
+        },
+    );
+}
+
+#[test]
+fn source_less_try_payload_does_not_expose_operand_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let result = value?;
+}
+"#,
+        |_, payload| {
+            let try_expression = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("try initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    try_expression
+                        .syntax_expression()
+                        .expect("try syntax")
+                        .clone(),
+                    try_expression.fallback(),
+                );
+
+            assert!(missing_source.try_operand_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
     with_cst_payload_compiler(
         r#"
