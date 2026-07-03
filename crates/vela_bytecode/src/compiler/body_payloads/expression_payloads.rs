@@ -8,7 +8,6 @@ use vela_syntax::ast::{
 
 #[cfg(test)]
 use super::CompilerBodyFallback;
-use super::CompilerExpressionFallbackKind;
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
@@ -38,16 +37,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = if matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block) {
-            let ExprKind::Block(block) = &self.fallback.kind else {
-                return None;
-            };
+        let fallback = if let ExprKind::Block(block) = &self.fallback.kind {
             Some(CompilerBodyFallback::block(block))
         } else {
             return None;
         };
         #[cfg(not(test))]
-        if !matches!(self.fallback_kind, CompilerExpressionFallbackKind::Block) {
+        if !matches!(self.fallback.kind, ExprKind::Block(_)) {
             return None;
         }
         let body = self.syntax.as_ref()?.as_block()?;
@@ -71,9 +67,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_if_expr(&self) -> Option<&'ast IfExpr> {
-        let CompilerExpressionFallbackKind::If = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::If(if_expr) = &self.fallback.kind else {
             return None;
         };
@@ -116,9 +109,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
-        let CompilerExpressionFallbackKind::Match = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
         };
@@ -203,9 +193,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_assignment_target(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Assign = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Assign { target, .. } = &self.fallback.kind else {
             return None;
         };
@@ -213,9 +200,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_assignment_value(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Assign = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Assign { value, .. } = &self.fallback.kind else {
             return None;
         };
@@ -250,9 +234,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_unary_operand(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Unary = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Unary { expr, .. } = &self.fallback.kind else {
             return None;
         };
@@ -277,9 +258,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_try_operand(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Try = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Try(expr) = &self.fallback.kind else {
             return None;
         };
@@ -304,9 +282,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn fallback_binary_operands(
         &self,
     ) -> Option<(BinaryOp, &'ast Expr, &'ast Expr)> {
-        let CompilerExpressionFallbackKind::Binary = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Binary { op, left, right } = &self.fallback.kind else {
             return None;
         };
@@ -442,9 +417,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_call_args(&self) -> Option<&'ast [Argument]> {
-        let CompilerExpressionFallbackKind::Call = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Call { args, .. } = &self.fallback.kind else {
             return None;
         };
@@ -452,9 +424,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_call_callee(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Call = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Call { callee, .. } = &self.fallback.kind else {
             return None;
         };
@@ -484,9 +453,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_field_base(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Field = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Field { base, .. } = &self.fallback.kind else {
             return None;
         };
@@ -530,9 +496,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn fallback_index_operands(&self) -> Option<(&'ast Expr, &'ast Expr)> {
-        let CompilerExpressionFallbackKind::Index = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Index { base, index } = &self.fallback.kind else {
             return None;
         };
@@ -556,9 +519,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_lambda_body(&self) -> Option<&'ast Expr> {
-        let CompilerExpressionFallbackKind::Lambda = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Lambda { body, .. } = &self.fallback.kind else {
             return None;
         };
@@ -604,9 +564,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_array_items(&self) -> Option<&'ast [Expr]> {
-        let CompilerExpressionFallbackKind::Array = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Array(items) = &self.fallback.kind else {
             return None;
         };
@@ -650,9 +607,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_map_entries(&self) -> Option<&'ast [MapEntry]> {
-        let CompilerExpressionFallbackKind::Map = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Map(entries) = &self.fallback.kind else {
             return None;
         };
@@ -691,9 +645,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn fallback_record_fields(&self) -> Option<&'ast [RecordField]> {
-        let CompilerExpressionFallbackKind::Record = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::Record { fields, .. } = &self.fallback.kind else {
             return None;
         };
@@ -749,9 +700,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn fallback_interpolated_string_parts(
         &self,
     ) -> Option<&'ast [InterpolatedStringPart]> {
-        let CompilerExpressionFallbackKind::InterpolatedString = self.fallback_kind else {
-            return None;
-        };
         let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
             return None;
         };

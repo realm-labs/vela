@@ -98,7 +98,6 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     syntax: Option<SyntaxExpression>,
     fallback_summary: CompilerExpressionFallbackSummary,
     fallback: &'ast vela_syntax::ast::Expr,
-    fallback_kind: CompilerExpressionFallbackKind,
 }
 
 #[derive(Clone, Copy)]
@@ -122,30 +121,6 @@ impl CompilerExpressionFallbackSummary {
     fn matches_path_self_shape(self, syntax_is_self: bool) -> bool {
         self.kind == Some(SyntaxExpressionKind::Path) && self.is_self_value == syntax_is_self
     }
-}
-
-#[derive(Clone, Copy)]
-#[allow(dead_code)]
-pub(in crate::compiler) enum CompilerExpressionFallbackKind {
-    Literal,
-    Path,
-    SelfValue,
-    Block,
-    If,
-    Match,
-    Assign,
-    Unary,
-    Try,
-    Binary,
-    Call,
-    Field,
-    Index,
-    Lambda,
-    Array,
-    Map,
-    Record,
-    InterpolatedString,
-    Other,
 }
 
 pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
@@ -1558,33 +1533,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
         let fallback_summary = fallback_expr_summary(fallback);
-        let fallback_kind = match &fallback.kind {
-            ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
-            ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
-            ExprKind::SelfValue => CompilerExpressionFallbackKind::SelfValue,
-            ExprKind::Block(_) => CompilerExpressionFallbackKind::Block,
-            ExprKind::If(_) => CompilerExpressionFallbackKind::If,
-            ExprKind::Match(_) => CompilerExpressionFallbackKind::Match,
-            ExprKind::Assign { .. } => CompilerExpressionFallbackKind::Assign,
-            ExprKind::Unary { .. } => CompilerExpressionFallbackKind::Unary,
-            ExprKind::Try(_) => CompilerExpressionFallbackKind::Try,
-            ExprKind::Binary { .. } => CompilerExpressionFallbackKind::Binary,
-            ExprKind::Call { .. } => CompilerExpressionFallbackKind::Call,
-            ExprKind::Field { .. } => CompilerExpressionFallbackKind::Field,
-            ExprKind::Index { .. } => CompilerExpressionFallbackKind::Index,
-            ExprKind::Lambda { .. } => CompilerExpressionFallbackKind::Lambda,
-            ExprKind::Array(_) => CompilerExpressionFallbackKind::Array,
-            ExprKind::Map(_) => CompilerExpressionFallbackKind::Map,
-            ExprKind::Record { .. } => CompilerExpressionFallbackKind::Record,
-            ExprKind::InterpolatedString(_) => CompilerExpressionFallbackKind::InterpolatedString,
-            _ => CompilerExpressionFallbackKind::Other,
-        };
         Self {
             source,
             syntax,
             fallback_summary,
             fallback,
-            fallback_kind,
         }
     }
 
