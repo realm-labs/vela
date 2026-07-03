@@ -328,6 +328,8 @@ fn main() {
                 .map_entry_payloads()
                 .expect("map entry payloads");
 
+            assert!(!entries[0].has_key_syntax());
+            assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);
             assert!(
                 entries[0]
@@ -364,6 +366,8 @@ fn main() {
                 .record_field_payloads()
                 .expect("record field payloads");
 
+            assert!(!fields[0].has_syntax());
+            assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
             assert!(
                 fields[0]
@@ -401,6 +405,7 @@ fn main() {
                 .call_argument_payloads()
                 .expect("call argument payloads");
 
+            assert!(!args[0].has_value_syntax());
             assert_eq!(args[0].syntax_name(), None);
             assert!(
                 args[0]
@@ -535,6 +540,8 @@ fn main(value) {
                 &fallback_match.arms[0],
             );
 
+            assert!(!missing_arm.has_syntax());
+            assert!(!missing_arm.pattern_payload().has_syntax());
             assert_eq!(missing_arm.body_expression_kind(), None);
             assert_eq!(missing_arm.pattern_payload().syntax_pattern_kind(), None);
             assert!(

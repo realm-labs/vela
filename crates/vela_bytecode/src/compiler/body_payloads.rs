@@ -933,9 +933,11 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     }
 
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .is_some_and(|syntax| syntax.expression().is_some())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .is_some_and(|syntax| syntax.expression().is_some())
     }
 
     pub(in crate::compiler) fn syntax_name(&self) -> Option<String> {

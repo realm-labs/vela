@@ -595,15 +595,19 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     }
 
     pub(in crate::compiler) fn has_key_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .is_some_and(|entry| entry.key().is_some())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .is_some_and(|entry| entry.key().is_some())
     }
 
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .is_some_and(|entry| entry.value().is_some())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .is_some_and(|entry| entry.value().is_some())
     }
 
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
@@ -639,13 +643,15 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     }
 
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
-        self.syntax.is_some()
+        self.source.is_some() && self.syntax.is_some()
     }
 
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
-        self.syntax
-            .as_ref()
-            .is_some_and(|field| field.expression().is_some())
+        self.source.is_some()
+            && self
+                .syntax
+                .as_ref()
+                .is_some_and(|field| field.expression().is_some())
     }
 
     pub(in crate::compiler) fn value_expression_payload(
@@ -709,6 +715,10 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
+        self.source.is_some() && self.syntax.is_some()
+    }
+
+    pub(in crate::compiler) fn stored_syntax_exists(&self) -> bool {
         self.syntax.is_some()
     }
 
@@ -766,7 +776,7 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 
 impl<'ast> CompilerPatternPayload<'ast> {
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
-        self.syntax.is_some()
+        self.source.is_some() && self.syntax.is_some()
     }
 
     pub(in crate::compiler) fn syntax_pattern_kind(&self) -> Option<SyntaxPatternKind> {
@@ -901,7 +911,7 @@ impl<'ast> CompilerPatternPayload<'ast> {
 
 impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
-        self.syntax.is_some()
+        self.source.is_some() && self.syntax.is_some()
     }
 
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
