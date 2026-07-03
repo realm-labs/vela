@@ -154,36 +154,60 @@ fn main() {
     return null;
 }
 "#,
-        |compiler, payload| {
+        |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 0)),
+                value_types::static_literal_type(
+                    &statements[0]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::UnsuffixedIntegerLiteral
             );
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 1)),
+                value_types::static_literal_type(
+                    &statements[1]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I8
                 ))
             );
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 2)),
+                value_types::static_literal_type(
+                    &statements[2]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::UnsuffixedFloatLiteral
             );
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 3)),
+                value_types::static_literal_type(
+                    &statements[3]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::F32
                 ))
             );
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 4)),
+                value_types::static_literal_type(
+                    &statements[4]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::String
                 ))
             );
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 5)),
+                value_types::static_literal_type(
+                    &statements[5]
+                        .let_initializer_syntax_literal()
+                        .expect("literal let initializer")
+                ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::Bytes
                 ))

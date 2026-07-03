@@ -335,7 +335,7 @@ fn mismatched_statement_payloads_do_not_compile_legacy_statement() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
-    let value = 1;
+    let value = [1];
     return value;
 }
 "#;

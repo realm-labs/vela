@@ -66,10 +66,10 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("cst_outer let should compile");
             compiler
-                .compile_statement(statements[1].fallback())
+                .compile_statement_payload_for_test(&statements[1])
                 .expect("legacy_outer let should compile");
 
             let cst_lambda = statements[2]

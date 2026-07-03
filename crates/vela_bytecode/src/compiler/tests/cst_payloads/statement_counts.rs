@@ -10,7 +10,7 @@ fn cst_body() {
 }
 
 fn fallback_body() {
-    let value = 1;
+    let value = [1];
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

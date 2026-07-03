@@ -482,7 +482,7 @@ fn source_less_statement_payload_does_not_expose_cst_value_kinds() {
     with_cst_payload_compiler(
         r#"
 fn main(target) {
-    let value = 1;
+    let value = target;
     target = value;
     value;
     return value;

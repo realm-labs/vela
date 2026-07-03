@@ -70,6 +70,23 @@ impl Compiler<'_, '_> {
                 };
                 return self.compile_let_without_initializer(name, span);
             }
+            SyntaxStatementKind::Let => {
+                if let Some((literal, literal_span)) =
+                    stmt.let_initializer_syntax_literal_and_span()
+                {
+                    let Some(name) = stmt.let_name_text() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST let binding name",
+                        )));
+                    };
+                    let Some(span) = stmt.syntax_statement_span() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        )));
+                    };
+                    return self.compile_let_literal(name, span, literal, literal_span);
+                }
+            }
             SyntaxStatementKind::Return if stmt.return_value_missing_in_syntax() => {
                 let Some(span) = stmt.syntax_statement_span() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

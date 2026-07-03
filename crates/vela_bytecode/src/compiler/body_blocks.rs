@@ -103,6 +103,10 @@ fn typed_valued_return() -> i8 {
 fn valued_let() {
     let value = 1;
 }
+
+fn nonliteral_valued_let(input) {
+    let value = input;
+}
 "#;
         let parsed = parse_source_with_id(source, text);
         assert!(parsed.diagnostics().is_empty());
@@ -115,6 +119,7 @@ fn valued_let() {
         let valued_return_body = bodies[4].body().expect("valued return body");
         let typed_valued_return_body = bodies[5].body().expect("typed return body");
         let valued_let_body = bodies[6].body().expect("valued let body");
+        let nonliteral_valued_let_body = bodies[7].body().expect("nonliteral valued let body");
 
         assert!(lookup.body_for_syntax(source, &empty_body).is_none());
         assert!(lookup.body_for_syntax(source, &bare_return_body).is_none());
@@ -134,6 +139,11 @@ fn valued_let() {
                 .body_for_syntax(source, &typed_valued_return_body)
                 .is_none()
         );
-        assert!(lookup.body_for_syntax(source, &valued_let_body).is_some());
+        assert!(lookup.body_for_syntax(source, &valued_let_body).is_none());
+        assert!(
+            lookup
+                .body_for_syntax(source, &nonliteral_valued_let_body)
+                .is_some()
+        );
     }
 }

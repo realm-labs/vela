@@ -13,7 +13,7 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("local target should compile");
     let legacy_assignment = statements[1]
         .expression_payload()
@@ -53,7 +53,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("legacy local should compile");
             let cst_target = statements[1]
                 .let_initializer_expression_payload()
@@ -135,7 +135,7 @@ fn main() {
             );
             let statements = mismatched_body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("record local should compile");
             let assignment = statements[1]
                 .expression_payload()
@@ -180,7 +180,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("local target should compile");
             let cst_value = statements[1]
                 .let_initializer_expression_payload()
@@ -224,7 +224,7 @@ fn main() {
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("local target should compile");
             let assignment = statements[1]
                 .expression_payload()
@@ -404,7 +404,7 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
     with_cst_payload_compiler(text, |compiler, payload| {
         let statements = payload.body.statement_payloads();
         compiler
-            .compile_statement(statements[0].fallback())
+            .compile_statement_payload_for_test(&statements[0])
             .expect("local target should compile");
         let assignment = statements[1]
             .expression_payload()
@@ -458,10 +458,10 @@ fn main() {{
     with_cst_payload_compiler(&text, |compiler, payload| {
         let statements = payload.body.statement_payloads();
         compiler
-            .compile_statement(statements[0].fallback())
+            .compile_statement_payload_for_test(&statements[0])
             .expect("typed value local should compile");
         compiler
-            .compile_statement(statements[1].fallback())
+            .compile_statement_payload_for_test(&statements[1])
             .expect("typed record local should compile");
         let assignment = statements[2]
             .expression_payload()

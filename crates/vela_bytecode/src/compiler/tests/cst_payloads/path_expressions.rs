@@ -80,7 +80,7 @@ fn main() {
             );
             let statements = mismatched_body.statement_payloads();
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("legacy local should compile");
             let legacy_path = statements[1]
                 .let_initializer_expression_payload()
@@ -651,8 +651,8 @@ fn legacy_path(legacy) {
 
     with_cst_payload_compiler(
         r#"
-fn main() {
-    let legacy = 1;
+fn main(input) {
+    let legacy = input;
     self;
 }
 "#,

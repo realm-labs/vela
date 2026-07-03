@@ -76,7 +76,7 @@ fn main() {
     {
     }
     {
-        let legacy_value = 1;
+        let legacy_value = [1];
     }
 }
 "#;

@@ -447,7 +447,7 @@ fn main() {
     let lhs = 1;
     let rhs = 2;
     let cst_diff = lhs - rhs;
-    let legacy_bool = true;
+    let legacy_bool = !true;
 }
 "#,
         |compiler, payload| {
@@ -553,17 +553,17 @@ fn inline_binary_numeric_literals_prefer_cst_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
-    let cst_literal = 5;
-    let fallback_literal = 99;
+    5;
+    99;
 }
 "#,
         |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("CST literal payload");
             let fallback_literal = statements[1]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("fallback literal payload");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),

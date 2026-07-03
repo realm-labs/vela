@@ -213,11 +213,89 @@ fn main() -> i8 {
 }
 
 #[test]
-fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
+fn syntax_only_literal_let_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
     let value = 1;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    assert!(
+        statements[0].let_initializer_syntax_literal().is_some(),
+        "CST literal let should expose a syntax literal payload"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only literal let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(1)),
+        "CST literal let should emit the literal constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_numeric_literal_let_body_uses_contextual_type() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value: i8 = 12;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed literal let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12))),
+        "typed CST literal let should use the local type hint"
+    );
+}
+
+#[test]
+fn syntax_only_literal_let_in_mixed_body_drops_owned_statement_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = 1;
+    return value;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only literal let should not retain an owned statement fallback"
+    );
+    assert_eq!(
+        statements[1].return_value_kind(),
+        Some(SyntaxExpressionKind::Path)
+    );
+}
+
+#[test]
+fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let value = [1];
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -246,7 +324,7 @@ fn let_initializer_kind_without_expression_payload_does_not_use_legacy_expressio
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
-    let value = 1;
+    let value = [1];
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -262,13 +340,13 @@ fn main() {
     let error = compiler
         .compile_let_initializer_kind_without_expression_payload_for_test(
             value,
-            SyntaxExpressionKind::Literal,
+            SyntaxExpressionKind::Array,
         )
         .expect_err("kind-only CST let payload must not compile legacy expression");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST let initializer payload")
     ));
 }
 
@@ -397,7 +475,7 @@ fn missing_simple_let_initializer_payload_uses_cst_empty_let() {
     let text = r#"
 fn main() {
     let cst_value;
-    let legacy_value = 1;
+    let legacy_value = [1];
     return 0;
 }
 "#;
@@ -408,11 +486,11 @@ fn main() {
         .syntax_statement()
         .expect("CST let statement")
         .clone();
-    let legacy_literal_let = statements[1].fallback();
+    let legacy_array_let = statements[1].fallback();
     let mismatched = body_payloads::CompilerStatementPayload::syntax(
         source,
         cst_let_without_initializer,
-        legacy_literal_let,
+        legacy_array_let,
     );
 
     compiler

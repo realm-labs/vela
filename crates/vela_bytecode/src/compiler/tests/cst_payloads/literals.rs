@@ -37,14 +37,14 @@ fn literal_values() {
 fn missing_literal_expression_payload_does_not_use_legacy_literal() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    let value = 42;
+fn main(input) {
+    42;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_literal = payload.body.statement_payloads()[0]
-        .let_initializer_expression_payload()
+        .expression_payload()
         .expect("legacy literal payload");
     let missing_literal =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_literal.fallback());
@@ -63,14 +63,14 @@ fn main() {
 fn missing_literal_type_payload_does_not_use_legacy_type() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    let value = true;
+fn main(input) {
+    true;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let literal = payload.body.statement_payloads()[0]
-        .let_initializer_expression_payload()
+        .expression_payload()
         .expect("literal payload");
     let missing_literal =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, literal.fallback());
@@ -88,17 +88,17 @@ fn static_literal_type_facts_reject_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
-    let cst_value = true;
-    let legacy_value = 1;
+    true;
+    1;
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("CST literal payload");
             let legacy_literal = statements[1]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("legacy fallback literal");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -139,22 +139,22 @@ fn main() {
 fn literal_expression_payload_mismatch_does_not_use_legacy_literal() {
     with_cst_payload_compiler(
         r#"
-fn main() {
-    let cst_value = true;
-    let selected = cst_value;
-    let legacy_value = 1;
+fn main(input) {
+    true;
+    input;
+    1;
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("CST literal payload");
             let non_literal = statements[1]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("non-literal fallback payload");
             let legacy_literal = statements[2]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("legacy fallback literal");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -181,18 +181,18 @@ fn main() {
 fn literal_payload_value_comes_from_cst_without_literal_fallback() {
     with_cst_payload_compiler(
         r#"
-fn main() {
-    let cst_value = true;
-    let fallback_path = cst_value;
+fn main(input) {
+    true;
+    input;
 }
 "#,
         |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("CST literal payload");
             let fallback_path = statements[1]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("non-literal fallback payload");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -229,17 +229,17 @@ struct Box {
 }
 
 fn main(box: Box) {
-    let cst_value = box.amount;
-    let legacy_value = 10;
+    box.amount;
+    10;
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_field = statements[0]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("CST field initializer payload");
             let legacy_literal = statements[1]
-                .let_initializer_expression_payload()
+                .expression_payload()
                 .expect("legacy fallback literal");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -294,8 +294,8 @@ fn main() -> bool {
     with_cst_payload_compiler(
         r#"
 fn main() -> bool {
-    let value: bool = 1;
-    return 1;
+    let value: bool = 1 + 0;
+    return 1 + 0;
 }
 "#,
         |compiler, payload| {
@@ -374,44 +374,25 @@ fn main(input) -> bool {
 
 #[test]
 fn typed_numeric_literal_constants_prefer_cst_payloads() {
-    let cst_semantic = parse_semantic_source(
-        SourceId::new(1),
-        r#"
+    let source = SourceId::new(1);
+    let text = r#"
 fn main() {
     let value: i8 = 12;
 }
-"#,
-    )
-    .expect("CST source should parse");
-    let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_body = cst_payload.body.syntax_payload().body.clone();
+"#;
+    let semantic = parse_semantic_source(source, text).expect("CST source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
 
-    with_cst_payload_compiler(
-        r#"
-fn main() {
-    let value: i8 = true;
-}
-"#,
-        |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
-                SourceId::new(1),
-                cst_body,
-                payload.body.fallback(),
-            );
-            let statements = mismatched_body.statement_payloads();
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("typed numeric literal should use CST literal payload");
 
-            compiler
-                .compile_statement_payloads(&statements)
-                .expect("typed numeric literal should use CST literal payload");
-
-            assert!(
-                compiler
-                    .code
-                    .constants
-                    .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12))),
-                "typed contextual constant should come from the CST literal"
-            );
-        },
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(12))),
+        "typed contextual constant should come from the CST literal"
     );
 }
 
@@ -422,8 +403,7 @@ fn assert_cst_let_initializer_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.let_initializer_expression_payload())
-        .filter_map(literal_payload_value)
+        .filter_map(body_payloads::CompilerStatementPayload::let_initializer_syntax_literal)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }

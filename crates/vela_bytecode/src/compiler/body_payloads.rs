@@ -263,7 +263,10 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> bool {
     match statement.statement_kind() {
         SyntaxStatementKind::Let => statement.as_let().is_none_or(|let_statement| {
-            let_statement.name_text().is_none() || let_statement.initializer().is_some()
+            let_statement.name_text().is_none()
+                || let_statement
+                    .initializer()
+                    .is_some_and(|expression| !syntax_expression_is_simple_literal(&expression))
         }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
@@ -503,6 +506,25 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn let_name_text(&self) -> Option<String> {
         self.source?;
         self.syntax.as_ref()?.as_let()?.name_text()
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn let_initializer_syntax_literal(
+        &self,
+    ) -> Option<vela_syntax::ast::Literal> {
+        self.let_initializer_syntax_literal_and_span()
+            .map(|(literal, _)| literal)
+    }
+
+    pub(in crate::compiler) fn let_initializer_syntax_literal_and_span(
+        &self,
+    ) -> Option<(vela_syntax::ast::Literal, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let literal = SyntaxLiteral::cast(expression.syntax().clone())?.literal()?;
+        Some((literal, span))
     }
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
