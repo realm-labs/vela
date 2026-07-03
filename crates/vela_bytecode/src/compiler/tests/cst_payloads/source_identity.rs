@@ -455,3 +455,34 @@ fn main(value) {
         },
     );
 }
+
+#[test]
+fn source_less_statement_match_payload_does_not_expose_scrutinee_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    match value {
+        _ => 1,
+    };
+}
+"#,
+        |_, payload| {
+            let statement = &payload.body.statement_payloads()[0];
+            let missing_source =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statement
+                        .syntax_statement()
+                        .expect("match statement syntax")
+                        .clone(),
+                    statement.fallback(),
+                );
+
+            assert!(missing_source.match_scrutinee_payload().is_none());
+            assert!(
+                missing_source
+                    .expression_match_scrutinee_payload()
+                    .is_none()
+            );
+        },
+    );
+}
