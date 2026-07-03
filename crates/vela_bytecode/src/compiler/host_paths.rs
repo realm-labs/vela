@@ -9,6 +9,7 @@ use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::call_args::CallArgumentSyntax;
+use super::expression_payload_kinds::expression_payload_is_aligned;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 pub(super) struct HostPath<'ast> {
@@ -112,10 +113,13 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Path => self.host_path_from_payload_path(payload),
             SyntaxExpressionKind::Index => {
-                let (base_payload, index_payload) = payload.index_operand_payloads()?;
+                let ((_, base_payload), (index, index_payload)) =
+                    payload.index_operand_payloads_with_fallback()?;
                 let mut receiver =
                     self.resolve_host_path_index_receiver_from_payload(base_payload)?;
-                let index = index_payload.aligned_fallback_expr()?;
+                if !expression_payload_is_aligned(&index_payload, index) {
+                    return None;
+                }
                 let dynamic_kind = receiver
                     .type_name
                     .as_deref()

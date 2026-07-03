@@ -15,6 +15,8 @@ use super::{
     if_payload_for_expr, match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
 
+type FallbackExpressionPayload<'ast> = (&'ast Expr, CompilerExpressionPayload<'ast>);
+
 impl<'ast> CompilerExpressionPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(
@@ -605,12 +607,28 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
         CompilerExpressionPayload<'ast>,
     )> {
+        self.index_operand_payloads_with_fallback()
+            .map(|((_, base), (_, index))| (base, index))
+    }
+
+    pub(in crate::compiler) fn index_operand_payloads_with_fallback(
+        &self,
+    ) -> Option<(
+        FallbackExpressionPayload<'ast>,
+        FallbackExpressionPayload<'ast>,
+    )> {
         self.source?;
         let (base, index) = self.fallback_index_operands()?;
         let syntax = self.syntax.as_ref()?.as_index()?;
         Some((
-            CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
-            CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
+            (
+                base,
+                CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
+            ),
+            (
+                index,
+                CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
+            ),
         ))
     }
 
