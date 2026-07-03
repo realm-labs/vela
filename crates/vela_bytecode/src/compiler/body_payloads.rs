@@ -432,11 +432,11 @@ fn match_scrutinee_payload_for_expr<'ast>(
     syntax: SyntaxMatchExpr,
     fallback: &'ast MatchExpr,
 ) -> CompilerExpressionPayload<'ast> {
-    CompilerExpressionPayload {
+    CompilerExpressionPayload::from_fallback(
         source,
-        syntax: source.and_then(|_| syntax.scrutinee()),
-        fallback: &fallback.scrutinee,
-    }
+        source.and_then(|_| syntax.scrutinee()),
+        &fallback.scrutinee,
+    )
 }
 
 fn if_payload_for_expr<'ast>(
@@ -446,11 +446,11 @@ fn if_payload_for_expr<'ast>(
 ) -> Option<CompilerIfPayload<'ast>> {
     let source = source?;
     let condition_syntax = syntax.condition();
-    let condition = Some(CompilerExpressionPayload {
-        source: Some(source),
-        syntax: condition_syntax,
-        fallback: &fallback.condition,
-    });
+    let condition = Some(CompilerExpressionPayload::from_fallback(
+        Some(source),
+        condition_syntax,
+        &fallback.condition,
+    ));
     let then_body = syntax.then_block().and_then(|body| {
         CompilerBodyPayload::nested_syntax_optional(
             source,
@@ -760,11 +760,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         else {
             return None;
         };
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_let()?.initializer(),
-            fallback: value,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_let()?.initializer(),
+            value,
+        ))
     }
 
     #[cfg(test)]
@@ -913,11 +913,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::Return(Some(value)) = &self.optional_fallback()?.kind else {
             return None;
         };
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_return()?.expression(),
-            fallback: value,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_return()?.expression(),
+            value,
+        ))
     }
 
     pub(super) fn for_iterable_expression_payload(
@@ -927,11 +927,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_for()?.iterable(),
-            fallback: iterable,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_for()?.iterable(),
+            iterable,
+        ))
     }
 
     pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
@@ -1027,11 +1027,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
         };
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.expression(),
-            fallback: expr,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.expression(),
+            expr,
+        ))
     }
 
     fn assignment_value_expression(&self) -> Option<SyntaxExpression> {
@@ -1068,11 +1068,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.assignment_target_expression(),
-            fallback: target,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.assignment_target_expression(),
+            target,
+        ))
     }
 
     pub(in crate::compiler) fn assignment_value_expression_payload(
@@ -1085,11 +1085,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.assignment_value_expression(),
-            fallback: value,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.assignment_value_expression(),
+            value,
+        ))
     }
 
     #[cfg(test)]
@@ -1197,11 +1197,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.expression()?.as_call()?.callee(),
-            fallback: callee,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.expression()?.as_call()?.callee(),
+            callee,
+        ))
     }
 
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -1338,13 +1338,12 @@ impl<'ast> CompilerArgumentPayload<'ast> {
     }
 
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload {
-            source: self.source,
-            syntax: self
-                .source
+        CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
-            fallback: self.value_fallback,
-        }
+            self.value_fallback,
+        )
     }
 
     #[cfg(test)]
@@ -1355,16 +1354,24 @@ impl<'ast> CompilerArgumentPayload<'ast> {
 }
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    pub(in crate::compiler) fn from_fallback(
+        source: Option<SourceId>,
+        syntax: Option<SyntaxExpression>,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> Self {
+        Self {
+            source,
+            syntax,
+            fallback,
+        }
+    }
+
     #[cfg(test)]
     pub(in crate::compiler) fn missing_syntax(
         source: SourceId,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
-        Self {
-            source: Some(source),
-            syntax: None,
-            fallback,
-        }
+        Self::from_fallback(Some(source), None, fallback)
     }
 
     pub(super) fn alignment_fallback_expr(&self) -> &'ast vela_syntax::ast::Expr {

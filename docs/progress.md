@@ -324,6 +324,10 @@ migrating.
 The raw expression payload fallback accessor is now test-only; production
 callers must use alignment-scoped payload helpers while the remaining
 `CompilerExpressionPayload` storage is decomposed.
+All `CompilerExpressionPayload` instances are now created through a single
+payload-boundary constructor, giving the next decomposition slice one
+bytecode-owned boundary for attaching expression fallback facts instead of
+scattered full-expression struct literals.
 `BodyBlockLookup` now stores span-keyed legacy statement vectors only under
 test cfg instead of carrying old `Block` values through production body lookup;
 parsed blocks are retained only for legacy fixture assertions.

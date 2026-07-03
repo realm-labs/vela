@@ -19,11 +19,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax: SyntaxExpression,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-            fallback,
-        }
+        Self::from_fallback(Some(source), Some(syntax), fallback)
     }
 
     #[cfg(test)]
@@ -31,11 +27,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax: SyntaxExpression,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
-        Self {
-            source: None,
-            syntax: Some(syntax),
-            fallback,
-        }
+        Self::from_fallback(None, Some(syntax), fallback)
     }
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -131,11 +123,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_assign()?.target(),
-            fallback: target,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_assign()?.target(),
+            target,
+        ))
     }
 
     pub(in crate::compiler) fn assignment_value_payload(
@@ -145,11 +137,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_assign()?.value(),
-            fallback: value,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_assign()?.value(),
+            value,
+        ))
     }
 
     pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
@@ -164,11 +156,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_paren()?.expression(),
-            fallback: self.fallback,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_paren()?.expression(),
+            self.fallback,
+        ))
     }
 
     pub(in crate::compiler) fn unary_operand_payload(
@@ -178,11 +170,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_unary()?.expression(),
-            fallback: expr,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_unary()?.expression(),
+            expr,
+        ))
     }
 
     pub(in crate::compiler) fn syntax_unary_operator(&self) -> Option<vela_syntax::ast::UnaryOp> {
@@ -197,11 +189,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_try()?.expression(),
-            fallback: expr,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_try()?.expression(),
+            expr,
+        ))
     }
 
     pub(in crate::compiler) fn binary_operand_payloads(
@@ -216,16 +208,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_binary()?;
         Some((
-            CompilerExpressionPayload {
-                source: self.source,
-                syntax: syntax.lhs(),
-                fallback: left,
-            },
-            CompilerExpressionPayload {
-                source: self.source,
-                syntax: syntax.rhs(),
-                fallback: right,
-            },
+            CompilerExpressionPayload::from_fallback(self.source, syntax.lhs(), left),
+            CompilerExpressionPayload::from_fallback(self.source, syntax.rhs(), right),
         ))
     }
 
@@ -307,10 +291,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             expr_operands
                 .into_iter()
                 .zip(syntax_operands.into_iter().map(Some))
-                .map(|(fallback, syntax)| CompilerExpressionPayload {
-                    source: self.source,
-                    syntax,
-                    fallback,
+                .map(|(fallback, syntax)| {
+                    CompilerExpressionPayload::from_fallback(self.source, syntax, fallback)
                 })
                 .collect(),
         )
@@ -345,11 +327,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_call()?.callee(),
-            fallback: callee,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_call()?.callee(),
+            callee,
+        ))
     }
 
     pub(in crate::compiler) fn field_base_payload(
@@ -359,11 +341,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.as_field()?.receiver(),
-            fallback: base,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_field()?.receiver(),
+            base,
+        ))
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
@@ -383,16 +365,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         };
         let syntax = self.syntax.as_ref()?.as_index()?;
         Some((
-            CompilerExpressionPayload {
-                source: self.source,
-                syntax: syntax.receiver(),
-                fallback: base,
-            },
-            CompilerExpressionPayload {
-                source: self.source,
-                syntax: syntax.index(),
-                fallback: index,
-            },
+            CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
+            CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
         ))
     }
 
@@ -407,11 +381,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             SyntaxLambdaBody::Expression(expression) => Some(expression),
             SyntaxLambdaBody::Block(block) => SyntaxExpression::cast(block.syntax().clone()),
         };
-        Some(CompilerExpressionPayload {
-            source: self.source,
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
             syntax,
-            fallback: body,
-        })
+            body,
+        ))
     }
 
     pub(in crate::compiler) fn array_element_payloads(
@@ -430,10 +404,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             items
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerExpressionPayload {
-                    source: self.source,
-                    syntax: syntax_items.get(index).cloned(),
-                    fallback,
+                .map(|(index, fallback)| {
+                    CompilerExpressionPayload::from_fallback(
+                        self.source,
+                        syntax_items.get(index).cloned(),
+                        fallback,
+                    )
                 })
                 .collect(),
         )
@@ -543,10 +519,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                     InterpolatedStringPart::Expr(expr) => Some(expr),
                 })
                 .enumerate()
-                .map(|(index, fallback)| CompilerExpressionPayload {
-                    source: self.source,
-                    syntax: syntax_expressions.get(index).cloned(),
-                    fallback,
+                .map(|(index, fallback)| {
+                    CompilerExpressionPayload::from_fallback(
+                        self.source,
+                        syntax_expressions.get(index).cloned(),
+                        fallback,
+                    )
                 })
                 .collect(),
         )
@@ -621,13 +599,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     }
 
     pub(in crate::compiler) fn value_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload {
-            source: self.source,
-            syntax: self
-                .source
+        CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
-            fallback: self.value_fallback,
-        }
+            self.value_fallback,
+        )
     }
 }
 
@@ -667,15 +644,15 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
     pub(in crate::compiler) fn value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.source.and_then(|_| {
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.source.and_then(|_| {
                 self.syntax
                     .as_ref()
                     .and_then(SyntaxRecordExprField::expression)
             }),
-            fallback: self.value_fallback?,
-        })
+            self.value_fallback?,
+        ))
     }
 }
 
@@ -749,11 +726,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
 
     pub(in crate::compiler) fn guard_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
-        Some(CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.syntax.as_ref()?.guard(),
-            fallback: self.guard_fallback?,
-        })
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.guard(),
+            self.guard_fallback?,
+        ))
     }
 
     pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
@@ -768,15 +745,15 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
     }
 
     pub(in crate::compiler) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload {
-            source: self.source,
-            syntax: self.source.and_then(|_| {
+        CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.source.and_then(|_| {
                 self.syntax
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-            fallback: self.body_fallback,
-        }
+            self.body_fallback,
+        )
     }
 
     #[cfg(test)]
