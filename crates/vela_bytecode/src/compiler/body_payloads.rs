@@ -335,6 +335,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn syntax_statement_kind(&self) -> Option<SyntaxStatementKind> {
+        self.source?;
+        self.stored_statement_kind()
+    }
+
+    pub(super) fn stored_statement_kind(&self) -> Option<SyntaxStatementKind> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
     }
 
@@ -344,7 +349,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax_expression_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.source?;
+        self.stored_expression_kind()
+    }
+
+    pub(super) fn stored_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.expression()
             .map(|expression| expression.expression_kind())
     }
@@ -355,9 +366,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax_value_expression_kind()
     }
 
+    #[cfg(test)]
     pub(super) fn syntax_value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.syntax_expression_kind()
-            .or_else(|| match self.statement_kind()? {
+        self.source?;
+        self.stored_value_expression_kind()
+    }
+
+    pub(super) fn stored_value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
+        self.stored_expression_kind()
+            .or_else(|| match self.stored_statement_kind()? {
                 SyntaxStatementKind::Block => Some(SyntaxExpressionKind::Block),
                 SyntaxStatementKind::If => Some(SyntaxExpressionKind::If),
                 SyntaxStatementKind::Match => Some(SyntaxExpressionKind::Match),

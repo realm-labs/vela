@@ -48,7 +48,7 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let Some(syntax_kind) = stmt.syntax_statement_kind() else {
+        let Some(syntax_kind) = stmt.stored_statement_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST statement payload",
             )));
@@ -67,7 +67,7 @@ impl Compiler<'_, '_> {
             _ => {}
         }
 
-        let Some(kind) = stmt.statement_kind() else {
+        let Some(kind) = stmt.stored_statement_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST statement payload",
             )));

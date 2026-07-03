@@ -458,6 +458,10 @@ fn main(target) {
                     statements[3].fallback(),
                 );
 
+            assert_eq!(missing_let.statement_kind(), None);
+            assert_eq!(missing_assignment.statement_kind(), None);
+            assert_eq!(missing_expression.statement_kind(), None);
+            assert_eq!(missing_return.statement_kind(), None);
             assert_eq!(missing_let.let_initializer_kind(), None);
             assert_eq!(missing_assignment.assignment_value_kind(), None);
             assert!(

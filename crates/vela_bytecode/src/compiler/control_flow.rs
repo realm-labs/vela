@@ -133,7 +133,7 @@ impl Compiler<'_, '_> {
                 "mismatched CST expression statement payload",
             )));
         };
-        let Some(kind) = stmt.syntax_expression_kind() else {
+        let Some(kind) = stmt.stored_expression_kind() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression statement payload",
             )));
