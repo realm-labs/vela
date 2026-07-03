@@ -609,7 +609,7 @@ impl Compiler<'_, '_> {
     fn compile_map(
         &mut self,
         entries: &[vela_syntax::ast::MapEntry],
-        payloads: Option<&[super::body_payloads::CompilerMapEntryPayload<'_>]>,
+        payloads: Option<&[super::body_payloads::CompilerMapEntryPayload]>,
     ) -> CompileResult<Register> {
         let entries = entries
             .iter()
@@ -642,7 +642,7 @@ impl Compiler<'_, '_> {
         expr: &Expr,
         path: &[String],
         fields: &[RecordField],
-        payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+        payloads: Option<&[CompilerRecordFieldPayload]>,
     ) -> CompileResult<Register> {
         let dst = self.alloc_register()?;
         if let Some((enum_name, variant)) = enum_variant_path(path) {

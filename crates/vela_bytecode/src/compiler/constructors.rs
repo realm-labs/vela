@@ -21,7 +21,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 pub(super) fn record_field_names(
     fields: &[vela_syntax::ast::RecordField],
-    payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+    payloads: Option<&[CompilerRecordFieldPayload]>,
 ) -> Option<Vec<Option<String>>> {
     let payloads = payloads?;
     Some(
@@ -130,7 +130,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         fields: &[vela_syntax::ast::RecordField],
         defaults: Vec<SchemaFieldDefault>,
         shape: Option<&ConstructorShape>,
-        payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+        payloads: Option<&[CompilerRecordFieldPayload]>,
     ) -> CompileResult<Vec<(String, Register)>> {
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
@@ -193,7 +193,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         field: &vela_syntax::ast::RecordField,
         field_name: &str,
         expected: Option<RuntimeTypeFact>,
-        payload: Option<&CompilerRecordFieldPayload<'_>>,
+        payload: Option<&CompilerRecordFieldPayload>,
     ) -> CompileResult<(String, Register)> {
         let value = if let Some(value) = &field.value {
             if payload.is_some_and(|payload| !payload.has_value_syntax()) {
@@ -341,7 +341,7 @@ fn argument_name(
 
 fn record_field_name(
     fields: &[vela_syntax::ast::RecordField],
-    field_payloads: Option<&[CompilerRecordFieldPayload<'_>]>,
+    field_payloads: Option<&[CompilerRecordFieldPayload]>,
     field: &vela_syntax::ast::RecordField,
 ) -> CompileResult<String> {
     let Some(field_payloads) = field_payloads else {

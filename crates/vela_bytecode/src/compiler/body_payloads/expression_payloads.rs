@@ -567,9 +567,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(items)
     }
 
-    pub(in crate::compiler) fn map_entry_payloads(
-        &self,
-    ) -> Option<Vec<CompilerMapEntryPayload<'ast>>> {
+    pub(in crate::compiler) fn map_entry_payloads(&self) -> Option<Vec<CompilerMapEntryPayload>> {
         let entries = self.fallback_map_entries()?;
         let syntax_entries = self
             .syntax
@@ -584,7 +582,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, _fallback)| CompilerMapEntryPayload {
                     source: self.source,
                     syntax: syntax_entries.get(index).cloned(),
-                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -612,7 +609,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn record_field_payloads(
         &self,
-    ) -> Option<Vec<CompilerRecordFieldPayload<'ast>>> {
+    ) -> Option<Vec<CompilerRecordFieldPayload>> {
         let fields = self.fallback_record_fields()?;
         let syntax_fields = self.syntax.as_ref()?.as_record()?.fields();
         Some(
@@ -622,7 +619,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .map(|(index, _fallback)| CompilerRecordFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -709,13 +705,12 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
     Span::new(source, range.start().into(), range.end().into())
 }
 
-impl<'ast> CompilerMapEntryPayload<'ast> {
+impl CompilerMapEntryPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMapEntry) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            _ast: std::marker::PhantomData,
         }
     }
 
@@ -750,7 +745,7 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
                 .is_some_and(|entry| entry.value().is_some())
     }
 
-    pub(in crate::compiler) fn value_expression_payload(
+    pub(in crate::compiler) fn value_expression_payload<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> CompilerExpressionPayload<'ast> {
@@ -763,13 +758,12 @@ impl<'ast> CompilerMapEntryPayload<'ast> {
     }
 }
 
-impl<'ast> CompilerRecordFieldPayload<'ast> {
+impl CompilerRecordFieldPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxRecordExprField) -> Self {
         Self {
             source: Some(source),
             syntax: Some(syntax),
-            _ast: std::marker::PhantomData,
         }
     }
 
@@ -792,7 +786,7 @@ impl<'ast> CompilerRecordFieldPayload<'ast> {
                 .is_some_and(|field| field.expression().is_some())
     }
 
-    pub(in crate::compiler) fn value_expression_payload(
+    pub(in crate::compiler) fn value_expression_payload<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {

@@ -9,7 +9,7 @@ impl Compiler<'_, '_> {
     pub(super) fn compile_map_entry(
         &mut self,
         entry: &MapEntry,
-        payload: &CompilerMapEntryPayload<'_>,
+        payload: &CompilerMapEntryPayload,
     ) -> CompileResult<(String, Register)> {
         if !payload.has_key_syntax() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

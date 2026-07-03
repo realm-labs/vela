@@ -95,16 +95,14 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     fallback: &'ast vela_syntax::ast::Expr,
 }
 
-pub(in crate::compiler) struct CompilerMapEntryPayload<'ast> {
+pub(in crate::compiler) struct CompilerMapEntryPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxMapEntry>,
-    _ast: PhantomData<&'ast ()>,
 }
 
-pub(in crate::compiler) struct CompilerRecordFieldPayload<'ast> {
+pub(in crate::compiler) struct CompilerRecordFieldPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordExprField>,
-    _ast: PhantomData<&'ast ()>,
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
