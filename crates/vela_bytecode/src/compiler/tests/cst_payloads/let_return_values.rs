@@ -595,6 +595,80 @@ fn main(left, middle, right) {
 }
 
 #[test]
+fn syntax_only_field_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(object) {
+    return object.amount;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only field return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only field return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::GetRecordField { .. }
+            )),
+        "CST field return should emit a field read"
+    );
+}
+
+#[test]
+fn syntax_only_nested_field_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(object) {
+    let value = object.stats.level;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only nested field let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only nested field let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::GetRecordField { .. }
+            ))
+            .count()
+            >= 2,
+        "CST nested field let should emit each field read"
+    );
+}
+
+#[test]
 fn syntax_only_numeric_left_path_values_compile_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

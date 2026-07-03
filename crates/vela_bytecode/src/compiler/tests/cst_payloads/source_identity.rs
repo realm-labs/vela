@@ -32,8 +32,12 @@ fn main(value) {
 fn source_less_field_payload_does_not_expose_cst_name() {
     with_cst_payload_compiler(
         r#"
+fn make(value) {
+    return value;
+}
+
 fn main(object) {
-    let value = object.amount;
+    let value = make(object).amount;
 }
 "#,
         |_, payload| {

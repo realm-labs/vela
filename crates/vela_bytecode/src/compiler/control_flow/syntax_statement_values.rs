@@ -2,7 +2,9 @@ use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{AstNode, BinaryOp, Literal, SyntaxExpression, UnaryOp};
 
-use crate::compiler::body_payloads::{expression_syntax_literal, expression_syntax_path_or_self};
+use crate::compiler::body_payloads::{
+    expression_syntax_literal, expression_syntax_path_field, expression_syntax_path_or_self,
+};
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::operators::{
     binary_literal_op, i64_immediate_instruction, i64_immediate_op_supported,
@@ -100,6 +102,11 @@ impl Compiler<'_, '_> {
                 .map(Some);
         }
         if let Some(path) = expression_syntax_path_or_self(expression) {
+            return self
+                .compile_path_expr(syntax_expression_span(source, expression), &path)
+                .map(Some);
+        }
+        if let Some(path) = expression_syntax_path_field(expression) {
             return self
                 .compile_path_expr(syntax_expression_span(source, expression), &path)
                 .map(Some);

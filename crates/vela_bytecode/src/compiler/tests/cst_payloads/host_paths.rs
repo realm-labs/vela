@@ -32,7 +32,11 @@ fn main(player: Player) {
         selected;
         selected && true
     };
-    player.level;
+    make(player).level;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
     )
@@ -301,8 +305,12 @@ fn host_field_base_with_misaligned_cst_payload_does_not_use_legacy_receiver() {
         source,
         r#"
 fn main(cst: CstPlayer, legacy: LegacyPlayer) {
-    cst.level;
-    legacy.level;
+    make(cst).level;
+    make(legacy).level;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
     )

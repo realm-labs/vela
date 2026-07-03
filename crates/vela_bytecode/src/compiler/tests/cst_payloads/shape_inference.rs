@@ -15,7 +15,11 @@ fn main() {
         selected;
         selected && true
     };
-    let legacy_amount = legacy.amount;
+    let legacy_amount = make(legacy).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |compiler, payload| {

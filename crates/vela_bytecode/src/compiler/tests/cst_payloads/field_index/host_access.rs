@@ -61,7 +61,11 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         selected;
         selected && true
     };
-    let legacy_value = legacy.amount;
+    let legacy_value = make(legacy).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
     )

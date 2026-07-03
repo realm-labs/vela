@@ -123,8 +123,12 @@ fn field_name_payload_comes_from_cst_without_field_fallback() {
         r#"
 fn main() {
     let object = { value: 1 };
-    let cst_field = object.value;
+    let cst_field = make(object).value;
     let fallback_path = object.value + 1;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |_compiler, payload| {
@@ -231,8 +235,12 @@ struct LegacyBox {
 fn main() {
     let cst = CstBox { alpha: 0, amount: 1 };
     let legacy = LegacyBox { amount: 2, zed: 3 };
-    let cst_amount = cst.amount;
-    let legacy_amount = legacy.amount;
+    let cst_amount = make(cst).amount;
+    let legacy_amount = make(legacy).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#,
         |compiler, payload| {
@@ -282,7 +290,11 @@ fn main() {
     let legacy_text = r#"
 fn main() {
     let object = { amount: 1 };
-    let value = object.amount;
+    let value = make(object).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -343,7 +355,11 @@ fn main() {
     let legacy_text = r#"
 fn main() {
     let object = { amount: 1 };
-    let value = object.amount;
+    let value = make(object).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
@@ -395,7 +411,11 @@ fn missing_field_expression_payload_does_not_use_legacy_field() {
     let text = r#"
 fn main() {
     let object = { amount: 1 };
-    let value = object.amount;
+    let value = make(object).amount;
+}
+
+fn make(value) {
+    return value;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

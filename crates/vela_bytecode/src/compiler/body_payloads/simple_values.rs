@@ -30,6 +30,11 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
             if syntax_expression_is_simple_value(&initializer) {
                 return false;
             }
+            if let_statement.type_hint().is_none()
+                && syntax_expression_is_simple_path_field(&initializer)
+            {
+                return false;
+            }
             if syntax_expression_is_simple_path_unary(&initializer) {
                 return false;
             }
@@ -73,6 +78,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
             return_statement.expression().is_some_and(|expression| {
                 !syntax_expression_is_simple_value(&expression)
+                    && !syntax_expression_is_simple_path_field(&expression)
                     && !syntax_expression_is_simple_path_unary(&expression)
                     && !syntax_expression_is_simple_path_binary(&expression)
                     && !syntax_expression_is_simple_path_comparison(&expression)
@@ -103,6 +109,7 @@ fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_range(expression)
         || syntax_expression_is_statement_block(expression)
+        || syntax_expression_is_simple_path_field(expression)
         || syntax_expression_is_simple_path_unary(expression)
         || syntax_expression_is_simple_path_binary(expression)
         || syntax_expression_is_simple_path_comparison(expression)
@@ -125,6 +132,20 @@ pub(in crate::compiler) fn expression_syntax_path_or_self(
     } else {
         Some(path.path_segments())
     }
+}
+
+pub(in crate::compiler) fn expression_syntax_path_field(
+    expression: &SyntaxExpression,
+) -> Option<Vec<String>> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_syntax_path_field(&inner);
+    }
+    let field = expression.as_field()?;
+    let receiver = field.receiver()?;
+    let mut path = expression_syntax_path_or_self(&receiver)
+        .or_else(|| expression_syntax_path_field(&receiver))?;
+    path.push(field.name_text()?);
+    Some(path)
 }
 
 pub(in crate::compiler) fn expression_syntax_literal(
@@ -166,6 +187,10 @@ fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
     expression
         .as_path()
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
+}
+
+fn syntax_expression_is_simple_path_field(expression: &SyntaxExpression) -> bool {
+    expression_syntax_path_field(expression).is_some()
 }
 
 fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> bool {
