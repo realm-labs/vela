@@ -116,6 +116,7 @@ impl Compiler<'_, '_> {
                 let (base_payload, index_payload) = payload.index_operand_payloads()?;
                 let mut receiver =
                     self.resolve_host_path_index_receiver_from_payload(base_payload)?;
+                let index = aligned_payload_fallback_expr(&index_payload)?;
                 let dynamic_kind = receiver
                     .type_name
                     .as_deref()
@@ -123,7 +124,7 @@ impl Compiler<'_, '_> {
                     .and_then(|capability| capability.key_type.as_deref())
                     .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
                 receiver.path.segments.push(HostPathPart::Value {
-                    expr: index_payload.fallback(),
+                    expr: index,
                     payload: Some(index_payload),
                     dynamic_kind,
                 });
