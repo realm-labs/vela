@@ -265,7 +265,9 @@ fn impl_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let body_block = body_blocks.body_for_syntax(source, &syntax_body)?;
+            let body_block = body_blocks.body_for_syntax(source, &syntax_body);
+            let body =
+                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -274,7 +276,7 @@ fn impl_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, body_block),
+                    body,
                 },
             ))
         })
@@ -300,7 +302,9 @@ fn trait_default_method_payloads<'ast>(
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
             let syntax_body = syntax_method.body()?;
-            let body_block = body_blocks.body_for_syntax(source, &syntax_body)?;
+            let body_block = body_blocks.body_for_syntax(source, &syntax_body);
+            let body =
+                CompilerBodyPayload::syntax_with_optional_body(source, syntax_body, body_block)?;
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -309,7 +313,7 @@ fn trait_default_method_payloads<'ast>(
                         syntax_method.param_list(),
                         &method_metadata.signature,
                     )),
-                    body: CompilerBodyPayload::syntax(source, syntax_body, body_block),
+                    body,
                 },
             ))
         })

@@ -19,7 +19,7 @@ pub(super) struct SyntaxBodyPayload {
 #[derive(Clone)]
 pub(super) struct CompilerBodyPayload<'ast> {
     syntax: SyntaxBodyPayload,
-    fallback: &'ast Block,
+    fallback: Option<&'ast Block>,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
@@ -92,26 +92,56 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback,
+            fallback: Some(fallback),
         }
     }
 
     fn nested(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
-            fallback,
+            fallback: Some(fallback),
+        }
+    }
+
+    pub(super) fn syntax_only_empty(source: SourceId, body: SyntaxBlock) -> Option<Self> {
+        syntax_body_statements(&body).is_empty().then_some(Self {
+            syntax: SyntaxBodyPayload { source, body },
+            fallback: None,
+        })
+    }
+
+    pub(super) fn syntax_block_has_statements(body: &SyntaxBlock) -> bool {
+        !syntax_body_statements(body).is_empty()
+    }
+
+    pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
+        Self::syntax_block_has_statements(body)
+    }
+
+    pub(super) fn syntax_with_optional_body(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback: Option<&'ast Block>,
+    ) -> Option<Self> {
+        match fallback {
+            Some(fallback) => Some(Self::syntax(source, body, fallback)),
+            None => Self::syntax_only_empty(source, body),
         }
     }
 
     #[cfg(test)]
     pub(super) fn fallback(&self) -> &'ast Block {
         self.fallback
+            .expect("body payload has no owned body fallback")
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
+        let Some(fallback) = self.fallback else {
+            return Vec::new();
+        };
 
-        self.fallback
+        fallback
             .statements
             .iter()
             .enumerate()
@@ -129,7 +159,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-        syntax_statements.len() != self.fallback.statements.len()
+        match self.fallback {
+            Some(fallback) => syntax_statements.len() != fallback.statements.len(),
+            None => !syntax_statements.is_empty(),
+        }
     }
 
     pub(super) fn block_value<'payload>(
