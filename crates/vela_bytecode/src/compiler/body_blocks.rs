@@ -10,7 +10,7 @@ use vela_syntax::ast::SyntaxSourceFile;
 #[cfg(test)]
 use vela_syntax::ast::{Block, Stmt};
 #[cfg(test)]
-use vela_syntax::parse_body_blocks_at_spans;
+use vela_syntax::body_parser_support::parse_body_blocks_at_spans;
 
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerBodyFallback;

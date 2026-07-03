@@ -12,9 +12,12 @@ pub mod syntax_node;
 mod syntax_validation;
 pub mod token;
 
-pub use parse::Parse;
 #[cfg(feature = "legacy-body-parser")]
-pub use parser::parse_body_blocks_at_spans;
+pub mod body_parser_support {
+    pub use crate::parser::parse_body_blocks_at_spans;
+}
+
+pub use parse::Parse;
 pub use rowan::{
     GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
 };

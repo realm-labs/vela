@@ -299,8 +299,12 @@ legacy body fallback, keeping semantic orchestration on HIR/CST diagnostics
 while the final expression/body migration continues.
 The standalone bytecode `legacy_payloads` module has been removed; the
 remaining temporary old-parser body lookup is isolated in the compiler
-`body_fallbacks` module while semantic orchestration stays on HIR/CST inputs
+`body_blocks` test module while semantic orchestration stays on HIR/CST inputs
 and body lowering continues to move to CST/HIR inputs.
+The old body-block parser helper is no longer re-exported from the
+`vela_syntax` crate root; it is scoped under feature-gated parser support for
+the remaining bytecode fallback tests while production bytecode builds keep the
+legacy body parser feature disabled.
 Top-level body payload lowering no longer uses broad overlapping-body fallback
 when a CST statement payload is missing; unmatched statements now error unless
 they are explicitly marked as nested temporary fallback cases while body
