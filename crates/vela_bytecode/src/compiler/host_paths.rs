@@ -147,9 +147,7 @@ impl Compiler<'_, '_> {
         payload: CompilerExpressionPayload<'ast>,
     ) -> Option<ResolvedHostPath<'ast>> {
         let path = payload.syntax_path_segments()?;
-        let span = payload
-            .syntax_span()
-            .unwrap_or_else(|| payload.fallback().span);
+        let span = payload.syntax_span()?;
         match path.len() {
             0 => None,
             1 => {
@@ -752,7 +750,7 @@ impl Compiler<'_, '_> {
                     if parts.last().is_none_or(|name| name != method) {
                         return None;
                     }
-                    let span = payload.syntax_span().unwrap_or(callee.span);
+                    let span = payload.syntax_span()?;
                     self.owned_host_field_path_parts(span, &parts[..parts.len() - 1])
                         .map(|resolved| HostCollectionMethodTarget {
                             path: resolved.path,
