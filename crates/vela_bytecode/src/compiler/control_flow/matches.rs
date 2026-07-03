@@ -115,9 +115,6 @@ impl Compiler<'_, '_> {
         kind: SyntaxExpressionKind,
     ) -> CompileResult<bool> {
         if kind == SyntaxExpressionKind::Block {
-            let ExprKind::Block(_) = &arm.body.kind else {
-                unreachable!("validated CST match arm statement block kind");
-            };
             if let Some(body) = payload.body_block_payload() {
                 return self.compile_body_payload_statements(&body);
             }
@@ -284,9 +281,6 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(_) = &body.kind else {
-                    unreachable!("validated CST match arm block body kind");
-                };
                 if let Some(body) = payload.body_block_payload() {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
