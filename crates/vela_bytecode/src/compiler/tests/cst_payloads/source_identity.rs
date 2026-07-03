@@ -43,6 +43,7 @@ fn main(left, right) {
                 );
 
             assert_eq!(missing_source.syntax_binary_operator(), None);
+            assert!(missing_source.binary_operand_payloads().is_none());
         },
     );
 }

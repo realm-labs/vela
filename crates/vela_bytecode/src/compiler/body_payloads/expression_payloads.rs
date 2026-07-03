@@ -206,6 +206,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let ExprKind::Binary { left, right, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         let syntax = self.syntax.as_ref()?.as_binary()?;
         Some((
             CompilerExpressionPayload {
