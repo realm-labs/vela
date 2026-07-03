@@ -440,6 +440,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn array_element_count_does_not_exceed_fallback(&self) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let ExprKind::Array(items) = &self.fallback.kind else {
             return true;
         };
@@ -475,6 +478,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn map_entry_count_matches_fallback(&self) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let ExprKind::Map(entries) = &self.fallback.kind else {
             return true;
         };
@@ -505,6 +511,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn record_field_count_does_not_exceed_fallback(&self) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let ExprKind::Record { fields, .. } = &self.fallback.kind else {
             return true;
         };
@@ -546,6 +555,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn interpolation_expression_count_does_not_exceed_fallback(
         &self,
     ) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
             return true;
         };
@@ -826,6 +838,9 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn record_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let Pattern::RecordVariant { fields, .. } = self.fallback else {
             return true;
         };
@@ -861,6 +876,9 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     pub(in crate::compiler) fn tuple_pattern_field_count_does_not_exceed_fallback(&self) -> bool {
+        if self.source.is_none() {
+            return true;
+        }
         let Pattern::TupleVariant { fields, .. } = self.fallback else {
             return true;
         };

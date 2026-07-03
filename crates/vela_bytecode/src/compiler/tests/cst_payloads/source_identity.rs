@@ -308,6 +308,33 @@ fn main() {
 }
 
 #[test]
+fn source_less_array_payload_does_not_expose_cst_element_count() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let values = [1];
+}
+"#,
+        |_, payload| {
+            let array = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("array initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    array.syntax_expression().expect("array syntax").clone(),
+                    array.fallback(),
+                );
+            let elements = missing_source
+                .array_element_payloads()
+                .expect("array element payloads");
+
+            assert!(missing_source.array_element_count_does_not_exceed_fallback());
+            assert!(elements[0].syntax_expression().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_map_entry_payload_does_not_expose_cst_key_name() {
     with_cst_payload_compiler(
         r#"
@@ -328,6 +355,7 @@ fn main() {
                 .map_entry_payloads()
                 .expect("map entry payloads");
 
+            assert!(missing_source.map_entry_count_matches_fallback());
             assert!(!entries[0].has_key_syntax());
             assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);
@@ -366,6 +394,7 @@ fn main() {
                 .record_field_payloads()
                 .expect("record field payloads");
 
+            assert!(missing_source.record_field_count_does_not_exceed_fallback());
             assert!(!fields[0].has_syntax());
             assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
@@ -413,6 +442,36 @@ fn main() {
                     .syntax_expression()
                     .is_none()
             );
+        },
+    );
+}
+
+#[test]
+fn source_less_interpolated_payload_does_not_expose_cst_expression_count() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let text = f"{value}";
+}
+"#,
+        |_, payload| {
+            let interpolated = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("interpolated initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    interpolated
+                        .syntax_expression()
+                        .expect("interpolated syntax")
+                        .clone(),
+                    interpolated.fallback(),
+                );
+            let expressions = missing_source
+                .interpolated_expression_payloads()
+                .expect("interpolated expression payloads");
+
+            assert!(missing_source.interpolation_expression_count_does_not_exceed_fallback());
+            assert!(expressions[0].syntax_expression().is_none());
         },
     );
 }
