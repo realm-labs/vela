@@ -62,6 +62,14 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
+                if tail.optional_fallback().is_none()
+                    && let Some((source, expression)) =
+                        tail.expression_statement_syntax_expression()
+                    && let Some(done) =
+                        self.compile_syntax_constant_expr_to(source, &expression, dst)?
+                {
+                    return Ok(done);
+                }
                 let fallback = aligned_statement(tail).ok_or_else(|| {
                     crate::compiler::CompileError::new(
                         crate::compiler::CompileErrorKind::UnsupportedSyntax(

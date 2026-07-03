@@ -41,9 +41,9 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
             .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
         SyntaxStatementKind::Expr => statement.as_expr().is_none_or(|expr_statement| {
             expr_statement.semicolon_token().is_none()
-                || expr_statement.expression().is_none_or(|expression| {
-                    !syntax_expression_is_inline_constant_container(&expression)
-                })
+                || expr_statement
+                    .expression()
+                    .is_none_or(|expression| !syntax_expression_is_inline_constant(&expression))
         }),
         _ => true,
     }
@@ -124,9 +124,9 @@ fn syntax_expression_is_constant_container(expression: &SyntaxExpression) -> boo
         .is_some()
 }
 
-fn syntax_expression_is_inline_constant_container(expression: &SyntaxExpression) -> bool {
+fn syntax_expression_is_inline_constant(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_inline_constant_container(&inner);
+        return syntax_expression_is_inline_constant(&inner);
     }
     let has_direct_block_value = match expression.expression_kind() {
         SyntaxExpressionKind::Array => expression.as_array().is_none_or(|array| {
@@ -141,9 +141,13 @@ fn syntax_expression_is_inline_constant_container(expression: &SyntaxExpression)
                     .any(|value| value.expression_kind() == SyntaxExpressionKind::Block)
             })
         }),
-        _ => true,
+        _ => false,
     };
-    !has_direct_block_value && syntax_expression_is_constant_container(expression)
+    !has_direct_block_value
+        && evaluate_syntax_const_expr(SourceId::new(0), expression, &BTreeMap::new())
+            .ok()
+            .flatten()
+            .is_some()
 }
 
 pub(in crate::compiler) fn expression_syntax_range_operands(

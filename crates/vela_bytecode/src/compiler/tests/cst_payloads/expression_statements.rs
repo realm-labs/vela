@@ -5,6 +5,8 @@ fn syntax_only_constant_expression_statements_drop_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
+    1 + 2;
+    !false;
     [1, 2, 3];
     [[1], [2]];
     ["score", "level"];
@@ -19,7 +21,7 @@ fn main() {
         "constant expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
-    assert_eq!(statements.len(), 3);
+    assert_eq!(statements.len(), 5);
     assert!(statements.iter().all(|statement| {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
     }));

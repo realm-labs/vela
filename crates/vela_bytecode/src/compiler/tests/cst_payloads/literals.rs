@@ -37,15 +37,17 @@ fn literal_values() {
 fn missing_literal_expression_payload_does_not_use_legacy_literal() {
     let source = SourceId::new(1);
     let text = r#"
+fn take(value) {
+    return value;
+}
+
 fn main(input) {
-    42;
+    take(42);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_literal = payload.body.statement_payloads()[0]
-        .expression_payload()
-        .expect("legacy literal payload");
+    let legacy_literal = first_call_argument_value_payload(&payload.body, 0);
     let missing_literal =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_literal.fallback());
 
@@ -63,15 +65,17 @@ fn main(input) {
 fn missing_literal_type_payload_does_not_use_legacy_type() {
     let source = SourceId::new(1);
     let text = r#"
+fn take(value) {
+    return value;
+}
+
 fn main(input) {
-    true;
+    take(true);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let literal = payload.body.statement_payloads()[0]
-        .expression_payload()
-        .expect("literal payload");
+    let literal = first_call_argument_value_payload(&payload.body, 0);
     let missing_literal =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, literal.fallback());
 
@@ -87,19 +91,18 @@ fn main(input) {
 fn static_literal_type_facts_reject_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main() {
-    true;
-    1;
+    take(true);
+    take(1);
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
-            let cst_literal = statements[0]
-                .expression_payload()
-                .expect("CST literal payload");
-            let legacy_literal = statements[1]
-                .expression_payload()
-                .expect("legacy fallback literal");
+            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
+            let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_literal
@@ -139,23 +142,20 @@ fn main() {
 fn literal_expression_payload_mismatch_does_not_use_legacy_literal() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main(input) {
-    true;
-    input;
-    1;
+    take(true);
+    take(input);
+    take(1);
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
-            let cst_literal = statements[0]
-                .expression_payload()
-                .expect("CST literal payload");
-            let non_literal = statements[1]
-                .expression_payload()
-                .expect("non-literal fallback payload");
-            let legacy_literal = statements[2]
-                .expression_payload()
-                .expect("legacy fallback literal");
+            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
+            let non_literal = first_call_argument_value_payload(&payload.body, 1);
+            let legacy_literal = first_call_argument_value_payload(&payload.body, 2);
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_literal
@@ -181,19 +181,18 @@ fn main(input) {
 fn literal_payload_value_comes_from_cst_without_literal_fallback() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main(input) {
-    true;
-    input;
+    take(true);
+    take(input);
 }
 "#,
         |_compiler, payload| {
-            let statements = payload.body.statement_payloads();
-            let cst_literal = statements[0]
-                .expression_payload()
-                .expect("CST literal payload");
-            let fallback_path = statements[1]
-                .expression_payload()
-                .expect("non-literal fallback payload");
+            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
+            let fallback_path = first_call_argument_value_payload(&payload.body, 1);
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_literal
@@ -229,18 +228,17 @@ struct Box {
 }
 
 fn main(box: Box) {
-    box.amount;
-    10;
+    take(box.amount);
+    take(10);
+}
+
+fn take(value) {
+    return value;
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
-            let cst_field = statements[0]
-                .expression_payload()
-                .expect("CST field initializer payload");
-            let legacy_literal = statements[1]
-                .expression_payload()
-                .expect("legacy fallback literal");
+            let cst_field = first_call_argument_value_payload(&payload.body, 0);
+            let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_field
@@ -446,6 +444,19 @@ fn literal_payload_value(
         payload.syntax_literal()
     );
     payload.syntax_literal()
+}
+
+fn first_call_argument_value_payload<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+    statement_index: usize,
+) -> body_payloads::CompilerExpressionPayload<'ast> {
+    body.statement_payloads()[statement_index]
+        .call_argument_payloads()
+        .expect("call argument payloads")
+        .into_iter()
+        .next()
+        .expect("call argument")
+        .value_expression_payload()
 }
 
 fn literal_int(text: &str) -> vela_syntax::ast::Literal {

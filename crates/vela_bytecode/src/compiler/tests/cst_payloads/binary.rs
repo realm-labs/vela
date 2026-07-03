@@ -552,19 +552,31 @@ fn main(lhs, rhs) {
 fn inline_binary_numeric_literals_prefer_cst_payloads() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main() {
-    5;
-    99;
+    take(5);
+    take(99);
 }
 "#,
         |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .expression_payload()
-                .expect("CST literal payload");
+                .call_argument_payloads()
+                .expect("CST call argument payloads")
+                .into_iter()
+                .next()
+                .expect("CST call argument")
+                .value_expression_payload();
             let fallback_literal = statements[1]
-                .expression_payload()
-                .expect("fallback literal payload");
+                .call_argument_payloads()
+                .expect("fallback call argument payloads")
+                .into_iter()
+                .next()
+                .expect("fallback call argument")
+                .value_expression_payload();
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 cst_literal
