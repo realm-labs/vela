@@ -974,6 +974,38 @@ fn value_form(value, flag) {
     ));
 }
 
+#[test]
+fn syntax_only_match_arm_block_drops_owned_body_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    match value {
+        _ => {
+            let nested;
+            return;
+        },
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let arm = payload.body.statement_payloads()[0]
+        .match_arm_payloads()
+        .expect("match arm payloads")
+        .remove(0);
+    let body = arm
+        .body_block_payload()
+        .expect("match arm body block payload");
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body.fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only match arm block should not retain an owned body fallback"
+    );
+}
+
 fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],

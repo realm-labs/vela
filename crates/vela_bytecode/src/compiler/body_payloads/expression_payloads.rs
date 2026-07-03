@@ -755,11 +755,11 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         let ExprKind::Block(block) = &self.fallback.body.kind else {
             return None;
         };
-        Some(CompilerBodyPayload::syntax(
+        CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-            block,
-        ))
+            Some(block),
+        )
     }
 
     pub(in crate::compiler) fn body_expression_payload(&self) -> CompilerExpressionPayload<'ast> {
