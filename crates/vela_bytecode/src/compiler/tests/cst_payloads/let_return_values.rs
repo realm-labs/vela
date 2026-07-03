@@ -562,17 +562,29 @@ fn syntax_only_numeric_left_path_values_compile_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
 fn numeric_left_let(input) {
-    let value = 1 + input;
+    let value = 1 - input;
 }
 
 fn numeric_left_return(input) {
-    return 10 > input;
+    return 10 <= input;
 }
 
 fn numeric_left_block_tail(input) {
     return {
-        0 == input
+        0 != input
     };
+}
+
+fn numeric_left_multiply(input) {
+    return 2 * input;
+}
+
+fn numeric_left_divide(input) {
+    return 8 / input;
+}
+
+fn numeric_left_remainder(input) {
+    return 8 % input;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -580,6 +592,9 @@ fn numeric_left_block_tail(input) {
         "numeric_left_let",
         "numeric_left_return",
         "numeric_left_block_tail",
+        "numeric_left_multiply",
+        "numeric_left_divide",
+        "numeric_left_remainder",
     ] {
         let (payload, _, _) = semantic.function(function).expect("function payload");
         assert!(

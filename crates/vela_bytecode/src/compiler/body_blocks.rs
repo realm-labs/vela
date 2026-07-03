@@ -273,8 +273,14 @@ fn path_value_expression_statements(input, other) {
     input == 0;
     input + 1;
     10 > input;
+    10 <= input;
     0 == input;
+    0 != input;
     1 + input;
+    1 - input;
+    2 * input;
+    8 / input;
+    8 % input;
 }
 
 fn parenthesized_simple_values() {
