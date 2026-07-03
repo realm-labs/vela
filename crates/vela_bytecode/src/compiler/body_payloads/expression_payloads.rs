@@ -1132,21 +1132,25 @@ impl<'ast> CompilerMatchArmPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn body_block_payload(
         &self,
         fallback_block: Option<&'ast vela_syntax::ast::Block>,
     ) -> Option<CompilerBodyPayload<'ast>> {
-        #[cfg(test)]
         let fallback = fallback_block.map(CompilerBodyFallback::block);
-        #[cfg(not(test))]
-        let fallback = {
-            let _ = fallback_block;
-            None
-        };
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
             fallback,
+        )
+    }
+
+    #[cfg(not(test))]
+    pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
+        CompilerBodyPayload::nested_syntax_optional(
+            self.source?,
+            self.syntax.as_ref()?.body_block()?,
+            None,
         )
     }
 

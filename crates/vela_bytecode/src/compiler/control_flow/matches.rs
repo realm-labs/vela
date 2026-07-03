@@ -116,12 +116,20 @@ impl Compiler<'_, '_> {
         kind: SyntaxExpressionKind,
     ) -> CompileResult<bool> {
         if kind == SyntaxExpressionKind::Block {
-            let ExprKind::Block(block) = &arm.body.kind else {
-                return Err(missing_cst_match_arm_child_payload(
-                    "mismatched CST match arm block body",
-                ));
+            #[cfg(test)]
+            let fallback_block = {
+                let ExprKind::Block(block) = &arm.body.kind else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "mismatched CST match arm block body",
+                    ));
+                };
+                Some(block)
             };
-            if let Some(body) = payload.body_block_payload(Some(block)) {
+            #[cfg(not(test))]
+            let body_payload = payload.body_block_payload();
+            #[cfg(test)]
+            let body_payload = payload.body_block_payload(fallback_block);
+            if let Some(body) = body_payload {
                 return self.compile_body_payload_statements(&body);
             }
             return Err(missing_cst_match_arm_child_payload(
@@ -289,12 +297,20 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                let ExprKind::Block(block) = &body.kind else {
-                    return Err(missing_cst_match_arm_child_payload(
-                        "mismatched CST match arm block body",
-                    ));
+                #[cfg(test)]
+                let fallback_block = {
+                    let ExprKind::Block(block) = &body.kind else {
+                        return Err(missing_cst_match_arm_child_payload(
+                            "mismatched CST match arm block body",
+                        ));
+                    };
+                    Some(block)
                 };
-                if let Some(body) = payload.body_block_payload(Some(block)) {
+                #[cfg(not(test))]
+                let body_payload = payload.body_block_payload();
+                #[cfg(test)]
+                let body_payload = payload.body_block_payload(fallback_block);
+                if let Some(body) = body_payload {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
                     Err(missing_cst_match_arm_child_payload(
