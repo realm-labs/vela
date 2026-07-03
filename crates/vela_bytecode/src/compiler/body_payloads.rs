@@ -114,6 +114,7 @@ pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
 struct CompilerExpressionFallbackSummary {
     kind: Option<SyntaxExpressionKind>,
     is_interpolated_string: bool,
+    is_self_value: bool,
 }
 
 impl CompilerExpressionFallbackSummary {
@@ -130,6 +131,10 @@ impl CompilerExpressionFallbackSummary {
 
     fn is_interpolated_string(self) -> bool {
         self.is_interpolated_string
+    }
+
+    fn matches_path_self_shape(self, syntax_is_self: bool) -> bool {
+        self.kind == Some(SyntaxExpressionKind::Path) && self.is_self_value == syntax_is_self
     }
 }
 
@@ -496,6 +501,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 
 fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressionFallbackSummary {
     let is_interpolated_string = matches!(fallback.kind, ExprKind::InterpolatedString(_));
+    let is_self_value = matches!(fallback.kind, ExprKind::SelfValue);
     let kind = match fallback.kind {
         ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
             Some(SyntaxExpressionKind::Literal)
@@ -520,6 +526,7 @@ fn fallback_expr_summary(fallback: &vela_syntax::ast::Expr) -> CompilerExpressio
     CompilerExpressionFallbackSummary {
         kind,
         is_interpolated_string,
+        is_self_value,
     }
 }
 
@@ -1656,12 +1663,30 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.fallback_summary.is_interpolated_string()
     }
 
-    pub(in crate::compiler) fn fallback_expr_matches_expr(
+    pub(in crate::compiler) fn fallback_expr_matches_stored_syntax_expr(
         &self,
         expr: &vela_syntax::ast::Expr,
     ) -> bool {
-        self.fallback_summary
-            .matches_summary(fallback_expr_summary(expr))
+        let Some(kind) = self.stored_syntax_kind() else {
+            return true;
+        };
+        let expr_summary = fallback_expr_summary(expr);
+        if !expr_summary.matches_syntax_kind(kind) {
+            return false;
+        }
+        (kind == SyntaxExpressionKind::Literal
+            || self.fallback_summary.matches_summary(expr_summary))
+            && self.fallback_expr_matches_stored_syntax_shape(expr_summary)
+    }
+
+    fn fallback_expr_matches_stored_syntax_shape(
+        &self,
+        expr_summary: CompilerExpressionFallbackSummary,
+    ) -> bool {
+        if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
+            return true;
+        }
+        expr_summary.matches_path_self_shape(self.syntax_is_self())
     }
 
     #[cfg(test)]
