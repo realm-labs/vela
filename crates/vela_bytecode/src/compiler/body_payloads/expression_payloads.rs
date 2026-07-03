@@ -490,14 +490,29 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
     )> {
         self.source?;
-        let CompilerExpressionFallbackKind::Index { base, index } = self.fallback_kind else {
-            return None;
-        };
+        let (base, index) = self.fallback_index_operands()?;
         let syntax = self.syntax.as_ref()?.as_index()?;
         Some((
             CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
             CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
         ))
+    }
+
+    fn fallback_index_operands(&self) -> Option<(&'ast Expr, &'ast Expr)> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Index { base, index } = self.fallback_kind else {
+                return None;
+            };
+            Some((base, index))
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Index { base, index } = &self.fallback.kind else {
+                return None;
+            };
+            Some((base, index))
+        }
     }
 
     pub(in crate::compiler) fn lambda_body_payload(
