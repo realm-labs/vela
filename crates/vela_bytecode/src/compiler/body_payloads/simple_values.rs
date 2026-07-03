@@ -47,6 +47,14 @@ fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
 }
 
+fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
+    expression
+        .as_block()
+        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
+}
+
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
-    syntax_expression_is_simple_literal(expression) || syntax_expression_is_simple_path(expression)
+    syntax_expression_is_simple_literal(expression)
+        || syntax_expression_is_simple_path(expression)
+        || syntax_expression_is_simple_block(expression)
 }

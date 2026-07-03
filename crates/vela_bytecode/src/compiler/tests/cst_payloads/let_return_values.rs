@@ -458,6 +458,46 @@ impl CstBox {
 }
 
 #[test]
+fn syntax_only_block_let_and_return_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn block_let() {
+    let value = {
+        let nested;
+        return;
+    };
+}
+
+fn block_return() {
+    return {
+        let nested;
+        return;
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (block_let, _, _) = semantic.function("block_let").expect("block_let");
+    let (block_return, _, _) = semantic.function("block_return").expect("block_return");
+
+    compile_program_source(source, text).expect("CST block let/return should compile");
+
+    let block_let_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| block_let.body.fallback()));
+    let block_return_fallback = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        block_return.body.fallback()
+    }));
+
+    assert!(
+        block_let_fallback.is_err(),
+        "syntax-only block let body should not retain an owned body fallback"
+    );
+    assert!(
+        block_return_fallback.is_err(),
+        "syntax-only block return body should not retain an owned body fallback"
+    );
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"

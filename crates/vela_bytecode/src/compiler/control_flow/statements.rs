@@ -1,4 +1,4 @@
-use vela_syntax::ast::SyntaxStatementKind;
+use vela_syntax::ast::{SyntaxExpressionKind, SyntaxStatementKind};
 
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerStatementPayload,
@@ -99,6 +99,26 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_path(name, span, path, path_span);
                 }
+                if stmt.optional_fallback().is_none()
+                    && stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block)
+                {
+                    let Some(name) = stmt.let_name_text() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST let binding name",
+                        )));
+                    };
+                    let Some(span) = stmt.syntax_statement_span() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        )));
+                    };
+                    let Some(body) = stmt.let_initializer_block_body_payload() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST let initializer block body payload",
+                        )));
+                    };
+                    return self.compile_let_block_value(name, span, &body);
+                }
             }
             SyntaxStatementKind::Return if stmt.return_value_missing_in_syntax() => {
                 let Some(span) = stmt.syntax_statement_span() else {
@@ -114,6 +134,21 @@ impl Compiler<'_, '_> {
                 }
                 if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
                     return self.compile_return_path(path, span);
+                }
+                if stmt.optional_fallback().is_none()
+                    && stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block)
+                {
+                    let Some(span) = stmt.syntax_statement_span() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        )));
+                    };
+                    let Some(body) = stmt.return_value_block_body_payload() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST return block body payload",
+                        )));
+                    };
+                    return self.compile_return_block_value(span, &body);
                 }
             }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),

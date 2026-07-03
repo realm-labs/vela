@@ -512,19 +512,20 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let StmtKind::Let {
-            value: Some(value), ..
-        } = &self.fallback?.kind
-        else {
-            return None;
-        };
-        let ExprKind::Block(block) = &value.kind else {
-            return None;
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
+            Some(StmtKind::Let {
+                value: Some(value), ..
+            }) => match &value.kind {
+                ExprKind::Block(block) => Some(block),
+                _ => return None,
+            },
+            Some(_) => return None,
+            None => None,
         };
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?,
-            Some(block),
+            fallback,
         )
     }
 
@@ -646,11 +647,13 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let StmtKind::Return(Some(value)) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Block(block) = &value.kind else {
-            return None;
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
+            Some(StmtKind::Return(Some(value))) => match &value.kind {
+                ExprKind::Block(block) => Some(block),
+                _ => return None,
+            },
+            Some(_) => return None,
+            None => None,
         };
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
@@ -659,7 +662,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .as_return()?
                 .expression()?
                 .as_block()?,
-            Some(block),
+            fallback,
         )
     }
 
