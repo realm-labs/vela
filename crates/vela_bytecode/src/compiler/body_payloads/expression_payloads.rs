@@ -1,8 +1,9 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, ExprKind, InterpolatedStringPart, Literal, Pattern,
-    SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm,
-    SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
+    AssignOp, AstNode, BinaryOp, ExprKind, IfExpr, InterpolatedStringPart, Literal, MatchExpr,
+    Pattern, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
+    SyntaxRecordPatternField,
 };
 
 #[cfg(test)]
@@ -51,6 +52,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
+    pub(in crate::compiler) fn if_payload_with_fallback(
+        &self,
+    ) -> Option<(&'ast IfExpr, CompilerIfPayload<'ast>)> {
+        let CompilerExpressionFallbackKind::If(if_expr) = self.fallback_kind else {
+            return None;
+        };
+        let payload = if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)?;
+        Some((if_expr, payload))
+    }
+
     pub(in crate::compiler) fn match_arm_payloads(
         &self,
     ) -> Option<Vec<CompilerMatchArmPayload<'ast>>> {
@@ -72,6 +83,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             self.syntax.as_ref()?.as_match()?,
             match_expr,
         ))
+    }
+
+    pub(in crate::compiler) fn match_payloads_with_fallback(
+        &self,
+    ) -> Option<(
+        &'ast MatchExpr,
+        CompilerExpressionPayload<'ast>,
+        Vec<CompilerMatchArmPayload<'ast>>,
+    )> {
+        let CompilerExpressionFallbackKind::Match(match_expr) = self.fallback_kind else {
+            return None;
+        };
+        self.source?;
+        let syntax = self.syntax.as_ref()?.as_match()?;
+        let scrutinee_payload =
+            match_scrutinee_payload_for_expr(self.source, syntax.clone(), match_expr);
+        let arm_payloads = match_arm_payloads_for_expr(self.source, syntax, match_expr)?;
+        Some((match_expr, scrutinee_payload, arm_payloads))
     }
 
     pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
