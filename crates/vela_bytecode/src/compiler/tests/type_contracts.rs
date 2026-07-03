@@ -93,32 +93,8 @@ fn with_static_type_payload_compiler(
     inspect(&mut compiler, payload);
 }
 
-fn let_initializer_payload<'ast>(
-    statements: &[body_payloads::CompilerStatementPayload<'ast>],
-    index: usize,
-) -> body_payloads::CompilerExpressionPayload<'ast> {
-    statements
-        .get(index)
-        .expect("statement should exist")
-        .let_initializer_expression_payload()
-        .expect("expected let initializer")
-}
-
-fn return_value_payload<'ast>(
-    statements: &[body_payloads::CompilerStatementPayload<'ast>],
-) -> body_payloads::CompilerExpressionPayload<'ast> {
-    statements
-        .last()
-        .expect("return statement should exist")
-        .return_value_expression_payload()
-        .expect("expected return value")
-}
-
-fn static_type_for_payload(
-    compiler: &Compiler<'_, '_>,
-    payload: &body_payloads::CompilerExpressionPayload<'_>,
-) -> value_types::StaticExprType {
-    compiler.static_type_for_expr_with_payload(payload.fallback(), Some(payload))
+fn local_value_type(compiler: &Compiler<'_, '_>, name: &str) -> Option<RuntimeTypeFact> {
+    compiler.value_types.name(name)
 }
 
 fn return_value(body: &Block) -> &Expr {
@@ -230,34 +206,38 @@ fn main(dynamic, exact: i64) {
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
+            compiler
+                .compile_statement_payload_for_test(&statements[0])
+                .expect("dynamic let statement should compile");
+            assert_eq!(local_value_type(compiler, "erased"), None);
+
+            compiler
+                .compile_statement_payload_for_test(&statements[1])
+                .expect("copied let statement should compile");
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 0)),
-                value_types::StaticExprType::Dynamic
-            );
-            assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 1)),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::I64
-                ))
+                local_value_type(compiler, "copied"),
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64))
             );
 
-            for statement in statements.iter().take(3) {
-                compiler
-                    .compile_statement_payload_for_test(statement)
-                    .expect("let statement should compile");
-            }
+            compiler
+                .compile_statement_payload_for_test(&statements[2])
+                .expect("hinted let statement should compile");
 
             assert_eq!(
-                static_type_for_payload(compiler, &let_initializer_payload(&statements, 3)),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::U32
-                ))
+                local_value_type(compiler, "hinted"),
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::U32))
+            );
+
+            compiler
+                .compile_statement_payload_for_test(&statements[3])
+                .expect("use_hinted let statement should compile");
+            assert_eq!(
+                local_value_type(compiler, "use_hinted"),
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::U32))
             );
             assert_eq!(
-                static_type_for_payload(compiler, &return_value_payload(&statements)),
-                value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
-                    vela_common::PrimitiveTag::I64
-                ))
+                local_value_type(compiler, "copied"),
+                Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64))
             );
         },
     );
@@ -568,22 +548,20 @@ fn main(dynamic) {
                     .expect("typed let should compile");
             }
 
-            let copied_values = let_initializer_payload(&statements, 2);
+            compiler
+                .compile_statement_payload_for_test(&statements[2])
+                .expect("copied values let should compile");
             assert_eq!(
-                compiler.value_type_for_expr_with_payload(
-                    copied_values.fallback(),
-                    Some(&copied_values)
-                ),
+                local_value_type(compiler, "copied"),
                 Some(RuntimeTypeFact::array(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::I64
                 )))
             );
-            let copied_scores = let_initializer_payload(&statements, 3);
+            compiler
+                .compile_statement_payload_for_test(&statements[3])
+                .expect("copied scores let should compile");
             assert_eq!(
-                compiler.value_type_for_expr_with_payload(
-                    copied_scores.fallback(),
-                    Some(&copied_scores)
-                ),
+                local_value_type(compiler, "copied_scores"),
                 Some(RuntimeTypeFact::map(
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::String),
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),

@@ -40,8 +40,8 @@ fn mismatched_path_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    let cst_value = self;
-    let legacy_value = value;
+    let cst_value = value;
+    let legacy_value = value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -55,14 +55,18 @@ fn main(value) {
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_self_let, legacy_path_let);
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched path let initializer payload must not compile legacy expression");
+        .expect("CST path let payload should compile without legacy expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST let initializer payload")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(instruction.kind, UnlinkedInstructionKind::Add { .. })),
+        "CST path let must not compile the legacy binary expression"
+    );
 }
 
 #[test]
@@ -291,6 +295,138 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_path_let_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    let value = input;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only path let body should compile");
+
+    assert!(
+        compiler.locals.contains_key("value"),
+        "CST path let should bind the local"
+    );
+}
+
+#[test]
+fn syntax_only_typed_path_let_body_emits_runtime_guard() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    let value: i64 = input;
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed path let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::GuardType { .. }
+            )),
+        "dynamic CST path assigned to a typed let should emit a runtime guard"
+    );
+}
+
+#[test]
+fn syntax_only_path_let_in_mixed_body_drops_owned_statement_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    let value = input;
+    return value + 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only path let should not retain an owned statement fallback"
+    );
+    assert_eq!(
+        statements[1].return_value_kind(),
+        Some(SyntaxExpressionKind::Binary)
+    );
+}
+
+#[test]
+fn syntax_only_path_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    return input;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only path return body should compile");
+
+    assert_eq!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .filter(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::Return { .. }
+            ))
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn syntax_only_path_return_in_mixed_body_drops_owned_statement_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    return input;
+    return input + 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only path return should not retain an owned statement fallback"
+    );
+    assert_eq!(
+        statements[1].return_value_kind(),
+        Some(SyntaxExpressionKind::Binary)
+    );
+}
+
+#[test]
 fn unclassified_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
@@ -390,7 +526,7 @@ fn unclassified_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -416,7 +552,7 @@ fn return_value_kind_without_expression_payload_does_not_use_legacy_expression()
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -427,12 +563,15 @@ fn main(value) {
     };
 
     let error = compiler
-        .compile_return_kind_without_expression_payload_for_test(value, SyntaxExpressionKind::Path)
+        .compile_return_kind_without_expression_payload_for_test(
+            value,
+            SyntaxExpressionKind::Binary,
+        )
         .expect_err("kind-only CST return payload must not compile legacy expression");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
+        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
     ));
 }
 
@@ -441,8 +580,8 @@ fn mismatched_path_return_value_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
-    return self;
     return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -459,14 +598,18 @@ fn main(value) {
         legacy_path_return,
     );
 
-    let error = compiler
+    compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("mismatched path return payload must not compile legacy expression");
+        .expect("CST path return payload should compile without legacy expression");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST return value payload")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .all(|instruction| !matches!(instruction.kind, UnlinkedInstructionKind::Add { .. })),
+        "CST path return must not compile the legacy binary expression"
+    );
 }
 
 #[test]
@@ -657,7 +800,7 @@ fn cst_body() {
 
 fn fallback_body() {
     let value = 1;
-    return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -688,7 +831,7 @@ fn empty_return_payload_with_literal_fallback_uses_cst_empty_return() {
 fn main() {
     return;
     let value = 1;
-    return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

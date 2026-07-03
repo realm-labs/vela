@@ -5,7 +5,7 @@ fn source_less_expression_payload_does_not_expose_cst_expression() {
     with_cst_payload_compiler(
         r#"
 fn main(value) {
-    let result = value;
+    let result = value + 1;
 }
 "#,
         |_, payload| {
@@ -482,10 +482,10 @@ fn source_less_statement_payload_does_not_expose_cst_value_kinds() {
     with_cst_payload_compiler(
         r#"
 fn main(target) {
-    let value = target;
+    let value = target + 1;
     target = value;
     value;
-    return value;
+    return value + 1;
 }
 "#,
         |_, payload| {

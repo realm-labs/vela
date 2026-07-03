@@ -112,7 +112,7 @@ fn cst_body() {
 
 fn legacy_body() {
     let legacy_value = 2;
-    return legacy_value;
+    return legacy_value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -153,7 +153,7 @@ fn cst_body() {
 
 fn legacy_body() {
     let legacy_value = 2;
-    return legacy_value;
+    return legacy_value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -336,7 +336,7 @@ fn mismatched_statement_payloads_do_not_compile_legacy_statement() {
     let text = r#"
 fn main() {
     let value = [1];
-    return value;
+    return value + 1;
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");

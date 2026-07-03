@@ -4,6 +4,7 @@ mod condition_jumps;
 mod if_values;
 mod loops;
 mod matches;
+mod path_values;
 mod statements;
 mod value_syntax;
 

@@ -266,13 +266,13 @@ fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStatement) -> b
             let_statement.name_text().is_none()
                 || let_statement
                     .initializer()
-                    .is_some_and(|expression| !syntax_expression_is_simple_literal(&expression))
+                    .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
         }),
         SyntaxStatementKind::Break | SyntaxStatementKind::Continue => false,
         SyntaxStatementKind::Return => statement.as_return().is_none_or(|return_statement| {
             return_statement
                 .expression()
-                .is_some_and(|expression| !syntax_expression_is_simple_literal(&expression))
+                .is_some_and(|expression| !syntax_expression_is_simple_value(&expression))
         }),
         SyntaxStatementKind::Block => statement
             .as_block()
@@ -287,6 +287,16 @@ fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
     };
     !matches!(literal.token_kind(), Some(SyntaxKind::InterpolatedString))
         && literal.literal().is_some()
+}
+
+fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
+    expression
+        .as_path()
+        .is_some_and(|path| !path.path_segments().is_empty())
+}
+
+fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
+    syntax_expression_is_simple_literal(expression) || syntax_expression_is_simple_path(expression)
 }
 
 fn match_arm_payloads_for_expr<'ast>(
@@ -527,6 +537,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((literal, span))
     }
 
+    pub(in crate::compiler) fn let_initializer_syntax_path_and_span(
+        &self,
+    ) -> Option<(Vec<String>, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let path = expression.as_path()?.path_segments();
+        (!path.is_empty()).then_some((path, span))
+    }
+
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let StmtKind::Let {
             value: Some(value), ..
@@ -633,6 +654,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = SyntaxLiteral::cast(expression.syntax().clone())?.literal()?;
         Some((literal, span))
+    }
+
+    pub(in crate::compiler) fn return_value_syntax_path_and_span(
+        &self,
+    ) -> Option<(Vec<String>, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let path = expression.as_path()?.path_segments();
+        (!path.is_empty()).then_some((path, span))
     }
 
     pub(super) fn syntax_statement_span(&self) -> Option<Span> {
