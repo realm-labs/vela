@@ -87,7 +87,7 @@ pub(in crate::compiler) struct CompilerPatternPayload<'ast> {
 pub(in crate::compiler) struct CompilerRecordPatternFieldPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordPatternField>,
-    pattern_fallback: Option<&'ast Pattern>,
+    _ast: PhantomData<&'ast ()>,
 }
 
 pub(in crate::compiler) struct CompilerArgumentPayload<'ast> {

@@ -1183,10 +1183,10 @@ impl<'ast> CompilerPatternPayload<'ast> {
             fields
                 .iter()
                 .enumerate()
-                .map(|(index, fallback)| CompilerRecordPatternFieldPayload {
+                .map(|(index, _fallback)| CompilerRecordPatternFieldPayload {
                     source: self.source,
                     syntax: syntax_fields.get(index).cloned(),
-                    pattern_fallback: fallback.pattern.as_ref(),
+                    _ast: std::marker::PhantomData,
                 })
                 .collect(),
         )
@@ -1292,26 +1292,29 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
         self.syntax.as_ref()?.pattern()?.pattern_kind()
     }
 
-    pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload<'ast>> {
+    pub(in crate::compiler) fn pattern_payload(
+        &self,
+        fallback: Option<&'ast Pattern>,
+    ) -> Option<CompilerPatternPayload<'ast>> {
         self.source?;
         Some(CompilerPatternPayload::from_fallback(
             self.source,
             self.syntax
                 .as_ref()
                 .and_then(SyntaxRecordPatternField::pattern),
-            self.pattern_fallback?,
+            fallback?,
         ))
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(
         syntax: SyntaxRecordPatternField,
-        fallback: &'ast vela_syntax::ast::RecordPatternField,
+        _fallback: &'ast vela_syntax::ast::RecordPatternField,
     ) -> Self {
         Self {
             source: Some(SourceId::new(1)),
             syntax: Some(syntax),
-            pattern_fallback: fallback.pattern.as_ref(),
+            _ast: std::marker::PhantomData,
         }
     }
 }

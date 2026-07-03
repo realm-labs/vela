@@ -392,7 +392,11 @@ fn loop_patterns(results) {
     assert_eq!(field_labels, ["code", "message"]);
     assert_eq!(
         record_fields[0]
-            .pattern_payload()
+            .pattern_payload(
+                record_pattern_fields(fallback_value_pattern)[0]
+                    .pattern
+                    .as_ref()
+            )
             .and_then(|payload| {
                 payload
                     .syntax_pattern()
