@@ -12,8 +12,8 @@ mod expression_payloads;
 mod simple_values;
 
 use simple_values::{
-    expression_syntax_literal, expression_syntax_path_or_self,
-    syntax_statement_requires_body_block_lookup,
+    expression_syntax_literal, expression_syntax_negated_number_literal,
+    expression_syntax_path_or_self, syntax_statement_requires_body_block_lookup,
 };
 
 #[derive(Clone)]
@@ -503,6 +503,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((literal, span))
     }
 
+    pub(in crate::compiler) fn let_initializer_syntax_negated_literal_and_span(
+        &self,
+    ) -> Option<(vela_syntax::ast::Literal, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_let()?.initializer()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let literal = expression_syntax_negated_number_literal(&expression)?;
+        Some((literal, span))
+    }
+
     pub(in crate::compiler) fn let_initializer_syntax_path_and_span(
         &self,
     ) -> Option<(Vec<String>, Span)> {
@@ -630,6 +641,17 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let range = expression.syntax().text_range();
         let span = Span::new(source, range.start().into(), range.end().into());
         let literal = expression_syntax_literal(&expression)?;
+        Some((literal, span))
+    }
+
+    pub(in crate::compiler) fn return_value_syntax_negated_literal_and_span(
+        &self,
+    ) -> Option<(vela_syntax::ast::Literal, Span)> {
+        let source = self.source?;
+        let expression = self.syntax.as_ref()?.as_return()?.expression()?;
+        let range = expression.syntax().text_range();
+        let span = Span::new(source, range.start().into(), range.end().into());
+        let literal = expression_syntax_negated_number_literal(&expression)?;
         Some((literal, span))
     }
 

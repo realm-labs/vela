@@ -217,6 +217,67 @@ fn main() -> i8 {
 }
 
 #[test]
+fn syntax_only_negated_numeric_return_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return -(12);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only negated numeric return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only negated numeric return body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::i64(-12)),
+        "CST negated numeric return should emit the negated constant"
+    );
+}
+
+#[test]
+fn syntax_only_typed_negated_numeric_return_body_uses_contextual_type() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() -> i8 {
+    return -12;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only typed negated numeric return should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed negated numeric return body should compile");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(-12))),
+        "typed CST negated numeric return should use the function return type"
+    );
+}
+
+#[test]
 fn syntax_only_literal_let_body_compiles_without_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
@@ -274,7 +335,7 @@ fn main() {
 }
 
 #[test]
-fn typed_negated_numeric_let_keeps_owned_statement_fallback() {
+fn syntax_only_typed_negated_numeric_let_body_uses_contextual_type() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -283,12 +344,26 @@ fn main() {
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
-    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
     assert!(
-        statements[0].fallback().span.end > statements[0].fallback().span.start,
-        "typed negated numeric let should keep the owned fallback until typed CST constants land"
+        fallback_result.is_err(),
+        "syntax-only typed negated numeric let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only typed negated numeric let body should compile");
+
+    assert!(
+        compiler
+            .code
+            .constants
+            .contains(&Constant::Scalar(vela_common::ScalarValue::I8(-12))),
+        "typed CST negated numeric let should use the local type hint"
     );
 }
 

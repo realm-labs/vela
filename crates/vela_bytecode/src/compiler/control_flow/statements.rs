@@ -86,6 +86,21 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_literal(name, span, literal, literal_span);
                 }
+                if let Some((literal, literal_span)) =
+                    stmt.let_initializer_syntax_negated_literal_and_span()
+                {
+                    let Some(name) = stmt.let_name_text() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST let binding name",
+                        )));
+                    };
+                    let Some(span) = stmt.syntax_statement_span() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        )));
+                    };
+                    return self.compile_let_negated_literal(name, span, literal, literal_span);
+                }
                 if stmt.optional_fallback().is_none()
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
@@ -141,6 +156,9 @@ impl Compiler<'_, '_> {
             SyntaxStatementKind::Return => {
                 if let Some((literal, span)) = stmt.return_value_syntax_literal_and_span() {
                     return self.compile_return_literal(literal, span);
+                }
+                if let Some((literal, span)) = stmt.return_value_syntax_negated_literal_and_span() {
+                    return self.compile_return_negated_literal(literal, span);
                 }
                 if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
                     return self.compile_return_path(path, span);

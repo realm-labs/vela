@@ -54,6 +54,23 @@ pub(super) fn compile_negated_literal_constant(
     }
 }
 
+pub(super) fn compile_negated_literal_constant_for_type(
+    literal: &Literal,
+    expected: PrimitiveTag,
+) -> CompileResult<Option<Constant>> {
+    match literal {
+        Literal::Integer(value) if value.suffix.is_none() && is_signed_integer_tag(expected) => {
+            parse_negated_integer_scalar_as(value, expected)
+                .map(|value| Some(Constant::Scalar(value)))
+        }
+        Literal::Float(value) if value.suffix.is_none() && is_float_tag(expected) => {
+            let value = parse_f64_scalar_as(value, expected)?;
+            Ok(Some(Constant::Scalar(negate_float_scalar(value))))
+        }
+        _ => Ok(None),
+    }
+}
+
 pub(super) fn evaluate_syntax_const_expr(
     source: SourceId,
     expr: &SyntaxExpression,
@@ -484,6 +501,29 @@ fn parse_negated_integer_scalar(value: &IntegerLiteral) -> CompileResult<Option<
     Ok(Some(scalar))
 }
 
+fn parse_negated_integer_scalar_as(
+    value: &IntegerLiteral,
+    expected: PrimitiveTag,
+) -> CompileResult<ScalarValue> {
+    let magnitude = parse_i64eger_magnitude(value)?;
+    let scalar = match expected {
+        PrimitiveTag::I8 => {
+            ScalarValue::I8(checked_signed_negative(value, magnitude, i8::MAX as u128)? as i8)
+        }
+        PrimitiveTag::I16 => {
+            ScalarValue::I16(checked_signed_negative(value, magnitude, i16::MAX as u128)? as i16)
+        }
+        PrimitiveTag::I32 => {
+            ScalarValue::I32(checked_signed_negative(value, magnitude, i32::MAX as u128)? as i32)
+        }
+        PrimitiveTag::I64 => {
+            ScalarValue::I64(checked_signed_negative(value, magnitude, i64::MAX as u128)? as i64)
+        }
+        _ => unreachable!("caller only passes signed integer primitive tags"),
+    };
+    Ok(scalar)
+}
+
 fn parse_i64eger_magnitude(value: &IntegerLiteral) -> CompileResult<u128> {
     let value_without_separators = value.source_text().replace('_', "");
     let digits = match value.radix {
@@ -567,6 +607,13 @@ fn is_integer_tag(tag: PrimitiveTag) -> bool {
             | PrimitiveTag::U16
             | PrimitiveTag::U32
             | PrimitiveTag::U64
+    )
+}
+
+fn is_signed_integer_tag(tag: PrimitiveTag) -> bool {
+    matches!(
+        tag,
+        PrimitiveTag::I8 | PrimitiveTag::I16 | PrimitiveTag::I32 | PrimitiveTag::I64
     )
 }
 

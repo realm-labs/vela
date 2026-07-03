@@ -52,6 +52,18 @@ pub(super) fn expression_syntax_literal(expression: &SyntaxExpression) -> Option
     expression.as_literal()?.literal()
 }
 
+pub(super) fn expression_syntax_negated_number_literal(
+    expression: &SyntaxExpression,
+) -> Option<Literal> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return expression_syntax_negated_number_literal(&inner);
+    }
+    let unary = expression.as_unary()?;
+    (unary.operator() == Some(UnaryOp::Negate)).then_some(())?;
+    let operand = unary.expression()?;
+    expression_syntax_negatable_number_literal(&operand)
+}
+
 fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_literal(&inner);
@@ -82,38 +94,32 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
 }
 
 fn syntax_expression_is_simple_negated_number(expression: &SyntaxExpression) -> bool {
-    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_simple_negated_number(&inner);
-    }
-    let Some(unary) = expression.as_unary() else {
-        return false;
-    };
-    if unary.operator() != Some(UnaryOp::Negate) {
-        return false;
-    }
-    let Some(operand) = unary.expression() else {
-        return false;
-    };
-    syntax_expression_is_negatable_number(&operand)
+    expression_syntax_negated_number_literal(expression).is_some()
 }
 
-fn syntax_expression_is_negatable_number(expression: &SyntaxExpression) -> bool {
+fn expression_syntax_negatable_number_literal(expression: &SyntaxExpression) -> Option<Literal> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-        return syntax_expression_is_negatable_number(&inner);
+        return expression_syntax_negatable_number_literal(&inner);
     }
-    let Some(literal) = expression
+    let literal = expression
         .as_literal()
-        .and_then(|literal| literal.literal())
-    else {
-        return false;
-    };
+        .and_then(|literal| literal.literal())?;
     match literal {
-        Literal::Integer(value) => !matches!(
-            value.suffix,
-            Some(IntegerSuffix::U8 | IntegerSuffix::U16 | IntegerSuffix::U32 | IntegerSuffix::U64)
-        ),
-        Literal::Float(_) => true,
-        _ => false,
+        Literal::Integer(ref value)
+            if matches!(
+                value.suffix,
+                Some(
+                    IntegerSuffix::U8
+                        | IntegerSuffix::U16
+                        | IntegerSuffix::U32
+                        | IntegerSuffix::U64
+                )
+            ) =>
+        {
+            None
+        }
+        Literal::Integer(_) | Literal::Float(_) => Some(literal),
+        _ => None,
     }
 }
 
@@ -121,4 +127,5 @@ fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_simple_literal(expression)
         || syntax_expression_is_simple_path(expression)
         || syntax_expression_is_simple_block(expression)
+        || syntax_expression_is_simple_negated_number(expression)
 }
