@@ -159,6 +159,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn paren_inner_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_paren()?.expression(),

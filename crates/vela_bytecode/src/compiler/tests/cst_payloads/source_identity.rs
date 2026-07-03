@@ -100,6 +100,29 @@ fn main(value) {
 }
 
 #[test]
+fn source_less_paren_payload_does_not_expose_inner_payload() {
+    with_cst_payload_compiler(
+        r#"
+fn main(value) {
+    let result = (value);
+}
+"#,
+        |_, payload| {
+            let paren = payload.body.statement_payloads()[0]
+                .let_initializer_expression_payload()
+                .expect("paren initializer payload");
+            let missing_source =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    paren.syntax_expression().expect("paren syntax").clone(),
+                    paren.fallback(),
+                );
+
+            assert!(missing_source.paren_inner_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_logical_chain_payload_does_not_expose_operand_payloads() {
     with_cst_payload_compiler(
         r#"
