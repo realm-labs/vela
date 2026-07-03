@@ -484,7 +484,7 @@ fn source_less_statement_payload_does_not_expose_cst_value_kinds() {
 fn main(target) {
     let value = target + 1;
     target = value;
-    value;
+    value + 0;
     return value + 1;
 }
 "#,

@@ -1,10 +1,12 @@
 use vela_common::Span;
 use vela_hir::binding::LocalBindingKind;
+use vela_syntax::ast::{AstNode, SyntaxExpression};
 
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
+use crate::compiler::body_payloads::expression_syntax_path_or_self;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::value_types::ExpectedTypeOutcome;
@@ -113,6 +115,34 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_path_expr_statement(
+        &mut self,
+        source: vela_common::SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        let Some((path, span)) = syntax_path_and_span(source, expression) else {
+            return Ok(None);
+        };
+        self.compile_path_expr(span, &path)?;
+        Ok(Some(false))
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_path_expr_to(
+        &mut self,
+        source: vela_common::SourceId,
+        expression: &SyntaxExpression,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some((path, span)) = syntax_path_and_span(source, expression) else {
+            return Ok(None);
+        };
+        let value = self.compile_path_expr(span, &path)?;
+        if value != dst {
+            self.emit(UnlinkedInstructionKind::Move { dst, src: value });
+        }
+        Ok(Some(false))
+    }
+
     fn compile_path_with_expected_type(
         &mut self,
         span: Span,
@@ -193,4 +223,19 @@ impl Compiler<'_, '_> {
                     .map(ValueShape::Record)
             })
     }
+}
+
+fn syntax_path_and_span(
+    source: vela_common::SourceId,
+    expression: &SyntaxExpression,
+) -> Option<(Vec<String>, Span)> {
+    let path = expression_syntax_path_or_self(expression)?;
+    if path.is_empty() {
+        return None;
+    }
+    let range = expression.syntax().text_range();
+    Some((
+        path,
+        Span::new(source, range.start().into(), range.end().into()),
+    ))
 }

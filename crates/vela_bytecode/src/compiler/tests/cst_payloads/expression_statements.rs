@@ -31,6 +31,33 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_path_expression_statements_drop_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    input;
+    (input);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let body_fallback =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| payload.body.fallback()));
+    assert!(
+        body_fallback.is_err(),
+        "path expression statement body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 2);
+    assert!(statements.iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    }));
+
+    compile_program_source(source, text)
+        .expect("CST-only path expression statements should compile");
+}
+
+#[test]
 fn semantic_function_generic_expression_statements_have_cst_payloads() {
     let source = SourceId::new(1);
     let text = r#"

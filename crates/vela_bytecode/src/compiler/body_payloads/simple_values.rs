@@ -41,9 +41,10 @@ pub(super) fn syntax_statement_requires_body_block_lookup(statement: &SyntaxStat
             .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
         SyntaxStatementKind::Expr => statement.as_expr().is_none_or(|expr_statement| {
             expr_statement.semicolon_token().is_none()
-                || expr_statement
-                    .expression()
-                    .is_none_or(|expression| !syntax_expression_is_inline_constant(&expression))
+                || expr_statement.expression().is_none_or(|expression| {
+                    !syntax_expression_is_inline_constant(&expression)
+                        && !syntax_expression_is_simple_path(&expression)
+                })
         }),
         _ => true,
     }

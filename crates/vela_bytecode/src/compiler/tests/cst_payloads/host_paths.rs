@@ -103,8 +103,12 @@ fn missing_host_path_expression_payload_does_not_use_legacy_path() {
     let semantic = parse_semantic_source(
         source,
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main(player: Player) {
-    player::level;
+    take(player::level);
 }
 "#,
     )
@@ -116,8 +120,10 @@ fn main(player: Player) {
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let legacy_path = payload.body.statement_payloads()[0]
-        .expression_payload()
-        .expect("legacy host path expression");
+        .call_argument_payloads()
+        .expect("host path call argument payloads")
+        .remove(0)
+        .value_expression_payload();
     let missing_path =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
     let compiler = Compiler::new_with_param_defaults(

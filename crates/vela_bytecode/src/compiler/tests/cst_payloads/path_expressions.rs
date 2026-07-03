@@ -30,15 +30,21 @@ fn path_values(input) {
 fn missing_path_expression_payload_does_not_use_legacy_path() {
     let source = SourceId::new(1);
     let text = r#"
+fn take(value) {
+    return value;
+}
+
 fn main(value) {
-    value;
+    take(value);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_path = payload.body.statement_payloads()[0]
-        .expression_payload()
-        .expect("legacy path payload");
+        .call_argument_payloads()
+        .expect("call argument payloads")
+        .remove(0)
+        .value_expression_payload();
     let missing_path =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
 
@@ -119,14 +125,20 @@ fn main() {
 fn source_less_path_payload_does_not_expose_cst_segments() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main(value) {
-    value;
+    take(value);
 }
 "#,
         |_, payload| {
             let path = payload.body.statement_payloads()[0]
-                .expression_payload()
-                .expect("path initializer payload");
+                .call_argument_payloads()
+                .expect("call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     path.syntax_expression().expect("path syntax").clone(),
@@ -142,19 +154,27 @@ fn main(value) {
 fn normal_path_payload_does_not_compile_legacy_self() {
     with_cst_payload_compiler(
         r#"
+fn take(value) {
+    return value;
+}
+
 fn main(value) {
-    value;
-    self;
+    take(value);
+    take(self);
 }
 "#,
         |compiler, payload| {
             let statements = payload.body.statement_payloads();
             let path = statements[0]
-                .expression_payload()
-                .expect("path expression payload");
+                .call_argument_payloads()
+                .expect("path call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             let self_value = statements[1]
-                .expression_payload()
-                .expect("self expression payload");
+                .call_argument_payloads()
+                .expect("self call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
                 path.syntax_expression()
@@ -371,12 +391,12 @@ fn main(cst) {
 fn script_type_facts_with_cst_path_payload_do_not_use_legacy_path_fact() {
     let source = SourceId::new(1);
     let text = r#"
-fn cst_path(cst) {
-    cst;
+fn cst_path(consumer, cst) {
+    consumer(cst);
 }
 
-fn legacy_path(legacy) {
-    legacy;
+fn legacy_path(consumer, legacy) {
+    consumer(legacy);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -386,14 +406,18 @@ fn legacy_path(legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .find_map(|statement| statement.expression_payload())
-        .expect("CST path return expression");
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .find(|payload| payload.syntax_path_segments() == Some(vec!["cst".to_owned()]))
+        .expect("CST path argument expression");
     let legacy_return = legacy_payload
         .body
         .statement_payloads()
         .into_iter()
-        .find_map(|statement| statement.expression_payload())
-        .expect("legacy path return expression");
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
+        .expect("legacy path argument expression");
     let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
         source,
         cst_return
@@ -427,8 +451,8 @@ fn static_value_type_facts_prefer_cst_path_payloads_and_reject_mismatch() {
 fn main() {
     let cst_value = true;
     let legacy_value = 1;
-    cst_value;
-    legacy_value;
+    take(cst_value);
+    take(legacy_value);
     let cst_block = {
         let selected = cst_value;
         selected
@@ -450,11 +474,15 @@ fn main() {
             );
             let statements = payload.body.statement_payloads();
             let cst_path = statements[2]
-                .expression_payload()
-                .expect("CST path expression");
+                .call_argument_payloads()
+                .expect("CST path call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             let legacy_path = statements[3]
-                .expression_payload()
-                .expect("legacy path fallback");
+                .call_argument_payloads()
+                .expect("legacy path call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             let cst_block = statements[4]
                 .let_initializer_expression_payload()
                 .expect("CST block initializer");
@@ -571,13 +599,13 @@ struct CstBox {}
 struct LegacyBox {}
 
 impl CstBox {
-    fn id(self) {
-        self;
+    fn id(self, consumer) {
+        consumer(self);
     }
 }
 
-fn legacy_path(legacy) {
-    legacy;
+fn legacy_path(consumer, legacy) {
+    consumer(legacy);
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
@@ -590,8 +618,10 @@ fn legacy_path(legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .find_map(|statement| statement.expression_payload())
-        .expect("self return expression");
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .find(|payload| payload.syntax_is_self())
+        .expect("self argument expression");
     let fact = script_types::expression_script_fact_with_payload(
         self_return.fallback(),
         Some(&self_return),
@@ -611,8 +641,10 @@ fn legacy_path(legacy) {
         .body
         .statement_payloads()
         .into_iter()
-        .find_map(|statement| statement.expression_payload())
-        .expect("legacy path return expression");
+        .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
+        .map(|argument| argument.value_expression_payload())
+        .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
+        .expect("legacy path argument expression");
     let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
         source,
         self_return
@@ -668,7 +700,7 @@ fn legacy_path(legacy) {
         r#"
 fn main(input) {
     let legacy = input + 1;
-    self;
+    consumer(self);
 }
 "#,
         |compiler, payload| {
@@ -685,8 +717,10 @@ fn main(input) {
                 .let_initializer_expression_payload()
                 .expect("legacy path initializer");
             let cst_self = statements[1]
-                .expression_payload()
-                .expect("CST self expression statement");
+                .call_argument_payloads()
+                .expect("self call argument payloads")
+                .remove(0)
+                .value_expression_payload();
             assert_eq!(
                 compiler.static_type_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
