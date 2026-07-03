@@ -667,6 +667,10 @@ inspection.
 Payload mismatch and missing-payload rejection policy now also reads from that
 bytecode-owned fallback-kind summary instead of a free `ExprKind` classifier
 when a `CompilerExpressionPayload` is present.
+Expression payload alignment now keeps the temporary old-`ExprKind`
+classification in the alignment helper, while `CompilerExpressionPayload`
+answers only bytecode-owned fallback-summary queries instead of accepting a
+legacy expression node.
 Typed native-call and value-method mutation argument lowering now rejects
 missing rowan CST argument payloads before expected-type compilation instead
 of compiling the temporary legacy owned-AST argument value.
