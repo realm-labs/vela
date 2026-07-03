@@ -243,6 +243,40 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_constant_array_let_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values: Array<i64> = [1, 2 + 3, -4];
+    return;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only constant array let should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only constant array let body should compile");
+
+    assert!(
+        compiler.code.constants.contains(&Constant::Array(vec![
+            Constant::Scalar(vela_common::ScalarValue::I64(1)),
+            Constant::Scalar(vela_common::ScalarValue::I64(5)),
+            Constant::Scalar(vela_common::ScalarValue::I64(-4)),
+        ])),
+        "CST constant array let should emit the evaluated array constant"
+    );
+}
+
+#[test]
 fn syntax_only_nested_empty_array_block_let_drops_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"
