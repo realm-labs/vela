@@ -354,17 +354,6 @@ impl<'ast> CompilerBodyFallback<'ast> {
             block: Some(block),
         }
     }
-
-    pub(super) const fn statements_with_block(
-        statements: &'ast [Stmt],
-        block: &'ast Block,
-    ) -> Self {
-        Self {
-            _ast: PhantomData,
-            statements,
-            block: Some(block),
-        }
-    }
 }
 
 fn syntax_body_statements(body: &SyntaxBlock) -> Vec<SyntaxStatement> {

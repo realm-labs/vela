@@ -5,10 +5,10 @@ use vela_syntax::Parse as SyntaxParse;
 #[cfg(test)]
 use vela_syntax::ast::AstNode;
 #[cfg(test)]
+use vela_syntax::ast::Block;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxBlock;
 use vela_syntax::ast::SyntaxSourceFile;
-#[cfg(test)]
-use vela_syntax::ast::{Block, Stmt};
 #[cfg(test)]
 use vela_syntax::body_parser_support::parse_body_blocks_at_spans;
 
@@ -25,7 +25,6 @@ pub(super) struct BodyBlockLookup {
 #[cfg(test)]
 struct BodyBlockEntry {
     span: Span,
-    statements: Vec<Stmt>,
     block: Block,
 }
 
@@ -78,13 +77,12 @@ impl BodyBlockEntry {
     fn new(block: Block) -> Self {
         Self {
             span: block.span,
-            statements: block.statements.clone(),
             block,
         }
     }
 
     fn fallback(&self) -> CompilerBodyFallback<'_> {
-        CompilerBodyFallback::statements_with_block(&self.statements, &self.block)
+        CompilerBodyFallback::block(&self.block)
     }
 }
 
