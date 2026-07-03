@@ -6,6 +6,7 @@ use vela_syntax::ast::Argument;
 #[cfg(test)]
 use vela_syntax::ast::AssignOp;
 use vela_syntax::ast::BinaryOp;
+#[cfg(test)]
 use vela_syntax::ast::Block;
 use vela_syntax::ast::InterpolatedStringPart;
 use vela_syntax::ast::MapEntry;
@@ -134,7 +135,10 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
     Literal,
     Path,
     SelfValue,
+    #[cfg(test)]
     Block(&'ast Block),
+    #[cfg(not(test))]
+    Block,
     If(&'ast IfExpr),
     Match(&'ast MatchExpr),
     Assign {
@@ -1587,7 +1591,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Literal(_) => CompilerExpressionFallbackKind::Literal,
             ExprKind::Path(_) => CompilerExpressionFallbackKind::Path,
             ExprKind::SelfValue => CompilerExpressionFallbackKind::SelfValue,
-            ExprKind::Block(block) => CompilerExpressionFallbackKind::Block(block),
+            ExprKind::Block(block) => {
+                #[cfg(test)]
+                {
+                    CompilerExpressionFallbackKind::Block(block)
+                }
+                #[cfg(not(test))]
+                {
+                    let _ = block;
+                    CompilerExpressionFallbackKind::Block
+                }
+            }
             ExprKind::If(if_expr) => CompilerExpressionFallbackKind::If(if_expr),
             ExprKind::Match(match_expr) => CompilerExpressionFallbackKind::Match(match_expr),
             ExprKind::Assign { target, value, .. } => {
