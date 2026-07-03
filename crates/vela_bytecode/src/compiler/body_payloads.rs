@@ -141,9 +141,12 @@ pub(in crate::compiler) enum CompilerExpressionFallbackKind<'ast> {
         callee: &'ast vela_syntax::ast::Expr,
         args: &'ast [Argument],
     },
+    #[cfg(test)]
     Field {
         base: &'ast vela_syntax::ast::Expr,
     },
+    #[cfg(not(test))]
+    Field,
     Index {
         base: &'ast vela_syntax::ast::Expr,
         index: &'ast vela_syntax::ast::Expr,
@@ -1541,7 +1544,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             ExprKind::Call { callee, args } => {
                 CompilerExpressionFallbackKind::Call { callee, args }
             }
+            #[cfg(test)]
             ExprKind::Field { base, .. } => CompilerExpressionFallbackKind::Field { base },
+            #[cfg(not(test))]
+            ExprKind::Field { .. } => CompilerExpressionFallbackKind::Field,
             ExprKind::Index { base, index } => {
                 CompilerExpressionFallbackKind::Index { base, index }
             }
@@ -1655,10 +1661,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 )
             }
             SyntaxExpressionKind::Field => {
-                matches!(
-                    self.fallback_kind,
-                    CompilerExpressionFallbackKind::Field { .. }
-                )
+                #[cfg(test)]
+                {
+                    matches!(
+                        self.fallback_kind,
+                        CompilerExpressionFallbackKind::Field { .. }
+                    )
+                }
+                #[cfg(not(test))]
+                {
+                    matches!(self.fallback_kind, CompilerExpressionFallbackKind::Field)
+                }
             }
             SyntaxExpressionKind::Call => {
                 matches!(

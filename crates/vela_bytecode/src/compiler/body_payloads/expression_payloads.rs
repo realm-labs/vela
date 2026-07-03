@@ -452,15 +452,30 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn field_base_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let CompilerExpressionFallbackKind::Field { base } = self.fallback_kind else {
-            return None;
-        };
+        let base = self.fallback_field_base()?;
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_field()?.receiver(),
             base,
         ))
+    }
+
+    fn fallback_field_base(&self) -> Option<&'ast Expr> {
+        #[cfg(test)]
+        {
+            let CompilerExpressionFallbackKind::Field { base } = self.fallback_kind else {
+                return None;
+            };
+            Some(base)
+        }
+        #[cfg(not(test))]
+        {
+            let ExprKind::Field { base, .. } = &self.fallback.kind else {
+                return None;
+            };
+            Some(base)
+        }
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
