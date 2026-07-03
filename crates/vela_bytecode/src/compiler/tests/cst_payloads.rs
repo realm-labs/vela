@@ -359,7 +359,7 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return value payload")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST statement payload")
     ));
 }
 

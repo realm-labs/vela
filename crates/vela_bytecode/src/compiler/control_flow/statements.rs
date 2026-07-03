@@ -3,6 +3,7 @@ use vela_syntax::ast::SyntaxStatementKind;
 use crate::compiler::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerStatementPayload,
 };
+use crate::compiler::control_flow::classification::aligned_statement_fallback;
 use crate::compiler::control_flow::loops::reject_missing_for_pattern_payloads;
 use crate::compiler::control_flow::value_syntax::ValueSyntaxPayloads;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -72,6 +73,11 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
+        let fallback = aligned_statement_fallback(stmt).ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST statement payload",
+            ))
+        })?;
         if kind == SyntaxStatementKind::Let {
             let initializer_body = stmt.let_initializer_block_body_payload();
             let initializer_if = stmt.let_initializer_if_payload();
@@ -83,7 +89,7 @@ impl Compiler<'_, '_> {
                 )));
             }
             self.compile_let_statement(
-                stmt.fallback(),
+                fallback,
                 ValueSyntaxPayloads::new(
                     stmt.stored_let_initializer_kind(),
                     initializer_expression.as_ref(),
@@ -104,7 +110,7 @@ impl Compiler<'_, '_> {
                 )));
             }
             self.compile_return_statement(
-                stmt.fallback(),
+                fallback,
                 ValueSyntaxPayloads::new(
                     stmt.stored_return_value_kind(),
                     value_expression.as_ref(),
@@ -138,7 +144,7 @@ impl Compiler<'_, '_> {
                 value_pattern_payload.as_ref(),
             )?;
             self.compile_for_statement(
-                stmt.fallback(),
+                fallback,
                 iterable_payload,
                 body_payload,
                 index_pattern_payload,
@@ -151,7 +157,7 @@ impl Compiler<'_, '_> {
                     "missing CST if statement payload",
                 )));
             }
-            self.compile_if_statement(stmt.fallback(), if_payload.as_ref())
+            self.compile_if_statement(fallback, if_payload.as_ref())
         } else if kind == SyntaxStatementKind::Match {
             self.compile_match_statement_payload(stmt)
         } else if kind == SyntaxStatementKind::Block {
@@ -159,7 +165,7 @@ impl Compiler<'_, '_> {
         } else if kind == SyntaxStatementKind::Expr {
             self.compile_expr_statement_payload(stmt)
         } else {
-            self.compile_statement_as(kind, stmt.fallback())
+            self.compile_statement_as(kind, fallback)
         }
     }
 
