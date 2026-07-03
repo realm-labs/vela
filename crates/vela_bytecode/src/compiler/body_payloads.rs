@@ -123,8 +123,8 @@ impl CompilerExpressionFallbackSummary {
         self.kind == Some(syntax_kind)
     }
 
-    fn is_error(self) -> bool {
-        self.kind.is_none()
+    fn matches_summary(self, other: Self) -> bool {
+        self.kind == other.kind
     }
 }
 
@@ -1643,6 +1643,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.fallback_summary.matches_syntax_kind(syntax_kind)
     }
 
+    pub(in crate::compiler) fn fallback_expr_matches_expr(
+        &self,
+        expr: &vela_syntax::ast::Expr,
+    ) -> bool {
+        self.fallback_summary
+            .matches_summary(fallback_expr_summary(expr))
+    }
+
     #[cfg(test)]
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
@@ -1676,10 +1684,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn fallback_expr_matches_stored_syntax_kind(&self) -> bool {
         self.stored_syntax_kind()
             .is_some_and(|kind| self.fallback_expr_matches_syntax_kind(kind))
-    }
-
-    pub(in crate::compiler) fn fallback_expr_is_error(&self) -> bool {
-        self.fallback_summary.is_error()
     }
 
     pub(in crate::compiler) fn fallback_expr_requires_matching_payload(&self) -> bool {

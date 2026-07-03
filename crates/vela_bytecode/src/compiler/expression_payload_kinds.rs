@@ -25,41 +25,8 @@ pub(super) fn expression_payload_matches_expr(
         ) && expression_payload_shape_matches_expr(payload, expr);
     }
     payload.fallback_expr_matches_stored_syntax_kind()
-        && expression_matches_payload_fallback_expr(payload, expr)
+        && payload.fallback_expr_matches_expr(expr)
         && expression_payload_shape_matches_expr(payload, expr)
-}
-
-fn expression_matches_payload_fallback_expr(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    match fallback_expr_syntax_kind(expr) {
-        Some(SyntaxExpressionKind::Paren) => true,
-        Some(kind) => payload.fallback_expr_matches_syntax_kind(kind),
-        None => payload.fallback_expr_is_error(),
-    }
-}
-
-fn fallback_expr_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
-    Some(match expr.kind {
-        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
-        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
-        ExprKind::Block(_) => SyntaxExpressionKind::Block,
-        ExprKind::If(_) => SyntaxExpressionKind::If,
-        ExprKind::Match(_) => SyntaxExpressionKind::Match,
-        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
-        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
-        ExprKind::Try(_) => SyntaxExpressionKind::Try,
-        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
-        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
-        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
-        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
-        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
-        ExprKind::Array(_) => SyntaxExpressionKind::Array,
-        ExprKind::Map(_) => SyntaxExpressionKind::Map,
-        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
-        ExprKind::Error => return None,
-    })
 }
 
 fn expression_payload_shape_matches_expr(
