@@ -1,28 +1,19 @@
 use vela_common::SourceId;
-#[cfg(test)]
 use vela_common::Span;
 use vela_syntax::Parse as SyntaxParse;
-#[cfg(test)]
 use vela_syntax::ast::AstNode;
-#[cfg(test)]
 use vela_syntax::ast::Block;
-#[cfg(test)]
 use vela_syntax::ast::SyntaxBlock;
 use vela_syntax::ast::SyntaxSourceFile;
-#[cfg(test)]
 use vela_syntax::body_parser_support::parse_body_blocks_at_spans;
 
-#[cfg(test)]
 use crate::compiler::body_payloads::CompilerBodyFallback;
-#[cfg(test)]
 use crate::compiler::body_payloads::CompilerBodyPayload;
 
 pub(super) struct BodyBlockLookup {
-    #[cfg(test)]
     bodies: Vec<BodyBlockEntry>,
 }
 
-#[cfg(test)]
 struct BodyBlockEntry {
     span: Span,
     block: Block,
@@ -34,27 +25,18 @@ impl BodyBlockLookup {
         text: &str,
         syntax: &SyntaxParse<SyntaxSourceFile>,
     ) -> Self {
-        #[cfg(not(test))]
-        {
-            let _ = (source, text, syntax);
-            Self {}
-        }
-        #[cfg(test)]
-        {
-            let required_spans = syntax_body_spans(source, syntax);
-            let bodies = if required_spans.is_empty() {
-                Vec::new()
-            } else {
-                parse_body_blocks_at_spans(source, text, &required_spans)
-                    .into_iter()
-                    .map(BodyBlockEntry::new)
-                    .collect()
-            };
-            Self { bodies }
-        }
+        let required_spans = syntax_body_spans(source, syntax);
+        let bodies = if required_spans.is_empty() {
+            Vec::new()
+        } else {
+            parse_body_blocks_at_spans(source, text, &required_spans)
+                .into_iter()
+                .map(BodyBlockEntry::new)
+                .collect()
+        };
+        Self { bodies }
     }
 
-    #[cfg(test)]
     pub(super) fn body_for_syntax(
         &self,
         source: SourceId,
@@ -63,7 +45,6 @@ impl BodyBlockLookup {
         self.body_by_span(syntax_body_span(source, body))
     }
 
-    #[cfg(test)]
     fn body_by_span(&self, span: Span) -> Option<CompilerBodyFallback<'_>> {
         self.bodies
             .iter()
@@ -72,7 +53,6 @@ impl BodyBlockLookup {
     }
 }
 
-#[cfg(test)]
 impl BodyBlockEntry {
     fn new(block: Block) -> Self {
         Self {
@@ -86,7 +66,6 @@ impl BodyBlockEntry {
     }
 }
 
-#[cfg(test)]
 fn syntax_body_spans(source: SourceId, syntax: &SyntaxParse<SyntaxSourceFile>) -> Vec<Span> {
     syntax
         .tree()
@@ -109,7 +88,6 @@ fn syntax_body_spans(source: SourceId, syntax: &SyntaxParse<SyntaxSourceFile>) -
         .collect()
 }
 
-#[cfg(test)]
 fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {
     let range = body.syntax().text_range();
     let start: u32 = range.start().into();
@@ -117,7 +95,6 @@ fn syntax_body_span(source: SourceId, body: &SyntaxBlock) -> Span {
     Span::new(source, start, end)
 }
 
-#[cfg(test)]
 mod tests {
     use vela_common::SourceId;
     use vela_syntax::parse::parse_source_with_id;
