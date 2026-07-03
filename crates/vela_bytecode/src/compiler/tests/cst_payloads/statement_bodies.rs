@@ -158,6 +158,35 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_block_statement_in_mixed_body_drops_owned_statement_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    {
+        let cst_value;
+        return;
+    }
+    return 1;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only block statement should not retain an owned statement fallback"
+    );
+    assert_eq!(
+        statements[1].return_value_kind(),
+        Some(SyntaxExpressionKind::Literal)
+    );
+}
+
+#[test]
 fn missing_for_statement_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"
