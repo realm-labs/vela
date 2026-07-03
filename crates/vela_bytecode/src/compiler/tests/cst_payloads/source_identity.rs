@@ -80,14 +80,11 @@ fn main(left, right) {
                 );
 
             assert_eq!(missing_source.syntax_binary_operator(), None);
-            let (_, left, right) = missing_source
-                .fallback_binary_operands()
-                .expect("fallback binary operands");
             assert!(
-                missing_source
-                    .binary_operand_payloads(left, right)
-                    .is_none()
+                missing_source.fallback_binary_operands().is_some(),
+                "test payload should still carry fallback binary operands"
             );
+            assert!(missing_source.binary_operand_payloads().is_none());
         },
     );
 }
@@ -111,10 +108,11 @@ fn main(value, other) {
                 );
 
             assert_eq!(missing_source.syntax_unary_operator(), None);
-            let operand = missing_source
-                .fallback_unary_operand()
-                .expect("fallback unary operand");
-            assert!(missing_source.unary_operand_payload(operand).is_none());
+            assert!(
+                missing_source.fallback_unary_operand().is_some(),
+                "test payload should still carry the fallback unary operand"
+            );
+            assert!(missing_source.unary_operand_payload().is_none());
         },
     );
 }
@@ -144,10 +142,11 @@ fn main(value) {
                     try_expression.fallback(),
                 );
 
-            let operand = try_expression
-                .fallback_try_operand()
-                .expect("try fallback operand");
-            assert!(missing_source.try_operand_payload(operand).is_none());
+            assert!(
+                try_expression.fallback_try_operand().is_some(),
+                "test payload should still carry the fallback try operand"
+            );
+            assert!(missing_source.try_operand_payload().is_none());
         },
     );
 }

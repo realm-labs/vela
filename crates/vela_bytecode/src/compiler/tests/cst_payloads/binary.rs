@@ -412,11 +412,12 @@ fn main(input, other) {
         cst_binary,
         legacy_binary.fallback(),
     );
-    let (_, left, right) = missing
-        .fallback_binary_operands()
-        .expect("fallback binary operands");
+    assert!(
+        missing.fallback_binary_operands().is_some(),
+        "test payload should still carry fallback binary operands"
+    );
     let (_left, right) = missing
-        .binary_operand_payloads(left, right)
+        .binary_operand_payloads()
         .expect("binary operand payloads");
 
     assert!(right.syntax_expression().is_none());
@@ -553,11 +554,12 @@ fn main(lhs, rhs) {
             let binary = payload.body.statement_payloads()[0]
                 .let_initializer_expression_payload()
                 .expect("binary initializer payload");
-            let (_, fallback_left, fallback_right) = binary
-                .fallback_binary_operands()
-                .expect("fallback binary operands");
+            assert!(
+                binary.fallback_binary_operands().is_some(),
+                "test payload should still carry fallback binary operands"
+            );
             let (left, _) = binary
-                .binary_operand_payloads(fallback_left, fallback_right)
+                .binary_operand_payloads()
                 .expect("binary operand payloads");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -724,16 +726,10 @@ fn binary_block_operand_payloads(
     if let Some(operand) = payload.paren_inner_payload() {
         return binary_block_operand_payloads(operand);
     }
-    if let Some(operand) = payload
-        .fallback_unary_operand()
-        .and_then(|expr| payload.unary_operand_payload(expr))
-    {
+    if let Some(operand) = payload.unary_operand_payload() {
         return binary_block_operand_payloads(operand);
     }
-    let Some((_, fallback_left, fallback_right)) = payload.fallback_binary_operands() else {
-        return Vec::new();
-    };
-    let Some((left, right)) = payload.binary_operand_payloads(fallback_left, fallback_right) else {
+    let Some((left, right)) = payload.binary_operand_payloads() else {
         return Vec::new();
     };
     [left, right]
@@ -751,10 +747,7 @@ fn block_operand_payloads(
     if let Some(operand) = payload.paren_inner_payload() {
         return block_operand_payloads(operand);
     }
-    if let Some(operand) = payload
-        .fallback_unary_operand()
-        .and_then(|expr| payload.unary_operand_payload(expr))
-    {
+    if let Some(operand) = payload.unary_operand_payload() {
         return block_operand_payloads(operand);
     }
     Vec::new()

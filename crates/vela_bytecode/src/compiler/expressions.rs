@@ -250,7 +250,7 @@ impl Compiler<'_, '_> {
                     }
                     return self.compile_logical_chain(op, expr, operand_payloads.as_deref());
                 }
-                let operand_payloads = payload.binary_operand_payloads(left, right);
+                let operand_payloads = payload.binary_operand_payloads();
                 let (left_payload, right_payload) = operand_payloads
                     .as_ref()
                     .map_or((None, None), |(left, right)| (Some(left), Some(right)));
@@ -339,7 +339,7 @@ impl Compiler<'_, '_> {
                     unreachable!("validated CST unary expression payload kind");
                 };
                 let op = payload.syntax_unary_operator().unwrap_or(*op);
-                let operand_payload = payload.unary_operand_payload(operand);
+                let operand_payload = payload.unary_operand_payload();
                 reject_missing_expression_payload(
                     operand_payload.as_ref(),
                     "missing CST unary operand",
@@ -350,7 +350,7 @@ impl Compiler<'_, '_> {
                 let ExprKind::Try(operand) = &expr.kind else {
                     unreachable!("validated CST try expression payload kind");
                 };
-                let operand_payload = payload.try_operand_payload(operand);
+                let operand_payload = payload.try_operand_payload();
                 reject_missing_expression_payload(
                     operand_payload.as_ref(),
                     "missing CST try operand",
@@ -1102,8 +1102,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
 
-        let operand_payloads =
-            payload.and_then(|payload| payload.binary_operand_payloads(left, right));
+        let operand_payloads = payload.and_then(|payload| payload.binary_operand_payloads());
         let (left_payload, right_payload) = operand_payloads
             .as_ref()
             .map_or((None, None), |(left, right)| (Some(left), Some(right)));

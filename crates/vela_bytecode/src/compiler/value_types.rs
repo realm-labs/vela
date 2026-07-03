@@ -365,7 +365,7 @@ fn static_expr_type_with_payload(
         } => StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Range)),
         ExprKind::Binary { op, left, right } => {
             let operand_payloads =
-                aligned_payload.and_then(|payload| payload.binary_operand_payloads(left, right));
+                aligned_payload.and_then(|payload| payload.binary_operand_payloads());
             let left = expression_value_type_with_payload(
                 left,
                 operand_payloads.as_ref().map(|(left, _)| left),
@@ -385,7 +385,7 @@ fn static_expr_type_with_payload(
         ExprKind::Try(value) => match expression_value_type_with_payload(
             value,
             aligned_payload
-                .and_then(|payload| payload.try_operand_payload(value))
+                .and_then(|payload| payload.try_operand_payload())
                 .as_ref(),
             local_type_at_span,
             local_type_named,

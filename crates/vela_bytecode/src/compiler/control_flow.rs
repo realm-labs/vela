@@ -921,20 +921,16 @@ impl Compiler<'_, '_> {
         let iterable_operand_payloads =
             match (range_iterable.is_some(), parts.iterable_payload.as_ref()) {
                 (true, Some(payload)) => {
-                    let ExprKind::Binary { left, right, .. } = &parts.iterable.kind else {
+                    let ExprKind::Binary { .. } = &parts.iterable.kind else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing CST range operand payload",
                         )));
                     };
-                    Some(
-                        payload
-                            .binary_operand_payloads(left, right)
-                            .ok_or_else(|| {
-                                CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                                    "missing CST range operand payload",
-                                ))
-                            })?,
-                    )
+                    Some(payload.binary_operand_payloads().ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST range operand payload",
+                        ))
+                    })?)
                 }
                 _ => None,
             };
