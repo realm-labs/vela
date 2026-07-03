@@ -1,8 +1,8 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal, MapEntry,
-    MatchExpr, Pattern, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
-    SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
+    MatchExpr, Pattern, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
 
@@ -649,10 +649,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn record_field_payloads(
         &self,
+        fields: &'ast [RecordField],
     ) -> Option<Vec<CompilerRecordFieldPayload<'ast>>> {
-        let CompilerExpressionFallbackKind::Record { fields } = self.fallback_kind else {
+        if !self.fallback_is_record() {
             return None;
-        };
+        }
         let syntax_fields = self.syntax.as_ref()?.as_record()?.fields();
         Some(
             fields
@@ -667,17 +668,39 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_record_fields(&self) -> bool {
+    pub(in crate::compiler) fn has_extra_record_fields(&self, fields: &'ast [RecordField]) -> bool {
         if self.source.is_none() {
             return false;
         }
-        let CompilerExpressionFallbackKind::Record { fields } = self.fallback_kind else {
+        if !self.fallback_is_record() {
             return false;
-        };
+        }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_record) else {
             return false;
         };
         syntax.fields().len() > fields.len()
+    }
+
+    fn fallback_is_record(&self) -> bool {
+        #[cfg(test)]
+        {
+            matches!(
+                self.fallback_kind,
+                CompilerExpressionFallbackKind::Record { .. }
+            )
+        }
+        #[cfg(not(test))]
+        {
+            matches!(self.fallback_kind, CompilerExpressionFallbackKind::Record)
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_record_fields(&self) -> Option<&'ast [RecordField]> {
+        let CompilerExpressionFallbackKind::Record { fields } = self.fallback_kind else {
+            return None;
+        };
+        Some(fields)
     }
 
     pub(in crate::compiler) fn interpolated_expression_payloads(

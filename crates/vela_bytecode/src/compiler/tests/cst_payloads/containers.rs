@@ -209,8 +209,11 @@ fn main() {
                     .clone(),
                 legacy_record.fallback(),
             );
+            let fallback_fields = mismatched_record
+                .fallback_record_fields()
+                .expect("fallback record fields");
             let record_fields = mismatched_record
-                .record_field_payloads()
+                .record_field_payloads(fallback_fields)
                 .expect("record field payloads");
             assert_eq!(record_fields.len(), 1);
             assert_eq!(
@@ -803,7 +806,12 @@ fn return_record() {
         .statement_payloads()
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            payload
+                .fallback_record_fields()
+                .and_then(|fields| payload.record_field_payloads(fields))
+                .unwrap_or_default()
+        })
         .collect::<Vec<_>>();
     let record_field_names = record_fields
         .iter()
@@ -1102,7 +1110,8 @@ fn block_tail_containers() {
         .expression_payload()
         .expect("record tail expression payload");
     let record_actual = record_tail
-        .record_field_payloads()
+        .fallback_record_fields()
+        .and_then(|fields| record_tail.record_field_payloads(fields))
         .expect("record field payloads")
         .iter()
         .filter_map(|field| field.value_expression_payload())
@@ -1133,7 +1142,12 @@ fn assert_cst_let_initializer_record_field_value_body_payloads(
     let values = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            payload
+                .fallback_record_fields()
+                .and_then(|fields| payload.record_field_payloads(fields))
+                .unwrap_or_default()
+        })
         .filter_map(|field| field.value_expression_payload())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
@@ -1153,7 +1167,12 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.assignment_value_expression_payload())
-        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            payload
+                .fallback_record_fields()
+                .and_then(|fields| payload.record_field_payloads(fields))
+                .unwrap_or_default()
+        })
         .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
@@ -1172,7 +1191,12 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
         .iter()
         .flat_map(|statement| statement.call_argument_payloads().unwrap_or_default())
         .map(|argument| argument.value_expression_payload())
-        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            payload
+                .fallback_record_fields()
+                .and_then(|fields| payload.record_field_payloads(fields))
+                .unwrap_or_default()
+        })
         .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
@@ -1190,7 +1214,12 @@ fn assert_cst_return_value_record_field_value_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
-        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
+        .flat_map(|payload| {
+            payload
+                .fallback_record_fields()
+                .and_then(|fields| payload.record_field_payloads(fields))
+                .unwrap_or_default()
+        })
         .filter_map(|field| field.value_expression_payload())
         .filter_map(|value| {
             let body = value.block_body_payload()?;

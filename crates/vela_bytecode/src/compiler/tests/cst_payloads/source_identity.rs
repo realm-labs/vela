@@ -412,11 +412,14 @@ fn main() {
                     record.syntax_expression().expect("record syntax").clone(),
                     record.fallback(),
                 );
+            let fallback_fields = missing_source
+                .fallback_record_fields()
+                .expect("fallback record fields");
             let fields = missing_source
-                .record_field_payloads()
+                .record_field_payloads(fallback_fields)
                 .expect("record field payloads");
 
-            assert!(!missing_source.has_extra_record_fields());
+            assert!(!missing_source.has_extra_record_fields(fallback_fields));
             assert!(!fields[0].has_syntax());
             assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
