@@ -425,6 +425,34 @@ fn main(target) {
 }
 
 #[test]
+fn source_less_for_payload_does_not_expose_child_payloads() {
+    with_cst_payload_compiler(
+        r#"
+fn main(values) {
+    for index, value in values {
+        value;
+    }
+}
+"#,
+        |_, payload| {
+            let statement = &payload.body.statement_payloads()[0];
+            let missing_source =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    statement
+                        .syntax_statement()
+                        .expect("for statement syntax")
+                        .clone(),
+                    statement.fallback(),
+                );
+
+            assert!(missing_source.for_iterable_expression_payload().is_none());
+            assert!(missing_source.for_index_pattern_payload().is_none());
+            assert!(missing_source.for_value_pattern_payload().is_none());
+        },
+    );
+}
+
+#[test]
 fn source_less_match_arm_payload_does_not_expose_cst_body_or_guard() {
     with_cst_payload_compiler(
         r#"

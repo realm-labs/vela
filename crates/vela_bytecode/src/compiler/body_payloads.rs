@@ -553,6 +553,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { iterable, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerExpressionPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_for()?.iterable(),
@@ -564,6 +565,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { index_pattern, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerPatternPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_for()?.index_pattern(),
@@ -575,6 +577,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         let StmtKind::For { pattern, .. } = &self.fallback.kind else {
             return None;
         };
+        self.source?;
         Some(CompilerPatternPayload {
             source: self.source,
             syntax: self.syntax.as_ref()?.as_for()?.value_pattern(),

@@ -115,6 +115,12 @@ impl Compiler<'_, '_> {
                 ),
             )
         } else if kind == SyntaxStatementKind::For {
+            let body_payload = stmt.for_body_payload();
+            if body_payload.is_none() {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST for statement body payload",
+                )));
+            }
             let iterable_payload = stmt.for_iterable_expression_payload();
             if iterable_payload
                 .as_ref()
@@ -123,12 +129,6 @@ impl Compiler<'_, '_> {
             {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "missing CST for iterable payload",
-                )));
-            }
-            let body_payload = stmt.for_body_payload();
-            if body_payload.is_none() {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST for statement body payload",
                 )));
             }
             let index_pattern_payload = stmt.for_index_pattern_payload();
