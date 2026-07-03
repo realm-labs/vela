@@ -30,7 +30,7 @@ fn fallback_tuple(value) {
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
     let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
-    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_tuple");
 
     let error = compiler
@@ -73,7 +73,7 @@ fn fallback_record(value) {
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
     let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
-    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
 
     let error = compiler
@@ -122,8 +122,7 @@ fn fallback_record(value) {
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
     let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
-    let mismatched =
-        body_payloads::CompilerPatternPayload::syntax(cst_pattern.clone(), fallback_pattern);
+    let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern.clone());
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
 
     let error = compiler
@@ -156,7 +155,7 @@ fn fallback_record(value) {
         panic!("expected record pattern");
     };
     let direct_field_payload =
-        body_payloads::CompilerRecordPatternFieldPayload::syntax(syntax_field, &fields[0]);
+        body_payloads::CompilerRecordPatternFieldPayload::syntax(syntax_field);
     let direct_error = crate::compiler::patterns::record_pattern_field_payload_declares_locals(
         &direct_field_payload,
         &fields[0],
@@ -215,9 +214,9 @@ fn legacy_record(value) {
     let legacy_tuple = first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
     let legacy_record = first_return_match_fallback_pattern(legacy_record_payload.body.fallback());
     let tuple_payload_with_record_fallback =
-        body_payloads::CompilerPatternPayload::syntax(cst_tuple, legacy_record);
+        body_payloads::CompilerPatternPayload::syntax(cst_tuple);
     let record_payload_with_tuple_fallback =
-        body_payloads::CompilerPatternPayload::syntax(cst_record, legacy_tuple);
+        body_payloads::CompilerPatternPayload::syntax(cst_record);
     let (mut tuple_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_record");
     let (mut record_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
 
@@ -278,7 +277,7 @@ fn fallback_tuple(value) {
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
     let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
-    let payload = body_payloads::CompilerPatternPayload::syntax(cst_pattern, fallback_pattern);
+    let payload = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
 
     let field_texts = payload
         .tuple_pattern_payloads(tuple_pattern_fields(fallback_pattern))
@@ -315,8 +314,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
-    let missing_payload =
-        body_payloads::CompilerPatternPayload::missing_syntax(source, fallback_pattern);
+    let missing_payload = body_payloads::CompilerPatternPayload::missing_syntax(source);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
@@ -347,8 +345,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
-    let missing_payload =
-        body_payloads::CompilerPatternPayload::missing_syntax(source, fallback_pattern);
+    let missing_payload = body_payloads::CompilerPatternPayload::missing_syntax(source);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler

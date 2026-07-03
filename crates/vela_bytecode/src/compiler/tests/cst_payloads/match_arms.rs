@@ -256,7 +256,6 @@ fn classify(result) {
     let missing_source_record =
         body_payloads::CompilerPatternPayload::missing_child_payload_context(
             syntax_pattern.clone(),
-            fallback_record_pattern,
         );
     let missing_source_fields = missing_source_record
         .record_field_payloads(record_pattern_fields(fallback_record_pattern))
@@ -299,7 +298,6 @@ fn classify(result) {
             .syntax_pattern()
             .expect("tuple arm should expose CST pattern")
             .clone(),
-        fallback_tuple_pattern,
     );
     assert!(
         !missing_source_tuple
@@ -460,8 +458,7 @@ fn legacy_record(value) {
     let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
     let legacy_tuple_pattern =
         first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
-    let mismatched_tuple =
-        body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
+    let mismatched_tuple = body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax);
     let tuple_fields = mismatched_tuple
         .tuple_pattern_payloads(tuple_pattern_fields(legacy_tuple_pattern))
         .expect("tuple pattern should expose field payloads");
@@ -485,8 +482,7 @@ fn legacy_record(value) {
     let cst_record_syntax = first_return_match_pattern_syntax(&cst_record_payload.body);
     let legacy_record_pattern =
         first_return_match_fallback_pattern(legacy_record_payload.body.fallback());
-    let mismatched_record =
-        body_payloads::CompilerPatternPayload::syntax(cst_record_syntax, legacy_record_pattern);
+    let mismatched_record = body_payloads::CompilerPatternPayload::syntax(cst_record_syntax);
     let record_fields = mismatched_record
         .record_field_payloads(record_pattern_fields(legacy_record_pattern))
         .expect("record pattern should expose field payloads");
@@ -553,8 +549,7 @@ fn legacy_tuple(value) {
     let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
     let legacy_tuple_pattern =
         first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
-    let mismatched_tuple =
-        body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax, legacy_tuple_pattern);
+    let mismatched_tuple = body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax);
 
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
     compiler
@@ -677,14 +672,9 @@ fn legacy_binding(value) {
     let legacy_binding_pattern =
         first_return_match_fallback_pattern(legacy_binding_payload.body.fallback());
 
-    let mismatched_literal =
-        body_payloads::CompilerPatternPayload::syntax(cst_path_syntax, legacy_literal_pattern);
-    let mismatched_path = body_payloads::CompilerPatternPayload::syntax(
-        cst_literal_syntax.clone(),
-        legacy_path_pattern,
-    );
-    let mismatched_binding =
-        body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax, legacy_binding_pattern);
+    let mismatched_literal = body_payloads::CompilerPatternPayload::syntax(cst_path_syntax);
+    let mismatched_path = body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax.clone());
+    let mismatched_binding = body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax);
 
     let (mut literal_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_literal");
     literal_compiler
@@ -739,8 +729,7 @@ fn legacy_binding(value) {
         "mismatched binding fallback should not drive local binding"
     );
 
-    let cst_binding_payload =
-        body_payloads::CompilerPatternPayload::syntax(cst_binding_syntax, legacy_literal_pattern);
+    let cst_binding_payload = body_payloads::CompilerPatternPayload::syntax(cst_binding_syntax);
     let (mut cst_binding_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "legacy_binding");
     cst_binding_compiler

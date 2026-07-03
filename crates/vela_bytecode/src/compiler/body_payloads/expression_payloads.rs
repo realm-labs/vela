@@ -1039,23 +1039,19 @@ impl<'ast> CompilerPatternPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(
-        syntax: vela_syntax::ast::SyntaxPattern,
-        _fallback: &'ast Pattern,
-    ) -> Self {
+    pub(in crate::compiler) fn syntax(syntax: vela_syntax::ast::SyntaxPattern) -> Self {
         Self::from_fallback(Some(SourceId::new(1)), Some(syntax))
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(
         syntax: vela_syntax::ast::SyntaxPattern,
-        _fallback: &'ast Pattern,
     ) -> Self {
         Self::from_fallback(None, Some(syntax))
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(source: SourceId, _fallback: &'ast Pattern) -> Self {
+    pub(in crate::compiler) fn missing_syntax(source: SourceId) -> Self {
         Self::from_fallback(Some(source), None)
     }
 
@@ -1105,10 +1101,7 @@ impl<'ast> CompilerRecordPatternFieldPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(
-        syntax: SyntaxRecordPatternField,
-        _fallback: &'ast vela_syntax::ast::RecordPatternField,
-    ) -> Self {
+    pub(in crate::compiler) fn syntax(syntax: SyntaxRecordPatternField) -> Self {
         Self {
             source: Some(SourceId::new(1)),
             syntax: Some(syntax),

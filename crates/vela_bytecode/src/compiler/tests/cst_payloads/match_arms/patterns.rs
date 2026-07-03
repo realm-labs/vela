@@ -53,15 +53,8 @@ fn legacy_binding(value) {
     let (cst_literal_payload, _, _) = semantic.function("cst_literal").expect("cst literal");
     let (cst_path_payload, _, _) = semantic.function("cst_path").expect("cst path");
     let (cst_binding_payload, _, _) = semantic.function("cst_binding").expect("cst binding");
-    let (legacy_literal_payload, _, _) =
-        semantic.function("legacy_literal").expect("legacy literal");
-    let (legacy_path_payload, _, _) = semantic.function("legacy_path").expect("legacy path");
-    let (legacy_binding_payload, _, _) =
-        semantic.function("legacy_binding").expect("legacy binding");
-
     let literal_payload = body_payloads::CompilerPatternPayload::syntax(
         first_return_match_pattern_syntax(&cst_literal_payload.body),
-        first_return_match_fallback_pattern(legacy_path_payload.body.fallback()),
     );
     assert_eq!(
         literal_payload.syntax_literal(),
@@ -70,14 +63,12 @@ fn legacy_binding(value) {
     let missing_source_literal_payload =
         body_payloads::CompilerPatternPayload::missing_child_payload_context(
             first_return_match_pattern_syntax(&cst_literal_payload.body),
-            first_return_match_fallback_pattern(legacy_path_payload.body.fallback()),
         );
     assert_eq!(missing_source_literal_payload.syntax_pattern_kind(), None);
     assert_eq!(missing_source_literal_payload.syntax_literal(), None);
 
     let path_payload = body_payloads::CompilerPatternPayload::syntax(
         first_return_match_pattern_syntax(&cst_path_payload.body),
-        first_return_match_fallback_pattern(legacy_binding_payload.body.fallback()),
     );
     assert_eq!(
         path_payload.syntax_path_segments().as_deref(),
@@ -86,13 +77,11 @@ fn legacy_binding(value) {
     let missing_source_path_payload =
         body_payloads::CompilerPatternPayload::missing_child_payload_context(
             first_return_match_pattern_syntax(&cst_path_payload.body),
-            first_return_match_fallback_pattern(legacy_binding_payload.body.fallback()),
         );
     assert_eq!(missing_source_path_payload.syntax_path_segments(), None);
 
     let binding_payload = body_payloads::CompilerPatternPayload::syntax(
         first_return_match_pattern_syntax(&cst_binding_payload.body),
-        first_return_match_fallback_pattern(legacy_literal_payload.body.fallback()),
     );
     assert_eq!(
         binding_payload.syntax_binding_name().as_deref(),
@@ -101,7 +90,6 @@ fn legacy_binding(value) {
     let missing_source_binding_payload =
         body_payloads::CompilerPatternPayload::missing_child_payload_context(
             first_return_match_pattern_syntax(&cst_binding_payload.body),
-            first_return_match_fallback_pattern(legacy_literal_payload.body.fallback()),
         );
     assert_eq!(missing_source_binding_payload.syntax_binding_name(), None);
 }
