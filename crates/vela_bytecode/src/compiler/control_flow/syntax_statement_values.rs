@@ -91,12 +91,7 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        let then_body = CompilerBodyPayload::nested_syntax_optional(
-            source,
-            then_block,
-            #[cfg(test)]
-            None,
-        );
+        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
         let Some(then_body) = then_body else {
             return Ok(None);
         };
@@ -128,12 +123,7 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                let else_body = CompilerBodyPayload::nested_syntax_optional(
-                    source,
-                    block,
-                    #[cfg(test)]
-                    None,
-                );
+                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
                 let Some(else_body) = else_body else {
                     return Ok(None);
                 };
@@ -378,12 +368,7 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        let then_body = CompilerBodyPayload::nested_syntax_optional(
-            source,
-            then_block,
-            #[cfg(test)]
-            None,
-        );
+        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
         let Some(then_body) = then_body else {
             return Ok(None);
         };
@@ -405,12 +390,7 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                let else_body = CompilerBodyPayload::nested_syntax_optional(
-                    source,
-                    block,
-                    #[cfg(test)]
-                    None,
-                );
+                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
                 let Some(else_body) = else_body else {
                     return Ok(None);
                 };

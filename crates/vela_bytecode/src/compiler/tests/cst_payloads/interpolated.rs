@@ -259,7 +259,7 @@ fn assert_cst_let_initializer_interpolation_body_payloads(
         .flat_map(|payload| payload.match_arm_payloads().unwrap_or_default())
         .filter_map(|arm| {
             let _syntax_arm = arm.syntax_arm()?;
-            let body = arm.body_block_payload(None)?;
+            let body = arm.body_block_payload()?;
             Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();

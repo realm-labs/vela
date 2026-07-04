@@ -1013,7 +1013,7 @@ fn main(value) {
         .expect("match arm payloads")
         .remove(0);
     let body = arm
-        .body_block_payload(None)
+        .body_block_payload()
         .expect("match arm body block payload");
 
     assert!(
@@ -1186,11 +1186,11 @@ fn assert_match_body_block_payload(
     fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    let vela_syntax::ast::ExprKind::Block(fallback_block) = &fallback.kind else {
+    let vela_syntax::ast::ExprKind::Block(_) = &fallback.kind else {
         panic!("expected match arm block body");
     };
     let body = arm
-        .body_block_payload(Some(fallback_block))
+        .body_block_payload()
         .expect("match arm should expose block body payload");
     assert_eq!(
         cst_statement_texts(&body),

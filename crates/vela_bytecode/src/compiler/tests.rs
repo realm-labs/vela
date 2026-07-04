@@ -788,10 +788,10 @@ fn cst_match_arm_body_texts(
         .zip(arms)
         .filter_map(|(fallback_arm, arm)| {
             let _syntax_arm = arm.syntax_arm()?;
-            let ExprKind::Block(block) = &fallback_arm.body.kind else {
+            let ExprKind::Block(_) = &fallback_arm.body.kind else {
                 return None;
             };
-            let body = arm.body_block_payload(Some(block))?;
+            let body = arm.body_block_payload()?;
             Some(cst_statement_texts(&body))
         })
         .collect()
