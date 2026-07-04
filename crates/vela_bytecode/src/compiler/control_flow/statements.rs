@@ -57,10 +57,11 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
+        #[allow(unused_variables)]
+        let legacy_fallback_attached = false;
         #[cfg(test)]
-        let syntax_only = stmt.optional_fallback().is_none();
-        #[cfg(not(test))]
-        let syntax_only = true;
+        let legacy_fallback_attached = stmt.optional_fallback().is_some();
+        let syntax_only = !legacy_fallback_attached;
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
@@ -249,13 +250,6 @@ impl Compiler<'_, '_> {
         if kind == SyntaxStatementKind::Expr {
             return self.compile_expr_statement_payload(stmt);
         }
-        #[cfg(not(test))]
-        {
-            let _ = kind;
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "unsupported CST statement payload",
-            )))
-        }
         #[cfg(test)]
         {
             let fallback = aligned_statement(stmt).ok_or_else(|| {
@@ -263,7 +257,7 @@ impl Compiler<'_, '_> {
                     "mismatched CST statement payload",
                 ))
             })?;
-            if kind == SyntaxStatementKind::Let {
+            return if kind == SyntaxStatementKind::Let {
                 let initializer_body = stmt.let_initializer_block_body_payload();
                 let initializer_if = stmt.let_initializer_if_payload();
                 let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
@@ -348,8 +342,13 @@ impl Compiler<'_, '_> {
                 self.compile_match_statement_payload(stmt)
             } else {
                 self.compile_statement_as(kind, fallback)
-            }
+            };
         }
+        #[cfg_attr(test, allow(unreachable_code))]
+        let _ = kind;
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "unsupported CST statement payload",
+        )))
     }
 
     #[cfg(test)]
