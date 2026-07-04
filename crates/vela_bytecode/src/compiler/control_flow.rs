@@ -504,15 +504,6 @@ impl Compiler<'_, '_> {
         self.compile_if(if_expr, payload)
     }
 
-    #[cfg(test)]
-    pub(super) fn compile_if_statement_with_payload_for_test(
-        &mut self,
-        stmt: &Stmt,
-        payload: &CompilerIfPayload<'_>,
-    ) -> CompileResult<bool> {
-        self.compile_if_statement(stmt, Some(payload))
-    }
-
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
             return self.compile_if(if_expr, None);

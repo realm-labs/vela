@@ -369,12 +369,15 @@ fn main(flag) {
                 .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::If))
                 .expect("if statement payload");
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
+            let vela_syntax::ast::StmtKind::Expr(expr) = &if_statement.fallback().kind else {
+                panic!("expected legacy if expression statement");
+            };
+            let ExprKind::If(if_expr) = &expr.kind else {
+                panic!("expected legacy if expression");
+            };
 
             let error = compiler
-                .compile_if_statement_with_payload_for_test(
-                    if_statement.fallback(),
-                    &truncated_if_payload,
-                )
+                .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))
                 .expect_err("missing CST if branch payload must not use legacy branches");
 
             assert!(matches!(
