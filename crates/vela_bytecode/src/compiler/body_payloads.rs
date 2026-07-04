@@ -532,6 +532,52 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .expect("statement payload has no owned statement fallback")
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn for_iterable_expression_payload(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        if self.is_syntax_only() {
+            return None;
+        }
+        let StmtKind::For { iterable, .. } = &self.fallback().kind else {
+            return None;
+        };
+        Some(CompilerExpressionPayload::from_fallback(
+            Some(self.syntax_statement_span()?.source),
+            self.syntax_statement()?.as_for()?.iterable(),
+            iterable,
+        ))
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload> {
+        if self.is_syntax_only() {
+            return None;
+        }
+        let StmtKind::For { index_pattern, .. } = &self.fallback().kind else {
+            return None;
+        };
+        index_pattern.as_ref()?;
+        Some(CompilerPatternPayload::from_syntax(
+            Some(self.syntax_statement_span()?.source),
+            self.syntax_statement()?.as_for()?.index_pattern(),
+        ))
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload> {
+        if self.is_syntax_only() {
+            return None;
+        }
+        let StmtKind::For { .. } = &self.fallback().kind else {
+            return None;
+        };
+        Some(CompilerPatternPayload::from_syntax(
+            Some(self.syntax_statement_span()?.source),
+            self.syntax_statement()?.as_for()?.value_pattern(),
+        ))
+    }
+
     pub(super) fn is_syntax_only(&self) -> bool {
         #[cfg(test)]
         {

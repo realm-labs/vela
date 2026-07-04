@@ -1,12 +1,10 @@
 #[cfg(test)]
 use vela_common::SourceId;
-#[cfg(test)]
-use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{SyntaxExpressionKind, SyntaxStatementKind};
 
-use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
 #[cfg(test)]
-use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerPatternPayload};
+use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
 #[cfg(test)]
 use crate::compiler::control_flow::classification::aligned_statement;
 #[cfg(test)]
@@ -320,7 +318,7 @@ impl Compiler<'_, '_> {
                         "missing CST for statement body payload",
                     )));
                 }
-                let iterable_payload = for_iterable_expression_payload(stmt);
+                let iterable_payload = stmt.for_iterable_expression_payload();
                 if iterable_payload
                     .as_ref()
                     .and_then(CompilerExpressionPayload::syntax_kind)
@@ -330,8 +328,8 @@ impl Compiler<'_, '_> {
                         "missing CST for iterable payload",
                     )));
                 }
-                let index_pattern_payload = for_index_pattern_payload(stmt);
-                let value_pattern_payload = for_value_pattern_payload(stmt);
+                let index_pattern_payload = stmt.for_index_pattern_payload();
+                let value_pattern_payload = stmt.for_value_pattern_payload();
                 reject_missing_for_pattern_payloads(
                     index_pattern_payload.as_ref(),
                     value_pattern_payload.as_ref(),
@@ -386,59 +384,6 @@ impl Compiler<'_, '_> {
 #[cfg(test)]
 fn statement_source(stmt: &CompilerStatementPayload<'_>) -> Option<SourceId> {
     Some(stmt.syntax_statement_span()?.source)
-}
-
-#[cfg(test)]
-fn for_iterable_expression_payload<'ast>(
-    stmt: &CompilerStatementPayload<'ast>,
-) -> Option<CompilerExpressionPayload<'ast>> {
-    if stmt.is_syntax_only() {
-        return None;
-    }
-    let StmtKind::For { iterable, .. } = &stmt.fallback().kind else {
-        return None;
-    };
-    let source = statement_source(stmt)?;
-    Some(CompilerExpressionPayload::from_fallback(
-        Some(source),
-        stmt.syntax_statement()?.as_for()?.iterable(),
-        iterable,
-    ))
-}
-
-#[cfg(test)]
-fn for_index_pattern_payload(
-    stmt: &CompilerStatementPayload<'_>,
-) -> Option<CompilerPatternPayload> {
-    if stmt.is_syntax_only() {
-        return None;
-    }
-    let StmtKind::For { index_pattern, .. } = &stmt.fallback().kind else {
-        return None;
-    };
-    index_pattern.as_ref()?;
-    let source = statement_source(stmt)?;
-    Some(CompilerPatternPayload::from_syntax(
-        Some(source),
-        stmt.syntax_statement()?.as_for()?.index_pattern(),
-    ))
-}
-
-#[cfg(test)]
-fn for_value_pattern_payload(
-    stmt: &CompilerStatementPayload<'_>,
-) -> Option<CompilerPatternPayload> {
-    if stmt.is_syntax_only() {
-        return None;
-    }
-    let StmtKind::For { .. } = &stmt.fallback().kind else {
-        return None;
-    };
-    let source = statement_source(stmt)?;
-    Some(CompilerPatternPayload::from_syntax(
-        Some(source),
-        stmt.syntax_statement()?.as_for()?.value_pattern(),
-    ))
 }
 
 #[cfg(test)]
