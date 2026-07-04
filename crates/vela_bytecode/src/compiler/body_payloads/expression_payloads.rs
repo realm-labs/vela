@@ -458,20 +458,17 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn map_entry_payloads(&self) -> Option<Vec<CompilerMapEntryPayload>> {
-        let entries = self.raw_map_entries()?;
-        let syntax_entries = self
-            .syntax
-            .as_ref()?
-            .as_map()?
-            .entries()
-            .collect::<Vec<_>>();
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Map) {
+            return None;
+        }
         Some(
-            entries
-                .iter()
-                .enumerate()
-                .map(|(index, _fallback)| CompilerMapEntryPayload {
+            self.syntax
+                .as_ref()?
+                .as_map()?
+                .entries()
+                .map(|syntax| CompilerMapEntryPayload {
                     source: self.source,
-                    syntax: syntax_entries.get(index).cloned(),
+                    syntax: Some(syntax),
                 })
                 .collect(),
         )
@@ -515,15 +512,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn record_field_payloads(
         &self,
     ) -> Option<Vec<CompilerRecordFieldPayload>> {
-        let fields = self.raw_record_fields()?;
-        let syntax_fields = self.syntax.as_ref()?.as_record()?.fields();
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Record) {
+            return None;
+        }
         Some(
-            fields
-                .iter()
-                .enumerate()
-                .map(|(index, _fallback)| CompilerRecordFieldPayload {
+            self.syntax
+                .as_ref()?
+                .as_record()?
+                .fields()
+                .into_iter()
+                .map(|syntax| CompilerRecordFieldPayload {
                     source: self.source,
-                    syntax: syntax_fields.get(index).cloned(),
+                    syntax: Some(syntax),
                 })
                 .collect(),
         )
