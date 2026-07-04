@@ -1,5 +1,11 @@
 use super::*;
 
+fn binary_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(SourceId::new(1), body)
+}
+
 #[test]
 fn semantic_function_binary_operands_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -149,9 +155,7 @@ fn logical_values() {
         .function("logical_values")
         .expect("logical_values function");
 
-    let initializers = payload
-        .body
-        .statement_payloads()
+    let initializers = binary_statement_payloads(&payload.body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .collect::<Vec<_>>();
@@ -227,7 +231,7 @@ fn main(left, middle, right) {
 "#;
     let cst_semantic = parse_semantic_source(source, cst_text).expect("CST source should parse");
     let (cst_payload, _, _) = cst_semantic.function("main").expect("main function");
-    let cst_binary = cst_payload.body.statement_payloads()[0]
+    let cst_binary = binary_statement_payloads(&cst_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("CST logical payload");
 
@@ -242,7 +246,7 @@ fn main(left, middle, right) {
 }
 "#,
         |compiler, payload| {
-            let legacy_binary = payload.body.statement_payloads()[0]
+            let legacy_binary = binary_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("legacy logical payload");
             let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
@@ -340,7 +344,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = binary_statement_payloads(&payload.body);
             let cst_binary = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST binary payload");
@@ -403,7 +407,7 @@ fn main(input, other) {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_binary = legacy_payload.body.statement_payloads()[0]
+    let legacy_binary = binary_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy binary payload");
     let missing = body_payloads::CompilerExpressionPayload::syntax(
@@ -438,7 +442,7 @@ fn main(input, other) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_binary = legacy_payload.body.statement_payloads()[0]
+    let legacy_binary = binary_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy binary payload");
     let missing_binary =
@@ -471,7 +475,7 @@ fn main(input) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = binary_statement_payloads(&payload.body);
             let cst_sum = statements[2]
                 .let_initializer_expression_payload()
                 .expect("CST binary payload");
@@ -546,7 +550,7 @@ fn main(lhs, rhs) {
                 "rhs",
                 Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
             );
-            let binary = payload.body.statement_payloads()[0]
+            let binary = binary_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("binary initializer payload");
             let (left, _) = binary
@@ -586,7 +590,7 @@ fn main() {
 }
 "#,
         |_compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = binary_statement_payloads(&payload.body);
             let cst_literal = statements[0]
                 .expression_payload()
                 .and_then(|payload| payload.call_argument_value_payloads())
@@ -651,8 +655,8 @@ fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = binary_statement_payloads(body);
+    let actual = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(binary_block_operand_payloads)
@@ -664,8 +668,8 @@ fn assert_cst_assignment_value_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = binary_statement_payloads(body);
+    let actual = statements
         .iter()
         .filter_map(|statement| {
             statement
@@ -681,8 +685,8 @@ fn assert_cst_call_argument_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = binary_statement_payloads(body);
+    let actual = statements
         .iter()
         .flat_map(|statement| {
             statement
@@ -699,8 +703,8 @@ fn assert_cst_return_value_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = binary_statement_payloads(body);
+    let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(binary_block_operand_payloads)
