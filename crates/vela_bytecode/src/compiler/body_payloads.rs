@@ -133,8 +133,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
         }
     }
 
-    pub(super) fn nested_syntax_optional(source: SourceId, body: SyntaxBlock) -> Option<Self> {
-        Some(Self::syntax_only(source, body))
+    pub(super) fn nested_syntax(source: SourceId, body: SyntaxBlock) -> Self {
+        Self::syntax_only(source, body)
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
@@ -418,11 +418,11 @@ fn if_payload_for_expr<'ast>(
     ));
     let then_body = syntax
         .then_block()
-        .and_then(|body| CompilerBodyPayload::nested_syntax_optional(source, body));
+        .map(|body| CompilerBodyPayload::nested_syntax(source, body));
     let else_body = if matches!(fallback.else_branch.as_ref(), Some(ElseBranch::Block(_))) {
         syntax
             .else_block()
-            .and_then(|body| CompilerBodyPayload::nested_syntax_optional(source, body))
+            .map(|body| CompilerBodyPayload::nested_syntax(source, body))
     } else {
         None
     };
@@ -695,7 +695,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?;
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
     #[cfg(test)]
@@ -850,7 +850,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .as_return()?
             .expression()?
             .as_block()?;
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
     #[cfg(test)]
@@ -954,15 +954,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
     #[cfg(test)]
     pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        CompilerBodyPayload::nested_syntax_optional(
+        Some(CompilerBodyPayload::nested_syntax(
             self.source?,
             self.syntax.as_ref()?.as_for()?.body()?,
-        )
+        ))
     }
 
     #[cfg(test)]
@@ -1093,10 +1093,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn assignment_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        CompilerBodyPayload::nested_syntax_optional(
+        Some(CompilerBodyPayload::nested_syntax(
             self.source?,
             self.assignment_value_expression()?.as_block()?,
-        )
+        ))
     }
 
     #[cfg(test)]
@@ -1200,19 +1200,19 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        CompilerBodyPayload::nested_syntax_optional(
+        Some(CompilerBodyPayload::nested_syntax(
             self.source?,
             self.expression()
                 .and_then(|expression| expression.as_block())
                 .or_else(|| self.syntax.as_ref()?.as_block())?,
-        )
+        ))
     }
 
     pub(super) fn expression_statement_block_body_payload(
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {
         let body = expression_block_syntax(&self.expression()?)?;
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
     #[cfg(test)]

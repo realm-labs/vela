@@ -33,7 +33,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
-        CompilerBodyPayload::nested_syntax_optional(self.source?, body)
+        Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
@@ -839,10 +839,10 @@ impl CompilerMatchArmPayload {
     }
 
     pub(in crate::compiler) fn body_block_payload(&self) -> Option<CompilerBodyPayload<'_>> {
-        CompilerBodyPayload::nested_syntax_optional(
+        Some(CompilerBodyPayload::nested_syntax(
             self.source?,
             self.syntax.as_ref()?.body_block()?,
-        )
+        ))
     }
 
     pub(in crate::compiler) fn body_expression_payload<'ast>(

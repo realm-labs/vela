@@ -91,10 +91,7 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
-        let Some(then_body) = then_body else {
-            return Ok(None);
-        };
+        let then_body = CompilerBodyPayload::nested_syntax(source, then_block);
 
         let jump_to_else = if let Some(jump) =
             self.try_emit_syntax_i64_immediate_jump_if_false(source, &condition_expression)?
@@ -123,10 +120,7 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
-                let Some(else_body) = else_body else {
-                    return Ok(None);
-                };
+                let else_body = CompilerBodyPayload::nested_syntax(source, block);
                 self.compile_body_payload_statements(&else_body)?
             }
             None => false,
@@ -368,10 +362,7 @@ impl Compiler<'_, '_> {
         let Some(then_block) = if_expr.then_block() else {
             return Ok(None);
         };
-        let then_body = CompilerBodyPayload::nested_syntax_optional(source, then_block);
-        let Some(then_body) = then_body else {
-            return Ok(None);
-        };
+        let then_body = CompilerBodyPayload::nested_syntax(source, then_block);
 
         let jump_to_else = self.emit_jump_if_false(condition);
         let then_returned = self.compile_block_payload_value_to(&then_body, dst)?;
@@ -390,10 +381,7 @@ impl Compiler<'_, '_> {
                 returned
             }
             Some(SyntaxElseBranch::Block(block)) => {
-                let else_body = CompilerBodyPayload::nested_syntax_optional(source, block);
-                let Some(else_body) = else_body else {
-                    return Ok(None);
-                };
+                let else_body = CompilerBodyPayload::nested_syntax(source, block);
                 self.compile_block_payload_value_to(&else_body, dst)?
             }
             None => {
