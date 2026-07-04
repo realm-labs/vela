@@ -59,7 +59,7 @@ fn main() {
 }
 
 #[test]
-fn missing_let_initializer_if_payload_does_not_use_legacy_if_body() {
+fn missing_let_initializer_if_expression_payload_does_not_use_legacy_if_body() {
     with_cst_payload_compiler(
         r#"
 fn main() {

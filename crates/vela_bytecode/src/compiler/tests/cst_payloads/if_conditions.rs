@@ -476,7 +476,7 @@ fn assert_cst_let_initializer_if_condition_block_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.let_initializer_if_payload())
+        .filter_map(cst_let_initializer_if_from_expression)
         .filter_map(|if_payload| {
             let condition = if_payload.condition_payload()?;
             let body = condition_block_body_payload(condition)?;

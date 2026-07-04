@@ -179,9 +179,13 @@ impl Compiler<'_, '_> {
             let expr = expression_payload.fallback();
             return if kind == SyntaxExpressionKind::Assign {
                 let value_body = stmt.assignment_value_block_body_payload();
-                let value_if = stmt.assignment_value_if_payload();
-                let value_match_arms = stmt.assignment_value_match_arm_payloads();
                 let value_expression = stmt.assignment_value_expression_payload();
+                let value_if = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::if_payload);
+                let value_match_arms = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_arm_payloads);
                 let target_expression = stmt.assignment_target_expression_payload();
                 let value_match_scrutinee = value_expression
                     .as_ref()

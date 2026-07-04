@@ -383,7 +383,8 @@ fn first_return_match_pattern_syntax(
 ) -> vela_syntax::ast::SyntaxPattern {
     let statements = body.statement_payloads();
     statements[0]
-        .return_value_match_arm_payloads()
+        .return_value_expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
         .expect("return match")[0]
         .pattern_payload()
         .syntax_pattern()

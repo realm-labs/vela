@@ -52,6 +52,38 @@ fn fallback_statements_for_body(
     Box::leak(block.statements.into_boxed_slice())
 }
 
+fn cst_let_initializer_if_from_expression<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerIfPayload<'ast>> {
+    statement
+        .let_initializer_expression_payload()
+        .and_then(|payload| payload.if_payload())
+}
+
+fn cst_return_value_if_from_expression<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerIfPayload<'ast>> {
+    statement
+        .return_value_expression_payload()
+        .and_then(|payload| payload.if_payload())
+}
+
+fn cst_assignment_value_if_from_expression<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerIfPayload<'ast>> {
+    statement
+        .assignment_value_expression_payload()
+        .and_then(|payload| payload.if_payload())
+}
+
+fn cst_return_value_match_arms_from_expression(
+    statement: &body_payloads::CompilerStatementPayload<'_>,
+) -> Option<Vec<body_payloads::CompilerMatchArmPayload>> {
+    statement
+        .return_value_expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
+}
+
 fn assert_cst_statements(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
@@ -218,7 +250,7 @@ fn assert_cst_let_initializer_if_body_payloads(
     let statements = body.statement_payloads();
     let payloads = statements
         .iter()
-        .filter_map(|statement| statement.let_initializer_if_payload())
+        .filter_map(cst_let_initializer_if_from_expression)
         .collect::<Vec<_>>();
     let then_actual = payloads
         .iter()
@@ -242,7 +274,7 @@ fn assert_cst_return_value_if_body_payloads(
     let statements = body.statement_payloads();
     let payloads = statements
         .iter()
-        .filter_map(|statement| statement.return_value_if_payload())
+        .filter_map(cst_return_value_if_from_expression)
         .collect::<Vec<_>>();
     let then_actual = payloads
         .iter()
@@ -266,7 +298,7 @@ fn assert_cst_let_initializer_else_if_body_payloads(
     let statements = body.statement_payloads();
     let nested = statements
         .iter()
-        .filter_map(|statement| statement.let_initializer_if_payload())
+        .filter_map(cst_let_initializer_if_from_expression)
         .filter_map(|payload| {
             let nested = payload.else_if()?;
             Some((
@@ -295,7 +327,7 @@ fn assert_cst_return_value_else_if_body_payloads(
     let statements = body.statement_payloads();
     let nested = statements
         .iter()
-        .filter_map(|statement| statement.return_value_if_payload())
+        .filter_map(cst_return_value_if_from_expression)
         .filter_map(|payload| {
             let nested = payload.else_if()?;
             Some((
@@ -409,7 +441,7 @@ fn assert_cst_assignment_value_if_body_payloads(
     let statements = body.statement_payloads();
     let payloads = statements
         .iter()
-        .filter_map(|statement| statement.assignment_value_if_payload())
+        .filter_map(cst_assignment_value_if_from_expression)
         .collect::<Vec<_>>();
     let then_actual = payloads
         .iter()

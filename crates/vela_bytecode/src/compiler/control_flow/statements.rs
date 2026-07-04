@@ -260,9 +260,13 @@ impl Compiler<'_, '_> {
             })?;
             return if kind == SyntaxStatementKind::Let {
                 let initializer_body = stmt.let_initializer_block_body_payload();
-                let initializer_if = stmt.let_initializer_if_payload();
-                let initializer_match_arms = stmt.let_initializer_match_arm_payloads();
                 let initializer_expression = stmt.let_initializer_expression_payload();
+                let initializer_if = initializer_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::if_payload);
+                let initializer_match_arms = initializer_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_arm_payloads);
                 if stmt.stored_let_initializer_kind().is_some() && initializer_expression.is_none()
                 {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -282,9 +286,13 @@ impl Compiler<'_, '_> {
                 )
             } else if kind == SyntaxStatementKind::Return {
                 let value_body = stmt.return_value_block_body_payload();
-                let value_if = stmt.return_value_if_payload();
-                let value_match_arms = stmt.return_value_match_arm_payloads();
                 let value_expression = stmt.return_value_expression_payload();
+                let value_if = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::if_payload);
+                let value_match_arms = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::match_arm_payloads);
                 if stmt.stored_return_value_kind().is_some() && value_expression.is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return value payload",

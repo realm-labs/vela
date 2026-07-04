@@ -187,9 +187,7 @@ fn classify(input) {
     let return_arm_payloads = statement_payloads
         .iter()
         .flat_map(|statement| {
-            statement
-                .return_value_match_arm_payloads()
-                .unwrap_or_default()
+            cst_return_value_match_arms_from_expression(statement).unwrap_or_default()
         })
         .collect::<Vec<_>>();
     let return_match = first_return_match_expr(body_fallback(source, &payload.body));
@@ -245,9 +243,7 @@ fn classify(result) {
     let return_arm_payloads = statement_payloads
         .iter()
         .flat_map(|statement| {
-            statement
-                .return_value_match_arm_payloads()
-                .unwrap_or_default()
+            cst_return_value_match_arms_from_expression(statement).unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_eq!(return_arm_payloads.len(), 2);
@@ -347,9 +343,7 @@ fn classify(state) {
         .statement_payloads()
         .iter()
         .flat_map(|statement| {
-            statement
-                .return_value_match_arm_payloads()
-                .unwrap_or_default()
+            cst_return_value_match_arms_from_expression(statement).unwrap_or_default()
         })
         .collect::<Vec<_>>();
     assert_eq!(arm_payloads.len(), 3);
@@ -1040,7 +1034,8 @@ fn first_return_match_pattern_syntax(
 ) -> vela_syntax::ast::SyntaxPattern {
     let statements = body.statement_payloads();
     statements[0]
-        .return_value_match_arm_payloads()
+        .return_value_expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
         .expect("return match")[0]
         .pattern_payload()
         .syntax_pattern()
@@ -1089,7 +1084,8 @@ fn first_return_match_syntax_arm(
 ) -> vela_syntax::ast::SyntaxMatchArm {
     let statements = body.statement_payloads();
     statements[0]
-        .return_value_match_arm_payloads()
+        .return_value_expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
         .expect("return match")[0]
         .syntax_arm()
         .expect("CST arm")
