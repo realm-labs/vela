@@ -1,5 +1,11 @@
 use super::*;
 
+fn if_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn simple_if_let_and_return_compile_without_owned_body_lookup() {
     let source = SourceId::new(1);
@@ -210,7 +216,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = if_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("condition local should compile");
@@ -247,7 +253,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let initializer = payload.body.statement_payloads()[0]
+            let initializer = if_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("if initializer payload");
             let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
@@ -283,7 +289,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let initializer = payload.body.statement_payloads()[0]
+            let initializer = if_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("if initializer payload");
             let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
@@ -321,7 +327,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let initializer = payload.body.statement_payloads()[0]
+            let initializer = if_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("if initializer payload");
             let vela_syntax::ast::ExprKind::If(if_expr) = &initializer.fallback().kind else {
@@ -359,7 +365,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let if_payload = payload.body.statement_payloads()[0]
+    let if_payload = if_statement_payloads(&payload.body)[0]
         .let_initializer_expression_payload()
         .and_then(|payload| payload.if_payload())
         .expect("if initializer payload");
@@ -386,7 +392,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let if_payload = payload.body.statement_payloads()[0]
+    let if_payload = if_statement_payloads(&payload.body)[0]
         .let_initializer_expression_payload()
         .and_then(|payload| payload.if_payload())
         .expect("if initializer payload");
@@ -452,8 +458,7 @@ fn assert_cst_statement_if_condition_block_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = if_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -473,8 +478,7 @@ fn assert_cst_let_initializer_if_condition_block_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = if_statement_payloads(body)
         .iter()
         .filter_map(cst_let_initializer_if_from_expression)
         .filter_map(|if_payload| {
