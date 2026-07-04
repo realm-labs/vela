@@ -392,7 +392,12 @@ fn main() {
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
     assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::Expr));
-    assert_eq!(missing.expression_kind(), None);
+    assert_eq!(
+        missing
+            .expression_payload()
+            .and_then(|payload| payload.syntax_kind()),
+        None
+    );
 
     let error = compiler
         .compile_statement_payload_for_test(&missing)

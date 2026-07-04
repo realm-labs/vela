@@ -628,8 +628,12 @@ fn main(target) {
                     .assignment_value_payload()
                     .is_none()
             );
-            assert_eq!(missing_expression.expression_kind(), None);
-            assert_eq!(missing_expression.value_expression_kind(), None);
+            assert_eq!(
+                missing_expression
+                    .expression_payload()
+                    .and_then(|payload| payload.syntax_kind()),
+                None
+            );
             assert_eq!(missing_return.return_value_kind(), None);
         },
     );

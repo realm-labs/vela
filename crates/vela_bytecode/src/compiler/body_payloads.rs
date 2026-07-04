@@ -560,18 +560,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax.as_ref().map(SyntaxStatement::statement_kind)
     }
 
-    #[cfg(test)]
-    pub(super) fn expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_expression_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.stored_expression_kind()
-    }
-
     pub(super) fn stored_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.expression()
             .map(|expression| expression.expression_kind())
@@ -581,18 +569,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         &self,
     ) -> Option<(SourceId, SyntaxExpression)> {
         Some((self.source?, self.expression()?))
-    }
-
-    #[cfg(test)]
-    pub(super) fn value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_value_expression_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_value_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.stored_value_expression_kind()
     }
 
     #[cfg(test)]
