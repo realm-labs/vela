@@ -985,49 +985,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn call_argument_payloads(
-        &self,
-    ) -> Option<Vec<CompilerArgumentPayload>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Call { args, .. } = &expr.kind else {
-            return None;
-        };
-        let syntax_args = self.expression()?.as_call()?.arguments();
-        if syntax_args.len() > args.len() {
-            return None;
-        }
-        Some(
-            args.iter()
-                .enumerate()
-                .map(|(index, _fallback)| CompilerArgumentPayload {
-                    source: self.source,
-                    syntax: syntax_args.get(index).cloned(),
-                })
-                .collect(),
-        )
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn call_argument_value_payloads(
-        &self,
-    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Call { args, .. } = &expr.kind else {
-            return None;
-        };
-        Some(
-            args.iter()
-                .zip(self.call_argument_payloads()?)
-                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
-                .collect(),
-        )
-    }
-
     pub(super) fn expression_statement_block_body_payload(
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {

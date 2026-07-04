@@ -596,13 +596,15 @@ fn main() {
         |_compiler, payload| {
             let statements = payload.body.statement_payloads();
             let cst_literal = statements[0]
-                .call_argument_value_payloads()
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
                 .expect("CST call argument payloads")
                 .into_iter()
                 .next()
                 .expect("CST call argument");
             let fallback_literal = statements[1]
-                .call_argument_value_payloads()
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
                 .expect("fallback call argument payloads")
                 .into_iter()
                 .next()
@@ -686,7 +688,12 @@ fn assert_cst_call_argument_binary_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(binary_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));

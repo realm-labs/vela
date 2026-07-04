@@ -489,7 +489,12 @@ fn assert_cst_call_argument_block_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(|payload| {
             let body = payload.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -506,7 +511,12 @@ fn assert_cst_call_argument_if_body_payloads(
     let statements = body.statement_payloads();
     let payloads = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(|argument| argument.if_payload())
         .collect::<Vec<_>>();
     let then_actual = payloads
@@ -530,7 +540,12 @@ fn assert_cst_call_argument_match_arm_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(|argument| cst_match_arm_body_texts_from_payload(&argument))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -614,7 +629,12 @@ fn assert_cst_call_argument_array_element_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(|payload| {
             let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
@@ -719,7 +739,12 @@ fn assert_cst_call_argument_map_entry_value_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(|payload| {
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();

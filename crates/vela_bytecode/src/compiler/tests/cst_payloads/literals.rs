@@ -411,7 +411,12 @@ fn assert_cst_call_argument_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(literal_payload_value)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
@@ -448,7 +453,8 @@ fn first_call_argument_value_payload<'ast>(
     statement_index: usize,
 ) -> body_payloads::CompilerExpressionPayload<'ast> {
     body.statement_payloads()[statement_index]
-        .call_argument_value_payloads()
+        .expression_payload()
+        .and_then(|payload| payload.call_argument_value_payloads())
         .expect("call argument payloads")
         .into_iter()
         .next()

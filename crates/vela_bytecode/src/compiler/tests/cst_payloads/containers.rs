@@ -1215,7 +1215,12 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(|payload| {
             let Some(fields) = payload.fallback_record_fields() else {
                 return Vec::new();

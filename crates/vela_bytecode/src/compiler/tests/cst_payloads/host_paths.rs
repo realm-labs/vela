@@ -125,7 +125,8 @@ fn main(player: Player) {
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let legacy_path = payload.body.statement_payloads()[0]
-        .call_argument_value_payloads()
+        .expression_payload()
+        .and_then(|payload| payload.call_argument_value_payloads())
         .expect("host path call argument payloads")
         .remove(0);
     let missing_path =

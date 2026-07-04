@@ -84,7 +84,12 @@ fn main() {
     let fallback_statement = payload.body.statement_payloads()[0].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
-    assert!(mismatched.call_argument_payloads().is_none());
+    assert!(
+        mismatched
+            .expression_payload()
+            .and_then(|payload| payload.call_argument_payloads())
+            .is_none()
+    );
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)

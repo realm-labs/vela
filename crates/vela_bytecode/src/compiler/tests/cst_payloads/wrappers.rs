@@ -326,7 +326,12 @@ fn assert_cst_call_argument_unary_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(|payload| payload.unary_operand_payload())
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
@@ -343,7 +348,12 @@ fn assert_cst_call_argument_try_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(|payload| payload.try_operand_payload())
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;

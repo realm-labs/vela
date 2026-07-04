@@ -214,8 +214,8 @@ impl Compiler<'_, '_> {
                         "mismatched CST expression statement payload",
                     )));
                 };
-                let argument_payloads = stmt.call_argument_payloads();
                 let callee_payload = expression_payload.call_callee_payload();
+                let argument_payloads = expression_payload.call_argument_payloads();
                 self.compile_call_expr_with_arg_payloads(
                     expr,
                     callee,

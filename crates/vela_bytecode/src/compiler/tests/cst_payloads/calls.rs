@@ -801,7 +801,12 @@ fn assert_cst_nested_call_argument_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .flat_map(call_argument_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -934,7 +939,12 @@ fn callback_method() {
         .body
         .statement_payloads()
         .iter()
-        .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.call_argument_value_payloads())
+                .unwrap_or_default()
+        })
         .filter_map(|lambda| lambda.lambda_body_payload())
         .filter_map(|body| body.call_callee_payload())
         .filter_map(|callee| callee.syntax_field_name())
