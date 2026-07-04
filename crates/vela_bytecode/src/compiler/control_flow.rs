@@ -33,8 +33,6 @@ use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
-#[cfg(test)]
-use classification::aligned_statement;
 use classification::{
     control_flow_expression_requires_matching_syntax, i64_pattern_facts, is_map_or_set_type_hint,
     iterable_item_shape, merge_type_hint_and_value_fact, range_iterable_for_payload,
@@ -171,22 +169,12 @@ impl Compiler<'_, '_> {
         }
         #[cfg(test)]
         {
-            let expression_payload = stmt.expression_payload();
-            if expression_payload.is_none() {
+            let Some(expression_payload) = stmt.expression_payload() else {
                 return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                     "missing CST expression statement payload",
                 )));
-            }
-            let fallback = aligned_statement(stmt).ok_or_else(|| {
-                CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "mismatched CST expression statement payload",
-                ))
-            })?;
-            let StmtKind::Expr(expr) = &fallback.kind else {
-                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "mismatched CST expression statement payload",
-                )));
             };
+            let expr = expression_payload.fallback();
             return if kind == SyntaxExpressionKind::Assign {
                 let value_body = stmt.assignment_value_block_body_payload();
                 let value_if = stmt.assignment_value_if_payload();
@@ -229,7 +217,7 @@ impl Compiler<'_, '_> {
                 )?;
                 Ok(false)
             } else {
-                self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
+                self.compile_expr_with_payload(expr, Some(&expression_payload))?;
                 Ok(false)
             };
         }
