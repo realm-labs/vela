@@ -539,7 +539,7 @@ fn body_fallback<'ast>(
     source: SourceId,
     syntax_body: &vela_syntax::ast::SyntaxBlock,
     body_blocks: &'ast BodyBlockLookup,
-) -> Option<super::body_payloads::CompilerBodyFallback<'ast>> {
+) -> Option<&'ast [vela_syntax::ast::Stmt]> {
     body_blocks.body_for_syntax(source, syntax_body)
 }
 

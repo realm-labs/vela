@@ -6,8 +6,6 @@ use vela_syntax::ast::{
     SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 
-#[cfg(test)]
-use super::CompilerBodyFallback;
 use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
@@ -36,7 +34,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
         let fallback = if let ExprKind::Block(block) = &self.fallback.kind {
-            Some(CompilerBodyFallback::block(block))
+            Some(block.statements.as_slice())
         } else {
             return None;
         };
@@ -856,7 +854,7 @@ impl CompilerMatchArmPayload {
         #[cfg(test)] fallback_block: Option<&'ast vela_syntax::ast::Block>,
     ) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = fallback_block.map(CompilerBodyFallback::block);
+        let fallback = fallback_block.map(|block| block.statements.as_slice());
         CompilerBodyPayload::nested_syntax_optional(
             self.source?,
             self.syntax.as_ref()?.body_block()?,

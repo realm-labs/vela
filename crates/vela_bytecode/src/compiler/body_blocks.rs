@@ -7,7 +7,6 @@ use vela_syntax::ast::SyntaxBlock;
 use vela_syntax::ast::SyntaxSourceFile;
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
-use crate::compiler::body_payloads::CompilerBodyFallback;
 use crate::compiler::body_payloads::CompilerBodyPayload;
 
 pub(super) struct BodyBlockLookup {
@@ -41,15 +40,15 @@ impl BodyBlockLookup {
         &self,
         source: SourceId,
         body: &SyntaxBlock,
-    ) -> Option<CompilerBodyFallback<'_>> {
+    ) -> Option<&[vela_syntax::ast::Stmt]> {
         self.body_by_span(syntax_body_span(source, body))
     }
 
-    fn body_by_span(&self, span: Span) -> Option<CompilerBodyFallback<'_>> {
+    fn body_by_span(&self, span: Span) -> Option<&[vela_syntax::ast::Stmt]> {
         self.bodies
             .iter()
             .find(|body| body.span == span)
-            .map(BodyBlockEntry::fallback)
+            .map(|body| body.block.statements.as_slice())
     }
 }
 
@@ -59,10 +58,6 @@ impl BodyBlockEntry {
             span: block.span,
             block,
         }
-    }
-
-    fn fallback(&self) -> CompilerBodyFallback<'_> {
-        CompilerBodyFallback::block(&self.block)
     }
 }
 
