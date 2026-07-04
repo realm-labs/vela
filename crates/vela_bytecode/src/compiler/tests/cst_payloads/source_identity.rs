@@ -381,23 +381,18 @@ fn main() {
                     map.syntax_expression().expect("map syntax").clone(),
                     map.fallback(),
                 );
-            let fallback_entries = missing_source
-                .fallback_map_entries()
-                .expect("fallback map entries");
             let entries = missing_source
                 .map_entry_payloads()
                 .expect("map entry payloads");
+            let values = missing_source
+                .map_entry_value_payloads()
+                .expect("map value payloads");
 
             assert!(!missing_source.has_mismatched_map_entries());
             assert!(!entries[0].has_key_syntax());
             assert!(!entries[0].has_value_syntax());
             assert_eq!(entries[0].syntax_key_name(), None);
-            assert!(
-                entries[0]
-                    .value_expression_payload(&fallback_entries[0].value)
-                    .syntax_expression()
-                    .is_none()
-            );
+            assert!(values[0].syntax_expression().is_none());
         },
     );
 }

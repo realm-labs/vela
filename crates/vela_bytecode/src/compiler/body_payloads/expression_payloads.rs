@@ -518,6 +518,21 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn map_entry_value_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        let entries = self.raw_map_entries()?;
+        let payloads = self.map_entry_payloads()?;
+        Some(
+            entries
+                .iter()
+                .zip(payloads)
+                .map(|(fallback, payload)| payload.value_expression_payload(&fallback.value))
+                .collect(),
+        )
+    }
+
     pub(in crate::compiler) fn has_mismatched_map_entries(&self) -> bool {
         if self.source.is_none() {
             return false;
@@ -529,11 +544,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return false;
         };
         syntax.entries().count() != entries.len()
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_map_entries(&self) -> Option<&'ast [MapEntry]> {
-        self.raw_map_entries()
     }
 
     fn raw_map_entries(&self) -> Option<&'ast [MapEntry]> {
