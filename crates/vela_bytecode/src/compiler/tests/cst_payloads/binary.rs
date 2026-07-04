@@ -675,7 +675,11 @@ fn assert_cst_assignment_value_binary_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(binary_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));

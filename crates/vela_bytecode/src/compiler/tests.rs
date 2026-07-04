@@ -72,7 +72,8 @@ fn cst_assignment_value_if_from_expression<'ast>(
     statement: &body_payloads::CompilerStatementPayload<'ast>,
 ) -> Option<body_payloads::CompilerIfPayload<'ast>> {
     statement
-        .assignment_value_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_value_payload())
         .and_then(|payload| payload.if_payload())
 }
 
@@ -80,7 +81,8 @@ fn cst_assignment_value_block_from_expression<'ast>(
     statement: &body_payloads::CompilerStatementPayload<'ast>,
 ) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
     statement
-        .assignment_value_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_value_payload())
         .and_then(|payload| payload.block_body_payload())
 }
 
@@ -474,7 +476,8 @@ fn assert_cst_assignment_value_match_arm_body_payloads(
         .iter()
         .flat_map(|statement| {
             statement
-                .assignment_value_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
                 .map(|payload| cst_match_arm_body_texts_from_payload(&payload))
                 .unwrap_or_default()
         })
@@ -585,7 +588,11 @@ fn assert_cst_assignment_value_array_element_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(|payload| {
             let Some(_items) = payload.fallback_array_items() else {
                 return Vec::new();
@@ -687,7 +694,11 @@ fn assert_cst_assignment_value_map_entry_value_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(|payload| {
             let Some(entries) = payload.fallback_map_entries() else {
                 return Vec::new();

@@ -301,10 +301,12 @@ fn main(cst: CstHost, legacy: LegacyHost) {
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let statements = payload.body.statement_payloads();
     let cst_target = statements[0]
-        .assignment_target_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_target_payload())
         .expect("CST assignment target");
     let legacy_target = statements[1]
-        .assignment_target_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_target_payload())
         .expect("legacy assignment target");
     let legacy_statement = statements[1]
         .expression_payload()

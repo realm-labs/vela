@@ -605,16 +605,27 @@ fn main(target) {
             assert_eq!(missing_return.statement_kind(), None);
             assert!(missing_return.syntax_statement().is_none());
             assert_eq!(missing_let.let_initializer_kind(), None);
-            assert_eq!(missing_assignment.syntax_assignment_operator(), None);
-            assert_eq!(missing_assignment.assignment_value_kind(), None);
+            let missing_assignment_expression = missing_assignment
+                .expression_payload()
+                .expect("missing-source assignment expression payload");
+            assert_eq!(
+                missing_assignment_expression.syntax_assignment_operator(),
+                None
+            );
             assert!(
-                missing_assignment
-                    .assignment_target_expression_payload()
+                missing_assignment_expression
+                    .assignment_value_payload()
+                    .and_then(|payload| payload.syntax_kind())
                     .is_none()
             );
             assert!(
-                missing_assignment
-                    .assignment_value_expression_payload()
+                missing_assignment_expression
+                    .assignment_target_payload()
+                    .is_none()
+            );
+            assert!(
+                missing_assignment_expression
+                    .assignment_value_payload()
                     .is_none()
             );
             assert_eq!(missing_expression.expression_kind(), None);

@@ -35,7 +35,11 @@ pub(super) fn assert_cst_assignment_value_field_base_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(field_base_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -48,7 +52,11 @@ pub(super) fn assert_cst_assignment_value_index_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(index_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -61,7 +69,11 @@ pub(super) fn assert_cst_assignment_target_field_base_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_target_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
+        })
         .flat_map(field_base_block_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -74,7 +86,11 @@ pub(super) fn assert_cst_assignment_target_index_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_target_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
+        })
         .flat_map(index_block_operand_payloads)
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
@@ -100,7 +116,11 @@ pub(super) fn assert_cst_assignment_value_field_names(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .filter_map(|payload| payload.syntax_field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));
@@ -113,7 +133,11 @@ pub(super) fn assert_cst_assignment_target_field_names(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_target_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
+        })
         .filter_map(|payload| payload.syntax_field_name())
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_strings(expected));

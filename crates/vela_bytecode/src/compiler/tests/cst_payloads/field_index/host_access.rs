@@ -356,10 +356,12 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
     let statements = payload.body.statement_payloads();
     let readonly_target = statements[0]
-        .assignment_target_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_target_payload())
         .expect("CST read-only assignment target");
     let writable_target = statements[1]
-        .assignment_target_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_target_payload())
         .expect("legacy writable assignment target");
     let writable_statement = statements[1]
         .expression_payload()
@@ -464,7 +466,8 @@ fn main(readonly: ReadOnlyHost) {
         .let_initializer_expression_payload()
         .expect("CST block initializer");
     let legacy_target = statements[1]
-        .assignment_target_expression_payload()
+        .expression_payload()
+        .and_then(|payload| payload.assignment_target_payload())
         .expect("legacy read-only assignment target");
     let legacy_statement = statements[1]
         .expression_payload()

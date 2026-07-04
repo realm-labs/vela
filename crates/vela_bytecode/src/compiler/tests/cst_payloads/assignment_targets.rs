@@ -63,7 +63,8 @@ fn main() {
                 .expression_payload()
                 .expect("legacy assignment expression");
             let legacy_target = statements[2]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy assignment target fallback");
             let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -141,7 +142,8 @@ fn main() {
                 .expression_payload()
                 .expect("assignment expression payload");
             let target = statements[1]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("assignment target payload");
 
             let error = compiler
@@ -230,7 +232,8 @@ fn main() {
                 .expression_payload()
                 .expect("assignment expression payload");
             let value = statements[1]
-                .assignment_value_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
                 .expect("assignment value expression payload");
             let unclassified_value =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
@@ -409,7 +412,8 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
             .expression_payload()
             .expect("assignment expression payload");
         let value = statements[1]
-            .assignment_value_expression_payload()
+            .expression_payload()
+            .and_then(|payload| payload.assignment_value_payload())
             .expect("assignment value expression payload");
 
         let error = compiler
@@ -466,7 +470,8 @@ fn main() {{
             .expression_payload()
             .expect("field assignment expression payload");
         let value = statements[2]
-            .assignment_value_expression_payload()
+            .expression_payload()
+            .and_then(|payload| payload.assignment_value_payload())
             .expect("field assignment value expression payload");
 
         let error = compiler

@@ -3,8 +3,6 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 #[cfg(test)]
-use vela_syntax::ast::AssignOp;
-#[cfg(test)]
 use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
@@ -902,87 +900,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             self.expression(),
             expr,
         ))
-    }
-
-    #[cfg(test)]
-    fn assignment_value_expression(&self) -> Option<SyntaxExpression> {
-        self.expression()?.as_assign()?.value()
-    }
-
-    #[cfg(test)]
-    fn assignment_target_expression(&self) -> Option<SyntaxExpression> {
-        self.expression()?.as_assign()?.target()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
-        self.source?;
-        self.stored_assignment_operator()
-    }
-
-    #[cfg(test)]
-    pub(super) fn stored_assignment_operator(&self) -> Option<AssignOp> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Assign { .. } = &expr.kind else {
-            return None;
-        };
-        self.expression()?.as_assign()?.operator()
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn assignment_target_expression_payload(
-        &self,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Assign { target, .. } = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.assignment_target_expression(),
-            target,
-        ))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn assignment_value_expression_payload(
-        &self,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Assign { value, .. } = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.assignment_value_expression(),
-            value,
-        ))
-    }
-
-    #[cfg(test)]
-    pub(super) fn assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_assignment_value_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.stored_assignment_value_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn stored_assignment_value_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.assignment_value_expression()
-            .map(|expression| expression.expression_kind())
     }
 
     pub(super) fn expression_statement_block_body_payload(

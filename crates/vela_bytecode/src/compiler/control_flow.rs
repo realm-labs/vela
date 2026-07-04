@@ -178,7 +178,7 @@ impl Compiler<'_, '_> {
             };
             let expr = expression_payload.fallback();
             return if kind == SyntaxExpressionKind::Assign {
-                let value_expression = stmt.assignment_value_expression_payload();
+                let value_expression = expression_payload.assignment_value_payload();
                 let value_body = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::block_body_payload);
@@ -188,7 +188,7 @@ impl Compiler<'_, '_> {
                 let value_match_arms = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::match_arm_payloads);
-                let target_expression = stmt.assignment_target_expression_payload();
+                let target_expression = expression_payload.assignment_target_payload();
                 let value_match_scrutinee = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::match_scrutinee_payload);
@@ -196,8 +196,10 @@ impl Compiler<'_, '_> {
                     expr,
                     AssignmentTargetSyntax::new(target_expression.as_ref()),
                     AssignmentValueSyntax::new(
-                        stmt.stored_assignment_value_kind(),
-                        stmt.stored_assignment_operator(),
+                        value_expression
+                            .as_ref()
+                            .and_then(CompilerExpressionPayload::syntax_kind),
+                        expression_payload.syntax_assignment_operator(),
                         value_expression.as_ref(),
                         AssignmentValuePayloads::new(
                             value_body.as_ref(),

@@ -309,7 +309,11 @@ fn assert_cst_assignment_value_unary_operand_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .filter_map(|payload| payload.unary_operand_payload())
         .filter_map(|operand| {
             let body = operand.block_body_payload()?;
@@ -387,7 +391,11 @@ fn assert_cst_assignment_value_paren_body_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
         .filter_map(|payload| payload.paren_inner_payload())
         .filter_map(|inner| {

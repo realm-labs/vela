@@ -1187,7 +1187,11 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .filter_map(|statement| statement.assignment_value_expression_payload())
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .flat_map(|payload| {
             let Some(fields) = payload.fallback_record_fields() else {
                 return Vec::new();

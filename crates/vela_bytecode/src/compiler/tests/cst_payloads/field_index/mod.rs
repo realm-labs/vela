@@ -468,13 +468,15 @@ fn main() {
                 .compile_statement(statements[1].fallback())
                 .expect("legacy local should compile");
             let cst_target = statements[2]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("CST assignment target payload");
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy assignment expression");
             let legacy_target = statements[3]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy assignment target fallback");
             let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -539,13 +541,15 @@ fn main() {
                 .compile_statement(statements[1].fallback())
                 .expect("legacy_items local should compile");
             let cst_target = statements[2]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("CST indexed assignment target");
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy indexed assignment expression");
             let legacy_target = statements[3]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy indexed assignment target");
             let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),
@@ -766,13 +770,15 @@ fn main() {
                 .compile_statement_payload_for_test(&statements[1])
                 .expect("legacy map should compile");
             let cst_target = statements[2]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("CST string-key assignment target payload");
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy numeric assignment expression");
             let legacy_target = statements[3]
-                .assignment_target_expression_payload()
+                .expression_payload()
+                .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy numeric assignment target fallback");
             let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
                 SourceId::new(1),

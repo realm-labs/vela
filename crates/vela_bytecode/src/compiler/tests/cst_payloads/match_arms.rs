@@ -76,7 +76,11 @@ fn classify(input) {
 
     let assignment_scrutinee = statement_payloads
         .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::assignment_value_expression_payload)
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.assignment_value_payload())
+        })
         .find_map(|payload| payload.match_scrutinee_payload())
         .expect("match assignment value should expose scrutinee payload");
     assert_scrutinee_block_payload(
