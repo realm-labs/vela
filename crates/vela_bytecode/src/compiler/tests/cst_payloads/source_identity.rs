@@ -604,7 +604,12 @@ fn main(target) {
             assert!(missing_expression.syntax_statement().is_none());
             assert_eq!(missing_return.statement_kind(), None);
             assert!(missing_return.syntax_statement().is_none());
-            assert_eq!(missing_let.let_initializer_kind(), None);
+            assert_eq!(
+                missing_let
+                    .let_initializer_expression_payload()
+                    .and_then(|payload| payload.syntax_kind()),
+                None
+            );
             let missing_assignment_expression = missing_assignment
                 .expression_payload()
                 .expect("missing-source assignment expression payload");
@@ -634,7 +639,12 @@ fn main(target) {
                     .and_then(|payload| payload.syntax_kind()),
                 None
             );
-            assert_eq!(missing_return.return_value_kind(), None);
+            assert_eq!(
+                missing_return
+                    .return_value_expression_payload()
+                    .and_then(|payload| payload.syntax_kind()),
+                None
+            );
         },
     );
 }

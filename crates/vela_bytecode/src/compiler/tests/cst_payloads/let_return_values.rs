@@ -184,7 +184,7 @@ fn main() {
         "syntax-only empty let should not retain an owned statement fallback"
     );
     assert_eq!(
-        statements[1].return_value_kind(),
+        statements[1].stored_return_value_kind(),
         Some(SyntaxExpressionKind::Literal)
     );
 }
@@ -210,7 +210,7 @@ fn main() {
         "syntax-only bare return should not retain an owned statement fallback"
     );
     assert_eq!(
-        statements[1].return_value_kind(),
+        statements[1].stored_return_value_kind(),
         Some(SyntaxExpressionKind::Literal)
     );
 }
@@ -1496,7 +1496,7 @@ fn main() {
         "syntax-only literal let should not retain an owned statement fallback"
     );
     assert_eq!(
-        statements[1].return_value_kind(),
+        statements[1].stored_return_value_kind(),
         Some(SyntaxExpressionKind::Path)
     );
 }
@@ -1606,7 +1606,7 @@ fn make(value) {
         "syntax-only path let should not retain an owned statement fallback"
     );
     assert_eq!(
-        statements[1].return_value_kind(),
+        statements[1].stored_return_value_kind(),
         Some(SyntaxExpressionKind::Binary)
     );
 }
@@ -1661,7 +1661,7 @@ fn main(input) {
         "syntax-only path return should not retain an owned statement fallback"
     );
     assert_eq!(
-        statements[1].return_value_kind(),
+        statements[1].stored_return_value_kind(),
         Some(SyntaxExpressionKind::Binary)
     );
 }

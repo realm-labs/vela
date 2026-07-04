@@ -582,18 +582,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             })
     }
 
-    #[cfg(test)]
-    pub(super) fn let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_let_initializer_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.stored_let_initializer_kind()
-    }
-
     pub(super) fn stored_let_initializer_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
@@ -687,18 +675,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             self.syntax.as_ref()?.as_let()?.initializer(),
             value,
         ))
-    }
-
-    #[cfg(test)]
-    pub(super) fn return_value_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_return_value_kind()
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.stored_return_value_kind()
     }
 
     pub(super) fn stored_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
