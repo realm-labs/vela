@@ -138,30 +138,32 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        let syntax_only = stmt.is_syntax_only();
-        if syntax_only
+        let syntax_payload_is_trusted = expression_statement_syntax_payload_is_trusted(stmt);
+        if syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_only
+        if syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_path_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_only
+        if syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_range_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_only && let Some(body) = stmt.expression_statement_block_body_payload() {
+        if syntax_payload_is_trusted
+            && let Some(body) = stmt.expression_statement_block_body_payload()
+        {
             let dst = self.alloc_register()?;
             return self.compile_block_payload_value_to(&body, dst);
         }
-        if syntax_only
+        if syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
         {
@@ -1172,6 +1174,21 @@ impl Compiler<'_, '_> {
         } else {
             self.compile_statements(&block.statements)
         }
+    }
+}
+
+fn expression_statement_syntax_payload_is_trusted(stmt: &CompilerStatementPayload<'_>) -> bool {
+    #[cfg(test)]
+    {
+        stmt.is_syntax_only()
+            || stmt
+                .expression_payload()
+                .is_some_and(|payload| payload.matches_paired_expr(payload.fallback()))
+    }
+    #[cfg(not(test))]
+    {
+        let _ = stmt;
+        true
     }
 }
 

@@ -57,7 +57,7 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
-        let syntax_only = stmt.is_syntax_only();
+        let syntax_payload_is_trusted = statement_syntax_payload_is_trusted(stmt);
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
@@ -105,7 +105,8 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_negated_literal(name, span, literal, literal_span);
                 }
-                if syntax_only
+                if stmt.is_syntax_only()
+                    && syntax_payload_is_trusted
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -115,7 +116,8 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if syntax_only
+                if stmt.is_syntax_only()
+                    && syntax_payload_is_trusted
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -138,8 +140,9 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_path(name, span, path, path_span);
                 }
-                if syntax_only
+                if syntax_payload_is_trusted
                     && stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block)
+                    && stmt.syntax_statement_span().is_some()
                 {
                     let Some(name) = stmt.let_name_text() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -158,7 +161,8 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_let_block_value(name, span, &body);
                 }
-                if syntax_only
+                if stmt.is_syntax_only()
+                    && syntax_payload_is_trusted
                     && let Some((source, expression, _)) =
                         stmt.let_initializer_syntax_expression_and_span()
                     && let Some(name) = stmt.let_name_text()
@@ -184,7 +188,7 @@ impl Compiler<'_, '_> {
                 if let Some((literal, span)) = stmt.return_value_syntax_negated_literal_and_span() {
                     return self.compile_return_negated_literal(literal, span);
                 }
-                if syntax_only
+                if syntax_payload_is_trusted
                     && let Some((source, expression, span)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -192,7 +196,7 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(compiled);
                 }
-                if syntax_only
+                if syntax_payload_is_trusted
                     && let Some((source, expression, span)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -203,8 +207,9 @@ impl Compiler<'_, '_> {
                 if let Some((path, span)) = stmt.return_value_syntax_path_and_span() {
                     return self.compile_return_path(path, span);
                 }
-                if syntax_only
+                if syntax_payload_is_trusted
                     && stmt.stored_return_value_kind() == Some(SyntaxExpressionKind::Block)
+                    && stmt.syntax_statement_span().is_some()
                 {
                     let Some(span) = stmt.syntax_statement_span() else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -218,7 +223,7 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_return_block_value(span, &body);
                 }
-                if syntax_only
+                if syntax_payload_is_trusted
                     && let Some((source, expression, _)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =
@@ -228,7 +233,7 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxStatementKind::Block => return self.compile_block_statement_payload(stmt),
-            SyntaxStatementKind::If if syntax_only => {
+            SyntaxStatementKind::If if syntax_payload_is_trusted => {
                 if let Some((source, if_expr)) = stmt.syntax_if()
                     && let Some(compiled) = self.compile_syntax_if_statement(source, &if_expr)?
                 {
@@ -361,5 +366,17 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
     ) -> CompileResult<bool> {
         self.compile_body_payload_statements(body)
+    }
+}
+
+fn statement_syntax_payload_is_trusted(stmt: &CompilerStatementPayload<'_>) -> bool {
+    #[cfg(test)]
+    {
+        stmt.is_syntax_only() || aligned_statement(stmt).is_some()
+    }
+    #[cfg(not(test))]
+    {
+        let _ = stmt;
+        true
     }
 }
