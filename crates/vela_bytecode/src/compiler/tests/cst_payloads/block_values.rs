@@ -70,7 +70,7 @@ fn main(flag) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let tail = statements.last().expect("tail statement");
             let syntax = tail.syntax_statement().expect("tail CST statement").clone();
             let missing_children =

@@ -86,7 +86,7 @@ fn legacy_guard(value, flag) {
 fn first_return_match_syntax_arm(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxMatchArm {
-    let statements = body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
     statements[0]
         .return_value_expression_payload()
         .and_then(|payload| payload.match_arm_payloads())

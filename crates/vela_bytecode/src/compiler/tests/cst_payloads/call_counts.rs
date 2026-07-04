@@ -24,7 +24,7 @@ fn main() {
     let cst_call = cst_call_expression(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_call = payload.body.statement_payloads()[0]
+    let legacy_call = paired_statement_payloads_for_body(source, &payload.body)[0]
         .expression_payload()
         .expect("legacy call payload");
     let mismatched =
@@ -81,7 +81,8 @@ fn main() {
     let cst_statement = cst_call_statement(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let fallback_statement = payload.body.statement_payloads()[0].fallback();
+    let fallback_statement =
+        paired_statement_payloads_for_body(source, &payload.body)[0].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     assert!(
