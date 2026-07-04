@@ -13,7 +13,10 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(
+                payload.body.syntax_payload().source,
+                &payload.body,
+            );
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("typed array local should compile");
@@ -83,7 +86,7 @@ fn main() {
         facts,
     )
     .expect("compiler should initialize");
-    let call = payload.body.statement_payloads()[0]
+    let call = paired_statement_payloads_for_body(source, &payload.body)[0]
         .expression_payload()
         .expect("native call payload");
     let ExprKind::Call { callee, args } = &call.fallback().kind else {

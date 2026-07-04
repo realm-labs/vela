@@ -124,7 +124,7 @@ fn main(player: Player) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let legacy_path = payload.body.statement_payloads()[0]
+    let legacy_path = paired_statement_payloads_for_body(source, &payload.body)[0]
         .expression_payload()
         .and_then(|payload| payload.call_argument_value_payloads())
         .expect("host path call argument payloads")
@@ -322,7 +322,7 @@ fn make(value) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_field = statements[0]
         .expression_payload()
         .expect("CST host field expression");
