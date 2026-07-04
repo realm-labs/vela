@@ -178,8 +178,10 @@ impl Compiler<'_, '_> {
             };
             let expr = expression_payload.fallback();
             return if kind == SyntaxExpressionKind::Assign {
-                let value_body = stmt.assignment_value_block_body_payload();
                 let value_expression = stmt.assignment_value_expression_payload();
+                let value_body = value_expression
+                    .as_ref()
+                    .and_then(CompilerExpressionPayload::block_body_payload);
                 let value_if = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::if_payload);

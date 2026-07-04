@@ -76,6 +76,14 @@ fn cst_assignment_value_if_from_expression<'ast>(
         .and_then(|payload| payload.if_payload())
 }
 
+fn cst_assignment_value_block_from_expression<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
+    statement
+        .assignment_value_expression_payload()
+        .and_then(|payload| payload.block_body_payload())
+}
+
 fn cst_return_value_match_arms_from_expression(
     statement: &body_payloads::CompilerStatementPayload<'_>,
 ) -> Option<Vec<body_payloads::CompilerMatchArmPayload>> {
@@ -420,14 +428,14 @@ fn assert_cst_return_value_block_body_payloads(
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
-fn assert_cst_assignment_value_block_body_payloads(
+fn assert_cst_assignment_value_block_from_expression(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .filter_map(|statement| statement.assignment_value_block_body_payload())
+        .filter_map(cst_assignment_value_block_from_expression)
         .map(|body| cst_statement_texts(&body))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));

@@ -452,7 +452,7 @@ fn assign_values() {
             ),
         ],
     );
-    assert_cst_assignment_value_block_body_payloads(
+    assert_cst_assignment_value_block_from_expression(
         &payload.body,
         &[vec![
             (SyntaxStatementKind::Let, "let start = 1;"),

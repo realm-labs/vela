@@ -986,14 +986,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn assignment_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        Some(CompilerBodyPayload::nested_syntax(
-            self.source?,
-            self.assignment_value_expression()?.as_block()?,
-        ))
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload>> {
