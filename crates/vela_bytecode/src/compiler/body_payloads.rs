@@ -3,14 +3,16 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 #[cfg(test)]
+use vela_syntax::ast::IfExpr;
+#[cfg(test)]
 use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{
-    AstNode, ElseBranch, ExprKind, IfExpr, MatchExpr, SyntaxArgument, SyntaxBlock,
-    SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm,
-    SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField,
-    SyntaxStatement, SyntaxStatementKind,
+    AstNode, ExprKind, MatchExpr, SyntaxArgument, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
+    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
+    SyntaxStatementKind,
 };
 
 mod expression_payloads;
@@ -88,7 +90,7 @@ pub(in crate::compiler) struct CompilerRecordFieldPayload {
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
-    condition: Option<CompilerExpressionPayload<'ast>>,
+    condition: Option<SyntaxExpression>,
     then_body: Option<CompilerBodyPayload<'ast>>,
     else_body: Option<CompilerBodyPayload<'ast>>,
     else_if: Option<Box<CompilerIfPayload<'ast>>>,
@@ -370,18 +372,12 @@ fn match_scrutinee_payload_for_expr<'ast>(
     )
 }
 
-fn if_payload_for_expr<'ast>(
+fn if_payload_for_syntax<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxIfExpr,
-    fallback: &'ast IfExpr,
 ) -> Option<CompilerIfPayload<'ast>> {
     let source = source?;
-    let condition_syntax = syntax.condition();
-    let condition = Some(CompilerExpressionPayload::from_fallback(
-        Some(source),
-        condition_syntax,
-        &fallback.condition,
-    ));
+    let condition = syntax.condition();
     let then_body = syntax
         .then_block()
         .map(|body| CompilerBodyPayload::nested_syntax(source, body));
@@ -389,10 +385,7 @@ fn if_payload_for_expr<'ast>(
         .else_block()
         .map(|body| CompilerBodyPayload::nested_syntax(source, body));
     let else_if = if let Some(syntax_if) = syntax.else_if() {
-        let Some(ElseBranch::If(if_expr)) = fallback.else_branch.as_ref() else {
-            return None;
-        };
-        if_payload_for_expr(Some(source), syntax_if, if_expr).map(Box::new)
+        if_payload_for_syntax(Some(source), syntax_if).map(Box::new)
     } else {
         None
     };
@@ -1014,8 +1007,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 }
 
 impl<'ast> CompilerIfPayload<'ast> {
-    pub(super) fn condition_payload(&self) -> Option<&CompilerExpressionPayload<'ast>> {
-        self.condition.as_ref()
+    pub(super) fn condition_payload(
+        &self,
+        fallback: &'ast vela_syntax::ast::Expr,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        let condition = self.condition.clone()?;
+        Some(CompilerExpressionPayload::from_fallback(
+            Some(fallback.span.source),
+            Some(condition),
+            fallback,
+        ))
     }
 
     pub(super) fn then_body(&self) -> Option<&CompilerBodyPayload<'ast>> {
@@ -1028,5 +1029,10 @@ impl<'ast> CompilerIfPayload<'ast> {
 
     pub(super) fn else_if(&self) -> Option<&CompilerIfPayload<'ast>> {
         self.else_if.as_deref()
+    }
+
+    #[cfg(test)]
+    pub(super) fn condition_expression(&self) -> Option<&SyntaxExpression> {
+        self.condition.as_ref()
     }
 }

@@ -466,8 +466,8 @@ fn assert_cst_statement_if_condition_block_payloads(
                 .and_then(|payload| payload.if_payload())
         })
         .filter_map(|if_payload| {
-            let condition = if_payload.condition_payload()?;
-            let body = condition_block_body_payload(condition)?;
+            let condition = if_payload.condition_expression()?;
+            let body = condition_block_body_payload(body.syntax_payload().source, condition)?;
             Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
@@ -482,19 +482,26 @@ fn assert_cst_let_initializer_if_condition_block_payloads(
         .iter()
         .filter_map(cst_let_initializer_if_from_expression)
         .filter_map(|if_payload| {
-            let condition = if_payload.condition_payload()?;
-            let body = condition_block_body_payload(condition)?;
+            let condition = if_payload.condition_expression()?;
+            let body = condition_block_body_payload(body.syntax_payload().source, condition)?;
             Some(cst_statement_texts(&body))
         })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
 }
 
-fn condition_block_body_payload<'ast>(
-    condition: &body_payloads::CompilerExpressionPayload<'ast>,
-) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
-    condition
-        .paren_inner_payload()
-        .and_then(|inner| inner.block_body_payload())
-        .or_else(|| condition.block_body_payload())
+fn condition_block_body_payload(
+    source: SourceId,
+    condition: &vela_syntax::ast::SyntaxExpression,
+) -> Option<body_payloads::CompilerBodyPayload<'static>> {
+    fn block(
+        condition: &vela_syntax::ast::SyntaxExpression,
+    ) -> Option<vela_syntax::ast::SyntaxBlock> {
+        if let Some(inner) = condition.as_paren().and_then(|paren| paren.expression()) {
+            return block(&inner);
+        }
+        condition.as_block()
+    }
+
+    block(condition).map(|body| body_payloads::CompilerBodyPayload::nested_syntax(source, body))
 }
