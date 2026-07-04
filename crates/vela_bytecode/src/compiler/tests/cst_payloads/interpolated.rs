@@ -197,7 +197,7 @@ fn main() {
 
 #[test]
 fn missing_interpolation_child_payloads_do_not_use_legacy_expression() {
-    let no_payloads: [body_payloads::CompilerExpressionPayload<'_>; 0] = [];
+    let no_payloads: [body_payloads::CompilerInterpolationPayload; 0] = [];
     let error = match crate::compiler::expressions::interpolated_expression_payload_at(
         Some(&no_payloads),
         0,
@@ -229,7 +229,7 @@ fn assert_cst_let_initializer_interpolation_body_payloads(
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {
             payload
-                .interpolated_expression_payloads()
+                .interpolated_expression_value_payloads()
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();

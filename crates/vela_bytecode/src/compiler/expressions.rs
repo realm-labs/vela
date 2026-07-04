@@ -1,10 +1,9 @@
 use vela_common::{PrimitiveTag, Span};
 use vela_syntax::ast::{
-    BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, RecordField, SyntaxExpressionKind,
-    UnaryOp,
+    BinaryOp, Expr, ExprKind, Literal, RecordField, SyntaxExpressionKind, UnaryOp,
 };
 
-use crate::{BinaryLiteralSide, FormatStringPart, Register, UnlinkedInstructionKind};
+use crate::{BinaryLiteralSide, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::{
@@ -29,25 +28,9 @@ use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_varian
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
-pub(in crate::compiler) fn interpolated_expression_payload_at<'payload, 'ast>(
-    payloads: Option<&'payload [CompilerExpressionPayload<'ast>]>,
-    index: usize,
-) -> CompileResult<Option<&'payload CompilerExpressionPayload<'ast>>> {
-    let Some(payloads) = payloads else {
-        return Ok(None);
-    };
-    let payload = payloads.get(index).ok_or_else(|| {
-        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST interpolation expression",
-        ))
-    })?;
-    if payload.syntax_expression().is_none() {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST interpolation expression",
-        )));
-    }
-    Ok(Some(payload))
-}
+pub(in crate::compiler) mod interpolated;
+#[cfg(test)]
+pub(in crate::compiler) use interpolated::interpolated_expression_payload_at;
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_expr_with_payload(
@@ -360,11 +343,6 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
-                    if payload.has_extra_interpolation_expressions() {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST interpolation expressions",
-                        )));
-                    }
                     let part_payloads = payload.interpolated_expression_payloads();
                     return self.compile_interpolated_string(parts, part_payloads.as_deref());
                 }
@@ -1036,38 +1014,6 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<()> {
         self.emit(UnlinkedInstructionKind::Truthy { dst, src });
         Ok(())
-    }
-
-    fn compile_interpolated_string(
-        &mut self,
-        parts: &[InterpolatedStringPart],
-        payloads: Option<&[CompilerExpressionPayload<'_>]>,
-    ) -> CompileResult<Register> {
-        let mut compiled = Vec::with_capacity(parts.len());
-        let mut expression_index = 0;
-        for part in parts {
-            match part {
-                InterpolatedStringPart::Text(value) => {
-                    let constant = self
-                        .code
-                        .push_constant(crate::Constant::String(value.clone()));
-                    compiled.push(FormatStringPart::Text(constant));
-                }
-                InterpolatedStringPart::Expr(expr) => {
-                    let payload = interpolated_expression_payload_at(payloads, expression_index)?;
-                    expression_index += 1;
-                    compiled.push(FormatStringPart::Value(
-                        self.compile_expr_with_payload(expr, payload)?,
-                    ));
-                }
-            }
-        }
-        let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::FormatString {
-            dst,
-            parts: compiled,
-        });
-        Ok(dst)
     }
 
     fn compile_unary(

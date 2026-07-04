@@ -77,6 +77,11 @@ pub(in crate::compiler) struct CompilerArrayElementPayload {
     syntax: Option<SyntaxExpression>,
 }
 
+pub(in crate::compiler) struct CompilerInterpolationPayload {
+    source: Option<SourceId>,
+    syntax: Option<SyntaxExpression>,
+}
+
 #[derive(Clone)]
 pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,

@@ -481,12 +481,12 @@ fn main(value) {
                         .clone(),
                     interpolated.fallback(),
                 );
-            let expressions = missing_source
-                .interpolated_expression_payloads()
-                .expect("interpolated expression payloads");
-
-            assert!(!missing_source.has_extra_interpolation_expressions());
-            assert!(expressions[0].syntax_expression().is_none());
+            assert!(missing_source.interpolated_expression_payloads().is_none());
+            assert!(
+                missing_source
+                    .interpolated_expression_value_payloads()
+                    .is_none()
+            );
         },
     );
 }

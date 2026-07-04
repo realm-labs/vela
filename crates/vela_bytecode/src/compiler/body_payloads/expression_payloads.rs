@@ -1,17 +1,18 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern,
-    SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
+    AssignOp, AstNode, BinaryOp, Expr, ExprKind, Literal, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordExprField, SyntaxRecordPatternField,
 };
 #[cfg(test)]
-use vela_syntax::ast::{MapEntry, RecordField};
+use vela_syntax::ast::{InterpolatedStringPart, MapEntry, RecordField};
 
 use super::{
     CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
-    CompilerExpressionPayload, CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload,
-    CompilerPatternPayload, CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload,
-    if_payload_for_syntax, match_arm_payloads_for_syntax, match_scrutinee_payload_for_expr,
+    CompilerExpressionPayload, CompilerIfPayload, CompilerInterpolationPayload,
+    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
+    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_syntax,
+    match_arm_payloads_for_syntax, match_scrutinee_payload_for_expr,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -538,14 +539,42 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
+    ) -> Option<Vec<CompilerInterpolationPayload>> {
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Literal) {
+            return None;
+        }
+        let source = self.source?;
+        Some(
+            self.syntax
+                .as_ref()?
+                .as_literal()?
+                .interpolation_expressions()
+                .map(|syntax| CompilerInterpolationPayload {
+                    source: Some(source),
+                    syntax: Some(syntax),
+                })
+                .collect(),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn interpolated_expression_value_payloads(
+        &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let parts = self.raw_interpolated_string_parts()?;
-        let syntax_expressions = self
-            .syntax
-            .as_ref()?
-            .as_literal()?
-            .interpolation_expressions()
-            .collect::<Vec<_>>();
+        Some(
+            self.raw_interpolated_string_expressions()?
+                .into_iter()
+                .zip(self.interpolated_expression_payloads()?)
+                .map(|(fallback, payload)| payload.value_expression_payload(fallback))
+                .collect(),
+        )
+    }
+
+    #[cfg(test)]
+    fn raw_interpolated_string_expressions(&self) -> Option<Vec<&'ast Expr>> {
+        let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
+            return None;
+        };
         Some(
             parts
                 .iter()
@@ -553,40 +582,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                     InterpolatedStringPart::Text(_) => None,
                     InterpolatedStringPart::Expr(expr) => Some(expr),
                 })
-                .enumerate()
-                .map(|(index, fallback)| {
-                    CompilerExpressionPayload::from_fallback(
-                        self.source,
-                        syntax_expressions.get(index).cloned(),
-                        fallback,
-                    )
-                })
                 .collect(),
         )
-    }
-
-    pub(in crate::compiler) fn has_extra_interpolation_expressions(&self) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(parts) = self.raw_interpolated_string_parts() else {
-            return false;
-        };
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_literal) else {
-            return false;
-        };
-        let expression_count = parts
-            .iter()
-            .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
-            .count();
-        syntax.interpolation_expressions().count() > expression_count
-    }
-
-    fn raw_interpolated_string_parts(&self) -> Option<&'ast [InterpolatedStringPart]> {
-        let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
-            return None;
-        };
-        Some(parts)
     }
 }
 
@@ -596,6 +593,21 @@ fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Sp
 }
 
 impl CompilerArrayElementPayload {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
+        self.source?;
+        self.syntax.as_ref()
+    }
+
+    pub(in crate::compiler) fn value_expression_payload<'ast>(
+        &self,
+        fallback: &'ast Expr,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_fallback(self.source, self.syntax.clone(), fallback)
+    }
+}
+
+impl CompilerInterpolationPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
         self.source?;
