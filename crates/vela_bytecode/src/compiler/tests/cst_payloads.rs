@@ -76,6 +76,12 @@ fn body_has_no_statement_fallbacks(body: &body_payloads::CompilerBodyPayload<'_>
     })
 }
 
+fn cst_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 fn cst_payload_compiler_facts_with_options<'registry>(
     semantic: &semantic::SemanticSource,
     options: CompilerOptions,
@@ -328,10 +334,10 @@ fn fallback_body() {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_map = cst_payload.body.statement_payloads()[0]
+    let cst_map = cst_statement_payloads(&cst_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("cst map payload");
-    let fallback_map = fallback_payload.body.statement_payloads()[0]
+    let fallback_map = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback map payload");
     let mismatched = body_payloads::CompilerExpressionPayload::syntax(
@@ -368,10 +374,10 @@ fn fallback_body() {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_array = cst_payload.body.statement_payloads()[0]
+    let cst_array = cst_statement_payloads(&cst_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("cst array payload");
-    let fallback_array = fallback_payload.body.statement_payloads()[0]
+    let fallback_array = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback array payload");
     let mismatched = body_payloads::CompilerExpressionPayload::syntax(
@@ -421,10 +427,10 @@ fn fallback_body() {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_record = cst_payload.body.statement_payloads()[0]
+    let cst_record = cst_statement_payloads(&cst_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("cst record payload");
-    let fallback_record = fallback_payload.body.statement_payloads()[0]
+    let fallback_record = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback record payload");
     let mismatched = body_payloads::CompilerExpressionPayload::syntax(
@@ -458,7 +464,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = cst_statement_payloads(&payload.body);
     let let_statement = &statements[0];
     let return_syntax = statements[1]
         .syntax_statement()
