@@ -660,9 +660,7 @@ fn main(values) {
                     statement.fallback(),
                 );
 
-            assert!(missing_source.for_iterable_expression_payload().is_none());
-            assert!(missing_source.for_index_pattern_payload().is_none());
-            assert!(missing_source.for_value_pattern_payload().is_none());
+            assert!(missing_source.syntax_statement().is_none());
         },
     );
 }

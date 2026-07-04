@@ -803,57 +803,9 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(super) fn for_iterable_expression_payload(
-        &self,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::For { iterable, .. } = &self.fallback?.kind else {
-            return None;
-        };
-        self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.syntax.as_ref()?.as_for()?.iterable(),
-            iterable,
-        ))
-    }
-
-    #[cfg(test)]
-    pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload> {
-        let StmtKind::For { index_pattern, .. } = &self.fallback?.kind else {
-            return None;
-        };
-        index_pattern.as_ref()?;
-        self.source?;
-        Some(CompilerPatternPayload::from_syntax(
-            self.source,
-            self.syntax.as_ref()?.as_for()?.index_pattern(),
-        ))
-    }
-
-    #[cfg(test)]
-    pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload> {
-        let StmtKind::For { .. } = &self.fallback?.kind else {
-            return None;
-        };
-        self.source?;
-        Some(CompilerPatternPayload::from_syntax(
-            self.source,
-            self.syntax.as_ref()?.as_for()?.value_pattern(),
-        ))
-    }
-
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))
-    }
-
-    #[cfg(test)]
-    pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        Some(CompilerBodyPayload::nested_syntax(
-            self.source?,
-            self.syntax.as_ref()?.as_for()?.body()?,
-        ))
     }
 
     fn expression(&self) -> Option<SyntaxExpression> {

@@ -226,7 +226,10 @@ fn assert_cst_for_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| {
-            let body = statement.for_body_payload()?;
+            let body = body_payloads::CompilerBodyPayload::nested_syntax(
+                statement.syntax_statement_span()?.source,
+                statement.syntax_statement()?.as_for()?.body()?,
+            );
             let statements = body.statement_payloads();
             Some(
                 statements

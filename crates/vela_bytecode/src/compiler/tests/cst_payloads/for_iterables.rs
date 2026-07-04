@@ -1,5 +1,61 @@
 use super::*;
 
+fn for_iterable_expression_payload<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerExpressionPayload<'ast>> {
+    if statement.is_syntax_only() {
+        return None;
+    }
+    let vela_syntax::ast::StmtKind::For { iterable, .. } = &statement.fallback().kind else {
+        return None;
+    };
+    Some(body_payloads::CompilerExpressionPayload::from_fallback(
+        Some(statement.syntax_statement_span()?.source),
+        statement.syntax_statement()?.as_for()?.iterable(),
+        iterable,
+    ))
+}
+
+fn for_index_pattern_payload(
+    statement: &body_payloads::CompilerStatementPayload<'_>,
+) -> Option<body_payloads::CompilerPatternPayload> {
+    if statement.is_syntax_only() {
+        return None;
+    }
+    let vela_syntax::ast::StmtKind::For { index_pattern, .. } = &statement.fallback().kind else {
+        return None;
+    };
+    index_pattern.as_ref()?;
+    Some(body_payloads::CompilerPatternPayload::from_syntax(
+        Some(statement.syntax_statement_span()?.source),
+        statement.syntax_statement()?.as_for()?.index_pattern(),
+    ))
+}
+
+fn for_value_pattern_payload(
+    statement: &body_payloads::CompilerStatementPayload<'_>,
+) -> Option<body_payloads::CompilerPatternPayload> {
+    if statement.is_syntax_only() {
+        return None;
+    }
+    let vela_syntax::ast::StmtKind::For { .. } = &statement.fallback().kind else {
+        return None;
+    };
+    Some(body_payloads::CompilerPatternPayload::from_syntax(
+        Some(statement.syntax_statement_span()?.source),
+        statement.syntax_statement()?.as_for()?.value_pattern(),
+    ))
+}
+
+fn for_body_payload<'ast>(
+    statement: &body_payloads::CompilerStatementPayload<'ast>,
+) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
+    Some(body_payloads::CompilerBodyPayload::nested_syntax(
+        statement.syntax_statement_span()?.source,
+        statement.syntax_statement()?.as_for()?.body()?,
+    ))
+}
+
 #[test]
 fn semantic_function_for_iterable_values_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -33,7 +89,7 @@ fn loop_values() {
         .body
         .statement_payloads()
         .into_iter()
-        .filter_map(|statement| statement.for_iterable_expression_payload())
+        .filter_map(|statement| for_iterable_expression_payload(&statement))
         .collect::<Vec<_>>();
     assert_eq!(iterable_payloads.len(), 2);
     assert_eq!(
@@ -208,12 +264,10 @@ fn main() {
 
     assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
     assert_eq!(
-        missing
-            .for_iterable_expression_payload()
-            .and_then(|payload| payload.kind()),
+        for_iterable_expression_payload(&missing).and_then(|payload| payload.kind()),
         None
     );
-    assert!(missing.for_body_payload().is_some());
+    assert!(for_body_payload(&missing).is_some());
 
     let error = compiler
         .compile_statement_payload_for_test(&missing)
@@ -261,8 +315,7 @@ fn main() {
 
     assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
     assert!(
-        missing
-            .for_index_pattern_payload()
+        for_index_pattern_payload(&missing)
             .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
     );
 
@@ -311,8 +364,7 @@ fn main() {
 
     assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
     assert!(
-        missing
-            .for_value_pattern_payload()
+        for_value_pattern_payload(&missing)
             .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
     );
 
@@ -354,8 +406,7 @@ fn loop_patterns(results) {
         .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::For))
         .expect("for statement payload");
 
-    let index_pattern = for_statement
-        .for_index_pattern_payload()
+    let index_pattern = for_index_pattern_payload(&for_statement)
         .expect("indexed for statement should expose index pattern payload");
     assert_eq!(
         index_pattern
@@ -365,8 +416,7 @@ fn loop_patterns(results) {
         Some("index")
     );
 
-    let value_pattern = for_statement
-        .for_value_pattern_payload()
+    let value_pattern = for_value_pattern_payload(&for_statement)
         .expect("for statement should expose value pattern payload");
     assert_eq!(
         value_pattern
