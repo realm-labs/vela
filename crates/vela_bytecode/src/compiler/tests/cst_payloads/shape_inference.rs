@@ -1,5 +1,11 @@
 use super::*;
 
+fn shape_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn field_shape_inference_with_non_field_cst_payload_does_not_use_legacy_field() {
     with_cst_payload_compiler(
@@ -80,7 +86,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_binary = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST binary initializer");
@@ -121,7 +127,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let record = payload.body.statement_payloads()[0]
+            let record = shape_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("record initializer payload");
             let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(
@@ -202,7 +208,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_range = statements[0]
                 .let_initializer_syntax_expression_and_span()
                 .expect("CST range initializer")
@@ -261,7 +267,7 @@ fn main(input) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_float = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST float arithmetic initializer");
@@ -302,7 +308,7 @@ fn main(input) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let dynamic = statements[0]
                 .let_initializer_expression_payload()
                 .expect("dynamic call initializer");
@@ -334,7 +340,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_logical = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST logical initializer");
@@ -372,7 +378,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_paren = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST parenthesized initializer");
@@ -416,7 +422,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST call initializer");
@@ -462,7 +468,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let unsupported = statements[0]
                 .let_initializer_expression_payload()
                 .expect("unsupported CST call initializer");
@@ -500,7 +506,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_method = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST method-call initializer");
@@ -538,7 +544,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_method = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST unwrap_or method initializer");
@@ -579,7 +585,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("CST map local should compile");
@@ -624,7 +630,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_collect = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST collect_array initializer");
@@ -664,7 +670,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_ok_or = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST ok_or initializer");
@@ -714,7 +720,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_map = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST map initializer");
@@ -757,7 +763,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("CST map local should compile");
@@ -801,7 +807,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_map_err = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST map_err initializer");
@@ -844,7 +850,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = shape_statement_payloads(&payload.body);
             let cst_array_index = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST array index initializer");
