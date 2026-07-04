@@ -1,7 +1,7 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal,
-    MapEntry, MatchExpr, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
+    MapEntry, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
     SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
@@ -44,27 +44,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
-        let match_expr = self.fallback_match_expr()?;
+        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+            return None;
+        };
         match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
     }
 
     pub(in crate::compiler) fn match_scrutinee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let match_expr = self.fallback_match_expr()?;
+        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+            return None;
+        };
         self.source?;
         Some(match_scrutinee_payload_for_expr(
             self.source,
             self.syntax.as_ref()?.as_match()?,
             match_expr,
         ))
-    }
-
-    fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
-        let ExprKind::Match(match_expr) = &self.fallback.kind else {
-            return None;
-        };
-        Some(match_expr)
     }
 
     pub(in crate::compiler) fn syntax_span(&self) -> Option<Span> {
@@ -115,7 +112,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_target_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let target = self.fallback_assignment_target()?;
+        let ExprKind::Assign { target, .. } = &self.fallback.kind else {
+            return None;
+        };
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -127,7 +126,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn assignment_value_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let value = self.fallback_assignment_value()?;
+        let ExprKind::Assign { value, .. } = &self.fallback.kind else {
+            return None;
+        };
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -137,29 +138,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
-        if !self.fallback_is_assignment() {
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Assign) {
             return None;
         }
         self.source?;
         self.syntax.as_ref()?.as_assign()?.operator()
-    }
-
-    fn fallback_assignment_target(&self) -> Option<&'ast Expr> {
-        let ExprKind::Assign { target, .. } = &self.fallback.kind else {
-            return None;
-        };
-        Some(target)
-    }
-
-    fn fallback_assignment_value(&self) -> Option<&'ast Expr> {
-        let ExprKind::Assign { value, .. } = &self.fallback.kind else {
-            return None;
-        };
-        Some(value)
-    }
-
-    fn fallback_is_assignment(&self) -> bool {
-        self.matches_syntax_kind(SyntaxExpressionKind::Assign)
     }
 
     pub(in crate::compiler) fn paren_inner_payload(
