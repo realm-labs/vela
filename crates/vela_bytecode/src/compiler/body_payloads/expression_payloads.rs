@@ -1017,11 +1017,7 @@ impl CompilerRecordPatternFieldPayload {
         self.syntax.as_ref()?.pattern()?.pattern_kind()
     }
 
-    pub(in crate::compiler) fn pattern_payload(
-        &self,
-        fallback: Option<&Pattern>,
-    ) -> Option<CompilerPatternPayload> {
-        fallback?;
+    pub(in crate::compiler) fn pattern_payload(&self) -> Option<CompilerPatternPayload> {
         self.source?;
         Some(CompilerPatternPayload::from_syntax(
             self.source,

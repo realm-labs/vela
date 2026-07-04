@@ -274,22 +274,10 @@ fn classify(result) {
     );
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
-    assert!(
-        missing_source_fields[0]
-            .pattern_payload(
-                record_pattern_fields(fallback_record_pattern)[0]
-                    .pattern
-                    .as_ref()
-            )
-            .is_none()
-    );
+    assert!(missing_source_fields[0].pattern_payload().is_none());
     assert_eq!(missing_source_fields[1].syntax_is_shorthand(), None);
     let nested_pattern = record_fields[0]
-        .pattern_payload(
-            record_pattern_fields(fallback_record_pattern)[0]
-                .pattern
-                .as_ref(),
-        )
+        .pattern_payload()
         .expect("explicit record pattern field should expose nested payload");
     assert_eq!(
         nested_pattern

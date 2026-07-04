@@ -377,9 +377,7 @@ impl Compiler<'_, '_> {
                             field_value,
                             pattern,
                             field_payload
-                                .and_then(|field_payload| {
-                                    field_payload.pattern_payload(field.pattern.as_ref())
-                                })
+                                .and_then(CompilerRecordPatternFieldPayload::pattern_payload)
                                 .as_ref(),
                         )?,
                     );
@@ -522,9 +520,7 @@ impl Compiler<'_, '_> {
                             dst,
                             pattern,
                             field_payload
-                                .and_then(|field_payload| {
-                                    field_payload.pattern_payload(field.pattern.as_ref())
-                                })
+                                .and_then(CompilerRecordPatternFieldPayload::pattern_payload)
                                 .as_ref(),
                             body_span,
                             field_facts,
