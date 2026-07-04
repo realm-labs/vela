@@ -1036,9 +1036,7 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 let dst = self.alloc_register()?;
-                let Some((if_expr, _)) = expression_payload
-                    .and_then(CompilerExpressionPayload::if_payload_with_fallback)
-                else {
+                let ExprKind::If(if_expr) = &value.kind else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value if payload",
                     )));
@@ -1053,8 +1051,13 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 let dst = self.alloc_register()?;
-                let Some((match_expr, match_scrutinee, _)) = expression_payload
-                    .and_then(CompilerExpressionPayload::match_payloads_with_fallback)
+                let ExprKind::Match(match_expr) = &value.kind else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value match payload",
+                    )));
+                };
+                let Some(match_scrutinee) =
+                    expression_payload.and_then(CompilerExpressionPayload::match_scrutinee_payload)
                 else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value match payload",
