@@ -6,8 +6,7 @@ pub(super) fn assert_cst_let_initializer_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(field_base_block_payloads)
@@ -19,8 +18,7 @@ pub(super) fn assert_cst_let_initializer_index_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(index_block_operand_payloads)
@@ -32,8 +30,7 @@ pub(super) fn assert_cst_assignment_value_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -49,8 +46,7 @@ pub(super) fn assert_cst_assignment_value_index_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -66,8 +62,7 @@ pub(super) fn assert_cst_assignment_target_field_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -83,8 +78,7 @@ pub(super) fn assert_cst_assignment_target_index_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -100,8 +94,7 @@ pub(super) fn assert_cst_let_initializer_field_names(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&str],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(|payload| payload.syntax_field_name())
@@ -113,8 +106,7 @@ pub(super) fn assert_cst_assignment_value_field_names(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&str],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -130,8 +122,7 @@ pub(super) fn assert_cst_assignment_target_field_names(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&str],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = super::field_index_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement

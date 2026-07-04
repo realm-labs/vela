@@ -3,6 +3,12 @@ use super::*;
 mod helpers;
 mod host_access;
 
+fn field_index_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_field_and_index_operands_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -132,7 +138,7 @@ fn make(value) {
 }
 "#,
         |_compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             let cst_field = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST field payload");
@@ -244,7 +250,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             compiler
                 .compile_statement(statements[0].fallback())
                 .expect("cst local should compile");
@@ -316,7 +322,7 @@ fn make(value) {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = legacy_payload.body.statement_payloads();
+    let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
         .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
@@ -381,7 +387,7 @@ fn make(value) {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = legacy_payload.body.statement_payloads();
+    let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
         .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
@@ -420,7 +426,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = legacy_payload.body.statement_payloads();
+    let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
         .compile_statement_payload_for_test(&statements[0])
         .expect("object local should compile");
@@ -460,7 +466,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             compiler
                 .compile_statement(statements[0].fallback())
                 .expect("cst local should compile");
@@ -533,7 +539,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             compiler
                 .compile_statement(statements[0].fallback())
                 .expect("cst_items local should compile");
@@ -596,7 +602,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("cst map should compile");
@@ -640,7 +646,7 @@ fn main() {
 }
 "#,
         |_compiler, payload| {
-            let statement = payload.body.statement_payloads()[1]
+            let statement = field_index_statement_payloads(&payload.body)[1]
                 .let_initializer_expression_payload()
                 .expect("index payload");
             let (_base, index) = statement
@@ -692,7 +698,7 @@ fn main() {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = legacy_payload.body.statement_payloads();
+    let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
         .compile_statement(statements[0].fallback())
         .expect("values local should compile");
@@ -730,7 +736,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = legacy_payload.body.statement_payloads();
+    let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
         .compile_statement(statements[0].fallback())
         .expect("values local should compile");
@@ -762,7 +768,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = field_index_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("cst map should compile");
