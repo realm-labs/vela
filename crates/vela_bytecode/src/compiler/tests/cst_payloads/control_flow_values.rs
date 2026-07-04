@@ -1,5 +1,11 @@
 use super::*;
 
+fn control_flow_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn missing_if_expression_payload_does_not_use_legacy_if_body() {
     let source = SourceId::new(1);
@@ -40,7 +46,7 @@ fn main() {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_if = legacy_payload.body.statement_payloads()[0]
+    let legacy_if = control_flow_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy if initializer");
     let missing = body_payloads::CompilerExpressionPayload::missing_child_payload_context(
@@ -71,14 +77,12 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statement = payload.body.statement_payloads()[0]
-                .syntax_statement()
-                .expect("CST let")
-                .clone();
+            let statements = control_flow_statement_payloads(&payload.body);
+            let statement = statements[0].syntax_statement().expect("CST let").clone();
             let missing_child =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statement,
-                    payload.body.statement_payloads()[0].fallback(),
+                    statements[0].fallback(),
                 );
 
             let error = compiler
@@ -105,7 +109,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let expression = payload.body.statement_payloads()[0]
+            let expression = control_flow_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("CST match initializer");
 
@@ -139,14 +143,15 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statement = payload.body.statement_payloads()[0]
+            let statements = control_flow_statement_payloads(&payload.body);
+            let statement = statements[0]
                 .syntax_statement()
                 .expect("CST return")
                 .clone();
             let missing_child =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statement,
-                    payload.body.statement_payloads()[0].fallback(),
+                    statements[0].fallback(),
                 );
 
             let error = compiler
@@ -173,7 +178,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let expression = payload.body.statement_payloads()[0]
+            let expression = control_flow_statement_payloads(&payload.body)[0]
                 .return_value_expression_payload()
                 .expect("CST match return");
 
