@@ -140,10 +140,10 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
+        #[cfg_attr(test, allow(unused_variables))]
+        let syntax_only = true;
         #[cfg(test)]
         let syntax_only = stmt.optional_fallback().is_none();
-        #[cfg(not(test))]
-        let syntax_only = true;
         if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?
@@ -172,13 +172,6 @@ impl Compiler<'_, '_> {
         {
             return Ok(done);
         }
-        #[cfg(not(test))]
-        {
-            let _ = kind;
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "unsupported CST expression statement payload",
-            )))
-        }
         #[cfg(test)]
         {
             let expression_payload = stmt.expression_payload();
@@ -197,7 +190,7 @@ impl Compiler<'_, '_> {
                     "mismatched CST expression statement payload",
                 )));
             };
-            if kind == SyntaxExpressionKind::Assign {
+            return if kind == SyntaxExpressionKind::Assign {
                 let value_body = stmt.assignment_value_block_body_payload();
                 let value_if = stmt.assignment_value_if_payload();
                 let value_match_arms = stmt.assignment_value_match_arm_payloads();
@@ -241,7 +234,14 @@ impl Compiler<'_, '_> {
             } else {
                 self.compile_expr_with_payload(expr, expression_payload.as_ref())?;
                 Ok(false)
-            }
+            };
+        }
+        #[cfg_attr(test, allow(unreachable_code))]
+        {
+            let _ = kind;
+            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "unsupported CST expression statement payload",
+            )))
         }
     }
 

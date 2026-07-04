@@ -144,11 +144,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self::with_fallback(source, body, fallback)
     }
 
-    #[cfg(not(test))]
     fn syntax_only(source: SourceId, body: SyntaxBlock) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
             _ast: PhantomData,
+            #[cfg(test)]
+            fallback_statements: None,
+            #[cfg(test)]
+            fallback_block: None,
         }
     }
 
@@ -162,12 +165,10 @@ impl<'ast> CompilerBodyPayload<'ast> {
             if !Self::requires_body_block_lookup(&body) {
                 return Self::syntax_only_without_body_lookup(source, body);
             }
-            fallback.map(|fallback| Self::nested(source, body, fallback))
+            return fallback.map(|fallback| Self::nested(source, body, fallback));
         }
-        #[cfg(not(test))]
-        {
-            Some(Self::syntax_only(source, body))
-        }
+        #[cfg_attr(test, allow(unreachable_code))]
+        Some(Self::syntax_only(source, body))
     }
 
     #[cfg(test)]
@@ -211,14 +212,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
         #[cfg(test)] fallback: Option<CompilerBodyFallback<'ast>>,
     ) -> Option<Self> {
         #[cfg(test)]
-        match fallback {
-            Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
-            None => Self::syntax_only_without_body_lookup(source, body),
-        }
-        #[cfg(not(test))]
         {
-            Some(Self::syntax_only(source, body))
+            return match fallback {
+                Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
+                None => Self::syntax_only_without_body_lookup(source, body),
+            };
         }
+        #[cfg_attr(test, allow(unreachable_code))]
+        Some(Self::syntax_only(source, body))
     }
 
     #[cfg(test)]
