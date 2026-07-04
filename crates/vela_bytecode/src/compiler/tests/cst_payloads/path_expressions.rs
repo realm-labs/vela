@@ -1,5 +1,11 @@
 use super::*;
 
+fn path_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_path_expressions_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -40,7 +46,7 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_path = payload.body.statement_payloads()[0]
+    let legacy_path = path_statement_payloads(&payload.body)[0]
         .expression_payload()
         .and_then(|payload| payload.call_argument_value_payloads())
         .expect("call argument payloads")
@@ -83,7 +89,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let fallback_statement = payload.body.statement_payloads()[1].fallback();
+            let fallback_statement = path_statement_payloads(&payload.body)[1].fallback();
             let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
                 source,
                 cst_body,
@@ -137,7 +143,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let path = payload.body.statement_payloads()[0]
+            let path = path_statement_payloads(&payload.body)[0]
                 .expression_payload()
                 .and_then(|payload| payload.call_argument_value_payloads())
                 .expect("call argument payloads")
@@ -224,9 +230,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_record").expect("cst function");
-    let cst_return = cst_payload
-        .body
-        .statement_payloads()
+    let cst_return = path_statement_payloads(&cst_payload.body)
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("CST record return expression");
@@ -241,9 +245,7 @@ fn make(value) {
     assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
 
     let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
-    let legacy_return = legacy_payload
-        .body
-        .statement_payloads()
+    let legacy_return = path_statement_payloads(&legacy_payload.body)
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("legacy path return expression");
@@ -364,7 +366,7 @@ fn main(cst) {
                 .expect("block initializer");
             assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
-            let block_statements = block_body.statement_payloads();
+            let block_statements = path_statement_payloads(&block_body);
             let (_, child_path) = block_statements[1]
                 .expression_statement_syntax_expression()
                 .expect("block child path syntax");
@@ -410,9 +412,7 @@ fn legacy_path(consumer, legacy) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_path").expect("cst function");
     let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
-    let cst_return = cst_payload
-        .body
-        .statement_payloads()
+    let cst_return = path_statement_payloads(&cst_payload.body)
         .into_iter()
         .flat_map(|statement| {
             statement
@@ -422,9 +422,7 @@ fn legacy_path(consumer, legacy) {
         })
         .find(|payload| payload.syntax_path_segments() == Some(vec!["cst".to_owned()]))
         .expect("CST path argument expression");
-    let legacy_return = legacy_payload
-        .body
-        .statement_payloads()
+    let legacy_return = path_statement_payloads(&legacy_payload.body)
         .into_iter()
         .flat_map(|statement| {
             statement
@@ -582,7 +580,7 @@ fn main(cst) {
                 .expect("block initializer");
             assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
-            let block_statements = block_body.statement_payloads();
+            let block_statements = path_statement_payloads(&block_body);
             let (_, child_path) = block_statements[1]
                 .expression_statement_syntax_expression()
                 .expect("block child path syntax");
@@ -629,9 +627,7 @@ fn legacy_path(consumer, legacy) {
         .into_iter()
         .find(|method| method.method_name == "id")
         .expect("self method");
-    let self_return = self_method
-        .body
-        .statement_payloads()
+    let self_return = path_statement_payloads(&self_method.body)
         .into_iter()
         .flat_map(|statement| {
             statement
@@ -656,9 +652,7 @@ fn legacy_path(consumer, legacy) {
     assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
 
     let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
-    let legacy_return = legacy_payload
-        .body
-        .statement_payloads()
+    let legacy_return = path_statement_payloads(&legacy_payload.body)
         .into_iter()
         .flat_map(|statement| {
             statement
@@ -739,7 +733,7 @@ fn main(input) {
                 "self",
                 Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
             );
-            let statements = payload.body.statement_payloads();
+            let statements = path_statement_payloads(&payload.body);
             let legacy_initializer = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy path initializer");
@@ -792,8 +786,7 @@ fn assert_cst_let_initializer_path_segments(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = path_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -808,8 +801,7 @@ fn assert_cst_call_argument_path_segments(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = path_statement_payloads(body)
         .iter()
         .flat_map(|statement| {
             statement
@@ -826,8 +818,7 @@ fn assert_cst_return_value_path_segments(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = path_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
