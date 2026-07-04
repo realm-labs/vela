@@ -1,5 +1,11 @@
 use super::*;
 
+fn source_identity_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn source_less_expression_payload_does_not_expose_cst_expression() {
     with_cst_payload_compiler(
@@ -13,7 +19,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let value = payload.body.statement_payloads()[0]
+            let value = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("value initializer payload");
             let missing_source =
@@ -41,7 +47,7 @@ fn main(object) {
 }
 "#,
         |_, payload| {
-            let field = payload.body.statement_payloads()[0]
+            let field = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("field initializer payload");
             let missing_source =
@@ -70,7 +76,7 @@ fn main(left, right) {
 }
 "#,
         |_, payload| {
-            let binary = payload.body.statement_payloads()[0]
+            let binary = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("binary initializer payload");
             let missing_source =
@@ -94,7 +100,7 @@ fn main(value, other) {
 }
 "#,
         |_, payload| {
-            let unary = payload.body.statement_payloads()[0]
+            let unary = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("unary initializer payload");
             let missing_source =
@@ -122,7 +128,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let try_expression = payload.body.statement_payloads()[0]
+            let try_expression = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("try initializer payload");
             let missing_source =
@@ -153,7 +159,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let paren = payload.body.statement_payloads()[0]
+            let paren = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("paren initializer payload");
             let missing_source =
@@ -177,7 +183,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let assignment = payload.body.statement_payloads()[1]
+            let assignment = source_identity_statement_payloads(&payload.body)[1]
                 .let_initializer_expression_payload()
                 .expect("assignment initializer payload");
             let missing_source =
@@ -205,7 +211,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let lambda = payload.body.statement_payloads()[0]
+            let lambda = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("lambda initializer payload");
             let missing_source =
@@ -232,7 +238,7 @@ fn main(left, middle, right) {
 }
 "#,
         |_, payload| {
-            let logical = payload.body.statement_payloads()[0]
+            let logical = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("logical initializer payload");
             let missing_source =
@@ -259,7 +265,7 @@ fn main(values, index) {
 }
 "#,
         |_, payload| {
-            let index_expression = payload.body.statement_payloads()[0]
+            let index_expression = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("index initializer payload");
             let missing_source =
@@ -289,7 +295,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let call = payload.body.statement_payloads()[0]
+            let call = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("call initializer payload");
             let missing_source =
@@ -317,7 +323,8 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let statement = &payload.body.statement_payloads()[0];
+            let statements = source_identity_statement_payloads(&payload.body);
+            let statement = &statements[0];
             let missing_source =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statement
@@ -346,7 +353,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let array = payload.body.statement_payloads()[0]
+            let array = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("array initializer payload");
             let missing_source =
@@ -373,7 +380,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let map = payload.body.statement_payloads()[0]
+            let map = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("map initializer payload");
             let missing_source =
@@ -410,7 +417,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let record = payload.body.statement_payloads()[0]
+            let record = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("record initializer payload");
             let missing_source =
@@ -447,7 +454,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let call = payload.body.statement_payloads()[0]
+            let call = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("call initializer payload");
             let missing_source =
@@ -488,7 +495,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let interpolated = payload.body.statement_payloads()[0]
+            let interpolated = source_identity_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("interpolated initializer payload");
             let missing_source =
@@ -525,7 +532,7 @@ fn main(target) {
 }
 "#,
         |_, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = source_identity_statement_payloads(&payload.body);
             let missing_let =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statements[0]
@@ -619,7 +626,8 @@ fn main(values) {
 }
 "#,
         |_, payload| {
-            let statement = &payload.body.statement_payloads()[0];
+            let statements = source_identity_statement_payloads(&payload.body);
+            let statement = &statements[0];
             let missing_source =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statement
@@ -645,7 +653,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let match_value = payload.body.statement_payloads()[0]
+            let match_value = source_identity_statement_payloads(&payload.body)[0]
                 .return_value_expression_payload()
                 .expect("match return payload");
             let vela_syntax::ast::ExprKind::Match(fallback_match) = &match_value.fallback().kind
@@ -693,7 +701,7 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let match_value = payload.body.statement_payloads()[0]
+            let match_value = source_identity_statement_payloads(&payload.body)[0]
                 .return_value_expression_payload()
                 .expect("match return payload");
             let missing_source =
@@ -726,7 +734,8 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let statement = &payload.body.statement_payloads()[0];
+            let statements = source_identity_statement_payloads(&payload.body);
+            let statement = &statements[0];
             let missing_source =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     statement
