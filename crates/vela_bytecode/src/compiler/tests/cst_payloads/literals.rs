@@ -399,7 +399,11 @@ fn assert_cst_let_initializer_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::let_initializer_syntax_literal)
+        .filter_map(|statement| {
+            statement
+                .let_initializer_syntax_literal_and_span()
+                .map(|(literal, _)| literal)
+        })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }
@@ -429,7 +433,11 @@ fn assert_cst_return_value_literals(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::return_value_syntax_literal)
+        .filter_map(|statement| {
+            statement
+                .return_value_syntax_literal_and_span()
+                .map(|(literal, _)| literal)
+        })
         .collect::<Vec<_>>();
     assert_eq!(actual, expected);
 }

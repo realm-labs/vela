@@ -132,7 +132,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[0]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::UnsuffixedIntegerLiteral
@@ -140,7 +141,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[1]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -150,7 +152,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[2]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::UnsuffixedFloatLiteral
@@ -158,7 +161,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[3]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -168,7 +172,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[4]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
@@ -178,7 +183,8 @@ fn main() {
             assert_eq!(
                 value_types::static_literal_type(
                     &statements[5]
-                        .let_initializer_syntax_literal()
+                        .let_initializer_syntax_literal_and_span()
+                        .map(|(literal, _)| literal)
                         .expect("literal let initializer")
                 ),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(

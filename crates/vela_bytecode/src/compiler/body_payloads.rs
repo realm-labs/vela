@@ -595,14 +595,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         self.syntax.as_ref()?.as_let()?.name_text()
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn let_initializer_syntax_literal(
-        &self,
-    ) -> Option<vela_syntax::ast::Literal> {
-        self.let_initializer_syntax_literal_and_span()
-            .map(|(literal, _)| literal)
-    }
-
     pub(in crate::compiler) fn let_initializer_syntax_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {
@@ -678,14 +670,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(in crate::compiler) fn syntax_if(&self) -> Option<(SourceId, SyntaxIfExpr)> {
         Some((self.source?, self.syntax.as_ref()?.as_if()?))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn return_value_syntax_literal(
-        &self,
-    ) -> Option<vela_syntax::ast::Literal> {
-        self.return_value_syntax_literal_and_span()
-            .map(|(literal, _)| literal)
     }
 
     pub(in crate::compiler) fn return_value_syntax_literal_and_span(

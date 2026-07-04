@@ -1035,7 +1035,9 @@ fn main() {
     let statements = payload.body.statement_payloads();
 
     assert!(
-        statements[0].let_initializer_syntax_literal().is_some(),
+        statements[0]
+            .let_initializer_syntax_literal_and_span()
+            .is_some(),
         "CST literal let should expose a syntax literal payload"
     );
     compiler
