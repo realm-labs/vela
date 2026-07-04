@@ -5,6 +5,12 @@ use super::*;
 // it before the fallback side is deleted would separate shared mismatch
 // fixtures from the helper assertions they are meant to protect.
 
+fn let_return_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn mismatched_let_initializer_payload_does_not_use_legacy_expression() {
     let source = SourceId::new(1);
@@ -21,7 +27,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_let = statements[0]
         .syntax_statement()
         .expect("CST let statement")
@@ -55,7 +61,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_self_let = statements[0]
         .syntax_statement()
         .expect("CST let statement")
@@ -125,7 +131,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_let_without_initializer = statements[0]
         .syntax_statement()
         .expect("CST let statement")
@@ -1827,7 +1833,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0].fallback();
+    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
     let vela_syntax::ast::StmtKind::Let {
         value: Some(value), ..
     } = &statement.kind
@@ -1856,7 +1862,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0].fallback();
+    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
     let vela_syntax::ast::StmtKind::Let {
         value: Some(value), ..
     } = &statement.kind
@@ -1893,7 +1899,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_return = statements[1]
         .syntax_statement()
         .expect("CST return statement")
@@ -1926,7 +1932,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0].fallback();
+    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
     };
@@ -1956,7 +1962,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0].fallback();
+    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
     };
@@ -1989,7 +1995,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_self_return = statements[0]
         .syntax_statement()
         .expect("CST return statement")
@@ -2027,7 +2033,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_let_without_initializer = statements[0]
         .syntax_statement()
         .expect("CST let statement")
@@ -2059,7 +2065,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    let statements = let_return_statement_payloads(&payload.body);
     let statement = statements[0].syntax_statement().expect("CST let").clone();
     let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
         statement,
@@ -2111,7 +2117,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_return_without_value = statements[1]
         .syntax_statement()
         .expect("CST return statement")
@@ -2143,7 +2149,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    let statements = let_return_statement_payloads(&payload.body);
     let statement = statements[0]
         .syntax_statement()
         .expect("CST return")
@@ -2208,11 +2214,11 @@ fn make(value) {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_statement = cst_payload.body.statement_payloads()[0]
+    let cst_statement = let_return_statement_payloads(&cst_payload.body)[0]
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
+    let fallback_statement = let_return_statement_payloads(&fallback_payload.body)[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
@@ -2240,7 +2246,7 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = let_return_statement_payloads(&payload.body);
     let cst_return_without_value = statements[0]
         .syntax_statement()
         .expect("CST return statement")
