@@ -383,18 +383,8 @@ fn main() {
                     map.syntax_expression().expect("map syntax").clone(),
                     map.fallback(),
                 );
-            let entries = missing_source
-                .map_entry_payloads()
-                .expect("map entry payloads");
-            let values = missing_source
-                .map_entry_value_payloads()
-                .expect("map value payloads");
-
-            assert!(!missing_source.has_mismatched_map_entries());
-            assert!(!entries[0].has_key_syntax());
-            assert!(!entries[0].has_value_syntax());
-            assert_eq!(entries[0].syntax_key_name(), None);
-            assert!(values[0].syntax_expression().is_none());
+            assert!(missing_source.map_entry_payloads().is_none());
+            assert!(missing_source.map_entry_value_payloads().is_none());
         },
     );
 }
@@ -420,18 +410,8 @@ fn main() {
                     record.syntax_expression().expect("record syntax").clone(),
                     record.fallback(),
                 );
-            let fields = missing_source
-                .record_field_payloads()
-                .expect("record field payloads");
-            let values = missing_source
-                .record_field_value_payloads()
-                .expect("record field value payloads");
-
-            assert!(!missing_source.has_extra_record_fields());
-            assert!(!fields[0].has_syntax());
-            assert!(!fields[0].has_value_syntax());
-            assert_eq!(fields[0].syntax_label_name(), None);
-            assert!(values[0].syntax_expression().is_none());
+            assert!(missing_source.record_field_payloads().is_none());
+            assert!(missing_source.record_field_value_payloads().is_none());
         },
     );
 }

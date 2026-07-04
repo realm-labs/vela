@@ -169,11 +169,6 @@ impl Compiler<'_, '_> {
                 let ExprKind::Map(entries) = &expr.kind else {
                     unreachable!("validated CST map expression payload kind");
                 };
-                if payload.has_mismatched_map_entries() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "mismatched CST map entries",
-                    )));
-                }
                 let entry_payloads = payload.map_entry_payloads();
                 self.compile_map(entries, entry_payloads.as_deref())
             }
@@ -181,11 +176,6 @@ impl Compiler<'_, '_> {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
                     unreachable!("validated CST record expression payload kind");
                 };
-                if payload.has_extra_record_fields() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "mismatched CST record fields",
-                    )));
-                }
                 let field_payloads = payload.record_field_payloads();
                 let path = payload.syntax_record_path_segments().ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -630,6 +620,11 @@ impl Compiler<'_, '_> {
         entries: &[vela_syntax::ast::MapEntry],
         payloads: Option<&[super::body_payloads::CompilerMapEntryPayload]>,
     ) -> CompileResult<Register> {
+        if payloads.is_some_and(|payloads| payloads.len() > entries.len()) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST map entries",
+            )));
+        }
         let entries = entries
             .iter()
             .enumerate()
@@ -663,6 +658,11 @@ impl Compiler<'_, '_> {
         fields: &[RecordField],
         payloads: Option<&[CompilerRecordFieldPayload]>,
     ) -> CompileResult<Register> {
+        if payloads.is_some_and(|payloads| payloads.len() > fields.len()) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST record fields",
+            )));
+        }
         let dst = self.alloc_register()?;
         if let Some((enum_name, variant)) = enum_variant_path(path) {
             let resolved_enum_name = self.type_symbol_at_span(expr.span);

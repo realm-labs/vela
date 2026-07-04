@@ -1,10 +1,11 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, MapEntry,
-    RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
-    SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
-    SyntaxRecordPatternField,
+    AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern,
+    SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
 };
+#[cfg(test)]
+use vela_syntax::ast::{MapEntry, RecordField};
 
 use super::{
     CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
@@ -452,13 +453,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::Map) {
             return None;
         }
+        let source = self.source?;
         Some(
             self.syntax
                 .as_ref()?
                 .as_map()?
                 .entries()
                 .map(|syntax| CompilerMapEntryPayload {
-                    source: self.source,
+                    source: Some(source),
                     syntax: Some(syntax),
                 })
                 .collect(),
@@ -480,19 +482,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_mismatched_map_entries(&self) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(entries) = self.raw_map_entries() else {
-            return false;
-        };
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_map) else {
-            return false;
-        };
-        syntax.entries().count() != entries.len()
-    }
-
+    #[cfg(test)]
     fn raw_map_entries(&self) -> Option<&'ast [MapEntry]> {
         let ExprKind::Map(entries) = &self.fallback.kind else {
             return None;
@@ -506,6 +496,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::Record) {
             return None;
         }
+        let source = self.source?;
         Some(
             self.syntax
                 .as_ref()?
@@ -513,7 +504,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .fields()
                 .into_iter()
                 .map(|syntax| CompilerRecordFieldPayload {
-                    source: self.source,
+                    source: Some(source),
                     syntax: Some(syntax),
                 })
                 .collect(),
@@ -537,19 +528,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_record_fields(&self) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(fields) = self.raw_record_fields() else {
-            return false;
-        };
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_record) else {
-            return false;
-        };
-        syntax.fields().len() > fields.len()
-    }
-
+    #[cfg(test)]
     fn raw_record_fields(&self) -> Option<&'ast [RecordField]> {
         let ExprKind::Record { fields, .. } = &self.fallback.kind else {
             return None;
