@@ -181,7 +181,10 @@ impl Compiler<'_, '_> {
                         "missing CST block tail if payload",
                     ));
                 };
-                let Some(if_payload) = payload.if_payload() else {
+                let Some(if_payload) = payload
+                    .expression_payload()
+                    .and_then(|payload| payload.if_payload())
+                else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail if payload",
                     ));

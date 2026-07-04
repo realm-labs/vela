@@ -455,7 +455,11 @@ fn assert_cst_statement_if_condition_block_payloads(
     let actual = body
         .statement_payloads()
         .iter()
-        .filter_map(body_payloads::CompilerStatementPayload::if_payload)
+        .filter_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.if_payload())
+        })
         .filter_map(|if_payload| {
             let condition = if_payload.condition_payload()?;
             let body = condition_block_body_payload(condition)?;

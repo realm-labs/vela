@@ -332,7 +332,9 @@ impl Compiler<'_, '_> {
                     value_pattern_payload,
                 )
             } else if kind == SyntaxStatementKind::If {
-                let if_payload = stmt.if_payload();
+                let if_payload = stmt
+                    .expression_payload()
+                    .and_then(|payload| payload.if_payload());
                 if if_payload.is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if statement payload",

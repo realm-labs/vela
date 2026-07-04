@@ -941,17 +941,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::If(if_expr) = &expr.kind else {
-            return None;
-        };
-        if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
-    }
-
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))
