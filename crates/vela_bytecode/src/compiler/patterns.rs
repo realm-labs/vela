@@ -114,7 +114,7 @@ fn reject_extra_record_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::RecordPatternField],
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| payload.has_extra_record_pattern_fields(fields)) {
+    if payload.is_some_and(|payload| payload.has_extra_record_pattern_fields(fields.len())) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST record pattern fields",
         )));
@@ -126,7 +126,7 @@ fn reject_extra_tuple_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::Pattern],
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| payload.has_extra_tuple_pattern_fields(fields)) {
+    if payload.is_some_and(|payload| payload.has_extra_tuple_pattern_fields(fields.len())) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST tuple pattern fields",
         )));

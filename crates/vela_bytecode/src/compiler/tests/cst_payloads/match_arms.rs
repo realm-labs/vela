@@ -270,7 +270,7 @@ fn classify(result) {
         .expect("source-less record pattern should expose field payloads");
     assert!(
         !missing_source_record
-            .has_extra_record_pattern_fields(record_pattern_fields(fallback_record_pattern))
+            .has_extra_record_pattern_fields(record_pattern_fields(fallback_record_pattern).len())
     );
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
@@ -298,7 +298,7 @@ fn classify(result) {
     );
     assert!(
         !missing_source_tuple
-            .has_extra_tuple_pattern_fields(tuple_pattern_fields(fallback_tuple_pattern))
+            .has_extra_tuple_pattern_fields(tuple_pattern_fields(fallback_tuple_pattern).len())
     );
     let tuple_fields = tuple_pattern
         .tuple_pattern_payloads()

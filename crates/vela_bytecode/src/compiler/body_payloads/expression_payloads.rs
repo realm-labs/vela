@@ -1,9 +1,9 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal,
-    MapEntry, MatchExpr, Pattern, RecordField, RecordPatternField, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern,
-    SyntaxPatternKind, SyntaxRecordExprField, SyntaxRecordPatternField,
+    MapEntry, MatchExpr, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
+    SyntaxRecordPatternField,
 };
 
 use super::{
@@ -920,17 +920,14 @@ impl CompilerPatternPayload {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_record_pattern_fields(
-        &self,
-        fields: &[RecordPatternField],
-    ) -> bool {
+    pub(in crate::compiler) fn has_extra_record_pattern_fields(&self, expected_len: usize) -> bool {
         if self.source.is_none() {
             return false;
         }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::record_pattern) else {
             return false;
         };
-        syntax.fields().count() > fields.len()
+        syntax.fields().count() > expected_len
     }
 
     pub(in crate::compiler) fn tuple_pattern_payloads(
@@ -950,14 +947,14 @@ impl CompilerPatternPayload {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_tuple_pattern_fields(&self, fields: &[Pattern]) -> bool {
+    pub(in crate::compiler) fn has_extra_tuple_pattern_fields(&self, expected_len: usize) -> bool {
         if self.source.is_none() {
             return false;
         }
         let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::tuple_pattern) else {
             return false;
         };
-        syntax.patterns().count() > fields.len()
+        syntax.patterns().count() > expected_len
     }
 
     #[cfg(test)]
