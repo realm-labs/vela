@@ -53,14 +53,9 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::Block)
                 })
                 .expect("block statement payload");
-            let missing_children =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
-                    block
-                        .syntax_statement()
-                        .expect("block statement syntax")
-                        .clone(),
-                    block.fallback(),
-                );
+            let missing_children = block
+                .missing_child_payload_context_for_test()
+                .expect("block statement missing-child payload");
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)
@@ -208,14 +203,9 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::For)
                 })
                 .expect("for statement payload");
-            let missing_children =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
-                    for_statement
-                        .syntax_statement()
-                        .expect("for statement syntax")
-                        .clone(),
-                    for_statement.fallback(),
-                );
+            let missing_children = for_statement
+                .missing_child_payload_context_for_test()
+                .expect("for statement missing-child payload");
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)
@@ -250,14 +240,9 @@ fn main(flag) {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::If)
                 })
                 .expect("if statement payload");
-            let missing_children =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
-                    if_statement
-                        .syntax_statement()
-                        .expect("if statement syntax")
-                        .clone(),
-                    if_statement.fallback(),
-                );
+            let missing_children = if_statement
+                .missing_child_payload_context_for_test()
+                .expect("if statement missing-child payload");
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)
@@ -377,12 +362,9 @@ fn main(flag) {
                 })
                 .expect("if statement payload");
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
-            let vela_syntax::ast::StmtKind::Expr(expr) = &if_statement.fallback().kind else {
-                panic!("expected legacy if expression statement");
-            };
-            let ExprKind::If(if_expr) = &expr.kind else {
-                panic!("expected legacy if expression");
-            };
+            let if_expr = if_statement
+                .fallback_if_expr_for_test()
+                .expect("expected legacy if expression statement");
 
             let error = compiler
                 .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))

@@ -527,9 +527,28 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
+    pub(super) fn missing_child_payload_context_for_test(&self) -> Option<Self> {
+        Some(Self::missing_child_payload_context(
+            self.syntax_statement()?.clone(),
+            self.fallback(),
+        ))
+    }
+
+    #[cfg(test)]
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
             .expect("statement payload has no owned statement fallback")
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_if_expr_for_test(&self) -> Option<&'ast IfExpr> {
+        let StmtKind::Expr(expr) = &self.fallback().kind else {
+            return None;
+        };
+        let ExprKind::If(if_expr) = &expr.kind else {
+            return None;
+        };
+        Some(if_expr)
     }
 
     #[cfg(test)]
