@@ -11,7 +11,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     compiler
         .compile_statement_payload_for_test(&statements[0])
         .expect("local target should compile");
@@ -176,11 +176,11 @@ fn assignment_value_with_misaligned_cst_payload_does_not_use_legacy_value() {
 fn main() {
     let value = [];
     let cst_value = [true];
-    value = [1];
+        value = [1];
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("local target should compile");
@@ -220,11 +220,11 @@ fn unclassified_assignment_value_payload_does_not_use_legacy_value() {
         r#"
 fn main() {
     let value = 1;
-    value = 2;
+        value = 2;
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("local target should compile");
@@ -404,7 +404,7 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
     message: &'static str,
 ) {
     with_cst_payload_compiler(text, |compiler, payload| {
-        let statements = payload.body.statement_payloads();
+        let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
         compiler
             .compile_statement_payload_for_test(&statements[0])
             .expect("local target should compile");
@@ -459,7 +459,7 @@ fn main() {{
 "#
     );
     with_cst_payload_compiler(&text, |compiler, payload| {
-        let statements = payload.body.statement_payloads();
+        let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
         compiler
             .compile_statement_payload_for_test(&statements[0])
             .expect("typed value local should compile");
