@@ -7,10 +7,10 @@ use vela_syntax::ast::{
 };
 
 use super::{
-    CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
-    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
-    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_syntax,
-    match_arm_payloads_for_syntax, match_scrutinee_payload_for_expr,
+    CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
+    CompilerExpressionPayload, CompilerIfPayload, CompilerMapEntryPayload, CompilerMatchArmPayload,
+    CompilerPatternPayload, CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload,
+    if_payload_for_syntax, match_arm_payloads_for_syntax, match_scrutinee_payload_for_expr,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -414,47 +414,38 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 
     pub(in crate::compiler) fn array_element_payloads(
         &self,
-    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let items = self.raw_array_items()?;
-        let syntax_items = self
-            .syntax
-            .as_ref()?
-            .as_array()?
-            .expressions()
-            .collect::<Vec<_>>();
+    ) -> Option<Vec<CompilerArrayElementPayload>> {
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Array) {
+            return None;
+        }
+        let source = self.source?;
         Some(
-            items
-                .iter()
-                .enumerate()
-                .map(|(index, fallback)| {
-                    CompilerExpressionPayload::from_fallback(
-                        self.source,
-                        syntax_items.get(index).cloned(),
-                        fallback,
-                    )
+            self.syntax
+                .as_ref()?
+                .as_array()?
+                .expressions()
+                .map(|syntax| CompilerArrayElementPayload {
+                    source: Some(source),
+                    syntax: Some(syntax),
                 })
                 .collect(),
         )
     }
 
-    pub(in crate::compiler) fn has_extra_array_elements(&self) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(items) = self.raw_array_items() else {
-            return false;
-        };
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxExpression::as_array) else {
-            return false;
-        };
-        syntax.expressions().count() > items.len()
-    }
-
-    fn raw_array_items(&self) -> Option<&'ast [Expr]> {
+    #[cfg(test)]
+    pub(in crate::compiler) fn array_element_value_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
         let ExprKind::Array(items) = &self.fallback.kind else {
             return None;
         };
-        Some(items)
+        Some(
+            items
+                .iter()
+                .zip(self.array_element_payloads()?)
+                .map(|(fallback, payload)| payload.value_expression_payload(fallback))
+                .collect(),
+        )
     }
 
     pub(in crate::compiler) fn map_entry_payloads(&self) -> Option<Vec<CompilerMapEntryPayload>> {
@@ -623,6 +614,21 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 fn syntax_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+impl CompilerArrayElementPayload {
+    #[cfg(test)]
+    pub(in crate::compiler) fn syntax_expression(&self) -> Option<&SyntaxExpression> {
+        self.source?;
+        self.syntax.as_ref()
+    }
+
+    pub(in crate::compiler) fn value_expression_payload<'ast>(
+        &self,
+        fallback: &'ast Expr,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_fallback(self.source, self.syntax.clone(), fallback)
+    }
 }
 
 impl CompilerMapEntryPayload {

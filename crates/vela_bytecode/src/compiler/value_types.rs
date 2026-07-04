@@ -329,9 +329,13 @@ fn static_expr_type_with_payload(
             let payloads = aligned_payload.and_then(|payload| payload.array_element_payloads());
             StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
                 |(index, value)| {
+                    let value_payload = payloads
+                        .as_ref()
+                        .and_then(|payloads| payloads.get(index))
+                        .map(|payload| payload.value_expression_payload(value));
                     expression_value_type_with_payload(
                         value,
-                        payloads.as_ref().and_then(|payloads| payloads.get(index)),
+                        value_payload.as_ref(),
                         local_type_at_span,
                         local_type_named,
                     )

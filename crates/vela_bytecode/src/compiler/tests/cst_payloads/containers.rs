@@ -355,8 +355,7 @@ fn main() {
         .array_element_payloads()
         .expect("array element payloads");
 
-    assert_eq!(element_payloads.len(), 1);
-    assert!(element_payloads[0].syntax_expression().is_none());
+    assert_eq!(element_payloads.len(), 0);
 
     let error = compiler
         .compile_expr_with_payload(legacy_array.fallback(), Some(&missing))
@@ -364,7 +363,7 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST array element value")
+        CompileErrorKind::UnsupportedSyntax("missing CST array element payload")
     ));
 }
 
@@ -1040,7 +1039,7 @@ fn block_tail_containers() {
         .expression_payload()
         .expect("array tail expression payload");
     let array_actual = array_tail
-        .array_element_payloads()
+        .array_element_value_payloads()
         .expect("array element payloads")
         .iter()
         .filter_map(|element| {
@@ -1057,7 +1056,7 @@ fn block_tail_containers() {
     );
 
     let map_actual = array_tail
-        .array_element_payloads()
+        .array_element_value_payloads()
         .expect("array element payloads")
         .iter()
         .flat_map(|element| element.map_entry_value_payloads().unwrap_or_default())

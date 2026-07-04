@@ -7,7 +7,9 @@ use vela_syntax::ast::{
 use crate::{BinaryLiteralSide, FormatStringPart, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
-use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
+use super::body_payloads::{
+    CompilerArrayElementPayload, CompilerExpressionPayload, CompilerRecordFieldPayload,
+};
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -160,11 +162,6 @@ impl Compiler<'_, '_> {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
                 };
-                if payload.has_extra_array_elements() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "mismatched CST array elements",
-                    )));
-                }
                 let element_payloads = payload.array_element_payloads();
                 self.compile_array(items, element_payloads.as_deref())
             }
@@ -591,8 +588,13 @@ impl Compiler<'_, '_> {
     fn compile_array(
         &mut self,
         items: &[Expr],
-        payloads: Option<&[CompilerExpressionPayload<'_>]>,
+        payloads: Option<&[CompilerArrayElementPayload]>,
     ) -> CompileResult<Register> {
+        if payloads.is_some_and(|payloads| payloads.len() > items.len()) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST array elements",
+            )));
+        }
         let elements = items
             .iter()
             .enumerate()
@@ -606,12 +608,16 @@ impl Compiler<'_, '_> {
                         })
                     })
                     .transpose()?;
-                if payload.is_some_and(|payload| payload.syntax_expression().is_none()) {
+                let value_payload = payload.map(|payload| payload.value_expression_payload(item));
+                if value_payload
+                    .as_ref()
+                    .is_some_and(|payload| payload.syntax_expression().is_none())
+                {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST array element value",
                     )));
                 }
-                self.compile_expr_with_payload(item, payload)
+                self.compile_expr_with_payload(item, value_payload.as_ref())
             })
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;

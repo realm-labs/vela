@@ -361,12 +361,7 @@ fn main() {
                     array.syntax_expression().expect("array syntax").clone(),
                     array.fallback(),
                 );
-            let elements = missing_source
-                .array_element_payloads()
-                .expect("array element payloads");
-
-            assert!(!missing_source.has_extra_array_elements());
-            assert!(elements[0].syntax_expression().is_none());
+            assert!(missing_source.array_element_payloads().is_none());
         },
     );
 }
