@@ -978,6 +978,21 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(self.code)
     }
 
+    #[cfg(test)]
+    fn compile_with_statement_payloads_for_test(
+        mut self,
+        statements: &[body_payloads::CompilerStatementPayload<'_>],
+    ) -> CompileResult<UnlinkedCodeObject> {
+        self.compile_param_defaults()?;
+        let returned = self.compile_statement_payloads(statements)?;
+        if !returned {
+            let null = self.emit_constant(Constant::Null)?;
+            self.emit(UnlinkedInstructionKind::Return { src: null });
+        }
+        self.code.register_count = self.next_register;
+        Ok(self.code)
+    }
+
     fn compile_param_defaults(&mut self) -> CompileResult<()> {
         for index in 0..self.param_defaults.len() {
             let Some(default_value) = self.param_defaults[index].clone() else {

@@ -83,19 +83,24 @@ fn cst_payload_compiler_facts_with_options<'registry>(
 ) -> CompilerFacts<'registry> {
     let script_function_symbols = semantic.script_function_symbols();
     let script_function_signatures = semantic.script_function_signatures();
+    let script_impl_methods = semantic.script_impl_methods();
+    let script_method_ids = script_method_ids(&script_impl_methods);
+    let script_method_signatures = script_method_signatures(&script_impl_methods);
     let type_symbols = semantic.type_symbols();
     let global_symbols = semantic.global_symbols();
     let global_slots = global_slots(&global_symbols);
     let global_type_symbols = semantic.global_type_symbols();
     let script_field_slots = semantic.script_field_slots(&type_symbols);
+    let derived_operator_traits =
+        derived_operator_traits(&semantic.script_metadata_graph(), &type_symbols);
     let const_values = semantic.const_values().expect("const values should lower");
     let schema_defaults = semantic.schema_defaults(&type_symbols, &const_values);
     CompilerFacts {
         script_function_symbols,
         script_function_signatures,
-        script_method_ids: std::collections::BTreeMap::new(),
-        script_method_signatures: std::collections::BTreeMap::new(),
-        derived_operator_traits: std::collections::BTreeMap::new(),
+        script_method_ids,
+        script_method_signatures,
+        derived_operator_traits,
         script_field_slots,
         schema_defaults,
         type_symbols,
@@ -106,6 +111,106 @@ fn cst_payload_compiler_facts_with_options<'registry>(
         options,
         registry,
     }
+}
+
+fn compile_program_source(source: SourceId, text: &str) -> CompileResult<UnlinkedProgram> {
+    compile_program_source_with_options(source, text, &CompilerOptions::default())
+}
+
+fn compile_program_source_with_registry(
+    source: SourceId,
+    text: &str,
+    registry: vela_registry::RegistryCompileView<'_>,
+) -> CompileResult<UnlinkedProgram> {
+    compile_program_source_with_options_and_registry(
+        source,
+        text,
+        &CompilerOptions::default(),
+        registry,
+    )
+}
+
+fn compile_program_source_with_options(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+) -> CompileResult<UnlinkedProgram> {
+    compile_program_source_with_options_and_registry_inner(source, text, options, None)
+}
+
+fn compile_program_source_with_options_and_registry(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+    registry: vela_registry::RegistryCompileView<'_>,
+) -> CompileResult<UnlinkedProgram> {
+    compile_program_source_with_options_and_registry_inner(source, text, options, Some(registry))
+}
+
+fn compile_program_source_with_options_and_registry_inner<'registry>(
+    source: SourceId,
+    text: &str,
+    options: &CompilerOptions,
+    registry: Option<vela_registry::RegistryCompileView<'registry>>,
+) -> CompileResult<UnlinkedProgram> {
+    let semantic = parse_semantic_source(source, text)?;
+    let script_functions = semantic.script_function_names();
+    let script_impl_methods = semantic.script_impl_methods();
+    let facts = cst_payload_compiler_facts_with_options(&semantic, options.clone(), registry);
+    let mut program = UnlinkedProgram::new();
+    program.set_global_layout(global_names(&facts.global_symbols));
+
+    for name in &script_functions {
+        let (payload, signature, bindings) = semantic
+            .function(name)
+            .expect("HIR function declarations come from parsed function items");
+        let statements = paired_statement_payloads_for_body(source, &payload.body);
+        program.insert_function(
+            Compiler::new_with_param_defaults(
+                payload.name,
+                payload.body,
+                payload.param_defaults,
+                signature,
+                bindings,
+                facts.clone(),
+            )?
+            .compile_with_statement_payloads_for_test(&statements)?,
+        );
+    }
+    insert_script_impl_methods_with_payloads_for_test(&mut program, script_impl_methods, &facts)?;
+    program.set_script_metadata(semantic.script_metadata_graph());
+
+    verify_program(program)
+}
+
+fn insert_script_impl_methods_with_payloads_for_test(
+    program: &mut UnlinkedProgram,
+    methods: Vec<script_impls::ScriptImplMethod<'_>>,
+    facts: &CompilerFacts<'_>,
+) -> CompileResult<()> {
+    for method in methods {
+        program.insert_script_method(
+            method.target_type.clone(),
+            method.method_name.clone(),
+            method.method_id,
+            method.symbol.clone(),
+        );
+        let statements =
+            paired_statement_payloads_for_body(method.body.syntax_payload().source, &method.body);
+        program.insert_function(
+            Compiler::new_script_method_body(
+                method.symbol,
+                method.default_values.clone(),
+                method.signature,
+                method.body,
+                method.bindings,
+                &method.target_type,
+                facts.clone(),
+            )?
+            .compile_with_statement_payloads_for_test(&statements)?,
+        );
+    }
+    Ok(())
 }
 
 #[test]
