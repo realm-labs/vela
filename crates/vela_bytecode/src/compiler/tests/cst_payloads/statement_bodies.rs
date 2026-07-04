@@ -46,7 +46,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let block = statements
                 .iter()
                 .find(|statement| {
@@ -83,7 +83,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_empty_block = statements[0]
         .syntax_statement()
         .expect("CST block statement")

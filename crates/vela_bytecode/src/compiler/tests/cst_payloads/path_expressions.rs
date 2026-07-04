@@ -167,7 +167,7 @@ fn main(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let path = statements[0]
                 .expression_payload()
                 .and_then(|payload| payload.call_argument_value_payloads())
@@ -305,9 +305,8 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_block").expect("cst function");
-    let cst_block = cst_payload
-        .body
-        .statement_payloads()
+    let cst_statements = paired_statement_payloads_for_body(source, &cst_payload.body);
+    let cst_block = cst_statements
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("CST block return expression");
@@ -315,9 +314,8 @@ fn make(value) {
 
     for function in ["legacy_record", "legacy_path", "legacy_call"] {
         let (legacy_payload, _, _) = semantic.function(function).expect("legacy function");
-        let legacy_return = legacy_payload
-            .body
-            .statement_payloads()
+        let legacy_statements = paired_statement_payloads_for_body(source, &legacy_payload.body);
+        let legacy_return = legacy_statements
             .into_iter()
             .find_map(|statement| statement.return_value_expression_payload())
             .expect("legacy return expression");
@@ -360,7 +358,7 @@ fn main(cst) {
 }
 "#,
         |_, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let block = statements[0]
                 .let_initializer_expression_payload()
                 .expect("block initializer");
@@ -491,7 +489,7 @@ fn main() {
                 "legacy_value",
                 Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
             );
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let cst_path = statements[2]
                 .expression_payload()
                 .and_then(|payload| payload.call_argument_value_payloads())
@@ -578,7 +576,7 @@ fn main(cst) {
                 "selected",
                 Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::Bool)),
             );
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             let block = statements[0]
                 .let_initializer_expression_payload()
                 .expect("block initializer");

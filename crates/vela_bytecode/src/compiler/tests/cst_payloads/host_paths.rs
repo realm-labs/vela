@@ -47,7 +47,7 @@ fn make(value) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_block = statements[0]
         .let_initializer_expression_payload()
         .expect("CST block initializer");
@@ -221,7 +221,7 @@ fn main(player: Player) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_block = statements[0]
         .let_initializer_expression_payload()
         .expect("CST block initializer");

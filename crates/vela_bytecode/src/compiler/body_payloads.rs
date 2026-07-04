@@ -117,6 +117,26 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     #[cfg(test)]
+    pub(super) fn paired_statement_payloads_with_fallbacks_for_test(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback_statements: &'ast [Stmt],
+    ) -> Vec<CompilerStatementPayload<'ast>> {
+        let syntax_statements = syntax_body_statements(&body);
+        fallback_statements
+            .iter()
+            .enumerate()
+            .map(|(index, fallback)| {
+                CompilerStatementPayload::new_paired_for_tests(
+                    source,
+                    syntax_statements.get(index).cloned(),
+                    Some(fallback),
+                )
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
     pub(super) fn statement_counts_differ_for_test(
         body: &SyntaxBlock,
         fallback_statements: &[Stmt],
@@ -136,29 +156,8 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
-        // Production lowering is CST-only here; tests still exercise legacy
-        // pairing until expression fallback payload fields are removed.
-        if cfg!(test) {
-            Self::requires_body_block_lookup_with_tail(body, true)
-        } else {
-            let _ = body;
-            false
-        }
-    }
-
-    fn requires_body_block_lookup_with_tail(
-        body: &SyntaxBlock,
-        allow_unterminated_tail: bool,
-    ) -> bool {
-        let syntax_statements = syntax_body_statements(body);
-        let tail_index = syntax_statements.len().saturating_sub(1);
-        syntax_statements
-            .iter()
-            .enumerate()
-            .any(|(index, statement)| {
-                let is_unterminated_tail = allow_unterminated_tail && index == tail_index;
-                syntax_statement_requires_body_block_lookup(statement, is_unterminated_tail)
-            })
+        let _ = body;
+        false
     }
 
     pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {

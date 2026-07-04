@@ -23,7 +23,7 @@ fn make(value) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             compiler
                 .compile_statement(statements[0].fallback())
                 .expect("legacy local should compile");

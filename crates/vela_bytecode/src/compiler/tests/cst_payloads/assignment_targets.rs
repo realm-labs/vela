@@ -52,7 +52,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("legacy local should compile");

@@ -129,7 +129,8 @@ fn main() {
         .expect("CST initializer");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_block = legacy_payload.body.statement_payloads()[0]
+    let legacy_statements = paired_statement_payloads_for_body(source, &legacy_payload.body);
+    let legacy_block = legacy_statements[0]
         .let_initializer_expression_payload()
         .expect("legacy block initializer");
     let missing = body_payloads::CompilerExpressionPayload::missing_child_payload_context(
@@ -180,7 +181,8 @@ fn main() {
         .expect("CST initializer");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_block = legacy_payload.body.statement_payloads()[0]
+    let legacy_statements = paired_statement_payloads_for_body(source, &legacy_payload.body);
+    let legacy_block = legacy_statements[0]
         .let_initializer_expression_payload()
         .expect("legacy block initializer");
     let mismatched = body_payloads::CompilerExpressionPayload::syntax(

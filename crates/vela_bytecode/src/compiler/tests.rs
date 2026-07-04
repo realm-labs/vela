@@ -52,6 +52,17 @@ fn fallback_statements_for_body(
     Box::leak(block.statements.into_boxed_slice())
 }
 
+fn paired_statement_payloads_for_body<'ast>(
+    source: SourceId,
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    body_payloads::CompilerBodyPayload::paired_statement_payloads_with_fallbacks_for_test(
+        source,
+        body.syntax_payload().body.clone(),
+        fallback_statements_for_body(source, body),
+    )
+}
+
 fn cst_let_initializer_if_from_expression<'ast>(
     statement: &body_payloads::CompilerStatementPayload<'ast>,
 ) -> Option<body_payloads::CompilerIfPayload<'ast>> {

@@ -2059,13 +2059,11 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0]
-        .syntax_statement()
-        .expect("CST let")
-        .clone();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    let statement = statements[0].syntax_statement().expect("CST let").clone();
     let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
         statement,
-        payload.body.statement_payloads()[0].fallback(),
+        statements[0].fallback(),
     );
 
     let error = compiler
@@ -2145,13 +2143,14 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = payload.body.statement_payloads()[0]
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
+    let statement = statements[0]
         .syntax_statement()
         .expect("CST return")
         .clone();
     let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
         statement,
-        payload.body.statement_payloads()[0].fallback(),
+        statements[0].fallback(),
     );
 
     let error = compiler

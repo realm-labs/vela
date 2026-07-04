@@ -7,6 +7,7 @@ use crate::compiler::tests::cst_payloads::{
     body_payloads, cst_payload_compiler_facts_with_options, global_slots, parse_semantic_source,
     semantic_diagnostic_codes,
 };
+use crate::compiler::tests::paired_statement_payloads_for_body;
 use crate::compiler::{CompileErrorKind, Compiler, CompilerFacts, CompilerOptions};
 use vela_common::SourceId;
 use vela_syntax::ast::{ExprKind, SyntaxExpressionKind};
@@ -76,7 +77,7 @@ fn make(value) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_block = statements[0]
         .let_initializer_expression_payload()
         .expect("CST block initializer");
@@ -196,7 +197,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
         registry: Some(registry.compile_view()),
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_index = statements[0]
         .let_initializer_expression_payload()
         .expect("CST index initializer");
@@ -354,7 +355,7 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
         registry: Some(registry.compile_view()),
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let readonly_target = statements[0]
         .expression_payload()
         .and_then(|payload| payload.assignment_target_payload())
@@ -461,7 +462,7 @@ fn main(readonly: ReadOnlyHost) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_block = statements[0]
         .let_initializer_expression_payload()
         .expect("CST block initializer");
