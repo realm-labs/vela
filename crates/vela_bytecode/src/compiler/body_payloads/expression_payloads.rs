@@ -636,13 +636,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax.interpolation_expressions().count() > expression_count
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_interpolated_string_parts(
-        &self,
-    ) -> Option<&'ast [InterpolatedStringPart]> {
-        self.raw_interpolated_string_parts()
-    }
-
     fn raw_interpolated_string_parts(&self) -> Option<&'ast [InterpolatedStringPart]> {
         let ExprKind::InterpolatedString(parts) = &self.fallback.kind else {
             return None;

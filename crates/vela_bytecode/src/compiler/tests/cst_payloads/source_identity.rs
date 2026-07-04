@@ -518,9 +518,6 @@ fn main(value) {
                         .clone(),
                     interpolated.fallback(),
                 );
-            let _fallback_parts = missing_source
-                .fallback_interpolated_string_parts()
-                .expect("fallback interpolated string parts");
             let expressions = missing_source
                 .interpolated_expression_payloads()
                 .expect("interpolated expression payloads");
