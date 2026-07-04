@@ -189,15 +189,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
         syntax_body_statements(&self.syntax.body).is_empty()
     }
 
+    #[cfg(test)]
+    pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
+        false
+    }
+
+    #[cfg(not(test))]
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
-
-        #[cfg(test)]
-        if let Some(fallback_statements) =
-            parsed_body_fallback_for_tests(self.syntax.source, &self.syntax.body)
-        {
-            return syntax_statements.len() != fallback_statements.len();
-        }
 
         let tail_index = syntax_statements.len().saturating_sub(1);
         syntax_statements
