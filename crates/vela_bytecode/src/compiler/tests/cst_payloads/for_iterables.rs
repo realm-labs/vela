@@ -262,7 +262,10 @@ fn main() {
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
-    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert_eq!(
+        missing.stored_statement_kind(),
+        Some(SyntaxStatementKind::For)
+    );
     assert_eq!(
         for_iterable_expression_payload(&missing).and_then(|payload| payload.kind()),
         None
@@ -313,7 +316,10 @@ fn main() {
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
-    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert_eq!(
+        missing.stored_statement_kind(),
+        Some(SyntaxStatementKind::For)
+    );
     assert!(
         for_index_pattern_payload(&missing)
             .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
@@ -362,7 +368,10 @@ fn main() {
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
-    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::For));
+    assert_eq!(
+        missing.stored_statement_kind(),
+        Some(SyntaxStatementKind::For)
+    );
     assert!(
         for_value_pattern_payload(&missing)
             .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
@@ -403,7 +412,7 @@ fn loop_patterns(results) {
         .body
         .statement_payloads()
         .into_iter()
-        .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::For))
+        .find(|statement| statement.stored_statement_kind() == Some(SyntaxStatementKind::For))
         .expect("for statement payload");
 
     let index_pattern = for_index_pattern_payload(&for_statement)

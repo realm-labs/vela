@@ -216,7 +216,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
             return CompilerBlockValue::Empty;
         };
         if matches!(
-            tail.statement_kind(),
+            tail.stored_statement_kind(),
             Some(SyntaxStatementKind::Expr | SyntaxStatementKind::If | SyntaxStatementKind::Match)
         ) {
             CompilerBlockValue::TailExpression { prefix, tail }
@@ -545,15 +545,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         {
             true
         }
-    }
-
-    pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
-        self.syntax_statement_kind()
-    }
-
-    pub(super) fn syntax_statement_kind(&self) -> Option<SyntaxStatementKind> {
-        self.source?;
-        self.stored_statement_kind()
     }
 
     pub(super) fn stored_statement_kind(&self) -> Option<SyntaxStatementKind> {

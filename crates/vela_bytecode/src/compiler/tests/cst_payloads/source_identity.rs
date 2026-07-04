@@ -596,13 +596,9 @@ fn main(target) {
                     statements[3].fallback(),
                 );
 
-            assert_eq!(missing_let.statement_kind(), None);
             assert!(missing_let.syntax_statement().is_none());
-            assert_eq!(missing_assignment.statement_kind(), None);
             assert!(missing_assignment.syntax_statement().is_none());
-            assert_eq!(missing_expression.statement_kind(), None);
             assert!(missing_expression.syntax_statement().is_none());
-            assert_eq!(missing_return.statement_kind(), None);
             assert!(missing_return.syntax_statement().is_none());
             assert_eq!(
                 missing_let

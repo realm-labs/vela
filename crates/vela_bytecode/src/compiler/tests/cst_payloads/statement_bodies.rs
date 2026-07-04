@@ -49,7 +49,9 @@ fn main() {
             let statements = payload.body.statement_payloads();
             let block = statements
                 .iter()
-                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::Block))
+                .find(|statement| {
+                    statement.stored_statement_kind() == Some(SyntaxStatementKind::Block)
+                })
                 .expect("block statement payload");
             let missing_children =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -202,7 +204,9 @@ fn main() {
             let statements = payload.body.statement_payloads();
             let for_statement = statements
                 .iter()
-                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::For))
+                .find(|statement| {
+                    statement.stored_statement_kind() == Some(SyntaxStatementKind::For)
+                })
                 .expect("for statement payload");
             let missing_children =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -242,7 +246,9 @@ fn main(flag) {
             let statements = payload.body.statement_payloads();
             let if_statement = statements
                 .iter()
-                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::If))
+                .find(|statement| {
+                    statement.stored_statement_kind() == Some(SyntaxStatementKind::If)
+                })
                 .expect("if statement payload");
             let missing_children =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -366,7 +372,9 @@ fn main(flag) {
             let statements = payload.body.statement_payloads();
             let if_statement = statements
                 .iter()
-                .find(|statement| statement.statement_kind() == Some(SyntaxStatementKind::If))
+                .find(|statement| {
+                    statement.stored_statement_kind() == Some(SyntaxStatementKind::If)
+                })
                 .expect("if statement payload");
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
             let vela_syntax::ast::StmtKind::Expr(expr) = &if_statement.fallback().kind else {

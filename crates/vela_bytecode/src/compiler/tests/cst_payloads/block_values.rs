@@ -35,7 +35,10 @@ fn main() {
         fallback_statement,
     );
 
-    assert_eq!(mismatched.statement_kind(), Some(SyntaxStatementKind::Expr));
+    assert_eq!(
+        mismatched.stored_statement_kind(),
+        Some(SyntaxStatementKind::Expr)
+    );
     assert_eq!(mismatched.stored_value_expression_kind(), None);
     let vela_syntax::ast::StmtKind::Expr(expr) = &fallback_statement.kind else {
         panic!("expected legacy expression tail");

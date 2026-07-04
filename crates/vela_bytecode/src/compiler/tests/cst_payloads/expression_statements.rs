@@ -391,7 +391,10 @@ fn main() {
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
-    assert_eq!(missing.statement_kind(), Some(SyntaxStatementKind::Expr));
+    assert_eq!(
+        missing.stored_statement_kind(),
+        Some(SyntaxStatementKind::Expr)
+    );
     assert_eq!(
         missing
             .expression_payload()
