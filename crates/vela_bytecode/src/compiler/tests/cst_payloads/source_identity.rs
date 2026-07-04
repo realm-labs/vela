@@ -749,13 +749,24 @@ fn main(value) {
                     statement.fallback(),
                 );
 
-            assert!(missing_source.match_scrutinee_payload().is_none());
+            assert!(
+                missing_source
+                    .expression_payload()
+                    .and_then(|payload| payload.match_scrutinee_payload())
+                    .is_none()
+            );
             let missing_arms = missing_source
-                .match_arm_payloads()
+                .expression_payload()
+                .and_then(|payload| payload.match_arm_payloads())
                 .expect("source-less statement match arm payload shells");
             assert!(!missing_arms[0].has_syntax());
             assert!(!missing_arms[0].pattern_payload().has_syntax());
-            assert!(missing_source.match_scrutinee_payload().is_none());
+            assert!(
+                missing_source
+                    .expression_payload()
+                    .and_then(|payload| payload.match_scrutinee_payload())
+                    .is_none()
+            );
         },
     );
 }

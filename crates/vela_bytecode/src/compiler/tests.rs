@@ -6,8 +6,7 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, StmtKind, SyntaxExpressionKind,
-    SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxExpressionKind, SyntaxStatementKind,
 };
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
@@ -766,13 +765,14 @@ fn cst_match_arm_body_texts_from_payload(
 fn cst_match_arm_body_texts_from_statement(
     statement: &body_payloads::CompilerStatementPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
-    let Some(arms) = statement.match_arm_payloads() else {
+    let Some(payload) = statement.expression_payload() else {
         return Vec::new();
     };
-    let StmtKind::Expr(expr) = &statement.fallback().kind else {
-        return Vec::new();
-    };
+    let expr = payload.fallback();
     let ExprKind::Match(match_expr) = &expr.kind else {
+        return Vec::new();
+    };
+    let Some(arms) = payload.match_arm_payloads() else {
         return Vec::new();
     };
     cst_match_arm_body_texts(match_expr.as_ref(), arms)

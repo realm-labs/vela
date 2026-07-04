@@ -47,7 +47,11 @@ fn classify(input) {
 
     let statement_scrutinee = statement_payloads
         .iter()
-        .find_map(body_payloads::CompilerStatementPayload::match_scrutinee_payload)
+        .find_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.match_scrutinee_payload())
+        })
         .expect("match statement should expose scrutinee payload");
     assert_scrutinee_block_payload(
         &statement_scrutinee,
@@ -146,7 +150,12 @@ fn classify(input) {
 
     let statement_arm_payloads = statement_payloads
         .iter()
-        .flat_map(|statement| statement.match_arm_payloads().unwrap_or_default())
+        .flat_map(|statement| {
+            statement
+                .expression_payload()
+                .and_then(|payload| payload.match_arm_payloads())
+                .unwrap_or_default()
+        })
         .collect::<Vec<_>>();
     let statement_match = first_statement_match_expr(body_fallback(source, &payload.body));
     assert_eq!(statement_arm_payloads.len(), 2);
@@ -994,7 +1003,8 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let arm = payload.body.statement_payloads()[0]
-        .match_arm_payloads()
+        .expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
         .expect("match arm payloads")
         .remove(0);
     let body = arm
@@ -1090,7 +1100,10 @@ fn first_statement_match_syntax_arm(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxMatchArm {
     let statements = body.statement_payloads();
-    statements[0].match_arm_payloads().expect("statement match")[0]
+    statements[0]
+        .expression_payload()
+        .and_then(|payload| payload.match_arm_payloads())
+        .expect("statement match")[0]
         .syntax_arm()
         .expect("CST arm")
         .clone()

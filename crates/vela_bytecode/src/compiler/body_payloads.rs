@@ -965,35 +965,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return None;
-        };
-        match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
-    }
-
-    #[cfg(test)]
-    pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        Some(match_scrutinee_payload_for_expr(
-            self.source,
-            self.syntax.as_ref()?.as_match()?,
-            match_expr,
-        ))
-    }
-
     fn expression(&self) -> Option<SyntaxExpression> {
-        self.syntax.as_ref()?.as_expr()?.expression()
+        let syntax = self.syntax.as_ref()?;
+        syntax
+            .as_expr()
+            .and_then(|stmt| stmt.expression())
+            .or_else(|| SyntaxExpression::cast(syntax.syntax().clone()))
     }
 
     #[cfg(test)]

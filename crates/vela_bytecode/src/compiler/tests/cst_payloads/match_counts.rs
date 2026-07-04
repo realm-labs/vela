@@ -80,7 +80,9 @@ fn main() {
     let fallback_statement = payload.body.statement_payloads()[0].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
-    let arm_payloads = mismatched.match_arm_payloads();
+    let arm_payloads = mismatched
+        .expression_payload()
+        .and_then(|payload| payload.match_arm_payloads());
     assert!(
         arm_payloads.is_none(),
         "extra CST match arms must not be collapsed onto fallback arms"

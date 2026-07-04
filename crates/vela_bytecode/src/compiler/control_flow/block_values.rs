@@ -194,12 +194,17 @@ impl Compiler<'_, '_> {
                         "missing CST block tail match payload",
                     ));
                 };
-                let Some(scrutinee_payload) = payload.match_scrutinee_payload() else {
+                let Some(expression_payload) = payload.expression_payload() else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail match payload",
                     ));
                 };
-                let Some(arm_payloads) = payload.match_arm_payloads() else {
+                let Some(scrutinee_payload) = expression_payload.match_scrutinee_payload() else {
+                    return Err(missing_cst_block_tail_payload(
+                        "missing CST block tail match payload",
+                    ));
+                };
+                let Some(arm_payloads) = expression_payload.match_arm_payloads() else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail match payload",
                     ));
