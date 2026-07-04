@@ -1,5 +1,11 @@
 use super::*;
 
+fn expression_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn syntax_only_constant_expression_statements_drop_owned_body_lookup() {
     let source = SourceId::new(1);
@@ -341,7 +347,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = expression_statement_payloads(&payload.body);
     let cst_call = statements[1]
         .syntax_statement()
         .expect("CST call statement")
@@ -387,7 +393,7 @@ fn main() {
         .expect("CST expression statement");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = legacy_payload.body.statement_payloads()[1].fallback();
+    let legacy_statement = expression_statement_payloads(&legacy_payload.body)[1].fallback();
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
@@ -429,7 +435,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = payload.body.statement_payloads();
+    let statements = expression_statement_payloads(&payload.body);
     let cst_if = statements[0]
         .let_initializer_expression_payload()
         .expect("CST if initializer payload");
@@ -459,8 +465,7 @@ fn assert_cst_expression_statement_index_base_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = expression_statement_payloads(body)
         .iter()
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
         .filter_map(|payload| payload.index_operand_payloads())
@@ -473,8 +478,7 @@ fn assert_cst_expression_statement_array_element_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = expression_statement_payloads(body)
         .iter()
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
         .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
@@ -487,8 +491,7 @@ fn assert_cst_expression_statement_interpolation_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = expression_statement_payloads(body)
         .iter()
         .filter_map(body_payloads::CompilerStatementPayload::expression_payload)
         .flat_map(|payload| {
