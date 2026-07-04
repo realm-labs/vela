@@ -15,8 +15,6 @@ use super::{
     match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
 };
 
-type FallbackExpressionPayload<'ast> = (&'ast Expr, CompilerExpressionPayload<'ast>);
-
 impl<'ast> CompilerExpressionPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(
@@ -443,22 +441,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn field_base_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        self.field_base_payload_with_fallback()
-            .map(|(_, payload)| payload)
-    }
-
-    pub(in crate::compiler) fn field_base_payload_with_fallback(
-        &self,
-    ) -> Option<(&'ast Expr, CompilerExpressionPayload<'ast>)> {
         let base = self.fallback_field_base()?;
         self.source?;
-        Some((
+        Some(CompilerExpressionPayload::from_fallback(
+            self.source,
+            self.syntax.as_ref()?.as_field()?.receiver(),
             base,
-            CompilerExpressionPayload::from_fallback(
-                self.source,
-                self.syntax.as_ref()?.as_field()?.receiver(),
-                base,
-            ),
         ))
     }
 
@@ -480,28 +468,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
         CompilerExpressionPayload<'ast>,
     )> {
-        self.index_operand_payloads_with_fallback()
-            .map(|((_, base), (_, index))| (base, index))
-    }
-
-    pub(in crate::compiler) fn index_operand_payloads_with_fallback(
-        &self,
-    ) -> Option<(
-        FallbackExpressionPayload<'ast>,
-        FallbackExpressionPayload<'ast>,
-    )> {
         self.source?;
         let (base, index) = self.fallback_index_operands()?;
         let syntax = self.syntax.as_ref()?.as_index()?;
         Some((
-            (
-                base,
-                CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
-            ),
-            (
-                index,
-                CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
-            ),
+            CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
+            CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
         ))
     }
 

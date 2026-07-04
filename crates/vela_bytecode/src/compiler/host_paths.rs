@@ -86,123 +86,6 @@ impl Compiler<'_, '_> {
         self.resolve_host_path_with_owned_payload(expr, payload.cloned())
     }
 
-    fn host_field_path_from_payload<'ast>(
-        &self,
-        payload: CompilerExpressionPayload<'ast>,
-    ) -> Option<HostPath<'ast>> {
-        self.resolve_host_path_from_payload(payload)
-            .map(|resolved| resolved.path)
-    }
-
-    fn resolve_host_path_from_payload<'ast>(
-        &self,
-        payload: CompilerExpressionPayload<'ast>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        match payload.syntax_kind()? {
-            SyntaxExpressionKind::Field => {
-                let name = payload.syntax_field_name()?;
-                let (base, base_payload) = payload.field_base_payload_with_fallback()?;
-                let mut receiver =
-                    self.resolve_host_path_receiver_from_payload(base, base_payload)?;
-                let field = self.host_path_field_part(receiver.type_name.as_deref(), &name)?;
-                receiver.path.segments.push(field.part);
-                Some(ResolvedHostPath {
-                    path: receiver.path,
-                    type_name: field.type_hint,
-                })
-            }
-            SyntaxExpressionKind::Path => self.host_path_from_payload_path(payload),
-            SyntaxExpressionKind::Index => {
-                let ((_, base_payload), (index, index_payload)) =
-                    payload.index_operand_payloads_with_fallback()?;
-                let mut receiver =
-                    self.resolve_host_path_index_receiver_from_payload(base_payload)?;
-                if !index_payload.is_aligned_with_paired_expr(index) {
-                    return None;
-                }
-                let dynamic_kind = receiver
-                    .type_name
-                    .as_deref()
-                    .and_then(|type_name| self.facts.options.host_index_capability(type_name))
-                    .and_then(|capability| capability.key_type.as_deref())
-                    .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
-                receiver.path.segments.push(HostPathPart::Value {
-                    expr: index,
-                    payload: Some(index_payload),
-                    dynamic_kind,
-                });
-                let value_type = receiver.type_name.as_deref().and_then(|type_name| {
-                    self.facts
-                        .options
-                        .host_index_capability(type_name)
-                        .and_then(|capability| capability.value_type.clone())
-                });
-                Some(ResolvedHostPath {
-                    path: receiver.path,
-                    type_name: value_type,
-                })
-            }
-            _ => None,
-        }
-    }
-
-    fn host_path_from_payload_path<'ast>(
-        &self,
-        payload: CompilerExpressionPayload<'ast>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        let path = payload.syntax_path_segments()?;
-        let span = payload.syntax_span()?;
-        match path.len() {
-            0 => None,
-            1 => {
-                let name = path.into_iter().next()?;
-                let type_name = self.host_local_type_name(&name, span);
-                Some(ResolvedHostPath {
-                    path: HostPath {
-                        root: HostPathRoot::OwnedLocalPath { name, span },
-                        segments: Vec::new(),
-                    },
-                    type_name,
-                })
-            }
-            _ => self.owned_host_field_path_parts(span, &path),
-        }
-    }
-
-    fn resolve_host_path_receiver_from_payload<'ast>(
-        &self,
-        fallback: &'ast Expr,
-        payload: CompilerExpressionPayload<'ast>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        self.resolve_host_path_from_payload(payload.clone())
-            .or_else(|| {
-                if !payload.is_aligned_with_paired_expr(fallback) {
-                    return None;
-                }
-                Some(self.expr_host_path_receiver_with_payload(fallback, Some(payload)))
-            })
-    }
-
-    fn resolve_host_path_index_receiver_from_payload<'ast>(
-        &self,
-        payload: CompilerExpressionPayload<'ast>,
-    ) -> Option<ResolvedHostPath<'ast>> {
-        match payload.syntax_kind()? {
-            SyntaxExpressionKind::Field | SyntaxExpressionKind::Index => {
-                self.resolve_host_path_from_payload(payload)
-            }
-            SyntaxExpressionKind::Path => {
-                let resolved = self.host_path_from_payload_path(payload)?;
-                if resolved.path.segments.is_empty() {
-                    let type_name = resolved.type_name.as_deref()?;
-                    self.facts.options.host_index_capability(type_name)?;
-                }
-                Some(resolved)
-            }
-            _ => None,
-        }
-    }
-
     pub(super) fn resolve_host_path<'ast>(
         &self,
         expr: &'ast Expr,
@@ -246,6 +129,29 @@ impl Compiler<'_, '_> {
         }
     }
 
+    fn host_path_from_syntax_path_payload<'ast>(
+        &self,
+        payload: CompilerExpressionPayload<'ast>,
+    ) -> Option<ResolvedHostPath<'ast>> {
+        let path = payload.syntax_path_segments()?;
+        let span = payload.syntax_span()?;
+        match path.len() {
+            0 => None,
+            1 => {
+                let name = path.into_iter().next()?;
+                let type_name = self.host_local_type_name(&name, span);
+                Some(ResolvedHostPath {
+                    path: HostPath {
+                        root: HostPathRoot::OwnedLocalPath { name, span },
+                        segments: Vec::new(),
+                    },
+                    type_name,
+                })
+            }
+            _ => self.owned_host_field_path_parts(span, &path),
+        }
+    }
+
     fn resolve_host_path_with_owned_payload<'ast>(
         &self,
         expr: &'ast Expr,
@@ -270,9 +176,7 @@ impl Compiler<'_, '_> {
                 .and_then(CompilerExpressionPayload::syntax_kind)
             {
                 Some(SyntaxExpressionKind::Path) => {
-                    let path = payload.as_ref()?.syntax_path_segments()?;
-                    let span = payload.as_ref()?.syntax_span()?;
-                    self.owned_host_field_path_parts(span, &path)
+                    self.host_path_from_syntax_path_payload(payload.clone()?)
                 }
                 Some(_) => None,
                 None if payload
@@ -353,7 +257,11 @@ impl Compiler<'_, '_> {
                 .resolve_host_path_with_owned_payload(receiver, payload.clone())
                 .unwrap_or_else(|| self.expr_host_path_receiver_with_payload(receiver, payload)),
             ExprKind::Path(_) => match payload {
-                Some(payload) => self.expr_host_path_receiver_with_payload(receiver, Some(payload)),
+                Some(payload) => self
+                    .host_path_from_syntax_path_payload(payload.clone())
+                    .unwrap_or_else(|| {
+                        self.expr_host_path_receiver_with_payload(receiver, Some(payload))
+                    }),
                 None => self
                     .resolve_host_path(receiver)
                     .unwrap_or_else(|| self.expr_host_path_receiver(receiver)),
@@ -734,11 +642,15 @@ impl Compiler<'_, '_> {
                     if payload.syntax_field_name()?.as_str() != method {
                         return None;
                     }
-                    let (base, base_payload) = payload.field_base_payload_with_fallback()?;
+                    let ExprKind::Field { base, .. } = &callee.kind else {
+                        return None;
+                    };
+                    let base = base.as_ref();
+                    let base_payload = payload.field_base_payload()?;
                     let base_expr = base_payload
                         .is_aligned_with_paired_expr(base)
                         .then_some(base);
-                    let path = self.host_field_path_from_payload(base_payload.clone())?;
+                    let path = self.host_field_path_with_payload(base, Some(&base_payload))?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
