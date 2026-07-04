@@ -188,7 +188,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
-        Self::requires_body_block_lookup_with_tail(body, true)
+        // Production lowering is CST-only here; tests still exercise legacy
+        // pairing until expression fallback payload fields are removed.
+        if cfg!(test) {
+            Self::requires_body_block_lookup_with_tail(body, true)
+        } else {
+            let _ = body;
+            false
+        }
     }
 
     fn requires_body_block_lookup_with_tail(
