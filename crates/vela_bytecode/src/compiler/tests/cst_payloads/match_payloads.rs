@@ -12,7 +12,7 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let match_expr = first_return_match_expr(payload.body.fallback());
+    let match_expr = first_return_match_expr(payload.body.fallback_statements());
     let missing_arm = body_payloads::CompilerMatchArmPayload::missing_syntax();
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
@@ -29,8 +29,8 @@ fn main(value) {
     );
 }
 
-fn first_return_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
-    let statement = body.statements.first().expect("return statement");
+fn first_return_match_expr(statements: &[vela_syntax::ast::Stmt]) -> &vela_syntax::ast::MatchExpr {
+    let statement = statements.first().expect("return statement");
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
     };

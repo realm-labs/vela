@@ -132,7 +132,7 @@ fn main() {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 source,
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
             compiler
@@ -363,7 +363,7 @@ fn main() {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 source,
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
 
@@ -523,7 +523,7 @@ fn main() {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 source,
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
 
@@ -583,7 +583,7 @@ fn main() {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 source,
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
 

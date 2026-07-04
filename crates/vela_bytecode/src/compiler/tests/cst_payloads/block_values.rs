@@ -28,7 +28,7 @@ fn main() {
         .statements()
         .next()
         .expect("recovered CST statement");
-    let fallback_statement = &legacy_payload.body.fallback().statements[1];
+    let fallback_statement = &legacy_payload.body.fallback_statements()[1];
     let mismatched = body_payloads::CompilerStatementPayload::syntax(
         source,
         recovered_statement,

@@ -26,7 +26,7 @@ fn legacy_guard(value, legacy_flag) {
     let (legacy_payload, _, _) = semantic.function("legacy_guard").expect("legacy guard");
 
     let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
-    let legacy_match = first_return_match_expr(legacy_payload.body.fallback());
+    let legacy_match = first_return_match_expr(legacy_payload.body.fallback_statements());
     let mismatched_arm = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
@@ -64,7 +64,7 @@ fn legacy_guard(value, flag) {
 
     let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
     assert!(cst_arm.guard().is_none());
-    let legacy_match = first_return_match_expr(legacy_payload.body.fallback());
+    let legacy_match = first_return_match_expr(legacy_payload.body.fallback_statements());
     assert!(legacy_match.arms[0].guard.is_some());
     let missing_guard = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
@@ -93,8 +93,8 @@ fn first_return_match_syntax_arm(
         .clone()
 }
 
-fn first_return_match_expr(body: &vela_syntax::ast::Block) -> &vela_syntax::ast::MatchExpr {
-    let statement = body.statements.first().expect("return statement");
+fn first_return_match_expr(statements: &[vela_syntax::ast::Stmt]) -> &vela_syntax::ast::MatchExpr {
+    let statement = statements.first().expect("return statement");
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
     };

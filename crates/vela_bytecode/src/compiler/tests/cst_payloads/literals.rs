@@ -300,7 +300,7 @@ fn main(input) -> bool {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 SourceId::new(1),
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
 
@@ -347,7 +347,7 @@ fn main(input) -> bool {
             let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
                 SourceId::new(1),
                 cst_body,
-                payload.body.fallback(),
+                payload.body.fallback_statements(),
             );
             let statements = mismatched_body.statement_payloads();
 

@@ -45,15 +45,12 @@ pub(super) struct CompilerBodyPayload<'ast> {
     _ast: PhantomData<&'ast ()>,
     #[cfg(test)]
     fallback_statements: Option<&'ast [Stmt]>,
-    #[cfg(test)]
-    fallback_block: Option<&'ast Block>,
 }
 
 #[derive(Clone, Copy)]
 #[cfg(test)]
 pub(super) struct CompilerBodyFallback<'ast> {
     statements: &'ast [Stmt],
-    block: Option<&'ast Block>,
 }
 
 pub(super) struct CompilerStatementPayload<'ast> {
@@ -121,8 +118,14 @@ pub(super) enum CompilerBlockValue<'payload, 'ast> {
 
 impl<'ast> CompilerBodyPayload<'ast> {
     #[cfg(test)]
-    pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast Block) -> Self {
-        Self::with_fallback(source, body, CompilerBodyFallback::block(fallback))
+    pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast [Stmt]) -> Self {
+        Self::with_fallback(
+            source,
+            body,
+            CompilerBodyFallback {
+                statements: fallback,
+            },
+        )
     }
 
     #[cfg(test)]
@@ -135,7 +138,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             syntax: SyntaxBodyPayload { source, body },
             _ast: PhantomData,
             fallback_statements: Some(fallback.statements),
-            fallback_block: fallback.block,
         }
     }
 
@@ -150,8 +152,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             _ast: PhantomData,
             #[cfg(test)]
             fallback_statements: None,
-            #[cfg(test)]
-            fallback_block: None,
         }
     }
 
@@ -181,7 +181,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
                 syntax: SyntaxBodyPayload { source, body },
                 _ast: PhantomData,
                 fallback_statements: None,
-                fallback_block: None,
             });
         }
         None
@@ -230,9 +229,9 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn fallback(&self) -> &'ast Block {
-        self.fallback_block
-            .expect("body payload has no owned body fallback")
+    pub(super) fn fallback_statements(&self) -> &'ast [Stmt] {
+        self.fallback_statements
+            .expect("body payload has no owned statement fallback")
     }
 
     #[cfg(test)]
@@ -325,7 +324,6 @@ impl<'ast> CompilerBodyFallback<'ast> {
     pub(super) fn block(block: &'ast Block) -> Self {
         Self {
             statements: &block.statements,
-            block: Some(block),
         }
     }
 }

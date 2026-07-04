@@ -29,7 +29,8 @@ fn fallback_tuple(value) {
         .function("fallback_tuple")
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
-    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let fallback_pattern =
+        first_return_match_fallback_pattern(fallback_payload.body.fallback_statements());
     let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_tuple");
 
@@ -72,7 +73,8 @@ fn fallback_record(value) {
         .function("fallback_record")
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
-    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let fallback_pattern =
+        first_return_match_fallback_pattern(fallback_payload.body.fallback_statements());
     let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
 
@@ -121,7 +123,8 @@ fn fallback_record(value) {
         .function("fallback_record")
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
-    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let fallback_pattern =
+        first_return_match_fallback_pattern(fallback_payload.body.fallback_statements());
     let mismatched = body_payloads::CompilerPatternPayload::syntax(cst_pattern.clone());
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
 
@@ -211,8 +214,10 @@ fn legacy_record(value) {
     let (legacy_record_payload, _, _) = semantic.function("legacy_record").expect("legacy record");
     let cst_tuple = first_return_match_pattern_syntax(&cst_tuple_payload.body);
     let cst_record = first_return_match_pattern_syntax(&cst_record_payload.body);
-    let legacy_tuple = first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback());
-    let legacy_record = first_return_match_fallback_pattern(legacy_record_payload.body.fallback());
+    let legacy_tuple =
+        first_return_match_fallback_pattern(legacy_tuple_payload.body.fallback_statements());
+    let legacy_record =
+        first_return_match_fallback_pattern(legacy_record_payload.body.fallback_statements());
     let tuple_payload_with_record_fallback =
         body_payloads::CompilerPatternPayload::syntax(cst_tuple);
     let record_payload_with_tuple_fallback =
@@ -276,7 +281,8 @@ fn fallback_tuple(value) {
         .function("fallback_tuple")
         .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
-    let fallback_pattern = first_return_match_fallback_pattern(fallback_payload.body.fallback());
+    let fallback_pattern =
+        first_return_match_fallback_pattern(fallback_payload.body.fallback_statements());
     let payload = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
 
     let field_texts = payload
@@ -313,7 +319,7 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
+    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback_statements());
     let missing_payload = body_payloads::CompilerPatternPayload::missing_syntax(source);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
@@ -344,7 +350,7 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback());
+    let fallback_pattern = first_return_match_fallback_pattern(payload.body.fallback_statements());
     let missing_payload = body_payloads::CompilerPatternPayload::missing_syntax(source);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
@@ -379,9 +385,9 @@ fn first_return_match_pattern_syntax(
 }
 
 fn first_return_match_fallback_pattern(
-    body: &vela_syntax::ast::Block,
+    statements: &[vela_syntax::ast::Stmt],
 ) -> &vela_syntax::ast::Pattern {
-    let statement = body.statements.first().expect("return statement");
+    let statement = statements.first().expect("return statement");
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return statement");
     };

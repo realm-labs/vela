@@ -126,7 +126,7 @@ fn make(value) {
     let mismatched = body_payloads::CompilerBodyPayload::syntax(
         source,
         cst_payload.body.syntax_payload().body.clone(),
-        legacy_payload.body.fallback(),
+        legacy_payload.body.fallback_statements(),
     );
 
     let statements = mismatched.statement_payloads();
@@ -172,7 +172,7 @@ fn make(value) {
     let mismatched = body_payloads::CompilerBodyPayload::syntax(
         source,
         cst_payload.body.syntax_payload().body.clone(),
-        legacy_payload.body.fallback(),
+        legacy_payload.body.fallback_statements(),
     );
     let statements = mismatched.statement_payloads();
 

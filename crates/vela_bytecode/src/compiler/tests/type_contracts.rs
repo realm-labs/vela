@@ -1,9 +1,9 @@
 use super::*;
-use vela_syntax::ast::Block;
+use vela_syntax::ast::Stmt;
 
 fn with_static_type_compiler(
     source: &str,
-    inspect: impl for<'ast> FnOnce(&mut Compiler<'ast, 'static>, &'ast Block),
+    inspect: impl for<'ast> FnOnce(&mut Compiler<'ast, 'static>, &'ast [Stmt]),
 ) {
     let semantic =
         parse_semantic_source(SourceId::new(1), source).expect("semantic source should parse");
@@ -33,7 +33,7 @@ fn with_static_type_compiler(
         registry: None,
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let fallback_body = payload.body.fallback();
+    let fallback_body = payload.body.fallback_statements();
     let mut compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
         payload.body.clone(),
@@ -97,19 +97,16 @@ fn local_value_type(compiler: &Compiler<'_, '_>, name: &str) -> Option<RuntimeTy
     compiler.value_types.name(name)
 }
 
-fn return_value(body: &Block) -> &Expr {
-    let statement = body
-        .statements
-        .last()
-        .expect("return statement should exist");
+fn return_value(statements: &[Stmt]) -> &Expr {
+    let statement = statements.last().expect("return statement should exist");
     let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
         panic!("expected return value");
     };
     value
 }
 
-fn return_call_arg(body: &Block, index: usize) -> &Expr {
-    let value = return_value(body);
+fn return_call_arg(statements: &[Stmt], index: usize) -> &Expr {
+    let value = return_value(statements);
     let vela_syntax::ast::ExprKind::Call { args, .. } = &value.kind else {
         panic!("expected return call expression");
     };

@@ -22,7 +22,7 @@ fn fallback_body() {
     let mismatched = body_payloads::CompilerBodyPayload::syntax(
         source,
         cst_payload.body.syntax_payload().body.clone(),
-        fallback_payload.body.fallback(),
+        fallback_payload.body.fallback_statements(),
     );
 
     let error = compiler
