@@ -31,7 +31,7 @@ fn main() {
     let fallback_statement = &fallback_statements_for_body(source, &legacy_payload.body)[1];
     let mismatched = body_payloads::CompilerStatementPayload::syntax(
         source,
-        recovered_statement,
+        recovered_statement.clone(),
         fallback_statement,
     );
 
@@ -40,9 +40,9 @@ fn main() {
         Some(SyntaxStatementKind::Expr)
     );
     assert_eq!(mismatched.stored_value_expression_kind(), None);
-    let vela_syntax::ast::StmtKind::Expr(expr) = &fallback_statement.kind else {
-        panic!("expected legacy expression tail");
-    };
+    let expr = mismatched
+        .fallback_expr_for_test()
+        .expect("expected legacy expression tail");
 
     let error = compiler
         .compile_block_tail_expr_to_for_test(expr, Some(&mismatched), Register(0))
@@ -78,9 +78,9 @@ fn main(flag) {
                     syntax,
                     tail.fallback(),
                 );
-            let vela_syntax::ast::StmtKind::Expr(expr) = &tail.fallback().kind else {
-                panic!("expected legacy expression tail");
-            };
+            let expr = tail
+                .fallback_expr_for_test()
+                .expect("expected legacy expression tail");
 
             let error = compiler
                 .compile_block_tail_expr_to_for_test(expr, Some(&missing_children), Register(0))

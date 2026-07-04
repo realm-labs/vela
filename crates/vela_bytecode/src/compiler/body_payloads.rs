@@ -542,13 +542,21 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(in crate::compiler) fn fallback_if_expr_for_test(&self) -> Option<&'ast IfExpr> {
-        let StmtKind::Expr(expr) = &self.fallback().kind else {
-            return None;
-        };
+        let expr = self.fallback_expr_for_test()?;
         let ExprKind::If(if_expr) = &expr.kind else {
             return None;
         };
         Some(if_expr)
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn fallback_expr_for_test(
+        &self,
+    ) -> Option<&'ast vela_syntax::ast::Expr> {
+        let StmtKind::Expr(expr) = &self.fallback().kind else {
+            return None;
+        };
+        Some(expr)
     }
 
     #[cfg(test)]
