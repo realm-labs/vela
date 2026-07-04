@@ -14,6 +14,8 @@ use vela_syntax::ast::{
     SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField,
     SyntaxStatement, SyntaxStatementKind,
 };
+#[cfg(test)]
+use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 mod expression_payloads;
 mod simple_values;
@@ -193,19 +195,13 @@ impl<'ast> CompilerBodyPayload<'ast> {
             })
     }
 
-    pub(super) fn syntax_with_optional_body(
-        source: SourceId,
-        body: SyntaxBlock,
-        #[cfg(test)] fallback: Option<&'ast [Stmt]>,
-    ) -> Option<Self> {
+    pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {
         #[cfg(test)]
         {
-            return match fallback {
-                Some(fallback) => Some(Self::with_fallback(source, body, fallback)),
-                None => Self::syntax_only_without_body_lookup(source, body),
-            };
+            if let Some(fallback) = parsed_body_fallback_for_tests(source, &body) {
+                return Some(Self::with_fallback(source, body, fallback));
+            }
         }
-        #[cfg_attr(test, allow(unreachable_code))]
         Some(Self::syntax_only(source, body))
     }
 
@@ -293,6 +289,21 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
         &self.syntax
     }
+}
+
+#[cfg(test)]
+fn parsed_body_fallback_for_tests(source: SourceId, body: &SyntaxBlock) -> Option<&'static [Stmt]> {
+    let body_text = body.syntax().text().to_string();
+    let range = body.syntax().text_range();
+    let start: u32 = range.start().into();
+    let end: u32 = range.end().into();
+    let mut text = " ".repeat(usize::try_from(start).ok()?);
+    text.push_str(&body_text);
+    let span = Span::new(source, start, end);
+    let block = parse_owned_body_blocks_for_tests(source, &text, &[span])
+        .into_iter()
+        .next()?;
+    Some(Box::leak(block.statements.into_boxed_slice()))
 }
 
 fn syntax_body_statements(body: &SyntaxBlock) -> Vec<SyntaxStatement> {

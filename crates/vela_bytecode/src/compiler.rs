@@ -2,8 +2,6 @@
 
 mod assignment_payloads;
 mod assignments;
-#[cfg(test)]
-mod body_blocks;
 mod body_payloads;
 mod cache_sites;
 mod call_args;
