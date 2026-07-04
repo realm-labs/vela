@@ -16,7 +16,7 @@ pub mod token;
 
 #[cfg(feature = "legacy-body-parser")]
 pub mod body_parser_support {
-    pub use crate::legacy_body_parser::parse_body_blocks_at_spans;
+    pub use crate::legacy_body_parser::parse_owned_body_blocks_for_tests;
 }
 
 pub use parse::Parse;

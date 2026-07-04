@@ -5,7 +5,7 @@ use vela_syntax::ast::AstNode;
 use vela_syntax::ast::Block;
 use vela_syntax::ast::SyntaxBlock;
 use vela_syntax::ast::SyntaxSourceFile;
-use vela_syntax::body_parser_support::parse_body_blocks_at_spans;
+use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 use crate::compiler::body_payloads::CompilerBodyFallback;
 use crate::compiler::body_payloads::CompilerBodyPayload;
@@ -29,7 +29,7 @@ impl BodyBlockLookup {
         let bodies = if required_spans.is_empty() {
             Vec::new()
         } else {
-            parse_body_blocks_at_spans(source, text, &required_spans)
+            parse_owned_body_blocks_for_tests(source, text, &required_spans)
                 .into_iter()
                 .map(BodyBlockEntry::new)
                 .collect()

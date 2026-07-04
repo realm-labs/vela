@@ -16,7 +16,11 @@ use crate::token::{InterpolatedStringTokenPart, Keyword, Symbol, Token, TokenKin
 
 #[cfg(feature = "legacy-body-parser")]
 #[must_use]
-pub fn parse_body_blocks_at_spans(source: SourceId, text: &str, spans: &[Span]) -> Vec<Block> {
+pub fn parse_owned_body_blocks_for_tests(
+    source: SourceId,
+    text: &str,
+    spans: &[Span],
+) -> Vec<Block> {
     spans
         .iter()
         .filter(|span| span.source == source)
