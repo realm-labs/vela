@@ -1,13 +1,16 @@
+use vela_common::SourceId;
 use vela_common::Span;
 use vela_common::{Diagnostic, HostTypeId};
 use vela_def::FieldId;
-use vela_syntax::ast::{Argument, Expr, ExprKind, Literal, SyntaxExpressionKind};
+use vela_syntax::ast::{
+    Argument, AstNode, Expr, ExprKind, Literal, SyntaxExpression, SyntaxExpressionKind,
+};
 
 use crate::{CacheSiteId, Constant, HostTargetPlanId, Register, UnlinkedInstructionKind};
 use vela_host::resolved::HostMutationOp;
 use vela_host::target::HostTargetPlan;
 
-use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::{CompilerExpressionPayload, expression_syntax_path_or_self};
 use super::call_args::CallArgumentSyntax;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
@@ -38,6 +41,11 @@ pub(super) enum HostPathPart<'ast> {
     Value {
         expr: &'ast Expr,
         payload: Option<CompilerExpressionPayload<'ast>>,
+        dynamic_kind: DynamicHostPathPart,
+    },
+    SyntaxValue {
+        source: SourceId,
+        expression: SyntaxExpression,
         dynamic_kind: DynamicHostPathPart,
     },
 }
@@ -774,6 +782,29 @@ impl Compiler<'_, '_> {
                         DynamicHostPathPart::Key => plan.dyn_key(arg),
                     };
                 }
+                HostPathPart::SyntaxValue {
+                    source,
+                    expression,
+                    dynamic_kind,
+                } => {
+                    let arg = u8::try_from(dynamic_args.len()).map_err(|_| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "host path dynamic argument count",
+                        ))
+                    })?;
+                    let register = self
+                        .compile_syntax_expression(source, &expression)?
+                        .ok_or_else(|| {
+                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                                "host path dynamic argument",
+                            ))
+                        })?;
+                    dynamic_args.push(register);
+                    plan = match dynamic_kind {
+                        DynamicHostPathPart::Index => plan.dyn_index(arg),
+                        DynamicHostPathPart::Key => plan.dyn_key(arg),
+                    };
+                }
             }
         }
         Ok(CompiledHostTarget {
@@ -816,6 +847,39 @@ impl Compiler<'_, '_> {
             .or_else(|| self.global_type_at_span(span))
             .or_else(|| self.script_types.name(name))
             .or_else(|| self.global_type_named(name))
+    }
+
+    pub(in crate::compiler) fn syntax_root_host_index_path(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<HostPath<'static>> {
+        let index = expression.as_index()?;
+        let receiver = index.receiver()?;
+        let index_expression = index.index()?;
+        let path = expression_syntax_path_or_self(&receiver)?;
+        let [name] = path.as_slice() else {
+            return None;
+        };
+        let span = syntax_host_expression_span(source, &receiver);
+        let type_name = self.host_local_type_name(name, span)?;
+        let dynamic_kind = self
+            .facts
+            .options
+            .host_index_capability(&type_name)
+            .and_then(|capability| capability.key_type.as_deref())
+            .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
+        Some(HostPath {
+            root: HostPathRoot::OwnedLocalPath {
+                name: name.clone(),
+                span,
+            },
+            segments: vec![HostPathPart::SyntaxValue {
+                source,
+                expression: index_expression,
+                dynamic_kind,
+            }],
+        })
     }
 
     pub(super) fn reject_invalid_host_index_access(
@@ -1086,4 +1150,9 @@ fn dynamic_host_path_part(key_type: &str) -> DynamicHostPathPart {
         "i64" => DynamicHostPathPart::Index,
         _ => DynamicHostPathPart::Key,
     }
+}
+
+fn syntax_host_expression_span(source: SourceId, expression: &SyntaxExpression) -> Span {
+    let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
 }

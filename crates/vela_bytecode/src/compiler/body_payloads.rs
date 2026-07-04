@@ -12,8 +12,6 @@ use vela_syntax::ast::{
     SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField,
     SyntaxStatement, SyntaxStatementKind,
 };
-#[cfg(test)]
-use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 mod expression_payloads;
 mod simple_values;
@@ -165,20 +163,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
-        let syntax_statements = syntax_body_statements(&self.syntax.body);
-
-        #[cfg(test)]
-        if let Some(fallback_statements) =
-            parsed_body_fallback_for_tests(self.syntax.source, &self.syntax.body)
-        {
-            return paired_statement_payloads(
-                self.syntax.source,
-                &syntax_statements,
-                fallback_statements,
-            );
-        }
-
-        syntax_statements
+        syntax_body_statements(&self.syntax.body)
             .into_iter()
             .map(|syntax| CompilerStatementPayload::new_syntax(self.syntax.source, syntax))
             .collect()
@@ -227,21 +212,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
         &self.syntax
     }
-}
-
-#[cfg(test)]
-fn parsed_body_fallback_for_tests(source: SourceId, body: &SyntaxBlock) -> Option<&'static [Stmt]> {
-    let body_text = body.syntax().text().to_string();
-    let range = body.syntax().text_range();
-    let start: u32 = range.start().into();
-    let end: u32 = range.end().into();
-    let mut text = " ".repeat(usize::try_from(start).ok()?);
-    text.push_str(&body_text);
-    let span = Span::new(source, start, end);
-    let block = parse_owned_body_blocks_for_tests(source, &text, &[span])
-        .into_iter()
-        .next()?;
-    Some(Box::leak(block.statements.into_boxed_slice()))
 }
 
 #[cfg(test)]

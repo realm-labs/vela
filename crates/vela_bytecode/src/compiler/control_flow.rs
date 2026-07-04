@@ -9,6 +9,9 @@ mod matches;
 mod path_values;
 mod range_statement_values;
 mod statements;
+mod syntax_host_indexes;
+mod syntax_if_values;
+mod syntax_match_values;
 mod syntax_statement_values;
 mod value_syntax;
 
