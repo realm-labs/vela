@@ -64,10 +64,11 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
+                #[allow(unused_variables)]
+                let legacy_fallback_attached = false;
                 #[cfg(test)]
-                let syntax_only = tail.optional_fallback().is_none();
-                #[cfg(not(test))]
-                let syntax_only = true;
+                let legacy_fallback_attached = tail.optional_fallback().is_some();
+                let syntax_only = !legacy_fallback_attached;
                 if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()
@@ -109,32 +110,30 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
-                #[cfg(not(test))]
+                #[cfg(test)]
                 {
-                    Err(crate::compiler::CompileError::new(
-                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                            "unsupported CST block tail expression payload",
-                        ),
-                    ))
+                    let fallback = aligned_statement(tail).ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "mismatched CST block tail expression",
+                            ),
+                        )
+                    })?;
+                    let StmtKind::Expr(expr) = &fallback.kind else {
+                        return Err(crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "mismatched CST block tail expression",
+                            ),
+                        ));
+                    };
+                    return self.compile_block_tail_expr_to(expr, Some(tail), dst);
                 }
-                #[cfg(test)]
-                let fallback = aligned_statement(tail).ok_or_else(|| {
-                    crate::compiler::CompileError::new(
-                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST block tail expression",
-                        ),
-                    )
-                })?;
-                #[cfg(test)]
-                let StmtKind::Expr(expr) = &fallback.kind else {
-                    return Err(crate::compiler::CompileError::new(
-                        crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST block tail expression",
-                        ),
-                    ));
-                };
-                #[cfg(test)]
-                self.compile_block_tail_expr_to(expr, Some(tail), dst)
+                #[cfg_attr(test, allow(unreachable_code))]
+                Err(crate::compiler::CompileError::new(
+                    crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                        "unsupported CST block tail expression payload",
+                    ),
+                ))
             }
             CompilerBlockValue::Statements(statements) => {
                 let returned = self.compile_statement_payloads(statements)?;
