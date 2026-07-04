@@ -12,7 +12,7 @@ fn messages(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("messages").expect("messages function");
 
-    assert!(!payload.body.has_fallback_statements());
+    assert!(body_has_no_statement_fallbacks(&payload.body));
     compile_program_source(source, text)
         .expect("simple CST-backed interpolated string bodies should compile");
 }

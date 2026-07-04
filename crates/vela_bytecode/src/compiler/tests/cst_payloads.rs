@@ -70,6 +70,12 @@ fn cst_payload_compiler_facts(semantic: &semantic::SemanticSource) -> CompilerFa
     cst_payload_compiler_facts_with_options(semantic, CompilerOptions::default(), None)
 }
 
+fn body_has_no_statement_fallbacks(body: &body_payloads::CompilerBodyPayload<'_>) -> bool {
+    body.statement_payloads().iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    })
+}
+
 fn cst_payload_compiler_facts_with_options<'registry>(
     semantic: &semantic::SemanticSource,
     options: CompilerOptions,
@@ -844,7 +850,7 @@ fn block_tail_values() {
         .let_initializer_block_body_payload()
         .expect("value block payload");
     assert!(
-        !value_block.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&value_block),
         "simple CST block-tail if value should not retain an owned block fallback"
     );
     assert_cst_let_initializer_block_tail_match_arm_body_payloads(
@@ -1011,7 +1017,7 @@ fn check() {
         )],
     );
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "simple CST if statement should not retain an owned body fallback"
     );
 
@@ -1048,7 +1054,7 @@ fn check() {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("check").expect("check function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "simple CST else-if statement should not retain an owned body fallback"
     );
 

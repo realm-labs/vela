@@ -585,11 +585,11 @@ fn field_numeric_return(input) {
         compile_program_source(source, text).expect("CST field numeric let/return should compile");
 
     assert!(
-        !field_numeric_let.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&field_numeric_let.body),
         "syntax-only field numeric let should not retain an owned body fallback"
     );
     assert!(
-        !field_numeric_return.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&field_numeric_return.body),
         "syntax-only field numeric return should not retain an owned body fallback"
     );
     assert!(
@@ -668,7 +668,7 @@ fn field_logical(input, other) {
     ] {
         let (payload, _, _) = semantic.function(name).expect("function payload");
         assert!(
-            !payload.body.has_fallback_statements(),
+            body_has_no_statement_fallbacks(&payload.body),
             "syntax-only {name} body should not retain an owned body fallback"
         );
     }
@@ -890,7 +890,7 @@ fn identity_not_equal(left, right) {
     ] {
         let (payload, _, _) = semantic.function(function).expect("function payload");
         assert!(
-            !payload.body.has_fallback_statements(),
+            body_has_no_statement_fallbacks(&payload.body),
             "{function} should not retain an owned body fallback"
         );
         assert!(
@@ -1689,7 +1689,7 @@ impl CstBox {
     compile_program_source(source, text).expect("CST self let and return method should compile");
 
     assert!(
-        !method.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&method.body),
         "syntax-only self let/return method should not retain an owned body fallback"
     );
 }
@@ -1717,11 +1717,11 @@ fn field_unary_return(input) {
     compile_program_source(source, text).expect("CST field unary let/return should compile");
 
     assert!(
-        !field_unary_let.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&field_unary_let.body),
         "syntax-only field unary let should not retain an owned body fallback"
     );
     assert!(
-        !field_unary_return.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&field_unary_return.body),
         "syntax-only field unary return should not retain an owned body fallback"
     );
 }
@@ -1751,11 +1751,11 @@ fn block_return() {
     compile_program_source(source, text).expect("CST block let/return should compile");
 
     assert!(
-        !block_let.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&block_let.body),
         "syntax-only block let body should not retain an owned body fallback"
     );
     assert!(
-        !block_return.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&block_return.body),
         "syntax-only block return body should not retain an owned body fallback"
     );
 }
@@ -1783,11 +1783,11 @@ fn block_return(input, other) {
     compile_program_source(source, text).expect("CST path value block tails should compile");
 
     assert!(
-        !block_let.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&block_let.body),
         "syntax-only path value block let should not retain an owned body fallback"
     );
     assert!(
-        !block_return.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&block_return.body),
         "syntax-only path value block return should not retain an owned body fallback"
     );
 }
@@ -1810,7 +1810,7 @@ fn parenthesized_simple_values(input) {
     compile_program_source(source, text).expect("CST parenthesized simple values should compile");
 
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "syntax-only parenthesized simple values should not retain an owned body fallback"
     );
 }
@@ -2094,7 +2094,7 @@ fn main() {
         .expect("let initializer block body payload");
 
     assert!(
-        !body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&body),
         "syntax-only let initializer block should not retain an owned body fallback"
     );
 }
@@ -2180,7 +2180,7 @@ fn main() {
         .expect("return value block body payload");
 
     assert!(
-        !body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&body),
         "syntax-only return value block should not retain an owned body fallback"
     );
 }

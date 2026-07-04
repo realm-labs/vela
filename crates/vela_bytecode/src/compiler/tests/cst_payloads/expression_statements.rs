@@ -15,7 +15,7 @@ fn main() {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "constant expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -40,7 +40,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "path expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -79,7 +79,7 @@ fn main(input, other) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "path value expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -105,7 +105,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "range expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -130,7 +130,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "field range expression statements should not require owned fallback"
     );
 
@@ -155,7 +155,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "block expression statement body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -174,7 +174,7 @@ fn main(input) {
         .collect::<Vec<_>>();
     for body in &nested_bodies {
         assert!(
-            !body.has_fallback_statements(),
+            body_has_no_statement_fallbacks(body),
             "nested block expression body should not require owned fallback"
         );
     }
@@ -203,7 +203,7 @@ fn range_tail(input) {
     for function in ["constant_tail", "path_tail", "range_tail"] {
         let (payload, _, _) = semantic.function(function).expect("function payload");
         assert!(
-            !payload.body.has_fallback_statements(),
+            body_has_no_statement_fallbacks(&payload.body),
             "{function} body should not require owned fallback"
         );
         let statements = payload.body.statement_payloads();
@@ -234,7 +234,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "block expression tail body should not require owned fallback"
     );
     let statements = payload.body.statement_payloads();
@@ -249,7 +249,7 @@ fn main(input) {
         .expression_statement_block_body_payload()
         .expect("block expression tail body payload");
     assert!(
-        !nested_body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&nested_body),
         "nested block expression tail body should not require owned fallback"
     );
 

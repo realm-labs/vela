@@ -233,11 +233,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .expect("body payload has no owned statement fallback")
     }
 
-    #[cfg(test)]
-    pub(super) fn has_fallback_statements(&self) -> bool {
-        self.fallback_statements.is_some()
-    }
-
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         let syntax_statements = syntax_body_statements(&self.syntax.body);
 

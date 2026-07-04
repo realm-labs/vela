@@ -20,7 +20,7 @@ fn choose(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("choose").expect("choose function");
 
-    assert!(!payload.body.has_fallback_statements());
+    assert!(body_has_no_statement_fallbacks(&payload.body));
     compile_program_source(source, text).expect("simple CST-backed if value bodies should compile");
 }
 
@@ -88,7 +88,7 @@ fn choose(input) {
     let (payload, _, _) = semantic.function("choose").expect("choose function");
 
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "simple CST statement if should not retain an owned body fallback"
     );
 
@@ -113,7 +113,7 @@ fn check_limit() {
         .expect("check_limit function");
 
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "syntax-only i64 condition should not retain an owned body fallback"
     );
 
@@ -146,7 +146,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("CST source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    assert!(!payload.body.has_fallback_statements());
+    assert!(body_has_no_statement_fallbacks(&payload.body));
 
     let program =
         compile_program_source(source, text).expect("CST-backed i64 condition should compile");
@@ -178,7 +178,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("CST source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    assert!(!payload.body.has_fallback_statements());
+    assert!(body_has_no_statement_fallbacks(&payload.body));
 
     let program =
         compile_program_source(source, text).expect("CST-backed i64 condition should compile");
@@ -366,7 +366,7 @@ fn main() {
     let then_body = if_payload.then_body().expect("then body payload");
 
     assert!(
-        !then_body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(then_body),
         "syntax-only if then body should not retain an owned body fallback"
     );
 }
@@ -393,7 +393,7 @@ fn main() {
     let else_body = if_payload.else_body().expect("else body payload");
 
     assert!(
-        !else_body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(else_body),
         "syntax-only if else body should not retain an owned body fallback"
     );
 }
@@ -413,7 +413,7 @@ fn main() {
     let semantic = parse_semantic_source(source, text).expect("CST source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "syntax-only i64 path condition should not retain an owned body fallback"
     );
     compile_program_source(source, text).expect("CST-backed path condition should compile");
@@ -434,7 +434,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("CST source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    assert!(!payload.body.has_fallback_statements());
+    assert!(body_has_no_statement_fallbacks(&payload.body));
 
     let program =
         compile_program_source(source, text).expect("CST-backed condition should compile");

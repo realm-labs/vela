@@ -330,7 +330,7 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
 
     assert!(
-        !payload.body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&payload.body),
         "syntax-only nested empty array block let should not retain an owned body fallback"
     );
     compiler
@@ -441,7 +441,7 @@ fn field_range_return(input) {
     for name in ["field_range_let", "field_range_return"] {
         let (payload, _, _) = semantic.function(name).expect("function payload");
         assert!(
-            !payload.body.has_fallback_statements(),
+            body_has_no_statement_fallbacks(&payload.body),
             "syntax-only {name} body should not retain an owned body fallback"
         );
     }

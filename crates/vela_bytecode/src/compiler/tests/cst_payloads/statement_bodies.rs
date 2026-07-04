@@ -154,7 +154,7 @@ fn main() {
         .expect("block body payload");
 
     assert!(
-        !body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&body),
         "syntax-only nested block should not retain an owned body fallback"
     );
 }

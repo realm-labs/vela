@@ -1008,7 +1008,7 @@ fn main(value) {
         .expect("match arm body block payload");
 
     assert!(
-        !body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&body),
         "syntax-only match arm block should not retain an owned body fallback"
     );
 }

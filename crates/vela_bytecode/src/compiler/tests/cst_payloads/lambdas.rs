@@ -225,7 +225,7 @@ fn main() {
         .expect("lambda block body payload");
 
     assert!(
-        !body.has_fallback_statements(),
+        body_has_no_statement_fallbacks(&body),
         "syntax-only lambda block body should not retain an owned body fallback"
     );
 }
