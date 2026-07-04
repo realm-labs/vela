@@ -1,4 +1,11 @@
 use super::*;
+
+fn lambda_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_lambda_bodies_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -64,7 +71,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = lambda_statement_payloads(&payload.body);
             compiler
                 .compile_statement_payload_for_test(&statements[0])
                 .expect("cst_outer let should compile");
@@ -131,7 +138,7 @@ fn main() {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_lambda = legacy_payload.body.statement_payloads()[0]
+    let legacy_lambda = lambda_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy lambda payload");
     let missing = body_payloads::CompilerExpressionPayload::syntax(
@@ -166,7 +173,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let lambda_payload = payload.body.statement_payloads()[0]
+            let lambda_payload = lambda_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("CST lambda initializer");
             let body_payload = lambda_payload
@@ -214,7 +221,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let body = payload.body.statement_payloads()[0]
+    let body = lambda_statement_payloads(&payload.body)[0]
         .let_initializer_expression_payload()
         .and_then(|payload| payload.lambda_body_payload())
         .and_then(|payload| payload.block_body_payload())
@@ -236,7 +243,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_lambda = legacy_payload.body.statement_payloads()[0]
+    let legacy_lambda = lambda_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy lambda payload");
     let missing_lambda =
@@ -256,8 +263,7 @@ fn assert_cst_let_initializer_lambda_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = lambda_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(lambda_body_block_payloads)
@@ -269,8 +275,7 @@ fn assert_cst_assignment_value_lambda_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = lambda_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -286,8 +291,7 @@ fn assert_cst_call_argument_lambda_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = lambda_statement_payloads(body)
         .iter()
         .flat_map(|statement| {
             statement
