@@ -1,5 +1,11 @@
 use super::*;
 
+fn call_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_value_call_arguments_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -123,7 +129,7 @@ fn main() {
 }
 "#,
         |_, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let cst_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -190,7 +196,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let legacy_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy call payload");
@@ -234,7 +240,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let legacy_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy call payload");
@@ -277,7 +283,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_call = legacy_payload.body.statement_payloads()[0]
+    let legacy_call = call_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy call payload");
     let missing_source_call =
@@ -325,7 +331,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_call = legacy_payload.body.statement_payloads()[0]
+    let legacy_call = call_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy call payload");
     let missing_call =
@@ -355,7 +361,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let cst_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -404,7 +410,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let cst_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -455,7 +461,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let cst_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -500,7 +506,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = call_statement_payloads(&payload.body);
             let cst_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -595,7 +601,7 @@ fn main(player: Player) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = call_statement_payloads(&payload.body);
     let cst_call = statements[1]
         .let_initializer_expression_payload()
         .expect("CST call payload");
@@ -729,7 +735,7 @@ fn main(cst: CstPlayer, legacy: LegacyPlayer) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = call_statement_payloads(&payload.body);
     let cst_call = statements[0]
         .let_initializer_expression_payload()
         .expect("CST remove call payload");
@@ -772,8 +778,7 @@ fn assert_cst_let_initializer_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(call_argument_block_payloads)
@@ -785,8 +790,7 @@ fn assert_cst_assignment_value_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -802,8 +806,7 @@ fn assert_cst_nested_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .flat_map(|statement| {
             statement
@@ -820,8 +823,7 @@ fn assert_cst_return_value_call_argument_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(call_argument_block_payloads)
@@ -833,8 +835,7 @@ fn assert_cst_call_argument_names(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&str],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .flat_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| payload.call_argument_payloads().unwrap_or_default())
@@ -847,8 +848,7 @@ fn assert_cst_let_initializer_call_callee_path_segments(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(|payload| payload.call_callee_payload())
@@ -939,9 +939,7 @@ fn callback_method() {
         .function("callback_method")
         .expect("callback_method function");
 
-    let actual = payload
-        .body
-        .statement_payloads()
+    let actual = call_statement_payloads(&payload.body)
         .iter()
         .flat_map(|statement| {
             statement
@@ -1003,7 +1001,7 @@ fn main() {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
-    let legacy_call = payload.body.statement_payloads()[0]
+    let legacy_call = call_statement_payloads(&payload.body)[0]
         .expression_payload()
         .expect("legacy expression payload");
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
@@ -1042,9 +1040,7 @@ fn callback_chain() {
     let (payload, _, _) = semantic
         .function("callback_chain")
         .expect("callback_chain function");
-    let initializer = payload
-        .body
-        .statement_payloads()
+    let initializer = call_statement_payloads(&payload.body)
         .into_iter()
         .find_map(|statement| statement.let_initializer_expression_payload())
         .expect("let initializer payload");
@@ -1077,8 +1073,7 @@ fn assert_cst_let_initializer_call_callee_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(call_callee_block_payloads)
@@ -1090,8 +1085,7 @@ fn assert_cst_let_initializer_method_receiver_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(method_receiver_block_payloads)
@@ -1103,8 +1097,7 @@ fn assert_cst_let_initializer_method_names(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&str],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = call_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(call_method_name)
