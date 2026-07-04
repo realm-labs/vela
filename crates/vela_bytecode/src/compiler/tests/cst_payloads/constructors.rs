@@ -153,9 +153,8 @@ fn build() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("build").expect("build function");
-    let argument_payloads = payload
-        .body
-        .statement_payloads()
+    let statements = constructor_statement_payloads(&payload.body);
+    let argument_payloads = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(|expression| expression.call_argument_payloads().unwrap_or_default())
@@ -166,9 +165,7 @@ fn build() {
         .collect::<Vec<_>>();
     assert_eq!(names, ["element", "amount"]);
 
-    let argument_bodies = payload
-        .body
-        .statement_payloads()
+    let argument_bodies = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .flat_map(|expression| {
@@ -215,7 +212,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = constructor_statement_payloads(&payload.body);
             let cst_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("CST call payload");
@@ -261,7 +258,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = constructor_statement_payloads(&payload.body);
             let legacy_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy tuple constructor payload");
@@ -308,7 +305,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = constructor_statement_payloads(&payload.body);
             let legacy_call = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy tuple constructor payload");
@@ -422,4 +419,10 @@ fn diagnostic_codes(diagnostics: &[vela_common::Diagnostic]) -> Vec<&str> {
         .iter()
         .filter_map(|diagnostic| diagnostic.code.as_deref())
         .collect()
+}
+
+fn constructor_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
 }
