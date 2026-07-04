@@ -9,6 +9,12 @@ fn body_fallback(
     fallback_statements_for_body(source, body)
 }
 
+fn match_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_match_scrutinees_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -43,7 +49,7 @@ fn classify(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("classify").expect("classify function");
-    let statement_payloads = payload.body.statement_payloads();
+    let statement_payloads = match_statement_payloads(&payload.body);
 
     let statement_scrutinee = statement_payloads
         .iter()
@@ -150,7 +156,7 @@ fn classify(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("classify").expect("classify function");
-    let statement_payloads = payload.body.statement_payloads();
+    let statement_payloads = match_statement_payloads(&payload.body);
 
     let statement_arm_payloads = statement_payloads
         .iter()
@@ -243,7 +249,7 @@ fn classify(result) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("classify").expect("classify function");
-    let statement_payloads = payload.body.statement_payloads();
+    let statement_payloads = match_statement_payloads(&payload.body);
     let return_arm_payloads = statement_payloads
         .iter()
         .flat_map(|statement| {
@@ -342,9 +348,7 @@ fn classify(state) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("classify").expect("classify function");
-    let arm_payloads = payload
-        .body
-        .statement_payloads()
+    let arm_payloads = match_statement_payloads(&payload.body)
         .iter()
         .flat_map(|statement| {
             cst_return_value_match_arms_from_expression(statement).unwrap_or_default()
@@ -1000,7 +1004,7 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let arm = payload.body.statement_payloads()[0]
+    let arm = match_statement_payloads(&payload.body)[0]
         .expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
         .expect("match arm payloads")
@@ -1036,7 +1040,7 @@ fn assert_scrutinee_block_payload(
 fn first_return_match_pattern_syntax(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxPattern {
-    let statements = body.statement_payloads();
+    let statements = match_statement_payloads(body);
     statements[0]
         .return_value_expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
@@ -1086,7 +1090,7 @@ fn tuple_pattern_fields(pattern: &vela_syntax::ast::Pattern) -> &[vela_syntax::a
 fn first_return_match_syntax_arm(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxMatchArm {
-    let statements = body.statement_payloads();
+    let statements = match_statement_payloads(body);
     statements[0]
         .return_value_expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
@@ -1099,7 +1103,7 @@ fn first_return_match_syntax_arm(
 fn first_statement_match_syntax_arm(
     body: &body_payloads::CompilerBodyPayload<'_>,
 ) -> vela_syntax::ast::SyntaxMatchArm {
-    let statements = body.statement_payloads();
+    let statements = match_statement_payloads(body);
     statements[0]
         .expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
