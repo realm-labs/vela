@@ -338,23 +338,18 @@ fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock>
     expression.as_block()
 }
 
-fn match_arm_payloads_for_expr(
+fn match_arm_payloads_for_syntax(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
-    fallback: &MatchExpr,
 ) -> Option<Vec<CompilerMatchArmPayload>> {
-    let syntax_arms = syntax.arms();
-    if source.is_some() && syntax_arms.len() > fallback.arms.len() {
-        return None;
-    }
+    let source = source?;
     Some(
-        fallback
-            .arms
-            .iter()
-            .enumerate()
-            .map(|(index, _fallback)| CompilerMatchArmPayload {
-                source,
-                syntax: source.and_then(|_| syntax_arms.get(index).cloned()),
+        syntax
+            .arms()
+            .into_iter()
+            .map(|syntax| CompilerMatchArmPayload {
+                source: Some(source),
+                syntax: Some(syntax),
             })
             .collect(),
     )

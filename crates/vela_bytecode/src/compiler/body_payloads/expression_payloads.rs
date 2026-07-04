@@ -10,7 +10,7 @@ use super::{
     CompilerArgumentPayload, CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload,
     CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
     CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_syntax,
-    match_arm_payloads_for_expr, match_scrutinee_payload_for_expr,
+    match_arm_payloads_for_syntax, match_scrutinee_payload_for_expr,
 };
 
 impl<'ast> CompilerExpressionPayload<'ast> {
@@ -44,10 +44,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
-        let ExprKind::Match(match_expr) = &self.fallback.kind else {
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Match) {
             return None;
-        };
-        match_arm_payloads_for_expr(self.source, self.syntax.as_ref()?.as_match()?, match_expr)
+        }
+        match_arm_payloads_for_syntax(self.source, self.syntax.as_ref()?.as_match()?)
     }
 
     pub(in crate::compiler) fn match_scrutinee_payload(

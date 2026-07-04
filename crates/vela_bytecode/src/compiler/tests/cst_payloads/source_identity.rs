@@ -691,7 +691,7 @@ fn main(value) {
 }
 
 #[test]
-fn source_less_match_payload_does_not_expose_scrutinee_payload() {
+fn source_less_match_payload_does_not_expose_scrutinee_or_arm_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main(value) {
@@ -714,17 +714,13 @@ fn main(value) {
                 );
 
             assert!(missing_source.match_scrutinee_payload().is_none());
-            let missing_arms = missing_source
-                .match_arm_payloads()
-                .expect("source-less match arm payload shells");
-            assert!(!missing_arms[0].has_syntax());
-            assert!(!missing_arms[0].pattern_payload().has_syntax());
+            assert!(missing_source.match_arm_payloads().is_none());
         },
     );
 }
 
 #[test]
-fn source_less_statement_match_payload_does_not_expose_scrutinee_payload() {
+fn source_less_statement_match_payload_does_not_expose_scrutinee_or_arm_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main(value) {
@@ -751,16 +747,10 @@ fn main(value) {
                     .and_then(|payload| payload.match_scrutinee_payload())
                     .is_none()
             );
-            let missing_arms = missing_source
-                .expression_payload()
-                .and_then(|payload| payload.match_arm_payloads())
-                .expect("source-less statement match arm payload shells");
-            assert!(!missing_arms[0].has_syntax());
-            assert!(!missing_arms[0].pattern_payload().has_syntax());
             assert!(
                 missing_source
                     .expression_payload()
-                    .and_then(|payload| payload.match_scrutinee_payload())
+                    .and_then(|payload| payload.match_arm_payloads())
                     .is_none()
             );
         },

@@ -33,9 +33,10 @@ fn main() {
         panic!("expected legacy match fallback");
     };
     let arm_payloads = mismatched.match_arm_payloads();
-    assert!(
-        arm_payloads.is_none(),
-        "extra CST match arms must not be collapsed onto fallback arms"
+    assert_eq!(
+        arm_payloads.as_ref().map(Vec::len),
+        Some(2),
+        "extra CST match arms should remain visible to compile-boundary validation"
     );
 
     let error = compiler
@@ -84,9 +85,10 @@ fn main() {
     let arm_payloads = mismatched
         .expression_payload()
         .and_then(|payload| payload.match_arm_payloads());
-    assert!(
-        arm_payloads.is_none(),
-        "extra CST match arms must not be collapsed onto fallback arms"
+    assert_eq!(
+        arm_payloads.as_ref().map(Vec::len),
+        Some(2),
+        "extra CST match arms should remain visible to compile-boundary validation"
     );
 
     let error = compiler
