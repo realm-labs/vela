@@ -254,7 +254,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
                             )
                         })
                         .then_some(fallback);
-                    CompilerStatementPayload::new_with_fallback(
+                    CompilerStatementPayload::new_paired_for_tests(
                         self.syntax.source,
                         syntax,
                         fallback,
@@ -550,7 +550,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    fn new_with_fallback(
+    fn new_paired_for_tests(
         source: SourceId,
         syntax: Option<SyntaxStatement>,
         fallback: Option<&'ast Stmt>,
@@ -1091,25 +1091,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn match_scrutinee_payload_with_fallback(
-        &self,
-    ) -> Option<(&'ast MatchExpr, CompilerExpressionPayload<'ast>)> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
-            return None;
-        };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        let payload = match_scrutinee_payload_for_expr(
-            self.source,
-            self.syntax.as_ref()?.as_match()?,
-            match_expr,
-        );
-        Some((match_expr, payload))
-    }
-
-    #[cfg(test)]
     pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
             return None;
@@ -1383,51 +1364,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             #[cfg(test)]
             fallback,
         )
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn expression_if_payload_with_fallback(
-        &self,
-    ) -> Option<(&'ast IfExpr, CompilerIfPayload<'ast>)> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
-            return None;
-        };
-        let ExprKind::If(if_expr) = &expr.kind else {
-            return None;
-        };
-        let payload = if_payload_for_expr(
-            self.source,
-            self.expression()
-                .and_then(|expression| expression.as_if())
-                .or_else(|| self.syntax.as_ref()?.as_if())?,
-            if_expr,
-        )?;
-        Some((if_expr, payload))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn expression_match_payloads_with_fallback(
-        &self,
-    ) -> Option<(
-        &'ast MatchExpr,
-        CompilerExpressionPayload<'ast>,
-        Vec<CompilerMatchArmPayload>,
-    )> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
-            return None;
-        };
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        let syntax = self
-            .expression()
-            .and_then(|expression| expression.as_match())
-            .or_else(|| self.syntax.as_ref()?.as_match())?;
-        let scrutinee_payload =
-            match_scrutinee_payload_for_expr(self.source, syntax.clone(), match_expr);
-        let arm_payloads = match_arm_payloads_for_expr(self.source, syntax, match_expr)?;
-        Some((match_expr, scrutinee_payload, arm_payloads))
     }
 
     #[cfg(test)]

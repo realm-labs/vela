@@ -6,7 +6,8 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, SyntaxExpressionKind, SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, StmtKind, SyntaxExpressionKind,
+    SyntaxStatementKind,
 };
 
 fn assert_cst_param_default(
@@ -303,12 +304,7 @@ fn assert_cst_match_arm_body_payloads(
     let statements = body.statement_payloads();
     let actual = statements
         .iter()
-        .flat_map(|statement| {
-            statement
-                .expression_match_payloads_with_fallback()
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
-                .unwrap_or_default()
-        })
+        .flat_map(|statement| cst_match_arm_body_texts_from_statement(statement))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
 }
@@ -323,8 +319,7 @@ fn assert_cst_let_initializer_match_arm_body_payloads(
         .flat_map(|statement| {
             statement
                 .let_initializer_expression_payload()
-                .and_then(|payload| payload.match_payloads_with_fallback())
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .map(|payload| cst_match_arm_body_texts_from_payload(&payload))
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
@@ -341,8 +336,7 @@ fn assert_cst_return_value_match_arm_body_payloads(
         .flat_map(|statement| {
             statement
                 .return_value_expression_payload()
-                .and_then(|payload| payload.match_payloads_with_fallback())
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .map(|payload| cst_match_arm_body_texts_from_payload(&payload))
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
@@ -422,8 +416,7 @@ fn assert_cst_assignment_value_match_arm_body_payloads(
         .flat_map(|statement| {
             statement
                 .assignment_value_expression_payload()
-                .and_then(|payload| payload.match_payloads_with_fallback())
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
+                .map(|payload| cst_match_arm_body_texts_from_payload(&payload))
                 .unwrap_or_default()
         })
         .collect::<Vec<_>>();
@@ -479,12 +472,7 @@ fn assert_cst_call_argument_match_arm_body_payloads(
     let actual = statements
         .iter()
         .flat_map(|statement| statement.call_argument_value_payloads().unwrap_or_default())
-        .flat_map(|argument| {
-            argument
-                .match_payloads_with_fallback()
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
-                .unwrap_or_default()
-        })
+        .flat_map(|argument| cst_match_arm_body_texts_from_payload(&argument))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
 }
@@ -721,12 +709,7 @@ fn assert_cst_array_element_body_payloads(
         .collect::<Vec<_>>();
     let match_actual = elements
         .iter()
-        .flat_map(|element| {
-            element
-                .match_payloads_with_fallback()
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
-                .unwrap_or_default()
-        })
+        .flat_map(|element| cst_match_arm_body_texts_from_payload(element))
         .collect::<Vec<_>>();
     assert_eq!(block_actual, expected_statement_texts(expected_block));
     assert_eq!(then_actual, expected_statement_texts(expected_then));
@@ -743,14 +726,36 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
         .flat_map(|block| block.statement_payloads())
-        .flat_map(|statement| {
-            statement
-                .expression_match_payloads_with_fallback()
-                .map(|(match_expr, _, arms)| cst_match_arm_body_texts(match_expr, arms))
-                .unwrap_or_default()
-        })
+        .flat_map(|statement| cst_match_arm_body_texts_from_statement(&statement))
         .collect::<Vec<_>>();
     assert_eq!(actual, expected_statement_texts(expected));
+}
+
+fn cst_match_arm_body_texts_from_payload(
+    payload: &body_payloads::CompilerExpressionPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    let ExprKind::Match(match_expr) = &payload.fallback().kind else {
+        return Vec::new();
+    };
+    let Some(arms) = payload.match_arm_payloads() else {
+        return Vec::new();
+    };
+    cst_match_arm_body_texts(match_expr, arms)
+}
+
+fn cst_match_arm_body_texts_from_statement(
+    statement: &body_payloads::CompilerStatementPayload<'_>,
+) -> Vec<Vec<(SyntaxStatementKind, String)>> {
+    let Some(arms) = statement.match_arm_payloads() else {
+        return Vec::new();
+    };
+    let StmtKind::Expr(expr) = &statement.fallback().kind else {
+        return Vec::new();
+    };
+    let ExprKind::Match(match_expr) = &expr.kind else {
+        return Vec::new();
+    };
+    cst_match_arm_body_texts(match_expr.as_ref(), arms)
 }
 
 fn cst_match_arm_body_texts(

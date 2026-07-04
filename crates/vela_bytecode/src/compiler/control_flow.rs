@@ -540,8 +540,17 @@ impl Compiler<'_, '_> {
         &mut self,
         stmt: &CompilerStatementPayload<'_>,
     ) -> CompileResult<bool> {
-        let Some((match_expr, scrutinee_payload)) = stmt.match_scrutinee_payload_with_fallback()
-        else {
+        let StmtKind::Expr(expr) = &stmt.fallback().kind else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match statement payload",
+            )));
+        };
+        let ExprKind::Match(match_expr) = &expr.kind else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST match statement payload",
+            )));
+        };
+        let Some(scrutinee_payload) = stmt.match_scrutinee_payload() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match statement payload",
             )));

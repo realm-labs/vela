@@ -755,11 +755,7 @@ fn main(value) {
                 .expect("source-less statement match arm payload shells");
             assert!(!missing_arms[0].has_syntax());
             assert!(!missing_arms[0].pattern_payload().has_syntax());
-            assert!(
-                missing_source
-                    .expression_match_payloads_with_fallback()
-                    .is_none()
-            );
+            assert!(missing_source.match_scrutinee_payload().is_none());
         },
     );
 }

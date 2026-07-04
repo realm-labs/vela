@@ -198,8 +198,12 @@ impl Compiler<'_, '_> {
                 }
             }
             SyntaxExpressionKind::If => {
-                let Some((if_expr, if_payload)) = payload.expression_if_payload_with_fallback()
-                else {
+                let ExprKind::If(if_expr) = &expr.kind else {
+                    return Err(missing_cst_block_tail_payload(
+                        "missing CST block tail if payload",
+                    ));
+                };
+                let Some(if_payload) = payload.if_payload() else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail if payload",
                     ));
@@ -207,9 +211,17 @@ impl Compiler<'_, '_> {
                 self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))
             }
             SyntaxExpressionKind::Match => {
-                let Some((match_expr, scrutinee_payload, arm_payloads)) =
-                    payload.expression_match_payloads_with_fallback()
-                else {
+                let ExprKind::Match(match_expr) = &expr.kind else {
+                    return Err(missing_cst_block_tail_payload(
+                        "missing CST block tail match payload",
+                    ));
+                };
+                let Some(scrutinee_payload) = payload.match_scrutinee_payload() else {
+                    return Err(missing_cst_block_tail_payload(
+                        "missing CST block tail match payload",
+                    ));
+                };
+                let Some(arm_payloads) = payload.match_arm_payloads() else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail match payload",
                     ));

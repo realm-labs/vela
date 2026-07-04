@@ -78,23 +78,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn match_payloads_with_fallback(
-        &self,
-    ) -> Option<(
-        &'ast MatchExpr,
-        CompilerExpressionPayload<'ast>,
-        Vec<CompilerMatchArmPayload>,
-    )> {
-        let match_expr = self.fallback_match_expr()?;
-        self.source?;
-        let syntax = self.syntax.as_ref()?.as_match()?;
-        let scrutinee_payload =
-            match_scrutinee_payload_for_expr(self.source, syntax.clone(), match_expr);
-        let arm_payloads = match_arm_payloads_for_expr(self.source, syntax, match_expr)?;
-        Some((match_expr, scrutinee_payload, arm_payloads))
-    }
-
     fn fallback_match_expr(&self) -> Option<&'ast MatchExpr> {
         let ExprKind::Match(match_expr) = &self.fallback.kind else {
             return None;
