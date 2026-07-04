@@ -1,5 +1,11 @@
 use super::*;
 
+fn statement_body_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_block_statement_body_is_cst_payload() {
     let source = SourceId::new(1);
@@ -146,7 +152,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let body = payload.body.statement_payloads()[0]
+    let body = statement_body_payloads(&payload.body)[0]
         .block_body_payload()
         .expect("block body payload");
 
@@ -196,7 +202,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = statement_body_payloads(&payload.body);
             let for_statement = statements
                 .iter()
                 .find(|statement| {
@@ -233,7 +239,7 @@ fn main(flag) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = statement_body_payloads(&payload.body);
             let if_statement = statements
                 .iter()
                 .find(|statement| {
@@ -278,11 +284,11 @@ fn make(value) {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_statement = cst_payload.body.statement_payloads()[0]
+    let cst_statement = statement_body_payloads(&cst_payload.body)[0]
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
+    let fallback_statement = statement_body_payloads(&fallback_payload.body)[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
@@ -319,11 +325,11 @@ fn make(value) {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_statement = cst_payload.body.statement_payloads()[0]
+    let cst_statement = statement_body_payloads(&cst_payload.body)[0]
         .syntax_statement()
         .expect("cst statement syntax")
         .clone();
-    let fallback_statement = fallback_payload.body.statement_payloads()[1].fallback();
+    let fallback_statement = statement_body_payloads(&fallback_payload.body)[1].fallback();
     let mismatched =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
@@ -354,7 +360,7 @@ fn main(flag) {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = statement_body_payloads(&payload.body);
             let if_statement = statements
                 .iter()
                 .find(|statement| {
