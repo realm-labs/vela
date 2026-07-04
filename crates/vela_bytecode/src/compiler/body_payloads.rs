@@ -1046,16 +1046,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        Some(CompilerBodyPayload::nested_syntax(
-            self.source?,
-            self.expression()
-                .and_then(|expression| expression.as_block())
-                .or_else(|| self.syntax.as_ref()?.as_block())?,
-        ))
-    }
-
     pub(super) fn expression_statement_block_body_payload(
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {

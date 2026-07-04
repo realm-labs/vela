@@ -167,7 +167,10 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<bool> {
         match kind {
             SyntaxExpressionKind::Block => {
-                if let Some(body) = payload.expression_block_body_payload() {
+                if let Some(body) = payload
+                    .expression_payload()
+                    .and_then(|payload| payload.block_body_payload())
+                {
                     self.compile_block_payload_value_to(&body, dst)
                 } else {
                     Err(missing_cst_block_tail_payload(
