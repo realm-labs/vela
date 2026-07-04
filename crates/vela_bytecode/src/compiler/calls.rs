@@ -363,7 +363,10 @@ impl Compiler<'_, '_> {
                 return None;
             }
             let name = payload.syntax_field_name()?;
-            let (base, base_payload) = payload.field_base_payload_with_fallback()?;
+            let ExprKind::Field { base, .. } = &callee.kind else {
+                return None;
+            };
+            let base_payload = payload.field_base_payload()?;
             if !base_payload.is_aligned_with_paired_expr(base) {
                 return None;
             }
