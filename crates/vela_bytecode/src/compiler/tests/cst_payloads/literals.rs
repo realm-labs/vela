@@ -396,8 +396,8 @@ fn assert_cst_let_initializer_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = literal_statement_payloads(body);
+    let actual = statements
         .iter()
         .filter_map(|statement| {
             statement
@@ -412,8 +412,8 @@ fn assert_cst_call_argument_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = literal_statement_payloads(body);
+    let actual = statements
         .iter()
         .flat_map(|statement| {
             statement
@@ -430,8 +430,8 @@ fn assert_cst_return_value_literals(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[vela_syntax::ast::Literal],
 ) {
-    let actual = body
-        .statement_payloads()
+    let statements = literal_statement_payloads(body);
+    let actual = statements
         .iter()
         .filter_map(|statement| {
             statement
@@ -460,13 +460,19 @@ fn first_call_argument_value_payload<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
     statement_index: usize,
 ) -> body_payloads::CompilerExpressionPayload<'ast> {
-    body.statement_payloads()[statement_index]
+    literal_statement_payloads(body)[statement_index]
         .expression_payload()
         .and_then(|payload| payload.call_argument_value_payloads())
         .expect("call argument payloads")
         .into_iter()
         .next()
         .expect("call argument")
+}
+
+fn literal_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
 }
 
 fn literal_int(text: &str) -> vela_syntax::ast::Literal {
