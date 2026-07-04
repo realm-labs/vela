@@ -86,7 +86,6 @@ pub(in crate::compiler) struct CompilerArgumentPayload {
 pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
-    fallback_kind: Option<SyntaxExpressionKind>,
     fallback: &'ast vela_syntax::ast::Expr,
 }
 
@@ -1436,7 +1435,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Self {
             source,
             syntax,
-            fallback_kind: fallback_expr_syntax_kind(fallback),
             fallback,
         }
     }
@@ -1450,7 +1448,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
-        syntax_kind == SyntaxExpressionKind::Paren || self.fallback_kind == Some(syntax_kind)
+        syntax_kind == SyntaxExpressionKind::Paren
+            || fallback_expr_syntax_kind(self.fallback) == Some(syntax_kind)
     }
 
     fn paired_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
@@ -1461,7 +1460,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return false;
         }
         (kind == SyntaxExpressionKind::Literal
-            || self.fallback_kind == fallback_expr_syntax_kind(expr))
+            || fallback_expr_syntax_kind(self.fallback) == fallback_expr_syntax_kind(expr))
             && self.paired_expr_matches_stored_syntax_shape(expr)
     }
 
