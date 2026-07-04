@@ -1,14 +1,10 @@
 #[cfg(test)]
-use vela_syntax::ast::StmtKind;
-#[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 use vela_syntax::ast::{Block, Expr, ExprKind};
 
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
-#[cfg(test)]
-use crate::compiler::control_flow::classification::aligned_statement;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -107,24 +103,10 @@ impl Compiler<'_, '_> {
                     return Ok(done);
                 }
                 #[cfg(test)]
-                {
-                    let fallback = aligned_statement(tail).ok_or_else(|| {
-                        crate::compiler::CompileError::new(
-                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                                "mismatched CST block tail expression",
-                            ),
-                        )
-                    })?;
-                    let StmtKind::Expr(expr) = &fallback.kind else {
-                        return Err(crate::compiler::CompileError::new(
-                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                                "mismatched CST block tail expression",
-                            ),
-                        ));
-                    };
+                if let Some(expression_payload) = tail.expression_payload() {
+                    let expr = expression_payload.fallback();
                     return self.compile_block_tail_expr_to(expr, Some(tail), dst);
                 }
-                #[cfg_attr(test, allow(unreachable_code))]
                 Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
                         "unsupported CST block tail expression payload",
