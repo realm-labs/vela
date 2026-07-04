@@ -205,26 +205,19 @@ fn main() {
                     .clone(),
                 legacy_record.fallback(),
             );
-            let fallback_fields = mismatched_record
-                .fallback_record_fields()
-                .expect("fallback record fields");
             let record_fields = mismatched_record
                 .record_field_payloads()
                 .expect("record field payloads");
+            let record_values = mismatched_record
+                .record_field_value_payloads()
+                .expect("record field value payloads");
             assert_eq!(record_fields.len(), 1);
             assert_eq!(
                 record_fields[0].syntax_label_name().as_deref(),
                 Some("first")
             );
             assert_eq!(
-                record_fields[0]
-                    .value_expression_payload(
-                        fallback_fields[0]
-                            .value
-                            .as_ref()
-                            .expect("fallback field value"),
-                    )
-                    .expect("record field value payload")
+                record_values[0]
                     .syntax_expression()
                     .expect("CST record field value")
                     .syntax()
@@ -798,12 +791,7 @@ fn return_record() {
         .statement_payloads()
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| {
-            payload
-                .fallback_record_fields()
-                .and_then(|_fields| payload.record_field_payloads())
-                .unwrap_or_default()
-        })
+        .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
         .collect::<Vec<_>>();
     let record_field_names = record_fields
         .iter()
@@ -1092,19 +1080,7 @@ fn block_tail_containers() {
         .expression_payload()
         .expect("record tail expression payload");
     let record_actual = record_tail
-        .fallback_record_fields()
-        .and_then(|fields| {
-            let payloads = record_tail.record_field_payloads()?;
-            Some(
-                fields
-                    .iter()
-                    .zip(payloads)
-                    .filter_map(|(fallback, payload)| {
-                        payload.value_expression_payload(fallback.value.as_ref()?)
-                    })
-                    .collect::<Vec<_>>(),
-            )
-        })
+        .record_field_value_payloads()
         .expect("record field payloads")
         .into_iter()
         .filter_map(|value| {
@@ -1134,18 +1110,7 @@ fn assert_cst_let_initializer_record_field_value_body_payloads(
     let values = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| {
-            let Some(fields) = payload.fallback_record_fields() else {
-                return Vec::new();
-            };
-            fields
-                .iter()
-                .zip(payload.record_field_payloads().unwrap_or_default())
-                .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload(fallback.value.as_ref()?)
-                })
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|payload| payload.record_field_value_payloads().unwrap_or_default())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
         &values,
@@ -1168,18 +1133,7 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
         })
-        .flat_map(|payload| {
-            let Some(fields) = payload.fallback_record_fields() else {
-                return Vec::new();
-            };
-            fields
-                .iter()
-                .zip(payload.record_field_payloads().unwrap_or_default())
-                .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload(fallback.value.as_ref()?)
-                })
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|payload| payload.record_field_value_payloads().unwrap_or_default())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -1201,18 +1155,7 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
                 .and_then(|payload| payload.call_argument_value_payloads())
                 .unwrap_or_default()
         })
-        .flat_map(|payload| {
-            let Some(fields) = payload.fallback_record_fields() else {
-                return Vec::new();
-            };
-            fields
-                .iter()
-                .zip(payload.record_field_payloads().unwrap_or_default())
-                .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload(fallback.value.as_ref()?)
-                })
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|payload| payload.record_field_value_payloads().unwrap_or_default())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -1229,18 +1172,7 @@ fn assert_cst_return_value_record_field_value_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
-        .flat_map(|payload| {
-            let Some(fields) = payload.fallback_record_fields() else {
-                return Vec::new();
-            };
-            fields
-                .iter()
-                .zip(payload.record_field_payloads().unwrap_or_default())
-                .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload(fallback.value.as_ref()?)
-                })
-                .collect::<Vec<_>>()
-        })
+        .flat_map(|payload| payload.record_field_value_payloads().unwrap_or_default())
         .filter_map(|value| {
             let body = value.block_body_payload()?;
             Some(cst_statement_texts(&body))

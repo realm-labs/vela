@@ -570,6 +570,23 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn record_field_value_payloads(
+        &self,
+    ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
+        let fields = self.raw_record_fields()?;
+        let payloads = self.record_field_payloads()?;
+        Some(
+            fields
+                .iter()
+                .zip(payloads)
+                .filter_map(|(fallback, payload)| {
+                    payload.value_expression_payload(fallback.value.as_ref()?)
+                })
+                .collect(),
+        )
+    }
+
     pub(in crate::compiler) fn has_extra_record_fields(&self) -> bool {
         if self.source.is_none() {
             return false;
@@ -581,11 +598,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             return false;
         };
         syntax.fields().len() > fields.len()
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_record_fields(&self) -> Option<&'ast [RecordField]> {
-        self.raw_record_fields()
     }
 
     fn raw_record_fields(&self) -> Option<&'ast [RecordField]> {

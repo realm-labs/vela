@@ -418,29 +418,18 @@ fn main() {
                     record.syntax_expression().expect("record syntax").clone(),
                     record.fallback(),
                 );
-            let fallback_fields = missing_source
-                .fallback_record_fields()
-                .expect("fallback record fields");
             let fields = missing_source
                 .record_field_payloads()
                 .expect("record field payloads");
+            let values = missing_source
+                .record_field_value_payloads()
+                .expect("record field value payloads");
 
             assert!(!missing_source.has_extra_record_fields());
             assert!(!fields[0].has_syntax());
             assert!(!fields[0].has_value_syntax());
             assert_eq!(fields[0].syntax_label_name(), None);
-            assert!(
-                fields[0]
-                    .value_expression_payload(
-                        fallback_fields[0]
-                            .value
-                            .as_ref()
-                            .expect("fallback record field value"),
-                    )
-                    .expect("record field value payload")
-                    .syntax_expression()
-                    .is_none()
-            );
+            assert!(values[0].syntax_expression().is_none());
         },
     );
 }
