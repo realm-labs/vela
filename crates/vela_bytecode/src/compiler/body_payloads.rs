@@ -1028,24 +1028,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
         )
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn call_callee_payload(
-        &self,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
-        let ExprKind::Call { callee, .. } = &expr.kind else {
-            return None;
-        };
-        self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.expression()?.as_call()?.callee(),
-            callee,
-        ))
-    }
-
     pub(super) fn expression_statement_block_body_payload(
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {

@@ -342,7 +342,12 @@ fn main() {
                     statement.fallback(),
                 );
 
-            assert!(missing_source.call_callee_payload().is_none());
+            assert!(
+                missing_source
+                    .expression_payload()
+                    .and_then(|payload| payload.call_callee_payload())
+                    .is_none()
+            );
         },
     );
 }
