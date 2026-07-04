@@ -1,8 +1,8 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal,
-    MapEntry, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
+    AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal, MapEntry,
+    RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody, SyntaxMapEntry,
+    SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
 };
 
@@ -307,7 +307,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload>> {
-        let args = self.fallback_call_args()?;
+        let ExprKind::Call { args, .. } = &self.fallback.kind else {
+            return None;
+        };
         let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
         if syntax_args.len() > args.len() {
             return None;
@@ -327,7 +329,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_argument_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let args = self.fallback_call_args()?;
+        let ExprKind::Call { args, .. } = &self.fallback.kind else {
+            return None;
+        };
         Some(
             args.iter()
                 .zip(self.call_argument_payloads()?)
@@ -339,7 +343,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_callee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let callee = self.fallback_call_callee()?;
+        let ExprKind::Call { callee, .. } = &self.fallback.kind else {
+            return None;
+        };
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
@@ -348,37 +354,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    fn fallback_call_args(&self) -> Option<&'ast [Argument]> {
-        let ExprKind::Call { args, .. } = &self.fallback.kind else {
-            return None;
-        };
-        Some(args)
-    }
-
-    fn fallback_call_callee(&self) -> Option<&'ast Expr> {
-        let ExprKind::Call { callee, .. } = &self.fallback.kind else {
-            return None;
-        };
-        Some(callee)
-    }
-
     pub(in crate::compiler) fn field_base_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let base = self.fallback_field_base()?;
+        let ExprKind::Field { base, .. } = &self.fallback.kind else {
+            return None;
+        };
         self.source?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_field()?.receiver(),
             base,
         ))
-    }
-
-    fn fallback_field_base(&self) -> Option<&'ast Expr> {
-        let ExprKind::Field { base, .. } = &self.fallback.kind else {
-            return None;
-        };
-        Some(base)
     }
 
     pub(in crate::compiler) fn syntax_field_name(&self) -> Option<String> {
@@ -393,19 +380,14 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload<'ast>,
     )> {
         self.source?;
-        let (base, index) = self.fallback_index_operands()?;
+        let ExprKind::Index { base, index } = &self.fallback.kind else {
+            return None;
+        };
         let syntax = self.syntax.as_ref()?.as_index()?;
         Some((
             CompilerExpressionPayload::from_fallback(self.source, syntax.receiver(), base),
             CompilerExpressionPayload::from_fallback(self.source, syntax.index(), index),
         ))
-    }
-
-    fn fallback_index_operands(&self) -> Option<(&'ast Expr, &'ast Expr)> {
-        let ExprKind::Index { base, index } = &self.fallback.kind else {
-            return None;
-        };
-        Some((base, index))
     }
 
     pub(in crate::compiler) fn lambda_body_payload(
