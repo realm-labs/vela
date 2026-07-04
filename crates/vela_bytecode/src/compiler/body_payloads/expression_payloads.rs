@@ -801,7 +801,7 @@ impl CompilerMatchArmPayload {
     }
 
     pub(in crate::compiler) fn pattern_payload(&self) -> CompilerPatternPayload {
-        CompilerPatternPayload::from_fallback(
+        CompilerPatternPayload::from_syntax(
             self.source,
             self.source
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMatchArm::pattern)),
@@ -868,7 +868,7 @@ impl CompilerMatchArmPayload {
 }
 
 impl CompilerPatternPayload {
-    pub(in crate::compiler) fn from_fallback(
+    pub(in crate::compiler) fn from_syntax(
         source: Option<SourceId>,
         syntax: Option<SyntaxPattern>,
     ) -> Self {
@@ -950,7 +950,7 @@ impl CompilerPatternPayload {
                 .iter()
                 .enumerate()
                 .map(|(index, _fallback)| {
-                    CompilerPatternPayload::from_fallback(
+                    CompilerPatternPayload::from_syntax(
                         self.source,
                         syntax_fields.get(index).cloned(),
                     )
@@ -971,19 +971,19 @@ impl CompilerPatternPayload {
 
     #[cfg(test)]
     pub(in crate::compiler) fn syntax(syntax: vela_syntax::ast::SyntaxPattern) -> Self {
-        Self::from_fallback(Some(SourceId::new(1)), Some(syntax))
+        Self::from_syntax(Some(SourceId::new(1)), Some(syntax))
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(
         syntax: vela_syntax::ast::SyntaxPattern,
     ) -> Self {
-        Self::from_fallback(None, Some(syntax))
+        Self::from_syntax(None, Some(syntax))
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn missing_syntax(source: SourceId) -> Self {
-        Self::from_fallback(Some(source), None)
+        Self::from_syntax(Some(source), None)
     }
 
     #[cfg(test)]
@@ -1023,7 +1023,7 @@ impl CompilerRecordPatternFieldPayload {
     ) -> Option<CompilerPatternPayload> {
         fallback?;
         self.source?;
-        Some(CompilerPatternPayload::from_fallback(
+        Some(CompilerPatternPayload::from_syntax(
             self.source,
             self.syntax
                 .as_ref()

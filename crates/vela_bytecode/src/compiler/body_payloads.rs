@@ -923,7 +923,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         };
         index_pattern.as_ref()?;
         self.source?;
-        Some(CompilerPatternPayload::from_fallback(
+        Some(CompilerPatternPayload::from_syntax(
             self.source,
             self.syntax.as_ref()?.as_for()?.index_pattern(),
         ))
@@ -935,7 +935,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             return None;
         };
         self.source?;
-        Some(CompilerPatternPayload::from_fallback(
+        Some(CompilerPatternPayload::from_syntax(
             self.source,
             self.syntax.as_ref()?.as_for()?.value_pattern(),
         ))
