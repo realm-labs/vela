@@ -411,10 +411,6 @@ fn main(input, other) {
         cst_binary,
         legacy_binary.fallback(),
     );
-    assert!(
-        missing.fallback_binary_operands().is_some(),
-        "test payload should still carry fallback binary operands"
-    );
     let (_left, right) = missing
         .binary_operand_payloads()
         .expect("binary operand payloads");
@@ -553,10 +549,6 @@ fn main(lhs, rhs) {
             let binary = payload.body.statement_payloads()[0]
                 .let_initializer_expression_payload()
                 .expect("binary initializer payload");
-            assert!(
-                binary.fallback_binary_operands().is_some(),
-                "test payload should still carry fallback binary operands"
-            );
             let (left, _) = binary
                 .binary_operand_payloads()
                 .expect("binary operand payloads");

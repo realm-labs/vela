@@ -190,11 +190,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_unary_operand(&self) -> Option<&'ast Expr> {
-        self.raw_unary_operand()
-    }
-
     fn raw_unary_operand(&self) -> Option<&'ast Expr> {
         let ExprKind::Unary { expr, .. } = &self.fallback.kind else {
             return None;
@@ -219,11 +214,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_try_operand(&self) -> Option<&'ast Expr> {
-        self.raw_try_operand()
-    }
-
     fn raw_try_operand(&self) -> Option<&'ast Expr> {
         let ExprKind::Try(expr) = &self.fallback.kind else {
             return None;
@@ -244,13 +234,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             CompilerExpressionPayload::from_fallback(self.source, syntax.lhs(), left),
             CompilerExpressionPayload::from_fallback(self.source, syntax.rhs(), right),
         ))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_binary_operands(
-        &self,
-    ) -> Option<(BinaryOp, &'ast Expr, &'ast Expr)> {
-        self.raw_binary_operands()
     }
 
     fn raw_binary_operands(&self) -> Option<(BinaryOp, &'ast Expr, &'ast Expr)> {

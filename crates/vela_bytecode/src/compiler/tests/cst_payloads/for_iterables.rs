@@ -96,10 +96,6 @@ fn loop_values() {
         iterable_payloads[0].kind(),
         Some(SyntaxExpressionKind::Binary)
     );
-    assert!(
-        iterable_payloads[0].fallback_binary_operands().is_some(),
-        "test payload should still carry fallback range operands"
-    );
     let (range_start, range_end) = iterable_payloads[0]
         .binary_operand_payloads()
         .expect("range iterable should expose operand payloads");

@@ -80,10 +80,6 @@ fn main(left, right) {
                 );
 
             assert_eq!(missing_source.syntax_binary_operator(), None);
-            assert!(
-                missing_source.fallback_binary_operands().is_some(),
-                "test payload should still carry fallback binary operands"
-            );
             assert!(missing_source.binary_operand_payloads().is_none());
         },
     );
@@ -108,10 +104,6 @@ fn main(value, other) {
                 );
 
             assert_eq!(missing_source.syntax_unary_operator(), None);
-            assert!(
-                missing_source.fallback_unary_operand().is_some(),
-                "test payload should still carry the fallback unary operand"
-            );
             assert!(missing_source.unary_operand_payload().is_none());
         },
     );
@@ -142,10 +134,7 @@ fn main(value) {
                     try_expression.fallback(),
                 );
 
-            assert!(
-                try_expression.fallback_try_operand().is_some(),
-                "test payload should still carry the fallback try operand"
-            );
+            assert!(try_expression.try_operand_payload().is_some());
             assert!(missing_source.try_operand_payload().is_none());
         },
     );
