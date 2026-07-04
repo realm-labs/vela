@@ -1,5 +1,11 @@
 use super::*;
 
+fn wrapper_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_wrapper_operands_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -199,7 +205,7 @@ fn main(input) {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_paren = legacy_payload.body.statement_payloads()[0]
+    let legacy_paren = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy parenthesized payload");
     let missing = body_payloads::CompilerExpressionPayload::syntax(
@@ -232,7 +238,7 @@ fn main(input, other) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_unary = legacy_payload.body.statement_payloads()[0]
+    let legacy_unary = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy unary payload");
     let missing_unary =
@@ -269,7 +275,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_try = legacy_payload.body.statement_payloads()[0]
+    let legacy_try = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy try payload");
     let missing_try =
@@ -289,8 +295,7 @@ fn assert_cst_let_initializer_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(|payload| payload.unary_operand_payload())
@@ -306,8 +311,7 @@ fn assert_cst_assignment_value_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
@@ -327,8 +331,7 @@ fn assert_cst_call_argument_unary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .flat_map(|statement| {
             statement
@@ -349,8 +352,7 @@ fn assert_cst_call_argument_try_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .flat_map(|statement| {
             statement
@@ -371,8 +373,7 @@ fn assert_cst_return_value_try_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
         .filter_map(|payload| payload.try_operand_payload())
@@ -388,8 +389,7 @@ fn assert_cst_assignment_value_paren_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = wrapper_statement_payloads(body)
         .iter()
         .filter_map(|statement| {
             statement
