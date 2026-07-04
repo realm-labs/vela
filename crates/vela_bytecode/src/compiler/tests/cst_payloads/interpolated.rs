@@ -1,5 +1,11 @@
 use super::*;
 
+fn interpolated_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn simple_interpolated_let_and_return_compile_without_owned_body_lookup() {
     let source = SourceId::new(1);
@@ -81,7 +87,7 @@ fn main() {
 }
 "#,
         |_compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = interpolated_statement_payloads(&payload.body);
             let cst_interpolated = statements[2]
                 .let_initializer_expression_payload()
                 .expect("CST interpolated payload");
@@ -134,10 +140,10 @@ fn fallback_body() {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_interpolated = cst_payload.body.statement_payloads()[2]
+    let cst_interpolated = interpolated_statement_payloads(&cst_payload.body)[2]
         .let_initializer_expression_payload()
         .expect("CST interpolated payload");
-    let fallback_interpolated = fallback_payload.body.statement_payloads()[1]
+    let fallback_interpolated = interpolated_statement_payloads(&fallback_payload.body)[1]
         .let_initializer_expression_payload()
         .expect("fallback interpolated payload");
     let mismatched = body_payloads::CompilerExpressionPayload::syntax(
@@ -171,7 +177,7 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_interpolated = legacy_payload.body.statement_payloads()[1]
+    let legacy_interpolated = interpolated_statement_payloads(&legacy_payload.body)[1]
         .let_initializer_expression_payload()
         .expect("legacy interpolated payload");
     let missing_interpolated = body_payloads::CompilerExpressionPayload::missing_syntax(
@@ -218,8 +224,7 @@ fn assert_cst_let_initializer_interpolation_body_payloads(
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
     expected_match: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let interpolation_payloads = body
-        .statement_payloads()
+    let interpolation_payloads = interpolated_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| {

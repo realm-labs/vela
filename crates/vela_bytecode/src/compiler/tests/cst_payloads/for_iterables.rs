@@ -9,6 +9,12 @@ fn for_body_payload<'ast>(
     ))
 }
 
+fn for_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_for_iterable_values_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -38,9 +44,7 @@ fn loop_values() {
         .function("loop_values")
         .expect("loop_values function");
 
-    let iterable_payloads = payload
-        .body
-        .statement_payloads()
+    let iterable_payloads = for_statement_payloads(&payload.body)
         .into_iter()
         .filter_map(|statement| statement.for_iterable_expression_payload())
         .collect::<Vec<_>>();
@@ -207,7 +211,7 @@ fn main() {
         .expect("CST for statement");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
@@ -263,7 +267,7 @@ fn main() {
         .expect("CST for statement");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
@@ -316,7 +320,7 @@ fn main() {
         .expect("CST for statement");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = legacy_payload.body.statement_payloads()[0].fallback();
+    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
     let missing =
         body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
 
@@ -361,9 +365,7 @@ fn loop_patterns(results) {
     let (payload, _, _) = semantic
         .function("loop_patterns")
         .expect("loop_patterns function");
-    let for_statement = payload
-        .body
-        .statement_payloads()
+    let for_statement = for_statement_payloads(&payload.body)
         .into_iter()
         .find(|statement| statement.stored_statement_kind() == Some(SyntaxStatementKind::For))
         .expect("for statement payload");
