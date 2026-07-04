@@ -254,7 +254,7 @@ fn classify(result) {
         Some(vela_syntax::ast::SyntaxPatternKind::RecordVariant)
     );
     let record_fields = record_pattern
-        .record_field_payloads(record_pattern_fields(fallback_record_pattern))
+        .record_field_payloads()
         .expect("record pattern should expose field payloads");
     let field_labels = record_fields
         .iter()
@@ -266,7 +266,7 @@ fn classify(result) {
             syntax_pattern.clone(),
         );
     let missing_source_fields = missing_source_record
-        .record_field_payloads(record_pattern_fields(fallback_record_pattern))
+        .record_field_payloads()
         .expect("source-less record pattern should expose field payloads");
     assert!(
         !missing_source_record
@@ -301,7 +301,7 @@ fn classify(result) {
             .has_extra_tuple_pattern_fields(tuple_pattern_fields(fallback_tuple_pattern))
     );
     let tuple_fields = tuple_pattern
-        .tuple_pattern_payloads(tuple_pattern_fields(fallback_tuple_pattern))
+        .tuple_pattern_payloads()
         .expect("tuple pattern should expose field payloads");
     assert_eq!(
         tuple_fields[0]
@@ -448,16 +448,13 @@ fn legacy_record(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_tuple_payload, _, _) = semantic.function("cst_tuple").expect("cst tuple");
-    let (legacy_tuple_payload, _, _) = semantic.function("legacy_tuple").expect("legacy tuple");
     let (cst_record_payload, _, _) = semantic.function("cst_record").expect("cst record");
     let (legacy_record_payload, _, _) = semantic.function("legacy_record").expect("legacy record");
 
     let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
-    let legacy_tuple_pattern =
-        first_return_match_fallback_pattern(body_fallback(source, &legacy_tuple_payload.body));
     let mismatched_tuple = body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax);
     let tuple_fields = mismatched_tuple
-        .tuple_pattern_payloads(tuple_pattern_fields(legacy_tuple_pattern))
+        .tuple_pattern_payloads()
         .expect("tuple pattern should expose field payloads");
     assert_eq!(tuple_fields.len(), 2);
     let tuple_field_texts = tuple_fields
@@ -481,7 +478,7 @@ fn legacy_record(value) {
         first_return_match_fallback_pattern(body_fallback(source, &legacy_record_payload.body));
     let mismatched_record = body_payloads::CompilerPatternPayload::syntax(cst_record_syntax);
     let record_fields = mismatched_record
-        .record_field_payloads(record_pattern_fields(legacy_record_pattern))
+        .record_field_payloads()
         .expect("record pattern should expose field payloads");
     assert_eq!(record_fields.len(), 1);
     assert_eq!(

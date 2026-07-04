@@ -333,8 +333,7 @@ impl Compiler<'_, '_> {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 reject_extra_record_pattern_payloads(payload, fields)?;
-                let field_payloads =
-                    payload.and_then(|payload| payload.record_field_payloads(fields));
+                let field_payloads = payload.and_then(|payload| payload.record_field_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
                         record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
@@ -388,8 +387,7 @@ impl Compiler<'_, '_> {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
                 reject_extra_tuple_pattern_payloads(payload, fields)?;
-                let field_payloads =
-                    payload.and_then(|payload| payload.tuple_pattern_payloads(fields));
+                let field_payloads = payload.and_then(|payload| payload.tuple_pattern_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     if let Some(field_payload) = field_payload {
@@ -484,8 +482,7 @@ impl Compiler<'_, '_> {
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 reject_extra_record_pattern_payloads(payload, fields)?;
-                let field_payloads =
-                    payload.and_then(|payload| payload.record_field_payloads(fields));
+                let field_payloads = payload.and_then(|payload| payload.record_field_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
                         record_pattern_field_payload_at(field_payloads.as_deref(), index)?;
@@ -544,8 +541,7 @@ impl Compiler<'_, '_> {
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 reject_extra_tuple_pattern_payloads(payload, fields)?;
-                let field_payloads =
-                    payload.and_then(|payload| payload.tuple_pattern_payloads(fields));
+                let field_payloads = payload.and_then(|payload| payload.tuple_pattern_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
                     let field_declares_locals = match field_payload {

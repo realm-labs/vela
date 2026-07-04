@@ -902,7 +902,6 @@ impl CompilerPatternPayload {
 
     pub(in crate::compiler) fn record_field_payloads(
         &self,
-        fields: &[RecordPatternField],
     ) -> Option<Vec<CompilerRecordPatternFieldPayload>> {
         let syntax_fields = self
             .syntax
@@ -911,12 +910,11 @@ impl CompilerPatternPayload {
             .fields()
             .collect::<Vec<_>>();
         Some(
-            fields
-                .iter()
-                .enumerate()
-                .map(|(index, _fallback)| CompilerRecordPatternFieldPayload {
+            syntax_fields
+                .into_iter()
+                .map(|syntax| CompilerRecordPatternFieldPayload {
                     source: self.source,
-                    syntax: syntax_fields.get(index).cloned(),
+                    syntax: Some(syntax),
                 })
                 .collect(),
         )
@@ -937,7 +935,6 @@ impl CompilerPatternPayload {
 
     pub(in crate::compiler) fn tuple_pattern_payloads(
         &self,
-        fields: &[Pattern],
     ) -> Option<Vec<CompilerPatternPayload>> {
         let syntax_fields = self
             .syntax
@@ -946,15 +943,9 @@ impl CompilerPatternPayload {
             .patterns()
             .collect::<Vec<_>>();
         Some(
-            fields
-                .iter()
-                .enumerate()
-                .map(|(index, _fallback)| {
-                    CompilerPatternPayload::from_syntax(
-                        self.source,
-                        syntax_fields.get(index).cloned(),
-                    )
-                })
+            syntax_fields
+                .into_iter()
+                .map(|syntax| CompilerPatternPayload::from_syntax(self.source, Some(syntax)))
                 .collect(),
         )
     }

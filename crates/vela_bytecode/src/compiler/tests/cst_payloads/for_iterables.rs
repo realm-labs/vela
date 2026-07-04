@@ -374,15 +374,8 @@ fn loop_patterns(results) {
             .and_then(|pattern| pattern.pattern_kind()),
         Some(vela_syntax::ast::SyntaxPatternKind::RecordVariant)
     );
-    let vela_syntax::ast::StmtKind::For {
-        pattern: fallback_value_pattern,
-        ..
-    } = &for_statement.fallback().kind
-    else {
-        panic!("expected for statement");
-    };
     let record_fields = value_pattern
-        .record_field_payloads(record_pattern_fields(fallback_value_pattern))
+        .record_field_payloads()
         .expect("record pattern should expose field payloads");
     let field_labels = record_fields
         .iter()
@@ -402,13 +395,4 @@ fn loop_patterns(results) {
     );
 
     compile_program_source(source, text).expect("CST-backed for patterns should compile");
-}
-
-fn record_pattern_fields(
-    pattern: &vela_syntax::ast::Pattern,
-) -> &[vela_syntax::ast::RecordPatternField] {
-    let vela_syntax::ast::Pattern::RecordVariant { fields, .. } = pattern else {
-        panic!("expected record pattern");
-    };
-    fields
 }

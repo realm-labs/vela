@@ -287,18 +287,11 @@ fn fallback_tuple(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_tuple").expect("cst function");
-    let (fallback_payload, _, _) = semantic
-        .function("fallback_tuple")
-        .expect("fallback function");
     let cst_pattern = first_return_match_pattern_syntax(&cst_payload.body);
-    let fallback_pattern = first_return_match_fallback_pattern(fallback_statements_for_body(
-        source,
-        &fallback_payload.body,
-    ));
     let payload = body_payloads::CompilerPatternPayload::syntax(cst_pattern);
 
     let field_texts = payload
-        .tuple_pattern_payloads(tuple_pattern_fields(fallback_pattern))
+        .tuple_pattern_payloads()
         .expect("tuple pattern payloads")
         .into_iter()
         .map(|field| {
@@ -409,11 +402,4 @@ fn first_return_match_fallback_pattern(
         panic!("expected return match expression");
     };
     &match_expr.arms[0].pattern
-}
-
-fn tuple_pattern_fields(pattern: &vela_syntax::ast::Pattern) -> &[vela_syntax::ast::Pattern] {
-    let vela_syntax::ast::Pattern::TupleVariant { fields, .. } = pattern else {
-        panic!("expected tuple pattern");
-    };
-    fields
 }
