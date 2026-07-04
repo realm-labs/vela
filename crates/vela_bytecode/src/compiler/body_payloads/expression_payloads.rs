@@ -1,6 +1,6 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
-    Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, IfExpr, InterpolatedStringPart, Literal,
+    Argument, AssignOp, AstNode, BinaryOp, Expr, ExprKind, InterpolatedStringPart, Literal,
     MapEntry, MatchExpr, RecordField, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
     SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
     SyntaxRecordPatternField,
@@ -37,15 +37,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let if_expr = self.fallback_if_expr()?;
-        if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
-    }
-
-    fn fallback_if_expr(&self) -> Option<&'ast IfExpr> {
         let ExprKind::If(if_expr) = &self.fallback.kind else {
             return None;
         };
-        Some(if_expr)
+        if_payload_for_expr(self.source, self.syntax.as_ref()?.as_if()?, if_expr)
     }
 
     pub(in crate::compiler) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {

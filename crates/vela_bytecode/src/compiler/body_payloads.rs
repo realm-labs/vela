@@ -417,19 +417,16 @@ fn if_payload_for_expr<'ast>(
     let then_body = syntax
         .then_block()
         .map(|body| CompilerBodyPayload::nested_syntax(source, body));
-    let else_body = if matches!(fallback.else_branch.as_ref(), Some(ElseBranch::Block(_))) {
-        syntax
-            .else_block()
-            .map(|body| CompilerBodyPayload::nested_syntax(source, body))
+    let else_body = syntax
+        .else_block()
+        .map(|body| CompilerBodyPayload::nested_syntax(source, body));
+    let else_if = if let Some(syntax_if) = syntax.else_if() {
+        let Some(ElseBranch::If(if_expr)) = fallback.else_branch.as_ref() else {
+            return None;
+        };
+        if_payload_for_expr(Some(source), syntax_if, if_expr).map(Box::new)
     } else {
         None
-    };
-    let else_if = match fallback.else_branch.as_ref() {
-        Some(ElseBranch::If(if_expr)) => {
-            let syntax_if = syntax.else_if()?;
-            if_payload_for_expr(Some(source), syntax_if, if_expr).map(Box::new)
-        }
-        Some(ElseBranch::Block(_)) | None => None,
     };
     Some(CompilerIfPayload {
         condition,
