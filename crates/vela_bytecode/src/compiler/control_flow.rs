@@ -140,10 +140,7 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        #[cfg_attr(test, allow(unused_variables))]
-        let syntax_only = true;
-        #[cfg(test)]
-        let syntax_only = stmt.optional_fallback().is_none();
+        let syntax_only = stmt.is_syntax_only();
         if syntax_only
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?

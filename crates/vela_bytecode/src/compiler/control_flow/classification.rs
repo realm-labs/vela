@@ -42,7 +42,10 @@ pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
 pub(super) fn aligned_statement<'ast>(
     payload: &CompilerStatementPayload<'ast>,
 ) -> Option<&'ast Stmt> {
-    let fallback = payload.optional_fallback()?;
+    if payload.is_syntax_only() {
+        return None;
+    }
+    let fallback = payload.fallback();
     (payload.stored_statement_kind()? == statement_kind_for_stmt(fallback)).then_some(fallback)
 }
 

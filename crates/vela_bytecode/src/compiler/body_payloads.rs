@@ -577,9 +577,15 @@ impl<'ast> CompilerStatementPayload<'ast> {
             .expect("statement payload has no owned statement fallback")
     }
 
-    #[cfg(test)]
-    pub(super) fn optional_fallback(&self) -> Option<&'ast Stmt> {
-        self.fallback
+    pub(super) fn is_syntax_only(&self) -> bool {
+        #[cfg(test)]
+        {
+            self.fallback.is_none()
+        }
+        #[cfg(not(test))]
+        {
+            true
+        }
     }
 
     pub(super) fn statement_kind(&self) -> Option<SyntaxStatementKind> {
@@ -728,7 +734,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Let {
                 value: Some(value), ..
             }) => match &value.kind {
@@ -751,7 +757,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn let_initializer_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
         let StmtKind::Let {
             value: Some(value), ..
-        } = &self.optional_fallback()?.kind
+        } = &self.fallback?.kind
         else {
             return None;
         };
@@ -771,7 +777,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     ) -> Option<Vec<CompilerMatchArmPayload>> {
         let StmtKind::Let {
             value: Some(value), ..
-        } = &self.optional_fallback()?.kind
+        } = &self.fallback?.kind
         else {
             return None;
         };
@@ -791,7 +797,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         let StmtKind::Let {
             value: Some(value), ..
-        } = &self.optional_fallback()?.kind
+        } = &self.fallback?.kind
         else {
             return None;
         };
@@ -894,7 +900,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Return(Some(value))) => match &value.kind {
                 ExprKind::Block(block) => Some(block.statements.as_slice()),
                 _ => return None,
@@ -918,7 +924,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn return_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let StmtKind::Return(Some(value)) = &self.optional_fallback()?.kind else {
+        let StmtKind::Return(Some(value)) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::If(if_expr) = &value.kind else {
@@ -933,7 +939,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn return_value_match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
-        let StmtKind::Return(Some(value)) = &self.optional_fallback()?.kind else {
+        let StmtKind::Return(Some(value)) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Match(match_expr) = &value.kind else {
@@ -954,7 +960,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn return_value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Return(Some(value)) = &self.optional_fallback()?.kind else {
+        let StmtKind::Return(Some(value)) = &self.fallback?.kind else {
             return None;
         };
         Some(CompilerExpressionPayload::from_fallback(
@@ -968,7 +974,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn for_iterable_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::For { iterable, .. } = &self.optional_fallback()?.kind else {
+        let StmtKind::For { iterable, .. } = &self.fallback?.kind else {
             return None;
         };
         self.source?;
@@ -981,7 +987,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn for_index_pattern_payload(&self) -> Option<CompilerPatternPayload> {
-        let StmtKind::For { index_pattern, .. } = &self.optional_fallback()?.kind else {
+        let StmtKind::For { index_pattern, .. } = &self.fallback?.kind else {
             return None;
         };
         index_pattern.as_ref()?;
@@ -994,7 +1000,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn for_value_pattern_payload(&self) -> Option<CompilerPatternPayload> {
-        let StmtKind::For { .. } = &self.optional_fallback()?.kind else {
+        let StmtKind::For { .. } = &self.fallback?.kind else {
             return None;
         };
         self.source?;
@@ -1006,7 +1012,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::If(if_expr) = &expr.kind else {
@@ -1017,7 +1023,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Block(fallback)) => Some(fallback.statements.as_slice()),
             Some(_) => return None,
             None => None,
@@ -1033,7 +1039,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn for_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::For { body, .. }) => Some(body.statements.as_slice()),
             Some(_) => return None,
             None => None,
@@ -1047,7 +1053,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Match(match_expr) = &expr.kind else {
@@ -1058,7 +1064,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn match_scrutinee_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Match(match_expr) = &expr.kind else {
@@ -1080,7 +1086,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         Some(CompilerExpressionPayload::from_fallback(
@@ -1108,7 +1114,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn stored_assignment_operator(&self) -> Option<AssignOp> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Assign { .. } = &expr.kind else {
@@ -1121,7 +1127,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn assignment_target_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Assign { target, .. } = &expr.kind else {
@@ -1139,7 +1145,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn assignment_value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Assign { value, .. } = &expr.kind else {
@@ -1173,7 +1179,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn assignment_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Expr(expr)) => match &expr.kind {
                 ExprKind::Assign { value, .. } => match &value.kind {
                     ExprKind::Block(block) => Some(block.statements.as_slice()),
@@ -1193,7 +1199,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn assignment_value_if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Assign { value, .. } = &expr.kind else {
@@ -1213,7 +1219,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn assignment_value_match_arm_payloads(
         &self,
     ) -> Option<Vec<CompilerMatchArmPayload>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Assign { value, .. } = &expr.kind else {
@@ -1233,7 +1239,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Call { args, .. } = &expr.kind else {
@@ -1258,7 +1264,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn call_argument_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Call { args, .. } = &expr.kind else {
@@ -1276,7 +1282,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn call_callee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.optional_fallback()?.kind else {
+        let StmtKind::Expr(expr) = &self.fallback?.kind else {
             return None;
         };
         let ExprKind::Call { callee, .. } = &expr.kind else {
@@ -1292,7 +1298,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     #[cfg(test)]
     pub(super) fn expression_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Expr(expr)) => match &expr.kind {
                 ExprKind::Block(block) => Some(block.statements.as_slice()),
                 _ => return None,
@@ -1313,7 +1319,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {
         #[cfg(test)]
-        let fallback = match self.optional_fallback().map(|fallback| &fallback.kind) {
+        let fallback = match self.fallback.map(|fallback| &fallback.kind) {
             Some(StmtKind::Expr(expr)) => match &expr.kind {
                 ExprKind::Block(block) => Some(block.statements.as_slice()),
                 _ => return None,

@@ -64,11 +64,7 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
-                #[allow(unused_variables)]
-                let legacy_fallback_attached = false;
-                #[cfg(test)]
-                let legacy_fallback_attached = tail.optional_fallback().is_some();
-                let syntax_only = !legacy_fallback_attached;
+                let syntax_only = tail.is_syntax_only();
                 if syntax_only
                     && let Some((source, expression)) =
                         tail.expression_statement_syntax_expression()

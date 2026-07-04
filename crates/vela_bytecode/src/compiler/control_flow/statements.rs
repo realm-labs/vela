@@ -57,11 +57,7 @@ impl Compiler<'_, '_> {
                 "missing CST statement payload",
             )));
         };
-        #[allow(unused_variables)]
-        let legacy_fallback_attached = false;
-        #[cfg(test)]
-        let legacy_fallback_attached = stmt.optional_fallback().is_some();
-        let syntax_only = !legacy_fallback_attached;
+        let syntax_only = stmt.is_syntax_only();
         match syntax_kind {
             SyntaxStatementKind::Break => return self.compile_break(),
             SyntaxStatementKind::Continue => return self.compile_continue(),
