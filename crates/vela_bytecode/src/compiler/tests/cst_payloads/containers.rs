@@ -1,5 +1,11 @@
 use super::*;
 
+fn container_statement_payloads<'ast>(
+    body: &body_payloads::CompilerBodyPayload<'ast>,
+) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
+    paired_statement_payloads_for_body(body.syntax_payload().source, body)
+}
+
 #[test]
 fn semantic_function_array_element_values_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -129,7 +135,7 @@ fn main() {
 }
 "#,
         |_compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = container_statement_payloads(&payload.body);
 
             let cst_array = statements[0]
                 .let_initializer_expression_payload()
@@ -251,7 +257,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let array = payload.body.statement_payloads()[0]
+            let array = container_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("array payload");
             let missing = body_payloads::CompilerExpressionPayload::missing_syntax(
@@ -284,7 +290,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let record = payload.body.statement_payloads()[0]
+            let record = container_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("record payload");
             let missing_path =
@@ -337,7 +343,7 @@ fn main() {
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_array = legacy_payload.body.statement_payloads()[0]
+    let legacy_array = container_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy array payload");
     let missing = body_payloads::CompilerExpressionPayload::syntax(
@@ -374,7 +380,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = container_statement_payloads(&payload.body);
             let cst_array = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST array payload");
@@ -440,7 +446,7 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let statements = payload.body.statement_payloads();
+            let statements = container_statement_payloads(&payload.body);
             let cst_array = statements[0]
                 .let_initializer_expression_payload()
                 .expect("CST array payload");
@@ -587,9 +593,7 @@ fn return_map() {
             "{\n        start: {\n            let start = 1;\n            start\n        },\n        next: if true {\n            let next = 2;\n            next\n        } else {\n            0\n        },\n        matched: match 0 {\n            0 => {\n                let zero = 1;\n                zero\n            },\n            _ => {\n                2\n            },\n        },\n    }",
         )],
     );
-    let map_entries = payload
-        .body
-        .statement_payloads()
+    let map_entries = container_statement_payloads(&payload.body)
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| payload.map_entry_payloads().unwrap_or_default())
@@ -685,7 +689,7 @@ fn main() {
         .expect("CST map entry");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_map = legacy_payload.body.statement_payloads()[0]
+    let legacy_map = container_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy map payload");
     let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
@@ -786,9 +790,7 @@ fn return_record() {
             ),
         ],
     );
-    let record_fields = payload
-        .body
-        .statement_payloads()
+    let record_fields = container_statement_payloads(&payload.body)
         .into_iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .flat_map(|payload| payload.record_field_payloads().unwrap_or_default())
@@ -894,7 +896,7 @@ fn main() {
         .expect("CST record field");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_record = legacy_payload.body.statement_payloads()[0]
+    let legacy_record = container_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy record payload");
     let ExprKind::Record {
@@ -923,8 +925,7 @@ fn assert_cst_let_initializer_record_paths(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
 ) {
-    let actual = body
-        .statement_payloads()
+    let actual = container_statement_payloads(body)
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
         .filter_map(|payload| payload.syntax_record_path_segments())
@@ -1025,14 +1026,14 @@ fn block_tail_containers() {
     let (payload, _, _) = semantic
         .function("block_tail_containers")
         .expect("block_tail_containers function");
-    let statements = payload.body.statement_payloads();
+    let statements = container_statement_payloads(&payload.body);
     let block_payloads = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_block_body_payload())
         .collect::<Vec<_>>();
     assert_eq!(block_payloads.len(), 2);
 
-    let array_block_statements = block_payloads[0].statement_payloads();
+    let array_block_statements = container_statement_payloads(&block_payloads[0]);
     let array_tail = array_block_statements
         .last()
         .expect("array block tail statement")
@@ -1073,7 +1074,7 @@ fn block_tail_containers() {
         ]])
     );
 
-    let record_block_statements = block_payloads[1].statement_payloads();
+    let record_block_statements = container_statement_payloads(&block_payloads[1]);
     let record_tail = record_block_statements
         .last()
         .expect("record block tail statement")
@@ -1106,7 +1107,7 @@ fn assert_cst_let_initializer_record_field_value_body_payloads(
     expected_else: &[Vec<(SyntaxStatementKind, &str)>],
     expected_match: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = body.statement_payloads();
+    let statements = container_statement_payloads(body);
     let values = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
@@ -1125,7 +1126,7 @@ fn assert_cst_assignment_value_record_field_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = body.statement_payloads();
+    let statements = container_statement_payloads(body);
     let actual = statements
         .iter()
         .filter_map(|statement| {
@@ -1146,7 +1147,7 @@ fn assert_cst_call_argument_record_field_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = body.statement_payloads();
+    let statements = container_statement_payloads(body);
     let actual = statements
         .iter()
         .flat_map(|statement| {
@@ -1168,7 +1169,7 @@ fn assert_cst_return_value_record_field_value_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected_block: &[Vec<(SyntaxStatementKind, &str)>],
 ) {
-    let statements = body.statement_payloads();
+    let statements = container_statement_payloads(body);
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
