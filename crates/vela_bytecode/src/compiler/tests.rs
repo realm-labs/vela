@@ -568,12 +568,7 @@ fn assert_cst_let_initializer_array_element_body_payloads(
     let elements = statements
         .iter()
         .filter_map(|statement| statement.let_initializer_expression_payload())
-        .flat_map(|payload| {
-            let Some(_items) = payload.fallback_array_items() else {
-                return Vec::new();
-            };
-            payload.array_element_payloads().unwrap_or_default()
-        })
+        .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
         .collect::<Vec<_>>();
     assert_cst_array_element_body_payloads(
         &elements,
@@ -596,12 +591,7 @@ fn assert_cst_assignment_value_array_element_body_payloads(
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
         })
-        .flat_map(|payload| {
-            let Some(_items) = payload.fallback_array_items() else {
-                return Vec::new();
-            };
-            payload.array_element_payloads().unwrap_or_default()
-        })
+        .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
         .filter_map(|element| {
             let body = element.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -618,12 +608,7 @@ fn assert_cst_return_value_array_element_body_payloads(
     let actual = statements
         .iter()
         .filter_map(|statement| statement.return_value_expression_payload())
-        .flat_map(|payload| {
-            let Some(_items) = payload.fallback_array_items() else {
-                return Vec::new();
-            };
-            payload.array_element_payloads().unwrap_or_default()
-        })
+        .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
         .filter_map(|element| {
             let body = element.block_body_payload()?;
             Some(cst_statement_texts(&body))
@@ -645,12 +630,7 @@ fn assert_cst_call_argument_array_element_body_payloads(
                 .and_then(|payload| payload.call_argument_value_payloads())
                 .unwrap_or_default()
         })
-        .flat_map(|payload| {
-            let Some(_items) = payload.fallback_array_items() else {
-                return Vec::new();
-            };
-            payload.array_element_payloads().unwrap_or_default()
-        })
+        .flat_map(|payload| payload.array_element_payloads().unwrap_or_default())
         .filter_map(|element| {
             let body = element.block_body_payload()?;
             Some(cst_statement_texts(&body))

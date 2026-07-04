@@ -145,9 +145,6 @@ fn main() {
                     .clone(),
                 legacy_array.fallback(),
             );
-            let _items = mismatched_array
-                .fallback_array_items()
-                .expect("fallback array items");
             let array_elements = mismatched_array
                 .array_element_payloads()
                 .expect("array element payloads");
@@ -356,9 +353,6 @@ fn main() {
         cst_array,
         legacy_array.fallback(),
     );
-    let _items = missing
-        .fallback_array_items()
-        .expect("fallback array items");
     let element_payloads = missing
         .array_element_payloads()
         .expect("array element payloads");
@@ -1062,9 +1056,6 @@ fn block_tail_containers() {
         .expect("array block tail statement")
         .expression_payload()
         .expect("array tail expression payload");
-    let _array_items = array_tail
-        .fallback_array_items()
-        .expect("fallback array items");
     let array_actual = array_tail
         .array_element_payloads()
         .expect("array element payloads")

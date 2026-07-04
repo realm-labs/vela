@@ -491,11 +491,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax.expressions().count() > items.len()
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_array_items(&self) -> Option<&'ast [Expr]> {
-        self.raw_array_items()
-    }
-
     fn raw_array_items(&self) -> Option<&'ast [Expr]> {
         let ExprKind::Array(items) = &self.fallback.kind else {
             return None;

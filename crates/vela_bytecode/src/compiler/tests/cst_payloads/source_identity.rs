@@ -354,9 +354,6 @@ fn main() {
                     array.syntax_expression().expect("array syntax").clone(),
                     array.fallback(),
                 );
-            let _items = missing_source
-                .fallback_array_items()
-                .expect("fallback array items");
             let elements = missing_source
                 .array_element_payloads()
                 .expect("array element payloads");
