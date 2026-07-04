@@ -225,7 +225,8 @@ impl Compiler<'_, '_> {
                     };
                     return self.compile_return_block_value(span, &body);
                 }
-                if syntax_payload_is_trusted
+                if stmt.is_syntax_only()
+                    && syntax_payload_is_trusted
                     && let Some((source, expression, _)) =
                         stmt.return_value_syntax_expression_and_span()
                     && let Some(compiled) =

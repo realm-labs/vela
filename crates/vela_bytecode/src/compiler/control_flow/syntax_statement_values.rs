@@ -2,8 +2,8 @@ use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr, SyntaxLiteral,
-    UnaryOp,
+    AssignOp, AstNode, BinaryOp, Literal, SyntaxElseBranch, SyntaxExpression, SyntaxIfExpr,
+    SyntaxLiteral, UnaryOp,
 };
 use vela_syntax::token::{InterpolatedStringTokenPart, TokenKind};
 
@@ -13,13 +13,17 @@ use crate::compiler::body_payloads::{
 };
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::operators::{
-    binary_literal_op, i64_immediate_instruction, i64_immediate_op_supported,
-    non_logical_binary_instruction,
+    binary_literal_op, compound_assignment_instruction, i64_immediate_instruction,
+    i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
-use crate::{BinaryLiteralSide, Constant, FormatStringPart};
+use crate::function_id_for_script_name;
+use crate::{
+    BinaryLiteralSide, CallArgument, Constant, DynamicCallArgument, FormatStringPart,
+    ScriptCallMode,
+};
 use crate::{Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
@@ -225,6 +229,21 @@ impl Compiler<'_, '_> {
                 .map(Some);
         }
         if let Some(register) = self.compile_syntax_path_unary(source, expression)? {
+            return Ok(Some(register));
+        }
+        if let Some(block) = expression.as_block() {
+            let dst = self.alloc_register()?;
+            let body = CompilerBodyPayload::nested_syntax(source, block);
+            self.compile_block_payload_value_to(&body, dst)?;
+            return Ok(Some(dst));
+        }
+        if let Some(register) = self.compile_syntax_index(source, expression)? {
+            return Ok(Some(register));
+        }
+        if let Some(register) = self.compile_syntax_assignment(source, expression)? {
+            return Ok(Some(register));
+        }
+        if let Some(register) = self.compile_syntax_call(source, expression)? {
             return Ok(Some(register));
         }
         if let Some(register) = self.compile_syntax_try(source, expression)? {
@@ -536,6 +555,289 @@ impl Compiler<'_, '_> {
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
         Ok(Some(dst))
     }
+    fn compile_syntax_assignment(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(assign) = expression.as_assign() else {
+            return Ok(None);
+        };
+        let Some(target_expression) = assign.target() else {
+            return Ok(None);
+        };
+        let Some(value_expression) = assign.value() else {
+            return Ok(None);
+        };
+        let Some(op) = assign.operator() else {
+            return Ok(None);
+        };
+        let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
+            return Ok(None);
+        };
+        if let Some(target_path) = expression_syntax_path_or_self(&target_expression) {
+            let [target_name] = target_path.as_slice() else {
+                return Ok(None);
+            };
+            let target_span = syntax_expression_span(source, &target_expression);
+            let target = self.local_register_at_span(target_span, target_name)?;
+            return self.compile_syntax_local_assignment(op, target, value);
+        }
+        if let Some(index_target) = target_expression.as_index() {
+            return self.compile_syntax_index_assignment(source, op, &index_target, value);
+        }
+        Ok(None)
+    }
+    fn compile_syntax_local_assignment(
+        &mut self,
+        op: AssignOp,
+        target: Register,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let assigned = match op {
+            AssignOp::Set => {
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst: target,
+                    src: value,
+                });
+                value
+            }
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let dst = self.alloc_register()?;
+                let instruction = compound_assignment_instruction(op, dst, target, value)
+                    .ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "compound assignment",
+                            ),
+                        )
+                    })?;
+                self.emit(instruction);
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst: target,
+                    src: dst,
+                });
+                dst
+            }
+        };
+        Ok(Some(assigned))
+    }
+    fn compile_syntax_index_assignment(
+        &mut self,
+        source: SourceId,
+        op: AssignOp,
+        target: &vela_syntax::ast::SyntaxIndexExpr,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let Some(receiver_expression) = target.receiver() else {
+            return Ok(None);
+        };
+        let Some(index_expression) = target.index() else {
+            return Ok(None);
+        };
+        let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
+            return Ok(None);
+        };
+        let Some(index) = self.compile_syntax_expression(source, &index_expression)? else {
+            return Ok(None);
+        };
+        let assigned = match op {
+            AssignOp::Set => value,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::GetIndex {
+                    dst: current,
+                    base,
+                    index,
+                });
+                let dst = self.alloc_register()?;
+                let instruction = compound_assignment_instruction(op, dst, current, value)
+                    .ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "compound assignment",
+                            ),
+                        )
+                    })?;
+                self.emit(instruction);
+                dst
+            }
+        };
+        self.emit(UnlinkedInstructionKind::SetIndex {
+            base,
+            index,
+            src: assigned,
+        });
+        Ok(Some(assigned))
+    }
+
+    fn compile_syntax_index(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(index) = expression.as_index() else {
+            return Ok(None);
+        };
+        let Some(receiver_expression) = index.receiver() else {
+            return Ok(None);
+        };
+        let Some(index_expression) = index.index() else {
+            return Ok(None);
+        };
+        let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
+            return Ok(None);
+        };
+        let Some(index) = self.compile_syntax_expression(source, &index_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_call(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(call) = expression.as_call() else {
+            return Ok(None);
+        };
+        let Some(callee) = call.callee() else {
+            return Ok(None);
+        };
+        let call_span = syntax_expression_span(source, expression);
+        let callee_span = syntax_expression_span(source, &callee);
+        let arguments = call.arguments();
+
+        if let Some(field) = callee.as_field() {
+            let Some(receiver_expression) = field.receiver() else {
+                return Ok(None);
+            };
+            let Some(method) = field.name_text() else {
+                return Ok(None);
+            };
+            let Some(receiver) = self.compile_syntax_expression(source, &receiver_expression)?
+            else {
+                return Ok(None);
+            };
+            let Some(args) = self.compile_syntax_dynamic_call_arguments(source, &arguments)? else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallDynamicMethod {
+                    dst,
+                    receiver,
+                    method,
+                    args,
+                },
+                call_span,
+            );
+            return Ok(Some(dst));
+        }
+
+        let Some(path) = expression_syntax_path_or_self(&callee) else {
+            return Ok(None);
+        };
+        if path.is_empty() {
+            return Ok(None);
+        }
+        if arguments
+            .iter()
+            .any(|argument| argument.name_text().is_some())
+        {
+            return Ok(None);
+        }
+
+        let dst = self.alloc_register()?;
+        if let Some((_declaration, name)) = self.script_function_call_at_span(callee_span) {
+            let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+                return Ok(None);
+            };
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallFunction {
+                    dst,
+                    target: function_id_for_script_name(&name),
+                    name,
+                    mode: ScriptCallMode::Unchecked,
+                    args: args.into_iter().map(CallArgument::Register).collect(),
+                },
+                call_span,
+            );
+            return Ok(Some(dst));
+        }
+
+        if self.local_callee_at_span(callee_span).is_some() {
+            let Some(callee) = self.compile_syntax_expression(source, &callee)? else {
+                return Ok(None);
+            };
+            let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+                return Ok(None);
+            };
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallClosure { dst, callee, args },
+                call_span,
+            );
+            return Ok(Some(dst));
+        }
+
+        let callee_name = path.join("::");
+        let native = self.resolve_native_function_id(&callee_name, callee_span)?;
+        let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+            return Ok(None);
+        };
+        self.emit_spanned(
+            UnlinkedInstructionKind::CallNative {
+                dst: Some(dst),
+                name: callee_name,
+                native,
+                cache_site: None,
+                args,
+            },
+            call_span,
+        );
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_call_arguments(
+        &mut self,
+        source: SourceId,
+        arguments: &[vela_syntax::ast::SyntaxArgument],
+    ) -> CompileResult<Option<Vec<Register>>> {
+        arguments
+            .iter()
+            .map(|argument| {
+                let Some(expression) = argument.expression() else {
+                    return Ok(None);
+                };
+                self.compile_syntax_expression(source, &expression)
+            })
+            .collect::<CompileResult<Option<Vec<_>>>>()
+    }
+
+    fn compile_syntax_dynamic_call_arguments(
+        &mut self,
+        source: SourceId,
+        arguments: &[vela_syntax::ast::SyntaxArgument],
+    ) -> CompileResult<Option<Vec<DynamicCallArgument>>> {
+        arguments
+            .iter()
+            .map(|argument| {
+                let Some(expression) = argument.expression() else {
+                    return Ok(None);
+                };
+                let Some(value) = self.compile_syntax_expression(source, &expression)? else {
+                    return Ok(None);
+                };
+                Ok(Some(DynamicCallArgument {
+                    name: argument.name_text(),
+                    value,
+                }))
+            })
+            .collect::<CompileResult<Option<Vec<_>>>>()
+    }
 
     fn compile_syntax_try(
         &mut self,
@@ -601,6 +903,46 @@ impl Compiler<'_, '_> {
             };
             let dst = self.alloc_register()?;
             self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
+            return Ok(Some(dst));
+        }
+        if let Some(record) = expression.as_record() {
+            let type_name = record.path_segments().join("::");
+            if type_name.is_empty() {
+                return Ok(None);
+            }
+            let fields = record
+                .fields()
+                .into_iter()
+                .map(|field| {
+                    let Some(name) = field.label_text() else {
+                        return Ok(None);
+                    };
+                    let value = if let Some(expression) = field.expression() {
+                        let Some(value) = self.compile_syntax_expression(source, &expression)?
+                        else {
+                            return Ok(None);
+                        };
+                        value
+                    } else if field.is_shorthand() {
+                        self.compile_path_expr(
+                            syntax_expression_span(source, expression),
+                            std::slice::from_ref(&name),
+                        )?
+                    } else {
+                        return Ok(None);
+                    };
+                    Ok(Some((name, value)))
+                })
+                .collect::<CompileResult<Option<Vec<_>>>>()?;
+            let Some(fields) = fields else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit(UnlinkedInstructionKind::MakeRecord {
+                dst,
+                type_name,
+                fields,
+            });
             return Ok(Some(dst));
         }
         Ok(None)

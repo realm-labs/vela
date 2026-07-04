@@ -163,7 +163,8 @@ impl Compiler<'_, '_> {
             let dst = self.alloc_register()?;
             return self.compile_block_payload_value_to(&body, dst);
         }
-        if syntax_payload_is_trusted
+        if stmt.is_syntax_only()
+            && syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
         {
