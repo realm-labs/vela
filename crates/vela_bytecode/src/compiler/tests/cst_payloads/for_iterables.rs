@@ -98,12 +98,11 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+            let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
                 source,
                 cst_body,
-                payload.body.fallback_statements(),
+                fallback_statements_for_body(source, &payload.body),
             );
-            let statements = mismatched_body.statement_payloads();
 
             compiler
                 .compile_statement_payloads(&statements)
@@ -156,12 +155,11 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let mismatched_body = body_payloads::CompilerBodyPayload::syntax(
+            let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
                 source,
                 cst_body,
-                payload.body.fallback_statements(),
+                fallback_statements_for_body(source, &payload.body),
             );
-            let statements = mismatched_body.statement_payloads();
 
             let error = compiler
                 .compile_statement_payloads(&statements)

@@ -33,7 +33,7 @@ fn with_static_type_compiler(
         registry: None,
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let fallback_body = payload.body.fallback_statements();
+    let fallback_body = fallback_statements_for_body(SourceId::new(1), &payload.body);
     let mut compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
         payload.body.clone(),

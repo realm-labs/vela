@@ -111,8 +111,36 @@ pub(super) enum CompilerBlockValue<'payload, 'ast> {
 
 impl<'ast> CompilerBodyPayload<'ast> {
     #[cfg(test)]
-    pub(super) fn syntax(source: SourceId, body: SyntaxBlock, fallback: &'ast [Stmt]) -> Self {
-        Self::with_fallback(source, body, fallback)
+    pub(super) fn paired_statement_payloads_for_test(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback_statements: &'ast [Stmt],
+    ) -> Vec<CompilerStatementPayload<'ast>> {
+        let syntax_statements = syntax_body_statements(&body);
+        fallback_statements
+            .iter()
+            .enumerate()
+            .map(|(index, fallback)| {
+                let syntax = syntax_statements.get(index).cloned();
+                let fallback = syntax_statements
+                    .get(index)
+                    .is_none_or(|statement| {
+                        let is_unterminated_tail =
+                            index == syntax_statements.len().saturating_sub(1);
+                        syntax_statement_requires_body_block_lookup(statement, is_unterminated_tail)
+                    })
+                    .then_some(fallback);
+                CompilerStatementPayload::new_paired_for_tests(source, syntax, fallback)
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(super) fn statement_counts_differ_for_test(
+        body: &SyntaxBlock,
+        fallback_statements: &[Stmt],
+    ) -> bool {
+        syntax_body_statements(body).len() != fallback_statements.len()
     }
 
     #[cfg(test)]
@@ -203,12 +231,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             }
         }
         Some(Self::syntax_only(source, body))
-    }
-
-    #[cfg(test)]
-    pub(super) fn fallback_statements(&self) -> &'ast [Stmt] {
-        self.fallback_statements
-            .expect("body payload has no owned statement fallback")
     }
 
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {

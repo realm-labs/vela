@@ -6,9 +6,10 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, StmtKind, SyntaxExpressionKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, StmtKind, SyntaxExpressionKind,
     SyntaxStatementKind,
 };
+use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 fn assert_cst_param_default(
     default: &Option<ParamDefaultValue>,
@@ -31,6 +32,25 @@ fn assert_cst_body(
     let payload = body.syntax_payload();
     assert_eq!(payload.source, expected_source);
     assert_eq!(payload.body.syntax().text().to_string(), expected_text);
+}
+
+fn fallback_statements_for_body(
+    source: SourceId,
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> &'static [Stmt] {
+    let syntax_body = &body.syntax_payload().body;
+    let body_text = syntax_body.syntax().text().to_string();
+    let range = syntax_body.syntax().text_range();
+    let start: u32 = range.start().into();
+    let end: u32 = range.end().into();
+    let mut text = " ".repeat(usize::try_from(start).expect("body start should fit usize"));
+    text.push_str(&body_text);
+    let span = Span::new(source, start, end);
+    let block = parse_owned_body_blocks_for_tests(source, &text, &[span])
+        .into_iter()
+        .next()
+        .expect("legacy fallback body should parse for test fixture");
+    Box::leak(block.statements.into_boxed_slice())
 }
 
 fn assert_cst_statements(

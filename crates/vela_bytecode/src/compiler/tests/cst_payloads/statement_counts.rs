@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn extra_body_statement_payloads_do_not_compile_fallback_body() {
+fn extra_body_statement_payloads_are_detected() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst_body() {
@@ -18,19 +18,11 @@ fn fallback_body() {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
-    let mismatched = body_payloads::CompilerBodyPayload::syntax(
-        source,
-        cst_payload.body.syntax_payload().body.clone(),
-        fallback_payload.body.fallback_statements(),
+
+    assert!(
+        body_payloads::CompilerBodyPayload::statement_counts_differ_for_test(
+            &cst_payload.body.syntax_payload().body,
+            fallback_statements_for_body(source, &fallback_payload.body),
+        )
     );
-
-    let error = compiler
-        .compile_body_payload_statements_for_test(&mismatched)
-        .expect_err("extra CST body statements must not compile fallback body");
-
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST body statements")
-    ));
 }

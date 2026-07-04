@@ -129,13 +129,11 @@ fn make(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
     let (legacy_payload, _, _) = semantic.function("legacy_body").expect("legacy function");
-    let mismatched = body_payloads::CompilerBodyPayload::syntax(
+    let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
         source,
         cst_payload.body.syntax_payload().body.clone(),
-        legacy_payload.body.fallback_statements(),
+        fallback_statements_for_body(source, &legacy_payload.body),
     );
-
-    let statements = mismatched.statement_payloads();
     assert_eq!(statements.len(), 2);
     assert_eq!(
         statements[0]
@@ -175,12 +173,11 @@ fn make(value) {
     let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
     let (legacy_payload, _, _) = semantic.function("legacy_body").expect("legacy function");
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_body");
-    let mismatched = body_payloads::CompilerBodyPayload::syntax(
+    let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
         source,
         cst_payload.body.syntax_payload().body.clone(),
-        legacy_payload.body.fallback_statements(),
+        fallback_statements_for_body(source, &legacy_payload.body),
     );
-    let statements = mismatched.statement_payloads();
 
     compiler
         .compile_statement_payload_for_test(&statements[0])
