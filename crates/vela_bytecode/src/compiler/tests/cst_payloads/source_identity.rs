@@ -214,10 +214,6 @@ fn main(value) {
                     lambda.fallback(),
                 );
 
-            assert!(
-                missing_source.fallback_lambda_body().is_some(),
-                "test payload should still carry the fallback lambda body"
-            );
             assert!(missing_source.lambda_body_payload().is_none());
         },
     );

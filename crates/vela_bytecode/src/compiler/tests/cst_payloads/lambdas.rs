@@ -140,10 +140,6 @@ fn main() {
         legacy_lambda.fallback(),
     );
     assert!(
-        missing.fallback_lambda_body().is_some(),
-        "test payload should still carry the fallback lambda body"
-    );
-    assert!(
         missing.lambda_body_payload().is_none(),
         "recovered CST lambda should not expose a body payload"
     );

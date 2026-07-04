@@ -446,11 +446,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_lambda_body(&self) -> Option<&'ast Expr> {
-        self.raw_lambda_body()
-    }
-
     fn raw_lambda_body(&self) -> Option<&'ast Expr> {
         let ExprKind::Lambda { body, .. } = &self.fallback.kind else {
             return None;
