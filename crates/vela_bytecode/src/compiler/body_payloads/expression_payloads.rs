@@ -307,19 +307,18 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload>> {
-        let ExprKind::Call { args, .. } = &self.fallback.kind else {
-            return None;
-        };
-        let syntax_args = self.syntax.as_ref()?.as_call()?.arguments();
-        if syntax_args.len() > args.len() {
+        if !self.matches_syntax_kind(SyntaxExpressionKind::Call) {
             return None;
         }
         Some(
-            args.iter()
-                .enumerate()
-                .map(|(index, _fallback)| CompilerArgumentPayload {
+            self.syntax
+                .as_ref()?
+                .as_call()?
+                .arguments()
+                .into_iter()
+                .map(|syntax| CompilerArgumentPayload {
                     source: self.source,
-                    syntax: syntax_args.get(index).cloned(),
+                    syntax: Some(syntax),
                 })
                 .collect(),
         )

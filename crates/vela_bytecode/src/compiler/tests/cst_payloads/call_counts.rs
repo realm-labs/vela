@@ -34,8 +34,10 @@ fn main() {
     };
     let arg_payloads = mismatched.call_argument_payloads();
     assert!(
-        arg_payloads.is_none(),
-        "extra CST call arguments must not be collapsed onto fallback arguments"
+        arg_payloads
+            .as_ref()
+            .is_some_and(|payloads| payloads.len() == 2),
+        "CST call argument payloads should preserve the syntax argument count"
     );
 
     let error = compiler
@@ -89,7 +91,7 @@ fn main() {
         mismatched
             .expression_payload()
             .and_then(|payload| payload.call_argument_payloads())
-            .is_none()
+            .is_some_and(|payloads| payloads.len() == 2)
     );
 
     let error = compiler

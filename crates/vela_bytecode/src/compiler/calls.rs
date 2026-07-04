@@ -57,7 +57,7 @@ impl Compiler<'_, '_> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;
         reject_mismatched_call_callee_payload(callee, callee_payload)?;
-        reject_mismatched_call_argument_payloads(callee_payload, arg_payloads)?;
+        reject_mismatched_call_argument_payloads(callee_payload, args, arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         let callee_span = match callee_payload {
