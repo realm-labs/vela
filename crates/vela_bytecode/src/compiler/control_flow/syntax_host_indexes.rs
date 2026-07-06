@@ -123,6 +123,21 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<Register>> {
+        let Some(index) = expression.as_index() else {
+            return Ok(None);
+        };
+        let Some(receiver_expression) = index.receiver() else {
+            return Ok(None);
+        };
+        let Some(index_expression) = index.index() else {
+            return Ok(None);
+        };
+        self.reject_invalid_syntax_host_index_read(
+            source,
+            expression,
+            &receiver_expression,
+            &index_expression,
+        )?;
         let Some(path) = self.syntax_root_host_index_path(source, expression) else {
             return Ok(None);
         };

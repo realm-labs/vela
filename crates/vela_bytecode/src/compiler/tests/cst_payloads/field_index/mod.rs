@@ -661,14 +661,20 @@ fn main() {
                 legacy_index.fallback(),
             );
 
-            let error = compiler
+            let register = compiler
                 .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
-                .expect_err("mismatched CST index payload must not compile");
+                .expect("mismatched fallback should not block CST index compilation");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST index expression payload")
-            ));
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        &instruction.kind,
+                        UnlinkedInstructionKind::GetStringKeyIndex { dst, .. } if *dst == register
+                    ))
+            );
         },
     );
 }

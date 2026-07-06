@@ -292,28 +292,37 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Index => {
-                let ExprKind::Index { base, index } = &expr.kind else {
-                    unreachable!("validated CST index expression payload kind");
-                };
-                if !payload_syntax_overlaps_expr(payload, expr) {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST index expression payload",
                     )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST index expression payload",
+                    )));
+                };
+                let Some(index) = expression.as_index() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST index expression payload",
+                    )));
+                };
+                if index.receiver().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST index receiver",
+                    )));
                 }
-                let operand_payloads = payload.index_operand_payloads();
-                let (base_payload, index_payload) = operand_payloads
-                    .as_ref()
-                    .map_or((None, None), |(base, index)| (Some(base), Some(index)));
-                reject_missing_expression_payload(base_payload, "missing CST index receiver")?;
-                reject_missing_expression_payload(index_payload, "missing CST index operand")?;
-                self.compile_index_expr(
-                    expr,
-                    base,
-                    index,
-                    base_payload,
-                    index_payload,
-                    Some(payload),
-                )
+                if index.index().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST index operand",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST index expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Lambda => {
                 let Some(source) = payload.source() else {

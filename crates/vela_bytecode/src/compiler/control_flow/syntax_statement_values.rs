@@ -1169,6 +1169,12 @@ impl Compiler<'_, '_> {
         let Some(index_expression) = index.index() else {
             return Ok(None);
         };
+        self.reject_invalid_syntax_host_index_read(
+            source,
+            expression,
+            &receiver_expression,
+            &index_expression,
+        )?;
         let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
             return Ok(None);
         };
@@ -1183,6 +1189,77 @@ impl Compiler<'_, '_> {
             self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
         }
         Ok(Some(dst))
+    }
+
+    pub(in crate::compiler::control_flow) fn reject_invalid_syntax_host_index_read(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        receiver_expression: &SyntaxExpression,
+        index_expression: &SyntaxExpression,
+    ) -> CompileResult<()> {
+        let Some(receiver_type) = self
+            .script_fact_for_syntax_expression(source, receiver_expression)
+            .map(|fact| fact.type_name)
+            .filter(|type_name| self.host_runtime_type_id(type_name).is_some())
+        else {
+            return Ok(());
+        };
+        let expression_span = syntax_expression_span(source, expression);
+        let receiver_span = syntax_expression_span(source, receiver_expression);
+        let Some(capability) = self.facts.options.host_index_capability(&receiver_type) else {
+            return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                vec![
+                    Diagnostic::error(format!(
+                        "type `{receiver_type}` does not support host index access"
+                    ))
+                    .with_code("analysis::host_index_not_supported")
+                    .with_span(expression_span)
+                    .with_label(
+                        expression_span,
+                        "host index access is not registered for this type",
+                    )
+                    .with_label(
+                        receiver_span,
+                        "register a host index capability or expose a field/method instead",
+                    ),
+                ],
+            )));
+        };
+        if !capability.readable {
+            return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                vec![
+                    Diagnostic::error(format!(
+                        "type `{receiver_type}` does not allow host index read"
+                    ))
+                    .with_code("analysis::host_index_not_readable")
+                    .with_span(expression_span)
+                    .with_label(expression_span, "host index read is not enabled")
+                    .with_label(receiver_span, "enable readable host index access"),
+                ],
+            )));
+        }
+        if let Some(expected) = capability.key_type.as_deref()
+            && let Some(actual) =
+                self.syntax_value_type_for_expression(Some(source), index_expression)
+            && actual.source_type_name() != expected
+            && actual.std_type_name() != expected
+        {
+            return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                vec![
+                    Diagnostic::error(format!(
+                        "host index key for `{receiver_type}` must be `{expected}`"
+                    ))
+                    .with_code("analysis::host_index_key_mismatch")
+                    .with_span(expression_span)
+                    .with_label(
+                        syntax_expression_span(source, index_expression),
+                        format!("index expression has type `{}`", actual.source_type_name()),
+                    ),
+                ],
+            )));
+        }
+        Ok(())
     }
 
     fn compile_syntax_call(

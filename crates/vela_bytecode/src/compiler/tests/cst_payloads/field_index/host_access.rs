@@ -1,3 +1,4 @@
+use crate::UnlinkedInstructionKind;
 use crate::compiler::assignments::{
     AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax,
 };
@@ -257,13 +258,23 @@ fn main(cst: CstMap, legacy: LegacyMap) {
         semantic_diagnostic_codes(cst_remove_error),
         ["analysis::host_index_not_removable"]
     );
-    let error = compiler
+    let register = compiler
         .compile_expr_with_payload(mismatched_index.fallback(), Some(&mismatched_index))
-        .expect_err("mismatched CST index payload must not compile");
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST index expression payload")
-    ));
+        .expect("mismatched fallback should not block CST host index compilation");
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::HostRead {
+                    dst,
+                    ref dynamic_args,
+                    ..
+                } if dst == register && dynamic_args.len() == 1
+            ))
+    );
 }
 
 #[test]
