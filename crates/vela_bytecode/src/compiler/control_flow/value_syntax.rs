@@ -1,5 +1,5 @@
 use crate::compiler::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
+    CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
 use crate::compiler::value_types::{RuntimeTypeFact, TypeContractContext};
 use crate::compiler::{CompileResult, Compiler};
@@ -13,7 +13,6 @@ use crate::compiler::expression_facts::{
 pub(super) struct ValueSyntaxPayloads<'payload, 'ast> {
     pub(super) kind: Option<SyntaxExpressionKind>,
     pub(super) expression: Option<&'payload CompilerExpressionPayload<'ast>>,
-    pub(super) block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     pub(super) if_expr: Option<&'payload CompilerIfPayload<'ast>>,
     pub(super) match_arms: Option<&'payload [CompilerMatchArmPayload]>,
     pub(super) syntax_value_missing: bool,
@@ -23,7 +22,6 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
     pub(super) fn new(
         kind: Option<SyntaxExpressionKind>,
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
-        block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
         match_arms: Option<&'payload [CompilerMatchArmPayload]>,
         syntax_value_missing: bool,
@@ -31,7 +29,6 @@ impl<'payload, 'ast> ValueSyntaxPayloads<'payload, 'ast> {
         Self {
             kind,
             expression,
-            block_body,
             if_expr,
             match_arms,
             syntax_value_missing,

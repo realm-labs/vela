@@ -293,7 +293,6 @@ impl Compiler<'_, '_> {
         }
         match kind {
             SyntaxStatementKind::Let => {
-                let initializer_body = stmt.let_initializer_block_body_payload();
                 let initializer_expression = stmt.let_initializer_expression_payload();
                 let initializer_if = initializer_expression
                     .as_ref()
@@ -301,13 +300,6 @@ impl Compiler<'_, '_> {
                 let initializer_match_arms = initializer_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::match_arm_payloads);
-                if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::Block)
-                    && initializer_body.is_none()
-                {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST let initializer block body payload",
-                    )));
-                }
                 if stmt.stored_let_initializer_kind() == Some(SyntaxExpressionKind::If)
                     && initializer_if.is_none()
                 {
@@ -338,7 +330,6 @@ impl Compiler<'_, '_> {
                     ValueSyntaxPayloads::new(
                         stmt.stored_let_initializer_kind(),
                         initializer_expression.as_ref(),
-                        initializer_body.as_ref(),
                         initializer_if.as_ref(),
                         initializer_match_arms.as_deref(),
                         stmt.let_initializer_missing_in_syntax(),
@@ -346,7 +337,6 @@ impl Compiler<'_, '_> {
                 )
             }
             SyntaxStatementKind::Return => {
-                let value_body = stmt.return_value_block_body_payload();
                 let value_expression = stmt.return_value_expression_payload();
                 let value_if = value_expression
                     .as_ref()
@@ -370,7 +360,6 @@ impl Compiler<'_, '_> {
                     ValueSyntaxPayloads::new(
                         stmt.stored_return_value_kind(),
                         value_expression.as_ref(),
-                        value_body.as_ref(),
                         value_if.as_ref(),
                         value_match_arms.as_deref(),
                         stmt.return_value_missing_in_syntax(),

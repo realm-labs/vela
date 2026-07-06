@@ -91,7 +91,6 @@ impl Compiler<'_, '_> {
                 expression,
                 None,
                 None,
-                None,
                 false,
             ),
         )
@@ -109,7 +108,7 @@ impl Compiler<'_, '_> {
             TypeContractContext::TypedLet {
                 name: "value".to_owned(),
             },
-            ValueSyntaxPayloads::new(Some(kind), None, None, None, None, false),
+            ValueSyntaxPayloads::new(Some(kind), None, None, None, false),
         )
     }
 
@@ -128,7 +127,6 @@ impl Compiler<'_, '_> {
                 expression,
                 None,
                 None,
-                None,
                 false,
             ),
         )
@@ -144,8 +142,33 @@ impl Compiler<'_, '_> {
             value,
             None,
             TypeContractContext::Return,
-            ValueSyntaxPayloads::new(Some(kind), None, None, None, None, false),
+            ValueSyntaxPayloads::new(Some(kind), None, None, None, false),
         )
+    }
+
+    #[cfg(test)]
+    fn compile_value_payload_block_expr_to(
+        &mut self,
+        expression_payload: Option<&CompilerExpressionPayload<'_>>,
+        dst: Register,
+        missing_message: &'static str,
+    ) -> CompileResult<Option<bool>> {
+        let Some(expression_payload) = expression_payload else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                missing_message,
+            )));
+        };
+        let Some(source) = expression_payload.source() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                missing_message,
+            )));
+        };
+        let Some(expression) = expression_payload.syntax_expression() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                missing_message,
+            )));
+        };
+        self.compile_syntax_block_expr_to(source, expression, dst)
     }
 
     fn compile_block_statement_payload(
@@ -272,11 +295,11 @@ impl Compiler<'_, '_> {
         match kind {
             SyntaxStatementKind::Let => self.compile_let_statement(
                 stmt,
-                ValueSyntaxPayloads::new(None, None, None, None, None, false),
+                ValueSyntaxPayloads::new(None, None, None, None, false),
             ),
             SyntaxStatementKind::Return => self.compile_return_statement(
                 stmt,
-                ValueSyntaxPayloads::new(None, None, None, None, None, false),
+                ValueSyntaxPayloads::new(None, None, None, None, false),
             ),
             SyntaxStatementKind::Break => {
                 let StmtKind::Break = &stmt.kind else {
@@ -564,12 +587,16 @@ impl Compiler<'_, '_> {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let dst = self.alloc_register()?;
-                let Some(body_payload) = syntax_payloads.block_body else {
+                let Some(returned) = self.compile_value_payload_block_expr_to(
+                    syntax_payloads.expression,
+                    dst,
+                    "missing CST let initializer block body payload",
+                )?
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST let initializer block body payload",
                     )));
                 };
-                let returned = self.compile_block_payload_value_to(body_payload, dst)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {
@@ -760,12 +787,16 @@ impl Compiler<'_, '_> {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let dst = self.alloc_register()?;
-                let Some(body_payload) = syntax_payloads.block_body else {
+                let Some(returned) = self.compile_value_payload_block_expr_to(
+                    syntax_payloads.expression,
+                    dst,
+                    "missing CST return block body payload",
+                )?
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return block body payload",
                     )));
                 };
-                let returned = self.compile_block_payload_value_to(body_payload, dst)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::If => {

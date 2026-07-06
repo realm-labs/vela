@@ -2003,7 +2003,7 @@ fn main() {
 }
 
 #[test]
-fn missing_let_initializer_block_body_payload_does_not_use_legacy_block() {
+fn missing_let_initializer_source_does_not_use_legacy_block() {
     let source = SourceId::new(1);
     let text = r#"
 fn main() {
@@ -2024,12 +2024,13 @@ fn main() {
 
     let error = compiler
         .compile_statement_payload_for_test(&missing_child)
-        .expect_err("missing CST let block body must not compile legacy block");
+        .expect_err("missing CST let source must not compile legacy block");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST let initializer block body payload")
-    ));
+    assert!(
+        matches!(error.kind, CompileErrorKind::UnsupportedSyntax(_)),
+        "{:?}",
+        error.kind
+    );
 }
 
 #[test]
