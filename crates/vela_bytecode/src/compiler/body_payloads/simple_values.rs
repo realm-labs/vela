@@ -1,15 +1,23 @@
+#[cfg(test)]
 use std::collections::BTreeMap;
 
+#[cfg(test)]
 use vela_common::SourceId;
+#[cfg(test)]
 use vela_syntax::SyntaxKind;
+use vela_syntax::ast::{BinaryOp, IntegerSuffix, Literal, SyntaxExpression, UnaryOp};
+#[cfg(test)]
 use vela_syntax::ast::{
-    BinaryOp, FloatSuffix, IntegerSuffix, Literal, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxStatement, SyntaxStatementKind, UnaryOp,
+    FloatSuffix, SyntaxElseBranch, SyntaxExpressionKind, SyntaxIfExpr, SyntaxStatement,
+    SyntaxStatementKind,
 };
 
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerBodyPayload;
+#[cfg(test)]
 use crate::compiler::const_eval::evaluate_syntax_const_expr;
 
+#[cfg(test)]
 pub(super) fn syntax_statement_requires_body_block_lookup(
     statement: &SyntaxStatement,
     allow_unterminated_cst_expression: bool,
@@ -118,6 +126,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
     }
 }
 
+#[cfg(test)]
 fn syntax_expression_statement_is_cst_lowerable(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_inline_constant(expression)
         || syntax_expression_is_simple_path(expression)
@@ -191,6 +200,7 @@ pub(in crate::compiler) fn expression_syntax_negated_number_literal(
     expression_syntax_negatable_number_literal(&operand)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_literal(&inner);
@@ -202,6 +212,7 @@ fn syntax_expression_is_simple_literal(expression: &SyntaxExpression) -> bool {
         && literal.literal().is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_interpolated_string(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_interpolated_string(&inner);
@@ -220,6 +231,7 @@ fn syntax_expression_is_simple_interpolated_string(expression: &SyntaxExpression
     all_supported && has_field_value
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_interpolation_value(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_interpolation_value(&inner);
@@ -237,6 +249,7 @@ fn syntax_expression_is_simple_interpolation_value(expression: &SyntaxExpression
         || syntax_expression_is_simple_path_numeric_arithmetic(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_if_value(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_if_value(&inner);
@@ -246,6 +259,7 @@ fn syntax_expression_is_simple_if_value(expression: &SyntaxExpression) -> bool {
         .is_some_and(|if_expr| syntax_if_is_simple_value(&if_expr))
 }
 
+#[cfg(test)]
 fn syntax_if_is_simple_value(if_expr: &SyntaxIfExpr) -> bool {
     let Some(condition) = if_expr.condition() else {
         return false;
@@ -270,6 +284,7 @@ fn syntax_if_is_simple_value(if_expr: &SyntaxIfExpr) -> bool {
     }
 }
 
+#[cfg(test)]
 fn syntax_if_statement_is_cst_lowerable(if_expr: &SyntaxIfExpr) -> bool {
     let Some(condition) = if_expr.condition() else {
         return false;
@@ -292,6 +307,7 @@ fn syntax_if_statement_is_cst_lowerable(if_expr: &SyntaxIfExpr) -> bool {
     }
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_if_statement_condition(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_if_statement_condition(&inner);
@@ -299,6 +315,7 @@ fn syntax_expression_is_simple_if_statement_condition(expression: &SyntaxExpress
     expression.as_block().is_none() && syntax_expression_is_simple_interpolation_value(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path(&inner);
@@ -308,14 +325,17 @@ fn syntax_expression_is_simple_path(expression: &SyntaxExpression) -> bool {
         .is_some_and(|path| path.is_self() || !path.path_segments().is_empty())
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_or_field(expression: &SyntaxExpression) -> bool {
     expression_syntax_path_or_field(expression).is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_field(expression: &SyntaxExpression) -> bool {
     expression_syntax_path_field(expression).is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_empty_array(&inner);
@@ -325,6 +345,7 @@ fn syntax_expression_is_simple_empty_array(expression: &SyntaxExpression) -> boo
         .is_some_and(|array| array.expressions().next().is_none())
 }
 
+#[cfg(test)]
 fn syntax_expression_is_constant_container(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_constant_container(&inner);
@@ -338,6 +359,7 @@ fn syntax_expression_is_constant_container(expression: &SyntaxExpression) -> boo
         .is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_inline_constant(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_constant(&inner);
@@ -379,6 +401,7 @@ pub(in crate::compiler) fn expression_syntax_range_operands(
     Some((binary.lhs()?, binary.rhs()?, inclusive))
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_range(expression: &SyntaxExpression) -> bool {
     let Some((lhs, rhs, _)) = expression_syntax_range_operands(expression) else {
         return false;
@@ -387,6 +410,7 @@ fn syntax_expression_is_simple_range(expression: &SyntaxExpression) -> bool {
         && syntax_expression_is_simple_range_operand(&rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_range_operand(&inner);
@@ -398,6 +422,7 @@ fn syntax_expression_is_simple_range_operand(expression: &SyntaxExpression) -> b
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_numeric_arithmetic(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_numeric_arithmetic(&inner);
@@ -420,6 +445,7 @@ fn syntax_expression_is_simple_path_numeric_arithmetic(expression: &SyntaxExpres
     syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_numeric_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_numeric_comparison(&inner);
@@ -442,6 +468,7 @@ fn syntax_expression_is_simple_path_numeric_comparison(expression: &SyntaxExpres
     syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_numeric_equality(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_numeric_equality(&inner);
@@ -464,6 +491,7 @@ fn syntax_expression_is_simple_path_numeric_equality(expression: &SyntaxExpressi
     syntax_expression_has_path_and_numeric_literal_operands(&lhs, &rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_has_path_and_numeric_literal_operands(
     lhs: &SyntaxExpression,
     rhs: &SyntaxExpression,
@@ -474,6 +502,7 @@ fn syntax_expression_has_path_and_numeric_literal_operands(
             && expression_syntax_path_or_field(rhs).is_some())
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_binary(&inner);
@@ -502,6 +531,7 @@ fn syntax_expression_is_simple_path_binary(expression: &SyntaxExpression) -> boo
         && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_comparison(&inner);
@@ -525,6 +555,7 @@ fn syntax_expression_is_simple_path_comparison(expression: &SyntaxExpression) ->
         && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_arithmetic(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_arithmetic(&inner);
@@ -548,6 +579,7 @@ fn syntax_expression_is_simple_path_arithmetic(expression: &SyntaxExpression) ->
         && syntax_expression_is_simple_path_or_field(&rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_logical(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_logical(&inner);
@@ -568,6 +600,7 @@ fn syntax_expression_is_simple_path_logical(expression: &SyntaxExpression) -> bo
         && syntax_expression_is_simple_path_logical_operand(&rhs)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_logical_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_logical_operand(&inner);
@@ -579,6 +612,7 @@ fn syntax_expression_is_simple_path_logical_operand(expression: &SyntaxExpressio
         || syntax_expression_is_simple_path_logical(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_try(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_try(&inner);
@@ -592,6 +626,7 @@ fn syntax_expression_is_simple_try(expression: &SyntaxExpression) -> bool {
         })
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_container(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_container(&inner);
@@ -620,6 +655,7 @@ fn syntax_expression_is_simple_container(expression: &SyntaxExpression) -> bool 
     }
 }
 
+#[cfg(test)]
 fn syntax_expression_contains_simple_field_value(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_contains_simple_field_value(&inner);
@@ -639,6 +675,7 @@ fn syntax_expression_contains_simple_field_value(expression: &SyntaxExpression) 
         })
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_container_value(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_container_value(&inner);
@@ -659,6 +696,7 @@ fn syntax_expression_is_simple_container_value(expression: &SyntaxExpression) ->
         || syntax_expression_is_simple_container(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_path_unary(&inner);
@@ -674,6 +712,7 @@ fn syntax_expression_is_simple_path_unary(expression: &SyntaxExpression) -> bool
         .is_some_and(|operand| expression_syntax_path_or_field(&operand).is_some())
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_block(&inner);
@@ -683,6 +722,7 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
         .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
 }
 
+#[cfg(test)]
 fn syntax_expression_is_statement_block(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_statement_block(&inner);
@@ -692,10 +732,12 @@ fn syntax_expression_is_statement_block(expression: &SyntaxExpression) -> bool {
         .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_negated_number(expression: &SyntaxExpression) -> bool {
     expression_syntax_negated_number_literal(expression).is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_boolean_not(&inner);
@@ -712,6 +754,7 @@ fn syntax_expression_is_simple_boolean_not(expression: &SyntaxExpression) -> boo
     expression_syntax_bool_literal(&operand).is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_constant_unary(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_constant_unary(&inner);
@@ -736,6 +779,7 @@ fn syntax_expression_is_simple_constant_unary(expression: &SyntaxExpression) -> 
         .is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_constant_comparison(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_constant_comparison(&inner);
@@ -769,6 +813,7 @@ fn syntax_expression_is_simple_constant_comparison(expression: &SyntaxExpression
         .is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_constant_arithmetic(&inner);
@@ -799,6 +844,7 @@ fn syntax_expression_is_simple_constant_arithmetic(expression: &SyntaxExpression
         .is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_inline_constant_arithmetic_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_constant_arithmetic_operand(&inner);
@@ -807,6 +853,7 @@ fn syntax_expression_is_inline_constant_arithmetic_operand(expression: &SyntaxEx
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_inline_numeric_constant_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_numeric_constant_operand(&inner);
@@ -817,6 +864,7 @@ fn syntax_expression_is_inline_numeric_constant_operand(expression: &SyntaxExpre
         || syntax_expression_is_simple_constant_arithmetic(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_inline_comparable_constant_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_comparable_constant_operand(&inner);
@@ -830,6 +878,7 @@ fn syntax_expression_is_inline_comparable_constant_operand(expression: &SyntaxEx
         || syntax_expression_is_simple_constant_comparison(expression)
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_constant_logical(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_constant_logical(&inner);
@@ -857,6 +906,7 @@ fn syntax_expression_is_simple_constant_logical(expression: &SyntaxExpression) -
         .is_some()
 }
 
+#[cfg(test)]
 fn syntax_expression_is_inline_constant_logical_operand(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_inline_constant_logical_operand(&inner);
@@ -868,6 +918,7 @@ fn syntax_expression_is_inline_constant_logical_operand(expression: &SyntaxExpre
         || syntax_expression_is_simple_constant_logical(expression)
 }
 
+#[cfg(test)]
 fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_syntax_bool_literal(&inner);
@@ -881,6 +932,7 @@ fn expression_syntax_bool_literal(expression: &SyntaxExpression) -> Option<bool>
     }
 }
 
+#[cfg(test)]
 fn expression_syntax_comparable_literal(expression: &SyntaxExpression) -> Option<Literal> {
     let literal = expression_syntax_literal(expression)?;
     match literal {
@@ -891,12 +943,14 @@ fn expression_syntax_comparable_literal(expression: &SyntaxExpression) -> Option
     }
 }
 
+#[cfg(test)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum NumericLiteralKind {
     Integer,
     Float,
 }
 
+#[cfg(test)]
 fn expression_syntax_numeric_literal_kind(
     expression: &SyntaxExpression,
 ) -> Option<NumericLiteralKind> {
@@ -938,6 +992,7 @@ fn expression_syntax_negatable_number_literal(expression: &SyntaxExpression) -> 
     }
 }
 
+#[cfg(test)]
 fn syntax_expression_is_simple_value(expression: &SyntaxExpression) -> bool {
     syntax_expression_is_simple_literal(expression)
         || syntax_expression_is_simple_interpolated_string(expression)

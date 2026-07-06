@@ -32,6 +32,7 @@ pub(super) use simple_values::{
     expression_syntax_range_operands,
 };
 
+#[cfg(test)]
 use simple_values::syntax_statement_requires_body_block_lookup;
 
 #[derive(Clone)]
@@ -206,15 +207,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     #[cfg(not(test))]
     pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
-        let syntax_statements = syntax_body_statements(&self.syntax.body);
-
-        let tail_index = syntax_statements.len().saturating_sub(1);
-        syntax_statements
-            .iter()
-            .enumerate()
-            .any(|(index, statement)| {
-                syntax_statement_requires_body_block_lookup(statement, index == tail_index)
-            })
+        false
     }
 
     pub(super) fn block_value<'payload>(
