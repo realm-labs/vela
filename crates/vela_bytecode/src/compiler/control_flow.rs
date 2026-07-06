@@ -519,35 +519,6 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    #[cfg(test)]
-    fn compile_match_statement_payload(
-        &mut self,
-        stmt: &CompilerStatementPayload<'_>,
-    ) -> CompileResult<bool> {
-        let Some(expression_payload) = stmt.expression_payload() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let expr = expression_payload.fallback();
-        let ExprKind::Match(match_expr) = &expr.kind else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let Some(scrutinee_payload) = expression_payload.match_scrutinee_payload() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let arm_payloads = expression_payload.match_arm_payloads();
-        self.compile_match_with_payloads(
-            match_expr,
-            Some(&scrutinee_payload),
-            arm_payloads.as_deref(),
-        )
-    }
-
     fn compile_let_initializer(
         &mut self,
         value: &Expr,
