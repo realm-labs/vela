@@ -10,8 +10,6 @@ use crate::UnlinkedInstructionKind;
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
-#[cfg(test)]
-use crate::compiler::compilation_statement_payloads;
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register};
 
@@ -47,16 +45,6 @@ impl Compiler<'_, '_> {
         dst: Register,
     ) -> CompileResult<bool> {
         let statements = body.statement_payloads();
-        self.compile_block_payload_value_to_from_statements(body, dst, &statements)
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn compile_block_payload_value_to_for_compilation(
-        &mut self,
-        body: &CompilerBodyPayload<'_>,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        let statements = compilation_statement_payloads(body);
         self.compile_block_payload_value_to_from_statements(body, dst, &statements)
     }
 

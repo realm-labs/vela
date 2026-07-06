@@ -21,9 +21,11 @@ use super::CompilerRecordFieldPayload;
 #[cfg(test)]
 use super::match_scrutinee_payload_for_expr;
 use super::{
-    CompilerArrayElementPayload, CompilerBodyPayload, CompilerExpressionPayload,
-    CompilerInterpolationPayload, CompilerMapEntryPayload,
+    CompilerArrayElementPayload, CompilerExpressionPayload, CompilerInterpolationPayload,
+    CompilerMapEntryPayload,
 };
+#[cfg(test)]
+use super::CompilerBodyPayload;
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
 #[cfg(test)]
@@ -58,6 +60,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_syntax(self.source, syntax)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))

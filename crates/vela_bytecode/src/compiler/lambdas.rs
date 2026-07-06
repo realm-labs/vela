@@ -280,22 +280,17 @@ impl Compiler<'_, '_> {
         match &body.kind {
             ExprKind::Block(_) => {
                 let dst = self.alloc_register()?;
-                let returned = if let Some(body_payload) = body_payload {
-                    let Some(block_payload) = body_payload.block_body_payload() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST lambda block body payload",
-                        )));
-                    };
-                    #[cfg(test)]
-                    let returned =
-                        self.compile_block_payload_value_to_for_compilation(&block_payload, dst)?;
-                    #[cfg(not(test))]
-                    let returned = self.compile_block_payload_value_to(&block_payload, dst)?;
-                    returned
-                } else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST lambda block body payload",
-                    )));
+                let body_payload =
+                    body_payload.ok_or_else(missing_cst_lambda_block_body_payload)?;
+                let source = body_payload
+                    .source()
+                    .ok_or_else(missing_cst_lambda_block_body_payload)?;
+                let expression = body_payload
+                    .syntax_expression()
+                    .ok_or_else(missing_cst_lambda_block_body_payload)?;
+                let Some(returned) = self.compile_syntax_block_expr_to(source, expression, dst)?
+                else {
+                    return Err(missing_cst_lambda_block_body_payload());
                 };
                 if !returned {
                     self.emit(UnlinkedInstructionKind::Return { src: dst });
@@ -340,6 +335,12 @@ impl Compiler<'_, '_> {
         self.code.register_count = self.next_register;
         Ok(self.code)
     }
+}
+
+fn missing_cst_lambda_block_body_payload() -> CompileError {
+    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        "missing CST lambda block body payload",
+    ))
 }
 
 fn collect_expr(
