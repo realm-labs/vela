@@ -130,6 +130,11 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         shape: Option<&ConstructorShape>,
         payloads: &[CompilerRecordFieldPayload],
     ) -> CompileResult<Vec<(String, Register)>> {
+        if payloads.len() != fields.len() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST record fields",
+            )));
+        }
         let mut compiled = Vec::new();
         let mut explicit_names = BTreeSet::new();
         for (index, field) in fields.iter().enumerate() {

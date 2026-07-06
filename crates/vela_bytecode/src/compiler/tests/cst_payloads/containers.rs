@@ -875,6 +875,68 @@ fn main() {
     ));
 }
 
+#[test]
+fn extra_record_field_payloads_do_not_compile_helper_fallback_fields() {
+    let source = SourceId::new(1);
+    let legacy_text = r#"
+struct Pair {
+    first
+}
+
+fn main() {
+    let value = Pair {
+        first: 1
+    };
+}
+"#;
+    let first_payload = first_record_field_payload_from_cst(
+        source,
+        r#"
+fn main() {
+    let value = Pair {
+        first: 1
+    };
+}
+"#,
+    );
+    let extra_payload = first_record_field_payload_from_cst(
+        source,
+        r#"
+fn main() {
+    let value = Pair {
+        second: 2
+    };
+}
+"#,
+    );
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_record = container_statement_payloads(&legacy_payload.body)[0]
+        .let_initializer_expression_payload()
+        .expect("legacy record payload");
+    let ExprKind::Record {
+        fields: legacy_fields,
+        ..
+    } = &legacy_record.fallback().kind
+    else {
+        panic!("expected legacy record fallback");
+    };
+
+    let error = compiler
+        .compile_record_fields(
+            legacy_fields,
+            Vec::new(),
+            None,
+            &[first_payload, extra_payload],
+        )
+        .expect_err("extra record field payload must not compile legacy fields");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST record fields")
+    ));
+}
+
 fn assert_cst_let_initializer_record_paths(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[&[&str]],
