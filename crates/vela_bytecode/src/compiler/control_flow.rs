@@ -31,8 +31,6 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
-#[cfg(test)]
-use super::expression_checks::payload_aligns_with_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -144,33 +142,26 @@ impl Compiler<'_, '_> {
                 "missing CST expression statement payload",
             )));
         };
-        let syntax_payload_is_trusted = expression_statement_syntax_payload_is_trusted(stmt);
-        if syntax_payload_is_trusted
-            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+        if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_constant_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_payload_is_trusted
-            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+        if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_path_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_payload_is_trusted
-            && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+        if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_range_expr_statement(source, &expression)?
         {
             return Ok(done);
         }
-        if syntax_payload_is_trusted
-            && let Some(body) = stmt.expression_statement_block_body_payload()
-        {
+        if let Some(body) = stmt.expression_statement_block_body_payload() {
             let dst = self.alloc_register()?;
             return self.compile_block_payload_value_to(&body, dst);
         }
         if stmt.is_syntax_only()
-            && syntax_payload_is_trusted
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
             && let Some(done) = self.compile_syntax_value_expr_statement(source, &expression)?
         {
@@ -1185,21 +1176,6 @@ impl Compiler<'_, '_> {
         } else {
             self.compile_statements(&block.statements)
         }
-    }
-}
-
-fn expression_statement_syntax_payload_is_trusted(stmt: &CompilerStatementPayload<'_>) -> bool {
-    #[cfg(test)]
-    {
-        stmt.is_syntax_only()
-            || stmt
-                .expression_payload()
-                .is_some_and(|payload| payload_aligns_with_expr(&payload, payload.fallback()))
-    }
-    #[cfg(not(test))]
-    {
-        let _ = stmt;
-        true
     }
 }
 
