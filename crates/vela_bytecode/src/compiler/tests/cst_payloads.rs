@@ -78,9 +78,9 @@ fn cst_payload_compiler_facts(semantic: &semantic::SemanticSource) -> CompilerFa
 }
 
 fn body_has_no_statement_fallbacks(body: &body_payloads::CompilerBodyPayload<'_>) -> bool {
-    body.statement_payloads().iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    })
+    body.statement_payloads()
+        .iter()
+        .all(body_payloads::CompilerStatementPayload::is_syntax_only)
 }
 
 fn cst_statement_payloads<'ast>(

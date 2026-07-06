@@ -1084,6 +1084,34 @@ fn call_targets() {
 }
 
 #[test]
+fn syntax_only_immediate_lambda_call_lowers_to_closure_call() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let direct = (|value| value + 1)(4);
+    return direct;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "immediate lambda call should compile from syntax-only statement payloads"
+    );
+
+    let program = compile_program_source(source, text)
+        .expect("CST-backed immediate lambda call should compile");
+    let function = program.function("main").expect("main bytecode");
+    assert!(
+        function.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::CallClosure { .. }
+        )),
+        "CST-backed immediate lambda call should lower as a closure call"
+    );
+}
+
+#[test]
 fn callback_expression_lambda_method_callee_has_cst_payload() {
     let source = SourceId::new(1);
     let text = r#"

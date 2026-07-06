@@ -1096,7 +1096,26 @@ impl Compiler<'_, '_> {
         }
 
         let Some(path) = expression_syntax_path_or_self(&callee) else {
-            return Ok(None);
+            if arguments
+                .iter()
+                .any(|argument| argument.name_text().is_some())
+            {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "closure call",
+                )));
+            }
+            let Some(callee) = self.compile_syntax_expression(source, &callee)? else {
+                return Ok(None);
+            };
+            let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+                return Ok(None);
+            };
+            let dst = self.alloc_register()?;
+            self.emit_spanned(
+                UnlinkedInstructionKind::CallClosure { dst, callee, args },
+                call_span,
+            );
+            return Ok(Some(dst));
         };
         if path.is_empty() {
             return Ok(None);
