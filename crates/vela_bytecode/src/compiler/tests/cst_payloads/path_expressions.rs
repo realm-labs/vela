@@ -283,6 +283,115 @@ fn make(value) {
 }
 
 #[test]
+fn script_type_facts_require_cst_payload_not_owned_fallback() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct LegacyBox {}
+
+enum LegacyResult {
+    Ok(value),
+}
+
+impl LegacyBox {
+    fn id(self, consumer) {
+        consumer(self);
+    }
+}
+
+fn legacy_record() {
+    return LegacyBox {};
+}
+
+fn legacy_call(legacy) {
+    return LegacyResult::Ok(legacy);
+}
+
+fn legacy_path(consumer, legacy) {
+    consumer(legacy);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+
+    let (record_payload, _, _) = semantic.function("legacy_record").expect("record function");
+    let record_return = path_statement_payloads(&record_payload.body)
+        .into_iter()
+        .find_map(|statement| statement.return_value_expression_payload())
+        .expect("record return expression");
+    let fact = script_types::expression_script_fact_with_payload(
+        record_return.fallback(),
+        None,
+        |_| Some("LegacyBox".to_owned()),
+        |_| None,
+        |_| None,
+    );
+    assert_eq!(
+        fact, None,
+        "owned record fallback must not provide script type facts"
+    );
+
+    let (call_payload, _, _) = semantic.function("legacy_call").expect("call function");
+    let call_return = path_statement_payloads(&call_payload.body)
+        .into_iter()
+        .find_map(|statement| statement.return_value_expression_payload())
+        .expect("enum call return expression");
+    let fact = script_types::expression_script_fact_with_payload(
+        call_return.fallback(),
+        None,
+        |_| Some("LegacyResult".to_owned()),
+        |_| None,
+        |_| None,
+    );
+    assert_eq!(
+        fact, None,
+        "owned enum-call fallback must not provide script type facts"
+    );
+
+    let (path_payload, _, _) = semantic.function("legacy_path").expect("path function");
+    let path_call = path_statement_payloads(&path_payload.body)[0]
+        .expression_payload()
+        .expect("path call expression");
+    let path_arg = call_argument_fallback(&path_call, 0);
+    let fact = script_types::expression_script_fact_with_payload(
+        path_arg,
+        None,
+        |_| None,
+        |_| None,
+        |name| match name {
+            "legacy" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+            _ => None,
+        },
+    );
+    assert_eq!(
+        fact, None,
+        "owned path fallback must not provide local script type facts"
+    );
+
+    let self_method = semantic
+        .script_impl_methods()
+        .into_iter()
+        .find(|method| method.method_name == "id")
+        .expect("self method");
+    let self_call = path_statement_payloads(&self_method.body)[0]
+        .expression_payload()
+        .expect("self call expression");
+    let self_arg = call_argument_fallback(&self_call, 0);
+    let fact = script_types::expression_script_fact_with_payload(
+        self_arg,
+        None,
+        |_| None,
+        |_| None,
+        |name| match name {
+            "self" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+            _ => None,
+        },
+    );
+    assert_eq!(
+        fact, None,
+        "owned self fallback must not provide script type facts"
+    );
+}
+
+#[test]
 fn script_type_facts_with_non_matching_cst_payload_do_not_use_legacy_shape() {
     let source = SourceId::new(1);
     let text = r#"

@@ -4,7 +4,7 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, ExprKind, SyntaxExpression, SyntaxExpressionKind};
+use vela_syntax::ast::{Expr, SyntaxExpression, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::expression_facts::{
@@ -124,76 +124,16 @@ pub(super) fn expression_script_fact_with_payload(
     local_fact_at_span: impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if let Some(fact) = payload.and_then(|payload| {
-        expression_script_fact_from_payload(
-            expr,
-            payload,
-            &type_symbol_at_span,
-            &local_fact_at_span,
-            &local_fact_named,
-        )
-    }) {
-        return Some(fact);
-    }
-
-    match &expr.kind {
-        ExprKind::Record { path, .. } => {
-            if payload.is_some() {
-                return None;
-            }
-            if let Some((enum_path, variant)) = enum_variant_path(path) {
-                let type_name = type_symbol_at_span(expr.span).unwrap_or(enum_path);
-                return Some(ScriptTypeFact::enum_variant(type_name, variant));
-            }
-            let type_name = type_symbol_at_span(expr.span).unwrap_or_else(|| path.join("::"));
-            Some(ScriptTypeFact::new(type_name))
-        }
-        ExprKind::Call { callee, .. } => {
-            if payload.is_some() {
-                return None;
-            }
-            let ExprKind::Path(path) = &callee.kind else {
-                return None;
-            };
-            let (_, variant) = enum_variant_path(path)?;
-            let type_name = type_symbol_at_span(callee.span)?;
-            Some(ScriptTypeFact::enum_variant(type_name, variant))
-        }
-        ExprKind::Path(path) => {
-            if payload.is_some() {
-                return None;
-            }
-            local_fact_at_span(expr.span).or_else(|| {
-                path.first()
-                    .and_then(|name| (path.len() == 1).then(|| local_fact_named(name)).flatten())
-            })
-        }
-        ExprKind::SelfValue => {
-            if payload.is_some() {
-                return None;
-            }
-            local_fact_at_span(expr.span).or_else(|| local_fact_named("self"))
-        }
-        _ => None,
-    }
-}
-
-fn expression_script_fact_from_payload(
-    expr: &Expr,
-    payload: &CompilerExpressionPayload<'_>,
-    type_symbol_at_span: &impl Fn(Span) -> Option<String>,
-    local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
-    local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
-) -> Option<ScriptTypeFact> {
+    let payload = payload?;
     if !payload_matches_script_fact_expression(payload, expr) {
         return None;
     }
 
     expression_script_fact_from_payload_syntax(
         payload,
-        type_symbol_at_span,
-        local_fact_at_span,
-        local_fact_named,
+        &type_symbol_at_span,
+        &local_fact_at_span,
+        &local_fact_named,
     )
 }
 
