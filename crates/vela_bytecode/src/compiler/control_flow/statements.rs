@@ -226,7 +226,7 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
-            SyntaxStatementKind::Match if stmt.is_syntax_only() => {
+            SyntaxStatementKind::Match => {
                 if let Some((source, match_expr)) = stmt.syntax_match()
                     && let Some(compiled) =
                         self.compile_syntax_match_statement(source, &match_expr)?
@@ -392,42 +392,14 @@ impl Compiler<'_, '_> {
                 }
                 self.compile_if(if_expr, if_payload.as_ref())
             }
-            SyntaxStatementKind::Match => self.compile_paired_match_statement_payload(stmt),
             SyntaxStatementKind::Block
             | SyntaxStatementKind::Break
             | SyntaxStatementKind::Continue
             | SyntaxStatementKind::For
+            | SyntaxStatementKind::Match
             | SyntaxStatementKind::Expr => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload"),
             )),
         }
-    }
-
-    #[cfg(test)]
-    fn compile_paired_match_statement_payload(
-        &mut self,
-        stmt: &CompilerStatementPayload<'_>,
-    ) -> CompileResult<bool> {
-        let Some(expression_payload) = stmt.expression_payload() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let Some(match_expr) = stmt.match_expression_fallback() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let Some(scrutinee_payload) = expression_payload.match_scrutinee_payload() else {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST match statement payload",
-            )));
-        };
-        let arm_payloads = expression_payload.match_arm_payloads();
-        self.compile_match_with_payloads(
-            match_expr,
-            Some(&scrutinee_payload),
-            arm_payloads.as_deref(),
-        )
     }
 }

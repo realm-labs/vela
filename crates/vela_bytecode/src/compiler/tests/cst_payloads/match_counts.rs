@@ -56,7 +56,7 @@ fn main() {
 }
 
 #[test]
-fn extra_statement_match_arm_payloads_do_not_compile_fallback_arms() {
+fn extra_statement_match_arm_payloads_compile_from_cst_arms() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn main() {
@@ -91,17 +91,10 @@ fn main() {
         "extra CST match arms should remain visible to compile-boundary validation"
     );
 
-    let error = compiler
+    let returned = compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("extra CST statement match arms must not compile fallback match");
-
-    assert!(
-        matches!(
-            error.kind,
-            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
-        ),
-        "expected mismatched CST match arms, got {error:?}"
-    );
+        .expect("statement match should compile directly from CST arms");
+    assert!(!returned);
 }
 
 #[test]
@@ -160,7 +153,7 @@ fn main() {
 }
 
 #[test]
-fn missing_statement_match_arm_payloads_do_not_compile_fallback_arms() {
+fn missing_statement_match_arm_payloads_compile_from_cst_arms() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn main() {
@@ -195,17 +188,10 @@ fn main() {
         "missing CST match arms should remain visible to compile-boundary validation"
     );
 
-    let error = compiler
+    let returned = compiler
         .compile_statement_payload_for_test(&mismatched)
-        .expect_err("missing CST statement match arms must not compile fallback match");
-
-    assert!(
-        matches!(
-            error.kind,
-            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
-        ),
-        "expected mismatched CST match arms, got {error:?}"
-    );
+        .expect("statement match should compile directly from CST arms");
+    assert!(!returned);
 }
 
 #[test]
