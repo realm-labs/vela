@@ -1,6 +1,9 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{AstNode, BinaryOp, Expr, Pattern, SyntaxExpression, SyntaxForStmt};
+use vela_syntax::ast::{
+    AstNode, BinaryOp, Expr, ExprKind, Pattern, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxForStmt,
+};
 
 use crate::Register;
 
@@ -42,6 +45,54 @@ pub(super) struct ForStatementParts<'ast> {
     pub(super) pattern_payload: Option<CompilerPatternPayload>,
     pub(super) iterable_payload: Option<CompilerExpressionPayload<'ast>>,
     pub(super) body_payload: Option<CompilerBodyPayload<'ast>>,
+}
+
+pub(super) fn for_iterable_payload_matches_expr(
+    payload: &CompilerExpressionPayload<'_>,
+    iterable: &Expr,
+) -> bool {
+    let Some(kind) = payload.stored_syntax_kind() else {
+        return false;
+    };
+    if kind == SyntaxExpressionKind::Paren {
+        return true;
+    }
+    for_iterable_expr_matches_syntax_kind(iterable, kind)
+        && (kind != SyntaxExpressionKind::Path
+            || for_iterable_path_self_shape_matches(iterable, payload.syntax_is_self()))
+}
+
+fn for_iterable_expr_matches_syntax_kind(iterable: &Expr, kind: SyntaxExpressionKind) -> bool {
+    matches!(
+        (&iterable.kind, kind),
+        (
+            ExprKind::Literal(_) | ExprKind::InterpolatedString(_),
+            SyntaxExpressionKind::Literal
+        ) | (
+            ExprKind::Path(_) | ExprKind::SelfValue,
+            SyntaxExpressionKind::Path
+        ) | (ExprKind::Unary { .. }, SyntaxExpressionKind::Unary)
+            | (ExprKind::Binary { .. }, SyntaxExpressionKind::Binary)
+            | (ExprKind::Assign { .. }, SyntaxExpressionKind::Assign)
+            | (ExprKind::Field { .. }, SyntaxExpressionKind::Field)
+            | (ExprKind::Call { .. }, SyntaxExpressionKind::Call)
+            | (ExprKind::Index { .. }, SyntaxExpressionKind::Index)
+            | (ExprKind::Try(_), SyntaxExpressionKind::Try)
+            | (ExprKind::Array(_), SyntaxExpressionKind::Array)
+            | (ExprKind::Map(_), SyntaxExpressionKind::Map)
+            | (ExprKind::Record { .. }, SyntaxExpressionKind::Record)
+            | (ExprKind::Lambda { .. }, SyntaxExpressionKind::Lambda)
+            | (ExprKind::Block(_), SyntaxExpressionKind::Block)
+            | (ExprKind::If(_), SyntaxExpressionKind::If)
+            | (ExprKind::Match(_), SyntaxExpressionKind::Match)
+    )
+}
+
+fn for_iterable_path_self_shape_matches(iterable: &Expr, syntax_is_self: bool) -> bool {
+    matches!(
+        (&iterable.kind, syntax_is_self),
+        (ExprKind::Path(_), false) | (ExprKind::SelfValue, true)
+    )
 }
 
 #[cfg(test)]

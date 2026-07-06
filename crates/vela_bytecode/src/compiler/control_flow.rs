@@ -30,6 +30,7 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
+#[cfg(test)]
 use super::expression_checks::payload_aligns_with_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -43,7 +44,7 @@ use classification::{
     value_expression_requires_matching_syntax,
 };
 pub(super) use loops::LoopContext;
-use loops::{ForStatementParts, LoopIterable};
+use loops::{ForStatementParts, LoopIterable, for_iterable_payload_matches_expr};
 use value_syntax::ValueSyntaxPayloads;
 
 impl Compiler<'_, '_> {
@@ -913,7 +914,7 @@ impl Compiler<'_, '_> {
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
-            && !payload_aligns_with_expr(payload, parts.iterable)
+            && !for_iterable_payload_matches_expr(payload, parts.iterable)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST for iterable payload",
