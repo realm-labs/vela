@@ -1023,11 +1023,11 @@ fn assert_scrutinee_block_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    assert_eq!(payload.kind(), Some(SyntaxExpressionKind::Paren));
+    assert_eq!(payload.syntax_kind(), Some(SyntaxExpressionKind::Paren));
     let inner = payload
         .paren_inner_payload()
         .expect("match scrutinee paren should expose inner payload");
-    assert_eq!(inner.kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(inner.syntax_kind(), Some(SyntaxExpressionKind::Block));
     let body = inner
         .block_body_payload()
         .expect("match scrutinee block should expose body payload");
@@ -1153,7 +1153,7 @@ fn assert_match_guard_payload(
     let guard = arm
         .guard_payload()
         .expect("match arm should expose guard payload");
-    assert_eq!(guard.kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(guard.syntax_kind(), Some(SyntaxExpressionKind::Block));
     let body = guard
         .block_body_payload()
         .expect("guard block should expose body payload");
@@ -1169,7 +1169,7 @@ fn assert_match_body_array_element_payload(
     expected: &[(SyntaxStatementKind, &str)],
 ) {
     let body = arm.body_expression_payload_for_test(fallback);
-    assert_eq!(body.kind(), Some(SyntaxExpressionKind::Array));
+    assert_eq!(body.syntax_kind(), Some(SyntaxExpressionKind::Array));
     let element_payloads = body
         .array_element_value_payloads()
         .expect("array arm body should expose element payloads");

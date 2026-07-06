@@ -1045,7 +1045,7 @@ fn callback_chain() {
         .find_map(|statement| statement.let_initializer_expression_payload())
         .expect("let initializer payload");
     assert_eq!(
-        initializer.kind(),
+        initializer.syntax_kind(),
         Some(SyntaxExpressionKind::Call),
         "initializer syntax: {:?}",
         initializer
@@ -1054,7 +1054,7 @@ fn callback_chain() {
     );
     let callee = initializer.call_callee_payload().expect("callee payload");
     assert_eq!(
-        callee.kind(),
+        callee.syntax_kind(),
         Some(SyntaxExpressionKind::Field),
         "callee syntax: {:?}",
         callee

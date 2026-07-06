@@ -312,7 +312,7 @@ fn make(value) {
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("CST block return expression");
-    assert_eq!(cst_block.kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(cst_block.syntax_kind(), Some(SyntaxExpressionKind::Block));
 
     for function in ["legacy_record", "legacy_path", "legacy_call"] {
         let (legacy_payload, _, _) = semantic.function(function).expect("legacy function");
@@ -364,7 +364,7 @@ fn main(cst) {
             let block = statements[0]
                 .let_initializer_expression_payload()
                 .expect("block initializer");
-            assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
+            assert_eq!(block.syntax_kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
             let block_statements = path_statement_payloads(&block_body);
             let (_, child_path) = block_statements[1]
@@ -578,7 +578,7 @@ fn main(cst) {
             let block = statements[0]
                 .let_initializer_expression_payload()
                 .expect("block initializer");
-            assert_eq!(block.kind(), Some(SyntaxExpressionKind::Block));
+            assert_eq!(block.syntax_kind(), Some(SyntaxExpressionKind::Block));
             let block_body = block.block_body_payload().expect("block body");
             let block_statements = path_statement_payloads(&block_body);
             let (_, child_path) = block_statements[1]
@@ -832,7 +832,7 @@ fn assert_cst_return_value_path_segments(
 fn path_payload_segments(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Option<Vec<String>> {
-    assert_eq!(payload.kind(), Some(SyntaxExpressionKind::Path));
+    assert_eq!(payload.syntax_kind(), Some(SyntaxExpressionKind::Path));
     assert_eq!(
         payload
             .syntax_expression()

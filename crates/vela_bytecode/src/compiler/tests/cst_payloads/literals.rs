@@ -445,7 +445,7 @@ fn assert_cst_return_value_literals(
 fn literal_payload_value(
     payload: body_payloads::CompilerExpressionPayload<'_>,
 ) -> Option<vela_syntax::ast::Literal> {
-    assert_eq!(payload.kind(), Some(SyntaxExpressionKind::Literal));
+    assert_eq!(payload.syntax_kind(), Some(SyntaxExpressionKind::Literal));
     assert_eq!(
         payload
             .syntax_expression()

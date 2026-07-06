@@ -56,7 +56,7 @@ fn main(object) {
                     field.fallback(),
                 );
 
-            assert_eq!(missing_source.kind(), None);
+            assert_eq!(missing_source.syntax_kind(), None);
             assert_eq!(missing_source.syntax_field_name(), None);
             assert!(missing_source.field_base_payload().is_none());
         },

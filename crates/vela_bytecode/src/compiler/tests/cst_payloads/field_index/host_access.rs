@@ -84,7 +84,7 @@ fn make(value) {
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy host field fallback");
-    assert_eq!(cst_block.kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(cst_block.syntax_kind(), Some(SyntaxExpressionKind::Block));
     let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
         source,
         cst_block

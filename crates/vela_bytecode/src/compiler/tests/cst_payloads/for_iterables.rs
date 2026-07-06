@@ -50,16 +50,16 @@ fn loop_values() {
         .collect::<Vec<_>>();
     assert_eq!(iterable_payloads.len(), 2);
     assert_eq!(
-        iterable_payloads[0].kind(),
+        iterable_payloads[0].syntax_kind(),
         Some(SyntaxExpressionKind::Binary)
     );
     let (range_start, range_end) = iterable_payloads[0]
         .binary_operand_payloads()
         .expect("range iterable should expose operand payloads");
-    assert_eq!(range_start.kind(), Some(SyntaxExpressionKind::Block));
-    assert_eq!(range_end.kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(range_start.syntax_kind(), Some(SyntaxExpressionKind::Block));
+    assert_eq!(range_end.syntax_kind(), Some(SyntaxExpressionKind::Block));
     assert_eq!(
-        iterable_payloads[1].kind(),
+        iterable_payloads[1].syntax_kind(),
         Some(SyntaxExpressionKind::Block)
     );
 
@@ -222,7 +222,7 @@ fn main() {
     assert_eq!(
         missing
             .for_iterable_expression_payload()
-            .and_then(|payload| payload.kind()),
+            .and_then(|payload| payload.syntax_kind()),
         None
     );
     assert!(for_body_payload(&missing).is_some());

@@ -396,7 +396,7 @@ fn assert_cst_assignment_value_paren_body_payloads(
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
         })
-        .filter(|payload| payload.kind() == Some(SyntaxExpressionKind::Paren))
+        .filter(|payload| payload.syntax_kind() == Some(SyntaxExpressionKind::Paren))
         .filter_map(|payload| payload.paren_inner_payload())
         .filter_map(|inner| {
             let body = inner.block_body_payload()?;

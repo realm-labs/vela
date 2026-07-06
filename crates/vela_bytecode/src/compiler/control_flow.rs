@@ -60,7 +60,7 @@ impl Compiler<'_, '_> {
                 name: "value".to_owned(),
             },
             ValueSyntaxPayloads::new(
-                expression.and_then(CompilerExpressionPayload::kind),
+                expression.and_then(CompilerExpressionPayload::syntax_kind),
                 expression,
                 None,
                 None,
@@ -97,7 +97,7 @@ impl Compiler<'_, '_> {
             None,
             TypeContractContext::Return,
             ValueSyntaxPayloads::new(
-                expression.and_then(CompilerExpressionPayload::kind),
+                expression.and_then(CompilerExpressionPayload::syntax_kind),
                 expression,
                 None,
                 None,
