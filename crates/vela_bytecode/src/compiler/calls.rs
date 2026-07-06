@@ -82,11 +82,9 @@ impl Compiler<'_, '_> {
             })?,
             None => callee.span,
         };
-        let has_callee_payload = callee_payload.is_some();
-        let has_authoritative_callee_path =
-            callee_path_segments(callee_path, has_callee_payload, callee).is_some();
+        let has_authoritative_callee_path = callee_path_segments(callee_path).is_some();
         if has_authoritative_callee_path
-            && let Some(path) = callee_path_segments(callee_path, has_callee_payload, callee)
+            && let Some(path) = callee_path_segments(callee_path)
             && let Some((enum_name, variant)) =
                 self.tuple_enum_constructor_call_at_span(path, callee_span)
         {
@@ -108,8 +106,7 @@ impl Compiler<'_, '_> {
         }
 
         let host_receiver_type = self.host_method_receiver_type(callee_payload);
-        let path_root_is_local =
-            path_root_is_local(callee_path, has_callee_payload, callee, &self.locals);
+        let path_root_is_local = path_root_is_local(callee_path, &self.locals);
         if let Some(call) = host_method_call(
             self,
             callee,
@@ -152,9 +149,7 @@ impl Compiler<'_, '_> {
         ) {
             return script_method_call;
         }
-        if let Some((method, receiver_path)) =
-            local_path_method_call(callee_path, has_callee_payload, callee, &self.locals)
-        {
+        if let Some((method, receiver_path)) = local_path_method_call(callee_path, &self.locals) {
             return self.compile_script_path_method_call(
                 expr,
                 callee,
@@ -187,7 +182,7 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else if self.local_callee_at_span(callee_span).is_some()
-            || callee_is_closure_call(callee_payload, callee)
+            || callee_is_closure_call(callee_payload)
         {
             reject_named_call_args(arg_syntax, "closure call")?;
             let callee = self.compile_expr_with_payload(callee, callee_payload)?;
@@ -200,7 +195,7 @@ impl Compiler<'_, '_> {
                 expr.span,
             );
         } else {
-            let callee_name = callable_name(callee_path, has_callee_payload, callee)?;
+            let callee_name = callable_name(callee_path)?;
             if callee_name == "set::from_array" {
                 reject_named_call_args(arg_syntax, "set::from_array")?;
                 if args.len() != 1 {

@@ -200,19 +200,14 @@ fn main(player: Player) {
     )
     .expect("compiler should initialize");
 
-    compiler
+    let error = compiler
         .compile_expr_with_payload(call_payload.fallback(), None)
-        .expect("owned fallback call should still compile as a dynamic call");
+        .expect_err("missing CST call callee payload must not compile legacy host method call");
 
-    assert!(
-        compiler.code.instructions.iter().all(|instruction| {
-            !matches!(
-                instruction.kind,
-                UnlinkedInstructionKind::HostCall { method: lowered, .. } if lowered == method
-            )
-        }),
-        "host method lowering must require the CST callee payload"
-    );
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("callable expression")
+    ));
 }
 
 #[test]

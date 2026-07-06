@@ -87,17 +87,12 @@ fn main() {
     compiler
         .compile_statement_payload_for_test(&statements[0])
         .expect("setup binding should compile");
-    compiler
+    let error = compiler
         .compile_expr_with_payload(call_payload.fallback(), None)
-        .expect("owned fallback call should still compile as a closure-style call");
+        .expect_err("missing CST call callee payload must not compile legacy method call");
 
-    assert!(
-        compiler.code.instructions.iter().all(|instruction| {
-            !matches!(
-                instruction.kind,
-                UnlinkedInstructionKind::CallMethodId { ref method, .. } if method == "add"
-            )
-        }),
-        "script method lowering must require the CST callee payload"
-    );
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("callable expression")
+    ));
 }
