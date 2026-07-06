@@ -453,7 +453,7 @@ fn main() {
             };
             assert!(
                 args[0]
-                    .value_expression_payload(&fallback_args[0].value)
+                    .value_expression_payload_for_test(&fallback_args[0].value)
                     .syntax_expression()
                     .is_none()
             );

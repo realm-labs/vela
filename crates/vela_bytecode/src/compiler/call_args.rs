@@ -50,7 +50,7 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
         self,
         arg: &'ast Argument,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        Some(self.payload_for(arg)?.value_expression_payload(&arg.value))
+        Some(self.payload_for(arg)?.value_expression_payload())
     }
 
     pub(in crate::compiler) fn has_missing_value_payload(self, arg: &'ast Argument) -> bool {

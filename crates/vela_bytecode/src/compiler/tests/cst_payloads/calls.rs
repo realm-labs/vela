@@ -158,7 +158,7 @@ fn main() {
             assert_eq!(args[0].syntax_name().as_deref(), Some("value"));
             assert_eq!(
                 args[0]
-                    .value_expression_payload(&legacy_args[0].value)
+                    .value_expression_payload_for_test(&legacy_args[0].value)
                     .syntax_expression()
                     .expect("CST argument value")
                     .syntax()

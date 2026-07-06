@@ -894,6 +894,17 @@ impl CompilerArgumentPayload {
 
     pub(in crate::compiler) fn value_expression_payload<'ast>(
         &self,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_syntax(
+            self.source,
+            self.source
+                .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
+        &self,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_fallback(
