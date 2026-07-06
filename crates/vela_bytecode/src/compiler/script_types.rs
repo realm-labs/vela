@@ -7,6 +7,7 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Expr, ExprKind};
 
 use super::body_payloads::CompilerExpressionPayload;
+use super::expression_checks::payload_aligns_with_expr_span;
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -182,7 +183,7 @@ fn expression_script_fact_from_payload(
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if !payload.matches_paired_expr(expr) || !payload.syntax_overlaps_span(expr.span) {
+    if !payload_aligns_with_expr_span(payload, expr) {
         return None;
     }
 

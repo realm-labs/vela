@@ -11,6 +11,7 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
+use crate::compiler::expression_checks::payload_aligns_with_expr_span;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
@@ -293,12 +294,7 @@ fn static_expr_type_with_payload(
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     let payload_matches_expr = payload
-        .map(|payload| {
-            payload.matches_paired_expr(expr)
-                && payload
-                    .syntax_span()
-                    .is_some_and(|span| spans_overlap(span, expr.span))
-        })
+        .map(|payload| payload_aligns_with_expr_span(payload, expr))
         .unwrap_or(true);
     let aligned_payload = payload.filter(|_| payload_matches_expr);
 
@@ -430,10 +426,6 @@ fn static_expr_type_with_payload(
         }
         _ => StaticExprType::Dynamic,
     }
-}
-
-fn spans_overlap(left: Span, right: Span) -> bool {
-    left.start < right.end && right.start < left.end
 }
 
 fn static_syntax_expr_type(

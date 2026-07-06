@@ -14,6 +14,7 @@ use super::assignment_payloads::{
 use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
 };
+use super::expression_checks::payload_aligns_with_expr;
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::i64_compound_assignment_instruction;
@@ -968,7 +969,7 @@ impl Compiler<'_, '_> {
         syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         if let Some(payload) = syntax.expression
-            && !payload.matches_paired_expr(value)
+            && !payload_aligns_with_expr(payload, value)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST assignment value",

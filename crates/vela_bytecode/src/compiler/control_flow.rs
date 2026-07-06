@@ -30,6 +30,7 @@ use super::body_payloads::{
     CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
     CompilerStatementPayload,
 };
+use super::expression_checks::payload_aligns_with_expr;
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
@@ -912,7 +913,7 @@ impl Compiler<'_, '_> {
 
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
-            && !payload.matches_paired_expr(parts.iterable)
+            && !payload_aligns_with_expr(payload, parts.iterable)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST for iterable payload",
@@ -1191,7 +1192,7 @@ fn expression_statement_syntax_payload_is_trusted(stmt: &CompilerStatementPayloa
         stmt.is_syntax_only()
             || stmt
                 .expression_payload()
-                .is_some_and(|payload| payload.matches_paired_expr(payload.fallback()))
+                .is_some_and(|payload| payload_aligns_with_expr(&payload, payload.fallback()))
     }
     #[cfg(not(test))]
     {

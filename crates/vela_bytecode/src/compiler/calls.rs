@@ -6,6 +6,7 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
+use super::expression_checks::payload_aligns_with_expr_span;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
@@ -367,9 +368,7 @@ impl Compiler<'_, '_> {
                 return None;
             };
             let base_payload = payload.field_base_payload()?;
-            if !base_payload.matches_paired_expr(base)
-                || !base_payload.syntax_overlaps_span(base.span)
-            {
+            if !payload_aligns_with_expr_span(&base_payload, base) {
                 return None;
             }
             return Some(self.compile_script_method_call(

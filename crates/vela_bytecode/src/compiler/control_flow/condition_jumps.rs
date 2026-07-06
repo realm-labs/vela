@@ -3,6 +3,7 @@ use vela_syntax::ast::{Expr, ExprKind, Literal};
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::condition_operator_for_payload;
+use crate::compiler::expression_checks::payload_aligns_with_expr;
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind};
@@ -16,7 +17,7 @@ impl Compiler<'_, '_> {
         condition_payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> CompileResult<usize> {
         if let Some(payload) = condition_payload
-            && !payload.matches_paired_expr(condition)
+            && !payload_aligns_with_expr(payload, condition)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST if condition payload",

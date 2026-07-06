@@ -354,10 +354,6 @@ fn expr_path_self_shape_matches(expr: &vela_syntax::ast::Expr, syntax_is_self: b
         && matches!(expr.kind, ExprKind::SelfValue) == syntax_is_self
 }
 
-fn spans_overlap(left: Span, right: Span) -> bool {
-    left.start < right.end && right.start < left.end
-}
-
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_block_syntax(&inner);
@@ -979,16 +975,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         self.paired_expr_matches_stored_syntax_expr(expr)
-    }
-
-    #[cfg(not(test))]
-    pub(in crate::compiler) fn matches_paired_expr<T>(&self, _expr: &T) -> bool {
-        true
-    }
-
-    pub(in crate::compiler) fn syntax_overlaps_span(&self, span: Span) -> bool {
-        self.syntax_span()
-            .is_some_and(|syntax_span| spans_overlap(syntax_span, span))
     }
 
     #[cfg(test)]

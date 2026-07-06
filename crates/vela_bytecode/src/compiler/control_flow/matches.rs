@@ -2,6 +2,7 @@ use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{Expr, ExprKind, MatchExpr, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerMatchArmPayload};
+use crate::compiler::expression_checks::payload_aligns_with_expr;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -92,7 +93,7 @@ impl Compiler<'_, '_> {
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
             let body_payload = payload.body_expression_payload();
-            if body_payload.matches_paired_expr(&arm.body) {
+            if payload_aligns_with_expr(&body_payload, &arm.body) {
                 return self.compile_match_arm_statement_with_syntax_kind(arm, payload, kind);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -237,7 +238,7 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         if let Some(payload) = payload.as_ref()
-            && !payload.matches_paired_expr(guard)
+            && !payload_aligns_with_expr(payload, guard)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match guard",
@@ -257,7 +258,7 @@ impl Compiler<'_, '_> {
             && let Some(kind) = payload.syntax_body_expression_kind()
         {
             let body_payload = payload.body_expression_payload();
-            if body_payload.matches_paired_expr(body) {
+            if payload_aligns_with_expr(&body_payload, body) {
                 return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
             }
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(

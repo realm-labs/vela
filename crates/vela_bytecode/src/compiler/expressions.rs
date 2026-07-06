@@ -15,7 +15,7 @@ use super::const_eval::{
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_checks::{
     UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
-    payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
+    payload_aligns_with_expr, payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
     reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
 use super::host_paths::HostPath;
@@ -40,7 +40,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
-            && payload.matches_paired_expr(expr)
+            && payload_aligns_with_expr(payload, expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
