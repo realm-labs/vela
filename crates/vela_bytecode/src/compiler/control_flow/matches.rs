@@ -258,7 +258,9 @@ impl Compiler<'_, '_> {
                 "missing CST match arm body",
             )));
         }
-        self.compile_match_arm_value_without_payload_to(body, payload, dst)
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match arm body payload",
+        )))
     }
 
     fn compile_match_arm_value_with_syntax_kind(
@@ -320,25 +322,6 @@ impl Compiler<'_, '_> {
             _ => {
                 let body_payload = payload.body_expression_payload();
                 let value = self.compile_expr_with_payload(body, Some(&body_payload))?;
-                self.emit(UnlinkedInstructionKind::Move { dst, src: value });
-                Ok(false)
-            }
-        }
-    }
-
-    fn compile_match_arm_value_without_payload_to(
-        &mut self,
-        body: &Expr,
-        payload: Option<&CompilerMatchArmPayload>,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        match &body.kind {
-            ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST match arm block body payload",
-            ))),
-            _ => {
-                let body_payload = payload.map(CompilerMatchArmPayload::body_expression_payload);
-                let value = self.compile_expr_with_payload(body, body_payload.as_ref())?;
                 self.emit(UnlinkedInstructionKind::Move { dst, src: value });
                 Ok(false)
             }

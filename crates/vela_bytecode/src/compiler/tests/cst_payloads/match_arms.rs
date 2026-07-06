@@ -812,6 +812,35 @@ fn main(value) {
 }
 
 #[test]
+fn value_match_without_arm_payloads_does_not_compile_legacy_arm_body() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(value) {
+    return match value {
+        1 => value,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let match_expr = first_return_match_expr(body_fallback(source, &payload.body));
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .compile_match_value_with_payloads(match_expr, Register(0), None, None)
+        .expect_err("missing CST value match arm body must not compile legacy expression");
+
+    assert!(
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("missing CST match arm body payload")
+        ),
+        "expected missing CST match arm body payload, got {error:?}"
+    );
+}
+
+#[test]
 fn missing_match_scrutinee_payload_does_not_use_legacy_scrutinee() {
     let source = SourceId::new(1);
     let text = r#"
