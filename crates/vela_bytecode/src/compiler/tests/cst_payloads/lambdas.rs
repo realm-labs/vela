@@ -211,14 +211,10 @@ fn main() {
             let body_payload = lambda_payload
                 .lambda_body_payload()
                 .expect("CST lambda body payload");
-            let missing_block_body =
-                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
-                    body_payload
-                        .syntax_expression()
-                        .expect("CST lambda body expression")
-                        .clone(),
-                    body_payload.fallback(),
-                );
+            let missing_block_body = body_payloads::CompilerExpressionPayload::from_syntax(
+                None,
+                body_payload.syntax_expression().cloned(),
+            );
             let ExprKind::Lambda { params, body } = &lambda_payload.fallback().kind else {
                 panic!("expected lambda expression");
             };

@@ -425,6 +425,9 @@ been removed; the remaining checked fallback expression access is localized on
 Match scrutinee and match-arm body expression payload helpers now build
 syntax-only child payloads, removing two more test-only old-`Expr` child
 propagation routes from the body payload boundary.
+Lambda body expression payload helpers now also build syntax-only child
+payloads, so block-body fixture checks no longer depend on old lambda body
+fallback propagation.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

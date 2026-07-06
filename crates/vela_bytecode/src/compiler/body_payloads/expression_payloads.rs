@@ -429,13 +429,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             SyntaxLambdaBody::Expression(expression) => Some(expression),
             SyntaxLambdaBody::Block(block) => SyntaxExpression::cast(block.syntax().clone()),
         };
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Lambda { body, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(body)));
-        }
         Some(self.child_payload(syntax))
     }
 
