@@ -455,6 +455,34 @@ fn main(input, other) {
 }
 
 #[test]
+fn bare_logical_expression_requires_cst_operand_payloads() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn make(value) {
+    return value;
+}
+
+fn main(input, other) {
+    let value = input && make(other);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_binary = binary_statement_payloads(&legacy_payload.body)[0]
+        .let_initializer_expression_payload()
+        .expect("legacy binary payload");
+
+    let error = compiler
+        .compile_expr(legacy_binary.fallback())
+        .expect_err("bare logical expression must not compile legacy operands");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST logical operand payload")
+    ));
+}
+
+#[test]
 fn binary_value_type_inference_rejects_mismatched_cst_payloads() {
     with_cst_payload_compiler(
         r#"
