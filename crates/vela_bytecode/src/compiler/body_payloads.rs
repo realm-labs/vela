@@ -2,17 +2,13 @@ use std::marker::PhantomData;
 
 use vela_common::{SourceId, Span};
 #[cfg(test)]
-use vela_syntax::ast::MatchExpr;
-#[cfg(test)]
-use vela_syntax::ast::Stmt;
-#[cfg(test)]
-use vela_syntax::ast::StmtKind;
-#[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
     SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
+#[cfg(test)]
+use vela_syntax::ast::{Expr, MatchExpr, Stmt, StmtKind};
 #[cfg(test)]
 use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 
@@ -49,6 +45,8 @@ pub(super) struct CompilerStatementPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxStatement>,
     _ast: PhantomData<&'ast ()>,
+    #[cfg(test)]
+    expression_fallbacks: StatementExpressionFallbacks<'ast>,
     #[cfg(test)]
     fallback: Option<&'ast Stmt>,
 }
@@ -349,6 +347,53 @@ fn if_payload_for_syntax<'ast>(
 }
 
 #[cfg(test)]
+#[derive(Clone, Copy, Default)]
+struct StatementExpressionFallbacks<'ast> {
+    for_iterable: Option<&'ast Expr>,
+    for_has_index_pattern: bool,
+    for_has_value_pattern: bool,
+    let_initializer: Option<&'ast Expr>,
+    return_value: Option<&'ast Expr>,
+    expression: Option<&'ast Expr>,
+}
+
+#[cfg(test)]
+impl<'ast> StatementExpressionFallbacks<'ast> {
+    fn from_statement(fallback: Option<&'ast Stmt>) -> Self {
+        let Some(statement) = fallback else {
+            return Self::default();
+        };
+        match &statement.kind {
+            StmtKind::For {
+                index_pattern,
+                iterable,
+                ..
+            } => Self {
+                for_iterable: Some(iterable),
+                for_has_index_pattern: index_pattern.is_some(),
+                for_has_value_pattern: true,
+                ..Self::default()
+            },
+            StmtKind::Let {
+                value: Some(value), ..
+            } => Self {
+                let_initializer: Some(value),
+                ..Self::default()
+            },
+            StmtKind::Return(Some(value)) => Self {
+                return_value: Some(value),
+                ..Self::default()
+            },
+            StmtKind::Expr(expr) => Self {
+                expression: Some(expr),
+                ..Self::default()
+            },
+            _ => Self::default(),
+        }
+    }
+}
+
+#[cfg(test)]
 impl<'ast> CompilerIfPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn truncated_for_test() -> Self {
@@ -387,6 +432,8 @@ impl<'ast> CompilerStatementPayload<'ast> {
             syntax: Some(syntax),
             _ast: PhantomData,
             #[cfg(test)]
+            expression_fallbacks: StatementExpressionFallbacks::default(),
+            #[cfg(test)]
             fallback: None,
         }
     }
@@ -401,6 +448,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             source: Some(source),
             syntax,
             _ast: PhantomData,
+            expression_fallbacks: StatementExpressionFallbacks::from_statement(fallback),
             fallback,
         }
     }
@@ -414,6 +462,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
+            expression_fallbacks: StatementExpressionFallbacks::from_statement(Some(fallback)),
             fallback: Some(fallback),
         }
     }
@@ -431,9 +480,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         if self.is_syntax_only() {
             return None;
         }
-        let StmtKind::For { iterable, .. } = &self.fallback().kind else {
-            return None;
-        };
+        let iterable = self.expression_fallbacks.for_iterable?;
         Some(CompilerExpressionPayload::from_fallback(
             Some(self.syntax_statement_span()?.source),
             self.syntax_statement()?.as_for()?.iterable(),
@@ -446,10 +493,9 @@ impl<'ast> CompilerStatementPayload<'ast> {
         if self.is_syntax_only() {
             return None;
         }
-        let StmtKind::For { index_pattern, .. } = &self.fallback().kind else {
+        if !self.expression_fallbacks.for_has_index_pattern {
             return None;
-        };
-        index_pattern.as_ref()?;
+        }
         Some(CompilerPatternPayload::from_syntax(
             Some(self.syntax_statement_span()?.source),
             self.syntax_statement()?.as_for()?.index_pattern(),
@@ -461,9 +507,9 @@ impl<'ast> CompilerStatementPayload<'ast> {
         if self.is_syntax_only() {
             return None;
         }
-        let StmtKind::For { .. } = &self.fallback().kind else {
+        if !self.expression_fallbacks.for_has_value_pattern {
             return None;
-        };
+        }
         Some(CompilerPatternPayload::from_syntax(
             Some(self.syntax_statement_span()?.source),
             self.syntax_statement()?.as_for()?.value_pattern(),
@@ -582,12 +628,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn let_initializer_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Let {
-            value: Some(value), ..
-        } = &self.fallback?.kind
-        else {
-            return None;
-        };
+        let value = self.expression_fallbacks.let_initializer?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_let()?.initializer(),
@@ -688,9 +729,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn return_value_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Return(Some(value)) = &self.fallback?.kind else {
-            return None;
-        };
+        let value = self.expression_fallbacks.return_value?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.syntax.as_ref()?.as_return()?.expression(),
@@ -715,9 +754,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(in crate::compiler) fn expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
-        let StmtKind::Expr(expr) = &self.fallback?.kind else {
-            return None;
-        };
+        let expr = self.expression_fallbacks.expression?;
         Some(CompilerExpressionPayload::from_fallback(
             self.source,
             self.expression(),
