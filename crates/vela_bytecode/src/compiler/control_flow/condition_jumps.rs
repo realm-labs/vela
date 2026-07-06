@@ -1,8 +1,9 @@
-use vela_syntax::ast::{Expr, ExprKind, Literal, SyntaxExpressionKind};
+use vela_syntax::ast::{Expr, ExprKind, Literal};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::condition_operator_for_payload;
+use crate::compiler::expression_facts::sourced_payload_kind_matches_expression;
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind};
@@ -93,46 +94,5 @@ fn condition_payload_matches_expr(
     payload: &CompilerExpressionPayload<'_>,
     condition: &Expr,
 ) -> bool {
-    let Some(kind) = payload.syntax_kind() else {
-        return false;
-    };
-    if kind == SyntaxExpressionKind::Paren {
-        return true;
-    }
-    condition_expr_matches_syntax_kind(condition, kind)
-        && (kind != SyntaxExpressionKind::Path
-            || condition_path_self_shape_matches(condition, payload.syntax_is_self()))
-}
-
-fn condition_expr_matches_syntax_kind(condition: &Expr, kind: SyntaxExpressionKind) -> bool {
-    matches!(
-        (&condition.kind, kind),
-        (
-            ExprKind::Literal(_) | ExprKind::InterpolatedString(_),
-            SyntaxExpressionKind::Literal
-        ) | (
-            ExprKind::Path(_) | ExprKind::SelfValue,
-            SyntaxExpressionKind::Path
-        ) | (ExprKind::Unary { .. }, SyntaxExpressionKind::Unary)
-            | (ExprKind::Binary { .. }, SyntaxExpressionKind::Binary)
-            | (ExprKind::Assign { .. }, SyntaxExpressionKind::Assign)
-            | (ExprKind::Field { .. }, SyntaxExpressionKind::Field)
-            | (ExprKind::Call { .. }, SyntaxExpressionKind::Call)
-            | (ExprKind::Index { .. }, SyntaxExpressionKind::Index)
-            | (ExprKind::Try(_), SyntaxExpressionKind::Try)
-            | (ExprKind::Array(_), SyntaxExpressionKind::Array)
-            | (ExprKind::Map(_), SyntaxExpressionKind::Map)
-            | (ExprKind::Record { .. }, SyntaxExpressionKind::Record)
-            | (ExprKind::Lambda { .. }, SyntaxExpressionKind::Lambda)
-            | (ExprKind::Block(_), SyntaxExpressionKind::Block)
-            | (ExprKind::If(_), SyntaxExpressionKind::If)
-            | (ExprKind::Match(_), SyntaxExpressionKind::Match)
-    )
-}
-
-fn condition_path_self_shape_matches(condition: &Expr, syntax_is_self: bool) -> bool {
-    matches!(
-        (&condition.kind, syntax_is_self),
-        (ExprKind::Path(_), false) | (ExprKind::SelfValue, true)
-    )
+    sourced_payload_kind_matches_expression(payload, condition)
 }

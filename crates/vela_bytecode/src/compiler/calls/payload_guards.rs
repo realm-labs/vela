@@ -2,6 +2,7 @@ use vela_common::Span;
 use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
+use crate::compiler::expression_facts::payload_matches_expression_facts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 pub(super) fn callback_lambda_payload_is_authoritative(
@@ -81,24 +82,6 @@ pub(super) fn reject_mismatched_call_argument_payloads(
         )));
     }
     Ok(())
-}
-
-pub(super) fn payload_matches_expression_facts(
-    payload: &CompilerExpressionPayload<'_>,
-    span: Span,
-    kind: Option<SyntaxExpressionKind>,
-    path_is_self: Option<bool>,
-) -> bool {
-    payload_span_overlaps(payload, span)
-        && callee_payload_kind_matches(payload.stored_syntax_kind(), kind)
-        && path_is_self.is_none_or(|is_self| payload.syntax_is_self() == is_self)
-}
-
-fn callee_payload_kind_matches(
-    payload_kind: Option<SyntaxExpressionKind>,
-    callee_kind: Option<SyntaxExpressionKind>,
-) -> bool {
-    payload_kind == callee_kind || payload_kind == Some(SyntaxExpressionKind::Paren)
 }
 
 fn payload_span_overlaps(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {

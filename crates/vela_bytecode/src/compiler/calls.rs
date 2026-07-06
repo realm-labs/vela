@@ -6,14 +6,17 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
+use super::expression_facts::{
+    expression_path_is_self, expression_syntax_kind, payload_matches_expression_facts,
+};
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use payload_guards::{
-    callback_lambda_payload_is_authoritative, payload_matches_expression_facts,
-    reject_mismatched_call_argument_payloads, reject_mismatched_call_callee_payload,
-    reject_missing_call_callee_payload, reject_missing_callback_lambda_body,
+    callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
+    reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
+    reject_missing_callback_lambda_body,
 };
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -58,8 +61,8 @@ impl Compiler<'_, '_> {
         reject_missing_call_callee_payload(callee_payload)?;
         reject_mismatched_call_callee_payload(
             callee.span,
-            call_guard_syntax_kind(callee),
-            call_guard_path_is_self(callee),
+            expression_syntax_kind(callee),
+            expression_path_is_self(callee),
             callee_payload,
         )?;
         reject_mismatched_call_argument_payloads(callee_payload, args.len(), arg_payloads)?;
@@ -375,8 +378,8 @@ impl Compiler<'_, '_> {
             if !payload_matches_expression_facts(
                 &base_payload,
                 base.span,
-                call_guard_syntax_kind(base),
-                call_guard_path_is_self(base),
+                expression_syntax_kind(base),
+                expression_path_is_self(base),
             ) {
                 return None;
             }
@@ -672,7 +675,7 @@ impl Compiler<'_, '_> {
         if !callback_lambda_payload_is_authoritative(
             arg_payload.as_ref(),
             arg.value.span,
-            call_guard_syntax_kind(&arg.value),
+            expression_syntax_kind(&arg.value),
         ) {
             return self.compile_call_argument_value(arg, arg_syntax);
         }
@@ -881,36 +884,6 @@ impl Compiler<'_, '_> {
         }
         let type_name = receiver_type.std_type_name();
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
-    }
-}
-
-fn call_guard_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
-    Some(match expr.kind {
-        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
-        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
-        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
-        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
-        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
-        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
-        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
-        ExprKind::Try(_) => SyntaxExpressionKind::Try,
-        ExprKind::Array(_) => SyntaxExpressionKind::Array,
-        ExprKind::Map(_) => SyntaxExpressionKind::Map,
-        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
-        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
-        ExprKind::Block(_) => SyntaxExpressionKind::Block,
-        ExprKind::If(_) => SyntaxExpressionKind::If,
-        ExprKind::Match(_) => SyntaxExpressionKind::Match,
-        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
-        ExprKind::Error => return None,
-    })
-}
-
-fn call_guard_path_is_self(expr: &Expr) -> Option<bool> {
-    match expr.kind {
-        ExprKind::Path(_) => Some(false),
-        ExprKind::SelfValue => Some(true),
-        _ => None,
     }
 }
 
