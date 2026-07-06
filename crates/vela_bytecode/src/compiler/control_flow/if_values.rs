@@ -9,24 +9,19 @@ impl Compiler<'_, '_> {
         &mut self,
         if_expr: &IfExpr,
         dst: Register,
-        payload: Option<&CompilerIfPayload<'_>>,
+        payload: &CompilerIfPayload<'_>,
     ) -> CompileResult<bool> {
-        let condition_payload = payload.and_then(CompilerIfPayload::condition_payload);
+        let condition_payload = payload.condition_payload();
         let condition_payload = required_if_child_payload(
-            payload,
             condition_payload.as_ref(),
             "missing CST if condition payload",
         )?;
         let jump_to_else =
-            self.emit_condition_jump_if_false(&if_expr.condition, condition_payload)?;
+            self.emit_condition_jump_if_false(&if_expr.condition, Some(condition_payload))?;
 
-        let then_body_payload = required_if_child_payload(
-            payload,
-            payload.and_then(CompilerIfPayload::then_body),
-            "missing CST if then body payload",
-        )?;
-        let then_returned =
-            self.compile_if_value_block_to(&if_expr.then_branch, then_body_payload, dst)?;
+        let then_body_payload =
+            required_if_child_payload(payload.then_body(), "missing CST if then body payload")?;
+        let then_returned = self.compile_if_value_block_to(then_body_payload, dst)?;
         let jump_to_end = if then_returned {
             None
         } else {
@@ -36,20 +31,16 @@ impl Compiler<'_, '_> {
         self.patch_jump(jump_to_else, self.current_offset())?;
 
         let else_returned = match &if_expr.else_branch {
-            Some(ElseBranch::Block(block)) => {
+            Some(ElseBranch::Block(_)) => {
                 let else_body_payload = required_if_child_payload(
-                    payload,
-                    payload.and_then(CompilerIfPayload::else_body),
+                    payload.else_body(),
                     "missing CST if else body payload",
                 )?;
-                self.compile_if_value_block_to(block, else_body_payload, dst)?
+                self.compile_if_value_block_to(else_body_payload, dst)?
             }
             Some(ElseBranch::If(if_expr)) => {
-                let else_if_payload = required_if_child_payload(
-                    payload,
-                    payload.and_then(CompilerIfPayload::else_if),
-                    "missing CST else-if payload",
-                )?;
+                let else_if_payload =
+                    required_if_child_payload(payload.else_if(), "missing CST else-if payload")?;
                 self.compile_if_value_with_payloads(if_expr, dst, else_if_payload)?
             }
             None => {
@@ -67,31 +58,16 @@ impl Compiler<'_, '_> {
 
     fn compile_if_value_block_to(
         &mut self,
-        block: &vela_syntax::ast::Block,
-        payload: Option<&CompilerBodyPayload<'_>>,
+        payload: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
-        if let Some(payload) = payload {
-            self.compile_block_payload_value_to(payload, dst)
-        } else {
-            let _ = block;
-            let _ = dst;
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST if block body payload",
-            )))
-        }
+        self.compile_block_payload_value_to(payload, dst)
     }
 }
 
 fn required_if_child_payload<'payload, T>(
-    parent: Option<&CompilerIfPayload<'_>>,
     child: Option<&'payload T>,
     context: &'static str,
-) -> CompileResult<Option<&'payload T>> {
-    if parent.is_none() {
-        return Ok(None);
-    }
-    child
-        .map(Some)
-        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
+) -> CompileResult<&'payload T> {
+    child.ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }

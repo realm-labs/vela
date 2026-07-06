@@ -609,8 +609,7 @@ impl Compiler<'_, '_> {
                         "missing CST let initializer if payload",
                     )));
                 };
-                let returned =
-                    self.compile_if_value_with_payloads(if_expr, dst, Some(if_payload))?;
+                let returned = self.compile_if_value_with_payloads(if_expr, dst, if_payload)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Match => {
@@ -796,8 +795,7 @@ impl Compiler<'_, '_> {
                         "missing CST return if payload",
                     )));
                 };
-                let returned =
-                    self.compile_if_value_with_payloads(if_expr, dst, Some(if_payload))?;
+                let returned = self.compile_if_value_with_payloads(if_expr, dst, if_payload)?;
                 Ok((dst, returned))
             }
             SyntaxExpressionKind::Match => {

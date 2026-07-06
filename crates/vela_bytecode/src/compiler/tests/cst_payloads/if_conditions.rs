@@ -229,7 +229,7 @@ fn main() {
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
 
             let error = compiler
-                .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))
+                .compile_if_value_with_payloads(if_expr, Register(0), &truncated_if_payload)
                 .expect_err("missing CST if condition payload must not use legacy condition");
 
             assert!(matches!(
@@ -265,7 +265,7 @@ fn main() {
                 .without_then_body_for_test();
 
             let error = compiler
-                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .compile_if_value_with_payloads(if_expr, Register(0), &if_payload)
                 .expect_err("missing CST if then body payload must not use legacy then body");
 
             assert!(matches!(
@@ -301,7 +301,7 @@ fn main() {
                 .without_else_body_for_test();
 
             let error = compiler
-                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .compile_if_value_with_payloads(if_expr, Register(0), &if_payload)
                 .expect_err("missing CST if else body payload must not use legacy else body");
 
             assert!(matches!(
@@ -339,7 +339,7 @@ fn main() {
                 .without_else_if_for_test();
 
             let error = compiler
-                .compile_if_value_with_payloads(if_expr, Register(0), Some(&if_payload))
+                .compile_if_value_with_payloads(if_expr, Register(0), &if_payload)
                 .expect_err("missing CST else-if payload must not use legacy else-if body");
 
             assert!(matches!(

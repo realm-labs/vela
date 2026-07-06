@@ -99,7 +99,7 @@ impl Compiler<'_, '_> {
                         "missing CST if expression payload",
                     )));
                 };
-                self.compile_if_value_with_payloads(if_expr, dst, Some(&if_payload))?;
+                self.compile_if_value_with_payloads(if_expr, dst, &if_payload)?;
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
