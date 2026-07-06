@@ -105,6 +105,7 @@ pub(in crate::compiler) struct CompilerRecordFieldPayload {
 }
 
 pub(super) struct CompilerIfPayload<'ast> {
+    source: Option<SourceId>,
     condition: Option<SyntaxExpression>,
     then_body: Option<CompilerBodyPayload<'ast>>,
     else_body: Option<CompilerBodyPayload<'ast>>,
@@ -423,6 +424,7 @@ fn if_payload_for_syntax<'ast>(
         None
     };
     Some(CompilerIfPayload {
+        source: Some(source),
         condition,
         then_body,
         else_body,
@@ -434,6 +436,7 @@ impl<'ast> CompilerIfPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn truncated_for_test() -> Self {
         Self {
+            source: None,
             condition: None,
             then_body: None,
             else_body: None,
@@ -1067,15 +1070,11 @@ impl<'ast> CompilerExpressionPayload<'ast> {
 }
 
 impl<'ast> CompilerIfPayload<'ast> {
-    pub(super) fn condition_payload(
-        &self,
-        fallback: &'ast vela_syntax::ast::Expr,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
+    pub(super) fn condition_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         let condition = self.condition.clone()?;
-        Some(CompilerExpressionPayload::from_fallback(
-            Some(fallback.span.source),
+        Some(CompilerExpressionPayload::from_syntax(
+            self.source,
             Some(condition),
-            fallback,
         ))
     }
 

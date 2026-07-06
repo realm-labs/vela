@@ -19,8 +19,7 @@ impl Compiler<'_, '_> {
         dst: Register,
         payload: Option<&CompilerIfPayload<'_>>,
     ) -> CompileResult<bool> {
-        let condition_payload =
-            payload.and_then(|payload| payload.condition_payload(&if_expr.condition));
+        let condition_payload = payload.and_then(CompilerIfPayload::condition_payload);
         let condition_payload = required_if_child_payload(
             payload,
             condition_payload.as_ref(),
