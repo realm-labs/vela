@@ -397,9 +397,6 @@ fn static_expr_type_with_payload(
             };
             StaticExprType::Exact(map_literal_type(value_types))
         }
-        ExprKind::Lambda { .. } => {
-            StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Closure))
-        }
         ExprKind::Binary {
             op: BinaryOp::Range,
             ..

@@ -114,6 +114,35 @@ fn main() {
 }
 
 #[test]
+fn lambda_static_type_comes_from_cst_payload_not_owned_fallback() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let lambda = |value| value;
+}
+"#,
+        |compiler, payload| {
+            let lambda = lambda_statement_payloads(&payload.body)[0]
+                .let_initializer_expression_payload()
+                .expect("lambda initializer");
+
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(lambda.fallback(), None),
+                value_types::StaticExprType::Dynamic,
+                "owned fallback lambda must not provide static closure type"
+            );
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(lambda.fallback(), Some(&lambda)),
+                value_types::StaticExprType::Exact(RuntimeTypeFact::standard(
+                    value_types::StandardRuntimeType::Closure,
+                )),
+                "CST lambda payload should provide static closure type"
+            );
+        },
+    );
+}
+
+#[test]
 fn missing_lambda_body_payload_does_not_use_legacy_body() {
     let source = SourceId::new(1);
     let cst_text = r#"
