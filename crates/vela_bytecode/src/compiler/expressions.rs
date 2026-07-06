@@ -572,7 +572,7 @@ impl Compiler<'_, '_> {
         items: &[Expr],
         payloads: &[CompilerArrayElementPayload],
     ) -> CompileResult<Register> {
-        if payloads.len() > items.len() {
+        if payloads.len() != items.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST array elements",
             )));
@@ -605,7 +605,7 @@ impl Compiler<'_, '_> {
         entries: &[vela_syntax::ast::MapEntry],
         payloads: &[super::body_payloads::CompilerMapEntryPayload],
     ) -> CompileResult<Register> {
-        if payloads.len() > entries.len() {
+        if payloads.len() != entries.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST map entries",
             )));
@@ -634,7 +634,7 @@ impl Compiler<'_, '_> {
         fields: &[RecordField],
         payloads: &[CompilerRecordFieldPayload],
     ) -> CompileResult<Register> {
-        if payloads.len() > fields.len() {
+        if payloads.len() != fields.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST record fields",
             )));

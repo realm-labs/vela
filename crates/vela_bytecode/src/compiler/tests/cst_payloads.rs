@@ -7,6 +7,7 @@ mod call_counts;
 mod calls;
 mod constant_expressions;
 mod constructors;
+mod container_counts;
 mod containers;
 mod control_flow_values;
 mod expression_statements;
