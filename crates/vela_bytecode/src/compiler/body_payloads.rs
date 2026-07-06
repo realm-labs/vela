@@ -434,19 +434,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax_only_for_test(
-        source: SourceId,
-        syntax: SyntaxStatement,
-    ) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-            _ast: PhantomData,
-            fallback: None,
-        }
-    }
-
-    #[cfg(test)]
     pub(super) fn syntax(source: SourceId, syntax: SyntaxStatement, fallback: &'ast Stmt) -> Self {
         Self {
             source: Some(source),
@@ -467,14 +454,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             _ast: PhantomData,
             fallback: Some(fallback),
         }
-    }
-
-    #[cfg(test)]
-    pub(super) fn missing_child_payload_context_for_test(&self) -> Option<Self> {
-        Some(Self::missing_child_payload_context(
-            self.syntax_statement()?.clone(),
-            self.fallback(),
-        ))
     }
 
     #[cfg(test)]

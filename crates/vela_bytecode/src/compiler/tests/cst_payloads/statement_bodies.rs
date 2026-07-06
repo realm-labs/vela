@@ -59,9 +59,14 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::Block)
                 })
                 .expect("block statement payload");
-            let missing_children = block
-                .missing_child_payload_context_for_test()
-                .expect("block statement missing-child payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    block
+                        .syntax_statement()
+                        .expect("block statement syntax")
+                        .clone(),
+                    block.fallback(),
+                );
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)
@@ -209,9 +214,14 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::For)
                 })
                 .expect("for statement payload");
-            let missing_children = for_statement
-                .missing_child_payload_context_for_test()
-                .expect("for statement missing-child payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    for_statement
+                        .syntax_statement()
+                        .expect("for statement syntax")
+                        .clone(),
+                    for_statement.fallback(),
+                );
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)
@@ -246,9 +256,14 @@ fn main(flag) {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::If)
                 })
                 .expect("if statement payload");
-            let missing_children = if_statement
-                .missing_child_payload_context_for_test()
-                .expect("if statement missing-child payload");
+            let missing_children =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    if_statement
+                        .syntax_statement()
+                        .expect("if statement syntax")
+                        .clone(),
+                    if_statement.fallback(),
+                );
 
             let error = compiler
                 .compile_statement_payload_for_test(&missing_children)

@@ -94,15 +94,10 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let cst_binary_let = payload.body.statement_payloads()[0]
-        .syntax_statement()
-        .expect("CST binary let statement")
-        .clone();
-    let syntax_only =
-        body_payloads::CompilerStatementPayload::syntax_only_for_test(source, cst_binary_let);
+    let syntax_only_statements = payload.body.statement_payloads();
 
     compiler
-        .compile_statement_payload_for_test(&syntax_only)
+        .compile_statement_payload_for_test(&syntax_only_statements[0])
         .expect("CST binary let should compile without legacy statement fallback");
 
     assert!(
