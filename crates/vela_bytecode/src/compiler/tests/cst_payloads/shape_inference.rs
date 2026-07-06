@@ -848,6 +848,36 @@ fn main() {
 }
 
 #[test]
+fn fallback_callback_shape_does_not_infer_legacy_lambda_body_shape() {
+    with_cst_payload_compiler(
+        r#"
+struct Payload {
+    label: String,
+    score: i64,
+}
+
+fn main() {
+    let legacy_callback = [Payload { label: "legacy", score: 1 }].map(|item| item.label);
+}
+"#,
+        |compiler, payload| {
+            let statements = shape_statement_payloads(&payload.body);
+            let legacy_callback = statements[0]
+                .let_initializer_expression_payload()
+                .expect("legacy callback initializer");
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(legacy_callback.fallback(), None),
+                Some(record_shapes::ValueShape::Array(Box::new(
+                    record_shapes::ValueShape::Unknown
+                ))),
+                "owned fallback shape inference must not inspect legacy lambda bodies"
+            );
+        },
+    );
+}
+
+#[test]
 fn callback_map_values_shape_inference_prefers_cst_lambda_body_shape() {
     with_cst_payload_compiler(
         r#"

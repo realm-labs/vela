@@ -769,32 +769,32 @@ fn method_call_shape(
             ValueShape::Option(value) => Some(ValueShape::Option(value.clone())),
             _ => None,
         },
-        "map" => callback_return_shape(&receiver, method, args).map(|value| match receiver {
-            ValueShape::Array(_) => ValueShape::Array(Box::new(value)),
-            ValueShape::Set(_) => ValueShape::Set(Box::new(value)),
-            ValueShape::Iterator(_) => ValueShape::Iterator(Box::new(value)),
-            ValueShape::Option(_) => ValueShape::Option(Box::new(value)),
-            ValueShape::Result { err, .. } => ValueShape::Result {
-                ok: Some(Box::new(value)),
+        "map" => match receiver {
+            ValueShape::Array(_) => Some(ValueShape::Array(Box::new(ValueShape::Unknown))),
+            ValueShape::Set(_) => Some(ValueShape::Set(Box::new(ValueShape::Unknown))),
+            ValueShape::Iterator(_) => Some(ValueShape::Iterator(Box::new(ValueShape::Unknown))),
+            ValueShape::Option(_) => Some(ValueShape::Option(Box::new(ValueShape::Unknown))),
+            ValueShape::Result { err, .. } => Some(ValueShape::Result {
+                ok: Some(Box::new(ValueShape::Unknown)),
                 err,
-            },
-            _ => value,
-        }),
-        "map_err" => callback_return_shape(&receiver, method, args).map(|value| match receiver {
-            ValueShape::Result { ok, .. } => ValueShape::Result {
+            }),
+            _ => None,
+        },
+        "map_err" => match receiver {
+            ValueShape::Result { ok, .. } => Some(ValueShape::Result {
                 ok,
-                err: Some(Box::new(value)),
-            },
-            _ => value,
-        }),
-        "and_then" => callback_return_shape(&receiver, method, args),
-        "map_values" => callback_return_shape(&receiver, method, args).and_then(|value| {
+                err: Some(Box::new(ValueShape::Unknown)),
+            }),
+            _ => None,
+        },
+        "and_then" => None,
+        "map_values" => {
             let (key, _) = receiver.map_parts()?;
             Some(ValueShape::Map {
                 key: Box::new(key.clone()),
-                value: Box::new(value),
+                value: Box::new(ValueShape::Unknown),
             })
-        }),
+        }
         "unwrap_or" => match &receiver {
             ValueShape::Option(value) if !matches!(value.as_ref(), ValueShape::Unknown) => {
                 Some((**value).clone())
@@ -824,7 +824,7 @@ fn method_call_shape(
             }),
             _ => None,
         },
-        "or_else" => callback_return_shape(&receiver, method, args),
+        "or_else" => None,
         "ok_or" => match &receiver {
             ValueShape::Option(value) => Some(ValueShape::Result {
                 ok: Some(value.clone()),
@@ -944,37 +944,6 @@ fn method_call_shape(
         }),
         _ => None,
     }
-}
-
-pub(super) fn callback_return_shape(
-    receiver: &ValueShape,
-    method: &str,
-    args: &[vela_syntax::ast::Argument],
-) -> Option<ValueShape> {
-    let lambda = args.first()?;
-    let ExprKind::Lambda { params, body } = &lambda.value.kind else {
-        return None;
-    };
-    let hints = callback_param_shapes(receiver, method, params.len())?;
-    expression_value_shape(
-        body,
-        &|_span| None,
-        &|name| {
-            params
-                .iter()
-                .position(|param| param.name == name)
-                .and_then(|index| hints.get(index).cloned().flatten())
-        },
-        &|_span| None,
-        &|name| {
-            params
-                .iter()
-                .position(|param| param.name == name)
-                .and_then(|index| hints.get(index))
-                .and_then(|shape| shape.as_ref())
-                .and_then(ValueShape::value_type)
-        },
-    )
 }
 
 pub(super) fn callback_param_shapes(
