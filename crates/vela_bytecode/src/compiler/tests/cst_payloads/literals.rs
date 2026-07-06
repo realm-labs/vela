@@ -49,8 +49,7 @@ fn main(input) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let (_legacy_literal, legacy_expr) =
         first_call_argument_value_payload_and_fallback(&payload.body, 0);
-    let missing_literal =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
+    let missing_literal = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_expr, Some(&missing_literal))
@@ -77,8 +76,7 @@ fn main(input) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let (_literal, literal_expr) = first_call_argument_value_payload_and_fallback(&payload.body, 0);
-    let missing_literal =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, literal_expr);
+    let missing_literal = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     assert_eq!(
         compiler.static_type_for_expr_with_payload(literal_expr, Some(&missing_literal),),

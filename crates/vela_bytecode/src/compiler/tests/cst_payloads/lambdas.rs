@@ -274,8 +274,7 @@ fn main() {
     let legacy_lambda = lambda_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy lambda payload");
-    let missing_lambda =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_lambda.fallback());
+    let missing_lambda = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_lambda.fallback(), Some(&missing_lambda))

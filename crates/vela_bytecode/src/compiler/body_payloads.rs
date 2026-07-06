@@ -961,11 +961,8 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_syntax(
-        source: SourceId,
-        fallback: &'ast vela_syntax::ast::Expr,
-    ) -> Self {
-        Self::from_fallback(Some(source), None, fallback)
+    pub(in crate::compiler) fn missing_syntax(source: SourceId) -> Self {
+        Self::from_syntax(Some(source), None)
     }
 
     fn matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {

@@ -215,10 +215,7 @@ fn main() {
     let legacy_interpolated = interpolated_statement_payloads(&legacy_payload.body)[1]
         .let_initializer_expression_payload()
         .expect("legacy interpolated payload");
-    let missing_interpolated = body_payloads::CompilerExpressionPayload::missing_syntax(
-        source,
-        legacy_interpolated.fallback(),
-    );
+    let missing_interpolated = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_interpolated.fallback(), Some(&missing_interpolated))

@@ -155,16 +155,12 @@ fn main() {
             let record = shape_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("record initializer payload");
-            let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(
-                SourceId::new(1),
-                record.fallback(),
-            );
+            let missing_payload =
+                body_payloads::CompilerExpressionPayload::missing_syntax(SourceId::new(1));
 
             assert_eq!(
-                compiler.value_shape_for_expr_with_payload(
-                    missing_payload.fallback(),
-                    Some(&missing_payload),
-                ),
+                compiler
+                    .value_shape_for_expr_with_payload(record.fallback(), Some(&missing_payload),),
                 None,
                 "missing source-backed CST payload must not use the legacy record shape"
             );

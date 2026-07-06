@@ -492,8 +492,7 @@ fn main(input, other) {
     let legacy_binary = binary_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy binary payload");
-    let missing_binary =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_binary.fallback());
+    let missing_binary = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_binary.fallback(), Some(&missing_binary))

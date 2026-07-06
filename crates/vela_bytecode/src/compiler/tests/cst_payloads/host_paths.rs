@@ -217,8 +217,7 @@ fn main(player: Player) {
         .expect("host path call argument payloads")
         .remove(0);
     let legacy_expr = call_argument_fallback(&call, 0);
-    let missing_path =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
+    let missing_path = body_payloads::CompilerExpressionPayload::missing_syntax(source);
     let compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
         payload.body.clone(),

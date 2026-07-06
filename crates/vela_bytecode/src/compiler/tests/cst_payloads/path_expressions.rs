@@ -54,8 +54,7 @@ fn main(value) {
         .expect("call argument payloads")
         .remove(0);
     let legacy_expr = call_argument_fallback(&call, 0);
-    let missing_path =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
+    let missing_path = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_expr, Some(&missing_path))

@@ -465,7 +465,7 @@ fn main() {
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
         panic!("expected legacy call fallback");
     };
-    let missing_callee = body_payloads::CompilerExpressionPayload::missing_syntax(source, callee);
+    let missing_callee = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_call_expr_with_arg_payloads(
@@ -500,8 +500,7 @@ fn main() {
     let legacy_call = call_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy call payload");
-    let missing_call =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_call.fallback());
+    let missing_call = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_call.fallback(), Some(&missing_call))

@@ -440,6 +440,9 @@ from expression payloads.
 Source-less expression payload test helpers now build syntax-only payloads
 without carrying an old fallback `Expr`, so missing-child fixture coverage no
 longer smuggles owned expressions through that route.
+Missing-syntax expression payload test helpers now also build syntax-only
+payloads, so source-backed fixtures with absent CST nodes no longer attach old
+fallback `Expr`s to the payload itself.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

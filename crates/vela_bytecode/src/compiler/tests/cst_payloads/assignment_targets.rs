@@ -18,10 +18,7 @@ fn main() {
     let legacy_assignment = statements[1]
         .expression_payload()
         .expect("legacy assignment expression");
-    let missing_assignment = body_payloads::CompilerExpressionPayload::missing_syntax(
-        source,
-        legacy_assignment.fallback(),
-    );
+    let missing_assignment = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_assignment.fallback(), Some(&missing_assignment))

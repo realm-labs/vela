@@ -1701,7 +1701,7 @@ fn main() {
     let value = statements[0]
         .let_initializer_fallback_for_test()
         .expect("expected let initializer");
-    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
+    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_let_initializer_value_payload_for_test(value, Some(&missing_payload))
@@ -1788,7 +1788,7 @@ fn make(value) {
     let value = statements[0]
         .return_value_fallback_for_test()
         .expect("expected return value");
-    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
+    let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_return_value_payload_for_test(value, Some(&missing_payload))

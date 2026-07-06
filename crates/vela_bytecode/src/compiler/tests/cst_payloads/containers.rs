@@ -260,10 +260,8 @@ fn main() {
             let array = container_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("array payload");
-            let missing = body_payloads::CompilerExpressionPayload::missing_syntax(
-                SourceId::new(1),
-                array.fallback(),
-            );
+            let missing =
+                body_payloads::CompilerExpressionPayload::missing_syntax(SourceId::new(1));
 
             let error = compiler
                 .compile_expr_with_payload(array.fallback(), Some(&missing))

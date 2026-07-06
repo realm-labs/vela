@@ -487,8 +487,7 @@ fn make(value) {
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy field payload");
-    let missing_field =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_field.fallback());
+    let missing_field = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_field.fallback(), Some(&missing_field))
@@ -779,8 +778,7 @@ fn main() {
     let legacy_index = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy index payload");
-    let missing_index =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_index.fallback());
+    let missing_index = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_index.fallback(), Some(&missing_index))

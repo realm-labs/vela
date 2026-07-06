@@ -841,8 +841,7 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_return_match_expr(body_fallback(source, &payload.body));
-    let missing_scrutinee =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, &match_expr.scrutinee);
+    let missing_scrutinee = body_payloads::CompilerExpressionPayload::missing_syntax(source);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
     let error = compiler
         .compile_match_value_with_payloads(match_expr, Register(0), Some(&missing_scrutinee), &[])

@@ -233,8 +233,7 @@ fn main(input, other) {
     let legacy_unary = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy unary payload");
-    let missing_unary =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_unary.fallback());
+    let missing_unary = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     assert_eq!(missing_unary.syntax_unary_operator(), None);
 
@@ -270,8 +269,7 @@ fn main() {
     let legacy_try = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy try payload");
-    let missing_try =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_try.fallback());
+    let missing_try = body_payloads::CompilerExpressionPayload::missing_syntax(source);
 
     let error = compiler
         .compile_expr_with_payload(legacy_try.fallback(), Some(&missing_try))
