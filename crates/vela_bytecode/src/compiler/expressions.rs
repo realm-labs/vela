@@ -129,20 +129,24 @@ impl Compiler<'_, '_> {
                     "missing CST match expression payload",
                 )))
             }
-            SyntaxExpressionKind::Path => match &expr.kind {
-                ExprKind::Path(_) => {
-                    let path = payload.syntax_path_segments().ok_or_else(|| {
-                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "missing CST path expression",
-                        ))
-                    })?;
-                    self.compile_path_expr(expr.span, &path)
-                }
-                ExprKind::SelfValue if payload.syntax_is_self() => {
-                    self.local_register_at_span(expr.span, "self")
-                }
-                _ => unreachable!("validated CST path expression payload kind"),
-            },
+            SyntaxExpressionKind::Path => {
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST path expression payload",
+                    )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST path expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST path expression payload",
+                    )));
+                };
+                Ok(register)
+            }
             SyntaxExpressionKind::Array => {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
