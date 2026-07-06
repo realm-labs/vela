@@ -12,7 +12,6 @@ use vela_host::target::HostTargetPlan;
 
 use super::body_payloads::{CompilerExpressionPayload, expression_syntax_path_or_self};
 use super::call_args::CallArgumentSyntax;
-use super::host_path_payload_guards::payload_matches_host_path_expression;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, reject_named_args};
 
 pub(super) struct HostPath<'ast> {
@@ -656,13 +655,11 @@ impl Compiler<'_, '_> {
                     };
                     let base = base.as_ref();
                     let base_payload = payload.field_base_payload()?;
-                    let base_expr =
-                        payload_matches_host_path_expression(&base_payload, base).then_some(base);
                     let path = self.host_field_path_with_payload(base, Some(&base_payload))?;
                     Some(HostCollectionMethodTarget {
                         path,
                         field_receiver: Some(HostCollectionFieldReceiver {
-                            expr: base_expr,
+                            expr: Some(base),
                             payload: Some(base_payload),
                         }),
                     })
