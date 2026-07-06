@@ -7,6 +7,9 @@ use vela_hir::type_hint::HirTypeHint;
 use vela_syntax::ast::{Expr, ExprKind, SyntaxExpression, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
+use super::expression_facts::{
+    expression_path_is_self, expression_syntax_kind, payload_overlaps_expression_facts,
+};
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -198,34 +201,22 @@ fn payload_matches_script_fact_expression(
     payload: &CompilerExpressionPayload<'_>,
     expr: &Expr,
 ) -> bool {
-    let Some(payload_span) = payload.syntax_span() else {
-        return false;
-    };
-    if !spans_overlap(payload_span, expr.span) {
-        return false;
-    }
-    let Some(payload_kind) = payload.stored_syntax_kind() else {
-        return true;
-    };
-    let Some(expr_kind) = script_fact_expression_kind(expr) else {
-        return false;
-    };
-    (payload_kind == expr_kind || payload_kind == SyntaxExpressionKind::Paren)
-        && (expr_kind != SyntaxExpressionKind::Path
-            || payload.syntax_is_self() == matches!(expr.kind, ExprKind::SelfValue))
+    payload_overlaps_expression_facts(
+        payload,
+        expr.span,
+        script_fact_expression_kind(expr),
+        expression_path_is_self(expr),
+        true,
+    )
 }
 
 fn script_fact_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
-    match &expr.kind {
-        ExprKind::Record { .. } => Some(SyntaxExpressionKind::Record),
-        ExprKind::Call { .. } => Some(SyntaxExpressionKind::Call),
-        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
-        _ => None,
-    }
-}
-
-fn spans_overlap(left: Span, right: Span) -> bool {
-    left.start < right.end && right.start < left.end
+    expression_syntax_kind(expr).filter(|kind| {
+        matches!(
+            kind,
+            SyntaxExpressionKind::Record | SyntaxExpressionKind::Call | SyntaxExpressionKind::Path
+        )
+    })
 }
 
 fn expression_script_fact_from_payload_syntax(
