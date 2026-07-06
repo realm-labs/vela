@@ -172,6 +172,7 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self::syntax_only(source, body)
     }
 
+    #[cfg(test)]
     pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
         let _ = body;
         false
@@ -198,16 +199,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
 
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
         syntax_body_statements(&self.syntax.body).is_empty()
-    }
-
-    #[cfg(test)]
-    pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
-        false
-    }
-
-    #[cfg(not(test))]
-    pub(super) fn has_unmatched_extra_statement_payloads(&self) -> bool {
-        false
     }
 
     pub(super) fn block_value<'payload>(

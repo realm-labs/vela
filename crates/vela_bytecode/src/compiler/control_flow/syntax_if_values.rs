@@ -79,17 +79,9 @@ fn syntax_if_value_lowering_covers(if_expr: &SyntaxIfExpr) -> bool {
     if if_expr.condition().is_none() || if_expr.then_block().is_none() {
         return false;
     }
-    if if_expr
-        .then_block()
-        .is_some_and(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
-    {
-        return false;
-    }
     match if_expr.else_branch() {
         Some(SyntaxElseBranch::If(else_if)) => syntax_if_value_lowering_covers(&else_if),
-        Some(SyntaxElseBranch::Block(block)) => {
-            !CompilerBodyPayload::requires_body_block_lookup(&block)
-        }
+        Some(SyntaxElseBranch::Block(_)) => true,
         None => true,
     }
 }

@@ -33,21 +33,8 @@ impl Compiler<'_, '_> {
         if body.syntax_statements_are_empty() {
             return Ok(false);
         }
-        self.reject_extra_body_statement_payloads(body)?;
         let statements = body.statement_payloads();
         self.compile_statement_payloads(&statements)
-    }
-
-    pub(in crate::compiler::control_flow) fn reject_extra_body_statement_payloads(
-        &self,
-        body: &CompilerBodyPayload<'_>,
-    ) -> CompileResult<()> {
-        if body.has_unmatched_extra_statement_payloads() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST body statements",
-            )));
-        }
-        Ok(())
     }
 
     pub(in crate::compiler::control_flow) fn compile_statement_payload(

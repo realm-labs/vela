@@ -67,7 +67,6 @@ impl Compiler<'_, '_> {
             self.emit_constant_to(dst, Constant::Null);
             return Ok(false);
         }
-        self.reject_extra_body_statement_payloads(body)?;
         match body.block_value(statements) {
             CompilerBlockValue::Empty => {
                 self.emit_constant_to(dst, Constant::Null);
