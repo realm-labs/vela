@@ -98,7 +98,7 @@ fn main() {
 }
 
 #[test]
-fn missing_let_initializer_match_payloads_do_not_use_legacy_match_body() {
+fn let_initializer_match_compiles_from_parent_cst_without_child_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -113,19 +113,15 @@ fn main() {
                 .let_initializer_expression_payload()
                 .expect("CST match initializer");
 
-            let error = compiler
+            let (register, returned) = compiler
                 .compile_let_initializer_value_payload_for_test(
                     expression.fallback(),
                     Some(&expression),
                 )
-                .expect_err("missing CST let match payloads must not compile legacy match body");
+                .expect("parent CST match payload should compile without legacy match body");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax(
-                    "missing CST let initializer match arm payloads"
-                )
-            ));
+            assert_eq!(register, Register(0));
+            assert!(!returned);
         },
     );
 }
@@ -167,7 +163,7 @@ fn main() {
 }
 
 #[test]
-fn missing_return_match_payloads_do_not_use_legacy_match_body() {
+fn return_match_compiles_from_parent_cst_without_child_payloads() {
     with_cst_payload_compiler(
         r#"
 fn main() {
@@ -182,14 +178,12 @@ fn main() {
                 .return_value_expression_payload()
                 .expect("CST match return");
 
-            let error = compiler
+            let (register, returned) = compiler
                 .compile_return_value_payload_for_test(expression.fallback(), Some(&expression))
-                .expect_err("missing CST return match payloads must not compile legacy match body");
+                .expect("parent CST match payload should compile without legacy match body");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST return match arm payloads")
-            ));
+            assert_eq!(register, Register(0));
+            assert!(!returned);
         },
     );
 }

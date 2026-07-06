@@ -5,7 +5,9 @@ use vela_syntax::ast::{
     SyntaxPattern, SyntaxPatternKind,
 };
 
-use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerPatternPayload};
+use crate::compiler::body_payloads::{
+    CompilerBodyPayload, CompilerExpressionPayload, CompilerPatternPayload,
+};
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -25,6 +27,27 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         self.compile_syntax_match_value_to(source, &match_expr, dst)?;
         Ok(Some(dst))
+    }
+
+    pub(in crate::compiler) fn compile_syntax_match_payload_value_to(
+        &mut self,
+        payload: &CompilerExpressionPayload<'_>,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some(source) = payload.source() else {
+            return Ok(None);
+        };
+        let Some(match_expr) = payload
+            .syntax_expression()
+            .and_then(SyntaxExpression::as_match)
+        else {
+            return Ok(None);
+        };
+        if !syntax_match_value_lowering_covers(&match_expr) {
+            return Ok(None);
+        }
+        self.compile_syntax_match_value_to(source, &match_expr, dst)
+            .map(Some)
     }
 
     pub(in crate::compiler::control_flow) fn compile_syntax_match_statement(
@@ -289,7 +312,7 @@ impl Compiler<'_, '_> {
 
 fn syntax_match_value_lowering_covers(match_expr: &SyntaxMatchExpr) -> bool {
     match_expr.attributes().next().is_none()
-        && match_expr.guardless_arms_have_covered_patterns()
+        && match_expr.arms_have_covered_patterns()
         && match_expr.arms().into_iter().all(|arm| {
             arm.body().is_some_and(|body| match body {
                 SyntaxMatchArmBody::Expression(expression) => expression
@@ -301,11 +324,11 @@ fn syntax_match_value_lowering_covers(match_expr: &SyntaxMatchExpr) -> bool {
 }
 
 trait SyntaxMatchCoverage {
-    fn guardless_arms_have_covered_patterns(&self) -> bool;
+    fn arms_have_covered_patterns(&self) -> bool;
 }
 
 impl SyntaxMatchCoverage for SyntaxMatchExpr {
-    fn guardless_arms_have_covered_patterns(&self) -> bool {
+    fn arms_have_covered_patterns(&self) -> bool {
         self.arms().into_iter().all(|arm| {
             arm.pattern().is_some_and(|pattern| {
                 matches!(

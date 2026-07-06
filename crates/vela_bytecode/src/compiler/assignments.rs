@@ -1057,6 +1057,12 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 let dst = self.alloc_register()?;
+                if let Some(expression_payload) = expression_payload
+                    && let Some(_) =
+                        self.compile_syntax_match_payload_value_to(expression_payload, dst)?
+                {
+                    return Ok(dst);
+                }
                 let ExprKind::Match(match_expr) = &value.kind else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value match payload",

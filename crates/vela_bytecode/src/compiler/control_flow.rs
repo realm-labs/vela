@@ -608,6 +608,12 @@ impl Compiler<'_, '_> {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let dst = self.alloc_register()?;
+                if let Some(expression_payload) = syntax_payloads.expression
+                    && let Some(returned) =
+                        self.compile_syntax_match_payload_value_to(expression_payload, dst)?
+                {
+                    return Ok((dst, returned));
+                }
                 let ExprKind::Match(match_expr) = &value.kind else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST let initializer match payload",
@@ -798,6 +804,12 @@ impl Compiler<'_, '_> {
                     self.check_value_payload_type(value, expected, context, syntax_payloads)?;
                 }
                 let dst = self.alloc_register()?;
+                if let Some(expression_payload) = syntax_payloads.expression
+                    && let Some(returned) =
+                        self.compile_syntax_match_payload_value_to(expression_payload, dst)?
+                {
+                    return Ok((dst, returned));
+                }
                 let ExprKind::Match(match_expr) = &value.kind else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST return match payload",

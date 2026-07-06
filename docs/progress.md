@@ -270,7 +270,12 @@ script method IDs for known script receivers, including defaulted method
 arguments and host-ref script impl dispatch, and CST record-variant and
 tuple-variant constructors now lower to enum bytecode. CST match-value lowering
 now binds pattern locals for binding, tuple-variant, and record-variant arms,
-and compiles arm guards through scoped CST pattern facts. CST script-function
+and compiles arm guards through scoped CST pattern facts. Simple match-value
+contexts for expression, assignment, block tail, typed let, and return lowering
+now route directly through the parent rowan CST payload without requiring
+derived match child payload vectors, including guarded and binding-local arms
+covered by the existing CST match lowering.
+CST script-function
 call lowering now resolves named arguments, defaulted parameter slots, typed
 argument checks, and checked script-call mode from HIR signatures. The
 previously known engine CST hard-switch failure set is cleared under

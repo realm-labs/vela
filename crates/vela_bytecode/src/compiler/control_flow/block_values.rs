@@ -171,6 +171,12 @@ impl Compiler<'_, '_> {
                 self.compile_if_value_with_payloads(if_expr, dst, &if_payload)
             }
             SyntaxExpressionKind::Match => {
+                if let Some(expression_payload) = payload.expression_payload()
+                    && let Some(returned) =
+                        self.compile_syntax_match_payload_value_to(&expression_payload, dst)?
+                {
+                    return Ok(returned);
+                }
                 let ExprKind::Match(match_expr) = &expr.kind else {
                     return Err(missing_cst_block_tail_payload(
                         "missing CST block tail match payload",

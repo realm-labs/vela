@@ -459,6 +459,7 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::Add { .. }
+            | UnlinkedInstructionKind::I64AddImm { .. }
             | UnlinkedInstructionKind::BinaryIntLiteral {
                 op: crate::BinaryLiteralOp::Add,
                 ..
@@ -495,6 +496,10 @@ fn main() {
     assert!(code.instructions.iter().any(|instruction| matches!(
         instruction.kind,
         UnlinkedInstructionKind::Less { .. }
+            | UnlinkedInstructionKind::I64CmpImm {
+                op: crate::I64CompareOp::Less,
+                ..
+            }
             | UnlinkedInstructionKind::BinaryIntLiteral {
                 op: crate::BinaryLiteralOp::Less,
                 ..
