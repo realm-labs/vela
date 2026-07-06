@@ -192,6 +192,36 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_map_values_callback_method_accepts_lambda_argument() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let mapped = {"gold": 4}.map_values(|value| value + 1);
+    return mapped["gold"];
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only map callback method call should not retain statement fallbacks"
+    );
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(source, text, registry.compile_view())
+        .expect("CST-backed map_values callback method argument should compile");
+    let main = program.function("main").expect("main bytecode");
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::MakeClosure { .. }
+    )));
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallMethodId { method, .. } if method == "map_values"
+    )));
+}
+
+#[test]
 fn syntax_only_set_from_array_lowers_to_runtime_constructor() {
     let source = SourceId::new(1);
     let text = r#"

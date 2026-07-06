@@ -335,6 +335,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         let after_value = self.skip_trivia(value_end);
         if after_value < end && self.at_kind(after_value, SyntaxKind::Semicolon) {
             after_value + 1
+        } else if after_value < end && self.at_statement_continuation(after_value) {
+            self.find_statement_term_end(start, end)
         } else {
             value_end
         }

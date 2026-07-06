@@ -1,7 +1,8 @@
 use super::{AstNode, SyntaxSourceFile};
 use crate::ast::{
     SyntaxBreakStmt, SyntaxCallExpr, SyntaxContinueStmt, SyntaxElseBranch, SyntaxExprStmt,
-    SyntaxForStmt, SyntaxIfExpr, SyntaxPatternKind, SyntaxReturnStmt, SyntaxStatementKind,
+    SyntaxForStmt, SyntaxIfExpr, SyntaxMapExpr, SyntaxPatternKind, SyntaxReturnStmt,
+    SyntaxStatementKind,
 };
 use crate::parse::parse_source;
 use crate::{SyntaxKind, SyntaxTreeBuilder};
@@ -139,6 +140,45 @@ fn main() {
     assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
     assert_eq!(filter_callee.name_text().as_deref(), Some("filter"));
     assert_eq!(map_callee.name_text().as_deref(), Some("map"));
+}
+
+#[test]
+fn ast_let_initializer_keeps_braced_map_postfix_chain() {
+    let source = r#"
+fn main() {
+    let mapped = {"gold": 4}.map_values(|value| value + 1);
+    return mapped["gold"];
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let statements = body.statements().collect::<Vec<_>>();
+    let initializer = body
+        .let_statements()
+        .next()
+        .expect("let statement")
+        .initializer()
+        .expect("initializer");
+    let call = SyntaxCallExpr::cast(initializer.syntax().clone()).expect("initializer call");
+    let callee = call
+        .callee()
+        .and_then(|callee| callee.as_field())
+        .expect("map_values callee");
+    let receiver = callee
+        .receiver()
+        .and_then(|receiver| SyntaxMapExpr::cast(receiver.syntax().clone()))
+        .expect("map receiver");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(statements.len(), 2);
+    assert_eq!(callee.name_text().as_deref(), Some("map_values"));
+    assert_eq!(receiver.entries().count(), 1);
 }
 
 #[test]
