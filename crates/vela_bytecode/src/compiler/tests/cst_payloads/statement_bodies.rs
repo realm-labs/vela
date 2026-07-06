@@ -229,19 +229,12 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::For)
                 })
                 .expect("for statement payload");
-            let (span, index_pattern, value_pattern, iterable) = for_statement
-                .for_fallback_parts()
-                .expect("for fallback parts");
             let missing_children =
                 body_payloads::CompilerStatementPayload::missing_for_child_payload_context(
                     for_statement
                         .syntax_statement()
                         .expect("for statement syntax")
                         .clone(),
-                    span,
-                    index_pattern,
-                    value_pattern,
-                    iterable,
                 );
 
             let error = compiler
@@ -250,7 +243,7 @@ fn main() {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST for statement body payload")
+                CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
             ));
         },
     );

@@ -385,21 +385,6 @@ impl<'ast> StatementExpressionFallbacks<'ast> {
             },
         }
     }
-
-    fn from_for_parts(
-        statement_span: Span,
-        index_pattern: Option<&'ast Pattern>,
-        value_pattern: &'ast Pattern,
-        iterable: &'ast Expr,
-    ) -> Self {
-        Self {
-            statement_span: Some(statement_span),
-            for_iterable: Some(iterable),
-            for_index_pattern: index_pattern,
-            for_value_pattern: Some(value_pattern),
-            ..Self::default()
-        }
-    }
 }
 
 #[cfg(test)]
@@ -490,23 +475,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn missing_for_child_payload_context(
-        syntax: SyntaxStatement,
-        statement_span: Span,
-        index_pattern: Option<&'ast Pattern>,
-        value_pattern: &'ast Pattern,
-        iterable: &'ast Expr,
-    ) -> Self {
+    pub(super) fn missing_for_child_payload_context(syntax: SyntaxStatement) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
-            expression_fallbacks: StatementExpressionFallbacks::from_for_parts(
-                statement_span,
-                index_pattern,
-                value_pattern,
-                iterable,
-            ),
+            expression_fallbacks: StatementExpressionFallbacks::default(),
         }
     }
 

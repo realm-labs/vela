@@ -553,18 +553,12 @@ fn main(values) {
         |_, payload| {
             let statements = source_identity_statement_payloads(&payload.body);
             let statement = &statements[0];
-            let (span, index_pattern, value_pattern, iterable) =
-                statement.for_fallback_parts().expect("for fallback parts");
             let missing_source =
                 body_payloads::CompilerStatementPayload::missing_for_child_payload_context(
                     statement
                         .syntax_statement()
                         .expect("for statement syntax")
                         .clone(),
-                    span,
-                    index_pattern,
-                    value_pattern,
-                    iterable,
                 );
 
             assert!(missing_source.syntax_statement().is_none());
