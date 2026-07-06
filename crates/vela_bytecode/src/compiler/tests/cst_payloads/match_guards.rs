@@ -25,10 +25,9 @@ fn legacy_guard(value, legacy_flag) {
     let (cst_payload, _, _) = semantic.function("cst_guard").expect("cst guard");
     let (legacy_payload, _, _) = semantic.function("legacy_guard").expect("legacy guard");
 
-    let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
+    let mismatched_arm = first_return_match_arm_payload(&cst_payload.body);
     let legacy_match =
         first_return_match_expr(fallback_statements_for_body(source, &legacy_payload.body));
-    let mismatched_arm = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler
@@ -63,12 +62,17 @@ fn legacy_guard(value, flag) {
         .expect("CST guard source");
     let (legacy_payload, _, _) = semantic.function("legacy_guard").expect("legacy guard");
 
-    let cst_arm = first_return_match_syntax_arm(&cst_payload.body);
-    assert!(cst_arm.guard().is_none());
+    let missing_guard = first_return_match_arm_payload(&cst_payload.body);
+    assert!(
+        missing_guard
+            .syntax_arm()
+            .expect("CST match arm")
+            .guard()
+            .is_none()
+    );
     let legacy_match =
         first_return_match_expr(fallback_statements_for_body(source, &legacy_payload.body));
     assert!(legacy_match.arms[0].guard.is_some());
-    let missing_guard = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler
@@ -83,17 +87,15 @@ fn legacy_guard(value, flag) {
     );
 }
 
-fn first_return_match_syntax_arm(
+fn first_return_match_arm_payload(
     body: &body_payloads::CompilerBodyPayload<'_>,
-) -> vela_syntax::ast::SyntaxMatchArm {
+) -> body_payloads::CompilerMatchArmPayload {
     let statements = paired_statement_payloads_for_body(body.syntax_payload().source, body);
     statements[0]
         .return_value_expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
-        .expect("return match")[0]
-        .syntax_arm()
-        .expect("CST arm")
-        .clone()
+        .expect("return match")
+        .remove(0)
 }
 
 fn first_return_match_expr(statements: &[vela_syntax::ast::Stmt]) -> &vela_syntax::ast::MatchExpr {

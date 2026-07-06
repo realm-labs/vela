@@ -74,3 +74,32 @@ pub(super) fn first_record_field_payload_from_cst(
         .next()
         .expect("CST record field")
 }
+
+pub(super) fn first_return_match_arm_payload_from_cst(
+    source: SourceId,
+    text: &str,
+) -> body_payloads::CompilerMatchArmPayload {
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, text);
+    let cst_match = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST function body")
+        .statements()
+        .next()
+        .expect("CST return statement")
+        .as_return()
+        .expect("CST return")
+        .expression()
+        .expect("CST return expression");
+    let payload =
+        body_payloads::CompilerExpressionPayload::from_syntax(Some(source), Some(cst_match));
+    payload
+        .match_arm_payloads()
+        .expect("CST match arm payloads")
+        .into_iter()
+        .next()
+        .expect("CST match arm")
+}

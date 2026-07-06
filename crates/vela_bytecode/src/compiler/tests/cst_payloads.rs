@@ -35,7 +35,7 @@ mod wrappers;
 
 use self::payload_extractors::{
     first_call_argument_payload_from_cst, first_map_entry_payload_from_cst,
-    first_record_field_payload_from_cst,
+    first_record_field_payload_from_cst, first_return_match_arm_payload_from_cst,
 };
 
 fn with_cst_payload_compiler(

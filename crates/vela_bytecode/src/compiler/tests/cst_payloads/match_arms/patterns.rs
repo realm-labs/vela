@@ -53,9 +53,7 @@ fn legacy_binding(value) {
     let (cst_literal_payload, _, _) = semantic.function("cst_literal").expect("cst literal");
     let (cst_path_payload, _, _) = semantic.function("cst_path").expect("cst path");
     let (cst_binding_payload, _, _) = semantic.function("cst_binding").expect("cst binding");
-    let literal_payload = body_payloads::CompilerPatternPayload::syntax(
-        first_return_match_pattern_syntax(&cst_literal_payload.body),
-    );
+    let literal_payload = first_return_match_pattern_payload(&cst_literal_payload.body);
     assert_eq!(
         literal_payload.syntax_literal(),
         Some(vela_syntax::ast::Literal::integer("0"))
@@ -67,9 +65,7 @@ fn legacy_binding(value) {
     assert_eq!(missing_source_literal_payload.syntax_pattern_kind(), None);
     assert_eq!(missing_source_literal_payload.syntax_literal(), None);
 
-    let path_payload = body_payloads::CompilerPatternPayload::syntax(
-        first_return_match_pattern_syntax(&cst_path_payload.body),
-    );
+    let path_payload = first_return_match_pattern_payload(&cst_path_payload.body);
     assert_eq!(
         path_payload.syntax_path_segments().as_deref(),
         Some(&["State".to_owned(), "Waiting".to_owned()][..])
@@ -80,9 +76,7 @@ fn legacy_binding(value) {
         );
     assert_eq!(missing_source_path_payload.syntax_path_segments(), None);
 
-    let binding_payload = body_payloads::CompilerPatternPayload::syntax(
-        first_return_match_pattern_syntax(&cst_binding_payload.body),
-    );
+    let binding_payload = first_return_match_pattern_payload(&cst_binding_payload.body);
     assert_eq!(
         binding_payload.syntax_binding_name().as_deref(),
         Some("current")

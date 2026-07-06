@@ -462,8 +462,7 @@ fn legacy_record(value) {
     let (cst_record_payload, _, _) = semantic.function("cst_record").expect("cst record");
     let (legacy_record_payload, _, _) = semantic.function("legacy_record").expect("legacy record");
 
-    let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
-    let mismatched_tuple = body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax);
+    let mismatched_tuple = first_return_match_pattern_payload(&cst_tuple_payload.body);
     let tuple_fields = mismatched_tuple
         .tuple_pattern_payloads()
         .expect("tuple pattern should expose field payloads");
@@ -484,10 +483,9 @@ fn legacy_record(value) {
         ["cst_left".to_owned(), "cst_right".to_owned()]
     );
 
-    let cst_record_syntax = first_return_match_pattern_syntax(&cst_record_payload.body);
     let legacy_record_pattern =
         first_return_match_fallback_pattern(body_fallback(source, &legacy_record_payload.body));
-    let mismatched_record = body_payloads::CompilerPatternPayload::syntax(cst_record_syntax);
+    let mismatched_record = first_return_match_pattern_payload(&cst_record_payload.body);
     let record_fields = mismatched_record
         .record_field_payloads()
         .expect("record pattern should expose field payloads");
@@ -551,10 +549,9 @@ fn legacy_tuple(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_tuple_payload, _, _) = semantic.function("cst_tuple").expect("cst tuple");
     let (legacy_tuple_payload, _, _) = semantic.function("legacy_tuple").expect("legacy tuple");
-    let cst_tuple_syntax = first_return_match_pattern_syntax(&cst_tuple_payload.body);
     let legacy_tuple_pattern =
         first_return_match_fallback_pattern(body_fallback(source, &legacy_tuple_payload.body));
-    let mismatched_tuple = body_payloads::CompilerPatternPayload::syntax(cst_tuple_syntax);
+    let mismatched_tuple = first_return_match_pattern_payload(&cst_tuple_payload.body);
 
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_tuple");
     compiler
@@ -667,9 +664,6 @@ fn legacy_binding(value) {
     let (legacy_binding_payload, _, _) =
         semantic.function("legacy_binding").expect("legacy binding");
 
-    let cst_literal_syntax = first_return_match_pattern_syntax(&cst_literal_payload.body);
-    let cst_path_syntax = first_return_match_pattern_syntax(&cst_path_payload.body);
-    let cst_binding_syntax = first_return_match_pattern_syntax(&cst_binding_payload.body);
     let legacy_literal_pattern =
         first_return_match_fallback_pattern(body_fallback(source, &legacy_literal_payload.body));
     let legacy_path_pattern =
@@ -677,9 +671,9 @@ fn legacy_binding(value) {
     let legacy_binding_pattern =
         first_return_match_fallback_pattern(body_fallback(source, &legacy_binding_payload.body));
 
-    let mismatched_literal = body_payloads::CompilerPatternPayload::syntax(cst_path_syntax);
-    let mismatched_path = body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax.clone());
-    let mismatched_binding = body_payloads::CompilerPatternPayload::syntax(cst_literal_syntax);
+    let mismatched_literal = first_return_match_pattern_payload(&cst_path_payload.body);
+    let mismatched_path = first_return_match_pattern_payload(&cst_literal_payload.body);
+    let mismatched_binding = first_return_match_pattern_payload(&cst_literal_payload.body);
 
     let (mut literal_compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_literal");
     literal_compiler
@@ -734,7 +728,7 @@ fn legacy_binding(value) {
         "mismatched binding fallback should not drive local binding"
     );
 
-    let cst_binding_payload = body_payloads::CompilerPatternPayload::syntax(cst_binding_syntax);
+    let cst_binding_payload = first_return_match_pattern_payload(&cst_binding_payload.body);
     let (mut cst_binding_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "legacy_binding");
     cst_binding_compiler
@@ -867,40 +861,24 @@ fn value_form(value) {
     };
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_arm = cst_parse
-        .tree()
-        .functions()
-        .next()
-        .expect("CST function")
-        .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST return statement")
-        .as_return()
-        .expect("CST return")
-        .expression()
-        .expect("CST return expression")
-        .as_match()
-        .expect("CST match expression")
-        .arms()
-        .into_iter()
-        .next()
-        .expect("CST match arm");
-    assert_eq!(cst_arm.body_expression(), None);
+    let missing_body_arm = first_return_match_arm_payload_from_cst(source, cst_text);
+    assert_eq!(
+        missing_body_arm
+            .syntax_arm()
+            .expect("CST match arm")
+            .body_expression(),
+        None
+    );
 
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (statement_payload, _, _) = semantic.function("statement_form").expect("statement form");
     let statement_match =
         first_statement_match_expr(body_fallback(source, &statement_payload.body));
-    let missing_statement_arm =
-        body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm.clone());
     let (mut statement_compiler, _) =
         cst_payload_compiler_for_function(&semantic, "statement_form");
 
     let statement_error = statement_compiler
-        .compile_match_with_payloads(statement_match, None, Some(&[missing_statement_arm]))
+        .compile_match_with_payloads(statement_match, None, Some(&[missing_body_arm]))
         .expect_err("missing CST match statement arm body must not use legacy body");
     assert!(matches!(
         statement_error.kind,
@@ -909,7 +887,7 @@ fn value_form(value) {
 
     let (value_payload, _, _) = semantic.function("value_form").expect("value form");
     let value_match = first_return_match_expr(body_fallback(source, &value_payload.body));
-    let missing_value_arm = body_payloads::CompilerMatchArmPayload::syntax(source, cst_arm);
+    let missing_value_arm = first_return_match_arm_payload_from_cst(source, cst_text);
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
@@ -1037,15 +1015,21 @@ fn assert_scrutinee_block_payload(
     );
 }
 
-fn first_return_match_pattern_syntax(
+fn first_return_match_pattern_payload(
     body: &body_payloads::CompilerBodyPayload<'_>,
-) -> vela_syntax::ast::SyntaxPattern {
+) -> body_payloads::CompilerPatternPayload {
     let statements = match_statement_payloads(body);
     statements[0]
         .return_value_expression_payload()
         .and_then(|payload| payload.match_arm_payloads())
         .expect("return match")[0]
         .pattern_payload()
+}
+
+fn first_return_match_pattern_syntax(
+    body: &body_payloads::CompilerBodyPayload<'_>,
+) -> vela_syntax::ast::SyntaxPattern {
+    first_return_match_pattern_payload(body)
         .syntax_pattern()
         .expect("CST pattern")
         .clone()

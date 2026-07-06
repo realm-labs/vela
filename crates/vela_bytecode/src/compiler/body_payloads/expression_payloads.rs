@@ -793,14 +793,6 @@ impl CompilerRecordFieldPayload {
 
 impl CompilerMatchArmPayload {
     #[cfg(test)]
-    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMatchArm) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-        }
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(syntax: SyntaxMatchArm) -> Self {
         Self {
             source: None,
@@ -977,11 +969,6 @@ impl CompilerPatternPayload {
             return false;
         };
         syntax.patterns().count() > expected_len
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn syntax(syntax: vela_syntax::ast::SyntaxPattern) -> Self {
-        Self::from_syntax(Some(SourceId::new(1)), Some(syntax))
     }
 
     #[cfg(test)]
