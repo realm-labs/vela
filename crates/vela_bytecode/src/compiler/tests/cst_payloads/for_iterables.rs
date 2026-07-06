@@ -198,22 +198,21 @@ fn main() {
     }
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_statement = cst_parse
+    let cst_body = vela_syntax::parse::parse_source_with_id(source, cst_text)
         .tree()
         .functions()
         .next()
         .expect("CST function")
         .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST for statement");
+        .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
-    let missing =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+    let missing = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        fallback_statements_for_body(source, &legacy_payload.body),
+        0,
+    );
 
     assert_eq!(
         missing.stored_statement_kind(),
@@ -254,22 +253,21 @@ fn main() {
     }
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_statement = cst_parse
+    let cst_body = vela_syntax::parse::parse_source_with_id(source, cst_text)
         .tree()
         .functions()
         .next()
         .expect("CST function")
         .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST for statement");
+        .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
-    let missing =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+    let missing = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        fallback_statements_for_body(source, &legacy_payload.body),
+        0,
+    );
 
     assert_eq!(
         missing.stored_statement_kind(),
@@ -307,22 +305,21 @@ fn main() {
     }
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_statement = cst_parse
+    let cst_body = vela_syntax::parse::parse_source_with_id(source, cst_text)
         .tree()
         .functions()
         .next()
         .expect("CST function")
         .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST for statement");
+        .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = for_statement_payloads(&legacy_payload.body)[0].fallback();
-    let missing =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+    let missing = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        fallback_statements_for_body(source, &legacy_payload.body),
+        0,
+    );
 
     assert_eq!(
         missing.stored_statement_kind(),

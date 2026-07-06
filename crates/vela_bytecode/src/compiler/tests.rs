@@ -6,7 +6,8 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxExpressionKind, SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxBlock, SyntaxExpressionKind,
+    SyntaxStatementKind,
 };
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
@@ -56,17 +57,43 @@ fn paired_statement_payloads_for_body<'ast>(
     source: SourceId,
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
-    let syntax_payloads = body.statement_payloads();
-    fallback_statements_for_body(source, body)
-        .iter()
-        .zip(syntax_payloads)
-        .filter_map(|(fallback, syntax_payload)| {
-            let syntax = syntax_payload.syntax_statement()?.clone();
-            Some(body_payloads::CompilerStatementPayload::syntax(
-                source, syntax, fallback,
-            ))
-        })
-        .collect()
+    body_payloads::CompilerBodyPayload::paired_statement_payloads_with_fallbacks_for_test(
+        source,
+        body.syntax_payload().body.clone(),
+        fallback_statements_for_body(source, body),
+    )
+}
+
+fn statement_payload_from_syntax_body_with_fallbacks<'ast>(
+    source: SourceId,
+    syntax_body: SyntaxBlock,
+    fallback_statements: &'ast [Stmt],
+    syntax_index: usize,
+) -> body_payloads::CompilerStatementPayload<'ast> {
+    body_payloads::CompilerBodyPayload::raw_statement_payloads_with_fallbacks_for_test(
+        source,
+        syntax_body,
+        fallback_statements,
+    )
+    .into_iter()
+    .nth(syntax_index)
+    .expect("paired statement payload")
+}
+
+fn statement_payload_with_fallback_offset<'ast>(
+    source: SourceId,
+    syntax_body: &body_payloads::CompilerBodyPayload<'ast>,
+    fallback_body: &body_payloads::CompilerBodyPayload<'ast>,
+    fallback_offset: usize,
+    syntax_index: usize,
+) -> body_payloads::CompilerStatementPayload<'ast> {
+    let fallback_statements = fallback_statements_for_body(source, fallback_body);
+    statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        syntax_body.syntax_payload().body.clone(),
+        &fallback_statements[fallback_offset..],
+        syntax_index,
+    )
 }
 
 fn cst_let_initializer_if_from_expression<'ast>(

@@ -80,13 +80,15 @@ fn main() {
     take(1);
 }
 "#;
-    let cst_statement = cst_call_statement(source, cst_text);
+    let cst_body = cst_call_body(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let fallback_statement =
-        paired_statement_payloads_for_body(source, &payload.body)[0].fallback();
-    let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
+    let mismatched = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        fallback_statements_for_body(source, &payload.body),
+        0,
+    );
     assert!(
         mismatched
             .expression_payload()
@@ -116,6 +118,13 @@ fn cst_call_expression(source: SourceId, text: &str) -> vela_syntax::ast::Syntax
 }
 
 fn cst_call_statement(source: SourceId, text: &str) -> vela_syntax::ast::SyntaxStatement {
+    cst_call_body(source, text)
+        .statements()
+        .next()
+        .expect("CST statement")
+}
+
+fn cst_call_body(source: SourceId, text: &str) -> vela_syntax::ast::SyntaxBlock {
     vela_syntax::parse::parse_source_with_id(source, text)
         .tree()
         .functions()
@@ -123,7 +132,4 @@ fn cst_call_statement(source: SourceId, text: &str) -> vela_syntax::ast::SyntaxS
         .expect("CST main function")
         .body()
         .expect("CST body")
-        .statements()
-        .next()
-        .expect("CST statement")
 }

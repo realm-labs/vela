@@ -347,14 +347,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = expression_statement_payloads(&payload.body);
-    let cst_call = statements[1]
-        .syntax_statement()
-        .expect("CST call statement")
-        .clone();
-    let legacy_index = statements[2].fallback();
     let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_call, legacy_index);
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 1);
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -380,22 +374,21 @@ fn main() {
     values[0];
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_statement = cst_parse
+    let cst_body = vela_syntax::parse::parse_source_with_id(source, cst_text)
         .tree()
         .functions()
         .next()
         .expect("CST function")
         .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST expression statement");
+        .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_statement = expression_statement_payloads(&legacy_payload.body)[1].fallback();
-    let missing =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, legacy_statement);
+    let missing = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        &fallback_statements_for_body(source, &legacy_payload.body)[1..],
+        0,
+    );
 
     assert_eq!(
         missing.stored_statement_kind(),

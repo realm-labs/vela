@@ -133,6 +133,36 @@ impl<'ast> CompilerBodyPayload<'ast> {
         paired_statement_payloads(source, &syntax_statements, fallback_statements)
     }
 
+    #[cfg(test)]
+    pub(super) fn paired_statement_payloads_with_fallbacks_for_test(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback_statements: &'ast [Stmt],
+    ) -> Vec<CompilerStatementPayload<'ast>> {
+        let syntax_statements = syntax_body_statements(&body);
+        syntax_statements
+            .into_iter()
+            .zip(fallback_statements)
+            .map(|(syntax, fallback)| {
+                CompilerStatementPayload::new_paired_for_tests(source, Some(syntax), Some(fallback))
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(super) fn raw_statement_payloads_with_fallbacks_for_test(
+        source: SourceId,
+        body: SyntaxBlock,
+        fallback_statements: &'ast [Stmt],
+    ) -> Vec<CompilerStatementPayload<'ast>> {
+        body.statements()
+            .zip(fallback_statements)
+            .map(|(syntax, fallback)| {
+                CompilerStatementPayload::new_paired_for_tests(source, Some(syntax), Some(fallback))
+            })
+            .collect()
+    }
+
     fn syntax_only(source: SourceId, body: SyntaxBlock) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
@@ -430,16 +460,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             syntax,
             _ast: PhantomData,
             fallback,
-        }
-    }
-
-    #[cfg(test)]
-    pub(super) fn syntax(source: SourceId, syntax: SyntaxStatement, fallback: &'ast Stmt) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-            _ast: PhantomData,
-            fallback: Some(fallback),
         }
     }
 

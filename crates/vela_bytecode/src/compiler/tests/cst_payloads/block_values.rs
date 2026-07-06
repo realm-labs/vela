@@ -24,15 +24,11 @@ fn main() {
         .expect("CST function body");
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let recovered_statement = cst_body
-        .statements()
-        .next()
-        .expect("recovered CST statement");
-    let fallback_statement = &fallback_statements_for_body(source, &legacy_payload.body)[1];
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
+    let mismatched = statement_payload_from_syntax_body_with_fallbacks(
         source,
-        recovered_statement.clone(),
-        fallback_statement,
+        cst_body,
+        &fallback_statements_for_body(source, &legacy_payload.body)[1..],
+        0,
     );
 
     assert_eq!(

@@ -27,14 +27,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_let = statements[0]
-        .syntax_statement()
-        .expect("CST let statement")
-        .clone();
-    let legacy_array_let = statements[1].fallback();
     let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_let, legacy_array_let);
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -61,14 +55,8 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_self_let = statements[0]
-        .syntax_statement()
-        .expect("CST let statement")
-        .clone();
-    let legacy_path_let = statements[1].fallback();
     let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_self_let, legacy_path_let);
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -126,17 +114,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_let_without_initializer = statements[0]
-        .syntax_statement()
-        .expect("CST let statement")
-        .clone();
-    let legacy_array_let = statements[1].fallback();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        cst_let_without_initializer,
-        legacy_array_let,
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -1894,14 +1873,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_return = statements[1]
-        .syntax_statement()
-        .expect("CST return statement")
-        .clone();
-    let legacy_array_return = statements[2].fallback();
     let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_return, legacy_array_return);
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 1);
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -1990,17 +1963,8 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_self_return = statements[0]
-        .syntax_statement()
-        .expect("CST return statement")
-        .clone();
-    let legacy_path_return = statements[1].fallback();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        cst_self_return,
-        legacy_path_return,
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -2028,17 +1992,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_let_without_initializer = statements[0]
-        .syntax_statement()
-        .expect("CST let statement")
-        .clone();
-    let legacy_array_let = statements[1].fallback();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        cst_let_without_initializer,
-        legacy_array_let,
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -2112,17 +2067,8 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_return_without_value = statements[1]
-        .syntax_statement()
-        .expect("CST return statement")
-        .clone();
-    let legacy_array_return = statements[2].fallback();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        cst_return_without_value,
-        legacy_array_return,
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 1);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)
@@ -2209,13 +2155,13 @@ fn make(value) {
     let (fallback_payload, _, _) = semantic
         .function("fallback_body")
         .expect("fallback function");
-    let cst_statement = let_return_statement_payloads(&cst_payload.body)[0]
-        .syntax_statement()
-        .expect("cst statement syntax")
-        .clone();
-    let fallback_statement = let_return_statement_payloads(&fallback_payload.body)[1].fallback();
-    let mismatched =
-        body_payloads::CompilerStatementPayload::syntax(source, cst_statement, fallback_statement);
+    let mismatched = statement_payload_with_fallback_offset(
+        source,
+        &cst_payload.body,
+        &fallback_payload.body,
+        1,
+        0,
+    );
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
 
     compiler
@@ -2241,17 +2187,8 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = let_return_statement_payloads(&payload.body);
-    let cst_return_without_value = statements[0]
-        .syntax_statement()
-        .expect("CST return statement")
-        .clone();
-    let legacy_literal_return = statements[2].fallback();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        cst_return_without_value,
-        legacy_literal_return,
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 2, 0);
 
     compiler
         .compile_statement_payload_for_test(&mismatched)

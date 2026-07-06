@@ -463,24 +463,15 @@ fn fallback_body() {
 fn mismatched_statement_payloads_do_not_compile_legacy_statement() {
     let source = SourceId::new(1);
     let text = r#"
-fn main() {
-    let value = [1];
+fn main(value) {
     return value && value;
+    let fallback = [1];
 }
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statements = cst_statement_payloads(&payload.body);
-    let let_statement = &statements[0];
-    let return_syntax = statements[1]
-        .syntax_statement()
-        .expect("return CST statement")
-        .clone();
-    let mismatched = body_payloads::CompilerStatementPayload::syntax(
-        source,
-        return_syntax,
-        let_statement.fallback(),
-    );
+    let mismatched =
+        statement_payload_with_fallback_offset(source, &payload.body, &payload.body, 1, 0);
 
     let error = compiler
         .compile_statement_payload_for_test(&mismatched)
