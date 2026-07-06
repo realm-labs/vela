@@ -154,17 +154,15 @@ fn fallback_record(value) {
         error.kind
     );
 
-    let syntax_field = cst_pattern
-        .record_pattern()
-        .expect("record pattern")
-        .fields()
-        .next()
-        .expect("record field");
     let vela_syntax::ast::Pattern::RecordVariant { fields, .. } = fallback_pattern else {
         panic!("expected record pattern");
     };
-    let direct_field_payload =
-        body_payloads::CompilerRecordPatternFieldPayload::syntax(syntax_field);
+    let direct_field_payload = mismatched
+        .record_field_payloads()
+        .expect("CST record field payloads")
+        .into_iter()
+        .next()
+        .expect("CST record field payload");
     let direct_error = crate::compiler::patterns::record_pattern_field_payload_declares_locals(
         &direct_field_payload,
         &fields[0],

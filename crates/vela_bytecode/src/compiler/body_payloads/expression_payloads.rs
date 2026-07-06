@@ -1036,12 +1036,4 @@ impl CompilerRecordPatternFieldPayload {
                 .and_then(SyntaxRecordPatternField::pattern),
         ))
     }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn syntax(syntax: SyntaxRecordPatternField) -> Self {
-        Self {
-            source: Some(SourceId::new(1)),
-            syntax: Some(syntax),
-        }
-    }
 }
