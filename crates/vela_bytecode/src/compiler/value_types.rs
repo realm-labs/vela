@@ -1005,6 +1005,9 @@ fn accepts_erased_or_parameterized(actual: &RuntimeTypeFact, expected: &RuntimeT
         || matches!(
             (actual, expected),
             (
+                RuntimeTypeFact::Standard(StandardRuntimeType::Closure),
+                RuntimeTypeFact::Standard(StandardRuntimeType::Function)
+            ) | (
                 RuntimeTypeFact::Option(_),
                 RuntimeTypeFact::Standard(StandardRuntimeType::Option)
             ) | (

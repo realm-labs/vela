@@ -7,9 +7,10 @@ use crate::compiler::call_args::{SyntaxCallArgument, resolve_syntax_call_argumen
 use crate::compiler::calls::registry_param_hints;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::expected_exprs::guard_location_and_name;
+use crate::compiler::record_shapes::{ValueShape, callback_param_shapes};
 use crate::compiler::value_types::{
-    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
-    type_hint_value_type,
+    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, StaticExprType, TypeContractContext,
+    check_expected_type, type_hint_value_type,
 };
 use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, type_guard_plan_for_runtime_type,
@@ -78,6 +79,7 @@ impl Compiler<'_, '_> {
                             u16::try_from(index).unwrap_or(u16::MAX),
                             &expression,
                             param,
+                            None,
                         )?
                     } else {
                         self.compile_syntax_expression(source, &expression)?
@@ -100,6 +102,7 @@ impl Compiler<'_, '_> {
                     u16::try_from(index).unwrap_or(u16::MAX),
                     &arg.value,
                     param,
+                    None,
                 )?
                 else {
                     return Ok(None);
@@ -115,6 +118,7 @@ impl Compiler<'_, '_> {
     pub(in crate::compiler::control_flow) fn compile_syntax_value_method_call_arguments(
         &mut self,
         source: SourceId,
+        receiver_shape: Option<&ValueShape>,
         receiver_type: Option<&RuntimeTypeFact>,
         method: &str,
         arguments: &[SyntaxArgument],
@@ -146,12 +150,15 @@ impl Compiler<'_, '_> {
                         return Ok(None);
                     };
                     let register = if let Some(param) = params.get(index) {
+                        let callback_shapes =
+                            syntax_callback_param_shapes(receiver_shape, method, &expression);
                         self.compile_syntax_argument_for_param(
                             source,
                             method,
                             u16::try_from(index).unwrap_or(u16::MAX),
                             &expression,
                             param,
+                            callback_shapes.as_deref(),
                         )?
                     } else {
                         self.compile_syntax_expression(source, &expression)?
@@ -168,12 +175,15 @@ impl Compiler<'_, '_> {
         let mut registers = Vec::new();
         for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
             if let Some(arg) = slot {
+                let callback_shapes =
+                    syntax_callback_param_shapes(receiver_shape, method, &arg.value);
                 let Some(register) = self.compile_syntax_argument_for_param(
                     source,
                     method,
                     u16::try_from(index).unwrap_or(u16::MAX),
                     &arg.value,
                     param,
+                    callback_shapes.as_deref(),
                 )?
                 else {
                     return Ok(None);
@@ -215,6 +225,7 @@ impl Compiler<'_, '_> {
         index: u16,
         expression: &SyntaxExpression,
         param: &ParamHint,
+        callback_shapes: Option<&[Option<ValueShape>]>,
     ) -> CompileResult<Option<Register>> {
         let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
             return self.compile_syntax_expression(source, expression);
@@ -225,6 +236,8 @@ impl Compiler<'_, '_> {
             name: param.name.clone(),
             index,
         };
+        let expected_is_function =
+            expected == RuntimeTypeFact::Standard(StandardRuntimeType::Function);
         let static_type = self
             .syntax_value_type_for_expression(Some(source), expression)
             .map(StaticExprType::Exact)
@@ -236,6 +249,16 @@ impl Compiler<'_, '_> {
                 .map_err(|error| error.with_span(span))?
         {
             return self.emit_constant(constant).map(Some);
+        }
+        if expected_is_function {
+            let callback_shapes = callback_shapes.unwrap_or(&[]);
+            if let Some(register) = self.compile_syntax_lambda_with_callback_shapes(
+                source,
+                expression,
+                callback_shapes,
+            )? {
+                return Ok(Some(register));
+            }
         }
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
             return Ok(None);
@@ -257,6 +280,15 @@ impl Compiler<'_, '_> {
         }
         Ok(Some(register))
     }
+}
+
+fn syntax_callback_param_shapes(
+    receiver_shape: Option<&ValueShape>,
+    method: &str,
+    expression: &SyntaxExpression,
+) -> Option<Vec<Option<ValueShape>>> {
+    let param_count = expression.as_lambda()?.param_list()?.params().count();
+    callback_param_shapes(receiver_shape?, method, param_count)
 }
 
 fn syntax_call_arguments(

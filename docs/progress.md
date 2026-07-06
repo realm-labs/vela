@@ -259,6 +259,10 @@ owned-AST runtime expression fallback.
 Constructor schema lowering now consumes explicit default-expression payload
 maps discovered from the rowan syntax payload boundary instead of traversing
 legacy source files inside the schema-default logic.
+CST production expression lowering now handles lambda expressions directly,
+including callback parameter shapes for standard collection/Option/Result
+methods, and the engine CST hard-switch failure set is down to 11 known
+`cargo test -p vela_engine` failures.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload

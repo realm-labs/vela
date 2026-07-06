@@ -154,6 +154,44 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_standard_callback_method_accepts_lambda_closure_argument() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values = [1, 2, 3];
+    return values.filter(|value| value > 1).len();
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only callback method call should not retain statement fallbacks"
+    );
+
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(source, text, registry.compile_view())
+        .expect("CST-backed callback method argument should compile");
+    let main = program.function("main").expect("main bytecode");
+    let methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::CallMethodId { method, .. } => Some(method.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(methods.contains(&"filter"));
+    assert!(methods.contains(&"len"));
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::MakeClosure { .. }
+    )));
+}
+
+#[test]
 fn equal_count_call_payloads_pair_arguments_by_position_not_legacy_span() {
     with_cst_payload_compiler(
         r#"

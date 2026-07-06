@@ -243,6 +243,11 @@ impl Compiler<'_, '_> {
         if let Some(register) = self.compile_syntax_unary(source, expression)? {
             return Ok(Some(register));
         }
+        if let Some(register) =
+            self.compile_syntax_lambda_with_callback_shapes(source, expression, &[])?
+        {
+            return Ok(Some(register));
+        }
         if let Some(block) = expression.as_block() {
             let dst = self.alloc_register()?;
             let body = CompilerBodyPayload::nested_syntax(source, block);
@@ -470,13 +475,23 @@ impl Compiler<'_, '_> {
         let mut false_branches = Vec::with_capacity(prefix.len());
         for operand in prefix {
             let Some(value) = self.compile_syntax_expression(source, operand)? else {
-                return Ok(None);
+                return Err(crate::compiler::CompileError::new(
+                    crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                        "unsupported CST logical operand",
+                    ),
+                )
+                .with_span(syntax_expression_span(source, operand)));
             };
             false_branches.push(self.emit_jump_if_false(value));
         }
 
         let Some(last) = self.compile_syntax_expression(source, last)? else {
-            return Ok(None);
+            return Err(crate::compiler::CompileError::new(
+                crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                    "unsupported CST logical operand",
+                ),
+            )
+            .with_span(syntax_expression_span(source, last)));
         };
         self.emit_truthy_to_bool(dst, last)?;
         let end = self.emit_jump();
@@ -504,7 +519,12 @@ impl Compiler<'_, '_> {
         let mut end_jumps = Vec::with_capacity(prefix.len());
         for operand in prefix {
             let Some(value) = self.compile_syntax_expression(source, operand)? else {
-                return Ok(None);
+                return Err(crate::compiler::CompileError::new(
+                    crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                        "unsupported CST logical operand",
+                    ),
+                )
+                .with_span(syntax_expression_span(source, operand)));
             };
             let next_operand = self.emit_jump_if_false(value);
             self.emit_bool_constant_to(dst, true);
@@ -513,7 +533,12 @@ impl Compiler<'_, '_> {
         }
 
         let Some(last) = self.compile_syntax_expression(source, last)? else {
-            return Ok(None);
+            return Err(crate::compiler::CompileError::new(
+                crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                    "unsupported CST logical operand",
+                ),
+            )
+            .with_span(syntax_expression_span(source, last)));
         };
         self.emit_truthy_to_bool(dst, last)?;
         for end in end_jumps {
@@ -977,6 +1002,7 @@ impl Compiler<'_, '_> {
                 };
                 let Some(args) = self.compile_syntax_value_method_call_arguments(
                     source,
+                    receiver_shape.as_ref(),
                     value_receiver_type.as_ref(),
                     &method,
                     &arguments,

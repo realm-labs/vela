@@ -6,12 +6,12 @@ use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{
     Argument, AstNode, Block, ElseBranch, Expr, ExprKind, IfExpr, MapEntry, MatchArm, MatchExpr,
     Param, RecordField, Stmt, StmtKind, SyntaxBlock, SyntaxElseBranch, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxStatementKind,
+    SyntaxExpressionKind, SyntaxLambdaBody, SyntaxStatementKind,
 };
 
 use crate::{Register, UnlinkedCodeObject, UnlinkedInstructionKind};
 
-use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
 use super::record_shapes::ValueShape;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -149,6 +149,128 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
+    pub(in crate::compiler) fn compile_syntax_lambda_with_callback_shapes(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        callback_shapes: &[Option<ValueShape>],
+    ) -> CompileResult<Option<Register>> {
+        let Some(lambda) = expression.as_lambda() else {
+            return Ok(None);
+        };
+        let Some(param_list) = lambda.param_list() else {
+            return Ok(None);
+        };
+        let Some(body) = lambda.body() else {
+            return Ok(None);
+        };
+        let params = param_list
+            .params()
+            .map(|param| {
+                let name = param.name_text().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST lambda parameter name",
+                    ))
+                })?;
+                Ok(Param {
+                    name,
+                    span: syntax_param_span(source, &param),
+                    type_hint: None,
+                    default_value: None,
+                })
+            })
+            .collect::<CompileResult<Vec<_>>>()?;
+        let mut captures = BTreeMap::new();
+        match &body {
+            SyntaxLambdaBody::Expression(body) => {
+                collect_syntax_expr(self.bindings, &self.hir_locals, source, body, &mut captures);
+            }
+            SyntaxLambdaBody::Block(block) => {
+                collect_syntax_block(
+                    self.bindings,
+                    &self.hir_locals,
+                    source,
+                    block,
+                    &mut captures,
+                );
+            }
+        }
+        let captures = captures.into_values().collect::<Vec<_>>();
+        let capture_registers = captures
+            .iter()
+            .map(|capture| capture.register)
+            .collect::<Vec<_>>();
+        let lambda_span = syntax_expr_span(source, expression);
+        let mut lambda_compiler = Compiler::new_lambda(
+            format!("{}::<lambda@{}>", self.code.name, lambda_span.start),
+            lambda_span,
+            &params,
+            self.body.clone(),
+            &captures,
+            self.bindings,
+            self.facts.clone(),
+        )?;
+        for capture in &captures {
+            if let Some(script_fact) = self.script_types.local_fact(capture.local) {
+                lambda_compiler.script_types.set_local_fact(
+                    capture.local,
+                    &capture.name,
+                    Some(script_fact),
+                );
+            }
+            if let Some(value_type) = self.value_types.local(capture.local) {
+                lambda_compiler.value_types.set_local(
+                    capture.local,
+                    &capture.name,
+                    Some(value_type),
+                );
+            }
+            if let Some(value_shape) = self.value_shapes.local(capture.local) {
+                lambda_compiler.value_shapes.set_local(
+                    capture.local,
+                    &capture.name,
+                    Some(value_shape),
+                );
+            }
+        }
+        for (index, shape) in callback_shapes.iter().enumerate() {
+            let Some(shape) = shape else {
+                continue;
+            };
+            let Some(param) = params.get(index) else {
+                continue;
+            };
+            if let Some(local) = self.bindings.local_named_at(
+                &param.name,
+                vela_hir::binding::LocalBindingKind::LambdaParameter,
+                param.span,
+            ) {
+                lambda_compiler
+                    .value_types
+                    .set_local(local, &param.name, shape.value_type());
+                lambda_compiler
+                    .value_shapes
+                    .set_local(local, &param.name, Some(shape.clone()));
+            } else {
+                lambda_compiler
+                    .value_types
+                    .set_name(&param.name, shape.value_type());
+                lambda_compiler
+                    .value_shapes
+                    .set_name(&param.name, Some(shape.clone()));
+            }
+        }
+        let code = lambda_compiler.compile_syntax_lambda_body(source, body)?;
+        let function = self.code.push_nested_function(code);
+        let dst = self.alloc_register()?;
+        self.emit(UnlinkedInstructionKind::MakeClosure {
+            dst,
+            function,
+            captures: capture_registers,
+        });
+        Ok(Some(dst))
+    }
+
     fn compile_lambda_body(
         mut self,
         body: &Expr,
@@ -182,6 +304,37 @@ impl Compiler<'_, '_> {
             _ => {
                 let value = self.compile_expr_with_payload(body, body_payload)?;
                 self.emit(UnlinkedInstructionKind::Return { src: value });
+            }
+        }
+        self.code.register_count = self.next_register;
+        Ok(self.code)
+    }
+
+    fn compile_syntax_lambda_body(
+        mut self,
+        source: SourceId,
+        body: SyntaxLambdaBody,
+    ) -> CompileResult<UnlinkedCodeObject> {
+        self.compile_param_defaults()?;
+        match body {
+            SyntaxLambdaBody::Expression(expression) => {
+                let value = self
+                    .compile_syntax_expression(source, &expression)?
+                    .ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "unsupported CST lambda expression body",
+                        ))
+                        .with_span(syntax_expr_span(source, &expression))
+                    })?;
+                self.emit(UnlinkedInstructionKind::Return { src: value });
+            }
+            SyntaxLambdaBody::Block(block) => {
+                let dst = self.alloc_register()?;
+                let body = CompilerBodyPayload::nested_syntax(source, block);
+                let returned = self.compile_block_payload_value_to(&body, dst)?;
+                if !returned {
+                    self.emit(UnlinkedInstructionKind::Return { src: dst });
+                }
             }
         }
         self.code.register_count = self.next_register;
@@ -521,6 +674,13 @@ fn collect_syntax_block(
 
 fn syntax_expr_span(source: SourceId, expression: &SyntaxExpression) -> Span {
     let range = expression.syntax().text_range();
+    Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_param_span(source: SourceId, param: &vela_syntax::ast::SyntaxParam) -> Span {
+    let range = param
+        .name_token()
+        .map_or_else(|| param.syntax().text_range(), |token| token.text_range());
     Span::new(source, range.start().into(), range.end().into())
 }
 

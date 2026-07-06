@@ -251,9 +251,13 @@ impl Compiler<'_, '_> {
         }
         #[cfg_attr(test, allow(unreachable_code))]
         let _ = kind;
-        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+        let mut error = CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "unsupported CST statement payload",
-        )))
+        ));
+        if let Some(span) = stmt.syntax_statement_span() {
+            error = error.with_span(span);
+        }
+        Err(error)
     }
 
     #[cfg(test)]
