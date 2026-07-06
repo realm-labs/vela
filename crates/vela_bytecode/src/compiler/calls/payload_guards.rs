@@ -1,18 +1,22 @@
-use vela_syntax::ast::{Argument, Expr, SyntaxExpressionKind};
+use vela_common::Span;
+use vela_syntax::ast::SyntaxExpressionKind;
 
 use crate::compiler::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
-use crate::compiler::expression_checks::payload_aligns_with_expr_span;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 pub(super) fn callback_lambda_payload_is_authoritative(
     arg_payload: Option<&CompilerExpressionPayload<'_>>,
-    arg_value: &Expr,
+    arg_value_span: Span,
+    arg_value_kind: Option<SyntaxExpressionKind>,
 ) -> bool {
     let Some(payload) = arg_payload else {
         return true;
     };
-    match payload.syntax_kind() {
-        Some(SyntaxExpressionKind::Lambda) => payload_aligns_with_expr_span(payload, arg_value),
+    match payload.stored_syntax_kind() {
+        Some(SyntaxExpressionKind::Lambda) => {
+            arg_value_kind == Some(SyntaxExpressionKind::Lambda)
+                && payload_span_overlaps(payload, arg_value_span)
+        }
         Some(_) => false,
         None => true,
     }
@@ -31,13 +35,18 @@ pub(super) fn reject_missing_callback_lambda_body(
 }
 
 pub(super) fn reject_mismatched_call_callee_payload(
-    callee: &Expr,
+    callee_span: Span,
+    callee_kind: Option<SyntaxExpressionKind>,
+    callee_path_is_self: Option<bool>,
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> CompileResult<()> {
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if payload_aligns_with_expr_span(payload, callee) {
+    if payload_span_overlaps(payload, callee_span)
+        && callee_payload_kind_matches(payload.stored_syntax_kind(), callee_kind)
+        && callee_path_is_self.is_none_or(|is_self| payload.syntax_is_self() == is_self)
+    {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -59,7 +68,7 @@ pub(super) fn reject_missing_call_callee_payload(
 
 pub(super) fn reject_mismatched_call_argument_payloads(
     callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    args: &[Argument],
+    arg_count: usize,
     arg_payloads: Option<&[CompilerArgumentPayload]>,
 ) -> CompileResult<()> {
     if callee_payload.is_some() && arg_payloads.is_none() {
@@ -68,11 +77,24 @@ pub(super) fn reject_mismatched_call_argument_payloads(
         )));
     }
     if let Some(arg_payloads) = arg_payloads
-        && arg_payloads.len() > args.len()
+        && arg_payloads.len() > arg_count
     {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST call arguments",
         )));
     }
     Ok(())
+}
+
+fn callee_payload_kind_matches(
+    payload_kind: Option<SyntaxExpressionKind>,
+    callee_kind: Option<SyntaxExpressionKind>,
+) -> bool {
+    payload_kind == callee_kind || payload_kind == Some(SyntaxExpressionKind::Paren)
+}
+
+fn payload_span_overlaps(payload: &CompilerExpressionPayload<'_>, span: Span) -> bool {
+    payload
+        .syntax_span()
+        .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
 }

@@ -57,8 +57,13 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<crate::Register> {
         let arg_syntax = CallArgumentSyntax::new(args, arg_payloads);
         reject_missing_call_callee_payload(callee_payload)?;
-        reject_mismatched_call_callee_payload(callee, callee_payload)?;
-        reject_mismatched_call_argument_payloads(callee_payload, args, arg_payloads)?;
+        reject_mismatched_call_callee_payload(
+            callee.span,
+            call_guard_syntax_kind(callee),
+            call_guard_path_is_self(callee),
+            callee_payload,
+        )?;
+        reject_mismatched_call_argument_payloads(callee_payload, args.len(), arg_payloads)?;
         let callee_path = callee_payload.and_then(CompilerExpressionPayload::syntax_path_segments);
         let callee_path = callee_path.as_deref();
         let callee_span = match callee_payload {
@@ -660,7 +665,11 @@ impl Compiler<'_, '_> {
             );
         }
         let arg_payload = arg_syntax.value_expression_payload_for(arg);
-        if !callback_lambda_payload_is_authoritative(arg_payload.as_ref(), &arg.value) {
+        if !callback_lambda_payload_is_authoritative(
+            arg_payload.as_ref(),
+            arg.value.span,
+            call_guard_syntax_kind(&arg.value),
+        ) {
             return self.compile_call_argument_value(arg, arg_syntax);
         }
         let ExprKind::Lambda { params, body } = &arg.value.kind else {
@@ -868,6 +877,36 @@ impl Compiler<'_, '_> {
         }
         let type_name = receiver_type.std_type_name();
         registry.resolve_type(&DefPath::ty("std", std::iter::empty::<&str>(), type_name))
+    }
+}
+
+fn call_guard_syntax_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+    Some(match expr.kind {
+        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
+        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
+        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
+        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
+        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
+        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
+        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
+        ExprKind::Try(_) => SyntaxExpressionKind::Try,
+        ExprKind::Array(_) => SyntaxExpressionKind::Array,
+        ExprKind::Map(_) => SyntaxExpressionKind::Map,
+        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
+        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
+        ExprKind::Block(_) => SyntaxExpressionKind::Block,
+        ExprKind::If(_) => SyntaxExpressionKind::If,
+        ExprKind::Match(_) => SyntaxExpressionKind::Match,
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
+        ExprKind::Error => return None,
+    })
+}
+
+fn call_guard_path_is_self(expr: &Expr) -> Option<bool> {
+    match expr.kind {
+        ExprKind::Path(_) => Some(false),
+        ExprKind::SelfValue => Some(true),
+        _ => None,
     }
 }
 
