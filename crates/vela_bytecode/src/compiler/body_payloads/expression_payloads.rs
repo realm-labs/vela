@@ -805,13 +805,11 @@ impl CompilerMatchArmPayload {
 
     pub(in crate::compiler) fn guard_payload<'ast>(
         &self,
-        fallback: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
-        Some(CompilerExpressionPayload::from_fallback(
+        Some(CompilerExpressionPayload::from_syntax(
             self.source,
             self.syntax.as_ref()?.guard(),
-            fallback,
         ))
     }
 
@@ -823,6 +821,20 @@ impl CompilerMatchArmPayload {
     }
 
     pub(in crate::compiler) fn body_expression_payload<'ast>(
+        &self,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_syntax(
+            self.source,
+            self.source.and_then(|_| {
+                self.syntax
+                    .as_ref()
+                    .and_then(SyntaxMatchArm::body_as_expression)
+            }),
+        )
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn body_expression_payload_for_test<'ast>(
         &self,
         fallback_body: &'ast Expr,
     ) -> CompilerExpressionPayload<'ast> {
