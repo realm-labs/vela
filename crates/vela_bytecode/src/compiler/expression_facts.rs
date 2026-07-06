@@ -45,18 +45,6 @@ pub(super) fn payload_kind_matches_expression(
     )
 }
 
-pub(super) fn sourced_payload_kind_matches_expression(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    payload_kind_matches_known_expression_facts(
-        payload.syntax_kind(),
-        expression_syntax_kind(expr),
-        expression_path_is_self(expr),
-        payload.syntax_is_self(),
-    )
-}
-
 pub(super) fn payload_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     span: Span,
@@ -72,6 +60,19 @@ pub(super) fn payload_matches_expression_facts(
             path_is_self,
             payload.syntax_is_self(),
         )
+}
+
+pub(super) fn payload_syntax_kind_matches_expression_facts(
+    payload: &CompilerExpressionPayload<'_>,
+    kind: Option<SyntaxExpressionKind>,
+    path_is_self: Option<bool>,
+) -> bool {
+    payload_kind_matches_known_expression_facts(
+        payload.syntax_kind(),
+        kind,
+        path_is_self,
+        payload.syntax_is_self(),
+    )
 }
 
 pub(super) fn payload_overlaps_expression_facts(

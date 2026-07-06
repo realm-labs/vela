@@ -3,7 +3,9 @@ use vela_syntax::ast::{Expr, ExprKind, Literal};
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::control_flow::classification::condition_operator_for_payload;
-use crate::compiler::expression_facts::sourced_payload_kind_matches_expression;
+use crate::compiler::expression_facts::{
+    expression_path_is_self, expression_syntax_kind, payload_syntax_kind_matches_expression_facts,
+};
 use crate::compiler::operators::i64_compare_op;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind};
@@ -94,5 +96,9 @@ fn condition_payload_matches_expr(
     payload: &CompilerExpressionPayload<'_>,
     condition: &Expr,
 ) -> bool {
-    sourced_payload_kind_matches_expression(payload, condition)
+    payload_syntax_kind_matches_expression_facts(
+        payload,
+        expression_syntax_kind(condition),
+        expression_path_is_self(condition),
+    )
 }
