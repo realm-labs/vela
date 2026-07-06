@@ -5,15 +5,6 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
-    #[cfg(test)]
-    pub(in crate::compiler) fn compile_if_value_to(
-        &mut self,
-        if_expr: &IfExpr,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        self.compile_if_value_with_payloads(if_expr, dst, None)
-    }
-
     pub(in crate::compiler) fn compile_if_value_with_payloads(
         &mut self,
         if_expr: &IfExpr,

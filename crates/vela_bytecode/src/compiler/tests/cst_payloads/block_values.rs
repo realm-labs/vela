@@ -91,6 +91,32 @@ fn main(flag) {
 }
 
 #[test]
+fn block_tail_without_payload_does_not_compile_legacy_expression() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(flag) {
+    flag
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    let statements = fallback_statements_for_body(source, &payload.body);
+    let vela_syntax::ast::StmtKind::Expr(expr) = &statements[0].kind else {
+        panic!("expected expression tail");
+    };
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
+
+    let error = compiler
+        .compile_block_tail_expr_to_for_test(expr, None, Register(0))
+        .expect_err("missing CST block tail payload must not compile legacy expression");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("missing CST block tail expression payload")
+    ));
+}
+
+#[test]
 fn missing_block_expression_body_payload_does_not_use_legacy_body() {
     let source = SourceId::new(1);
     let cst_text = r#"

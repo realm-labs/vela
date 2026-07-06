@@ -143,15 +143,6 @@ impl Compiler<'_, '_> {
         }
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn compile_match_value_to(
-        &mut self,
-        match_expr: &MatchExpr,
-        dst: Register,
-    ) -> CompileResult<bool> {
-        self.compile_match_value_with_payloads(match_expr, dst, None, None)
-    }
-
     pub(in crate::compiler) fn compile_match_value_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
