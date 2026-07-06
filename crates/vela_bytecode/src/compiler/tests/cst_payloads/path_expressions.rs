@@ -156,11 +156,9 @@ fn main(value) {
                 .call_argument_value_payloads()
                 .expect("call argument payloads")
                 .remove(0);
-            let fallback = call_argument_fallback(&call, 0);
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     path.syntax_expression().expect("path syntax").clone(),
-                    fallback,
                 );
 
             assert_eq!(missing_source.syntax_path_segments(), None);
@@ -786,11 +784,10 @@ fn legacy_path(consumer, legacy) {
                 .syntax_expression()
                 .expect("self CST expression")
                 .clone(),
-            legacy_expr,
         );
     assert!(!missing_source_self_payload.syntax_is_self());
     let fact = script_types::expression_script_fact_with_payload(
-        missing_source_self_payload.fallback(),
+        legacy_expr,
         Some(&missing_source_self_payload),
         |_| None,
         |_| None,

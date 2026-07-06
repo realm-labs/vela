@@ -437,6 +437,9 @@ payload fixtures.
 Assignment target/value and binary/logical operand payload helpers now build
 syntax-only child payloads, deleting the shared old-`Expr` child-pairing helper
 from expression payloads.
+Source-less expression payload test helpers now build syntax-only payloads
+without carrying an old fallback `Expr`, so missing-child fixture coverage no
+longer smuggles owned expressions through that route.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

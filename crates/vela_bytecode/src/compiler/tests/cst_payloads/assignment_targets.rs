@@ -217,20 +217,12 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
                 .expect("assignment value expression payload");
-            let ExprKind::Assign {
-                value: fallback_value,
-                ..
-            } = &assignment.fallback().kind
-            else {
-                panic!("expected assignment fallback");
-            };
             let unclassified_value =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     value
                         .syntax_expression()
                         .expect("assignment value syntax")
                         .clone(),
-                    fallback_value,
                 );
 
             let error = compiler

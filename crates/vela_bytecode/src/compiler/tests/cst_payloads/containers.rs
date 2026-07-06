@@ -296,7 +296,6 @@ fn main() {
             let missing_path =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     record.syntax_expression().expect("record syntax").clone(),
-                    record.fallback(),
                 );
 
             let error = compiler

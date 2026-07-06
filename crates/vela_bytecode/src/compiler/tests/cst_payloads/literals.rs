@@ -216,7 +216,6 @@ fn main(input) {
                         .syntax_expression()
                         .expect("CST literal expression")
                         .clone(),
-                    fallback_expr,
                 );
             assert_eq!(missing_source_literal.syntax_literal(), None);
         },

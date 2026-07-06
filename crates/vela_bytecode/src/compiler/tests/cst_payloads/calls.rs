@@ -459,7 +459,6 @@ fn main() {
                 .syntax_expression()
                 .expect("call syntax expression")
                 .clone(),
-            legacy_call.fallback(),
         );
     assert_eq!(missing_source_call.syntax_call_callee_path_segments(), None);
 

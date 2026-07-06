@@ -49,10 +49,7 @@ fn main() {
     let legacy_if = control_flow_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy if initializer");
-    let missing = body_payloads::CompilerExpressionPayload::missing_child_payload_context(
-        cst_if,
-        legacy_if.fallback(),
-    );
+    let missing = body_payloads::CompilerExpressionPayload::missing_child_payload_context(cst_if);
 
     let error = compiler
         .compile_expr_with_payload(legacy_if.fallback(), Some(&missing))

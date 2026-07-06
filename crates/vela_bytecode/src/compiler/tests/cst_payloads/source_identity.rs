@@ -25,7 +25,6 @@ fn main(value) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     value.syntax_expression().expect("value syntax").clone(),
-                    value.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_kind(), None);
@@ -53,7 +52,6 @@ fn main(object) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     field.syntax_expression().expect("field syntax").clone(),
-                    field.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_kind(), None);
@@ -82,7 +80,6 @@ fn main(left, right) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     binary.syntax_expression().expect("binary syntax").clone(),
-                    binary.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_binary_operator(), None);
@@ -106,7 +103,6 @@ fn main(value, other) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     unary.syntax_expression().expect("unary syntax").clone(),
-                    unary.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_unary_operator(), None);
@@ -137,7 +133,6 @@ fn main(value) {
                         .syntax_expression()
                         .expect("try syntax")
                         .clone(),
-                    try_expression.fallback(),
                 );
 
             assert!(try_expression.try_operand_payload().is_some());
@@ -165,7 +160,6 @@ fn main(value) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     paren.syntax_expression().expect("paren syntax").clone(),
-                    paren.fallback(),
                 );
 
             assert!(missing_source.paren_inner_payload().is_none());
@@ -192,7 +186,6 @@ fn main() {
                         .syntax_expression()
                         .expect("assignment syntax")
                         .clone(),
-                    assignment.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_assignment_operator(), None);
@@ -217,7 +210,6 @@ fn main(value) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     lambda.syntax_expression().expect("lambda syntax").clone(),
-                    lambda.fallback(),
                 );
 
             assert!(missing_source.lambda_body_payload().is_none());
@@ -244,7 +236,6 @@ fn main(left, middle, right) {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     logical.syntax_expression().expect("logical syntax").clone(),
-                    logical.fallback(),
                 );
 
             assert!(
@@ -274,7 +265,6 @@ fn main(values, index) {
                         .syntax_expression()
                         .expect("index syntax")
                         .clone(),
-                    index_expression.fallback(),
                 );
 
             assert!(missing_source.index_operand_payloads().is_none());
@@ -301,7 +291,6 @@ fn main() {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     call.syntax_expression().expect("call syntax").clone(),
-                    call.fallback(),
                 );
 
             assert_eq!(missing_source.syntax_call_callee_path_segments(), None);
@@ -359,7 +348,6 @@ fn main() {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     array.syntax_expression().expect("array syntax").clone(),
-                    array.fallback(),
                 );
             assert!(missing_source.array_element_payloads().is_none());
         },
@@ -381,7 +369,6 @@ fn main() {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     map.syntax_expression().expect("map syntax").clone(),
-                    map.fallback(),
                 );
             assert!(missing_source.map_entry_payloads().is_none());
             assert!(missing_source.map_entry_value_payloads().is_none());
@@ -408,7 +395,6 @@ fn main() {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     record.syntax_expression().expect("record syntax").clone(),
-                    record.fallback(),
                 );
             assert!(missing_source.record_field_payloads().is_none());
             assert!(missing_source.record_field_value_payloads().is_none());
@@ -435,7 +421,6 @@ fn main() {
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     call.syntax_expression().expect("call syntax").clone(),
-                    call.fallback(),
                 );
             let args = missing_source
                 .call_argument_payloads()
@@ -472,7 +457,6 @@ fn main(value) {
                         .syntax_expression()
                         .expect("interpolated syntax")
                         .clone(),
-                    interpolated.fallback(),
                 );
             assert!(missing_source.interpolated_expression_payloads().is_none());
             assert!(
@@ -684,7 +668,6 @@ fn main(value) {
                         .syntax_expression()
                         .expect("match syntax")
                         .clone(),
-                    match_value.fallback(),
                 );
 
             assert!(missing_source.match_scrutinee_payload().is_none());

@@ -155,10 +155,8 @@ fn main() {
     let legacy_block = legacy_statements[0]
         .let_initializer_expression_payload()
         .expect("legacy block initializer");
-    let missing = body_payloads::CompilerExpressionPayload::missing_child_payload_context(
-        cst_block,
-        legacy_block.fallback(),
-    );
+    let missing =
+        body_payloads::CompilerExpressionPayload::missing_child_payload_context(cst_block);
 
     let error = compiler
         .compile_expr_with_payload(legacy_block.fallback(), Some(&missing))

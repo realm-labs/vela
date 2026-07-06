@@ -33,11 +33,8 @@ use super::{
 
 impl<'ast> CompilerExpressionPayload<'ast> {
     #[cfg(test)]
-    pub(in crate::compiler) fn missing_child_payload_context(
-        syntax: SyntaxExpression,
-        fallback: &'ast vela_syntax::ast::Expr,
-    ) -> Self {
-        Self::from_fallback(None, Some(syntax), fallback)
+    pub(in crate::compiler) fn missing_child_payload_context(syntax: SyntaxExpression) -> Self {
+        Self::from_syntax(None, Some(syntax))
     }
 
     fn child_payload(&self, syntax: Option<SyntaxExpression>) -> CompilerExpressionPayload<'ast> {
