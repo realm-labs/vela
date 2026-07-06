@@ -602,7 +602,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             self.raw_interpolated_string_expressions()?
                 .into_iter()
                 .zip(self.interpolated_expression_payloads()?)
-                .map(|(fallback, payload)| payload.value_expression_payload(fallback))
+                .map(|(fallback, payload)| payload.value_expression_payload_for_test(fallback))
                 .collect(),
         )
     }
@@ -659,6 +659,13 @@ impl CompilerInterpolationPayload {
     }
 
     pub(in crate::compiler) fn value_expression_payload<'ast>(
+        &self,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_syntax(self.source, self.syntax.clone())
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> CompilerExpressionPayload<'ast> {

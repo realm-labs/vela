@@ -923,6 +923,7 @@ impl CompilerArgumentPayload {
 }
 
 impl<'ast> CompilerExpressionPayload<'ast> {
+    #[cfg(test)]
     pub(in crate::compiler) fn from_fallback(
         source: Option<SourceId>,
         syntax: Option<SyntaxExpression>,

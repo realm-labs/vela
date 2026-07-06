@@ -47,7 +47,8 @@ impl Compiler<'_, '_> {
                 InterpolatedStringPart::Expr(expr) => {
                     let payload = interpolated_expression_payload_at(payloads, expression_index)?;
                     expression_index += 1;
-                    let payload = payload.map(|payload| payload.value_expression_payload(expr));
+                    let payload =
+                        payload.map(CompilerInterpolationPayload::value_expression_payload);
                     if payload
                         .as_ref()
                         .is_some_and(|payload| payload.syntax_expression().is_none())
