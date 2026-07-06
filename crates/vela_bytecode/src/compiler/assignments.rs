@@ -13,6 +13,7 @@ use super::assignment_payloads::{
 };
 use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload};
 use super::expression_checks::payload_syntax_overlaps_expr;
+use super::expression_facts::{expression_path_is_self, expression_syntax_kind};
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::i64_compound_assignment_instruction;
@@ -225,8 +226,8 @@ impl Compiler<'_, '_> {
         let op = value_syntax.op.unwrap_or(*op);
         validate_assignment_target_payload(
             target.span,
-            assignment_target_syntax_kind(target),
-            assignment_target_path_is_self(target),
+            expression_syntax_kind(target),
+            expression_path_is_self(target),
             target_syntax.expression,
         )?;
         if value_syntax.expression.is_some() && value_syntax.kind.is_none() {
@@ -1132,35 +1133,5 @@ impl Compiler<'_, '_> {
             }
             Some(_) => None,
         }
-    }
-}
-
-fn assignment_target_syntax_kind(target: &Expr) -> Option<SyntaxExpressionKind> {
-    Some(match target.kind {
-        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
-        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
-        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
-        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
-        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
-        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
-        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
-        ExprKind::Try(_) => SyntaxExpressionKind::Try,
-        ExprKind::Array(_) => SyntaxExpressionKind::Array,
-        ExprKind::Map(_) => SyntaxExpressionKind::Map,
-        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
-        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
-        ExprKind::Block(_) => SyntaxExpressionKind::Block,
-        ExprKind::If(_) => SyntaxExpressionKind::If,
-        ExprKind::Match(_) => SyntaxExpressionKind::Match,
-        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
-        ExprKind::Error => return None,
-    })
-}
-
-fn assignment_target_path_is_self(target: &Expr) -> Option<bool> {
-    match target.kind {
-        ExprKind::Path(_) => Some(false),
-        ExprKind::SelfValue => Some(true),
-        _ => None,
     }
 }
