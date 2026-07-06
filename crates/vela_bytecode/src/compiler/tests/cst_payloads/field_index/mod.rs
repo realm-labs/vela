@@ -124,6 +124,48 @@ fn field_and_index_values() {
 }
 
 #[test]
+fn syntax_only_index_receiver_field_reads_compile() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(fields) {
+    return fields[0].name == "now" && fields[1].name == "tick";
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only index receiver field return should not retain statement fallbacks"
+    );
+
+    let program = compile_program_source(source, text)
+        .expect("CST-backed index receiver field reads should compile");
+    let main = program.function("main").expect("main function");
+
+    assert!(
+        main.instructions.iter().any(|instruction| matches!(
+            instruction.kind,
+            UnlinkedInstructionKind::GetIndex { .. }
+        )),
+        "CST index receiver should emit index reads"
+    );
+    assert!(
+        main.instructions
+            .iter()
+            .filter(|instruction| {
+                matches!(
+                    instruction.kind,
+                    UnlinkedInstructionKind::GetRecordField { ref field, .. } if field == "name"
+                )
+            })
+            .count()
+            >= 2,
+        "CST index receiver fields should emit dynamic field reads"
+    );
+}
+
+#[test]
 fn field_name_payload_comes_from_cst_without_field_fallback() {
     with_cst_payload_compiler(
         r#"

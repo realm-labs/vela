@@ -235,6 +235,9 @@ impl Compiler<'_, '_> {
                 .compile_path_expr(syntax_expression_span(source, expression), &path)
                 .map(Some);
         }
+        if let Some(register) = self.compile_syntax_field_read(source, expression)? {
+            return Ok(Some(register));
+        }
         if let Some(register) = self.compile_syntax_path_unary(source, expression)? {
             return Ok(Some(register));
         }
@@ -357,6 +360,81 @@ impl Compiler<'_, '_> {
             dst,
             parts: compiled,
         });
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_field_read(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(field) = expression.as_field() else {
+            return Ok(None);
+        };
+        if let Some(register) = self.compile_syntax_host_field_read(source, expression)? {
+            return Ok(Some(register));
+        }
+        let Some(receiver_expression) = field.receiver() else {
+            return Ok(None);
+        };
+        let Some(field_name) = field.name_text() else {
+            return Ok(None);
+        };
+        let receiver_span = syntax_expression_span(source, &receiver_expression);
+        let record_slot = expression_syntax_path_or_self(&receiver_expression)
+            .and_then(|path| {
+                let [root] = path.as_slice() else {
+                    return None;
+                };
+                self.script_record_field_slot_for_path_root(receiver_span, root, &field_name)
+            })
+            .or_else(|| {
+                self.script_fact_for_syntax_expression(source, &receiver_expression)
+                    .and_then(|fact| {
+                        self.script_record_field_slot_for_type(&fact.type_name, &field_name)
+                    })
+            })
+            .or_else(|| {
+                self.value_shape_for_syntax_expression(Some(source), &receiver_expression)
+                    .and_then(|shape| {
+                        shape
+                            .as_record()
+                            .and_then(|shape| shape.field_slot(&field_name))
+                    })
+            });
+        let enum_slot = self
+            .script_fact_for_syntax_expression(source, &receiver_expression)
+            .and_then(|fact| {
+                let variant = fact.enum_variant.as_deref()?;
+                self.facts
+                    .script_field_slots
+                    .enum_variant(&fact.type_name, variant, &field_name)
+            });
+        let Some(record) = self.compile_syntax_expression(source, &receiver_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        if let Some(slot) = record_slot {
+            self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                dst,
+                record,
+                field: field_name,
+                slot,
+            });
+        } else if let Some(slot) = enum_slot {
+            self.emit(UnlinkedInstructionKind::GetEnumSlot {
+                dst,
+                value: record,
+                field: field_name,
+                slot,
+            });
+        } else {
+            self.emit(UnlinkedInstructionKind::GetRecordField {
+                dst,
+                record,
+                field: field_name,
+            });
+        }
         Ok(Some(dst))
     }
 

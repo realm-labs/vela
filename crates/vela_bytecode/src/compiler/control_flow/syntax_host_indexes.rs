@@ -132,6 +132,24 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_host_field_read(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(resolved) = self.syntax_host_field_path(source, expression) else {
+            return Ok(None);
+        };
+        let path = resolved.path;
+        if path.segments.is_empty() {
+            return Ok(None);
+        }
+        let root = self.compile_host_path_root(&path.root)?;
+        let dst = self.alloc_register()?;
+        self.emit_host_read(dst, root, path, syntax_expression_span(source, expression))?;
+        Ok(Some(dst))
+    }
+
     pub(in crate::compiler::control_flow) fn compile_syntax_host_index_remove_call(
         &mut self,
         source: SourceId,
