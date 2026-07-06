@@ -10,6 +10,7 @@ mod path_values;
 mod range_statement_values;
 mod statements;
 mod syntax_call_args;
+mod syntax_constructors;
 mod syntax_host_indexes;
 mod syntax_if_values;
 mod syntax_match_values;

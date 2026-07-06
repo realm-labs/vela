@@ -1185,6 +1185,28 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
 
+        if let Some((_enum_path, variant)) = enum_variant_path(&path)
+            && let Some(enum_name) = self.type_symbol_at_span(callee_span)
+        {
+            let Some(fields) = self.compile_syntax_tuple_variant_fields(
+                source,
+                callee_span,
+                &enum_name,
+                &variant,
+                &arguments,
+            )?
+            else {
+                return Ok(None);
+            };
+            self.emit(UnlinkedInstructionKind::MakeEnum {
+                dst,
+                enum_name,
+                variant,
+                fields,
+            });
+            return Ok(Some(dst));
+        }
+
         let callee_name = path.join("::");
         if callee_name == "set::from_array" {
             if arguments

@@ -8,6 +8,7 @@ use vela_syntax::ast::{Argument, AstNode, RecordField, SyntaxExpression};
 
 use crate::Constant;
 
+use super::call_args::SyntaxCallArgument;
 use super::value_types::{RuntimeTypeFact, type_hint_value_type};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -416,6 +417,23 @@ pub(super) fn tuple_constructor_diagnostics(
     }
 }
 
+pub(super) fn syntax_tuple_constructor_diagnostics(
+    type_name: &str,
+    variant: &str,
+    shape: Option<&ConstructorShape>,
+    args: &[SyntaxCallArgument],
+    constructor_span: Span,
+) -> Vec<Diagnostic> {
+    let Some(shape) = shape else {
+        return Vec::new();
+    };
+    let owner = format!("{type_name}::{variant}");
+    match resolve_syntax_tuple_constructor_arguments(shape, &owner, args, constructor_span) {
+        Ok(_) => Vec::new(),
+        Err(diagnostics) => diagnostics,
+    }
+}
+
 pub(super) fn resolve_tuple_constructor_arguments<'ast>(
     shape: &ConstructorShape,
     owner: &str,
@@ -457,6 +475,60 @@ pub(super) fn resolve_tuple_constructor_arguments<'ast>(
         }
         slots[index] = Some(arg);
         slot_spans[index] = Some(arg_span);
+    }
+
+    for (slot, field) in slots.iter().zip(&shape.fields) {
+        if slot.is_none() && field.default.is_none() {
+            diagnostics.push(missing_field_diagnostic(
+                owner,
+                &field.argument_name,
+                constructor_span,
+            ));
+        }
+    }
+
+    if diagnostics.is_empty() {
+        Ok(slots)
+    } else {
+        Err(diagnostics)
+    }
+}
+
+pub(super) fn resolve_syntax_tuple_constructor_arguments<'ast>(
+    shape: &ConstructorShape,
+    owner: &str,
+    args: &'ast [SyntaxCallArgument],
+    constructor_span: Span,
+) -> Result<Vec<Option<&'ast SyntaxCallArgument>>, Vec<Diagnostic>> {
+    let mut diagnostics = Vec::new();
+    let mut slots = vec![None; shape.len()];
+    let mut slot_spans = vec![None; shape.len()];
+    let mut next_positional = 0_usize;
+    let mut seen_named = false;
+
+    for arg in args {
+        let Some(index) = tuple_argument_index(
+            shape,
+            arg.name.as_deref(),
+            arg.span,
+            &mut next_positional,
+            &mut seen_named,
+            &mut diagnostics,
+            owner,
+        ) else {
+            continue;
+        };
+
+        if let Some(previous_span) = slot_spans[index] {
+            diagnostics.push(duplicate_constructor_field_diagnostic(
+                shape.fields[index].argument_name.as_str(),
+                previous_span,
+                arg.span,
+            ));
+            continue;
+        }
+        slots[index] = Some(arg);
+        slot_spans[index] = Some(arg.span);
     }
 
     for (slot, field) in slots.iter().zip(&shape.fields) {
