@@ -323,38 +323,76 @@ fn static_expr_type_with_payload(
             StaticExprType::Exact(RuntimeTypeFact::primitive(PrimitiveTag::String))
         }
         ExprKind::Array(values) => {
-            let payloads = aligned_payload.and_then(|payload| payload.array_element_payloads());
-            StaticExprType::Exact(array_literal_type(values.iter().enumerate().map(
-                |(index, value)| {
-                    let value_payload = payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index))
-                        .map(|payload| payload.value_expression_payload());
-                    expression_value_type_with_payload(
-                        value,
-                        value_payload.as_ref(),
-                        local_type_at_span,
-                        local_type_named,
-                    )
-                },
-            )))
+            let element_types = if let Some(payload) = aligned_payload {
+                let Some(payloads) = payload.array_element_payloads() else {
+                    return StaticExprType::Dynamic;
+                };
+                if payloads.len() != values.len() {
+                    return StaticExprType::Dynamic;
+                }
+                values
+                    .iter()
+                    .zip(payloads)
+                    .map(|(value, payload)| {
+                        let value_payload = payload.value_expression_payload();
+                        expression_value_type_with_payload(
+                            value,
+                            Some(&value_payload),
+                            local_type_at_span,
+                            local_type_named,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                values
+                    .iter()
+                    .map(|value| {
+                        expression_value_type_with_payload(
+                            value,
+                            None,
+                            local_type_at_span,
+                            local_type_named,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            StaticExprType::Exact(array_literal_type(element_types))
         }
         ExprKind::Map(entries) => {
-            let payloads = aligned_payload.and_then(|payload| payload.map_entry_payloads());
-            StaticExprType::Exact(map_literal_type(entries.iter().enumerate().map(
-                |(index, entry)| {
-                    let value_payload = payloads
-                        .as_ref()
-                        .and_then(|payloads| payloads.get(index))
-                        .map(|payload| payload.value_expression_payload());
-                    expression_value_type_with_payload(
-                        &entry.value,
-                        value_payload.as_ref(),
-                        local_type_at_span,
-                        local_type_named,
-                    )
-                },
-            )))
+            let value_types = if let Some(payload) = aligned_payload {
+                let Some(payloads) = payload.map_entry_payloads() else {
+                    return StaticExprType::Dynamic;
+                };
+                if payloads.len() != entries.len() {
+                    return StaticExprType::Dynamic;
+                }
+                entries
+                    .iter()
+                    .zip(payloads)
+                    .map(|(entry, payload)| {
+                        let value_payload = payload.value_expression_payload();
+                        expression_value_type_with_payload(
+                            &entry.value,
+                            Some(&value_payload),
+                            local_type_at_span,
+                            local_type_named,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            } else {
+                entries
+                    .iter()
+                    .map(|entry| {
+                        expression_value_type_with_payload(
+                            &entry.value,
+                            None,
+                            local_type_at_span,
+                            local_type_named,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            StaticExprType::Exact(map_literal_type(value_types))
         }
         ExprKind::Lambda { .. } => {
             StaticExprType::Exact(RuntimeTypeFact::standard(StandardRuntimeType::Closure))

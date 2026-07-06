@@ -89,6 +89,98 @@ fn fallback_body() {
 }
 
 #[test]
+fn mismatched_container_payload_counts_do_not_infer_fallback_value_types() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_short() {
+    let values = [true];
+    let table = { value: true };
+}
+
+fn cst_long() {
+    let values = [true, false];
+    let table = { value: true, other: false };
+}
+
+fn fallback_short() {
+    let values = [1];
+    let table = { value: 1 };
+}
+
+fn fallback_long() {
+    let values = [1, 2];
+    let table = { value: 1, other: 2 };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_short, _, _) = semantic.function("cst_short").expect("short CST function");
+    let (cst_long, _, _) = semantic.function("cst_long").expect("long CST function");
+    let (fallback_short, _, _) = semantic
+        .function("fallback_short")
+        .expect("short fallback function");
+    let (fallback_long, _, _) = semantic
+        .function("fallback_long")
+        .expect("long fallback function");
+    let cst_short_statements = cst_statement_payloads(&cst_short.body);
+    let cst_long_statements = cst_statement_payloads(&cst_long.body);
+    let fallback_short_statements = cst_statement_payloads(&fallback_short.body);
+    let fallback_long_statements = cst_statement_payloads(&fallback_long.body);
+    let (compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_long");
+
+    let cases = [
+        (
+            cst_short_statements[0]
+                .let_initializer_expression_payload()
+                .expect("short CST array"),
+            fallback_long_statements[0]
+                .let_initializer_expression_payload()
+                .expect("long fallback array"),
+        ),
+        (
+            cst_long_statements[0]
+                .let_initializer_expression_payload()
+                .expect("long CST array"),
+            fallback_short_statements[0]
+                .let_initializer_expression_payload()
+                .expect("short fallback array"),
+        ),
+        (
+            cst_short_statements[1]
+                .let_initializer_expression_payload()
+                .expect("short CST map"),
+            fallback_long_statements[1]
+                .let_initializer_expression_payload()
+                .expect("long fallback map"),
+        ),
+        (
+            cst_long_statements[1]
+                .let_initializer_expression_payload()
+                .expect("long CST map"),
+            fallback_short_statements[1]
+                .let_initializer_expression_payload()
+                .expect("short fallback map"),
+        ),
+    ];
+
+    for (cst_payload, fallback_payload) in cases {
+        let mismatched = expression_payload_with_fallback(
+            source,
+            cst_payload
+                .syntax_expression()
+                .expect("CST expression")
+                .clone(),
+            fallback_payload.fallback(),
+        );
+
+        assert_eq!(
+            compiler.static_type_for_expr_with_payload(mismatched.fallback(), Some(&mismatched)),
+            value_types::StaticExprType::Dynamic,
+            "value-type inference must reject mismatched CST child payload counts"
+        );
+    }
+}
+
+#[test]
 fn missing_record_field_payloads_do_not_compile_fallback_fields() {
     let source = SourceId::new(1);
     let text = r#"
