@@ -233,13 +233,18 @@ impl Compiler<'_, '_> {
             )));
         };
         let op = value_syntax.op.unwrap_or(*op);
-        validate_assignment_target_payload(target, target_syntax.expression)?;
+        validate_assignment_target_payload(
+            target.span,
+            assignment_target_syntax_kind(target),
+            assignment_target_path_is_self(target),
+            target_syntax.expression,
+        )?;
         if value_syntax.expression.is_some() && value_syntax.kind.is_none() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST assignment value",
             )));
         }
-        validate_assignment_value_payload(value, value_syntax.expression)?;
+        validate_assignment_value_payload(value.span, value_syntax.expression)?;
         if let Some(local_target) = self.local_assignment_target(target, target_syntax.expression) {
             let target_value_type =
                 self.value_type_for_expr_with_payload(target, target_syntax.expression);
@@ -1152,5 +1157,35 @@ impl Compiler<'_, '_> {
             }
             Some(_) => None,
         }
+    }
+}
+
+fn assignment_target_syntax_kind(target: &Expr) -> Option<SyntaxExpressionKind> {
+    Some(match target.kind {
+        ExprKind::Path(_) | ExprKind::SelfValue => SyntaxExpressionKind::Path,
+        ExprKind::Field { .. } => SyntaxExpressionKind::Field,
+        ExprKind::Index { .. } => SyntaxExpressionKind::Index,
+        ExprKind::Assign { .. } => SyntaxExpressionKind::Assign,
+        ExprKind::Call { .. } => SyntaxExpressionKind::Call,
+        ExprKind::Unary { .. } => SyntaxExpressionKind::Unary,
+        ExprKind::Binary { .. } => SyntaxExpressionKind::Binary,
+        ExprKind::Try(_) => SyntaxExpressionKind::Try,
+        ExprKind::Array(_) => SyntaxExpressionKind::Array,
+        ExprKind::Map(_) => SyntaxExpressionKind::Map,
+        ExprKind::Record { .. } => SyntaxExpressionKind::Record,
+        ExprKind::Lambda { .. } => SyntaxExpressionKind::Lambda,
+        ExprKind::Block(_) => SyntaxExpressionKind::Block,
+        ExprKind::If(_) => SyntaxExpressionKind::If,
+        ExprKind::Match(_) => SyntaxExpressionKind::Match,
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => SyntaxExpressionKind::Literal,
+        ExprKind::Error => return None,
+    })
+}
+
+fn assignment_target_path_is_self(target: &Expr) -> Option<bool> {
+    match target.kind {
+        ExprKind::Path(_) => Some(false),
+        ExprKind::SelfValue => Some(true),
+        _ => None,
     }
 }
