@@ -312,7 +312,9 @@ fn static_expr_type_with_payload(
     }) {
         return ty;
     }
-    if aligned_payload.is_some_and(CompilerExpressionPayload::has_missing_syntax) {
+    if aligned_payload
+        .is_some_and(|payload| payload.source().is_some() && payload.syntax_expression().is_none())
+    {
         return StaticExprType::Dynamic;
     }
 

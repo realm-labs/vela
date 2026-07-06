@@ -1022,7 +1022,9 @@ impl super::Compiler<'_, '_> {
         {
             return Some(shape);
         }
-        if kind_matched_payload.is_some_and(CompilerExpressionPayload::has_missing_syntax) {
+        if kind_matched_payload.is_some_and(|payload| {
+            payload.source().is_some() && payload.syntax_expression().is_none()
+        }) {
             return None;
         }
         if syntax_shapes::payload_shape_must_come_from_syntax(kind_matched_payload) {

@@ -989,10 +989,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source
     }
 
-    pub(in crate::compiler) fn has_missing_syntax(&self) -> bool {
-        self.source.is_some() && self.syntax.is_none()
-    }
-
     #[cfg(test)]
     pub(in crate::compiler) fn kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;

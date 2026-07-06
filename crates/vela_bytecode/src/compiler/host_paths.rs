@@ -188,9 +188,9 @@ impl Compiler<'_, '_> {
                     self.host_path_from_syntax_path_payload(payload.clone()?)
                 }
                 Some(_) => None,
-                None if payload
-                    .as_ref()
-                    .is_some_and(CompilerExpressionPayload::has_missing_syntax) =>
+                None if payload.as_ref().is_some_and(|payload| {
+                    payload.source().is_some() && payload.syntax_expression().is_none()
+                }) =>
                 {
                     None
                 }
