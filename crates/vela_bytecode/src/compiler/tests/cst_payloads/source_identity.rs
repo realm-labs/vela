@@ -647,7 +647,7 @@ fn main(value) {
             let missing_pattern = missing_arm.pattern_payload();
             assert!(!missing_pattern.has_syntax());
             assert!(missing_pattern.syntax_pattern().is_none());
-            assert_eq!(missing_arm.body_expression_kind(), None);
+            assert_eq!(missing_arm.syntax_body_expression_kind(), None);
             assert_eq!(missing_pattern.syntax_pattern_kind(), None);
             assert!(
                 missing_arm

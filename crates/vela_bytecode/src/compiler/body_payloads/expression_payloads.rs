@@ -835,12 +835,6 @@ impl CompilerMatchArmPayload {
         self.source.is_some() && self.syntax.is_some()
     }
 
-    #[cfg(test)]
-    pub(in crate::compiler) fn body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
-        self.source?;
-        self.syntax_body_expression_kind()
-    }
-
     pub(in crate::compiler) fn syntax_body_expression_kind(&self) -> Option<SyntaxExpressionKind> {
         self.source?;
         self.syntax
