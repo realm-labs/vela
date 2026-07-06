@@ -422,6 +422,9 @@ literal access instead.
 The free expression alignment helper that returned an old owned `Expr` has
 been removed; the remaining checked fallback expression access is localized on
 `CompilerExpressionPayload` while host-path and method-call lowering migrate.
+Match scrutinee and match-arm body expression payload helpers now build
+syntax-only child payloads, removing two more test-only old-`Expr` child
+propagation routes from the body payload boundary.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

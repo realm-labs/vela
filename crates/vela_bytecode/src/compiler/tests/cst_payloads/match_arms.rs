@@ -179,7 +179,6 @@ fn classify(input) {
     );
     assert_match_body_array_element_payload(
         &statement_arm_payloads[0],
-        &statement_match.arms[0].body,
         &[
             (SyntaxStatementKind::Let, "let item = value + 1;"),
             (SyntaxStatementKind::Expr, "item"),
@@ -187,7 +186,6 @@ fn classify(input) {
     );
     assert_match_body_array_element_payload(
         &statement_arm_payloads[1],
-        &statement_match.arms[1].body,
         &[
             (SyntaxStatementKind::Let, "let fallback = 0;"),
             (SyntaxStatementKind::Expr, "fallback"),
@@ -1141,10 +1139,9 @@ fn assert_match_guard_payload(
 
 fn assert_match_body_array_element_payload(
     arm: &body_payloads::CompilerMatchArmPayload,
-    fallback: &vela_syntax::ast::Expr,
     expected: &[(SyntaxStatementKind, &str)],
 ) {
-    let body = arm.body_expression_payload_for_test(fallback);
+    let body = arm.body_expression_payload();
     assert_eq!(body.syntax_kind(), Some(SyntaxExpressionKind::Array));
     let element_payloads = body
         .array_element_value_payloads()

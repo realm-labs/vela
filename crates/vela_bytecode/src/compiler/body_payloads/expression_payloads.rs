@@ -21,8 +21,6 @@ use super::CompilerArgumentPayload;
 use super::CompilerBodyPayload;
 #[cfg(test)]
 use super::CompilerRecordFieldPayload;
-#[cfg(test)]
-use super::match_scrutinee_payload_for_expr;
 use super::{
     CompilerArrayElementPayload, CompilerExpressionPayload, CompilerInterpolationPayload,
     CompilerMapEntryPayload,
@@ -89,17 +87,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_match()?;
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Match(match_expr) = &fallback.kind else {
-                return None;
-            };
-            return Some(match_scrutinee_payload_for_expr(
-                self.source,
-                syntax,
-                match_expr,
-            ));
-        }
         Some(self.child_payload(syntax.scrutinee()))
     }
 
@@ -752,22 +739,6 @@ impl CompilerMatchArmPayload {
                     .as_ref()
                     .and_then(SyntaxMatchArm::body_as_expression)
             }),
-        )
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn body_expression_payload_for_test<'ast>(
-        &self,
-        fallback_body: &'ast Expr,
-    ) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.source.and_then(|_| {
-                self.syntax
-                    .as_ref()
-                    .and_then(SyntaxMatchArm::body_as_expression)
-            }),
-            fallback_body,
         )
     }
 

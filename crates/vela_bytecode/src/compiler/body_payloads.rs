@@ -305,19 +305,6 @@ fn match_arm_payloads_for_syntax(
 }
 
 #[cfg(test)]
-fn match_scrutinee_payload_for_expr<'ast>(
-    source: Option<SourceId>,
-    syntax: SyntaxMatchExpr,
-    fallback: &'ast MatchExpr,
-) -> CompilerExpressionPayload<'ast> {
-    CompilerExpressionPayload::from_fallback(
-        source,
-        source.and_then(|_| syntax.scrutinee()),
-        &fallback.scrutinee,
-    )
-}
-
-#[cfg(test)]
 fn if_payload_for_syntax<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxIfExpr,

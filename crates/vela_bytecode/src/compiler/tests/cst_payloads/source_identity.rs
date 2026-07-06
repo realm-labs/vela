@@ -653,7 +653,7 @@ fn main(value) {
             assert_eq!(missing_pattern.syntax_pattern_kind(), None);
             assert!(
                 missing_arm
-                    .body_expression_payload_for_test(&fallback_match.arms[0].body)
+                    .body_expression_payload()
                     .syntax_expression()
                     .is_none()
             );
