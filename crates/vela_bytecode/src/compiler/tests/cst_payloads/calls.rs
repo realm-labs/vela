@@ -154,6 +154,33 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_known_value_receiver_rejects_unknown_method() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    return 42.trim();
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only known value receiver should not retain statement fallbacks"
+    );
+
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let error = compile_program_source_with_registry(source, text, registry.compile_view())
+        .expect_err("unknown method on known value receiver should fail statically");
+    let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+        panic!("expected semantic diagnostics");
+    };
+    assert!(diagnostics.iter().any(|diagnostic| {
+        diagnostic.code.as_deref() == Some("compiler::unresolved_method")
+            && diagnostic.message.contains("trim")
+    }));
+}
+
+#[test]
 fn syntax_only_standard_callback_method_accepts_lambda_closure_argument() {
     let source = SourceId::new(1);
     let text = r#"

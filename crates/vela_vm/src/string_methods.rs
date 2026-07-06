@@ -356,17 +356,15 @@ fn main() {
     return "quest".find(1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string find type error source should compile");
-
-        let error = run_linked_string_test_code(&Vm::new(), code)
-            .expect_err("string find should reject non-string needles");
-        assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method find"
-            }
-        );
+        let error = compile_function_source(SourceId::new(1), source, "main")
+            .expect_err("statically known non-string find needle should fail before runtime");
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("compiler::type_contract_mismatch")
+                && diagnostic.message.contains("find::needle")
+        }));
     }
 
     #[test]
@@ -421,17 +419,16 @@ fn main() {
     return "quest.reward".strip_prefix(1);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("string strip affix type error source should compile");
-
-        let error = run_linked_string_test_code(&Vm::new(), code)
-            .expect_err("string strip affix should reject non-string affixes");
-        assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method strip_prefix"
-            }
+        let error = compile_function_source(SourceId::new(1), source, "main").expect_err(
+            "statically known non-string strip_prefix affix should fail before runtime",
         );
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        assert!(diagnostics.iter().any(|diagnostic| {
+            diagnostic.code.as_deref() == Some("compiler::type_contract_mismatch")
+                && diagnostic.message.contains("strip_prefix::prefix")
+        }));
     }
 
     #[test]

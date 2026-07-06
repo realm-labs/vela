@@ -112,7 +112,7 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 #[cfg(test)]
 mod tests {
     use vela_bytecode::compiler::compile_function_source_with_registry;
-    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::compiler::error::{CompileErrorKind, CompileResult};
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
@@ -572,16 +572,17 @@ fn main() {
     return {"gold": 4}.merge(["xp"]);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("merge type error source");
-
-        let error = run_linked_map_test_code(&Vm::new(), code)
-            .expect_err("map merge should reject non-map argument");
+        let error = compile_function_source(SourceId::new(1), source, "main")
+            .expect_err("statically known non-map merge argument should fail before runtime");
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
         assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method merge"
-            }
+            diagnostics
+                .iter()
+                .filter_map(|diagnostic| diagnostic.code.as_deref())
+                .collect::<Vec<_>>(),
+            vec!["compiler::type_contract_mismatch"]
         );
     }
 
