@@ -270,6 +270,9 @@ script method IDs for known script receivers, including defaulted method
 arguments and host-ref script impl dispatch, and CST record-variant
 constructors now lower to enum bytecode. The previously known engine CST
 hard-switch failure set is cleared under `cargo test -p vela_engine`.
+CST path-call lowering now also emits the heap-aware `set::from_array`
+constructor bytecode; full workspace validation currently reaches one remaining
+LSP source-backed schema type rename failure.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload
