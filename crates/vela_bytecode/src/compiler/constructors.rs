@@ -43,6 +43,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         args: &[Argument],
         arg_payloads: Option<&[CompilerArgumentPayload]>,
     ) -> CompileResult<Vec<(String, Register)>> {
+        reject_mismatched_tuple_variant_argument_payloads(args, arg_payloads)?;
         if !self.enum_constructor_variant_exists(enum_name, variant) {
             return Err(
                 self.constructor_diagnostics_error(vec![unknown_enum_variant_diagnostic(
@@ -311,6 +312,20 @@ fn argument_expression_payload<'ast>(
             Ok(payload.value_expression_payload())
         })
         .transpose()
+}
+
+fn reject_mismatched_tuple_variant_argument_payloads(
+    args: &[Argument],
+    arg_payloads: Option<&[CompilerArgumentPayload]>,
+) -> CompileResult<()> {
+    if let Some(arg_payloads) = arg_payloads
+        && arg_payloads.len() != args.len()
+    {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST tuple variant arguments",
+        )));
+    }
+    Ok(())
 }
 
 fn argument_names(

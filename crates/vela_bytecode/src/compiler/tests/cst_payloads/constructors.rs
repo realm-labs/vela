@@ -282,11 +282,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax(
-                        "missing CST tuple variant argument payload"
-                    )
+                    CompileErrorKind::UnsupportedSyntax("mismatched CST tuple variant arguments")
                 ),
-                "expected missing CST tuple variant argument payload, got {error:?}"
+                "expected mismatched CST tuple variant arguments, got {error:?}"
             );
         },
     );
