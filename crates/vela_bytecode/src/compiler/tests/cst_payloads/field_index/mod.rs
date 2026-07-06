@@ -533,10 +533,10 @@ fn main() {
         |compiler, payload| {
             let statements = field_index_statement_payloads(&payload.body);
             compiler
-                .compile_statement(statements[0].fallback())
+                .compile_statement_payload_for_test(&statements[0])
                 .expect("cst_items local should compile");
             compiler
-                .compile_statement(statements[1].fallback())
+                .compile_statement_payload_for_test(&statements[1])
                 .expect("legacy_items local should compile");
             let cst_target = statements[2]
                 .expression_payload()
@@ -692,7 +692,7 @@ fn main() {
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("values local should compile");
     let legacy_index = statements[1]
         .let_initializer_expression_payload()
@@ -726,7 +726,7 @@ fn main() {
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = field_index_statement_payloads(&legacy_payload.body);
     compiler
-        .compile_statement(statements[0].fallback())
+        .compile_statement_payload_for_test(&statements[0])
         .expect("values local should compile");
     let legacy_index = statements[1]
         .let_initializer_expression_payload()

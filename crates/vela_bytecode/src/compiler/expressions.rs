@@ -145,8 +145,12 @@ impl Compiler<'_, '_> {
                 let ExprKind::Array(items) = &expr.kind else {
                     unreachable!("validated CST array expression payload kind");
                 };
-                let element_payloads = payload.array_element_payloads();
-                self.compile_array(items, element_payloads.as_deref())
+                let Some(element_payloads) = payload.array_element_payloads() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST array element payload",
+                    )));
+                };
+                self.compile_array(items, &element_payloads)
             }
             SyntaxExpressionKind::Map => {
                 let ExprKind::Map(entries) = &expr.kind else {
@@ -395,7 +399,9 @@ impl Compiler<'_, '_> {
             ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST block expression payload",
             ))),
-            ExprKind::Array(items) => self.compile_array(items, None),
+            ExprKind::Array(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST array element payload",
+            ))),
             ExprKind::Map(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST map entry payload",
             ))),
@@ -556,9 +562,9 @@ impl Compiler<'_, '_> {
     fn compile_array(
         &mut self,
         items: &[Expr],
-        payloads: Option<&[CompilerArrayElementPayload]>,
+        payloads: &[CompilerArrayElementPayload],
     ) -> CompileResult<Register> {
-        if payloads.is_some_and(|payloads| payloads.len() > items.len()) {
+        if payloads.len() > items.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST array elements",
             )));
@@ -567,26 +573,18 @@ impl Compiler<'_, '_> {
             .iter()
             .enumerate()
             .map(|(index, item)| {
-                let payload = payloads
-                    .map(|payloads| {
-                        payloads.get(index).ok_or_else(|| {
-                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                                "missing CST array element payload",
-                            ))
-                        })
-                    })
-                    .transpose()?;
-                let value_payload =
-                    payload.map(CompilerArrayElementPayload::value_expression_payload);
-                if value_payload
-                    .as_ref()
-                    .is_some_and(|payload| payload.syntax_expression().is_none())
-                {
+                let payload = payloads.get(index).ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST array element payload",
+                    ))
+                })?;
+                let value_payload = payload.value_expression_payload();
+                if value_payload.syntax_expression().is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST array element value",
                     )));
                 }
-                self.compile_expr_with_payload(item, value_payload.as_ref())
+                self.compile_expr_with_payload(item, Some(&value_payload))
             })
             .collect::<CompileResult<Vec<_>>>()?;
         let dst = self.alloc_register()?;
