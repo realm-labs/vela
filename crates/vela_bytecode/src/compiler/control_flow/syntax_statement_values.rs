@@ -1075,10 +1075,7 @@ impl Compiler<'_, '_> {
             if receiver_type.is_some() {
                 return Err(unresolved_static_method_error(&method, call_span));
             }
-            if matches!(
-                value_receiver_type,
-                Some(RuntimeTypeFact::Primitive(_))
-            ) {
+            if matches!(value_receiver_type, Some(RuntimeTypeFact::Primitive(_))) {
                 return Err(unresolved_static_method_error(&method, call_span));
             }
             let Some(receiver) = self.compile_syntax_expression(source, &receiver_expression)?

@@ -496,6 +496,9 @@ impl Compiler<'_, '_> {
             "index_of" | "last_index_of" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
                 "i64".to_owned(),
             )))),
+            "merge" | "union" | "intersection" | "difference" | "symmetric_difference" => {
+                Some(receiver)
+            }
             "take" | "skip" => receiver
                 .iterator_item()
                 .cloned()
@@ -646,9 +649,11 @@ impl Compiler<'_, '_> {
                     local_shapes,
                 )?)
             }
+            SyntaxExpressionKind::Call => {
+                self.call_shape_with_locals(source, expression, local_shapes)
+            }
             SyntaxExpressionKind::Unary
             | SyntaxExpressionKind::Assign
-            | SyntaxExpressionKind::Call
             | SyntaxExpressionKind::Lambda
             | SyntaxExpressionKind::Block
             | SyntaxExpressionKind::If
@@ -809,6 +814,52 @@ impl Compiler<'_, '_> {
         match self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)? {
             ValueShape::Array(element) => Some(*element),
             ValueShape::Map { value, .. } => Some(*value),
+            _ => None,
+        }
+    }
+
+    fn call_shape_with_locals(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+        local_shapes: &BTreeMap<String, ValueShape>,
+    ) -> Option<ValueShape> {
+        let call = expression.as_call()?;
+        let callee = call.callee()?;
+        let field = callee.as_field()?;
+        let receiver = field.receiver()?;
+        let receiver =
+            self.value_shape_for_syntax_expression_with_locals(source, &receiver, local_shapes)?;
+        match field.name_text()?.as_str() {
+            "to_upper" | "to_lower" | "trim" | "trim_start" | "trim_end" | "replace" | "repeat"
+            | "join" => Some(string_shape()),
+            "len" | "count" | "sum" => Some(ValueShape::Scalar("i64".to_owned())),
+            "has" | "contains" | "starts_with" | "ends_with" | "is_empty" | "is_none"
+            | "is_some" | "is_ok" | "is_err" | "any" | "all" | "is_subset" | "is_superset"
+            | "is_disjoint" => Some(ValueShape::Scalar("bool".to_owned())),
+            "first" | "last" | "pop" | "remove_at" | "min" | "max" => receiver
+                .array_element()
+                .cloned()
+                .map(|element| ValueShape::Option(Box::new(element))),
+            "values" => match &receiver {
+                ValueShape::Array(value)
+                | ValueShape::Set(value)
+                | ValueShape::Map { value, .. } => Some(ValueShape::Iterator(value.clone())),
+                _ => None,
+            },
+            "collect_array" => receiver
+                .iterator_item()
+                .cloned()
+                .map(|item| ValueShape::Array(Box::new(item))),
+            "sort"
+            | "sort_by"
+            | "reverse"
+            | "distinct"
+            | "merge"
+            | "union"
+            | "intersection"
+            | "difference"
+            | "symmetric_difference" => Some(receiver),
             _ => None,
         }
     }

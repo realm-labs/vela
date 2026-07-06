@@ -131,7 +131,7 @@ pub(super) fn type_error<T>(operation: &'static str) -> VmResult<T> {
 #[cfg(test)]
 mod tests {
     use vela_bytecode::compiler::compile_function_source_with_registry;
-    use vela_bytecode::compiler::error::CompileResult;
+    use vela_bytecode::compiler::error::{CompileError, CompileErrorKind, CompileResult};
     use vela_bytecode::{Linker, UnlinkedCodeObject, UnlinkedProgram};
     use vela_common::SourceId;
 
@@ -145,6 +145,16 @@ mod tests {
     ) -> CompileResult<UnlinkedCodeObject> {
         let registry = vela_stdlib::standard_registry().expect("standard registry should build");
         compile_function_source_with_registry(source, text, function_name, registry.compile_view())
+    }
+
+    fn semantic_diagnostic_codes(error: CompileError) -> Vec<String> {
+        let CompileErrorKind::SemanticDiagnostics(diagnostics) = error.kind else {
+            panic!("expected semantic diagnostics");
+        };
+        diagnostics
+            .into_iter()
+            .filter_map(|diagnostic| diagnostic.code)
+            .collect()
     }
 
     fn run_linked_set_test_code(vm: &Vm, code: UnlinkedCodeObject) -> VmResult<OwnedValue> {
@@ -604,18 +614,11 @@ fn main() {
     return tags.filter("quest");
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("set filter type error source should compile");
-        let mut vm = Vm::new();
-        vm.register_standard_natives();
-
-        let error = run_linked_set_test_code(&vm, code)
+        let error = compile_function_source(SourceId::new(1), source, "main")
             .expect_err("set filter should reject non-callback args");
         assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method filter"
-            }
+            semantic_diagnostic_codes(error),
+            vec!["compiler::type_contract_mismatch"]
         );
     }
 
@@ -627,18 +630,11 @@ fn main() {
     return tags.union(["raid"]);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("set combination type error source should compile");
-        let mut vm = Vm::new();
-        vm.register_standard_natives();
-
-        let error =
-            run_linked_set_test_code(&vm, code).expect_err("set union should reject non-set args");
+        let error = compile_function_source(SourceId::new(1), source, "main")
+            .expect_err("set union should reject non-set args");
         assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method union"
-            }
+            semantic_diagnostic_codes(error),
+            vec!["compiler::type_contract_mismatch"]
         );
 
         let source = r#"
@@ -647,16 +643,11 @@ fn main() {
     return tags.symmetric_difference(["quest"]);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("set symmetric_difference type error source should compile");
-
-        let error = run_linked_set_test_code(&vm, code)
+        let error = compile_function_source(SourceId::new(1), source, "main")
             .expect_err("set symmetric_difference should reject non-set args");
         assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method symmetric_difference"
-            }
+            semantic_diagnostic_codes(error),
+            vec!["compiler::type_contract_mismatch"]
         );
 
         let source = r#"
@@ -665,16 +656,11 @@ fn main() {
     return tags.is_subset(["quest"]);
 }
 "#;
-        let code = compile_function_source(SourceId::new(1), source, "main")
-            .expect("set predicate type error source should compile");
-
-        let error = run_linked_set_test_code(&vm, code)
+        let error = compile_function_source(SourceId::new(1), source, "main")
             .expect_err("set predicate should reject non-set args");
         assert_eq!(
-            error.kind(),
-            crate::VmErrorKind::TypeMismatch {
-                operation: "method is_subset"
-            }
+            semantic_diagnostic_codes(error),
+            vec!["compiler::type_contract_mismatch"]
         );
     }
 

@@ -125,6 +125,61 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_after_set_combination_chains() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let main = compile_function_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let player = set::from_array(["daily", "quest", "raid"]);
+    let event = set::from_array(["quest", "bonus", "daily"]);
+    let unioned = player.union(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let shared = player.intersection(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let missing = player.difference(event).values().collect_array().join(",");
+    let changed = player.symmetric_difference(event).values().collect_array().sort_by(|tag| tag).join(",");
+    let required = set::from_array(["daily", "quest"]);
+    if unioned == "bonus,daily,quest,raid"
+        && shared == "daily,quest"
+        && missing == "raid"
+        && changed == "bonus,raid"
+        && required.is_subset(player)
+        && player.is_superset(required)
+        && player.is_disjoint(set::from_array(["bonus"]))
+        && player.len() == 3
+    {
+        return shared;
+    }
+    return "";
+}
+"#,
+        "main",
+        registry.compile_view(),
+    )
+    .expect("set combination value method chain should compile");
+    let unresolved = nested_method_names(&main);
+    let methods = nested_method_id_names(&main);
+
+    assert!(
+        unresolved.is_empty(),
+        "expected set combination chain to lower method IDs, unresolved: {unresolved:?}"
+    );
+    assert!(methods.iter().any(|method| method == "union"));
+    assert!(methods.iter().any(|method| method == "values"));
+    assert!(methods.iter().any(|method| method == "collect_array"));
+    assert!(methods.iter().any(|method| method == "sort_by"));
+    assert!(methods.iter().any(|method| method == "join"));
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallMethodId {
+            method,
+            method_id,
+            ..
+        } if method == "sort_by"
+            && Some(*method_id) == vela_stdlib::std_method_id("Array", "sort_by")
+    )));
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_after_result_to_option_method() {
     let registry = vela_stdlib::standard_registry().expect("standard registry should build");
     let program = compile_program_source_with_registry(
