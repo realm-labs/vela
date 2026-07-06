@@ -29,6 +29,7 @@ use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 pub(in crate::compiler) mod interpolated;
+mod logical;
 #[cfg(test)]
 pub(in crate::compiler) use interpolated::interpolated_expression_payload_at;
 
@@ -928,84 +929,6 @@ impl Compiler<'_, '_> {
         Ok(dst)
     }
 
-    fn compile_logical_chain(
-        &mut self,
-        op: BinaryOp,
-        expr: &Expr,
-        payloads: &[CompilerExpressionPayload<'_>],
-    ) -> CompileResult<Register> {
-        let operands = logical_chain_operands(op, expr);
-        if payloads.len() != operands.len() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST logical chain payload",
-            )));
-        }
-        match op {
-            BinaryOp::And => self.compile_logical_and_chain(&operands, payloads),
-            BinaryOp::Or => self.compile_logical_or_chain(&operands, payloads),
-            _ => unreachable!("logical chain only supports && and ||"),
-        }
-    }
-
-    fn compile_logical_and_chain(
-        &mut self,
-        operands: &[&Expr],
-        payloads: &[CompilerExpressionPayload<'_>],
-    ) -> CompileResult<Register> {
-        let dst = self.alloc_register()?;
-        let Some((last, prefix)) = operands.split_last() else {
-            self.emit_bool_constant_to(dst, true);
-            return Ok(dst);
-        };
-
-        let mut false_branches = Vec::with_capacity(prefix.len());
-        for (index, operand) in prefix.iter().enumerate() {
-            let value = self.compile_expr_with_payload(operand, payloads.get(index))?;
-            false_branches.push(self.emit_jump_if_false(value));
-        }
-
-        let last = self.compile_expr_with_payload(last, payloads.get(prefix.len()))?;
-        self.emit_truthy_to_bool(dst, last)?;
-        let end = self.emit_jump();
-
-        for false_branch in false_branches {
-            self.patch_jump(false_branch, self.current_offset())?;
-        }
-        self.emit_bool_constant_to(dst, false);
-        self.patch_jump(end, self.current_offset())?;
-
-        Ok(dst)
-    }
-
-    fn compile_logical_or_chain(
-        &mut self,
-        operands: &[&Expr],
-        payloads: &[CompilerExpressionPayload<'_>],
-    ) -> CompileResult<Register> {
-        let dst = self.alloc_register()?;
-        let Some((last, prefix)) = operands.split_last() else {
-            self.emit_bool_constant_to(dst, false);
-            return Ok(dst);
-        };
-
-        let mut end_jumps = Vec::with_capacity(prefix.len());
-        for (index, operand) in prefix.iter().enumerate() {
-            let value = self.compile_expr_with_payload(operand, payloads.get(index))?;
-            let next_operand = self.emit_jump_if_false(value);
-            self.emit_bool_constant_to(dst, true);
-            end_jumps.push(self.emit_jump());
-            self.patch_jump(next_operand, self.current_offset())?;
-        }
-
-        let last = self.compile_expr_with_payload(last, payloads.get(prefix.len()))?;
-        self.emit_truthy_to_bool(dst, last)?;
-        for end in end_jumps {
-            self.patch_jump(end, self.current_offset())?;
-        }
-
-        Ok(dst)
-    }
-
     pub(super) fn emit_truthy_to_bool(
         &mut self,
         dst: Register,
@@ -1164,24 +1087,4 @@ fn sorted_field_slot(fields: &[vela_syntax::ast::RecordField], field: &str) -> O
         .collect::<Vec<_>>();
     names.sort_unstable();
     names.iter().position(|name| *name == field)
-}
-
-fn logical_chain_operands(op: BinaryOp, expr: &Expr) -> Vec<&Expr> {
-    let mut operands = Vec::new();
-    let mut stack = vec![expr];
-    while let Some(expr) = stack.pop() {
-        if let ExprKind::Binary {
-            op: expr_op,
-            left,
-            right,
-        } = &expr.kind
-            && *expr_op == op
-        {
-            stack.push(right);
-            stack.push(left);
-            continue;
-        }
-        operands.push(expr);
-    }
-    operands
 }
