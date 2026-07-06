@@ -183,6 +183,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn unary_operand_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -191,6 +192,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_unary_operator(&self) -> Option<vela_syntax::ast::UnaryOp> {
         self.source?;
         self.syntax.as_ref()?.as_unary()?.operator()

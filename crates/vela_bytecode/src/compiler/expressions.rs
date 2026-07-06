@@ -305,16 +305,22 @@ impl Compiler<'_, '_> {
                 self.compile_lambda(expr, params, body, body_payload.as_ref())
             }
             SyntaxExpressionKind::Unary => {
-                let ExprKind::Unary { op, expr: operand } = &expr.kind else {
-                    unreachable!("validated CST unary expression payload kind");
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST unary expression payload",
+                    )));
                 };
-                let op = payload.syntax_unary_operator().unwrap_or(*op);
-                let operand_payload = payload.unary_operand_payload();
-                reject_missing_expression_payload(
-                    operand_payload.as_ref(),
-                    "missing CST unary operand",
-                )?;
-                self.compile_unary(op, operand.span, operand, operand_payload.as_ref())
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST unary expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST unary expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Try => {
                 let ExprKind::Try(operand) = &expr.kind else {

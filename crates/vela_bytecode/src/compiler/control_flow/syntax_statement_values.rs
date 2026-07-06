@@ -715,6 +715,12 @@ impl Compiler<'_, '_> {
         let Some(operand_expression) = unary.expression() else {
             return Ok(None);
         };
+        if op == UnaryOp::Not
+            && let Some(register) =
+                self.compile_syntax_negated_equality(source, expression, &operand_expression)?
+        {
+            return Ok(Some(register));
+        }
         if op == UnaryOp::Negate
             && let Some(literal) = operand_expression
                 .as_literal()
@@ -735,6 +741,78 @@ impl Compiler<'_, '_> {
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
         Ok(Some(dst))
     }
+
+    fn compile_syntax_negated_equality(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        operand_expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let mut equality_expression = operand_expression.clone();
+        while let Some(inner) = equality_expression
+            .as_paren()
+            .and_then(|paren| paren.expression())
+        {
+            equality_expression = inner;
+        }
+        let Some(binary) = equality_expression.as_binary() else {
+            return Ok(None);
+        };
+        let Some(equality_op) = binary.operator() else {
+            return Ok(None);
+        };
+        let inverse = match equality_op {
+            BinaryOp::Equal => BinaryOp::NotEqual,
+            BinaryOp::NotEqual => BinaryOp::Equal,
+            BinaryOp::IdentityEqual => BinaryOp::IdentityNotEqual,
+            BinaryOp::IdentityNotEqual => BinaryOp::IdentityEqual,
+            _ => return Ok(None),
+        };
+        let Some(lhs_expression) = binary.lhs() else {
+            return Ok(None);
+        };
+        let Some(rhs_expression) = binary.rhs() else {
+            return Ok(None);
+        };
+        if let Some(register) = self.compile_syntax_path_numeric_literal_binary(
+            source,
+            inverse,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )? {
+            return Ok(Some(register));
+        }
+        if let Some(register) = self.compile_syntax_unknown_numeric_literal_binary(
+            source,
+            inverse,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )? {
+            return Ok(Some(register));
+        }
+        self.reject_static_syntax_binary_operands(
+            source,
+            inverse,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )?;
+        let Some(lhs) = self.compile_syntax_expression(source, &lhs_expression)? else {
+            return Ok(None);
+        };
+        let Some(rhs) = self.compile_syntax_expression(source, &rhs_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        let Some(instruction) = non_logical_binary_instruction(inverse, dst, lhs, rhs) else {
+            return Ok(None);
+        };
+        self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
     fn compile_syntax_assignment(
         &mut self,
         source: SourceId,
