@@ -134,7 +134,7 @@ impl Compiler<'_, '_> {
         Ok(Some(false))
     }
 
-    fn compile_syntax_range_value(
+    pub(in crate::compiler::control_flow) fn compile_syntax_range_value(
         &mut self,
         source: vela_common::SourceId,
         lhs: &SyntaxExpression,

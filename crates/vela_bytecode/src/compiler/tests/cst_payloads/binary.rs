@@ -647,6 +647,57 @@ fn main() {
     );
 }
 
+#[test]
+fn multiline_return_binary_method_operands_lower_from_cst() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let names: Array = ["gold", "xp"];
+    let rewards: Map = {"gold": 4};
+    let tags: Set = set::from_array(["daily"]);
+    let some: Option = option::some(1);
+    let err: Result = result::err("bad");
+    if some.is_some() && err.is_err() {
+        return "gold".len()
+            + names.len()
+            + rewards.len()
+            + tags.len()
+            + (1..4).len();
+    }
+    return 0;
+}
+"#,
+        registry.compile_view(),
+    )
+    .expect("CST multiline binary method operands should compile");
+    let main = program.function("main").expect("main function");
+    let len_method_ids = main
+        .instructions
+        .iter()
+        .filter(|instruction| {
+            matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::CallMethodId { method, .. } if method == "len"
+            )
+        })
+        .count();
+    let dynamic_len_methods = main
+        .instructions
+        .iter()
+        .filter(|instruction| {
+            matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::CallDynamicMethod { method, .. } if method == "len"
+            )
+        })
+        .count();
+
+    assert_eq!(len_method_ids, 5);
+    assert_eq!(dynamic_len_methods, 0);
+}
+
 fn assert_cst_let_initializer_binary_operand_body_payloads(
     body: &body_payloads::CompilerBodyPayload<'_>,
     expected: &[Vec<(SyntaxStatementKind, &str)>],

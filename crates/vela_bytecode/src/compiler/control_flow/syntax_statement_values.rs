@@ -269,15 +269,18 @@ impl Compiler<'_, '_> {
         if matches!(op, BinaryOp::And | BinaryOp::Or) {
             return self.compile_syntax_logical_chain(source, expression, op);
         }
-        if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
-            return Ok(None);
-        }
         let Some(lhs_expression) = binary.lhs() else {
             return Ok(None);
         };
         let Some(rhs_expression) = binary.rhs() else {
             return Ok(None);
         };
+        if matches!(op, BinaryOp::Range | BinaryOp::RangeInclusive) {
+            let inclusive = op == BinaryOp::RangeInclusive;
+            return self
+                .compile_syntax_range_value(source, &lhs_expression, &rhs_expression, inclusive)
+                .map(Some);
+        }
         if let Some(register) = self.compile_syntax_path_numeric_literal_binary(
             source,
             op,

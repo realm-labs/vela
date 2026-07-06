@@ -257,7 +257,7 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
                 }
                 if current.is_trivia() && self.tokens[cursor].text.contains('\n') {
                     let next = self.skip_trivia(cursor + 1);
-                    if next < end && self.at_postfix_continuation(next) {
+                    if next < end && self.at_statement_continuation(next) {
                         continue;
                     }
                     return cursor;
@@ -268,11 +268,31 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         end
     }
 
-    fn at_postfix_continuation(&self, cursor: usize) -> bool {
+    fn at_statement_continuation(&self, cursor: usize) -> bool {
         matches!(
             self.kind_at(cursor),
             Some(
-                SyntaxKind::Dot | SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Question
+                SyntaxKind::Dot
+                    | SyntaxKind::LParen
+                    | SyntaxKind::LBracket
+                    | SyntaxKind::Question
+                    | SyntaxKind::DotDot
+                    | SyntaxKind::DotDotEqual
+                    | SyntaxKind::Plus
+                    | SyntaxKind::Minus
+                    | SyntaxKind::Star
+                    | SyntaxKind::Slash
+                    | SyntaxKind::Percent
+                    | SyntaxKind::BangEqual
+                    | SyntaxKind::BangEqualEqual
+                    | SyntaxKind::EqualEqual
+                    | SyntaxKind::EqualEqualEqual
+                    | SyntaxKind::Less
+                    | SyntaxKind::LessEqual
+                    | SyntaxKind::Greater
+                    | SyntaxKind::GreaterEqual
+                    | SyntaxKind::AndAnd
+                    | SyntaxKind::OrOr
             )
         )
     }

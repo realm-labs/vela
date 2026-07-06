@@ -142,6 +142,51 @@ fn main() {
 }
 
 #[test]
+fn ast_return_keeps_newline_infix_chain() {
+    let source = r#"
+fn main() {
+    return "gold".len()
+        + names.len()
+        + rewards.len();
+}
+"#;
+    let parse = parse_source(source);
+    let body = parse
+        .tree()
+        .functions()
+        .next()
+        .expect("function item")
+        .body()
+        .expect("function body");
+    let statements = body.statements().collect::<Vec<_>>();
+    let return_value = statements[0]
+        .as_return()
+        .and_then(|statement| statement.expression())
+        .expect("return expression");
+
+    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert_eq!(statements.len(), 1);
+    assert_eq!(
+        return_value.expression_kind(),
+        crate::ast::SyntaxExpressionKind::Binary
+    );
+    assert!(
+        return_value
+            .syntax()
+            .text()
+            .to_string()
+            .contains("+ names.len()")
+    );
+    assert!(
+        return_value
+            .syntax()
+            .text()
+            .to_string()
+            .contains("+ rewards.len()")
+    );
+}
+
+#[test]
 fn ast_statement_exposes_typed_variant_helpers() {
     let parse = parse_source(
         r#"fn variants(items, ready, state) {
