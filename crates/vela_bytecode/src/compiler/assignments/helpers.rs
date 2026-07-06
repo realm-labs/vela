@@ -1,7 +1,6 @@
 use vela_syntax::ast::{AssignOp, Expr, ExprKind, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-use crate::compiler::expression_facts::payload_kind_matches_expression;
 use crate::compiler::operators::compound_assignment_instruction;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
@@ -20,13 +19,6 @@ pub(super) fn expressions_are_i64(
             Some(RuntimeTypeFact::Primitive(vela_common::PrimitiveTag::I64))
         )
     )
-}
-
-pub(super) fn assignment_value_payload_matches_expr(
-    payload: &CompilerExpressionPayload<'_>,
-    value: &Expr,
-) -> bool {
-    payload_kind_matches_expression(payload, value)
 }
 
 pub(super) fn record_path_parts(path: &[String]) -> Option<(&str, Vec<String>)> {

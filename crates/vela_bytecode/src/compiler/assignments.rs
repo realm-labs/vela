@@ -12,6 +12,7 @@ use super::assignment_payloads::{
     validate_assignment_target_payload, validate_assignment_value_payload,
 };
 use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload};
+use super::expression_checks::payload_syntax_overlaps_expr;
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::i64_compound_assignment_instruction;
@@ -20,10 +21,9 @@ use super::script_types::ScriptTypeFact;
 use super::value_types::{RuntimeTypeFact, TypeContractContext};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use helpers::{
-    assignment_value_payload_matches_expr, compound_assignment_instruction_or_error,
-    expressions_are_i64, indexed_record_field_parts_with_payload,
-    record_field_expr_parts_with_payload, record_path_parts,
-    reject_missing_assignment_value_child_payloads,
+    compound_assignment_instruction_or_error, expressions_are_i64,
+    indexed_record_field_parts_with_payload, record_field_expr_parts_with_payload,
+    record_path_parts, reject_missing_assignment_value_child_payloads,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -964,7 +964,7 @@ impl Compiler<'_, '_> {
         syntax: AssignmentValueSyntax<'_, '_>,
     ) -> CompileResult<Register> {
         if let Some(payload) = syntax.expression
-            && !assignment_value_payload_matches_expr(payload, value)
+            && !payload_syntax_overlaps_expr(payload, value)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST assignment value",
