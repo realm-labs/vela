@@ -99,6 +99,80 @@ fn main(input, other) {
 }
 
 #[test]
+fn syntax_only_record_field_assignment_statement_drops_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+struct ServerState {
+    level: i64,
+}
+
+global state: ServerState;
+
+fn bump(amount) {
+    state.level = amount;
+    state.level += amount;
+    state.level;
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("bump").expect("bump function");
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "record field assignment body should not require owned fallback"
+    );
+    let statements = payload.body.statement_payloads();
+    assert_eq!(statements.len(), 3);
+    assert!(statements.iter().all(|statement| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
+    }));
+
+    let program = compile_program_source(source, text)
+        .expect("CST-only record field assignment statements should compile");
+    let bump = program.function("bump").expect("bump function");
+    let guard_index = bump
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(instruction.kind, UnlinkedInstructionKind::GuardType { .. })
+        })
+        .expect("dynamic CST record field write should emit GuardType");
+    let set_index = bump
+        .instructions
+        .iter()
+        .position(|instruction| {
+            matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::SetRecordSlot {
+                    ref field,
+                    slot: 0,
+                    ..
+                } if field == "level"
+            )
+        })
+        .expect("typed CST record field write should use slot assignment");
+    assert!(guard_index < set_index);
+    let UnlinkedInstructionKind::GuardType {
+        src: guard_src,
+        guard,
+    } = &bump.instructions[guard_index].kind
+    else {
+        panic!("expected GuardType");
+    };
+    let UnlinkedInstructionKind::SetRecordSlot { src: set_src, .. } =
+        &bump.instructions[set_index].kind
+    else {
+        panic!("expected SetRecordSlot");
+    };
+    assert_eq!(guard_src, set_src);
+    assert_eq!(guard.context.location, crate::GuardLocation::Field);
+    assert_eq!(guard.context.debug_name, "level");
+    assert!(matches!(
+        guard.plan,
+        crate::UnlinkedTypeGuardPlan::Primitive(vela_common::PrimitiveTag::I64)
+    ));
+}
+
+#[test]
 fn syntax_only_range_expression_statements_drop_owned_body_lookup() {
     let source = SourceId::new(1);
     let text = r#"

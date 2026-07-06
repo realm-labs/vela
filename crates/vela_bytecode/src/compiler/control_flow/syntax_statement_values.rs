@@ -12,16 +12,21 @@ use crate::compiler::body_payloads::{
     expression_syntax_path_or_field, expression_syntax_path_or_self,
 };
 use crate::compiler::const_eval::compile_literal_constant_for_type;
+use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
     binary_literal_op, compound_assignment_instruction, i64_compound_assignment_instruction,
     i64_immediate_instruction, i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
-use crate::compiler::value_types::RuntimeTypeFact;
-use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
+use crate::compiler::value_types::{
+    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+};
+use crate::compiler::{CompileResult, Compiler, frame_slot_kind, type_guard_plan_for_runtime_type};
 use crate::function_id_for_script_name;
 use crate::{BinaryLiteralSide, CallArgument, Constant, FormatStringPart, ScriptCallMode};
-use crate::{Register, UnlinkedInstructionKind};
+use crate::{
+    GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
+};
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler::control_flow) fn compile_let_syntax_expression(
@@ -513,9 +518,6 @@ impl Compiler<'_, '_> {
             return Ok(None);
         };
         let value_type = self.syntax_value_type_for_expression(Some(source), &value_expression);
-        let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
-            return Ok(None);
-        };
         if let Some(target_path) = expression_syntax_path_or_self(&target_expression) {
             let [target_name] = target_path.as_slice() else {
                 return Ok(None);
@@ -524,9 +526,15 @@ impl Compiler<'_, '_> {
             let target_type = self.value_type_for_path(target_span, &target_path);
             let assigned_type = syntax_assignment_value_type(op, target_type, value_type);
             let target = self.local_register_at_span(target_span, target_name)?;
+            let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
+                return Ok(None);
+            };
             return self.compile_syntax_local_assignment(op, target, value, assigned_type);
         }
         if let Some(index_target) = target_expression.as_index() {
+            let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
+                return Ok(None);
+            };
             if let Some(assigned) = self.compile_syntax_host_index_assignment(
                 source,
                 expression,
@@ -538,6 +546,9 @@ impl Compiler<'_, '_> {
             }
             return self.compile_syntax_index_assignment(source, op, &index_target, value);
         }
+        let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
+            return Ok(None);
+        };
         if let Some(assigned) = self.compile_syntax_host_field_assignment(
             source,
             expression,
@@ -547,8 +558,167 @@ impl Compiler<'_, '_> {
         )? {
             return Ok(Some(assigned));
         }
+        if let Some(assigned) = self.compile_syntax_record_field_assignment(
+            source,
+            &target_expression,
+            op,
+            &value_expression,
+            value,
+        )? {
+            return Ok(Some(assigned));
+        }
         Ok(None)
     }
+
+    fn compile_syntax_record_field_assignment(
+        &mut self,
+        source: SourceId,
+        target_expression: &SyntaxExpression,
+        op: AssignOp,
+        value_expression: &SyntaxExpression,
+        value: Register,
+    ) -> CompileResult<Option<Register>> {
+        let Some(field) = target_expression.as_field() else {
+            return Ok(None);
+        };
+        let Some(receiver_expression) = field.receiver() else {
+            return Ok(None);
+        };
+        let Some(field_name) = field.name_text() else {
+            return Ok(None);
+        };
+        let receiver_span = syntax_expression_span(source, &receiver_expression);
+        let field_slot = expression_syntax_path_or_self(&receiver_expression)
+            .and_then(|path| {
+                let [root] = path.as_slice() else {
+                    return None;
+                };
+                self.script_record_field_slot_for_path_root(receiver_span, root, &field_name)
+            })
+            .or_else(|| {
+                self.value_shape_for_syntax_expression(Some(source), &receiver_expression)
+                    .and_then(|shape| {
+                        shape
+                            .as_record()
+                            .and_then(|shape| shape.field_slot(&field_name))
+                    })
+            });
+        let value_type = self.syntax_record_field_assignment_value_type(
+            source,
+            target_expression,
+            &receiver_expression,
+        );
+        let Some(record) = self.compile_syntax_expression(source, &receiver_expression)? else {
+            return Ok(None);
+        };
+        let assigned = match op {
+            AssignOp::Set => self.compile_syntax_record_field_value(
+                source,
+                value_expression,
+                value_type,
+                field_name.clone(),
+                value,
+            )?,
+            AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
+                let current = self.alloc_register()?;
+                if let Some(slot) = field_slot {
+                    self.emit(UnlinkedInstructionKind::GetRecordSlot {
+                        dst: current,
+                        record,
+                        field: field_name.clone(),
+                        slot,
+                    });
+                } else {
+                    self.emit(UnlinkedInstructionKind::GetRecordField {
+                        dst: current,
+                        record,
+                        field: field_name.clone(),
+                    });
+                }
+                let dst = self.alloc_register()?;
+                let instruction = compound_assignment_instruction(op, dst, current, value)
+                    .ok_or_else(|| {
+                        crate::compiler::CompileError::new(
+                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                                "compound assignment",
+                            ),
+                        )
+                    })?;
+                self.emit(instruction);
+                dst
+            }
+        };
+        if let Some(slot) = field_slot {
+            self.emit(UnlinkedInstructionKind::SetRecordSlot {
+                record,
+                field: field_name,
+                slot,
+                src: assigned,
+            });
+        } else {
+            self.emit(UnlinkedInstructionKind::SetRecordField {
+                record,
+                field: field_name,
+                src: assigned,
+            });
+        }
+        Ok(Some(assigned))
+    }
+
+    fn syntax_record_field_assignment_value_type(
+        &self,
+        source: SourceId,
+        target_expression: &SyntaxExpression,
+        receiver_expression: &SyntaxExpression,
+    ) -> Option<RuntimeTypeFact> {
+        let path = expression_syntax_path_or_field(target_expression)?;
+        let (root, fields) = path.split_first()?;
+        let root_span = expression_syntax_path_or_self(receiver_expression)
+            .filter(|receiver| receiver.as_slice() == [root.as_str()])
+            .map_or_else(
+                || syntax_expression_span(source, target_expression),
+                |_| syntax_expression_span(source, receiver_expression),
+            );
+        let root_type = self.script_type_for_path_root(root_span, root)?;
+        self.schema_record_field_value_type(Some(root_type.as_str()), fields)
+    }
+
+    fn compile_syntax_record_field_value(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        expected: Option<RuntimeTypeFact>,
+        field_name: String,
+        value: Register,
+    ) -> CompileResult<Register> {
+        let Some(expected) = expected else {
+            return Ok(value);
+        };
+        let span = syntax_expression_span(source, expression);
+        let context = TypeContractContext::Field { name: field_name };
+        let static_type = self
+            .syntax_value_type_for_expression(Some(source), expression)
+            .map(StaticExprType::Exact)
+            .unwrap_or(StaticExprType::Dynamic);
+        let outcome = check_expected_type(static_type, expected, span, context.clone())?;
+        if let ExpectedTypeOutcome::RequiresRuntimeGuard(expected) = &outcome
+            && let Some((location, name)) = guard_location_and_name(context)
+            && let Some(plan) = type_guard_plan_for_runtime_type(expected)
+        {
+            self.emit_spanned(
+                UnlinkedInstructionKind::GuardType {
+                    src: value,
+                    guard: UnlinkedTypeGuard::new(
+                        plan,
+                        UnlinkedGuardContext::new(GuardKind::Contract, location, name),
+                    ),
+                },
+                span,
+            );
+        }
+        Ok(value)
+    }
+
     fn compile_syntax_local_assignment(
         &mut self,
         op: AssignOp,

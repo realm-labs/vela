@@ -916,7 +916,7 @@ impl Compiler<'_, '_> {
         Ok(assigned)
     }
 
-    fn schema_record_field_value_type(
+    pub(in crate::compiler) fn schema_record_field_value_type(
         &self,
         root_type: Option<&str>,
         fields: &[String],
