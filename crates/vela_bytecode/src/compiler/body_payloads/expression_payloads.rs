@@ -529,6 +529,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn interpolated_expression_payloads(
         &self,
     ) -> Option<Vec<CompilerInterpolationPayload>> {

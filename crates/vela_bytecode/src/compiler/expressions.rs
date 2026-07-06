@@ -341,24 +341,22 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Literal => {
-                if let ExprKind::InterpolatedString(parts) = &expr.kind {
-                    let part_payloads = payload.interpolated_expression_payloads();
-                    return self.compile_interpolated_string(parts, part_payloads.as_deref());
-                }
-                let ExprKind::Literal(_) = &expr.kind else {
-                    unreachable!("validated CST literal expression payload kind");
-                };
-                let literal = payload.syntax_literal().ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "mismatched CST literal expression",
-                    ))
-                })?;
-                if !payload.matches_stored_syntax_kind() {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST literal expression",
                     )));
-                }
-                self.compile_literal(Some(expr.span), &literal)
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST literal expression",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST literal expression",
+                    )));
+                };
+                Ok(register)
             }
         }
     }

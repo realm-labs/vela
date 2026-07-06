@@ -828,11 +828,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             .map(|expression| expression.expression_kind())
     }
 
-    pub(in crate::compiler) fn matches_stored_syntax_kind(&self) -> bool {
-        self.stored_syntax_kind()
-            .is_some_and(|kind| self.matches_syntax_kind(kind))
-    }
-
     pub(in crate::compiler) fn requires_matching_payload(&self) -> bool {
         [
             SyntaxExpressionKind::Block,
