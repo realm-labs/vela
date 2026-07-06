@@ -189,13 +189,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_unary()?.expression();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Unary { expr, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(expr)));
-        }
         Some(self.child_payload(syntax))
     }
 
@@ -209,13 +202,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_try()?.expression();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Try(expr) = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(expr)));
-        }
         Some(self.child_payload(syntax))
     }
 
