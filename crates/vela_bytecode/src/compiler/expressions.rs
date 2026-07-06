@@ -9,7 +9,7 @@ use super::const_eval::{
 };
 use super::expression_checks::{
     UnsuffixedNumericLiteral, expressions_are_i64, reject_missing_binary_operand_payload,
-    reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
+    unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_facts::{
     expression_path_is_self, expression_syntax_kind, payload_stored_kind_matches_expression_facts,
@@ -63,18 +63,37 @@ impl Compiler<'_, '_> {
 
     fn compile_expr_with_payload_kind(
         &mut self,
-        expr: &Expr,
+        _expr: &Expr,
         payload: &CompilerExpressionPayload<'_>,
         kind: SyntaxExpressionKind,
     ) -> CompileResult<Register> {
         match kind {
             SyntaxExpressionKind::Paren => {
-                let inner_payload = payload.paren_inner_payload();
-                reject_missing_expression_payload(
-                    inner_payload.as_ref(),
-                    "missing CST parenthesized expression",
-                )?;
-                self.compile_expr_with_payload(expr, inner_payload.as_ref())
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST parenthesized expression payload",
+                    )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST parenthesized expression payload",
+                    )));
+                };
+                if expression
+                    .as_paren()
+                    .and_then(|paren| paren.expression())
+                    .is_none()
+                {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST parenthesized expression",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST parenthesized expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Block => {
                 let dst = self.alloc_register()?;

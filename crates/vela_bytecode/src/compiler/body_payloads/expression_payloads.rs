@@ -185,6 +185,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.syntax.as_ref()?.as_assign()?.operator()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn paren_inner_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
