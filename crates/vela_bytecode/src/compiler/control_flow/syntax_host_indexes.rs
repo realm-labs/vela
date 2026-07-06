@@ -2,7 +2,7 @@ use vela_common::{SourceId, Span};
 use vela_host::resolved::HostMutationOp;
 use vela_syntax::ast::{AssignOp, SyntaxExpression};
 
-use crate::compiler::{CompileResult, Compiler};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
 
 use super::syntax_statement_values::syntax_expression_span;
@@ -166,6 +166,50 @@ impl Compiler<'_, '_> {
         };
         let root = self.compile_host_path_root(&path.root)?;
         self.emit_host_remove(root, path, call_span)?;
+        let dst = self.alloc_register()?;
+        self.emit_constant_to(dst, Constant::Null);
+        Ok(Some(dst))
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_host_path_push_call(
+        &mut self,
+        source: SourceId,
+        receiver_expression: &SyntaxExpression,
+        method: &str,
+        arguments: &[vela_syntax::ast::SyntaxArgument],
+        call_span: Span,
+    ) -> CompileResult<Option<Register>> {
+        if method != "push" {
+            return Ok(None);
+        }
+        let Some(resolved) = self.syntax_host_field_path(source, receiver_expression) else {
+            return Ok(None);
+        };
+        let path = resolved.path;
+        if path.segments.is_empty() {
+            return Ok(None);
+        }
+        if arguments
+            .iter()
+            .any(|argument| argument.name_text().is_some())
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "host path push",
+            )));
+        }
+        let [argument] = arguments else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "host path push arity",
+            )));
+        };
+        let Some(expression) = argument.expression() else {
+            return Ok(None);
+        };
+        let Some(value) = self.compile_syntax_expression(source, &expression)? else {
+            return Ok(None);
+        };
+        let root = self.compile_host_path_root(&path.root)?;
+        self.emit_host_mutate(root, path, HostMutationOp::Push, value, call_span)?;
         let dst = self.alloc_register()?;
         self.emit_constant_to(dst, Constant::Null);
         Ok(Some(dst))

@@ -1006,6 +1006,15 @@ impl Compiler<'_, '_> {
             )? {
                 return Ok(Some(register));
             }
+            if let Some(register) = self.compile_syntax_host_path_push_call(
+                source,
+                &receiver_expression,
+                method.as_str(),
+                &arguments,
+                call_span,
+            )? {
+                return Ok(Some(register));
+            }
             if let Some(register) = self.compile_syntax_host_method_call(
                 source,
                 &receiver_expression,

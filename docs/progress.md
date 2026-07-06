@@ -283,10 +283,11 @@ method failures. CST statement-level constant fast paths now leave block/if/matc
 expressions to control-flow lowering so `return` inside block initializers is
 preserved. Full workspace validation now reaches the remaining `vela_vm`
 CST/runtime failure set after LSP validation passes; `cargo test -p vela_vm --lib`
-currently has 4 remaining failures after CST typed call arguments preserve
+currently has 3 remaining failures after CST typed call arguments preserve
 unsuffixed numeric literal facts for contextual native conversion parameters,
-and CST method-call lowering allows no-registry dynamic fallback for known std
-value receiver types whose registered method set is unavailable.
+CST method-call lowering allows no-registry dynamic fallback for known std
+value receiver types whose registered method set is unavailable, and CST host
+field-path `push` calls lower through HostAccess mutation.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload
