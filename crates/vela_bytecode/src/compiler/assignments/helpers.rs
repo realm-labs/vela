@@ -154,9 +154,6 @@ pub(super) fn reject_missing_assignment_value_child_payloads(
                 "missing CST assignment value block body payload",
             )))
         }
-        SyntaxExpressionKind::If if syntax.payloads.if_expr.is_none() => Err(CompileError::new(
-            CompileErrorKind::UnsupportedSyntax("missing CST assignment value if payload"),
-        )),
         _ => Ok(()),
     }
 }

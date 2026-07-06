@@ -1,7 +1,9 @@
 mod block_statement_values;
 mod block_values;
 mod classification;
+#[cfg(test)]
 mod condition_jumps;
+#[cfg(test)]
 mod if_values;
 mod literal_statement_values;
 mod loops;
@@ -204,9 +206,6 @@ impl Compiler<'_, '_> {
                 let value_body = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::block_body_payload);
-                let value_if = value_expression
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::if_payload);
                 let target_expression = expression_payload.assignment_target_payload();
                 self.compile_assignment_with_payloads(
                     expr,
@@ -217,7 +216,7 @@ impl Compiler<'_, '_> {
                             .and_then(CompilerExpressionPayload::syntax_kind),
                         expression_payload.syntax_assignment_operator(),
                         value_expression.as_ref(),
-                        AssignmentValuePayloads::new(value_body.as_ref(), value_if.as_ref()),
+                        AssignmentValuePayloads::new(value_body.as_ref()),
                     ),
                 )?;
                 Ok(false)

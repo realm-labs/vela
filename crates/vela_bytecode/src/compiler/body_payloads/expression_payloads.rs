@@ -14,9 +14,11 @@ use vela_syntax::ast::{
 use super::match_scrutinee_payload_for_expr;
 use super::{
     CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
-    CompilerExpressionPayload, CompilerIfPayload, CompilerInterpolationPayload,
-    CompilerMapEntryPayload, CompilerRecordFieldPayload, if_payload_for_syntax,
+    CompilerExpressionPayload, CompilerInterpolationPayload, CompilerMapEntryPayload,
+    CompilerRecordFieldPayload,
 };
+#[cfg(test)]
+use super::{CompilerIfPayload, if_payload_for_syntax};
 #[cfg(test)]
 use super::{
     CompilerMatchArmPayload, CompilerPatternPayload, CompilerRecordPatternFieldPayload,
@@ -54,6 +56,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn if_payload(&self) -> Option<CompilerIfPayload<'ast>> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::If) {
             return None;

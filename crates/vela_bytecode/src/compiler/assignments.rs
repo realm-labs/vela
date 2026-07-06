@@ -11,7 +11,7 @@ mod helpers;
 use super::assignment_payloads::{
     validate_assignment_target_payload, validate_assignment_value_payload,
 };
-use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload};
+use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
 use super::expression_checks::payload_syntax_overlaps_expr;
 use super::expression_facts::{expression_path_is_self, expression_syntax_kind};
 use super::expressions::literal_string_with_payload;
@@ -84,25 +84,17 @@ struct RecordFieldAssignmentRoot<'field> {
 #[derive(Clone, Copy)]
 pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
     block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-    if_expr: Option<&'payload CompilerIfPayload<'ast>>,
 }
 
 impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-        if_expr: Option<&'payload CompilerIfPayload<'ast>>,
     ) -> Self {
-        Self {
-            block_body,
-            if_expr,
-        }
+        Self { block_body }
     }
 
     fn none() -> Self {
-        Self {
-            block_body: None,
-            if_expr: None,
-        }
+        Self { block_body: None }
     }
 }
 
@@ -1033,17 +1025,29 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 let dst = self.alloc_register()?;
-                let ExprKind::If(if_expr) = &value.kind else {
+                let Some(expression_payload) = expression_payload else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value if payload",
                     )));
                 };
-                let Some(if_payload) = syntax_payloads.if_expr else {
+                let Some(source) = expression_payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value if payload",
                     )));
                 };
-                self.compile_if_value_with_payloads(if_expr, dst, if_payload)?;
+                let Some(if_expr) = expression_payload
+                    .syntax_expression()
+                    .and_then(vela_syntax::ast::SyntaxExpression::as_if)
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value if payload",
+                    )));
+                };
+                let Some(_) = self.compile_syntax_if_value_to(source, &if_expr, dst)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value if payload",
+                    )));
+                };
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {

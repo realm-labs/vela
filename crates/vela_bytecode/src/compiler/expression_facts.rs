@@ -50,6 +50,7 @@ pub(super) fn payload_matches_expression_facts(
         )
 }
 
+#[cfg(test)]
 pub(super) fn payload_syntax_kind_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     kind: Option<SyntaxExpressionKind>,
@@ -108,6 +109,7 @@ fn payload_kind_matches_expression_facts(
         && path_is_self.is_none_or(|is_self| is_self == payload_is_self)
 }
 
+#[cfg(test)]
 fn payload_kind_matches_known_expression_facts(
     payload_kind: Option<SyntaxExpressionKind>,
     expr_kind: Option<SyntaxExpressionKind>,

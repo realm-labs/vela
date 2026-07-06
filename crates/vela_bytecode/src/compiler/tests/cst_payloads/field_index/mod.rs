@@ -537,7 +537,7 @@ fn main() {
                         None,
                         None,
                         None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
                     ),
                 )
                 .expect_err("mismatched CST assignment target must not compile");
@@ -608,7 +608,7 @@ fn main() {
                         None,
                         None,
                         None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
                     ),
                 )
                 .expect_err("mismatched CST indexed assignment target must not compile");
@@ -831,7 +831,7 @@ fn main() {
                         None,
                         None,
                         None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
                     ),
                 )
                 .expect_err("mismatched CST index assignment target must not compile");

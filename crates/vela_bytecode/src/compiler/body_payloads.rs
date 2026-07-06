@@ -105,6 +105,7 @@ pub(in crate::compiler) struct CompilerRecordFieldPayload {
     syntax: Option<SyntaxRecordExprField>,
 }
 
+#[cfg(test)]
 pub(super) struct CompilerIfPayload<'ast> {
     source: Option<SourceId>,
     condition: Option<SyntaxExpression>,
@@ -317,6 +318,7 @@ fn match_scrutinee_payload_for_expr<'ast>(
     )
 }
 
+#[cfg(test)]
 fn if_payload_for_syntax<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxIfExpr,
@@ -343,6 +345,7 @@ fn if_payload_for_syntax<'ast>(
     })
 }
 
+#[cfg(test)]
 impl<'ast> CompilerIfPayload<'ast> {
     #[cfg(test)]
     pub(in crate::compiler) fn truncated_for_test() -> Self {
@@ -870,6 +873,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 }
 
+#[cfg(test)]
 impl<'ast> CompilerIfPayload<'ast> {
     pub(super) fn condition_payload(&self) -> Option<CompilerExpressionPayload<'ast>> {
         let condition = self.condition.clone()?;

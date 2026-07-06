@@ -1,11 +1,13 @@
 use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
+#[cfg(test)]
 use vela_syntax::ast::BinaryOp;
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
 #[cfg(test)]
 use vela_syntax::ast::{Stmt, StmtKind, SyntaxStatementKind};
 
+#[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::record_shapes::ValueShape;
@@ -67,6 +69,7 @@ pub(super) fn range_iterable_for_payload(
     }
 }
 
+#[cfg(test)]
 pub(super) fn condition_operator_for_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<BinaryOp> {

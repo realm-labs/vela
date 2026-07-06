@@ -25,7 +25,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    pub(in crate::compiler::control_flow) fn compile_syntax_if_value_to(
+    pub(in crate::compiler) fn compile_syntax_if_value_to(
         &mut self,
         source: SourceId,
         if_expr: &SyntaxIfExpr,

@@ -400,7 +400,7 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
         .compile_assignment_with_payloads(
             writable_statement.fallback(),
             AssignmentTargetSyntax::new(Some(&mismatched_target)),
-            AssignmentValueSyntax::new(None, None, None, AssignmentValuePayloads::new(None, None)),
+            AssignmentValueSyntax::new(None, None, None, AssignmentValuePayloads::new(None)),
         )
         .expect_err("mismatched CST read-only assignment target must not compile");
     assert!(matches!(
@@ -492,7 +492,7 @@ fn main(readonly: ReadOnlyHost) {
         .compile_assignment_with_payloads(
             legacy_statement.fallback(),
             AssignmentTargetSyntax::new(Some(&mismatched_target)),
-            AssignmentValueSyntax::new(None, None, None, AssignmentValuePayloads::new(None, None)),
+            AssignmentValueSyntax::new(None, None, None, AssignmentValuePayloads::new(None)),
         )
         .expect_err("mismatched non-field CST target should be rejected");
     assert!(

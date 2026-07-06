@@ -98,17 +98,24 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 let dst = self.alloc_register()?;
-                let ExprKind::If(if_expr) = &expr.kind else {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
                 };
-                let Some(if_payload) = payload.if_payload() else {
+                let Some(if_expr) = payload
+                    .syntax_expression()
+                    .and_then(vela_syntax::ast::SyntaxExpression::as_if)
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
                 };
-                self.compile_if_value_with_payloads(if_expr, dst, &if_payload)?;
+                let Some(_) = self.compile_syntax_if_value_to(source, &if_expr, dst)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST if expression payload",
+                    )));
+                };
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
@@ -189,9 +196,6 @@ impl Compiler<'_, '_> {
                 let value_body = value_payload
                     .as_ref()
                     .and_then(CompilerExpressionPayload::block_body_payload);
-                let value_if = value_payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::if_payload);
                 self.compile_assignment_with_payloads(
                     expr,
                     AssignmentTargetSyntax::new(target_payload.as_ref()),
@@ -201,7 +205,7 @@ impl Compiler<'_, '_> {
                             .and_then(CompilerExpressionPayload::syntax_kind),
                         payload.syntax_assignment_operator(),
                         value_payload.as_ref(),
-                        AssignmentValuePayloads::new(value_body.as_ref(), value_if.as_ref()),
+                        AssignmentValuePayloads::new(value_body.as_ref()),
                     ),
                 )
             }
