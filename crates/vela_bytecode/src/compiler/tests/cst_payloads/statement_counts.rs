@@ -19,10 +19,8 @@ fn fallback_body() {
         .function("fallback_body")
         .expect("fallback function");
 
-    assert!(
-        body_payloads::CompilerBodyPayload::statement_counts_differ_for_test(
-            &cst_payload.body.syntax_payload().body,
-            fallback_statements_for_body(source, &fallback_payload.body),
-        )
+    assert_ne!(
+        cst_payload.body.statement_payloads().len(),
+        fallback_statements_for_body(source, &fallback_payload.body).len(),
     );
 }

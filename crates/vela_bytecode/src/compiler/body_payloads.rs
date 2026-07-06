@@ -135,34 +135,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         paired_statement_payloads(source, &syntax_statements, fallback_statements)
     }
 
-    #[cfg(test)]
-    pub(super) fn paired_statement_payloads_with_fallbacks_for_test(
-        source: SourceId,
-        body: SyntaxBlock,
-        fallback_statements: &'ast [Stmt],
-    ) -> Vec<CompilerStatementPayload<'ast>> {
-        let syntax_statements = syntax_body_statements(&body);
-        fallback_statements
-            .iter()
-            .enumerate()
-            .map(|(index, fallback)| {
-                CompilerStatementPayload::new_paired_for_tests(
-                    source,
-                    syntax_statements.get(index).cloned(),
-                    Some(fallback),
-                )
-            })
-            .collect()
-    }
-
-    #[cfg(test)]
-    pub(super) fn statement_counts_differ_for_test(
-        body: &SyntaxBlock,
-        fallback_statements: &[Stmt],
-    ) -> bool {
-        syntax_body_statements(body).len() != fallback_statements.len()
-    }
-
     fn syntax_only(source: SourceId, body: SyntaxBlock) -> Self {
         Self {
             syntax: SyntaxBodyPayload { source, body },
