@@ -82,52 +82,37 @@ impl Compiler<'_, '_> {
                         return Ok(true);
                     }
                 }
-                let syntax_only = tail.is_syntax_only();
-                if syntax_only
-                    && let Some((source, expression)) =
-                        tail.expression_statement_syntax_expression()
+                if let Some((source, expression)) = tail.expression_statement_syntax_expression()
                     && let Some(done) =
                         self.compile_syntax_constant_expr_to(source, &expression, dst)?
                 {
                     return Ok(done);
                 }
-                if syntax_only
-                    && let Some((source, expression)) =
-                        tail.expression_statement_syntax_expression()
+                if let Some((source, expression)) = tail.expression_statement_syntax_expression()
                     && let Some(done) =
                         self.compile_syntax_path_expr_to(source, &expression, dst)?
                 {
                     return Ok(done);
                 }
-                if syntax_only
-                    && let Some((source, expression)) =
-                        tail.expression_statement_syntax_expression()
+                if let Some((source, expression)) = tail.expression_statement_syntax_expression()
                     && let Some(done) =
                         self.compile_syntax_range_expr_to(source, &expression, dst)?
                 {
                     return Ok(done);
                 }
-                if syntax_only && let Some(body) = tail.expression_statement_block_body_payload() {
+                if let Some(body) = tail.expression_statement_block_body_payload() {
                     return self.compile_block_payload_value_to(&body, dst);
                 }
-                if syntax_only
-                    && let Some((source, if_expr)) = tail.syntax_if()
+                if let Some((source, if_expr)) = tail.syntax_if()
                     && let Some(done) = self.compile_syntax_if_value_to(source, &if_expr, dst)?
                 {
                     return Ok(done);
                 }
-                if syntax_only
-                    && let Some((source, expression)) =
-                        tail.expression_statement_syntax_expression()
+                if let Some((source, expression)) = tail.expression_statement_syntax_expression()
                     && let Some(done) =
                         self.compile_syntax_value_expr_to(source, &expression, dst)?
                 {
                     return Ok(done);
-                }
-                #[cfg(test)]
-                if let Some(expression_payload) = tail.expression_payload() {
-                    let expr = expression_payload.fallback();
-                    return self.compile_block_tail_expr_to(expr, Some(tail), dst);
                 }
                 Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
