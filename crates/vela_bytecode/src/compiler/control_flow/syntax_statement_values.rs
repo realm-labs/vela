@@ -11,7 +11,7 @@ use crate::compiler::body_payloads::{
     CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
     expression_syntax_path_or_field, expression_syntax_path_or_self,
 };
-use crate::compiler::calls::unresolved_static_method_error;
+use crate::compiler::calls::metadata::unresolved_static_method_error;
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -33,7 +33,6 @@ use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind,
     type_guard_plan_for_runtime_type,
 };
-use crate::function_id_for_script_name;
 use crate::{BinaryLiteralSide, Constant, FormatStringPart};
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
@@ -1462,7 +1461,7 @@ impl Compiler<'_, '_> {
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
-                    target: function_id_for_script_name(&name),
+                    target: crate::function_id_for_script_name(&name),
                     name,
                     mode: call_args.mode,
                     args: call_args.args,

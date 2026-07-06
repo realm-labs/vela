@@ -1,3 +1,5 @@
+mod callee;
+pub(in crate::compiler) mod metadata;
 mod payload_guards;
 
 use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxArgument, SyntaxExpressionKind};
@@ -13,6 +15,11 @@ use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use callee::{
+    callable_name, callee_is_closure_call, callee_path_segments, local_path_method_call,
+    path_root_is_local,
+};
+use metadata::{registry_param_hints, registry_type_hint, unresolved_static_method_error};
 use payload_guards::{
     callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
     reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
@@ -20,7 +27,7 @@ use payload_guards::{
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
 use vela_hir::type_hint::ParamHint;
-use vela_registry::{ParamDef, TypeHintDef};
+use vela_registry::ParamDef;
 
 #[derive(Clone, Copy)]
 struct MethodCallFacts<'facts> {
@@ -172,7 +179,7 @@ impl Compiler<'_, '_> {
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
-                    target: function_id_for_script_name(&name),
+                    target: crate::function_id_for_script_name(&name),
                     name,
                     mode: call_args.mode,
                     args: call_args.args,
@@ -362,40 +369,34 @@ impl Compiler<'_, '_> {
         callee_payload: Option<&CompilerExpressionPayload<'_>>,
         arg_syntax: CallArgumentSyntax<'_, '_>,
     ) -> Option<CompileResult<crate::Register>> {
-        if let Some(payload) = callee_payload {
-            if !matches!(
-                payload.syntax_kind(),
-                Some(SyntaxExpressionKind::Field) | None
-            ) {
-                return None;
-            }
-            let name = payload.syntax_field_name()?;
-            let ExprKind::Field { base, .. } = &callee.kind else {
-                return None;
-            };
-            let base_payload = payload.field_base_payload()?;
-            if !payload_matches_expression_facts(
-                &base_payload,
-                base.span,
-                expression_syntax_kind(base),
-                expression_path_is_self(base),
-            ) {
-                return None;
-            }
-            return Some(self.compile_script_method_call(
-                expr,
-                base,
-                &name,
-                args,
-                Some(&base_payload),
-                arg_syntax,
-            ));
+        let payload = callee_payload?;
+        if !matches!(
+            payload.syntax_kind(),
+            Some(SyntaxExpressionKind::Field) | None
+        ) {
+            return None;
         }
-
-        let ExprKind::Field { base, name } = &callee.kind else {
+        let name = payload.syntax_field_name()?;
+        let ExprKind::Field { base, .. } = &callee.kind else {
             return None;
         };
-        Some(self.compile_script_method_call(expr, base, name, args, None, arg_syntax))
+        let base_payload = payload.field_base_payload()?;
+        if !payload_matches_expression_facts(
+            &base_payload,
+            base.span,
+            expression_syntax_kind(base),
+            expression_path_is_self(base),
+        ) {
+            return None;
+        }
+        Some(self.compile_script_method_call(
+            expr,
+            base,
+            &name,
+            args,
+            Some(&base_payload),
+            arg_syntax,
+        ))
     }
 
     fn compile_script_path_method_call(
@@ -1159,10 +1160,6 @@ fn mutation_arg_debug_name(method: &str, param_name: &str, position: usize) -> S
     }
 }
 
-pub(in crate::compiler) fn function_id_for_script_name(name: &str) -> FunctionId {
-    function_id_for_path("script", name)
-}
-
 fn function_id_for_native_name(name: &str) -> FunctionId {
     if let Some((module, function)) = name.rsplit_once("::")
         && let Some(id) = vela_stdlib::std_function_id(module, function)
@@ -1178,100 +1175,6 @@ fn function_id_for_path(package: &str, name: &str) -> FunctionId {
     FunctionId::from_def_id(DefPath::function(package, segments, function).id())
 }
 
-pub(in crate::compiler) fn registry_param_hints(
-    params: &[ParamDef],
-    call_span: Span,
-) -> Vec<ParamHint> {
-    params
-        .iter()
-        .map(|param| ParamHint {
-            name: param.name.clone(),
-            span: call_span,
-            type_hint: param
-                .type_hint
-                .as_ref()
-                .map(|hint| registry_type_hint(hint, call_span)),
-            default_value_span: param.has_default.then_some(call_span),
-        })
-        .collect()
-}
-
-fn registry_type_hint(hint: &TypeHintDef, span: Span) -> vela_hir::type_hint::HirTypeHint {
-    vela_hir::type_hint::HirTypeHint {
-        path: hint.path.clone(),
-        args: hint
-            .args
-            .iter()
-            .map(|arg| registry_type_hint(arg, span))
-            .collect(),
-        span,
-    }
-}
-
-fn local_path_method_call<'expr>(
-    cst_path: Option<&'expr [String]>,
-    has_payload: bool,
-    callee: &'expr Expr,
-    locals: &std::collections::HashMap<String, crate::Register>,
-) -> Option<(&'expr str, &'expr [String])> {
-    let path = callee_path_segments(cst_path, has_payload, callee)?;
-    let (method, receiver_path) = path.split_last()?;
-    (!receiver_path.is_empty() && locals.contains_key(&receiver_path[0]))
-        .then_some((method.as_str(), receiver_path))
-}
-
-fn path_root_is_local(
-    cst_path: Option<&[String]>,
-    has_payload: bool,
-    callee: &Expr,
-    locals: &std::collections::HashMap<String, crate::Register>,
-) -> bool {
-    let Some(path) = callee_path_segments(cst_path, has_payload, callee) else {
-        return false;
-    };
-    path.first().is_some_and(|root| locals.contains_key(root))
-}
-
-fn callable_name(
-    cst_path: Option<&[String]>,
-    has_payload: bool,
-    callee: &Expr,
-) -> CompileResult<String> {
-    let Some(path) = callee_path_segments(cst_path, has_payload, callee) else {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "callable expression",
-        )));
-    };
-    Ok(path.join("::"))
-}
-
-fn callee_is_closure_call(
-    callee_payload: Option<&CompilerExpressionPayload<'_>>,
-    callee: &Expr,
-) -> bool {
-    if let Some(payload) = callee_payload {
-        return !matches!(payload.syntax_kind(), Some(SyntaxExpressionKind::Path));
-    }
-    !matches!(callee.kind, ExprKind::Path(_))
-}
-
-fn callee_path_segments<'expr>(
-    cst_path: Option<&'expr [String]>,
-    has_payload: bool,
-    callee: &'expr Expr,
-) -> Option<&'expr [String]> {
-    if let Some(path) = cst_path {
-        return Some(path);
-    }
-    if has_payload {
-        return None;
-    }
-    match &callee.kind {
-        ExprKind::Path(path) => Some(path),
-        _ => None,
-    }
-}
-
 fn reject_named_call_args(
     arg_syntax: CallArgumentSyntax<'_, '_>,
     context: &'static str,
@@ -1282,16 +1185,4 @@ fn reject_named_call_args(
         )));
     }
     Ok(())
-}
-
-pub(in crate::compiler) fn unresolved_static_method_error(
-    method: &str,
-    span: Span,
-) -> CompileError {
-    CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
-        Diagnostic::error(format!("unresolved method `{method}`"))
-            .with_code("compiler::unresolved_method")
-            .with_span(span)
-            .with_label(span, "method is not defined for the known receiver type"),
-    ]))
 }

@@ -8,7 +8,7 @@ use crate::{CallArgument, Register, ScriptCallMode, UnlinkedInstructionKind};
 use crate::compiler::call_args::{
     ScriptCallArgs, SyntaxCallArgument, resolve_syntax_call_arguments,
 };
-use crate::compiler::calls::{function_id_for_script_name, registry_param_hints};
+use crate::compiler::calls::metadata::registry_param_hints;
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, TypeContractContext, check_expected_type, type_hint_value_type,
 };
@@ -46,7 +46,7 @@ impl Compiler<'_, '_> {
             self.emit_spanned(
                 UnlinkedInstructionKind::CallFunction {
                     dst,
-                    target: function_id_for_script_name(&name),
+                    target: crate::function_id_for_script_name(&name),
                     name,
                     mode: call_args.mode,
                     args: call_args.args,

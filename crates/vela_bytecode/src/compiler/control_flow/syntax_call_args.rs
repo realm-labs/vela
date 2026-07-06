@@ -7,7 +7,7 @@ use crate::compiler::body_payloads::expression_syntax_literal;
 use crate::compiler::call_args::{
     ScriptCallArgs, SyntaxCallArgument, resolve_syntax_call_arguments,
 };
-use crate::compiler::calls::registry_param_hints;
+use crate::compiler::calls::metadata::registry_param_hints;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::record_shapes::{ValueShape, callback_param_shapes};
