@@ -33,18 +33,6 @@ pub(super) fn expression_path_is_self(expr: &Expr) -> Option<bool> {
     }
 }
 
-pub(super) fn payload_kind_matches_expression(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    payload_kind_matches_known_expression_facts(
-        payload.stored_syntax_kind(),
-        expression_syntax_kind(expr),
-        expression_path_is_self(expr),
-        payload.syntax_is_self(),
-    )
-}
-
 pub(super) fn payload_matches_expression_facts(
     payload: &CompilerExpressionPayload<'_>,
     span: Span,
