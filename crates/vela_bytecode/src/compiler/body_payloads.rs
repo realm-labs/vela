@@ -2,8 +2,6 @@ use std::marker::PhantomData;
 
 use vela_common::{SourceId, Span};
 #[cfg(test)]
-use vela_syntax::ast::ExprKind;
-#[cfg(test)]
 use vela_syntax::ast::MatchExpr;
 #[cfg(test)]
 use vela_syntax::ast::Stmt;
@@ -19,6 +17,9 @@ use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 
 mod expression_payloads;
 mod simple_values;
+
+#[cfg(test)]
+use super::expression_facts::expression_syntax_kind;
 
 // Temporary 1200-line exception: this module owns the transitional CST plus
 // old-body-fallback pairing invariant. Splitting the remaining fallback side
@@ -283,27 +284,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
 
 #[cfg(test)]
 fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
-    match expr.kind {
-        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
-            Some(SyntaxExpressionKind::Literal)
-        }
-        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
-        ExprKind::Unary { .. } => Some(SyntaxExpressionKind::Unary),
-        ExprKind::Binary { .. } => Some(SyntaxExpressionKind::Binary),
-        ExprKind::Assign { .. } => Some(SyntaxExpressionKind::Assign),
-        ExprKind::Field { .. } => Some(SyntaxExpressionKind::Field),
-        ExprKind::Call { .. } => Some(SyntaxExpressionKind::Call),
-        ExprKind::Index { .. } => Some(SyntaxExpressionKind::Index),
-        ExprKind::Try(_) => Some(SyntaxExpressionKind::Try),
-        ExprKind::Array(_) => Some(SyntaxExpressionKind::Array),
-        ExprKind::Map(_) => Some(SyntaxExpressionKind::Map),
-        ExprKind::Record { .. } => Some(SyntaxExpressionKind::Record),
-        ExprKind::Lambda { .. } => Some(SyntaxExpressionKind::Lambda),
-        ExprKind::Block(_) => Some(SyntaxExpressionKind::Block),
-        ExprKind::If(_) => Some(SyntaxExpressionKind::If),
-        ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
-        ExprKind::Error => None,
-    }
+    expression_syntax_kind(expr)
 }
 
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
