@@ -106,26 +106,27 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::If => {
-                let dst = self.alloc_register()?;
                 let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
                 };
-                let Some(if_expr) = payload
-                    .syntax_expression()
-                    .and_then(vela_syntax::ast::SyntaxExpression::as_if)
-                else {
+                let Some(expression) = payload.syntax_expression() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
                 };
-                let Some(_) = self.compile_syntax_if_value_to(source, &if_expr, dst)? else {
+                if expression.as_if().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST if expression payload",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if expression payload",
                     )));
                 };
-                Ok(dst)
+                Ok(register)
             }
             SyntaxExpressionKind::Match => {
                 let Some(source) = payload.source() else {
