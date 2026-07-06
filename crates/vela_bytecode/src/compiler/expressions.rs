@@ -18,6 +18,7 @@ use super::expression_checks::{
     payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
     reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
+use super::expression_facts::payload_kind_matches_expression;
 use super::host_paths::HostPath;
 use super::operators::{
     binary_literal_op, i64_binary_instruction, i64_immediate_instruction,
@@ -41,7 +42,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<Register> {
         if let Some(payload) = payload
             && let Some(kind) = payload.stored_syntax_kind()
-            && expression_payload_matches_expr(payload, expr, kind)
+            && payload_kind_matches_expression(payload, expr)
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
@@ -1001,52 +1002,6 @@ impl Compiler<'_, '_> {
         self.compile_binary(inverse, span, left, right, left_payload, right_payload)
             .map(Some)
     }
-}
-
-fn expression_payload_matches_expr(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-    kind: SyntaxExpressionKind,
-) -> bool {
-    if kind == SyntaxExpressionKind::Paren {
-        return true;
-    }
-    expression_expr_matches_syntax_kind(expr, kind)
-        && (kind != SyntaxExpressionKind::Path
-            || expression_path_self_shape_matches(expr, payload.syntax_is_self()))
-}
-
-fn expression_expr_matches_syntax_kind(expr: &Expr, kind: SyntaxExpressionKind) -> bool {
-    matches!(
-        (&expr.kind, kind),
-        (
-            ExprKind::Literal(_) | ExprKind::InterpolatedString(_),
-            SyntaxExpressionKind::Literal
-        ) | (
-            ExprKind::Path(_) | ExprKind::SelfValue,
-            SyntaxExpressionKind::Path
-        ) | (ExprKind::Unary { .. }, SyntaxExpressionKind::Unary)
-            | (ExprKind::Binary { .. }, SyntaxExpressionKind::Binary)
-            | (ExprKind::Assign { .. }, SyntaxExpressionKind::Assign)
-            | (ExprKind::Field { .. }, SyntaxExpressionKind::Field)
-            | (ExprKind::Call { .. }, SyntaxExpressionKind::Call)
-            | (ExprKind::Index { .. }, SyntaxExpressionKind::Index)
-            | (ExprKind::Try(_), SyntaxExpressionKind::Try)
-            | (ExprKind::Array(_), SyntaxExpressionKind::Array)
-            | (ExprKind::Map(_), SyntaxExpressionKind::Map)
-            | (ExprKind::Record { .. }, SyntaxExpressionKind::Record)
-            | (ExprKind::Lambda { .. }, SyntaxExpressionKind::Lambda)
-            | (ExprKind::Block(_), SyntaxExpressionKind::Block)
-            | (ExprKind::If(_), SyntaxExpressionKind::If)
-            | (ExprKind::Match(_), SyntaxExpressionKind::Match)
-    )
-}
-
-fn expression_path_self_shape_matches(expr: &Expr, syntax_is_self: bool) -> bool {
-    matches!(
-        (&expr.kind, syntax_is_self),
-        (ExprKind::Path(_), false) | (ExprKind::SelfValue, true)
-    )
 }
 
 pub(super) fn literal_string_with_payload(

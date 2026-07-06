@@ -90,6 +90,9 @@ fn payload_kind_matches_known_expression_facts(
     path_is_self: Option<bool>,
     payload_is_self: bool,
 ) -> bool {
+    if payload_kind == Some(SyntaxExpressionKind::Paren) {
+        return true;
+    }
     payload_kind.is_some()
         && payload_kind_matches_expression_facts(
             payload_kind,
