@@ -1,6 +1,8 @@
 use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind};
+use vela_syntax::ast::BinaryOp;
+#[cfg(test)]
+use vela_syntax::ast::{Expr, ExprKind};
 #[cfg(test)]
 use vela_syntax::ast::{Stmt, StmtKind, SyntaxStatementKind};
 
@@ -39,6 +41,7 @@ pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
     }
 }
 
+#[cfg(test)]
 pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
     matches!(
         expr.kind,

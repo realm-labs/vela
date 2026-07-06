@@ -349,6 +349,9 @@ kept under test cfg for remaining CST payload fixture pairing.
 `CompilerStatementPayload` no longer stores legacy owned statements in
 production; its statement fallback handle is now test-only while production
 statement payloads carry only source identity and rowan CST statements.
+Control-flow no-initializer `let` and empty `return` lowering now use direct
+CST-era null paths, leaving the old expression-backed let/return value helpers
+compiled only for remaining bytecode fixture tests.
 Argument, map-entry, and record-field child payloads no longer carry their
 full legacy owned child AST nodes; they retain only the remaining legacy value
 expression handle needed by the still-migrating expression payload boundary.

@@ -12,6 +12,7 @@ use super::value_types::{ExpectedTypeOutcome, RuntimeTypeFact, TypeContractConte
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(super) fn compile_expr_with_expected_type(
         &mut self,
         expr: &Expr,
@@ -56,6 +57,7 @@ impl Compiler<'_, '_> {
         Ok(register)
     }
 
+    #[cfg(test)]
     pub(super) fn compile_expr_with_optional_expected_type_and_payload(
         &mut self,
         expr: &Expr,

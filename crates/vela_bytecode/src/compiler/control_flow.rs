@@ -6,6 +6,7 @@ mod if_values;
 mod literal_statement_values;
 mod loops;
 mod matches;
+mod null_values;
 mod path_values;
 mod range_statement_values;
 mod statements;
@@ -15,23 +16,35 @@ mod syntax_host_indexes;
 mod syntax_if_values;
 mod syntax_match_values;
 mod syntax_statement_values;
+#[cfg(test)]
 mod value_syntax;
 
-use vela_common::{PrimitiveTag, Span};
+use vela_common::PrimitiveTag;
+#[cfg(test)]
+use vela_common::Span;
+#[cfg(test)]
 use vela_hir::binding::LocalBindingKind;
 #[cfg(test)]
+use vela_syntax::ast::SyntaxExpressionKind;
+#[cfg(test)]
 use vela_syntax::ast::{Block, ElseBranch, IfExpr, Stmt, StmtKind, SyntaxStatementKind};
-use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::{Expr, ExprKind};
 
 #[cfg(test)]
 use crate::InstructionOffset;
-use crate::{Constant, Register, UnlinkedInstructionKind};
+#[cfg(test)]
+use crate::Register;
+#[cfg(test)]
+use crate::{Constant, UnlinkedInstructionKind};
 
 #[cfg(test)]
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 #[cfg(test)]
+use super::body_payloads::CompilerExpressionPayload;
+use super::body_payloads::CompilerStatementPayload;
+#[cfg(test)]
 use super::body_payloads::{CompilerBodyPayload, CompilerIfPayload, CompilerPatternPayload};
-use super::body_payloads::{CompilerExpressionPayload, CompilerStatementPayload};
 #[cfg(test)]
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
@@ -41,6 +54,7 @@ use super::value_types::{
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
 #[cfg(test)]
 use classification::{i64_pattern_facts, iterable_item_shape};
+#[cfg(test)]
 use classification::{
     is_map_or_set_type_hint, merge_type_hint_and_value_fact,
     value_expression_requires_matching_syntax,
@@ -52,6 +66,7 @@ pub(super) use loops::LoopContext;
 use loops::LoopIterable;
 #[cfg(test)]
 use loops::{ForStatementParts, for_iterable_payload_matches_expr};
+#[cfg(test)]
 use value_syntax::ValueSyntaxPayloads;
 
 impl Compiler<'_, '_> {
@@ -331,19 +346,7 @@ impl Compiler<'_, '_> {
         self.compile_let_binding(name.clone(), stmt.span, value.as_ref(), syntax_payloads)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_let_without_initializer(
-        &mut self,
-        name: String,
-        span: Span,
-    ) -> CompileResult<bool> {
-        self.compile_let_binding(
-            name,
-            span,
-            None,
-            ValueSyntaxPayloads::new(None, None, None, None, None, true),
-        )
-    }
-
+    #[cfg(test)]
     fn compile_let_binding(
         &mut self,
         name: String,
@@ -459,21 +462,6 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_empty_return(
-        &mut self,
-        span: Span,
-    ) -> CompileResult<bool> {
-        let (register, returned) = self.compile_return_value(
-            span,
-            None,
-            ValueSyntaxPayloads::new(None, None, None, None, None, false),
-        )?;
-        if !returned {
-            self.emit(UnlinkedInstructionKind::Return { src: register });
-        }
-        Ok(true)
-    }
-
     #[cfg(test)]
     fn compile_for_statement<'ast>(
         &mut self,
@@ -535,6 +523,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    #[cfg(test)]
     fn compile_let_initializer(
         &mut self,
         value: &Expr,
@@ -573,6 +562,7 @@ impl Compiler<'_, '_> {
         self.compile_let_initializer_without_payload(value, expected, context)
     }
 
+    #[cfg(test)]
     fn compile_let_initializer_with_syntax_kind(
         &mut self,
         value: &Expr,
@@ -668,6 +658,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_let_initializer_without_payload(
         &mut self,
         value: &Expr,
@@ -687,6 +678,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_return_value(
         &mut self,
         span: Span,
@@ -721,6 +713,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_return_expr(
         &mut self,
         value: &Expr,
@@ -759,6 +752,7 @@ impl Compiler<'_, '_> {
         self.compile_return_expr_without_payload(value, expected, context)
     }
 
+    #[cfg(test)]
     fn compile_return_expr_with_syntax_kind(
         &mut self,
         value: &Expr,
@@ -854,6 +848,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_return_expr_without_payload(
         &mut self,
         value: &Expr,
