@@ -560,7 +560,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .iter()
                 .zip(payloads)
                 .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload(fallback.value.as_ref()?)
+                    payload.value_expression_payload_for_test(fallback.value.as_ref()?)
                 })
                 .collect(),
         )
@@ -759,6 +759,20 @@ impl CompilerRecordFieldPayload {
     }
 
     pub(in crate::compiler) fn value_expression_payload<'ast>(
+        &self,
+    ) -> Option<CompilerExpressionPayload<'ast>> {
+        Some(CompilerExpressionPayload::from_syntax(
+            self.source,
+            self.source.and_then(|_| {
+                self.syntax
+                    .as_ref()
+                    .and_then(SyntaxRecordExprField::expression)
+            }),
+        ))
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> Option<CompilerExpressionPayload<'ast>> {
