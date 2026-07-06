@@ -152,8 +152,12 @@ impl Compiler<'_, '_> {
                 let ExprKind::Map(entries) = &expr.kind else {
                     unreachable!("validated CST map expression payload kind");
                 };
-                let entry_payloads = payload.map_entry_payloads();
-                self.compile_map(entries, entry_payloads.as_deref())
+                let Some(entry_payloads) = payload.map_entry_payloads() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST map entry payload",
+                    )));
+                };
+                self.compile_map(entries, &entry_payloads)
             }
             SyntaxExpressionKind::Record => {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
@@ -392,7 +396,9 @@ impl Compiler<'_, '_> {
                 "missing CST block expression payload",
             ))),
             ExprKind::Array(items) => self.compile_array(items, None),
-            ExprKind::Map(entries) => self.compile_map(entries, None),
+            ExprKind::Map(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST map entry payload",
+            ))),
             ExprKind::Record { path, fields } => self.compile_record(expr, path, fields, None),
             ExprKind::If(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST if expression payload",
@@ -591,9 +597,9 @@ impl Compiler<'_, '_> {
     fn compile_map(
         &mut self,
         entries: &[vela_syntax::ast::MapEntry],
-        payloads: Option<&[super::body_payloads::CompilerMapEntryPayload]>,
+        payloads: &[super::body_payloads::CompilerMapEntryPayload],
     ) -> CompileResult<Register> {
-        if payloads.is_some_and(|payloads| payloads.len() > entries.len()) {
+        if payloads.len() > entries.len() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST map entries",
             )));
@@ -602,16 +608,7 @@ impl Compiler<'_, '_> {
             .iter()
             .enumerate()
             .map(|(index, entry)| {
-                let payload = payloads
-                    .map(|payloads| {
-                        payloads.get(index).ok_or_else(|| {
-                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                                "missing CST map entry payload",
-                            ))
-                        })
-                    })
-                    .transpose()?;
-                let payload = payload.ok_or_else(|| {
+                let payload = payloads.get(index).ok_or_else(|| {
                     CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST map entry payload",
                     ))
