@@ -192,6 +192,41 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_set_from_array_lowers_to_runtime_constructor() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let seen = set::from_array([[1], [1]]);
+    return seen.len();
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only set::from_array call should not retain statement fallbacks"
+    );
+
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(source, text, registry.compile_view())
+        .expect("CST-backed set::from_array call should compile");
+    let main = program.function("main").expect("main bytecode");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::MakeSetFromArray { .. }
+    )));
+    assert!(main.instructions.iter().all(|instruction| !matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::CallNative {
+            name,
+            ..
+        } if name == "set::from_array"
+    )));
+}
+
+#[test]
 fn syntax_only_script_method_call_lowers_to_method_id_with_default_arg() {
     let source = SourceId::new(1);
     let text = r#"

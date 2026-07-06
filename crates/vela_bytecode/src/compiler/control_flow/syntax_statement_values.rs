@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use vela_common::{PrimitiveTag, SourceId, Span};
+use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
@@ -29,7 +29,10 @@ use crate::compiler::schema_defaults::unknown_enum_variant_diagnostic;
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
 };
-use crate::compiler::{CompileResult, Compiler, frame_slot_kind, type_guard_plan_for_runtime_type};
+use crate::compiler::{
+    CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind,
+    type_guard_plan_for_runtime_type,
+};
 use crate::function_id_for_script_name;
 use crate::{BinaryLiteralSide, CallArgument, Constant, FormatStringPart, ScriptCallMode};
 use crate::{
@@ -1143,6 +1146,39 @@ impl Compiler<'_, '_> {
         }
 
         let callee_name = path.join("::");
+        if callee_name == "set::from_array" {
+            if arguments
+                .iter()
+                .any(|argument| argument.name_text().is_some())
+            {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "set::from_array",
+                )));
+            }
+            let [argument] = arguments.as_slice() else {
+                return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                    vec![
+                        Diagnostic::error(format!(
+                            "set::from_array expects 1 argument, got {}",
+                            arguments.len()
+                        ))
+                        .with_code("compiler::arity")
+                        .with_span(callee_span),
+                    ],
+                )));
+            };
+            let Some(argument_expression) = argument.expression() else {
+                return Ok(None);
+            };
+            let Some(src) = self.compile_syntax_expression(source, &argument_expression)? else {
+                return Ok(None);
+            };
+            self.emit_spanned(
+                UnlinkedInstructionKind::MakeSetFromArray { dst, src },
+                call_span,
+            );
+            return Ok(Some(dst));
+        }
         let native = self.resolve_native_function_id(&callee_name, callee_span)?;
         let Some(args) = self.compile_syntax_native_call_arguments(
             source,
