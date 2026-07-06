@@ -14,9 +14,9 @@ use super::const_eval::{
 };
 use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_checks::{
-    UnsuffixedNumericLiteral, arithmetic_binary_operator, expressions_are_i64,
-    payload_syntax_overlaps_expr, reject_missing_binary_operand_payload,
-    reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
+    UnsuffixedNumericLiteral, expressions_are_i64, payload_syntax_overlaps_expr,
+    reject_missing_binary_operand_payload, reject_missing_expression_payload,
+    unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_facts::{
     expression_path_is_self, expression_syntax_kind, payload_stored_kind_matches_expression_facts,
@@ -209,44 +209,22 @@ impl Compiler<'_, '_> {
                 )
             }
             SyntaxExpressionKind::Binary => {
-                let ExprKind::Binary { op, left, right } = &expr.kind else {
-                    unreachable!("validated CST binary expression payload kind");
-                };
-                if !payload_syntax_overlaps_expr(payload, expr) {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST binary expression payload",
                     )));
-                }
-                let cst_op = payload
-                    .syntax_binary_operator()
-                    .filter(|cst_op| arithmetic_binary_operator(*cst_op))
-                    .filter(|_| arithmetic_binary_operator(*op));
-                let op = cst_op.unwrap_or(*op);
-                if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    let Some(source) = payload.source() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST logical chain payload",
-                        )));
-                    };
-                    let Some(expression) = payload.syntax_expression() else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST logical chain payload",
-                        )));
-                    };
-                    let Some(register) =
-                        self.compile_syntax_logical_chain(source, expression, op)?
-                    else {
-                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                            "mismatched CST logical chain payload",
-                        )));
-                    };
-                    return Ok(register);
-                }
-                let operand_payloads = payload.binary_operand_payloads();
-                let (left_payload, right_payload) = operand_payloads
-                    .as_ref()
-                    .map_or((None, None), |(left, right)| (Some(left), Some(right)));
-                self.compile_binary(op, expr.span, left, right, left_payload, right_payload)
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST binary expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST binary expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Call => {
                 let ExprKind::Call { callee, args } = &expr.kind else {

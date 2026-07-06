@@ -414,10 +414,10 @@ fn main() {
             let error = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
                 .expect_err("mismatched CST binary payload must not compile");
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST binary expression payload")
-            ));
+            assert_eq!(
+                semantic_diagnostic_codes(error),
+                ["compiler::invalid_identity_comparison"]
+            );
         },
     );
 }

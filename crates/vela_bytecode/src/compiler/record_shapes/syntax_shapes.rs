@@ -527,6 +527,7 @@ impl Compiler<'_, '_> {
                 .iterator_item()
                 .cloned()
                 .map(|item| ValueShape::Array(Box::new(item))),
+            "sort" | "sort_by" | "reverse" | "distinct" => Some(receiver),
             "keys" => receiver
                 .map_parts()
                 .map(|(key, _)| ValueShape::Iterator(Box::new(key.clone()))),

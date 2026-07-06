@@ -1063,11 +1063,16 @@ impl Compiler<'_, '_> {
         let Some(base) = self.compile_syntax_expression(source, &receiver_expression)? else {
             return Ok(None);
         };
-        let Some(index) = self.compile_syntax_expression(source, &index_expression)? else {
-            return Ok(None);
-        };
         let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+        if let Some(Literal::String(key)) = expression_syntax_literal(&index_expression) {
+            let key = self.code.push_constant(crate::Constant::String(key));
+            self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
+        } else {
+            let Some(index) = self.compile_syntax_expression(source, &index_expression)? else {
+                return Ok(None);
+            };
+            self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
+        }
         Ok(Some(dst))
     }
 
