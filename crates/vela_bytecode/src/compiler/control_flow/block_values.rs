@@ -1,15 +1,18 @@
+use vela_syntax::ast::Block;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
-use vela_syntax::ast::{Block, Expr, ExprKind};
+#[cfg(test)]
+use vela_syntax::ast::{Expr, ExprKind};
 
+#[cfg(test)]
+use crate::UnlinkedInstructionKind;
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
 #[cfg(test)]
 use crate::compiler::compilation_statement_payloads;
-use crate::compiler::value_flow::{BlockValue, block_value};
-use crate::compiler::{CompileResult, Compiler};
-use crate::{Constant, Register, UnlinkedInstructionKind};
+use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
+use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
     pub(in crate::compiler) fn compile_block_value_to(
@@ -17,27 +20,14 @@ impl Compiler<'_, '_> {
         block: &Block,
         dst: Register,
     ) -> CompileResult<bool> {
-        match block_value(block) {
-            BlockValue::Empty => {
-                self.emit_constant_to(dst, Constant::Null);
-                Ok(false)
-            }
-            BlockValue::TailExpr { prefix, expr } => {
-                for stmt in prefix {
-                    if self.compile_statement(stmt)? {
-                        return Ok(true);
-                    }
-                }
-                self.compile_block_tail_expr_without_payload_to(expr, dst)
-            }
-            BlockValue::Statements(statements) => {
-                let returned = self.compile_statements(statements)?;
-                if !returned {
-                    self.emit_constant_to(dst, Constant::Null);
-                }
-                Ok(returned)
-            }
+        if block.statements.is_empty() {
+            self.emit_constant_to(dst, Constant::Null);
+            return Ok(false);
         }
+        let _ = dst;
+        Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST block body payload",
+        )))
     }
 
     pub(in crate::compiler) fn compile_block_payload_value_to(
@@ -229,6 +219,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_block_tail_expr_without_payload_to(
         &mut self,
         expr: &Expr,

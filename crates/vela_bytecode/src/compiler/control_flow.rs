@@ -18,32 +18,39 @@ mod value_syntax;
 
 use vela_common::{PrimitiveTag, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{
-    Block, ElseBranch, Expr, ExprKind, IfExpr, Stmt, StmtKind, SyntaxExpressionKind,
-    SyntaxStatementKind,
-};
+#[cfg(test)]
+use vela_syntax::ast::{Block, ElseBranch, IfExpr, Stmt, StmtKind, SyntaxStatementKind};
+use vela_syntax::ast::{Expr, ExprKind, SyntaxExpressionKind};
 
-use crate::{Constant, InstructionOffset, Register, UnlinkedInstructionKind};
+#[cfg(test)]
+use crate::InstructionOffset;
+use crate::{Constant, Register, UnlinkedInstructionKind};
 
 #[cfg(test)]
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
-use super::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerPatternPayload,
-    CompilerStatementPayload,
-};
+#[cfg(test)]
+use super::body_payloads::{CompilerBodyPayload, CompilerIfPayload, CompilerPatternPayload};
+use super::body_payloads::{CompilerExpressionPayload, CompilerStatementPayload};
+#[cfg(test)]
 use super::patterns::PatternBindingFacts;
 use super::script_types::{ScriptTypeFact, type_hint_script_type};
 use super::value_types::{
     RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type, type_hint_value_type,
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind};
+#[cfg(test)]
+use classification::{i64_pattern_facts, iterable_item_shape};
 use classification::{
-    i64_pattern_facts, is_map_or_set_type_hint, iterable_item_shape,
-    merge_type_hint_and_value_fact, range_iterable_for_payload, statement_kind_for_stmt,
+    is_map_or_set_type_hint, merge_type_hint_and_value_fact,
     value_expression_requires_matching_syntax,
 };
+#[cfg(test)]
+use classification::{range_iterable_for_payload, statement_kind_for_stmt};
 pub(super) use loops::LoopContext;
-use loops::{ForStatementParts, LoopIterable, for_iterable_payload_matches_expr};
+#[cfg(test)]
+use loops::LoopIterable;
+#[cfg(test)]
+use loops::{ForStatementParts, for_iterable_payload_matches_expr};
 use value_syntax::ValueSyntaxPayloads;
 
 impl Compiler<'_, '_> {
@@ -238,6 +245,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn compile_statements(&mut self, statements: &[Stmt]) -> CompileResult<bool> {
         for stmt in statements {
             if self.compile_statement(stmt)? {
@@ -247,10 +255,12 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    #[cfg(test)]
     pub(super) fn compile_statement(&mut self, stmt: &Stmt) -> CompileResult<bool> {
         self.compile_statement_as(statement_kind_for_stmt(stmt), stmt)
     }
 
+    #[cfg(test)]
     fn compile_statement_as(
         &mut self,
         kind: SyntaxStatementKind,
@@ -303,6 +313,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_let_statement(
         &mut self,
         stmt: &Stmt,
@@ -430,6 +441,7 @@ impl Compiler<'_, '_> {
         Ok(returned)
     }
 
+    #[cfg(test)]
     fn compile_return_statement(
         &mut self,
         stmt: &Stmt,
@@ -461,6 +473,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
+    #[cfg(test)]
     fn compile_for_statement<'ast>(
         &mut self,
         stmt: &'ast Stmt,
@@ -490,6 +503,7 @@ impl Compiler<'_, '_> {
         })
     }
 
+    #[cfg(test)]
     fn compile_if_statement(
         &mut self,
         stmt: &Stmt,
@@ -504,6 +518,7 @@ impl Compiler<'_, '_> {
         self.compile_if(if_expr, payload)
     }
 
+    #[cfg(test)]
     fn compile_expr_statement(&mut self, expr: &Expr) -> CompileResult<bool> {
         if let ExprKind::If(if_expr) = &expr.kind {
             return self.compile_if(if_expr, None);
@@ -875,6 +890,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     fn compile_for(&mut self, parts: ForStatementParts<'_>) -> CompileResult<bool> {
         if let Some(payload) = parts.iterable_payload.as_ref()
             && !for_iterable_payload_matches_expr(payload, parts.iterable)
@@ -1082,6 +1098,7 @@ impl Compiler<'_, '_> {
         Ok(true)
     }
 
+    #[cfg(test)]
     fn compile_if(
         &mut self,
         if_expr: &IfExpr,
@@ -1137,6 +1154,7 @@ impl Compiler<'_, '_> {
         Ok(then_returned && else_returned)
     }
 
+    #[cfg(test)]
     fn compile_if_block(
         &mut self,
         block: &Block,
@@ -1163,6 +1181,7 @@ fn static_type_runtime_fact(static_type: StaticExprType) -> Option<RuntimeTypeFa
     }
 }
 
+#[cfg(test)]
 fn required_if_statement_child_payload<'payload, T>(
     parent: Option<&CompilerIfPayload<'_>>,
     child: Option<&'payload T>,

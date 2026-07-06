@@ -7,6 +7,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_match(
         &mut self,
         match_expr: &MatchExpr,
@@ -14,6 +15,7 @@ impl Compiler<'_, '_> {
         self.compile_match_with_payloads(match_expr, None, None)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_match_with_payloads(
         &mut self,
         match_expr: &MatchExpr,
@@ -83,6 +85,7 @@ impl Compiler<'_, '_> {
         Ok(all_arms_return)
     }
 
+    #[cfg(test)]
     fn compile_match_arm_statement(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
@@ -101,6 +104,7 @@ impl Compiler<'_, '_> {
         self.compile_match_arm_statement_without_payload(arm, payload)
     }
 
+    #[cfg(test)]
     fn compile_match_arm_statement_with_syntax_kind(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
@@ -121,13 +125,16 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
+    #[cfg(test)]
     fn compile_match_arm_statement_without_payload(
         &mut self,
         arm: &vela_syntax::ast::MatchArm,
         payload: Option<&CompilerMatchArmPayload>,
     ) -> CompileResult<bool> {
         match &arm.body.kind {
-            ExprKind::Block(block) => self.compile_statements(&block.statements),
+            ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST match arm block body payload",
+            ))),
             _ => {
                 let body_payload = payload.map(CompilerMatchArmPayload::body_expression_payload);
                 self.compile_expr_with_payload(&arm.body, body_payload.as_ref())?;

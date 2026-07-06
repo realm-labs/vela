@@ -1,6 +1,8 @@
 use vela_common::PrimitiveTag;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Stmt, StmtKind, SyntaxStatementKind};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind};
+#[cfg(test)]
+use vela_syntax::ast::{Stmt, StmtKind, SyntaxStatementKind};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::patterns::PatternBindingFacts;
@@ -20,6 +22,7 @@ pub(super) fn i64_pattern_facts() -> PatternBindingFacts {
     PatternBindingFacts::value(Some(RuntimeTypeFact::primitive(PrimitiveTag::I64)))
 }
 
+#[cfg(test)]
 pub(super) fn statement_kind_for_stmt(stmt: &Stmt) -> SyntaxStatementKind {
     match &stmt.kind {
         StmtKind::Let { .. } => SyntaxStatementKind::Let,
@@ -50,6 +53,7 @@ pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
     )
 }
 
+#[cfg(test)]
 pub(super) fn range_iterable_for_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<bool> {
