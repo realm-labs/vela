@@ -63,21 +63,6 @@ pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
     )
 }
 
-pub(super) fn control_flow_expression_requires_matching_syntax(expr: &Expr) -> bool {
-    matches!(
-        expr.kind,
-        ExprKind::Block(_)
-            | ExprKind::If(_)
-            | ExprKind::Match(_)
-            | ExprKind::Array(_)
-            | ExprKind::Map(_)
-            | ExprKind::Record { .. }
-            | ExprKind::Binary { .. }
-            | ExprKind::Path(_)
-            | ExprKind::SelfValue
-    )
-}
-
 pub(super) fn range_iterable_for_payload<'ast>(
     payload: Option<&CompilerExpressionPayload<'_>>,
     expr: &'ast Expr,
