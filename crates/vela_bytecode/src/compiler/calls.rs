@@ -16,7 +16,6 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use payload_guards::{
     callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
     reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
-    reject_missing_callback_lambda_body,
 };
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -679,28 +678,46 @@ impl Compiler<'_, '_> {
         ) {
             return self.compile_call_argument_value(arg, arg_syntax);
         }
-        let ExprKind::Lambda { params, body } = &arg.value.kind else {
+        let Some(payload) = arg_payload.as_ref() else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
+        let Some(source) = payload.source() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST callback lambda payload",
+            )));
+        };
+        let Some(expression) = payload.syntax_expression() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST callback lambda payload",
+            )));
+        };
+        let Some(lambda) = expression.as_lambda() else {
+            return self.compile_call_argument_value(arg, arg_syntax);
+        };
+        let Some(param_list) = lambda.param_list() else {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST callback lambda parameters",
+            )));
+        };
+        if lambda.body().is_none() {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST lambda body",
+            )));
+        }
         let Some(receiver_shape) = context.receiver_shape else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let Some(param_shapes) =
-            callback_param_shapes(receiver_shape, context.method, params.len())
+        let param_count = param_list.params().count();
+        let Some(param_shapes) = callback_param_shapes(receiver_shape, context.method, param_count)
         else {
             return self.compile_call_argument_value(arg, arg_syntax);
         };
-        let body_payload = arg_payload
-            .as_ref()
-            .and_then(|payload| payload.lambda_body_payload());
-        reject_missing_callback_lambda_body(arg_payload.as_ref(), body_payload.as_ref())?;
-        self.compile_lambda_with_callback_shapes(
-            &arg.value,
-            params,
-            body,
-            body_payload.as_ref(),
-            &param_shapes,
-        )
+        self.compile_syntax_lambda_with_callback_shapes(source, expression, &param_shapes)?
+            .ok_or_else(|| {
+                CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "mismatched CST callback lambda payload",
+                ))
+            })
     }
 
     fn compile_metadata_register_args(

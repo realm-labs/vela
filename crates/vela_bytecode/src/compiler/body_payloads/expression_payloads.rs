@@ -2,10 +2,11 @@ use vela_common::{SourceId, Span};
 #[cfg(test)]
 use vela_syntax::ast::AssignOp;
 #[cfg(test)]
+use vela_syntax::ast::SyntaxLambdaBody;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
-    SyntaxMapEntry,
+    AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
 };
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
@@ -17,6 +18,8 @@ use vela_syntax::ast::{
 #[cfg(test)]
 use super::CompilerArgumentPayload;
 #[cfg(test)]
+use super::CompilerBodyPayload;
+#[cfg(test)]
 use super::CompilerRecordFieldPayload;
 #[cfg(test)]
 use super::match_scrutinee_payload_for_expr;
@@ -24,8 +27,6 @@ use super::{
     CompilerArrayElementPayload, CompilerExpressionPayload, CompilerInterpolationPayload,
     CompilerMapEntryPayload,
 };
-#[cfg(test)]
-use super::CompilerBodyPayload;
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
 #[cfg(test)]
@@ -432,6 +433,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn lambda_body_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {

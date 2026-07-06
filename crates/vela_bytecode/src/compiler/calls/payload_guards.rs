@@ -23,18 +23,6 @@ pub(super) fn callback_lambda_payload_is_authoritative(
     }
 }
 
-pub(super) fn reject_missing_callback_lambda_body(
-    arg_payload: Option<&CompilerExpressionPayload<'_>>,
-    body_payload: Option<&CompilerExpressionPayload<'_>>,
-) -> CompileResult<()> {
-    if arg_payload.is_some() && body_payload.is_none() {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST lambda body",
-        )));
-    }
-    Ok(())
-}
-
 pub(super) fn reject_mismatched_call_callee_payload(
     callee_span: Span,
     callee_kind: Option<SyntaxExpressionKind>,
