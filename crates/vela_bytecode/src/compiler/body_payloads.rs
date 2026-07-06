@@ -959,42 +959,36 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax_kind == SyntaxExpressionKind::Paren || self.stored_syntax_kind() == Some(syntax_kind)
     }
 
+    #[cfg(test)]
     fn paired_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         let Some(kind) = self.stored_syntax_kind() else {
             return true;
         };
-        #[cfg(not(test))]
-        {
-            let _ = (expr, kind);
-            true
+        if !expr_matches_syntax_kind(expr, kind) {
+            return false;
         }
-        #[cfg(test)]
+        if let Some(fallback) = self.fallback
+            && kind != SyntaxExpressionKind::Literal
+            && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
         {
-            if !expr_matches_syntax_kind(expr, kind) {
-                return false;
-            }
-            if let Some(fallback) = self.fallback
-                && kind != SyntaxExpressionKind::Literal
-                && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
-            {
-                return false;
-            }
-            self.paired_expr_matches_stored_syntax_shape(expr)
+            return false;
         }
+        self.paired_expr_matches_stored_syntax_shape(expr)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         self.paired_expr_matches_stored_syntax_expr(expr)
     }
 
-    pub(in crate::compiler) fn is_aligned_with_paired_expr(
-        &self,
-        expr: &vela_syntax::ast::Expr,
-    ) -> bool {
-        self.matches_paired_expr(expr)
-            && self
-                .syntax_span()
-                .is_some_and(|syntax_span| spans_overlap(syntax_span, expr.span))
+    #[cfg(not(test))]
+    pub(in crate::compiler) fn matches_paired_expr<T>(&self, _expr: &T) -> bool {
+        true
+    }
+
+    pub(in crate::compiler) fn syntax_overlaps_span(&self, span: Span) -> bool {
+        self.syntax_span()
+            .is_some_and(|syntax_span| spans_overlap(syntax_span, span))
     }
 
     #[cfg(test)]

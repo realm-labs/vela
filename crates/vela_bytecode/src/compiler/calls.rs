@@ -367,7 +367,9 @@ impl Compiler<'_, '_> {
                 return None;
             };
             let base_payload = payload.field_base_payload()?;
-            if !base_payload.is_aligned_with_paired_expr(base) {
+            if !base_payload.matches_paired_expr(base)
+                || !base_payload.syntax_overlaps_span(base.span)
+            {
                 return None;
             }
             return Some(self.compile_script_method_call(

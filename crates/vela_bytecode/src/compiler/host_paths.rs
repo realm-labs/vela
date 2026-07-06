@@ -655,9 +655,9 @@ impl Compiler<'_, '_> {
                     };
                     let base = base.as_ref();
                     let base_payload = payload.field_base_payload()?;
-                    let base_expr = base_payload
-                        .is_aligned_with_paired_expr(base)
-                        .then_some(base);
+                    let base_expr = (base_payload.matches_paired_expr(base)
+                        && base_payload.syntax_overlaps_span(base.span))
+                    .then_some(base);
                     let path = self.host_field_path_with_payload(base, Some(&base_payload))?;
                     Some(HostCollectionMethodTarget {
                         path,

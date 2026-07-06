@@ -11,7 +11,9 @@ pub(super) fn callback_lambda_payload_is_authoritative(
         return true;
     };
     match payload.syntax_kind() {
-        Some(SyntaxExpressionKind::Lambda) => payload.is_aligned_with_paired_expr(arg_value),
+        Some(SyntaxExpressionKind::Lambda) => {
+            payload.matches_paired_expr(arg_value) && payload.syntax_overlaps_span(arg_value.span)
+        }
         Some(_) => false,
         None => true,
     }
@@ -36,7 +38,7 @@ pub(super) fn reject_mismatched_call_callee_payload(
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if payload.is_aligned_with_paired_expr(callee) {
+    if payload.matches_paired_expr(callee) && payload.syntax_overlaps_span(callee.span) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
