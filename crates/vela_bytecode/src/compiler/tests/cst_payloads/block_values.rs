@@ -36,9 +36,9 @@ fn main() {
         Some(SyntaxStatementKind::Expr)
     );
     assert_eq!(mismatched.stored_value_expression_kind(), None);
-    let vela_syntax::ast::StmtKind::Expr(expr) = &mismatched.fallback().kind else {
-        panic!("expected legacy expression tail");
-    };
+    let expr = mismatched
+        .expression_fallback_for_test()
+        .expect("expected legacy expression tail");
 
     let error = compiler
         .compile_block_tail_expr_to_for_test(expr, Some(&mismatched), Register(0))
@@ -72,11 +72,11 @@ fn main(flag) {
             let missing_children =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
                     syntax,
-                    tail.fallback(),
+                    tail.expression_fallback_for_test(),
                 );
-            let vela_syntax::ast::StmtKind::Expr(expr) = &tail.fallback().kind else {
-                panic!("expected legacy expression tail");
-            };
+            let expr = tail
+                .expression_fallback_for_test()
+                .expect("expected legacy expression tail");
 
             let error = compiler
                 .compile_block_tail_expr_to_for_test(expr, Some(&missing_children), Register(0))

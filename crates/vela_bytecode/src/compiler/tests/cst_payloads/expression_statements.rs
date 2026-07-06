@@ -26,9 +26,11 @@ fn main() {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 5);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     compile_program_source(source, text)
         .expect("CST-only constant expression statements should compile");
@@ -51,9 +53,11 @@ fn main(input) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 2);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     compile_program_source(source, text)
         .expect("CST-only path expression statements should compile");
@@ -90,9 +94,11 @@ fn main(input, other) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 16);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     compile_program_source(source, text)
         .expect("CST-only path value expression statements should compile");
@@ -122,9 +128,11 @@ fn bump(amount) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 3);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     let program = compile_program_source(source, text)
         .expect("CST-only record field assignment statements should compile");
@@ -190,9 +198,11 @@ fn main(input) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 3);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     compile_program_source(source, text)
         .expect("CST-only range expression statements should compile");
@@ -240,9 +250,11 @@ fn main(input) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 2);
-    assert!(statements.iter().all(|statement| {
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback())).is_err()
-    }));
+    assert!(
+        statements
+            .iter()
+            .all(|statement| { statement.is_syntax_only() })
+    );
 
     let nested_bodies = statements
         .iter()
@@ -288,10 +300,8 @@ fn range_tail(input) {
         );
         let statements = payload.body.statement_payloads();
         assert_eq!(statements.len(), 1);
-        let statement_fallback =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
         assert!(
-            statement_fallback.is_err(),
+            statements[0].is_syntax_only(),
             "{function} tail statement should not require owned fallback"
         );
     }
@@ -319,10 +329,8 @@ fn main(input) {
     );
     let statements = payload.body.statement_payloads();
     assert_eq!(statements.len(), 1);
-    let statement_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
     assert!(
-        statement_fallback.is_err(),
+        statements[0].is_syntax_only(),
         "block expression tail statement should not require owned fallback"
     );
     let nested_body = statements[0]

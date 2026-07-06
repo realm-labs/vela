@@ -121,10 +121,8 @@ fn paren_values() {
         .function("paren_values")
         .expect("paren_values function");
     let statements = payload.body.statement_payloads();
-    let value_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
     assert!(
-        value_fallback.is_err(),
+        statements[0].is_syntax_only(),
         "parenthesized simple block initializer should not require owned fallback"
     );
     assert_cst_assignment_value_paren_body_payloads(
@@ -158,10 +156,8 @@ fn block_tail_paren() {
         .function("block_tail_paren")
         .expect("block_tail_paren function");
     let statements = payload.body.statement_payloads();
-    let let_fallback =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
     assert!(
-        let_fallback.is_err(),
+        statements[0].is_syntax_only(),
         "parenthesized block tail initializer should not require owned fallback"
     );
 

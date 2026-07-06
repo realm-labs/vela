@@ -156,11 +156,8 @@ fn main() {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only empty let should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -182,11 +179,8 @@ fn main() {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only bare return should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -252,11 +246,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only negated numeric return should not retain an owned statement fallback"
     );
     compiler
@@ -281,11 +272,8 @@ fn main() -> i8 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed negated numeric return should not retain an owned statement fallback"
     );
     compiler
@@ -313,11 +301,8 @@ fn main() -> bool {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only boolean-not return should not retain an owned statement fallback"
     );
     compiler
@@ -342,11 +327,8 @@ fn main() -> bool {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only boolean equality return should not retain an owned statement fallback"
     );
     compiler
@@ -371,11 +353,8 @@ fn main() -> bool {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only boolean logical return should not retain an owned statement fallback"
     );
     compiler
@@ -400,11 +379,8 @@ fn main() -> bool {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric comparison return should not retain an owned statement fallback"
     );
     compiler
@@ -431,11 +407,8 @@ fn main(left: Reward) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path numeric comparison should not retain an owned statement fallback"
     );
     let error = compiler
@@ -462,11 +435,8 @@ fn main(left: Score, right: Score) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path comparison should not retain an owned statement fallback"
     );
     let error = compiler
@@ -491,11 +461,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric arithmetic return should not retain an owned statement fallback"
     );
     compiler
@@ -520,11 +487,8 @@ fn main(left, right) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path arithmetic return should not retain an owned statement fallback"
     );
     compiler
@@ -597,11 +561,8 @@ fn main(left, middle, right) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path logical return should not retain an owned statement fallback"
     );
     compiler
@@ -682,11 +643,8 @@ fn main(object) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only field return should not retain an owned statement fallback"
     );
     compiler
@@ -718,11 +676,8 @@ fn main(object) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only nested field let should not retain an owned statement fallback"
     );
     compiler
@@ -756,11 +711,8 @@ fn main(value) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only try return should not retain an owned statement fallback"
     );
     compiler
@@ -792,11 +744,8 @@ fn main(object) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only field try let should not retain an owned statement fallback"
     );
     compiler
@@ -874,10 +823,11 @@ fn identity_not_equal(left, right) {
             "{function} should not retain an owned body fallback"
         );
         assert!(
-            payload.body.statement_payloads().iter().all(|statement| {
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statement.fallback()))
-                    .is_err()
-            }),
+            payload
+                .body
+                .statement_payloads()
+                .iter()
+                .all(body_payloads::CompilerStatementPayload::is_syntax_only),
             "{function} should not retain owned statement fallbacks"
         );
     }
@@ -897,11 +847,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric division return should not retain an owned statement fallback"
     );
     compiler
@@ -926,11 +873,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric multiplication return should not retain an owned statement fallback"
     );
     compiler
@@ -955,11 +899,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric subtraction return should not retain an owned statement fallback"
     );
     compiler
@@ -984,11 +925,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only numeric addition return should not retain an owned statement fallback"
     );
     compiler
@@ -1042,11 +980,8 @@ fn main(input) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only array let should not retain an owned statement fallback"
     );
     compiler
@@ -1078,11 +1013,8 @@ fn main(input) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only map return should not retain an owned statement fallback"
     );
     compiler
@@ -1112,11 +1044,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only negated numeric let should not retain an owned statement fallback"
     );
     compiler
@@ -1142,11 +1071,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed negated numeric let should not retain an owned statement fallback"
     );
     compiler
@@ -1175,11 +1101,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed boolean-not let should not retain an owned statement fallback"
     );
     compiler
@@ -1205,11 +1128,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed boolean inequality let should not retain an owned statement fallback"
     );
     compiler
@@ -1235,11 +1155,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed boolean logical let should not retain an owned statement fallback"
     );
     compiler
@@ -1265,11 +1182,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed literal equality let should not retain an owned statement fallback"
     );
     compiler
@@ -1295,11 +1209,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed numeric arithmetic let should not retain an owned statement fallback"
     );
     compiler
@@ -1325,11 +1236,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed numeric division let should not retain an owned statement fallback"
     );
     compiler
@@ -1355,11 +1263,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed numeric multiplication let should not retain an owned statement fallback"
     );
     compiler
@@ -1385,11 +1290,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed numeric subtraction let should not retain an owned statement fallback"
     );
     compiler
@@ -1415,11 +1317,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed numeric addition let should not retain an owned statement fallback"
     );
     compiler
@@ -1470,11 +1369,8 @@ fn main() {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only literal let should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -1580,11 +1476,8 @@ fn make(value) {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path let should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -1635,11 +1528,8 @@ fn main(input) {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only path return should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -1807,13 +1697,10 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
-    let vela_syntax::ast::StmtKind::Let {
-        value: Some(value), ..
-    } = &statement.kind
-    else {
-        panic!("expected let statement");
-    };
+    let statements = let_return_statement_payloads(&payload.body);
+    let value = statements[0]
+        .let_initializer_fallback_for_test()
+        .expect("expected let initializer");
     let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
 
     let error = compiler
@@ -1836,13 +1723,10 @@ fn main() {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
-    let vela_syntax::ast::StmtKind::Let {
-        value: Some(value), ..
-    } = &statement.kind
-    else {
-        panic!("expected let statement");
-    };
+    let statements = let_return_statement_payloads(&payload.body);
+    let value = statements[0]
+        .let_initializer_fallback_for_test()
+        .expect("expected let initializer");
 
     let error = compiler
         .compile_let_initializer_kind_without_expression_payload_for_test(
@@ -1900,10 +1784,10 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
-    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
-        panic!("expected return statement");
-    };
+    let statements = let_return_statement_payloads(&payload.body);
+    let value = statements[0]
+        .return_value_fallback_for_test()
+        .expect("expected return value");
     let missing_payload = body_payloads::CompilerExpressionPayload::missing_syntax(source, value);
 
     let error = compiler
@@ -1930,10 +1814,10 @@ fn make(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let statement = let_return_statement_payloads(&payload.body)[0].fallback();
-    let vela_syntax::ast::StmtKind::Return(Some(value)) = &statement.kind else {
-        panic!("expected return statement");
-    };
+    let statements = let_return_statement_payloads(&payload.body);
+    let value = statements[0]
+        .return_value_fallback_for_test()
+        .expect("expected return value");
 
     let error = compiler
         .compile_return_kind_without_expression_payload_for_test(
@@ -2017,9 +1901,11 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = let_return_statement_payloads(&payload.body);
     let statement = statements[0].syntax_statement().expect("CST let").clone();
-    let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
+    let missing_child = body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
         statement,
-        statements[0].fallback(),
+        statements[0]
+            .let_initializer_fallback_for_test()
+            .expect("let initializer fallback"),
     );
 
     let error = compiler
@@ -2096,10 +1982,13 @@ fn main() {
         .syntax_statement()
         .expect("CST return")
         .clone();
-    let missing_child = body_payloads::CompilerStatementPayload::missing_child_payload_context(
-        statement,
-        statements[0].fallback(),
-    );
+    let missing_child =
+        body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
+            statement,
+            statements[0]
+                .return_value_fallback_for_test()
+                .expect("return value fallback"),
+        );
 
     let error = compiler
         .compile_statement_payload_for_test(&missing_child)

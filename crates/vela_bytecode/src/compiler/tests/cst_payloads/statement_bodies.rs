@@ -65,7 +65,7 @@ fn main() {
                         .syntax_statement()
                         .expect("block statement syntax")
                         .clone(),
-                    block.fallback(),
+                    None,
                 );
 
             let error = compiler
@@ -174,11 +174,8 @@ fn main() {
     let (_, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only block statement should not retain an owned statement fallback"
     );
     assert_eq!(
@@ -206,11 +203,8 @@ fn main(input) {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only match statement should not retain an owned statement fallback"
     );
     compiler
@@ -236,13 +230,19 @@ fn main() {
                     statement.stored_statement_kind() == Some(SyntaxStatementKind::For)
                 })
                 .expect("for statement payload");
+            let (span, index_pattern, value_pattern, iterable) = for_statement
+                .for_fallback_parts()
+                .expect("for fallback parts");
             let missing_children =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_for_child_payload_context(
                     for_statement
                         .syntax_statement()
                         .expect("for statement syntax")
                         .clone(),
-                    for_statement.fallback(),
+                    span,
+                    index_pattern,
+                    value_pattern,
+                    iterable,
                 );
 
             let error = compiler
@@ -284,7 +284,7 @@ fn main(flag) {
                         .syntax_statement()
                         .expect("if statement syntax")
                         .clone(),
-                    if_statement.fallback(),
+                    if_statement.expression_fallback_for_test(),
                 );
 
             let error = compiler
@@ -405,9 +405,9 @@ fn main(flag) {
                 })
                 .expect("if statement payload");
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
-            let vela_syntax::ast::StmtKind::Expr(expr) = &if_statement.fallback().kind else {
-                panic!("expected legacy if expression statement");
-            };
+            let expr = if_statement
+                .expression_fallback_for_test()
+                .expect("expected legacy if expression statement");
             let vela_syntax::ast::ExprKind::If(if_expr) = &expr.kind else {
                 panic!("expected legacy if expression statement");
             };

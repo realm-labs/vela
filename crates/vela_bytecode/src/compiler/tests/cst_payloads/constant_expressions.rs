@@ -12,11 +12,8 @@ fn main() -> bool {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only constant comparison return should not retain an owned statement fallback"
     );
     compiler
@@ -42,11 +39,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed constant equality let should not retain an owned statement fallback"
     );
     compiler
@@ -71,11 +65,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only constant unary return should not retain an owned statement fallback"
     );
     compiler
@@ -101,11 +92,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed constant unary let should not retain an owned statement fallback"
     );
     compiler
@@ -130,11 +118,8 @@ fn main() -> i64 {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only nested constant unary arithmetic return should not retain an owned statement fallback"
     );
     compiler
@@ -160,11 +145,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only typed nested constant unary logical let should not retain an owned statement fallback"
     );
     compiler
@@ -190,11 +172,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only empty array let should not retain an owned statement fallback"
     );
     compiler
@@ -222,11 +201,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only empty array return should not retain an owned statement fallback"
     );
     compiler
@@ -255,11 +231,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only constant array let should not retain an owned statement fallback"
     );
     compiler
@@ -289,11 +262,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only constant map let should not retain an owned statement fallback"
     );
     compiler
@@ -359,11 +329,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only range let should not retain an owned statement fallback"
     );
     compiler
@@ -398,11 +365,8 @@ fn main() -> Range {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = payload.body.statement_payloads();
 
-    let fallback_result =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
-
     assert!(
-        fallback_result.is_err(),
+        statements[0].is_syntax_only(),
         "syntax-only range return should not retain an owned statement fallback"
     );
     compiler

@@ -92,15 +92,18 @@ fn make(value) {
 }
 "#,
         |compiler, legacy_payload| {
-            let legacy_statement = path_statement_payloads(&legacy_payload.body)[1].fallback();
+            let legacy_statements = path_statement_payloads(&legacy_payload.body);
+            let legacy_initializer = legacy_statements[1]
+                .let_initializer_fallback_for_test()
+                .expect("legacy initializer fallback");
             let cst_statement = cst_body
                 .statements()
                 .nth(1)
                 .expect("CST selected statement");
             let mismatched_statement =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
                     cst_statement,
-                    legacy_statement,
+                    legacy_initializer,
                 );
             let mismatched_payload = mismatched_statement
                 .let_initializer_expression_payload()

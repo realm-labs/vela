@@ -331,7 +331,7 @@ fn main() {
                         .syntax_statement()
                         .expect("call statement syntax")
                         .clone(),
-                    statement.fallback(),
+                    statement.expression_fallback_for_test(),
                 );
 
             assert!(
@@ -502,12 +502,14 @@ fn main(target) {
         |_, payload| {
             let statements = source_identity_statement_payloads(&payload.body);
             let missing_let =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
                     statements[0]
                         .syntax_statement()
                         .expect("let syntax")
                         .clone(),
-                    statements[0].fallback(),
+                    statements[0]
+                        .let_initializer_fallback_for_test()
+                        .expect("let initializer fallback"),
                 );
             let missing_assignment =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -515,7 +517,7 @@ fn main(target) {
                         .syntax_statement()
                         .expect("assignment syntax")
                         .clone(),
-                    statements[1].fallback(),
+                    statements[1].expression_fallback_for_test(),
                 );
             let missing_expression =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -523,15 +525,17 @@ fn main(target) {
                         .syntax_statement()
                         .expect("expression syntax")
                         .clone(),
-                    statements[2].fallback(),
+                    statements[2].expression_fallback_for_test(),
                 );
             let missing_return =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
                     statements[3]
                         .syntax_statement()
                         .expect("return syntax")
                         .clone(),
-                    statements[3].fallback(),
+                    statements[3]
+                        .return_value_fallback_for_test()
+                        .expect("return value fallback"),
                 );
 
             assert!(missing_let.syntax_statement().is_none());
@@ -596,13 +600,18 @@ fn main(values) {
         |_, payload| {
             let statements = source_identity_statement_payloads(&payload.body);
             let statement = &statements[0];
+            let (span, index_pattern, value_pattern, iterable) =
+                statement.for_fallback_parts().expect("for fallback parts");
             let missing_source =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_for_child_payload_context(
                     statement
                         .syntax_statement()
                         .expect("for statement syntax")
                         .clone(),
-                    statement.fallback(),
+                    span,
+                    index_pattern,
+                    value_pattern,
+                    iterable,
                 );
 
             assert!(missing_source.syntax_statement().is_none());
@@ -703,7 +712,7 @@ fn main(value) {
                         .syntax_statement()
                         .expect("match statement syntax")
                         .clone(),
-                    statement.fallback(),
+                    statement.expression_fallback_for_test(),
                 );
 
             assert!(

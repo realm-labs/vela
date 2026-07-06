@@ -47,8 +47,6 @@ pub(super) struct CompilerStatementPayload<'ast> {
     _ast: PhantomData<&'ast ()>,
     #[cfg(test)]
     expression_fallbacks: StatementExpressionFallbacks<'ast>,
-    #[cfg(test)]
-    fallback: Option<&'ast Stmt>,
 }
 
 #[cfg(test)]
@@ -400,6 +398,48 @@ impl<'ast> StatementExpressionFallbacks<'ast> {
             },
         }
     }
+
+    fn from_expression(expression: Option<&'ast Expr>) -> Self {
+        let Some(expression) = expression else {
+            return Self::default();
+        };
+        Self {
+            statement_span: Some(expression.span),
+            expression: Some(expression),
+            ..Self::default()
+        }
+    }
+
+    fn from_let_initializer(value: &'ast Expr) -> Self {
+        Self {
+            statement_span: Some(value.span),
+            let_initializer: Some(value),
+            ..Self::default()
+        }
+    }
+
+    fn from_return_value(value: &'ast Expr) -> Self {
+        Self {
+            statement_span: Some(value.span),
+            return_value: Some(value),
+            ..Self::default()
+        }
+    }
+
+    fn from_for_parts(
+        statement_span: Span,
+        index_pattern: Option<&'ast Pattern>,
+        value_pattern: &'ast Pattern,
+        iterable: &'ast Expr,
+    ) -> Self {
+        Self {
+            statement_span: Some(statement_span),
+            for_iterable: Some(iterable),
+            for_index_pattern: index_pattern,
+            for_value_pattern: Some(value_pattern),
+            ..Self::default()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -442,8 +482,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
             _ast: PhantomData,
             #[cfg(test)]
             expression_fallbacks: StatementExpressionFallbacks::default(),
-            #[cfg(test)]
-            fallback: None,
         }
     }
 
@@ -458,28 +496,69 @@ impl<'ast> CompilerStatementPayload<'ast> {
             syntax,
             _ast: PhantomData,
             expression_fallbacks: StatementExpressionFallbacks::from_statement(fallback),
-            fallback,
         }
     }
 
     #[cfg(test)]
     pub(super) fn missing_child_payload_context(
         syntax: SyntaxStatement,
-        fallback: &'ast Stmt,
+        expression_fallback: Option<&'ast Expr>,
     ) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
-            expression_fallbacks: StatementExpressionFallbacks::from_statement(Some(fallback)),
-            fallback: Some(fallback),
+            expression_fallbacks: StatementExpressionFallbacks::from_expression(
+                expression_fallback,
+            ),
         }
     }
 
     #[cfg(test)]
-    pub(super) fn fallback(&self) -> &'ast Stmt {
-        self.fallback
-            .expect("statement payload has no owned statement fallback")
+    pub(super) fn missing_let_child_payload_context(
+        syntax: SyntaxStatement,
+        value: &'ast Expr,
+    ) -> Self {
+        Self {
+            source: None,
+            syntax: Some(syntax),
+            _ast: PhantomData,
+            expression_fallbacks: StatementExpressionFallbacks::from_let_initializer(value),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn missing_return_child_payload_context(
+        syntax: SyntaxStatement,
+        value: &'ast Expr,
+    ) -> Self {
+        Self {
+            source: None,
+            syntax: Some(syntax),
+            _ast: PhantomData,
+            expression_fallbacks: StatementExpressionFallbacks::from_return_value(value),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn missing_for_child_payload_context(
+        syntax: SyntaxStatement,
+        statement_span: Span,
+        index_pattern: Option<&'ast Pattern>,
+        value_pattern: &'ast Pattern,
+        iterable: &'ast Expr,
+    ) -> Self {
+        Self {
+            source: None,
+            syntax: Some(syntax),
+            _ast: PhantomData,
+            expression_fallbacks: StatementExpressionFallbacks::from_for_parts(
+                statement_span,
+                index_pattern,
+                value_pattern,
+                iterable,
+            ),
+        }
     }
 
     #[cfg(test)]
@@ -557,7 +636,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn is_syntax_only(&self) -> bool {
         #[cfg(test)]
         {
-            self.fallback.is_none()
+            self.expression_fallbacks.statement_span.is_none()
         }
         #[cfg(not(test))]
         {
@@ -674,6 +753,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn let_initializer_fallback_for_test(&self) -> Option<&'ast Expr> {
+        self.expression_fallbacks.let_initializer
+    }
+
     pub(super) fn stored_return_value_kind(&self) -> Option<SyntaxExpressionKind> {
         self.syntax
             .as_ref()?
@@ -775,6 +859,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
+    pub(in crate::compiler) fn return_value_fallback_for_test(&self) -> Option<&'ast Expr> {
+        self.expression_fallbacks.return_value
+    }
+
     pub(super) fn block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_block()?;
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))
@@ -798,6 +887,11 @@ impl<'ast> CompilerStatementPayload<'ast> {
             self.expression(),
             expr,
         ))
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn expression_fallback_for_test(&self) -> Option<&'ast Expr> {
+        self.expression_fallbacks.expression
     }
 
     #[cfg(test)]

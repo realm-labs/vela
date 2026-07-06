@@ -396,6 +396,9 @@ The compiler body entry now walks `CompilerStatementPayload` values that pair
 rowan CST statements with temporary legacy fallback statements, so top-level
 raw body statement slices are confined to the payload boundary while statement
 lowering migrates.
+`CompilerStatementPayload` no longer stores or exposes a whole legacy owned
+`Stmt` fallback even in bytecode fixture tests; the remaining test pairing path
+decomposes owned statements into narrow expression, pattern, and span facts.
 Top-level compiler statement dispatch now reads rowan `SyntaxStatementKind`
 from aligned payloads and falls back to the legacy statement category only when
 temporary CST-to-owned association still disagrees during expression lowering.

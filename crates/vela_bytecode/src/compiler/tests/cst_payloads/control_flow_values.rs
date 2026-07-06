@@ -80,9 +80,11 @@ fn main() {
             let statements = control_flow_statement_payloads(&payload.body);
             let statement = statements[0].syntax_statement().expect("CST let").clone();
             let missing_child =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
                     statement,
-                    statements[0].fallback(),
+                    statements[0]
+                        .let_initializer_fallback_for_test()
+                        .expect("let initializer fallback"),
                 );
 
             let error = compiler
@@ -145,9 +147,11 @@ fn main() {
                 .expect("CST return")
                 .clone();
             let missing_child =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
                     statement,
-                    statements[0].fallback(),
+                    statements[0]
+                        .return_value_fallback_for_test()
+                        .expect("return value fallback"),
                 );
 
             let error = compiler
