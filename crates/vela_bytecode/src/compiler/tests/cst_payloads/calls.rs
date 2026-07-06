@@ -963,29 +963,11 @@ fn main() {
     option::some("quest").filter(|value| value.starts_with("q"));
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_arg = cst_parse
-        .tree()
-        .functions()
-        .next()
-        .expect("CST function")
-        .body()
-        .expect("CST body")
-        .statements()
-        .next()
-        .expect("CST statement")
-        .as_expr()
-        .expect("CST expr statement")
-        .expression()
-        .expect("CST expression")
-        .as_call()
-        .expect("CST call")
-        .arguments()
-        .into_iter()
-        .next()
-        .expect("CST callback argument");
+    let arg_payload = first_call_argument_payload_from_cst(source, cst_text);
     assert!(
-        cst_arg
+        arg_payload
+            .syntax_argument()
+            .expect("CST callback argument")
             .expression()
             .expect("CST lambda argument")
             .as_lambda()
@@ -1003,7 +985,6 @@ fn main() {
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
         panic!("expected callback method call");
     };
-    let arg_payload = body_payloads::CompilerArgumentPayload::syntax(source, cst_arg);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler

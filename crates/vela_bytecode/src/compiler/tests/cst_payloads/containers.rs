@@ -666,26 +666,7 @@ fn main() {
     };
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_entry = cst_parse
-        .tree()
-        .functions()
-        .next()
-        .expect("CST function")
-        .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST let statement")
-        .as_let()
-        .expect("CST let")
-        .initializer()
-        .expect("CST initializer")
-        .as_map()
-        .expect("CST map")
-        .entries()
-        .next()
-        .expect("CST map entry");
+    let missing = first_map_entry_payload_from_cst(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_map = container_statement_payloads(&legacy_payload.body)[0]
@@ -694,7 +675,6 @@ fn main() {
     let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
         panic!("expected legacy map fallback");
     };
-    let missing = body_payloads::CompilerMapEntryPayload::syntax(source, cst_entry);
 
     assert_eq!(missing.syntax_key_name().as_deref(), Some("key"));
     assert!(!missing.has_value_syntax());
@@ -872,27 +852,7 @@ fn main() {
     };
 }
 "#;
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, cst_text);
-    let cst_field = cst_parse
-        .tree()
-        .functions()
-        .next()
-        .expect("CST function")
-        .body()
-        .expect("CST function body")
-        .statements()
-        .next()
-        .expect("CST let statement")
-        .as_let()
-        .expect("CST let")
-        .initializer()
-        .expect("CST initializer")
-        .as_record()
-        .expect("CST record")
-        .fields()
-        .into_iter()
-        .next()
-        .expect("CST record field");
+    let missing = first_record_field_payload_from_cst(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_record = container_statement_payloads(&legacy_payload.body)[0]
@@ -905,7 +865,6 @@ fn main() {
     else {
         panic!("expected legacy record fallback");
     };
-    let missing = body_payloads::CompilerRecordFieldPayload::syntax(source, cst_field);
 
     assert_eq!(missing.syntax_label_name().as_deref(), Some("first"));
     assert!(!missing.has_value_syntax());

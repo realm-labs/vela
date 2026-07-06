@@ -25,12 +25,18 @@ mod match_payloads;
 mod param_defaults;
 mod path_expressions;
 mod pattern_counts;
+mod payload_extractors;
 mod shape_inference;
 mod source_identity;
 mod statement_bodies;
 mod statement_counts;
 mod typed_call_args;
 mod wrappers;
+
+use self::payload_extractors::{
+    first_call_argument_payload_from_cst, first_map_entry_payload_from_cst,
+    first_record_field_payload_from_cst,
+};
 
 fn with_cst_payload_compiler(
     source: &str,
@@ -80,35 +86,6 @@ fn cst_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
     paired_statement_payloads_for_body(body.syntax_payload().source, body)
-}
-
-fn first_call_argument_payload_from_cst(
-    source: SourceId,
-    text: &str,
-) -> body_payloads::CompilerArgumentPayload {
-    let cst_parse = vela_syntax::parse::parse_source_with_id(source, text);
-    let cst_call = cst_parse
-        .tree()
-        .functions()
-        .next()
-        .expect("CST function")
-        .body()
-        .expect("CST body")
-        .statements()
-        .next()
-        .expect("CST statement")
-        .as_expr()
-        .expect("CST expression statement")
-        .expression()
-        .expect("CST expression");
-    let payload =
-        body_payloads::CompilerExpressionPayload::from_syntax(Some(source), Some(cst_call));
-    payload
-        .call_argument_payloads()
-        .expect("CST call argument payloads")
-        .into_iter()
-        .next()
-        .expect("CST call argument")
 }
 
 fn cst_payload_compiler_facts_with_options<'registry>(

@@ -686,14 +686,6 @@ impl CompilerInterpolationPayload {
 }
 
 impl CompilerMapEntryPayload {
-    #[cfg(test)]
-    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxMapEntry) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-        }
-    }
-
     pub(in crate::compiler) fn syntax_key_name(&self) -> Option<String> {
         self.source?;
         let key = self.syntax.as_ref()?.key()?;
@@ -750,14 +742,6 @@ impl CompilerMapEntryPayload {
 }
 
 impl CompilerRecordFieldPayload {
-    #[cfg(test)]
-    pub(in crate::compiler) fn syntax(source: SourceId, syntax: SyntaxRecordExprField) -> Self {
-        Self {
-            source: Some(source),
-            syntax: Some(syntax),
-        }
-    }
-
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
         self.source?;
         self.syntax
