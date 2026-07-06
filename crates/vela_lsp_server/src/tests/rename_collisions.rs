@@ -1,12 +1,15 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::tests::{
     LspServer, handle_notification, handle_request, notification_value, response_value,
 };
+
+static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 fn lsp_rename_rejects_module_declaration_collision() {
@@ -367,13 +370,15 @@ fn line(text: &str, line: usize) -> &str {
 }
 
 fn temp_workspace() -> PathBuf {
+    let id = NEXT_WORKSPACE_ID.fetch_add(1, Ordering::Relaxed);
     let suffix = match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(duration) => duration.as_nanos(),
         Err(error) => panic!("system time should be after UNIX_EPOCH: {error}"),
     };
     let root = std::env::temp_dir().join(format!(
-        "vela_lsp_rename_collision_{}_{}",
+        "vela_lsp_rename_collision_{}_{}_{}",
         std::process::id(),
+        id,
         suffix
     ));
     fs::create_dir_all(root.join("scripts").join("game"))
