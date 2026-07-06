@@ -480,7 +480,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             items
                 .iter()
                 .zip(self.array_element_payloads()?)
-                .map(|(fallback, payload)| payload.value_expression_payload(fallback))
+                .map(|(fallback, payload)| payload.value_expression_payload_for_test(fallback))
                 .collect(),
         )
     }
@@ -635,6 +635,13 @@ impl CompilerArrayElementPayload {
     }
 
     pub(in crate::compiler) fn value_expression_payload<'ast>(
+        &self,
+    ) -> CompilerExpressionPayload<'ast> {
+        CompilerExpressionPayload::from_syntax(self.source, self.syntax.clone())
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
         &self,
         fallback: &'ast Expr,
     ) -> CompilerExpressionPayload<'ast> {

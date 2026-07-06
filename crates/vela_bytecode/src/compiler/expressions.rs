@@ -576,7 +576,8 @@ impl Compiler<'_, '_> {
                         })
                     })
                     .transpose()?;
-                let value_payload = payload.map(|payload| payload.value_expression_payload(item));
+                let value_payload =
+                    payload.map(CompilerArrayElementPayload::value_expression_payload);
                 if value_payload
                     .as_ref()
                     .is_some_and(|payload| payload.syntax_expression().is_none())
