@@ -177,10 +177,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_paren()?.expression();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            return Some(self.child_payload_for_test(syntax, Some(fallback)));
-        }
         Some(self.child_payload(syntax))
     }
 
