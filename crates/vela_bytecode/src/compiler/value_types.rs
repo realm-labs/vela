@@ -11,7 +11,6 @@ use vela_syntax::ast::{
 };
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-use crate::compiler::expression_checks::payload_aligns_with_expr_span;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) enum RuntimeTypeFact {
@@ -294,7 +293,7 @@ fn static_expr_type_with_payload(
     local_type_named: &dyn Fn(&str) -> Option<RuntimeTypeFact>,
 ) -> StaticExprType {
     let payload_matches_expr = payload
-        .map(|payload| payload_aligns_with_expr_span(payload, expr))
+        .map(|payload| payload_matches_static_type_expression(payload, expr))
         .unwrap_or(true);
     let aligned_payload = payload.filter(|_| payload_matches_expr);
 
@@ -428,6 +427,49 @@ fn static_expr_type_with_payload(
         }
         _ => StaticExprType::Dynamic,
     }
+}
+
+fn payload_matches_static_type_expression(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    let Some(payload_span) = payload.syntax_span() else {
+        return false;
+    };
+    if !spans_overlap(payload_span, expr.span) {
+        return false;
+    }
+    let Some(payload_kind) = payload.stored_syntax_kind() else {
+        return true;
+    };
+    let Some(expr_kind) = static_type_expression_kind(expr) else {
+        return false;
+    };
+    (payload_kind == expr_kind || payload_kind == SyntaxExpressionKind::Paren)
+        && (expr_kind != SyntaxExpressionKind::Path
+            || payload.syntax_is_self() == matches!(expr.kind, ExprKind::SelfValue))
+}
+
+fn static_type_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+    match &expr.kind {
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
+            Some(SyntaxExpressionKind::Literal)
+        }
+        ExprKind::Array(_) => Some(SyntaxExpressionKind::Array),
+        ExprKind::Map(_) => Some(SyntaxExpressionKind::Map),
+        ExprKind::Lambda { .. } => Some(SyntaxExpressionKind::Lambda),
+        ExprKind::Binary { .. } => Some(SyntaxExpressionKind::Binary),
+        ExprKind::Try(_) => Some(SyntaxExpressionKind::Try),
+        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
+        ExprKind::Block(_) => Some(SyntaxExpressionKind::Block),
+        ExprKind::If(_) => Some(SyntaxExpressionKind::If),
+        ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
+        _ => None,
+    }
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 fn static_syntax_expr_type(

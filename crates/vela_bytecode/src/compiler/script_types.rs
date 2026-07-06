@@ -4,10 +4,9 @@ use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, ExprKind, SyntaxExpression};
+use vela_syntax::ast::{Expr, ExprKind, SyntaxExpression, SyntaxExpressionKind};
 
 use super::body_payloads::CompilerExpressionPayload;
-use super::expression_checks::payload_aligns_with_expr_span;
 use super::patterns::enum_variant_path;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -183,7 +182,7 @@ fn expression_script_fact_from_payload(
     local_fact_at_span: &impl Fn(Span) -> Option<ScriptTypeFact>,
     local_fact_named: &impl Fn(&str) -> Option<ScriptTypeFact>,
 ) -> Option<ScriptTypeFact> {
-    if !payload_aligns_with_expr_span(payload, expr) {
+    if !payload_matches_script_fact_expression(payload, expr) {
         return None;
     }
 
@@ -193,6 +192,40 @@ fn expression_script_fact_from_payload(
         local_fact_at_span,
         local_fact_named,
     )
+}
+
+fn payload_matches_script_fact_expression(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    let Some(payload_span) = payload.syntax_span() else {
+        return false;
+    };
+    if !spans_overlap(payload_span, expr.span) {
+        return false;
+    }
+    let Some(payload_kind) = payload.stored_syntax_kind() else {
+        return true;
+    };
+    let Some(expr_kind) = script_fact_expression_kind(expr) else {
+        return false;
+    };
+    (payload_kind == expr_kind || payload_kind == SyntaxExpressionKind::Paren)
+        && (expr_kind != SyntaxExpressionKind::Path
+            || payload.syntax_is_self() == matches!(expr.kind, ExprKind::SelfValue))
+}
+
+fn script_fact_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+    match &expr.kind {
+        ExprKind::Record { .. } => Some(SyntaxExpressionKind::Record),
+        ExprKind::Call { .. } => Some(SyntaxExpressionKind::Call),
+        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
+        _ => None,
+    }
+}
+
+fn spans_overlap(left: Span, right: Span) -> bool {
+    left.start < right.end && right.start < left.end
 }
 
 fn expression_script_fact_from_payload_syntax(

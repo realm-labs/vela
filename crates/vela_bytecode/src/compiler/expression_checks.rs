@@ -318,20 +318,6 @@ pub(in crate::compiler) fn payload_aligns_with_expr(
     }
 }
 
-pub(in crate::compiler) fn payload_aligns_with_expr_span(
-    payload: &CompilerExpressionPayload<'_>,
-    expr: &Expr,
-) -> bool {
-    if !payload_syntax_overlaps_expr(payload, expr) {
-        return false;
-    }
-    #[cfg(test)]
-    if !payload.matches_paired_expr(expr) {
-        return false;
-    }
-    true
-}
-
 pub(in crate::compiler) fn arithmetic_binary_operator(op: BinaryOp) -> bool {
     matches!(
         op,

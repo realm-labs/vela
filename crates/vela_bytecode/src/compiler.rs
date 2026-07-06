@@ -15,6 +15,7 @@ mod expression_checks;
 mod expressions;
 mod field_slots;
 mod function_payloads;
+mod host_path_payload_guards;
 mod host_paths;
 mod lambdas;
 mod map_literals;
