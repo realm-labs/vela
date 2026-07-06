@@ -283,7 +283,8 @@ method failures. CST statement-level constant fast paths now leave block/if/matc
 expressions to control-flow lowering so `return` inside block initializers is
 preserved. Full workspace validation now reaches the remaining `vela_vm`
 CST/runtime failure set after LSP validation passes; `cargo test -p vela_vm --lib`
-currently has 6 remaining failures.
+currently has 5 remaining failures after CST typed call arguments preserve
+unsuffixed numeric literal facts for contextual native conversion parameters.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload

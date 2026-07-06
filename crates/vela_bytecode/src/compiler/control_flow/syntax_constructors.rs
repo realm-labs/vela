@@ -15,7 +15,7 @@ use crate::compiler::schema_defaults::{
     unknown_enum_variant_diagnostic,
 };
 use crate::compiler::value_types::{
-    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+    ExpectedTypeOutcome, RuntimeTypeFact, TypeContractContext, check_expected_type,
 };
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{
@@ -122,10 +122,7 @@ impl Compiler<'_, '_> {
         let context = TypeContractContext::Field {
             name: field_name.to_owned(),
         };
-        let static_type = self
-            .syntax_value_type_for_expression(Some(source), expression)
-            .map(StaticExprType::Exact)
-            .unwrap_or(StaticExprType::Dynamic);
+        let static_type = self.syntax_static_type_for_expression(Some(source), expression);
         let outcome = check_expected_type(static_type, expected, span, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let Some(literal) = expression_syntax_literal(expression)

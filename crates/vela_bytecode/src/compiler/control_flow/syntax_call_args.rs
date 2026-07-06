@@ -12,7 +12,7 @@ use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::record_shapes::{ValueShape, callback_param_shapes};
 use crate::compiler::value_types::{
-    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, StaticExprType, TypeContractContext,
+    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, TypeContractContext,
     check_expected_type, type_hint_value_type,
 };
 use crate::compiler::{
@@ -302,10 +302,7 @@ impl Compiler<'_, '_> {
         };
         let expected_is_function =
             expected == RuntimeTypeFact::Standard(StandardRuntimeType::Function);
-        let static_type = self
-            .syntax_value_type_for_expression(Some(source), expression)
-            .map(StaticExprType::Exact)
-            .unwrap_or(StaticExprType::Dynamic);
+        let static_type = self.syntax_static_type_for_expression(Some(source), expression);
         let outcome = check_expected_type(static_type, expected, span, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let Some(literal) = expression_syntax_literal(expression)
@@ -442,10 +439,7 @@ impl Compiler<'_, '_> {
         };
         let expected_is_function =
             expected == RuntimeTypeFact::Standard(StandardRuntimeType::Function);
-        let static_type = self
-            .syntax_value_type_for_expression(Some(source), expression)
-            .map(StaticExprType::Exact)
-            .unwrap_or(StaticExprType::Dynamic);
+        let static_type = self.syntax_static_type_for_expression(Some(source), expression);
         let outcome = check_expected_type(static_type, expected, span, context.clone())?;
         if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
             && let Some(literal) = expression_syntax_literal(expression)
