@@ -683,18 +683,15 @@ fn main() {
                 .expect("CST call argument");
             let fallback_literal = statements[1]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
-                .expect("fallback call argument payloads")
-                .into_iter()
-                .next()
-                .expect("fallback call argument");
+                .expect("fallback call expression payload");
+            let fallback_expr = call_argument_fallback(&fallback_literal, 0);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
                     .expect("CST literal expression")
                     .clone(),
-                fallback_literal.fallback(),
+                fallback_expr,
             );
 
             let literal =

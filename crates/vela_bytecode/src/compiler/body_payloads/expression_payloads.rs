@@ -4,7 +4,7 @@ use vela_syntax::ast::{
     SyntaxMapEntry, SyntaxRecordExprField,
 };
 #[cfg(test)]
-use vela_syntax::ast::{Expr, ExprKind, InterpolatedStringPart, MapEntry, RecordField};
+use vela_syntax::ast::{Expr, ExprKind};
 #[cfg(test)]
 use vela_syntax::ast::{
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
@@ -343,24 +343,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn call_argument_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let ExprKind::Call { args, .. } = &self.fallback?.kind else {
-            return None;
-        };
         Some(
-            args.iter()
-                .zip(self.call_argument_payloads()?)
-                .map(|(fallback, payload)| {
-                    CompilerExpressionPayload::from_fallback(
-                        payload.source,
-                        payload.source.and_then(|_| {
-                            payload
-                                .syntax
-                                .as_ref()
-                                .and_then(|argument| argument.expression())
-                        }),
-                        &fallback.value,
-                    )
-                })
+            self.call_argument_payloads()?
+                .into_iter()
+                .map(|payload| payload.value_expression_payload())
                 .collect(),
         )
     }
@@ -466,14 +452,10 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn array_element_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let ExprKind::Array(items) = &self.fallback?.kind else {
-            return None;
-        };
         Some(
-            items
-                .iter()
-                .zip(self.array_element_payloads()?)
-                .map(|(fallback, payload)| payload.value_expression_payload_for_test(fallback))
+            self.array_element_payloads()?
+                .into_iter()
+                .map(|payload| payload.value_expression_payload())
                 .collect(),
         )
     }
@@ -500,25 +482,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn map_entry_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let entries = self.raw_map_entries()?;
-        let payloads = self.map_entry_payloads()?;
         Some(
-            entries
-                .iter()
-                .zip(payloads)
-                .map(|(fallback, payload)| {
-                    payload.value_expression_payload_for_test(&fallback.value)
-                })
+            self.map_entry_payloads()?
+                .into_iter()
+                .map(|payload| payload.value_expression_payload())
                 .collect(),
         )
-    }
-
-    #[cfg(test)]
-    fn raw_map_entries(&self) -> Option<&'ast [MapEntry]> {
-        let ExprKind::Map(entries) = &self.fallback?.kind else {
-            return None;
-        };
-        Some(entries)
     }
 
     pub(in crate::compiler) fn record_field_payloads(
@@ -546,25 +515,12 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     pub(in crate::compiler) fn record_field_value_payloads(
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        let fields = self.raw_record_fields()?;
-        let payloads = self.record_field_payloads()?;
         Some(
-            fields
-                .iter()
-                .zip(payloads)
-                .filter_map(|(fallback, payload)| {
-                    payload.value_expression_payload_for_test(fallback.value.as_ref()?)
-                })
+            self.record_field_payloads()?
+                .into_iter()
+                .filter_map(|payload| payload.value_expression_payload())
                 .collect(),
         )
-    }
-
-    #[cfg(test)]
-    fn raw_record_fields(&self) -> Option<&'ast [RecordField]> {
-        let ExprKind::Record { fields, .. } = &self.fallback?.kind else {
-            return None;
-        };
-        Some(fields)
     }
 
     pub(in crate::compiler) fn interpolated_expression_payloads(
@@ -592,26 +548,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
         Some(
-            self.raw_interpolated_string_expressions()?
+            self.interpolated_expression_payloads()?
                 .into_iter()
-                .zip(self.interpolated_expression_payloads()?)
-                .map(|(fallback, payload)| payload.value_expression_payload_for_test(fallback))
-                .collect(),
-        )
-    }
-
-    #[cfg(test)]
-    fn raw_interpolated_string_expressions(&self) -> Option<Vec<&'ast Expr>> {
-        let ExprKind::InterpolatedString(parts) = &self.fallback?.kind else {
-            return None;
-        };
-        Some(
-            parts
-                .iter()
-                .filter_map(|part| match part {
-                    InterpolatedStringPart::Text(_) => None,
-                    InterpolatedStringPart::Expr(expr) => Some(expr),
-                })
+                .map(|payload| payload.value_expression_payload())
                 .collect(),
         )
     }
@@ -634,14 +573,6 @@ impl CompilerArrayElementPayload {
     ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_syntax(self.source, self.syntax.clone())
     }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
-        &self,
-        fallback: &'ast Expr,
-    ) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::from_fallback(self.source, self.syntax.clone(), fallback)
-    }
 }
 
 impl CompilerInterpolationPayload {
@@ -655,14 +586,6 @@ impl CompilerInterpolationPayload {
         &self,
     ) -> CompilerExpressionPayload<'ast> {
         CompilerExpressionPayload::from_syntax(self.source, self.syntax.clone())
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
-        &self,
-        fallback: &'ast Expr,
-    ) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::from_fallback(self.source, self.syntax.clone(), fallback)
     }
 }
 
@@ -707,19 +630,6 @@ impl CompilerMapEntryPayload {
                 .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
         )
     }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
-        &self,
-        fallback: &'ast Expr,
-    ) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.source
-                .and_then(|_| self.syntax.as_ref().and_then(SyntaxMapEntry::value)),
-            fallback,
-        )
-    }
 }
 
 impl CompilerRecordFieldPayload {
@@ -752,22 +662,6 @@ impl CompilerRecordFieldPayload {
                     .as_ref()
                     .and_then(SyntaxRecordExprField::expression)
             }),
-        ))
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
-        &self,
-        fallback: &'ast Expr,
-    ) -> Option<CompilerExpressionPayload<'ast>> {
-        Some(CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.source.and_then(|_| {
-                self.syntax
-                    .as_ref()
-                    .and_then(SyntaxRecordExprField::expression)
-            }),
-            fallback,
         ))
     }
 }

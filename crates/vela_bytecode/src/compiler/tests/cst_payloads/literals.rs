@@ -47,12 +47,13 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_literal = first_call_argument_value_payload(&payload.body, 0);
+    let (_legacy_literal, legacy_expr) =
+        first_call_argument_value_payload_and_fallback(&payload.body, 0);
     let missing_literal =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_literal.fallback());
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
 
     let error = compiler
-        .compile_expr_with_payload(legacy_literal.fallback(), Some(&missing_literal))
+        .compile_expr_with_payload(legacy_expr, Some(&missing_literal))
         .expect_err("missing CST literal payload must not compile legacy literal");
 
     assert!(matches!(
@@ -75,13 +76,12 @@ fn main(input) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let literal = first_call_argument_value_payload(&payload.body, 0);
+    let (_literal, literal_expr) = first_call_argument_value_payload_and_fallback(&payload.body, 0);
     let missing_literal =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, literal.fallback());
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, literal_expr);
 
     assert_eq!(
-        compiler
-            .static_type_for_expr_with_payload(missing_literal.fallback(), Some(&missing_literal),),
+        compiler.static_type_for_expr_with_payload(literal_expr, Some(&missing_literal),),
         value_types::StaticExprType::Dynamic,
         "missing source-backed CST payload must not use the legacy literal type"
     );
@@ -101,15 +101,16 @@ fn main() {
 }
 "#,
         |compiler, payload| {
-            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
-            let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
+            let (cst_literal, _) = first_call_argument_value_payload_and_fallback(&payload.body, 0);
+            let (_legacy_literal, legacy_expr) =
+                first_call_argument_value_payload_and_fallback(&payload.body, 1);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
                     .expect("CST expression")
                     .clone(),
-                legacy_literal.fallback(),
+                legacy_expr,
             );
 
             assert_eq!(
@@ -153,20 +154,22 @@ fn main(input) {
 }
 "#,
         |compiler, payload| {
-            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
-            let non_literal = first_call_argument_value_payload(&payload.body, 1);
-            let legacy_literal = first_call_argument_value_payload(&payload.body, 2);
+            let (_cst_literal, cst_expr) =
+                first_call_argument_value_payload_and_fallback(&payload.body, 0);
+            let (non_literal, _) = first_call_argument_value_payload_and_fallback(&payload.body, 1);
+            let (_legacy_literal, legacy_expr) =
+                first_call_argument_value_payload_and_fallback(&payload.body, 2);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 non_literal
                     .syntax_expression()
                     .expect("non-literal CST expression")
                     .clone(),
-                cst_literal.fallback(),
+                cst_expr,
             );
 
             let error = compiler
-                .compile_expr_with_payload(legacy_literal.fallback(), Some(&mismatched_payload))
+                .compile_expr_with_payload(legacy_expr, Some(&mismatched_payload))
                 .expect_err("mismatched literal payload should not use the legacy literal");
 
             assert_eq!(
@@ -191,15 +194,16 @@ fn main(input) {
 }
 "#,
         |_compiler, payload| {
-            let cst_literal = first_call_argument_value_payload(&payload.body, 0);
-            let fallback_path = first_call_argument_value_payload(&payload.body, 1);
+            let (cst_literal, _) = first_call_argument_value_payload_and_fallback(&payload.body, 0);
+            let (_fallback_path, fallback_expr) =
+                first_call_argument_value_payload_and_fallback(&payload.body, 1);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
                     .expect("CST literal expression")
                     .clone(),
-                fallback_path.fallback(),
+                fallback_expr,
             );
 
             assert_eq!(
@@ -212,7 +216,7 @@ fn main(input) {
                         .syntax_expression()
                         .expect("CST literal expression")
                         .clone(),
-                    fallback_path.fallback(),
+                    fallback_expr,
                 );
             assert_eq!(missing_source_literal.syntax_literal(), None);
         },
@@ -237,20 +241,21 @@ fn take(value) {
 }
 "#,
         |compiler, payload| {
-            let cst_field = first_call_argument_value_payload(&payload.body, 0);
-            let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
+            let (cst_field, _) = first_call_argument_value_payload_and_fallback(&payload.body, 0);
+            let (_legacy_literal, legacy_expr) =
+                first_call_argument_value_payload_and_fallback(&payload.body, 1);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_field
                     .syntax_expression()
                     .expect("CST field expression")
                     .clone(),
-                legacy_literal.fallback(),
+                legacy_expr,
             );
 
             compiler
                 .compile_expr_with_expected_type_and_payload(
-                    legacy_literal.fallback(),
+                    legacy_expr,
                     RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64),
                     value_types::TypeContractContext::TypedLet {
                         name: "value".to_owned(),
@@ -456,17 +461,21 @@ fn literal_payload_value(
     payload.syntax_literal()
 }
 
-fn first_call_argument_value_payload<'ast>(
+fn first_call_argument_value_payload_and_fallback<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
     statement_index: usize,
-) -> body_payloads::CompilerExpressionPayload<'ast> {
-    literal_statement_payloads(body)[statement_index]
+) -> (body_payloads::CompilerExpressionPayload<'ast>, &'ast Expr) {
+    let call = literal_statement_payloads(body)[statement_index]
         .expression_payload()
-        .and_then(|payload| payload.call_argument_value_payloads())
+        .expect("call expression payload");
+    let payload = call
+        .call_argument_value_payloads()
         .expect("call argument payloads")
         .into_iter()
         .next()
-        .expect("call argument")
+        .expect("call argument");
+    let fallback = call_argument_fallback(&call, 0);
+    (payload, fallback)
 }
 
 fn literal_statement_payloads<'ast>(

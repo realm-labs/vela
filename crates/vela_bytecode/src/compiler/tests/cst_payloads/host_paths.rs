@@ -209,13 +209,16 @@ fn main(player: Player) {
         Some(registry.compile_view()),
     );
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let legacy_path = paired_statement_payloads_for_body(source, &payload.body)[0]
+    let call = paired_statement_payloads_for_body(source, &payload.body)[0]
         .expression_payload()
-        .and_then(|payload| payload.call_argument_value_payloads())
+        .expect("call expression payload");
+    let _legacy_path = call
+        .call_argument_value_payloads()
         .expect("host path call argument payloads")
         .remove(0);
+    let legacy_expr = call_argument_fallback(&call, 0);
     let missing_path =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
     let compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
         payload.body.clone(),
@@ -228,7 +231,7 @@ fn main(player: Player) {
 
     assert!(
         compiler
-            .resolve_host_path_with_payload(legacy_path.fallback(), Some(&missing_path))
+            .resolve_host_path_with_payload(legacy_expr, Some(&missing_path))
             .is_none(),
         "missing source-backed CST path payload must not resolve the legacy host path"
     );

@@ -83,6 +83,16 @@ fn body_has_no_statement_fallbacks(body: &body_payloads::CompilerBodyPayload<'_>
         .all(body_payloads::CompilerStatementPayload::is_syntax_only)
 }
 
+fn call_argument_fallback<'ast>(
+    call_payload: &body_payloads::CompilerExpressionPayload<'ast>,
+    index: usize,
+) -> &'ast Expr {
+    let ExprKind::Call { args, .. } = &call_payload.fallback().kind else {
+        panic!("expected legacy call fallback");
+    };
+    &args[index].value
+}
+
 fn cst_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {

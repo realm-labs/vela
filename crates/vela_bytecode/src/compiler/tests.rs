@@ -6,8 +6,8 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, Stmt, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxStatementKind,
 };
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
@@ -830,13 +830,10 @@ fn assert_cst_let_initializer_block_tail_match_arm_body_payloads(
 fn cst_match_arm_body_texts_from_payload(
     payload: &body_payloads::CompilerExpressionPayload<'_>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
-    let ExprKind::Match(match_expr) = &payload.fallback().kind else {
-        return Vec::new();
-    };
     let Some(arms) = payload.match_arm_payloads() else {
         return Vec::new();
     };
-    cst_match_arm_body_texts(match_expr, arms)
+    cst_match_arm_body_texts(arms)
 }
 
 fn cst_match_arm_body_texts_from_statement(
@@ -845,29 +842,18 @@ fn cst_match_arm_body_texts_from_statement(
     let Some(payload) = statement.expression_payload() else {
         return Vec::new();
     };
-    let expr = payload.fallback();
-    let ExprKind::Match(match_expr) = &expr.kind else {
-        return Vec::new();
-    };
     let Some(arms) = payload.match_arm_payloads() else {
         return Vec::new();
     };
-    cst_match_arm_body_texts(match_expr.as_ref(), arms)
+    cst_match_arm_body_texts(arms)
 }
 
 fn cst_match_arm_body_texts(
-    match_expr: &MatchExpr,
     arms: Vec<body_payloads::CompilerMatchArmPayload>,
 ) -> Vec<Vec<(SyntaxStatementKind, String)>> {
-    match_expr
-        .arms
-        .iter()
-        .zip(arms)
-        .filter_map(|(fallback_arm, arm)| {
+    arms.into_iter()
+        .filter_map(|arm| {
             let _syntax_arm = arm.syntax_arm()?;
-            let ExprKind::Block(_) = &fallback_arm.body.kind else {
-                return None;
-            };
             let body = arm.body_block_payload()?;
             Some(cst_statement_texts(&body))
         })

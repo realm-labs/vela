@@ -46,16 +46,19 @@ fn main(value) {
 "#;
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
-    let legacy_path = path_statement_payloads(&payload.body)[0]
+    let call = path_statement_payloads(&payload.body)[0]
         .expression_payload()
-        .and_then(|payload| payload.call_argument_value_payloads())
+        .expect("call expression payload");
+    let _legacy_path = call
+        .call_argument_value_payloads()
         .expect("call argument payloads")
         .remove(0);
+    let legacy_expr = call_argument_fallback(&call, 0);
     let missing_path =
-        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_path.fallback());
+        body_payloads::CompilerExpressionPayload::missing_syntax(source, legacy_expr);
 
     let error = compiler
-        .compile_expr_with_payload(legacy_path.fallback(), Some(&missing_path))
+        .compile_expr_with_payload(legacy_expr, Some(&missing_path))
         .expect_err("missing CST path payload must not compile legacy path");
 
     assert!(matches!(
@@ -88,43 +91,43 @@ fn make(value) {
     return value;
 }
 "#,
-        |compiler, payload| {
-            let fallback_statement = path_statement_payloads(&payload.body)[1].fallback();
-            let statements = body_payloads::CompilerBodyPayload::paired_statement_payloads_for_test(
-                source,
-                cst_body,
-                fallback_statements_for_body(source, &payload.body),
-            );
-            compiler
-                .compile_statement_payload_for_test(&statements[0])
-                .expect("legacy local should compile");
-            let syntax_initializer = statements[1]
-                .syntax_statement()
-                .and_then(|statement| statement.as_let())
-                .and_then(|statement| statement.initializer())
-                .expect("path initializer syntax");
-            let vela_syntax::ast::StmtKind::Let {
-                value: Some(fallback_initializer),
-                ..
-            } = &fallback_statement.kind
-            else {
-                panic!("expected fallback let initializer");
-            };
-            let source_less_path =
-                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
-                    syntax_initializer,
-                    fallback_initializer,
+        |compiler, legacy_payload| {
+            let legacy_statement = path_statement_payloads(&legacy_payload.body)[1].fallback();
+            let cst_statement = cst_body
+                .statements()
+                .nth(1)
+                .expect("CST selected statement");
+            let mismatched_statement =
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(
+                    cst_statement,
+                    legacy_statement,
                 );
+            let mismatched_payload = mismatched_statement
+                .let_initializer_expression_payload()
+                .expect("CST path initializer");
+            assert_eq!(mismatched_payload.syntax_path_segments(), None);
 
-            let error = compiler
-                .compile_expr_with_payload(fallback_initializer, Some(&source_less_path))
-                .expect_err("CST path without segments must not compile legacy path");
-
+            let fact = script_types::expression_script_fact_with_payload(
+                mismatched_payload.fallback(),
+                Some(&mismatched_payload),
+                |_| None,
+                |_| None,
+                |name| match name {
+                    "legacy_value" => Some(script_types::ScriptTypeFact::new("LegacyBox")),
+                    _ => None,
+                },
+            );
             assert_eq!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST expression payload"),
-                "{:?}",
-                error.kind
+                fact, None,
+                "path facts must not use legacy fallback segments when CST segments differ"
+            );
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(
+                    mismatched_payload.fallback(),
+                    Some(&mismatched_payload),
+                ),
+                None,
+                "value shapes must not use legacy fallback segments when CST segments differ"
             );
         },
     );
@@ -143,15 +146,18 @@ fn main(value) {
 }
 "#,
         |_, payload| {
-            let path = path_statement_payloads(&payload.body)[0]
+            let call = path_statement_payloads(&payload.body)[0]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
+                .expect("call expression payload");
+            let path = call
+                .call_argument_value_payloads()
                 .expect("call argument payloads")
                 .remove(0);
+            let fallback = call_argument_fallback(&call, 0);
             let missing_source =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     path.syntax_expression().expect("path syntax").clone(),
-                    path.fallback(),
+                    fallback,
                 );
 
             assert_eq!(missing_source.syntax_path_segments(), None);
@@ -174,22 +180,27 @@ fn main(value) {
 "#,
         |compiler, payload| {
             let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
-            let path = statements[0]
+            let path_call = statements[0]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
+                .expect("path call payload");
+            let path = path_call
+                .call_argument_value_payloads()
                 .expect("path call argument payloads")
                 .remove(0);
-            let self_value = statements[1]
+            let self_call = statements[1]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
+                .expect("self call payload");
+            let _self_value = self_call
+                .call_argument_value_payloads()
                 .expect("self call argument payloads")
                 .remove(0);
+            let self_fallback = call_argument_fallback(&self_call, 0);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 path.syntax_expression()
                     .expect("path CST expression")
                     .clone(),
-                self_value.fallback(),
+                self_fallback,
             );
             assert_eq!(
                 mismatched_payload.syntax_path_segments(),
@@ -198,7 +209,7 @@ fn main(value) {
             assert!(!mismatched_payload.syntax_is_self());
 
             let error = compiler
-                .compile_expr_with_payload(self_value.fallback(), Some(&mismatched_payload))
+                .compile_expr_with_payload(self_fallback, Some(&mismatched_payload))
                 .expect_err("normal path payload must not compile legacy self fallback");
 
             assert_eq!(
@@ -409,33 +420,24 @@ fn legacy_path(consumer, legacy) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (cst_payload, _, _) = semantic.function("cst_path").expect("cst function");
     let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
-    let cst_return = path_statement_payloads(&cst_payload.body)
-        .into_iter()
-        .flat_map(|statement| {
-            statement
-                .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
-                .unwrap_or_default()
-        })
-        .find(|payload| payload.syntax_path_segments() == Some(vec!["cst".to_owned()]))
-        .expect("CST path argument expression");
-    let legacy_return = path_statement_payloads(&legacy_payload.body)
-        .into_iter()
-        .flat_map(|statement| {
-            statement
-                .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
-                .unwrap_or_default()
-        })
-        .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
-        .expect("legacy path argument expression");
+    let cst_call = path_statement_payloads(&cst_payload.body)[0]
+        .expression_payload()
+        .expect("CST call expression");
+    let cst_return = cst_call
+        .call_argument_value_payloads()
+        .expect("CST call argument payloads")
+        .remove(0);
+    let legacy_call = path_statement_payloads(&legacy_payload.body)[0]
+        .expression_payload()
+        .expect("legacy call expression");
+    let legacy_expr = call_argument_fallback(&legacy_call, 0);
     let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_return
             .syntax_expression()
             .expect("path CST expression")
             .clone(),
-        legacy_return.fallback(),
+        legacy_expr,
     );
 
     let fact = script_types::expression_script_fact_with_payload(
@@ -490,11 +492,14 @@ fn main() {
                 .and_then(|payload| payload.call_argument_value_payloads())
                 .expect("CST path call argument payloads")
                 .remove(0);
-            let legacy_path = statements[3]
+            let legacy_call = statements[3]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
+                .expect("legacy path call payload");
+            let _legacy_path = legacy_call
+                .call_argument_value_payloads()
                 .expect("legacy path call argument payloads")
                 .remove(0);
+            let legacy_expr = call_argument_fallback(&legacy_call, 0);
             let cst_block = statements[4]
                 .let_initializer_expression_payload()
                 .expect("CST block initializer");
@@ -505,7 +510,7 @@ fn main() {
                     .syntax_expression()
                     .expect("path CST expression")
                     .clone(),
-                legacy_path.fallback(),
+                legacy_expr,
             );
             assert_eq!(
                 compiler.static_type_for_expr_with_payload(
@@ -533,7 +538,7 @@ fn main() {
                     .syntax_expression()
                     .expect("block CST expression")
                     .clone(),
-                legacy_path.fallback(),
+                legacy_expr,
             );
             assert_eq!(
                 compiler.static_type_for_expr_with_payload(
@@ -621,18 +626,16 @@ fn legacy_path(consumer, legacy) {
         .into_iter()
         .find(|method| method.method_name == "id")
         .expect("self method");
-    let self_return = path_statement_payloads(&self_method.body)
-        .into_iter()
-        .flat_map(|statement| {
-            statement
-                .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
-                .unwrap_or_default()
-        })
-        .find(|payload| payload.syntax_is_self())
-        .expect("self argument expression");
+    let self_call = path_statement_payloads(&self_method.body)[0]
+        .expression_payload()
+        .expect("self call expression");
+    let self_return = self_call
+        .call_argument_value_payloads()
+        .expect("self call argument payloads")
+        .remove(0);
+    let self_expr = call_argument_fallback(&self_call, 0);
     let fact = script_types::expression_script_fact_with_payload(
-        self_return.fallback(),
+        self_expr,
         Some(&self_return),
         |_| None,
         |_| None,
@@ -646,23 +649,17 @@ fn legacy_path(consumer, legacy) {
     assert_eq!(fact, script_types::ScriptTypeFact::new("CstBox"));
 
     let (legacy_payload, _, _) = semantic.function("legacy_path").expect("legacy function");
-    let legacy_return = path_statement_payloads(&legacy_payload.body)
-        .into_iter()
-        .flat_map(|statement| {
-            statement
-                .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
-                .unwrap_or_default()
-        })
-        .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
-        .expect("legacy path argument expression");
+    let legacy_call = path_statement_payloads(&legacy_payload.body)[0]
+        .expression_payload()
+        .expect("legacy call expression");
+    let legacy_expr = call_argument_fallback(&legacy_call, 0);
     let mismatched_payload = expression_payload_with_fallback(
         source,
         self_return
             .syntax_expression()
             .expect("self CST expression")
             .clone(),
-        legacy_return.fallback(),
+        legacy_expr,
     );
     assert!(mismatched_payload.syntax_is_self());
 
@@ -672,7 +669,7 @@ fn legacy_path(consumer, legacy) {
                 .syntax_expression()
                 .expect("self CST expression")
                 .clone(),
-            legacy_return.fallback(),
+            legacy_expr,
         );
     assert!(!missing_source_self_payload.syntax_is_self());
     let fact = script_types::expression_script_fact_with_payload(
@@ -731,20 +728,23 @@ fn main(input) {
             let legacy_initializer = statements[0]
                 .let_initializer_expression_payload()
                 .expect("legacy path initializer");
-            let cst_self = statements[1]
+            let self_call = statements[1]
                 .expression_payload()
-                .and_then(|payload| payload.call_argument_value_payloads())
+                .expect("self call payload");
+            let cst_self = self_call
+                .call_argument_value_payloads()
                 .expect("self call argument payloads")
                 .remove(0);
+            let self_expr = call_argument_fallback(&self_call, 0);
             assert_eq!(
-                compiler.static_type_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
+                compiler.static_type_for_expr_with_payload(self_expr, Some(&cst_self)),
                 value_types::StaticExprType::Exact(RuntimeTypeFact::primitive(
                     vela_common::PrimitiveTag::Bool
                 )),
                 "aligned CST self payload should infer the self value type"
             );
             assert_eq!(
-                compiler.value_shape_for_expr_with_payload(cst_self.fallback(), Some(&cst_self)),
+                compiler.value_shape_for_expr_with_payload(self_expr, Some(&cst_self)),
                 Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
                 "aligned CST self payload should infer the self value shape"
             );
