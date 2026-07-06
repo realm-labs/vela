@@ -20,14 +20,18 @@ use crate::compiler::const_eval::{
 use crate::compiler::constructors::schema_default_fields;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
-    binary_literal_op, compound_assignment_instruction, i64_compound_assignment_instruction,
-    i64_immediate_instruction, i64_immediate_op_supported, non_logical_binary_instruction,
+    binary_literal_op, compound_assignment_instruction, i64_binary_instruction,
+    i64_compound_assignment_instruction, i64_immediate_instruction, i64_immediate_op_supported,
+    non_logical_binary_instruction,
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::patterns::enum_variant_path;
+use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::schema_defaults::unknown_enum_variant_diagnostic;
+use crate::compiler::script_types::ScriptTypeFact;
 use crate::compiler::value_types::{
-    ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
+    ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, StaticExprType, TypeContractContext,
+    check_expected_type,
 };
 use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, frame_slot_kind,
@@ -51,17 +55,18 @@ impl Compiler<'_, '_> {
             let register = self.alloc_register()?;
             let body = CompilerBodyPayload::nested_syntax(source, block);
             let returned = self.compile_block_payload_value_to(&body, register)?;
-            self.record_syntax_let_binding(name, span, register, None, None);
+            self.record_syntax_let_binding(name, span, register, None, None, None);
             return Ok(Some(returned));
         }
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
             return Ok(None);
         };
+        let script_fact = self.script_fact_for_syntax_expression(source, expression);
         let value_shape = self.value_shape_for_syntax_expression(Some(source), expression);
         let value_type = self
             .syntax_value_type_for_expression(Some(source), expression)
             .or_else(|| value_shape.as_ref().and_then(|shape| shape.value_type()));
-        self.record_syntax_let_binding(name, span, register, value_type, value_shape);
+        self.record_syntax_let_binding(name, span, register, script_fact, value_type, value_shape);
         Ok(Some(false))
     }
 
@@ -70,6 +75,7 @@ impl Compiler<'_, '_> {
         name: String,
         span: Span,
         register: Register,
+        script_fact: Option<ScriptTypeFact>,
         value_type: Option<RuntimeTypeFact>,
         value_shape: Option<crate::compiler::record_shapes::ValueShape>,
     ) {
@@ -79,12 +85,13 @@ impl Compiler<'_, '_> {
             .local_named_at(&name, LocalBindingKind::Let, span);
         if let Some(local) = local_binding {
             self.hir_locals.insert(local, register);
-            self.script_types.set_local_fact(local, name.clone(), None);
+            self.script_types
+                .set_local_fact(local, name.clone(), script_fact);
             self.value_types.set_local(local, name.clone(), value_type);
             self.value_shapes
                 .set_local(local, name.clone(), value_shape);
         } else {
-            self.script_types.set_name_fact(name.clone(), None);
+            self.script_types.set_name_fact(name.clone(), script_fact);
             self.value_types.set_name(name.clone(), value_type);
             self.value_shapes.set_name(name.clone(), value_shape);
         }
@@ -332,13 +339,40 @@ impl Compiler<'_, '_> {
         )? {
             return Ok(Some(register));
         }
-        self.reject_static_syntax_path_binary_operands(
+        if let Some(register) = self.compile_syntax_unknown_numeric_literal_binary(
+            source,
+            op,
+            expression,
+            &lhs_expression,
+            &rhs_expression,
+        )? {
+            return Ok(Some(register));
+        }
+        self.reject_static_syntax_binary_operands(
             source,
             op,
             expression,
             &lhs_expression,
             &rhs_expression,
         )?;
+        if self.syntax_value_type_for_expression(Some(source), &lhs_expression)
+            == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+            && self.syntax_value_type_for_expression(Some(source), &rhs_expression)
+                == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+            && matches!(
+                op,
+                BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Rem
+            )
+            && let Some(register) = self.compile_syntax_i64_binary(
+                source,
+                op,
+                expression,
+                &lhs_expression,
+                &rhs_expression,
+            )?
+        {
+            return Ok(Some(register));
+        }
         let Some(lhs) = self.compile_syntax_expression(source, &lhs_expression)? else {
             return Ok(None);
         };
@@ -347,6 +381,28 @@ impl Compiler<'_, '_> {
         };
         let dst = self.alloc_register()?;
         let Some(instruction) = non_logical_binary_instruction(op, dst, lhs, rhs) else {
+            return Ok(None);
+        };
+        self.emit_spanned(instruction, syntax_expression_span(source, expression));
+        Ok(Some(dst))
+    }
+
+    fn compile_syntax_i64_binary(
+        &mut self,
+        source: SourceId,
+        op: BinaryOp,
+        expression: &SyntaxExpression,
+        lhs_expression: &SyntaxExpression,
+        rhs_expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some(lhs) = self.compile_syntax_expression(source, lhs_expression)? else {
+            return Ok(None);
+        };
+        let Some(rhs) = self.compile_syntax_expression(source, rhs_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        let Some(instruction) = i64_binary_instruction(op, dst, lhs, rhs) else {
             return Ok(None);
         };
         self.emit_spanned(instruction, syntax_expression_span(source, expression));
@@ -575,7 +631,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    fn reject_static_syntax_path_binary_operands(
+    fn reject_static_syntax_binary_operands(
         &self,
         source: SourceId,
         op: BinaryOp,
@@ -583,19 +639,20 @@ impl Compiler<'_, '_> {
         lhs_expression: &SyntaxExpression,
         rhs_expression: &SyntaxExpression,
     ) -> CompileResult<()> {
-        let Some(lhs_path) = expression_syntax_path_or_self(lhs_expression) else {
-            return Ok(());
-        };
-        let Some(rhs_path) = expression_syntax_path_or_self(rhs_expression) else {
-            return Ok(());
-        };
-        let lhs_span = syntax_expression_span(source, lhs_expression);
-        let rhs_span = syntax_expression_span(source, rhs_expression);
+        if matches!(op, BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual) {
+            return self.reject_static_syntax_identity_binary_operands(
+                source,
+                op,
+                expression,
+                lhs_expression,
+                rhs_expression,
+            );
+        }
         let lhs_type = self
-            .script_fact_for_path(lhs_span, &lhs_path)
+            .script_fact_for_syntax_expression(source, lhs_expression)
             .map(|fact| fact.type_name);
         let rhs_type = self
-            .script_fact_for_path(rhs_span, &rhs_path)
+            .script_fact_for_syntax_expression(source, rhs_expression)
             .map(|fact| fact.type_name);
         self.reject_static_script_path_binary_operands(
             op,
@@ -603,6 +660,45 @@ impl Compiler<'_, '_> {
             lhs_type.as_deref(),
             rhs_type.as_deref(),
         )
+    }
+
+    fn reject_static_syntax_identity_binary_operands(
+        &self,
+        source: SourceId,
+        op: BinaryOp,
+        expression: &SyntaxExpression,
+        lhs_expression: &SyntaxExpression,
+        rhs_expression: &SyntaxExpression,
+    ) -> CompileResult<()> {
+        let span = syntax_expression_span(source, expression);
+        for (side, operand) in [("left", lhs_expression), ("right", rhs_expression)] {
+            let type_name = self
+                .syntax_value_type_for_expression(Some(source), operand)
+                .and_then(non_identity_runtime_type_name)
+                .or_else(|| {
+                    self.value_shape_for_syntax_expression(Some(source), operand)
+                        .and_then(non_identity_value_shape_name)
+                });
+            let Some(type_name) = type_name else {
+                continue;
+            };
+            return Err(CompileError::new(CompileErrorKind::SemanticDiagnostics(
+                vec![
+                    Diagnostic::error(format!(
+                        "`{}` requires reference identity operands, but the {side} operand has type `{type_name}`",
+                        syntax_binary_op_source_name(op)
+                    ))
+                    .with_code("compiler::invalid_identity_comparison")
+                    .with_span(span)
+                    .with_label(span, "identity comparison requires reference operands")
+                    .with_label(
+                        syntax_expression_span(source, operand),
+                        format!("{side} operand is statically `{type_name}`"),
+                    ),
+                ],
+            )));
+        }
+        Ok(())
     }
 
     fn compile_syntax_unary(
@@ -1424,6 +1520,65 @@ impl Compiler<'_, '_> {
         Ok(None)
     }
 
+    fn compile_syntax_unknown_numeric_literal_binary(
+        &mut self,
+        source: SourceId,
+        op: BinaryOp,
+        expression: &SyntaxExpression,
+        lhs_expression: &SyntaxExpression,
+        rhs_expression: &SyntaxExpression,
+    ) -> CompileResult<Option<Register>> {
+        let Some((value_expression, literal_expression, side)) =
+            syntax_numeric_literal_operands(lhs_expression, rhs_expression)
+        else {
+            return Ok(None);
+        };
+        if self
+            .syntax_value_type_for_expression(Some(source), value_expression)
+            .is_some()
+        {
+            return Ok(None);
+        }
+        let Some(literal_op) = binary_literal_op(op) else {
+            return Ok(None);
+        };
+        let literal = expression_syntax_literal(literal_expression)
+            .and_then(InlineNumericLiteral::from_literal)
+            .expect("numeric literal operand helper checks literal availability");
+        let span = syntax_expression_span(source, expression);
+        let Some(value) = self.compile_syntax_expression(source, value_expression)? else {
+            return Ok(None);
+        };
+        let dst = self.alloc_register()?;
+        match literal {
+            InlineNumericLiteral::Integer(text) => {
+                self.emit_spanned(
+                    UnlinkedInstructionKind::BinaryIntLiteral {
+                        dst,
+                        op: literal_op,
+                        value,
+                        literal: text,
+                        side,
+                    },
+                    span,
+                );
+            }
+            InlineNumericLiteral::Float(text) => {
+                self.emit_spanned(
+                    UnlinkedInstructionKind::BinaryFloatLiteral {
+                        dst,
+                        op: literal_op,
+                        value,
+                        literal: text,
+                        side,
+                    },
+                    span,
+                );
+            }
+        }
+        Ok(Some(dst))
+    }
+
     fn compile_syntax_path_numeric_literal_binary(
         &mut self,
         source: SourceId,
@@ -1561,6 +1716,23 @@ fn syntax_path_numeric_literal_operands<'expression>(
     None
 }
 
+fn syntax_numeric_literal_operands<'expression>(
+    lhs: &'expression SyntaxExpression,
+    rhs: &'expression SyntaxExpression,
+) -> Option<(
+    &'expression SyntaxExpression,
+    &'expression SyntaxExpression,
+    BinaryLiteralSide,
+)> {
+    let lhs_literal = expression_syntax_literal(lhs).and_then(InlineNumericLiteral::from_literal);
+    let rhs_literal = expression_syntax_literal(rhs).and_then(InlineNumericLiteral::from_literal);
+    match (lhs_literal.is_some(), rhs_literal.is_some()) {
+        (false, true) => Some((lhs, rhs, BinaryLiteralSide::Right)),
+        (true, false) => Some((rhs, lhs, BinaryLiteralSide::Left)),
+        (true, true) | (false, false) => None,
+    }
+}
+
 fn logical_chain_syntax_operands(
     expression: &SyntaxExpression,
     op: BinaryOp,
@@ -1585,6 +1757,66 @@ fn logical_chain_syntax_operands(
     let mut operands = Vec::new();
     collect(expression.clone(), op, &mut operands)?;
     Some(operands)
+}
+
+fn non_identity_runtime_type_name(fact: RuntimeTypeFact) -> Option<String> {
+    match fact {
+        RuntimeTypeFact::Primitive(_) | RuntimeTypeFact::Standard(StandardRuntimeType::Range) => {
+            Some(fact.source_type_display())
+        }
+        RuntimeTypeFact::Standard(
+            StandardRuntimeType::Array
+            | StandardRuntimeType::Map
+            | StandardRuntimeType::Set
+            | StandardRuntimeType::Function
+            | StandardRuntimeType::Closure
+            | StandardRuntimeType::Iterator
+            | StandardRuntimeType::Option
+            | StandardRuntimeType::Result,
+        )
+        | RuntimeTypeFact::Array(_)
+        | RuntimeTypeFact::Map { .. }
+        | RuntimeTypeFact::Set(_)
+        | RuntimeTypeFact::Iterator(_)
+        | RuntimeTypeFact::Option(_)
+        | RuntimeTypeFact::Result { .. } => None,
+    }
+}
+
+fn non_identity_value_shape_name(shape: ValueShape) -> Option<String> {
+    match shape {
+        ValueShape::Scalar(type_name) => Some(type_name),
+        ValueShape::Unknown
+        | ValueShape::Record(_)
+        | ValueShape::Array(_)
+        | ValueShape::Iterator(_)
+        | ValueShape::Map { .. }
+        | ValueShape::Set(_)
+        | ValueShape::Option(_)
+        | ValueShape::Result { .. } => None,
+    }
+}
+
+fn syntax_binary_op_source_name(op: BinaryOp) -> &'static str {
+    match op {
+        BinaryOp::Add => "+",
+        BinaryOp::Sub => "-",
+        BinaryOp::Mul => "*",
+        BinaryOp::Div => "/",
+        BinaryOp::Rem => "%",
+        BinaryOp::Equal => "==",
+        BinaryOp::NotEqual => "!=",
+        BinaryOp::IdentityEqual => "===",
+        BinaryOp::IdentityNotEqual => "!==",
+        BinaryOp::Less => "<",
+        BinaryOp::LessEqual => "<=",
+        BinaryOp::Greater => ">",
+        BinaryOp::GreaterEqual => ">=",
+        BinaryOp::Range => "..",
+        BinaryOp::RangeInclusive => "..=",
+        BinaryOp::Or => "||",
+        BinaryOp::And => "&&",
+    }
 }
 
 pub(in crate::compiler::control_flow) fn syntax_expression_span(

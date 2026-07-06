@@ -281,13 +281,18 @@ set combination and callback-map chains now preserve CST value shapes through
 set views, iterator collection, and array callback methods, clearing the set
 method failures. CST statement-level constant fast paths now leave block/if/match
 expressions to control-flow lowering so `return` inside block initializers is
-preserved. Full workspace validation now reaches the remaining `vela_vm`
-CST/runtime failure set after LSP validation passes; `cargo test -p vela_vm --lib`
-currently has 3 remaining failures after CST typed call arguments preserve
-unsuffixed numeric literal facts for contextual native conversion parameters,
-CST method-call lowering allows no-registry dynamic fallback for known std
-value receiver types whose registered method set is unavailable, and CST host
-field-path `push` calls lower through HostAccess mutation.
+preserved. The remaining `vela_vm` CST/runtime failure set is now cleared under
+`cargo test --workspace`: CST typed call arguments preserve unsuffixed numeric
+literal facts for contextual native conversion parameters, CST method-call
+lowering allows no-registry dynamic fallback for known std value receiver types
+whose registered method set is unavailable, CST host field-path `push` calls
+lower through HostAccess mutation, CST syntax-only record-constructor lets
+preserve script type facts for comparison checks, constant equality folding
+leaves array/map comparisons to runtime semantic equality instead of structural
+`Constant` equality, CST callback shape inference preserves array/map receiver
+containers when callback result or key shape is unknown, and CST numeric binary
+lowering restores typed `I64*` and deferred numeric-literal opcodes for nested
+expressions.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload

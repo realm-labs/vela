@@ -1,4 +1,5 @@
 use super::*;
+use crate::{BinaryLiteralOp, BinaryLiteralSide};
 
 fn binary_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
@@ -120,6 +121,64 @@ fn binary_values() {
     );
 
     compile_program_source(source, text).expect("CST-backed binary operands should compile");
+}
+
+#[test]
+fn nested_i64_binary_expression_lowers_cst_sub_opcode() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0;
+    for outer in 0..8 {
+        for value in 0..128 {
+            total += value + outer - outer;
+        }
+    }
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("nested i64 binary expression should compile");
+
+    assert!(
+        code.instructions
+            .iter()
+            .any(|instruction| matches!(instruction.kind, UnlinkedInstructionKind::I64Sub { .. })),
+        "nested typed CST binary expression should lower to I64Sub"
+    );
+}
+
+#[test]
+fn chained_unknown_float_literal_binary_lowers_cst_literal_opcode() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r#"
+fn main() {
+    let total = 0.0;
+    let value = 1.25;
+    total += value * 1.5 - value / 3.0 + 0.75;
+    return total;
+}
+"#,
+        "main",
+    )
+    .expect("chained float literal binary expression should compile");
+
+    assert!(
+        code.instructions.iter().any(|instruction| {
+            matches!(
+                &instruction.kind,
+                UnlinkedInstructionKind::BinaryFloatLiteral {
+                    op: BinaryLiteralOp::Add,
+                    side: BinaryLiteralSide::Right,
+                    ..
+                }
+            )
+        }),
+        "chained unknown CST float expression should lower to BinaryFloatLiteral Add Right"
+    );
 }
 
 #[test]

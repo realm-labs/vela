@@ -560,6 +560,81 @@ fn main() {
 }
 
 #[test]
+fn group_by_shape_inference_preserves_array_values_with_unshaped_key() {
+    with_cst_payload_compiler(
+        r#"
+fn main() {
+    let groups = [21, 10].group_by(|value| if value % 2 == 0 {
+        "even"
+    } else {
+        "odd"
+    });
+    let odd = groups["odd"];
+    let odd_count = odd.count(|value| value > 12);
+}
+"#,
+        |compiler, payload| {
+            let statements = shape_statement_payloads(&payload.body);
+            compiler
+                .compile_statement_payload_for_test(&statements[0])
+                .expect("CST group_by local should compile");
+            let odd = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST map index initializer");
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(odd.fallback(), Some(&odd)),
+                Some(record_shapes::ValueShape::Array(Box::new(
+                    record_shapes::ValueShape::Scalar("i64".to_owned())
+                ))),
+                "group_by CST payload should preserve array values even when key shape is unknown"
+            );
+
+            compiler
+                .compile_statement_payload_for_test(&statements[1])
+                .expect("CST indexed group local should compile");
+            let odd_count = statements[2]
+                .let_initializer_expression_payload()
+                .expect("CST count initializer");
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(odd_count.fallback(), Some(&odd_count)),
+                Some(record_shapes::ValueShape::Scalar("i64".to_owned())),
+                "indexed group array should keep method-call shape for count"
+            );
+        },
+    );
+}
+
+#[test]
+fn map_shape_inference_preserves_array_receiver_with_unknown_callback_result() {
+    with_cst_payload_compiler(
+        r#"
+fn main(tick) {
+    let mapped = [7, 3].map(|value| value * 2 + tick);
+    let filtered = mapped.filter(|value| value != 0);
+}
+"#,
+        |compiler, payload| {
+            let statements = shape_statement_payloads(&payload.body);
+            compiler
+                .compile_statement_payload_for_test(&statements[0])
+                .expect("CST map local should compile");
+            let filtered = statements[1]
+                .let_initializer_expression_payload()
+                .expect("CST filter initializer");
+
+            assert_eq!(
+                compiler.value_shape_for_expr_with_payload(filtered.fallback(), Some(&filtered)),
+                Some(record_shapes::ValueShape::Array(Box::new(
+                    record_shapes::ValueShape::Unknown
+                ))),
+                "map CST payload should preserve array receiver shape when callback result is unknown"
+            );
+        },
+    );
+}
+
+#[test]
 fn method_unwrap_or_shape_inference_prefers_cst_payload_shape() {
     with_cst_payload_compiler(
         r#"

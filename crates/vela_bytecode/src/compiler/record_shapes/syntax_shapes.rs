@@ -451,17 +451,25 @@ impl Compiler<'_, '_> {
                 _ => None,
             },
             "map" => {
-                let value = self.syntax_callback_return_shape(&receiver, "map", args, source)?;
+                let value = self.syntax_callback_return_shape(&receiver, "map", args, source);
                 Some(match receiver {
-                    ValueShape::Array(_) => ValueShape::Array(Box::new(value)),
-                    ValueShape::Set(_) => ValueShape::Set(Box::new(value)),
-                    ValueShape::Iterator(_) => ValueShape::Iterator(Box::new(value)),
-                    ValueShape::Option(_) => ValueShape::Option(Box::new(value)),
+                    ValueShape::Array(_) => {
+                        ValueShape::Array(Box::new(value.unwrap_or(ValueShape::Unknown)))
+                    }
+                    ValueShape::Set(_) => {
+                        ValueShape::Set(Box::new(value.unwrap_or(ValueShape::Unknown)))
+                    }
+                    ValueShape::Iterator(_) => {
+                        ValueShape::Iterator(Box::new(value.unwrap_or(ValueShape::Unknown)))
+                    }
+                    ValueShape::Option(_) => {
+                        ValueShape::Option(Box::new(value.unwrap_or(ValueShape::Unknown)))
+                    }
                     ValueShape::Result { err, .. } => ValueShape::Result {
-                        ok: Some(Box::new(value)),
+                        ok: Some(Box::new(value.unwrap_or(ValueShape::Unknown))),
                         err,
                     },
-                    _ => value,
+                    _ => value?,
                 })
             }
             "map_err" => {
@@ -476,6 +484,18 @@ impl Compiler<'_, '_> {
                 })
             }
             "and_then" => self.syntax_callback_return_shape(&receiver, "and_then", args, source),
+            "group_by" => {
+                let key = self
+                    .syntax_callback_return_shape(&receiver, "group_by", args, source)
+                    .unwrap_or(ValueShape::Unknown);
+                let ValueShape::Array(element) = receiver else {
+                    return None;
+                };
+                Some(ValueShape::Map {
+                    key: Box::new(key),
+                    value: Box::new(ValueShape::Array(element)),
+                })
+            }
             "map_values" => {
                 let value =
                     self.syntax_callback_return_shape(&receiver, "map_values", args, source)?;

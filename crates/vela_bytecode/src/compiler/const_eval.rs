@@ -365,8 +365,10 @@ fn evaluate_binary_const(op: BinaryOp, left: Constant, right: Constant) -> Optio
             ))),
             _ => None,
         },
-        BinaryOp::Equal => Some(Constant::Bool(left == right)),
-        BinaryOp::NotEqual => Some(Constant::Bool(left != right)),
+        BinaryOp::Equal => evaluate_equality_const(&left, &right).map(Constant::Bool),
+        BinaryOp::NotEqual => {
+            evaluate_equality_const(&left, &right).map(|equal| Constant::Bool(!equal))
+        }
         BinaryOp::IdentityEqual | BinaryOp::IdentityNotEqual => None,
         BinaryOp::Less => evaluate_numeric_compare_const(left, right, |a, b| a < b),
         BinaryOp::LessEqual => evaluate_numeric_compare_const(left, right, |a, b| a <= b),
@@ -400,6 +402,21 @@ fn evaluate_numeric_const(
             Constant::Scalar(vela_common::ScalarValue::F64(right)),
         ) => Some(Constant::f64(float_op(left, right))),
         _ => None,
+    }
+}
+
+fn evaluate_equality_const(left: &Constant, right: &Constant) -> Option<bool> {
+    match (left, right) {
+        (Constant::Array(_) | Constant::Map(_), _) | (_, Constant::Array(_) | Constant::Map(_)) => {
+            None
+        }
+        (Constant::Null, Constant::Null) => Some(true),
+        (Constant::Bool(left), Constant::Bool(right)) => Some(left == right),
+        (Constant::Char(left), Constant::Char(right)) => Some(left == right),
+        (Constant::Scalar(left), Constant::Scalar(right)) => Some(left == right),
+        (Constant::String(left), Constant::String(right)) => Some(left == right),
+        (Constant::Bytes(left), Constant::Bytes(right)) => Some(left == right),
+        _ => Some(false),
     }
 }
 
