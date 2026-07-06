@@ -95,15 +95,27 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Block => {
-                let dst = self.alloc_register()?;
-                if let Some(body_payload) = payload.block_body_payload() {
-                    self.compile_block_payload_value_to(&body_payload, dst)?;
-                } else {
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST block expression body payload",
+                    )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST block expression body payload",
+                    )));
+                };
+                if expression.as_block().is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST block expression body payload",
                     )));
                 }
-                Ok(dst)
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST block expression body payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::If => {
                 let Some(source) = payload.source() else {
