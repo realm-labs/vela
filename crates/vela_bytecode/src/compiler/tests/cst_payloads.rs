@@ -82,6 +82,35 @@ fn cst_statement_payloads<'ast>(
     paired_statement_payloads_for_body(body.syntax_payload().source, body)
 }
 
+fn first_call_argument_payload_from_cst(
+    source: SourceId,
+    text: &str,
+) -> body_payloads::CompilerArgumentPayload {
+    let cst_parse = vela_syntax::parse::parse_source_with_id(source, text);
+    let cst_call = cst_parse
+        .tree()
+        .functions()
+        .next()
+        .expect("CST function")
+        .body()
+        .expect("CST body")
+        .statements()
+        .next()
+        .expect("CST statement")
+        .as_expr()
+        .expect("CST expression statement")
+        .expression()
+        .expect("CST expression");
+    let payload =
+        body_payloads::CompilerExpressionPayload::from_syntax(Some(source), Some(cst_call));
+    payload
+        .call_argument_payloads()
+        .expect("CST call argument payloads")
+        .into_iter()
+        .next()
+        .expect("CST call argument")
+}
+
 fn cst_payload_compiler_facts_with_options<'registry>(
     semantic: &semantic::SemanticSource,
     options: CompilerOptions,

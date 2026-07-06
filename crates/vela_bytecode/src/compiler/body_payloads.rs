@@ -776,14 +776,6 @@ impl CompilerArgumentPayload {
         }
     }
 
-    #[cfg(test)]
-    pub(super) fn missing_value_syntax(source: SourceId) -> Self {
-        Self {
-            source: Some(source),
-            syntax: None,
-        }
-    }
-
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
         self.source.is_some()
             && self
