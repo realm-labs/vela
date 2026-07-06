@@ -54,7 +54,7 @@ fn make(value) {
     let legacy_path = statements[1]
         .expression_payload()
         .expect("legacy host path expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_block
             .syntax_expression()
@@ -228,7 +228,7 @@ fn main(player: Player) {
     let legacy_index = statements[1]
         .expression_payload()
         .expect("legacy host index expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_block
             .syntax_expression()
@@ -329,7 +329,7 @@ fn make(value) {
     let legacy_field = statements[1]
         .expression_payload()
         .expect("legacy host field expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_field
             .syntax_expression()

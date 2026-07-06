@@ -346,7 +346,7 @@ fn fallback_body() {
     let fallback_map = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback map payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched = expression_payload_with_fallback(
         source,
         cst_map.syntax_expression().expect("cst map syntax").clone(),
         fallback_map.fallback(),
@@ -386,7 +386,7 @@ fn fallback_body() {
     let fallback_array = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback array payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched = expression_payload_with_fallback(
         source,
         cst_array
             .syntax_expression()
@@ -439,7 +439,7 @@ fn fallback_body() {
     let fallback_record = cst_statement_payloads(&fallback_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("fallback record payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched = expression_payload_with_fallback(
         source,
         cst_record
             .syntax_expression()

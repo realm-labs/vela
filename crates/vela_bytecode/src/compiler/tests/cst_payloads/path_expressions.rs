@@ -184,7 +184,7 @@ fn main(value) {
                 .and_then(|payload| payload.call_argument_value_payloads())
                 .expect("self call argument payloads")
                 .remove(0);
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 path.syntax_expression()
                     .expect("path CST expression")
@@ -249,7 +249,7 @@ fn make(value) {
         .into_iter()
         .find_map(|statement| statement.return_value_expression_payload())
         .expect("legacy path return expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_return
             .syntax_expression()
@@ -321,7 +321,7 @@ fn make(value) {
             .into_iter()
             .find_map(|statement| statement.return_value_expression_payload())
             .expect("legacy return expression");
-        let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+        let mismatched_payload = expression_payload_with_fallback(
             source,
             cst_block
                 .syntax_expression()
@@ -372,11 +372,8 @@ fn main(cst) {
                 .expect("block child path syntax");
             assert_eq!(child_path.expression_kind(), SyntaxExpressionKind::Path);
 
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
-                SourceId::new(1),
-                child_path,
-                block.fallback(),
-            );
+            let mismatched_payload =
+                expression_payload_with_fallback(SourceId::new(1), child_path, block.fallback());
 
             let fact = script_types::expression_script_fact_with_payload(
                 mismatched_payload.fallback(),
@@ -432,7 +429,7 @@ fn legacy_path(consumer, legacy) {
         })
         .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
         .expect("legacy path argument expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_return
             .syntax_expression()
@@ -502,7 +499,7 @@ fn main() {
                 .let_initializer_expression_payload()
                 .expect("CST block initializer");
 
-            let mismatched_path = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_path = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_path
                     .syntax_expression()
@@ -530,7 +527,7 @@ fn main() {
                 "CST path payload without a fact must not use the legacy fallback path"
             );
 
-            let mismatched_block = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_block = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_block
                     .syntax_expression()
@@ -586,11 +583,8 @@ fn main(cst) {
                 .expect("block child path syntax");
             assert_eq!(child_path.expression_kind(), SyntaxExpressionKind::Path);
 
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
-                SourceId::new(1),
-                child_path,
-                block.fallback(),
-            );
+            let mismatched_payload =
+                expression_payload_with_fallback(SourceId::new(1), child_path, block.fallback());
 
             assert_eq!(
                 compiler.static_type_for_expr_with_payload(
@@ -662,7 +656,7 @@ fn legacy_path(consumer, legacy) {
         })
         .find(|payload| payload.syntax_path_segments() == Some(vec!["legacy".to_owned()]))
         .expect("legacy path argument expression");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         self_return
             .syntax_expression()
@@ -754,7 +748,7 @@ fn main(input) {
                 Some(record_shapes::ValueShape::Scalar("bool".to_owned())),
                 "aligned CST self payload should infer the self value shape"
             );
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 source,
                 cst_self
                     .syntax_expression()

@@ -85,7 +85,7 @@ fn main() {
             let legacy_lambda = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy lambda initializer");
-            let mismatched_lambda = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_lambda = expression_payload_with_fallback(
                 source,
                 cst_lambda
                     .syntax_expression()
@@ -141,11 +141,7 @@ fn main() {
     let legacy_lambda = lambda_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy lambda payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_lambda,
-        legacy_lambda.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_lambda, legacy_lambda.fallback());
     assert!(
         missing.lambda_body_payload().is_none(),
         "recovered CST lambda should not expose a body payload"

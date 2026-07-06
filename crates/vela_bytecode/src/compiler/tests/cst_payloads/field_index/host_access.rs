@@ -4,10 +4,12 @@ use crate::compiler::assignments::{
 use crate::compiler::host_paths::HostIndexAccessKind;
 use crate::compiler::options::HostIndexCapabilityInfo;
 use crate::compiler::tests::cst_payloads::{
-    body_payloads, cst_payload_compiler_facts_with_options, global_slots, parse_semantic_source,
+    cst_payload_compiler_facts_with_options, global_slots, parse_semantic_source,
     semantic_diagnostic_codes,
 };
-use crate::compiler::tests::paired_statement_payloads_for_body;
+use crate::compiler::tests::{
+    expression_payload_with_fallback, paired_statement_payloads_for_body,
+};
 use crate::compiler::{CompileErrorKind, Compiler, CompilerFacts, CompilerOptions};
 use vela_common::SourceId;
 use vela_syntax::ast::{ExprKind, SyntaxExpressionKind};
@@ -85,7 +87,7 @@ fn make(value) {
         .let_initializer_expression_payload()
         .expect("legacy host field fallback");
     assert_eq!(cst_block.syntax_kind(), Some(SyntaxExpressionKind::Block));
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_block
             .syntax_expression()
@@ -204,7 +206,7 @@ fn main(cst: CstMap, legacy: LegacyMap) {
     let legacy_index = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy index initializer");
-    let mismatched_index = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_index = expression_payload_with_fallback(
         source,
         cst_index
             .syntax_expression()
@@ -367,7 +369,7 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
     let writable_statement = statements[1]
         .expression_payload()
         .expect("legacy writable assignment expression");
-    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_target = expression_payload_with_fallback(
         source,
         readonly_target
             .syntax_expression()
@@ -473,7 +475,7 @@ fn main(readonly: ReadOnlyHost) {
     let legacy_statement = statements[1]
         .expression_payload()
         .expect("legacy read-only assignment expression");
-    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_target = expression_payload_with_fallback(
         source,
         cst_block
             .syntax_expression()

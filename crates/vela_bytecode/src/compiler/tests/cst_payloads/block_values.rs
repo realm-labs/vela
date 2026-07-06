@@ -181,11 +181,7 @@ fn main() {
     let legacy_block = legacy_statements[0]
         .let_initializer_expression_payload()
         .expect("legacy block initializer");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_block,
-        legacy_block.fallback(),
-    );
+    let mismatched = expression_payload_with_fallback(source, cst_block, legacy_block.fallback());
 
     compiler
         .compile_expr_with_payload(legacy_block.fallback(), Some(&mismatched))

@@ -145,7 +145,7 @@ fn make(value) {
             let fallback_path = statements[2]
                 .let_initializer_expression_payload()
                 .expect("non-field fallback payload");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_field
                     .syntax_expression()
@@ -263,7 +263,7 @@ fn make(value) {
             let legacy_field = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy field fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_field
                     .syntax_expression()
@@ -329,11 +329,7 @@ fn make(value) {
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy field payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_field,
-        legacy_field.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_field, legacy_field.fallback());
     let receiver = missing
         .field_base_payload()
         .expect("field receiver payload");
@@ -394,11 +390,7 @@ fn make(value) {
     let legacy_field = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy field payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_field,
-        legacy_field.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_field, legacy_field.fallback());
     assert_eq!(missing.syntax_field_name(), None);
 
     let error = compiler
@@ -484,7 +476,7 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy assignment target fallback");
-            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
@@ -557,7 +549,7 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy indexed assignment target");
-            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
@@ -615,7 +607,7 @@ fn main() {
             let legacy_index = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy numeric index fallback");
-            let mismatched_index = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_index = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_index
                     .syntax_expression()
@@ -705,11 +697,7 @@ fn main() {
     let legacy_index = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy index payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_index,
-        legacy_index.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_index, legacy_index.fallback());
     let (_base, index) = missing
         .index_operand_payloads()
         .expect("index operand payloads");
@@ -786,7 +774,7 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy numeric assignment target fallback");
-            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()

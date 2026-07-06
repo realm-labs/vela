@@ -27,8 +27,7 @@ fn main() {
     let legacy_call = paired_statement_payloads_for_body(source, &payload.body)[0]
         .expression_payload()
         .expect("legacy call payload");
-    let mismatched =
-        body_payloads::CompilerExpressionPayload::syntax(source, cst_call, legacy_call.fallback());
+    let mismatched = expression_payload_with_fallback(source, cst_call, legacy_call.fallback());
     let ExprKind::Call { callee, args } = &legacy_call.fallback().kind else {
         panic!("expected legacy call fallback");
     };

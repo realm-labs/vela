@@ -208,11 +208,7 @@ fn main(input) {
     let legacy_paren = wrapper_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy parenthesized payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_paren,
-        legacy_paren.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_paren, legacy_paren.fallback());
     let inner = missing
         .paren_inner_payload()
         .expect("parenthesized inner payload");

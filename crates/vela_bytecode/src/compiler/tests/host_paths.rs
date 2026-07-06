@@ -311,7 +311,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
     let legacy_statement = statements[1]
         .expression_payload()
         .expect("legacy assignment expression");
-    let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_target = expression_payload_with_fallback(
         source,
         cst_target
             .syntax_expression()

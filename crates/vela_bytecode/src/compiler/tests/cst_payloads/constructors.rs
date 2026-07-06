@@ -219,7 +219,7 @@ fn main() {
             let legacy_call = statements[2]
                 .let_initializer_expression_payload()
                 .expect("legacy tuple constructor fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()

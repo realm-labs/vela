@@ -66,7 +66,7 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_target_payload())
                 .expect("legacy assignment target fallback");
-            let mismatched_target = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()

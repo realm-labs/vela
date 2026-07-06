@@ -94,7 +94,7 @@ fn main() {
             let legacy_interpolated = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy interpolated fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_interpolated
                     .syntax_expression()
@@ -146,7 +146,7 @@ fn fallback_body() {
     let fallback_interpolated = interpolated_statement_payloads(&fallback_payload.body)[1]
         .let_initializer_expression_payload()
         .expect("fallback interpolated payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched = expression_payload_with_fallback(
         source,
         cst_interpolated
             .syntax_expression()

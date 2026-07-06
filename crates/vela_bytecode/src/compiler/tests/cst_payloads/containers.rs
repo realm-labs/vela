@@ -143,7 +143,7 @@ fn main() {
             let legacy_array = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy array fallback");
-            let mismatched_array = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_array = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_array
                     .syntax_expression()
@@ -171,7 +171,7 @@ fn main() {
             let legacy_map = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy map fallback");
-            let mismatched_map = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_map = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_map
                     .syntax_expression()
@@ -203,7 +203,7 @@ fn main() {
             let legacy_record = statements[5]
                 .let_initializer_expression_payload()
                 .expect("legacy record fallback");
-            let mismatched_record = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_record = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_record
                     .syntax_expression()
@@ -346,11 +346,7 @@ fn main() {
     let legacy_array = container_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy array payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_array,
-        legacy_array.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_array, legacy_array.fallback());
     let element_payloads = missing
         .array_element_payloads()
         .expect("array element payloads");
@@ -386,7 +382,7 @@ fn main() {
             let legacy_array = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy array fallback");
-            let mismatched_array = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_array = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_array
                     .syntax_expression()
@@ -408,7 +404,7 @@ fn main() {
             let legacy_map = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy map fallback");
-            let mismatched_map = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_map = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_map
                     .syntax_expression()
@@ -452,7 +448,7 @@ fn main() {
             let legacy_array = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy array fallback");
-            let mismatched_array = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_array = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_array
                     .syntax_expression()
@@ -478,7 +474,7 @@ fn main() {
             let legacy_map = statements[3]
                 .let_initializer_expression_payload()
                 .expect("legacy map fallback");
-            let mismatched_map = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_map = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_map
                     .syntax_expression()
@@ -505,7 +501,7 @@ fn main() {
             let legacy_record = statements[5]
                 .let_initializer_expression_payload()
                 .expect("legacy record fallback");
-            let mismatched_record = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_record = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_record
                     .syntax_expression()

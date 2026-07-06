@@ -435,7 +435,7 @@ fn main() {
     let legacy_match = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy match initializer payload");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_if
             .syntax_expression()

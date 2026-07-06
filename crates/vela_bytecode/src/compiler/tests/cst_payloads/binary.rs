@@ -249,7 +249,7 @@ fn main(left, middle, right) {
             let legacy_binary = binary_statement_payloads(&payload.body)[0]
                 .let_initializer_expression_payload()
                 .expect("legacy logical payload");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 source,
                 cst_binary
                     .syntax_expression()
@@ -351,7 +351,7 @@ fn main() {
             let legacy_binary = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy binary fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_binary
                     .syntax_expression()
@@ -410,11 +410,7 @@ fn main(input, other) {
     let legacy_binary = binary_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy binary payload");
-    let missing = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_binary,
-        legacy_binary.fallback(),
-    );
+    let missing = expression_payload_with_fallback(source, cst_binary, legacy_binary.fallback());
     let (_left, right) = missing
         .binary_operand_payloads()
         .expect("binary operand payloads");
@@ -485,7 +481,7 @@ fn main(input) {
             let legacy_bool = statements[4]
                 .let_initializer_expression_payload()
                 .expect("legacy literal fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_sum
                     .syntax_expression()
@@ -510,7 +506,7 @@ fn main(input) {
                 "rhs",
                 Some(RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64)),
             );
-            let mismatched_path_operand_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_path_operand_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_diff
                     .syntax_expression()
@@ -556,7 +552,7 @@ fn main(lhs, rhs) {
             let (left, _) = binary
                 .binary_operand_payloads()
                 .expect("binary operand payloads");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 left.syntax_expression()
                     .expect("left path CST expression")
@@ -605,7 +601,7 @@ fn main() {
                 .into_iter()
                 .next()
                 .expect("fallback call argument");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()

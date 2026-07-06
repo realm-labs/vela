@@ -6,8 +6,8 @@ use crate::{
 };
 use vela_def::{DefPath, FunctionId, MethodId};
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxBlock, SyntaxExpressionKind,
-    SyntaxStatementKind,
+    AstNode, BinaryOp, Expr, ExprKind, MatchExpr, Stmt, SyntaxBlock, SyntaxExpression,
+    SyntaxExpressionKind, SyntaxStatementKind,
 };
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
@@ -94,6 +94,14 @@ fn statement_payload_with_fallback_offset<'ast>(
         &fallback_statements[fallback_offset..],
         syntax_index,
     )
+}
+
+fn expression_payload_with_fallback<'ast>(
+    source: SourceId,
+    syntax: SyntaxExpression,
+    fallback: &'ast Expr,
+) -> body_payloads::CompilerExpressionPayload<'ast> {
+    body_payloads::CompilerExpressionPayload::from_fallback(Some(source), Some(syntax), fallback)
 }
 
 fn cst_let_initializer_if_from_expression<'ast>(

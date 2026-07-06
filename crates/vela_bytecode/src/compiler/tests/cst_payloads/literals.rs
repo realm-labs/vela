@@ -103,7 +103,7 @@ fn main() {
         |compiler, payload| {
             let cst_literal = first_call_argument_value_payload(&payload.body, 0);
             let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
@@ -156,7 +156,7 @@ fn main(input) {
             let cst_literal = first_call_argument_value_payload(&payload.body, 0);
             let non_literal = first_call_argument_value_payload(&payload.body, 1);
             let legacy_literal = first_call_argument_value_payload(&payload.body, 2);
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
@@ -193,7 +193,7 @@ fn main(input) {
         |_compiler, payload| {
             let cst_literal = first_call_argument_value_payload(&payload.body, 0);
             let fallback_path = first_call_argument_value_payload(&payload.body, 1);
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_literal
                     .syntax_expression()
@@ -239,7 +239,7 @@ fn take(value) {
         |compiler, payload| {
             let cst_field = first_call_argument_value_payload(&payload.body, 0);
             let legacy_literal = first_call_argument_value_payload(&payload.body, 1);
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_field
                     .syntax_expression()

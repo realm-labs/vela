@@ -24,11 +24,7 @@ fn main() {
     let legacy_match = paired_statement_payloads_for_body(source, &payload.body)[0]
         .return_value_expression_payload()
         .expect("legacy return match payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_match,
-        legacy_match.fallback(),
-    );
+    let mismatched = expression_payload_with_fallback(source, cst_match, legacy_match.fallback());
     let ExprKind::Match(match_expr) = &legacy_match.fallback().kind else {
         panic!("expected legacy match fallback");
     };
@@ -131,11 +127,7 @@ fn main() {
     let legacy_match = paired_statement_payloads_for_body(source, &payload.body)[0]
         .return_value_expression_payload()
         .expect("legacy return match payload");
-    let mismatched = body_payloads::CompilerExpressionPayload::syntax(
-        source,
-        cst_match,
-        legacy_match.fallback(),
-    );
+    let mismatched = expression_payload_with_fallback(source, cst_match, legacy_match.fallback());
 
     let arm_texts = mismatched
         .match_arm_payloads()

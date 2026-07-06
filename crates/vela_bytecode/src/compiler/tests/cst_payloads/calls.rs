@@ -136,7 +136,7 @@ fn main() {
             let legacy_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy call fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()
@@ -364,7 +364,7 @@ fn main() {
             let legacy_call = statements[2]
                 .let_initializer_expression_payload()
                 .expect("legacy path call fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()
@@ -413,7 +413,7 @@ fn main() {
             let legacy_call = statements[2]
                 .let_initializer_expression_payload()
                 .expect("legacy script call fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()
@@ -464,7 +464,7 @@ fn main() {
             let legacy_call = statements[1]
                 .let_initializer_expression_payload()
                 .expect("legacy path call fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()
@@ -509,7 +509,7 @@ fn main() {
             let legacy_call = statements[2]
                 .let_initializer_expression_payload()
                 .expect("legacy method call fallback");
-            let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+            let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_call
                     .syntax_expression()
@@ -604,7 +604,7 @@ fn main(player: Player) {
     let legacy_call = statements[2]
         .let_initializer_expression_payload()
         .expect("legacy host push call fallback");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_call
             .syntax_expression()
@@ -738,7 +738,7 @@ fn main(cst: CstPlayer, legacy: LegacyPlayer) {
     let legacy_call = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy remove call fallback");
-    let mismatched_payload = body_payloads::CompilerExpressionPayload::syntax(
+    let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_call
             .syntax_expression()
