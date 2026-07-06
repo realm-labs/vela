@@ -84,15 +84,29 @@ pub(super) fn payload_overlaps_expression_facts(
     payload
         .syntax_span()
         .is_some_and(|payload_span| payload_span.start < span.end && span.start < payload_span.end)
-        && match payload.stored_syntax_kind() {
-            Some(payload_kind) => payload_kind_matches_expression_facts(
-                Some(payload_kind),
-                kind,
-                path_is_self,
-                payload.syntax_is_self(),
-            ),
-            None => missing_kind_matches,
-        }
+        && payload_stored_kind_matches_expression_facts(
+            payload,
+            kind,
+            path_is_self,
+            missing_kind_matches,
+        )
+}
+
+pub(super) fn payload_stored_kind_matches_expression_facts(
+    payload: &CompilerExpressionPayload<'_>,
+    kind: Option<SyntaxExpressionKind>,
+    path_is_self: Option<bool>,
+    missing_kind_matches: bool,
+) -> bool {
+    match payload.stored_syntax_kind() {
+        Some(payload_kind) => payload_kind_matches_expression_facts(
+            Some(payload_kind),
+            kind,
+            path_is_self,
+            payload.syntax_is_self(),
+        ),
+        None => missing_kind_matches,
+    }
 }
 
 fn payload_kind_matches_expression_facts(
