@@ -446,6 +446,9 @@ fallback `Expr`s to the payload itself.
 Source-less statement missing-child payload helpers now build syntax-only
 statement payloads without accepting expression fallback `Expr`s, removing the
 old statement-to-expression fallback constructor used only by CST fixtures.
+Source-less let and return missing-child payload helpers now also build
+syntax-only statement payloads without accepting initializer or return fallback
+`Expr`s, deleting those old fixture-only fallback constructors.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

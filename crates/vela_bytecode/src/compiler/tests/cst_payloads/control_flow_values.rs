@@ -79,9 +79,6 @@ fn main() {
             let missing_child =
                 body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
                     statement,
-                    statements[0]
-                        .let_initializer_fallback_for_test()
-                        .expect("let initializer fallback"),
                 );
 
             let error = compiler
@@ -90,7 +87,7 @@ fn main() {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST let initializer if payload")
+                CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
             ));
         },
     );
@@ -146,9 +143,6 @@ fn main() {
             let missing_child =
                 body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
                     statement,
-                    statements[0]
-                        .return_value_fallback_for_test()
-                        .expect("return value fallback"),
                 );
 
             let error = compiler
@@ -157,7 +151,7 @@ fn main() {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST return if payload")
+                CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
             ));
         },
     );

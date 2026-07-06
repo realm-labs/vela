@@ -490,9 +490,6 @@ fn main(target) {
                         .syntax_statement()
                         .expect("let syntax")
                         .clone(),
-                    statements[0]
-                        .let_initializer_fallback_for_test()
-                        .expect("let initializer fallback"),
                 );
             let missing_assignment =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -514,9 +511,6 @@ fn main(target) {
                         .syntax_statement()
                         .expect("return syntax")
                         .clone(),
-                    statements[3]
-                        .return_value_fallback_for_test()
-                        .expect("return value fallback"),
                 );
 
             assert!(missing_let.syntax_statement().is_none());

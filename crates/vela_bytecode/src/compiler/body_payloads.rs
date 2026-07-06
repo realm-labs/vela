@@ -386,22 +386,6 @@ impl<'ast> StatementExpressionFallbacks<'ast> {
         }
     }
 
-    fn from_let_initializer(value: &'ast Expr) -> Self {
-        Self {
-            statement_span: Some(value.span),
-            let_initializer: Some(value),
-            ..Self::default()
-        }
-    }
-
-    fn from_return_value(value: &'ast Expr) -> Self {
-        Self {
-            statement_span: Some(value.span),
-            return_value: Some(value),
-            ..Self::default()
-        }
-    }
-
     fn from_for_parts(
         statement_span: Span,
         index_pattern: Option<&'ast Pattern>,
@@ -486,28 +470,22 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn missing_let_child_payload_context(
-        syntax: SyntaxStatement,
-        value: &'ast Expr,
-    ) -> Self {
+    pub(super) fn missing_let_child_payload_context(syntax: SyntaxStatement) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
-            expression_fallbacks: StatementExpressionFallbacks::from_let_initializer(value),
+            expression_fallbacks: StatementExpressionFallbacks::default(),
         }
     }
 
     #[cfg(test)]
-    pub(super) fn missing_return_child_payload_context(
-        syntax: SyntaxStatement,
-        value: &'ast Expr,
-    ) -> Self {
+    pub(super) fn missing_return_child_payload_context(syntax: SyntaxStatement) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
-            expression_fallbacks: StatementExpressionFallbacks::from_return_value(value),
+            expression_fallbacks: StatementExpressionFallbacks::default(),
         }
     }
 

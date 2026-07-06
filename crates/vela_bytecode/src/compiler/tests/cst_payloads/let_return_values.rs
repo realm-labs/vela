@@ -1901,12 +1901,8 @@ fn main() {
     let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
     let statements = let_return_statement_payloads(&payload.body);
     let statement = statements[0].syntax_statement().expect("CST let").clone();
-    let missing_child = body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
-        statement,
-        statements[0]
-            .let_initializer_fallback_for_test()
-            .expect("let initializer fallback"),
-    );
+    let missing_child =
+        body_payloads::CompilerStatementPayload::missing_let_child_payload_context(statement);
 
     let error = compiler
         .compile_statement_payload_for_test(&missing_child)
@@ -1983,12 +1979,7 @@ fn main() {
         .expect("CST return")
         .clone();
     let missing_child =
-        body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
-            statement,
-            statements[0]
-                .return_value_fallback_for_test()
-                .expect("return value fallback"),
-        );
+        body_payloads::CompilerStatementPayload::missing_return_child_payload_context(statement);
 
     let error = compiler
         .compile_statement_payload_for_test(&missing_child)
@@ -1996,7 +1987,7 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST return block body payload")
+        CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
     ));
 }
 

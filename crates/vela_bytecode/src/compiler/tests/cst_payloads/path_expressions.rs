@@ -95,22 +95,22 @@ fn make(value) {
             let legacy_initializer = legacy_statements[1]
                 .let_initializer_fallback_for_test()
                 .expect("legacy initializer fallback");
-            let cst_statement = cst_body
+            let cst_initializer = cst_body
                 .statements()
                 .nth(1)
-                .expect("CST selected statement");
-            let mismatched_statement =
-                body_payloads::CompilerStatementPayload::missing_let_child_payload_context(
-                    cst_statement,
-                    legacy_initializer,
-                );
-            let mismatched_payload = mismatched_statement
-                .let_initializer_expression_payload()
+                .expect("CST selected statement")
+                .as_let()
+                .expect("CST selected let")
+                .initializer()
                 .expect("CST path initializer");
+            let mismatched_payload =
+                body_payloads::CompilerExpressionPayload::missing_child_payload_context(
+                    cst_initializer,
+                );
             assert_eq!(mismatched_payload.syntax_path_segments(), None);
 
             let fact = script_types::expression_script_fact_with_payload(
-                mismatched_payload.fallback(),
+                legacy_initializer,
                 Some(&mismatched_payload),
                 |_| None,
                 |_| None,
@@ -125,7 +125,7 @@ fn make(value) {
             );
             assert_eq!(
                 compiler.value_shape_for_expr_with_payload(
-                    mismatched_payload.fallback(),
+                    legacy_initializer,
                     Some(&mismatched_payload),
                 ),
                 None,
