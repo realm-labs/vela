@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
-use vela_common::SourceId;
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 #[cfg(test)]
 use vela_syntax::ast::ExprKind;
 #[cfg(test)]
@@ -15,8 +14,6 @@ use vela_syntax::ast::{
     SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
     SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
-#[cfg(test)]
-use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 mod expression_payloads;
 mod simple_values;
@@ -181,14 +178,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .collect()
     }
 
-    #[cfg(test)]
-    pub(super) fn compilation_statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
-        let fallback_statements =
-            fallback_statements_for_syntax_body(self.syntax.source, &self.syntax.body);
-        let syntax_statements = syntax_body_statements(&self.syntax.body);
-        paired_statement_payloads(self.syntax.source, &syntax_statements, fallback_statements)
-    }
-
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
         syntax_body_statements(&self.syntax.body).is_empty()
     }
@@ -214,24 +203,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
         &self.syntax
     }
-}
-
-#[cfg(test)]
-fn fallback_statements_for_syntax_body(source: SourceId, body: &SyntaxBlock) -> &'static [Stmt] {
-    let body_text = body.syntax().text().to_string();
-    let range = body.syntax().text_range();
-    let start: u32 = range.start().into();
-    let end: u32 = range.end().into();
-    let mut text = " ".repeat(usize::try_from(start).expect("body start should fit usize"));
-    text.push_str(&body_text);
-    let span = Span::new(source, start, end);
-    let Some(block) = parse_owned_body_blocks_for_tests(source, &text, &[span])
-        .into_iter()
-        .next()
-    else {
-        return &[];
-    };
-    Box::leak(block.statements.into_boxed_slice())
 }
 
 #[cfg(test)]

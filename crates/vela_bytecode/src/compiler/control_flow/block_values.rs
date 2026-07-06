@@ -6,6 +6,8 @@ use vela_syntax::ast::{Block, Expr, ExprKind};
 use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
 #[cfg(test)]
+use crate::compiler::compilation_statement_payloads;
+#[cfg(test)]
 use crate::compiler::expression_checks::payload_aligns_with_expr;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
@@ -55,7 +57,7 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
-        let statements = body.compilation_statement_payloads();
+        let statements = compilation_statement_payloads(body);
         self.compile_block_payload_value_to_from_statements(body, dst, &statements)
     }
 
