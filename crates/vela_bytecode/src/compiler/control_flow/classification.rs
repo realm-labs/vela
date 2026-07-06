@@ -63,19 +63,12 @@ pub(super) fn value_expression_requires_matching_syntax(expr: &Expr) -> bool {
     )
 }
 
-pub(super) fn range_iterable_for_payload<'ast>(
+pub(super) fn range_iterable_for_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
-    expr: &'ast Expr,
-) -> Option<(&'ast Expr, &'ast Expr, bool)> {
-    let ExprKind::Binary { left, right, .. } = &expr.kind else {
-        return None;
-    };
-    match (
-        payload.and_then(CompilerExpressionPayload::syntax_binary_operator),
-        payload.is_some(),
-    ) {
-        (Some(BinaryOp::Range), _) => Some((left.as_ref(), right.as_ref(), false)),
-        (Some(BinaryOp::RangeInclusive), _) => Some((left.as_ref(), right.as_ref(), true)),
+) -> Option<bool> {
+    match payload.and_then(CompilerExpressionPayload::syntax_binary_operator) {
+        Some(BinaryOp::Range) => Some(false),
+        Some(BinaryOp::RangeInclusive) => Some(true),
         _ => None,
     }
 }

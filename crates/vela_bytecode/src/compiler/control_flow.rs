@@ -918,8 +918,7 @@ impl Compiler<'_, '_> {
                 "mismatched CST for iterable payload",
             )));
         }
-        let range_iterable =
-            range_iterable_for_payload(parts.iterable_payload.as_ref(), parts.iterable);
+        let range_iterable = range_iterable_for_payload(parts.iterable_payload.as_ref());
         let iterable_operand_payloads =
             match (range_iterable.is_some(), parts.iterable_payload.as_ref()) {
                 (true, Some(payload)) => {
@@ -947,13 +946,18 @@ impl Compiler<'_, '_> {
                 .and_then(iterable_item_shape),
             )
         };
-        let loop_iterable = if let Some((start, end, inclusive)) = range_iterable {
+        let loop_iterable = if let Some(inclusive) = range_iterable {
+            let ExprKind::Binary { left, right, .. } = &parts.iterable.kind else {
+                return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST range operand payload",
+                )));
+            };
             let (start_payload, end_payload) = iterable_operand_payloads
                 .as_ref()
                 .map(|(start_payload, end_payload)| (Some(start_payload), Some(end_payload)))
                 .unwrap_or((None, None));
-            let cursor = self.compile_expr_with_payload(start, start_payload)?;
-            let end = self.compile_expr_with_payload(end, end_payload)?;
+            let cursor = self.compile_expr_with_payload(left, start_payload)?;
+            let end = self.compile_expr_with_payload(right, end_payload)?;
             let done = self.alloc_register()?;
             self.emit_bool_constant_to(done, false);
             LoopIterable::Range {
