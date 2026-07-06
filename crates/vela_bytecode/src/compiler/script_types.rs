@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution};
 use vela_hir::ids::HirLocalId;
 use vela_hir::type_hint::HirTypeHint;
-use vela_syntax::ast::{Expr, ExprKind};
+use vela_syntax::ast::{Expr, ExprKind, SyntaxExpression};
 
 use super::body_payloads::CompilerExpressionPayload;
 use super::expression_checks::payload_aligns_with_expr_span;
@@ -354,6 +354,29 @@ impl super::Compiler<'_, '_> {
                     .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
             },
             |name| {
+                self.script_types
+                    .name_fact(name)
+                    .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))
+            },
+        )
+    }
+
+    pub(super) fn script_fact_for_syntax_expression(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<ScriptTypeFact> {
+        let payload =
+            CompilerExpressionPayload::from_syntax(Some(source), Some(expression.clone()));
+        expression_script_fact_from_payload_syntax(
+            &payload,
+            &|span| self.type_symbol_at_span(span),
+            &|span| {
+                self.script_types
+                    .local_fact_at_span(self.bindings, span)
+                    .or_else(|| self.global_type_at_span(span).map(ScriptTypeFact::new))
+            },
+            &|name| {
                 self.script_types
                     .name_fact(name)
                     .or_else(|| self.global_type_named(name).map(ScriptTypeFact::new))

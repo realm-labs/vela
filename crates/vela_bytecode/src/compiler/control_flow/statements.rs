@@ -237,6 +237,14 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
+            SyntaxStatementKind::Match if stmt.is_syntax_only() && syntax_payload_is_trusted => {
+                if let Some((source, match_expr)) = stmt.syntax_match()
+                    && let Some(compiled) =
+                        self.compile_syntax_match_statement(source, &match_expr)?
+                {
+                    return Ok(compiled);
+                }
+            }
             _ => {}
         }
 

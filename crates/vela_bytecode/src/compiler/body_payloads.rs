@@ -668,6 +668,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((self.source?, self.syntax.as_ref()?.as_for()?))
     }
 
+    pub(in crate::compiler) fn syntax_match(&self) -> Option<(SourceId, SyntaxMatchExpr)> {
+        Some((self.source?, self.expression()?.as_match()?))
+    }
+
     pub(in crate::compiler) fn return_value_syntax_literal_and_span(
         &self,
     ) -> Option<(vela_syntax::ast::Literal, Span)> {

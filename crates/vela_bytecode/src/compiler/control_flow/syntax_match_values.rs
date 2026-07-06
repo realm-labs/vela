@@ -1,10 +1,12 @@
 use vela_common::{SourceId, Span};
+use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
     AstNode, Pattern, SyntaxExpression, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchExpr,
     SyntaxPattern, SyntaxPatternKind,
 };
 
 use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerPatternPayload};
+use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
 
@@ -23,6 +25,75 @@ impl Compiler<'_, '_> {
         let dst = self.alloc_register()?;
         self.compile_syntax_match_value_to(source, &match_expr, dst)?;
         Ok(Some(dst))
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_match_statement(
+        &mut self,
+        source: SourceId,
+        match_expr: &SyntaxMatchExpr,
+    ) -> CompileResult<Option<bool>> {
+        let Some(scrutinee_expression) = match_expr.scrutinee() else {
+            return Ok(None);
+        };
+        let Some(scrutinee) = self.compile_syntax_expression(source, &scrutinee_expression)? else {
+            return Err(syntax_match_error(
+                source,
+                scrutinee_expression.syntax().text_range(),
+            ));
+        };
+        let scrutinee_facts = PatternBindingFacts::value_shape(
+            self.value_shape_for_syntax_expression(Some(source), &scrutinee_expression),
+        )
+        .with_script(self.script_fact_for_syntax_expression(source, &scrutinee_expression));
+        let mut end_jumps = Vec::new();
+        let mut all_arms_return = !match_expr.arms().is_empty();
+
+        for arm in match_expr.arms() {
+            let Some(pattern) = arm.pattern() else {
+                return Err(syntax_match_error(source, arm.syntax().text_range()));
+            };
+            let mut next_arm_jumps =
+                self.compile_syntax_match_pattern(source, scrutinee, &pattern)?;
+            let previous_locals = self.locals.clone();
+            let previous_hir_locals = self.hir_locals.clone();
+            let previous_script_types = self.script_types.clone();
+            let previous_value_types = self.value_types.clone();
+            let previous_value_shapes = self.value_shapes.clone();
+            self.bind_syntax_pattern_locals(
+                scrutinee,
+                &pattern,
+                syntax_match_arm_body_span(source, &arm),
+                scrutinee_facts.clone(),
+                LocalBindingKind::Pattern,
+            )?;
+            if let Some(guard) = arm.guard() {
+                let Some(condition) = self.compile_syntax_expression(source, &guard)? else {
+                    return Err(syntax_match_error(source, guard.syntax().text_range()));
+                };
+                next_arm_jumps.push(self.emit_jump_if_false(condition));
+            }
+            let arm_returned = self.compile_syntax_match_arm_statement(source, &arm)?;
+            self.locals = previous_locals;
+            self.hir_locals = previous_hir_locals;
+            self.script_types = previous_script_types;
+            self.value_types = previous_value_types;
+            self.value_shapes = previous_value_shapes;
+            all_arms_return &= arm_returned;
+            if !arm_returned {
+                end_jumps.push(self.emit_jump());
+            }
+            if next_arm_jumps.is_empty() {
+                break;
+            }
+            for jump in next_arm_jumps {
+                self.patch_jump(jump, self.current_offset())?;
+            }
+        }
+
+        for jump in end_jumps {
+            self.patch_jump(jump, self.current_offset())?;
+        }
+        Ok(Some(all_arms_return))
     }
 
     fn compile_syntax_match_value_to(
@@ -166,6 +237,26 @@ impl Compiler<'_, '_> {
             None => Err(syntax_match_error(source, arm.syntax().text_range())),
         }
     }
+
+    fn compile_syntax_match_arm_statement(
+        &mut self,
+        source: SourceId,
+        arm: &SyntaxMatchArm,
+    ) -> CompileResult<bool> {
+        match arm.body() {
+            Some(SyntaxMatchArmBody::Expression(body)) => {
+                let Some(_value) = self.compile_syntax_expression(source, &body)? else {
+                    return Err(syntax_match_error(source, body.syntax().text_range()));
+                };
+                Ok(false)
+            }
+            Some(SyntaxMatchArmBody::Block(block)) => {
+                let body = CompilerBodyPayload::nested_syntax(source, block);
+                self.compile_body_payload_statements(&body)
+            }
+            None => Err(syntax_match_error(source, arm.syntax().text_range())),
+        }
+    }
 }
 
 fn syntax_match_value_lowering_covers(match_expr: &SyntaxMatchExpr) -> bool {
@@ -209,6 +300,17 @@ fn syntax_match_error(source: SourceId, range: vela_syntax::TextRange) -> Compil
         range.start().into(),
         range.end().into(),
     ))
+}
+
+fn syntax_match_arm_body_span(source: SourceId, arm: &SyntaxMatchArm) -> Span {
+    let range = arm
+        .body()
+        .map(|body| match body {
+            SyntaxMatchArmBody::Expression(expression) => expression.syntax().text_range(),
+            SyntaxMatchArmBody::Block(block) => block.syntax().text_range(),
+        })
+        .unwrap_or_else(|| arm.syntax().text_range());
+    Span::new(source, range.start().into(), range.end().into())
 }
 
 fn syntax_pattern_path_segments(

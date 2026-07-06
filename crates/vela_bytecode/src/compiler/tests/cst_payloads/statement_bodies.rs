@@ -188,6 +188,37 @@ fn main() {
 }
 
 #[test]
+fn syntax_only_match_statement_body_compiles_without_owned_body_lookup() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main(input) {
+    match input {
+        value if value > 0 => {
+            return value;
+        },
+        _ => {
+            return 0;
+        },
+    }
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = payload.body.statement_payloads();
+
+    let fallback_result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| statements[0].fallback()));
+
+    assert!(
+        fallback_result.is_err(),
+        "syntax-only match statement should not retain an owned statement fallback"
+    );
+    compiler
+        .compile_body_payload_statements_for_test(&payload.body)
+        .expect("syntax-only match statement should compile");
+}
+
+#[test]
 fn missing_for_statement_body_payload_does_not_use_legacy_body() {
     with_cst_payload_compiler(
         r#"
