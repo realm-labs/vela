@@ -10,7 +10,7 @@ use super::expression_facts::{
     expression_path_is_self, expression_syntax_kind, payload_matches_expression_facts,
 };
 use super::methods::host_method_call;
-use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
+use super::record_shapes::{ValueShape, callback_param_shapes};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use payload_guards::{
@@ -277,7 +277,7 @@ impl Compiler<'_, '_> {
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
         self.reject_static_array_ordering_method_without_ord(
             name,
-            args,
+            arg_syntax,
             value_receiver_type.as_ref(),
             receiver_shape.as_ref(),
             expr.span,
@@ -414,7 +414,7 @@ impl Compiler<'_, '_> {
             .or_else(|| receiver_shape.as_ref().and_then(ValueShape::value_type));
         self.reject_static_array_ordering_method_without_ord(
             method,
-            args,
+            arg_syntax,
             value_receiver_type.as_ref(),
             receiver_shape.as_ref(),
             expr.span,
@@ -915,7 +915,7 @@ impl Compiler<'_, '_> {
     fn reject_static_array_ordering_method_without_ord(
         &self,
         method: &str,
-        args: &[Argument],
+        arg_syntax: CallArgumentSyntax<'_, '_>,
         receiver_type: Option<&RuntimeTypeFact>,
         receiver_shape: Option<&ValueShape>,
         span: Span,
@@ -927,7 +927,12 @@ impl Compiler<'_, '_> {
             let Some(receiver_shape) = receiver_shape else {
                 return Ok(());
             };
-            let Some(key_shape) = callback_return_shape(receiver_shape, method, args) else {
+            let Some((source, args)) = arg_syntax.syntax_arguments() else {
+                return Ok(());
+            };
+            let Some(key_shape) =
+                self.syntax_callback_return_shape(receiver_shape, method, &args, Some(source))
+            else {
                 return Ok(());
             };
             return self.reject_static_ord_shape(method, &key_shape, span);

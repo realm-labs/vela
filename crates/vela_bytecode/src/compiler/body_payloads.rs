@@ -741,6 +741,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
 }
 
 impl CompilerArgumentPayload {
+    pub(in crate::compiler) fn source(&self) -> Option<SourceId> {
+        self.source
+    }
+
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
         self.source.is_some()
             && self
@@ -764,8 +768,7 @@ impl CompilerArgumentPayload {
         )
     }
 
-    #[cfg(test)]
-    pub(super) fn syntax_argument(&self) -> Option<&SyntaxArgument> {
+    pub(in crate::compiler) fn syntax_argument(&self) -> Option<&SyntaxArgument> {
         self.source?;
         self.syntax.as_ref()
     }

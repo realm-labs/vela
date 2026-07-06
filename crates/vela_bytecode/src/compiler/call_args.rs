@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 
-use vela_common::{Diagnostic, Span};
+use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
-use vela_syntax::ast::{Argument, SyntaxExpression};
+use vela_syntax::ast::{Argument, SyntaxArgument, SyntaxExpression};
 
 use crate::{CallArgument, ScriptCallMode};
 
@@ -72,6 +72,27 @@ impl<'payload, 'ast> CallArgumentSyntax<'payload, 'ast> {
 
     pub(in crate::compiler) fn has_named_args(self) -> bool {
         self.args.iter().any(|arg| self.name_for(arg).is_some())
+    }
+
+    pub(in crate::compiler) fn syntax_arguments(self) -> Option<(SourceId, Vec<SyntaxArgument>)> {
+        let payloads = self.payloads?;
+        if payloads.len() != self.args.len() {
+            return None;
+        }
+        let mut source = None;
+        let mut arguments = Vec::with_capacity(payloads.len());
+        for payload in payloads {
+            let payload_source = payload.source()?;
+            if let Some(source) = source {
+                if source != payload_source {
+                    return None;
+                }
+            } else {
+                source = Some(payload_source);
+            }
+            arguments.push(payload.syntax_argument()?.clone());
+        }
+        Some((source?, arguments))
     }
 }
 
