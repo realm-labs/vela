@@ -692,12 +692,12 @@ fn main() {
             let statement = field_index_statement_payloads(&payload.body)[1]
                 .let_initializer_expression_payload()
                 .expect("index payload");
-            let (_base, index) = statement
-                .index_operand_payloads()
-                .expect("index operand payloads");
+            assert!(
+                statement.index_operand_payloads().is_some(),
+                "index operand payloads should be present"
+            );
 
-            let key =
-                crate::compiler::expressions::literal_string_with_payload(index.fallback(), None);
+            let key = crate::compiler::expressions::literal_string_with_payload(None);
 
             assert_eq!(
                 key, None,

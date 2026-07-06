@@ -640,7 +640,7 @@ impl Compiler<'_, '_> {
         )?;
         let base = self.compile_expr_with_payload(base, base_payload)?;
         let dst = self.alloc_register()?;
-        if let Some(key) = literal_string_with_payload(index, index_payload) {
+        if let Some(key) = literal_string_with_payload(index_payload) {
             let key = self.code.push_constant(crate::Constant::String(key));
             self.emit(UnlinkedInstructionKind::GetStringKeyIndex { dst, base, key });
         } else {
@@ -962,7 +962,6 @@ impl Compiler<'_, '_> {
 }
 
 pub(super) fn literal_string_with_payload(
-    _expr: &Expr,
     payload: Option<&CompilerExpressionPayload<'_>>,
 ) -> Option<String> {
     if let Some(Literal::String(value)) =
