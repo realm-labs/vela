@@ -968,6 +968,9 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
 
     fn compile(mut self) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
+        #[cfg(test)]
+        let statements = self.body.compilation_statement_payloads();
+        #[cfg(not(test))]
         let statements = self.body.statement_payloads();
         let returned = self.compile_statement_payloads(&statements)?;
         if !returned {

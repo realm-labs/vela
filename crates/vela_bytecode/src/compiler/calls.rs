@@ -835,7 +835,7 @@ impl Compiler<'_, '_> {
         )))
     }
 
-    fn value_method_id_for_type(
+    pub(in crate::compiler) fn value_method_id_for_type(
         &self,
         receiver_type: &RuntimeTypeFact,
         method: &str,

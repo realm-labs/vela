@@ -13,8 +13,8 @@ use crate::compiler::body_payloads::{
 };
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::operators::{
-    binary_literal_op, compound_assignment_instruction, i64_immediate_instruction,
-    i64_immediate_op_supported, non_logical_binary_instruction,
+    binary_literal_op, compound_assignment_instruction, i64_compound_assignment_instruction,
+    i64_immediate_instruction, i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::value_types::RuntimeTypeFact;
@@ -37,6 +37,10 @@ impl Compiler<'_, '_> {
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
             return Ok(None);
         };
+        let value_shape = self.value_shape_for_syntax_expression(Some(source), expression);
+        let value_type = self
+            .syntax_value_type_for_expression(Some(source), expression)
+            .or_else(|| value_shape.as_ref().and_then(|shape| shape.value_type()));
         self.locals.insert(name.clone(), register);
         let local_binding = self
             .bindings
@@ -44,12 +48,13 @@ impl Compiler<'_, '_> {
         if let Some(local) = local_binding {
             self.hir_locals.insert(local, register);
             self.script_types.set_local_fact(local, name.clone(), None);
-            self.value_types.set_local(local, name.clone(), None);
-            self.value_shapes.set_local(local, name.clone(), None);
+            self.value_types.set_local(local, name.clone(), value_type);
+            self.value_shapes
+                .set_local(local, name.clone(), value_shape);
         } else {
             self.script_types.set_name_fact(name.clone(), None);
-            self.value_types.set_name(name.clone(), None);
-            self.value_shapes.set_name(name.clone(), None);
+            self.value_types.set_name(name.clone(), value_type);
+            self.value_shapes.set_name(name.clone(), value_shape);
         }
         self.record_frame_slot(
             name,
@@ -507,6 +512,7 @@ impl Compiler<'_, '_> {
         let Some(op) = assign.operator() else {
             return Ok(None);
         };
+        let value_type = self.syntax_value_type_for_expression(Some(source), &value_expression);
         let Some(value) = self.compile_syntax_expression(source, &value_expression)? else {
             return Ok(None);
         };
@@ -515,8 +521,10 @@ impl Compiler<'_, '_> {
                 return Ok(None);
             };
             let target_span = syntax_expression_span(source, &target_expression);
+            let target_type = self.value_type_for_path(target_span, &target_path);
+            let assigned_type = syntax_assignment_value_type(op, target_type, value_type);
             let target = self.local_register_at_span(target_span, target_name)?;
-            return self.compile_syntax_local_assignment(op, target, value);
+            return self.compile_syntax_local_assignment(op, target, value, assigned_type);
         }
         if let Some(index_target) = target_expression.as_index() {
             if let Some(assigned) = self.compile_syntax_host_index_assignment(
@@ -537,6 +545,7 @@ impl Compiler<'_, '_> {
         op: AssignOp,
         target: Register,
         value: Register,
+        assigned_type: Option<RuntimeTypeFact>,
     ) -> CompileResult<Option<Register>> {
         let assigned = match op {
             AssignOp::Set => {
@@ -548,14 +557,19 @@ impl Compiler<'_, '_> {
             }
             AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Div | AssignOp::Rem => {
                 let dst = self.alloc_register()?;
-                let instruction = compound_assignment_instruction(op, dst, target, value)
-                    .ok_or_else(|| {
-                        crate::compiler::CompileError::new(
-                            crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                                "compound assignment",
-                            ),
-                        )
-                    })?;
+                let instruction = if assigned_type
+                    == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+                {
+                    i64_compound_assignment_instruction(op, dst, target, value)
+                } else {
+                    None
+                }
+                .or_else(|| compound_assignment_instruction(op, dst, target, value))
+                .ok_or_else(|| {
+                    crate::compiler::CompileError::new(
+                        crate::compiler::CompileErrorKind::UnsupportedSyntax("compound assignment"),
+                    )
+                })?;
                 self.emit(instruction);
                 self.emit(UnlinkedInstructionKind::Move {
                     dst: target,
@@ -673,6 +687,40 @@ impl Compiler<'_, '_> {
                 call_span,
             )? {
                 return Ok(Some(register));
+            }
+            let receiver_shape =
+                self.value_shape_for_syntax_expression(Some(source), &receiver_expression);
+            let value_receiver_type = receiver_shape.as_ref().and_then(|shape| shape.value_type());
+            if let Some(method_id) = value_receiver_type
+                .as_ref()
+                .and_then(|receiver_type| self.value_method_id_for_type(receiver_type, &method))
+            {
+                if arguments
+                    .iter()
+                    .any(|argument| argument.name_text().is_some())
+                {
+                    return Ok(None);
+                }
+                let Some(receiver) =
+                    self.compile_syntax_expression(source, &receiver_expression)?
+                else {
+                    return Ok(None);
+                };
+                let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+                    return Ok(None);
+                };
+                let dst = self.alloc_register()?;
+                self.emit_spanned(
+                    UnlinkedInstructionKind::CallMethodId {
+                        dst,
+                        receiver,
+                        method,
+                        method_id,
+                        args: args.into_iter().map(CallArgument::Register).collect(),
+                    },
+                    call_span,
+                );
+                return Ok(Some(dst));
             }
             let Some(receiver) = self.compile_syntax_expression(source, &receiver_expression)?
             else {
@@ -996,6 +1044,23 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
         Ok(None)
+    }
+}
+
+fn syntax_assignment_value_type(
+    op: AssignOp,
+    target_type: Option<RuntimeTypeFact>,
+    value_type: Option<RuntimeTypeFact>,
+) -> Option<RuntimeTypeFact> {
+    match op {
+        AssignOp::Set => value_type,
+        AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem
+            if target_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+                && value_type == Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64)) =>
+        {
+            Some(RuntimeTypeFact::Primitive(PrimitiveTag::I64))
+        }
+        AssignOp::Div | AssignOp::Add | AssignOp::Sub | AssignOp::Mul | AssignOp::Rem => None,
     }
 }
 

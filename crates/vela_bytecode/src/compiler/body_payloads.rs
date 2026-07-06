@@ -5,15 +5,18 @@ use vela_common::Span;
 #[cfg(test)]
 use vela_syntax::ast::IfExpr;
 #[cfg(test)]
+use vela_syntax::ast::MatchExpr;
+#[cfg(test)]
 use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{
-    AstNode, ExprKind, MatchExpr, SyntaxArgument, SyntaxBlock, SyntaxExpression,
-    SyntaxExpressionKind, SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr,
-    SyntaxPattern, SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement,
-    SyntaxStatementKind,
+    AstNode, ExprKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
+    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
+#[cfg(test)]
+use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
 
 mod expression_payloads;
 mod simple_values;
@@ -86,7 +89,9 @@ pub(in crate::compiler) struct CompilerInterpolationPayload {
 pub(in crate::compiler) struct CompilerExpressionPayload<'ast> {
     source: Option<SourceId>,
     syntax: Option<SyntaxExpression>,
-    fallback: &'ast vela_syntax::ast::Expr,
+    _ast: PhantomData<&'ast ()>,
+    #[cfg(test)]
+    fallback: Option<&'ast vela_syntax::ast::Expr>,
 }
 
 pub(in crate::compiler) struct CompilerMapEntryPayload {
@@ -181,6 +186,14 @@ impl<'ast> CompilerBodyPayload<'ast> {
             .collect()
     }
 
+    #[cfg(test)]
+    pub(super) fn compilation_statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
+        let fallback_statements =
+            fallback_statements_for_syntax_body(self.syntax.source, &self.syntax.body);
+        let syntax_statements = syntax_body_statements(&self.syntax.body);
+        paired_statement_payloads(self.syntax.source, &syntax_statements, fallback_statements)
+    }
+
     pub(super) fn syntax_statements_are_empty(&self) -> bool {
         syntax_body_statements(&self.syntax.body).is_empty()
     }
@@ -224,6 +237,24 @@ impl<'ast> CompilerBodyPayload<'ast> {
     pub(super) const fn syntax_payload(&self) -> &SyntaxBodyPayload {
         &self.syntax
     }
+}
+
+#[cfg(test)]
+fn fallback_statements_for_syntax_body(source: SourceId, body: &SyntaxBlock) -> &'static [Stmt] {
+    let body_text = body.syntax().text().to_string();
+    let range = body.syntax().text_range();
+    let start: u32 = range.start().into();
+    let end: u32 = range.end().into();
+    let mut text = " ".repeat(usize::try_from(start).expect("body start should fit usize"));
+    text.push_str(&body_text);
+    let span = Span::new(source, start, end);
+    let Some(block) = parse_owned_body_blocks_for_tests(source, &text, &[span])
+        .into_iter()
+        .next()
+    else {
+        return &[];
+    };
+    Box::leak(block.statements.into_boxed_slice())
 }
 
 #[cfg(test)]
@@ -297,8 +328,8 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
-fn fallback_expr_syntax_kind(fallback: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
-    match fallback.kind {
+fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
+    match expr.kind {
         ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
             Some(SyntaxExpressionKind::Literal)
         }
@@ -321,20 +352,16 @@ fn fallback_expr_syntax_kind(fallback: &vela_syntax::ast::Expr) -> Option<Syntax
     }
 }
 
-fn fallback_expr_matches_syntax_kind(
-    fallback: &vela_syntax::ast::Expr,
+fn expr_matches_syntax_kind(
+    expr: &vela_syntax::ast::Expr,
     syntax_kind: SyntaxExpressionKind,
 ) -> bool {
-    syntax_kind == SyntaxExpressionKind::Paren
-        || fallback_expr_syntax_kind(fallback) == Some(syntax_kind)
+    syntax_kind == SyntaxExpressionKind::Paren || expr_syntax_kind(expr) == Some(syntax_kind)
 }
 
-fn fallback_path_self_shape_matches(
-    fallback: &vela_syntax::ast::Expr,
-    syntax_is_self: bool,
-) -> bool {
-    fallback_expr_syntax_kind(fallback) == Some(SyntaxExpressionKind::Path)
-        && matches!(fallback.kind, ExprKind::SelfValue) == syntax_is_self
+fn expr_path_self_shape_matches(expr: &vela_syntax::ast::Expr, syntax_is_self: bool) -> bool {
+    expr_syntax_kind(expr) == Some(SyntaxExpressionKind::Path)
+        && matches!(expr.kind, ExprKind::SelfValue) == syntax_is_self
 }
 
 fn spans_overlap(left: Span, right: Span) -> bool {
@@ -365,6 +392,7 @@ fn match_arm_payloads_for_syntax(
     )
 }
 
+#[cfg(test)]
 fn match_scrutinee_payload_for_expr<'ast>(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,
@@ -886,10 +914,26 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         syntax: Option<SyntaxExpression>,
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
+        let _ = fallback;
         Self {
             source,
             syntax,
-            fallback,
+            _ast: PhantomData,
+            #[cfg(test)]
+            fallback: Some(fallback),
+        }
+    }
+
+    pub(in crate::compiler) fn from_syntax(
+        source: Option<SourceId>,
+        syntax: Option<SyntaxExpression>,
+    ) -> Self {
+        Self {
+            source,
+            syntax,
+            _ast: PhantomData,
+            #[cfg(test)]
+            fallback: None,
         }
     }
 
@@ -902,20 +946,30 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
-        syntax_kind == SyntaxExpressionKind::Paren
-            || fallback_expr_syntax_kind(self.fallback) == Some(syntax_kind)
+        #[cfg(test)]
+        if let Some(fallback) = self.fallback {
+            return syntax_kind == SyntaxExpressionKind::Paren
+                || expr_syntax_kind(fallback) == Some(syntax_kind);
+        }
+
+        syntax_kind == SyntaxExpressionKind::Paren || self.stored_syntax_kind() == Some(syntax_kind)
     }
 
     fn paired_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
         let Some(kind) = self.stored_syntax_kind() else {
             return true;
         };
-        if !fallback_expr_matches_syntax_kind(expr, kind) {
+        if !expr_matches_syntax_kind(expr, kind) {
             return false;
         }
-        (kind == SyntaxExpressionKind::Literal
-            || fallback_expr_syntax_kind(self.fallback) == fallback_expr_syntax_kind(expr))
-            && self.paired_expr_matches_stored_syntax_shape(expr)
+        #[cfg(test)]
+        if let Some(fallback) = self.fallback
+            && kind != SyntaxExpressionKind::Literal
+            && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
+        {
+            return false;
+        }
+        self.paired_expr_matches_stored_syntax_shape(expr)
     }
 
     pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
@@ -936,12 +990,13 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
             return true;
         }
-        fallback_path_self_shape_matches(expr, self.syntax_is_self())
+        expr_path_self_shape_matches(expr, self.syntax_is_self())
     }
 
     #[cfg(test)]
     pub(in crate::compiler) fn fallback(&self) -> &'ast vela_syntax::ast::Expr {
         self.fallback
+            .expect("expression payload has no owned expression fallback")
     }
 
     pub(in crate::compiler) fn source(&self) -> Option<SourceId> {

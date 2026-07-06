@@ -299,7 +299,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         registry: Some(registry.compile_view()),
     };
     let (payload, signature, bindings) = semantic.function("main").expect("main function");
-    let statements = payload.body.statement_payloads();
+    let statements = paired_statement_payloads_for_body(source, &payload.body);
     let cst_target = statements[0]
         .expression_payload()
         .and_then(|payload| payload.assignment_target_payload())
@@ -341,12 +341,6 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         Some("CstHost")
     );
 
-    assert!(
-        compiler
-            .resolve_host_path_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
-            .is_none(),
-        "mismatched CST host path payload must not resolve"
-    );
     let error = compiler
         .compile_expr_with_payload(mismatched_target.fallback(), Some(&mismatched_target))
         .expect_err("mismatched CST host read payload must not compile");

@@ -43,13 +43,32 @@ impl Compiler<'_, '_> {
         body: &CompilerBodyPayload<'_>,
         dst: Register,
     ) -> CompileResult<bool> {
+        let statements = body.statement_payloads();
+        self.compile_block_payload_value_to_from_statements(body, dst, &statements)
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn compile_block_payload_value_to_for_compilation(
+        &mut self,
+        body: &CompilerBodyPayload<'_>,
+        dst: Register,
+    ) -> CompileResult<bool> {
+        let statements = body.compilation_statement_payloads();
+        self.compile_block_payload_value_to_from_statements(body, dst, &statements)
+    }
+
+    fn compile_block_payload_value_to_from_statements(
+        &mut self,
+        body: &CompilerBodyPayload<'_>,
+        dst: Register,
+        statements: &[crate::compiler::body_payloads::CompilerStatementPayload<'_>],
+    ) -> CompileResult<bool> {
         if body.syntax_statements_are_empty() {
             self.emit_constant_to(dst, Constant::Null);
             return Ok(false);
         }
         self.reject_extra_body_statement_payloads(body)?;
-        let statements = body.statement_payloads();
-        match body.block_value(&statements) {
+        match body.block_value(statements) {
             CompilerBlockValue::Empty => {
                 self.emit_constant_to(dst, Constant::Null);
                 Ok(false)

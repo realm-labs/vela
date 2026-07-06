@@ -56,7 +56,7 @@ impl Compiler<'_, '_> {
             .cloned()
     }
 
-    fn value_shape_for_syntax_expression(
+    pub(in crate::compiler) fn value_shape_for_syntax_expression(
         &self,
         source: Option<SourceId>,
         expression: &SyntaxExpression,

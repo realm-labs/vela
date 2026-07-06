@@ -1020,6 +1020,19 @@ fn float_literal_tag(value: &vela_syntax::ast::FloatLiteral) -> PrimitiveTag {
 }
 
 impl super::Compiler<'_, '_> {
+    pub(in crate::compiler) fn syntax_value_type_for_expression(
+        &self,
+        source: Option<SourceId>,
+        expression: &SyntaxExpression,
+    ) -> Option<RuntimeTypeFact> {
+        syntax_expression_value_type(
+            expression,
+            source,
+            &|span| self.value_types.local_at_span(self.bindings, span),
+            &|name| self.value_types.name(name),
+        )
+    }
+
     pub(in crate::compiler) fn value_type_for_expr_with_payload(
         &self,
         expr: &Expr,

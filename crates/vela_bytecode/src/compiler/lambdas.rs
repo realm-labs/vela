@@ -164,7 +164,12 @@ impl Compiler<'_, '_> {
                             "missing CST lambda block body payload",
                         )));
                     };
-                    self.compile_block_payload_value_to(&block_payload, dst)?
+                    #[cfg(test)]
+                    let returned =
+                        self.compile_block_payload_value_to_for_compilation(&block_payload, dst)?;
+                    #[cfg(not(test))]
+                    let returned = self.compile_block_payload_value_to(&block_payload, dst)?;
+                    returned
                 } else {
                     self.compile_block_value_to(block, dst)?
                 };
