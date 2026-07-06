@@ -113,11 +113,15 @@ fn required_pattern_kind(
         .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
 }
 
-fn reject_extra_record_pattern_payloads(
+fn reject_mismatched_record_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::RecordPatternField],
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| payload.has_extra_record_pattern_fields(fields.len())) {
+    if let Some(payload) = payload
+        && payload
+            .record_field_payloads()
+            .is_some_and(|payloads| payloads.len() != fields.len())
+    {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST record pattern fields",
         )));
@@ -125,11 +129,15 @@ fn reject_extra_record_pattern_payloads(
     Ok(())
 }
 
-fn reject_extra_tuple_pattern_payloads(
+fn reject_mismatched_tuple_pattern_payloads(
     payload: Option<&CompilerPatternPayload>,
     fields: &[vela_syntax::ast::Pattern],
 ) -> CompileResult<()> {
-    if payload.is_some_and(|payload| payload.has_extra_tuple_pattern_fields(fields.len())) {
+    if let Some(payload) = payload
+        && payload
+            .tuple_pattern_payloads()
+            .is_some_and(|payloads| payloads.len() != fields.len())
+    {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST tuple pattern fields",
         )));
@@ -335,7 +343,7 @@ impl Compiler<'_, '_> {
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
-                reject_extra_record_pattern_payloads(payload, fields)?;
+                reject_mismatched_record_pattern_payloads(payload, fields)?;
                 let field_payloads = payload.and_then(|payload| payload.record_field_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
@@ -389,7 +397,7 @@ impl Compiler<'_, '_> {
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
                 let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
-                reject_extra_tuple_pattern_payloads(payload, fields)?;
+                reject_mismatched_tuple_pattern_payloads(payload, fields)?;
                 let field_payloads = payload.and_then(|payload| payload.tuple_pattern_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;
@@ -484,7 +492,7 @@ impl Compiler<'_, '_> {
             }
             Pattern::RecordVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
-                reject_extra_record_pattern_payloads(payload, fields)?;
+                reject_mismatched_record_pattern_payloads(payload, fields)?;
                 let field_payloads = payload.and_then(|payload| payload.record_field_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload =
@@ -543,7 +551,7 @@ impl Compiler<'_, '_> {
             }
             Pattern::TupleVariant { path, fields } => {
                 let path = pattern_path_segments(payload, path)?;
-                reject_extra_tuple_pattern_payloads(payload, fields)?;
+                reject_mismatched_tuple_pattern_payloads(payload, fields)?;
                 let field_payloads = payload.and_then(|payload| payload.tuple_pattern_payloads());
                 for (index, field) in fields.iter().enumerate() {
                     let field_payload = tuple_pattern_payload_at(field_payloads.as_deref(), index)?;

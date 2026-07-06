@@ -258,8 +258,6 @@ fn classify(result) {
         .collect::<Vec<_>>();
     assert_eq!(return_arm_payloads.len(), 2);
 
-    let fallback_record_pattern =
-        return_match_fallback_pattern(body_fallback(source, &payload.body), 0);
     let record_pattern = return_arm_payloads[0].pattern_payload();
     let syntax_pattern = record_pattern
         .syntax_pattern()
@@ -283,10 +281,7 @@ fn classify(result) {
     let missing_source_fields = missing_source_record
         .record_field_payloads()
         .expect("source-less record pattern should expose field payloads");
-    assert!(
-        !missing_source_record
-            .has_extra_record_pattern_fields(record_pattern_fields(fallback_record_pattern).len())
-    );
+    assert_eq!(missing_source_fields.len(), record_fields.len());
     assert_eq!(missing_source_fields[0].syntax_label_name(), None);
     assert_eq!(missing_source_fields[0].syntax_pattern_kind(), None);
     assert!(missing_source_fields[0].pattern_payload().is_none());
@@ -302,22 +297,20 @@ fn classify(result) {
         Some("status")
     );
 
-    let fallback_tuple_pattern =
-        return_match_fallback_pattern(body_fallback(source, &payload.body), 1);
     let tuple_pattern = return_arm_payloads[1].pattern_payload();
+    let tuple_fields = tuple_pattern
+        .tuple_pattern_payloads()
+        .expect("tuple pattern should expose field payloads");
     let missing_source_tuple = body_payloads::CompilerPatternPayload::missing_child_payload_context(
         tuple_pattern
             .syntax_pattern()
             .expect("tuple arm should expose CST pattern")
             .clone(),
     );
-    assert!(
-        !missing_source_tuple
-            .has_extra_tuple_pattern_fields(tuple_pattern_fields(fallback_tuple_pattern).len())
-    );
-    let tuple_fields = tuple_pattern
+    let missing_source_tuple_fields = missing_source_tuple
         .tuple_pattern_payloads()
-        .expect("tuple pattern should expose field payloads");
+        .expect("source-less tuple pattern should expose field payloads");
+    assert_eq!(missing_source_tuple_fields.len(), tuple_fields.len());
     assert_eq!(
         tuple_fields[0]
             .syntax_pattern()
@@ -1068,22 +1061,6 @@ fn return_match_fallback_pattern(
         panic!("expected return match expression");
     };
     &match_expr.arms.get(arm_index).expect("match arm").pattern
-}
-
-fn record_pattern_fields(
-    pattern: &vela_syntax::ast::Pattern,
-) -> &[vela_syntax::ast::RecordPatternField] {
-    let vela_syntax::ast::Pattern::RecordVariant { fields, .. } = pattern else {
-        panic!("expected record pattern");
-    };
-    fields
-}
-
-fn tuple_pattern_fields(pattern: &vela_syntax::ast::Pattern) -> &[vela_syntax::ast::Pattern] {
-    let vela_syntax::ast::Pattern::TupleVariant { fields, .. } = pattern else {
-        panic!("expected tuple pattern");
-    };
-    fields
 }
 
 fn first_return_match_syntax_arm(

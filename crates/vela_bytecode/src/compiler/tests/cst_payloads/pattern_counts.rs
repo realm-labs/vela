@@ -46,6 +46,51 @@ fn fallback_tuple(value) {
 }
 
 #[test]
+fn missing_tuple_pattern_payloads_do_not_compile_fallback_fields() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Pair(left: i64, right: i64)
+    Single(left: i64)
+}
+
+fn cst_tuple(value) {
+    return match value {
+        Shape::Single(cst_left) => cst_left,
+        _ => 0,
+    };
+}
+
+fn fallback_tuple(value) {
+    return match value {
+        Shape::Pair(legacy_left, legacy_right) => legacy_left,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_tuple").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_tuple")
+        .expect("fallback function");
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_statements_for_body(
+        source,
+        &fallback_payload.body,
+    ));
+    let mismatched = first_return_match_pattern_payload(&cst_payload.body);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_tuple");
+
+    let error = compiler
+        .compile_match_pattern(Register(0), fallback_pattern, Some(&mismatched))
+        .expect_err("missing CST tuple pattern fields must not use fallback fields");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST tuple pattern fields")
+    ));
+}
+
+#[test]
 fn extra_record_pattern_payloads_do_not_bind_fallback_fields() {
     let source = SourceId::new(1);
     let text = r#"
@@ -90,6 +135,58 @@ fn fallback_record(value) {
             LocalBindingKind::Pattern,
         )
         .expect_err("extra CST record pattern fields must not be ignored");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST record pattern fields")
+    ));
+}
+
+#[test]
+fn missing_record_pattern_payloads_do_not_bind_fallback_fields() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum Shape {
+    Named { first: i64, second: i64 }
+    One { first: i64 }
+}
+
+fn cst_record(value) {
+    return match value {
+        Shape::One { first: cst_first } => cst_first,
+        _ => 0,
+    };
+}
+
+fn fallback_record(value) {
+    return match value {
+        Shape::Named { first: legacy_first, second: legacy_second } => legacy_first,
+        _ => 0,
+    };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_record").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_record")
+        .expect("fallback function");
+    let fallback_pattern = first_return_match_fallback_pattern(fallback_statements_for_body(
+        source,
+        &fallback_payload.body,
+    ));
+    let mismatched = first_return_match_pattern_payload(&cst_payload.body);
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_record");
+
+    let error = compiler
+        .bind_pattern_locals(
+            Register(0),
+            fallback_pattern,
+            Some(&mismatched),
+            Span::new(source, 0, 1),
+            crate::compiler::patterns::PatternBindingFacts::default(),
+            LocalBindingKind::Pattern,
+        )
+        .expect_err("missing CST record pattern fields must not bind fallback fields");
 
     assert!(matches!(
         error.kind,

@@ -925,16 +925,6 @@ impl CompilerPatternPayload {
         )
     }
 
-    pub(in crate::compiler) fn has_extra_record_pattern_fields(&self, expected_len: usize) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::record_pattern) else {
-            return false;
-        };
-        syntax.fields().count() > expected_len
-    }
-
     pub(in crate::compiler) fn tuple_pattern_payloads(
         &self,
     ) -> Option<Vec<CompilerPatternPayload>> {
@@ -950,16 +940,6 @@ impl CompilerPatternPayload {
                 .map(|syntax| CompilerPatternPayload::from_syntax(self.source, Some(syntax)))
                 .collect(),
         )
-    }
-
-    pub(in crate::compiler) fn has_extra_tuple_pattern_fields(&self, expected_len: usize) -> bool {
-        if self.source.is_none() {
-            return false;
-        }
-        let Some(syntax) = self.syntax.as_ref().and_then(SyntaxPattern::tuple_pattern) else {
-            return false;
-        };
-        syntax.patterns().count() > expected_len
     }
 
     #[cfg(test)]
