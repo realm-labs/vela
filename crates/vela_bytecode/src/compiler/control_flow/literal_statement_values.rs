@@ -8,6 +8,7 @@ use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
     compile_negated_literal_constant_for_type, evaluate_syntax_const_expr,
 };
+use crate::compiler::record_shapes::ValueShape;
 use crate::compiler::script_types::{ScriptTypeFact, type_hint_script_type};
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
@@ -147,7 +148,10 @@ impl Compiler<'_, '_> {
                 TypeContractContext::TypedLet { name: name.clone() },
             )?;
         }
-        let value_type = hinted_value_type.or_else(|| runtime_type_for_constant(&constant));
+        let value_shape = self.value_shape_for_syntax_expression(Some(source), expression);
+        let value_type = hinted_value_type
+            .or_else(|| runtime_type_for_constant(&constant))
+            .or_else(|| value_shape.as_ref().and_then(ValueShape::value_type));
         self.locals.insert(name.clone(), register);
         if let Some((local, _)) = local_binding {
             self.hir_locals.insert(local, register);
@@ -161,7 +165,7 @@ impl Compiler<'_, '_> {
             self.script_types
                 .set_local_fact(local, name.clone(), hinted_script_fact);
             self.value_types.set_local(local, name.clone(), value_type);
-            self.value_shapes.set_local(local, name, None);
+            self.value_shapes.set_local(local, name, value_shape);
         } else {
             self.record_frame_slot(
                 name.clone(),
@@ -173,7 +177,7 @@ impl Compiler<'_, '_> {
             self.script_types
                 .set_name_fact(name.clone(), hinted_script_fact);
             self.value_types.set_name(name.clone(), value_type);
-            self.value_shapes.set_name(name, None);
+            self.value_shapes.set_name(name, value_shape);
         }
         Ok(Some(false))
     }

@@ -990,7 +990,9 @@ impl Compiler<'_, '_> {
             }
             let receiver_shape =
                 self.value_shape_for_syntax_expression(Some(source), &receiver_expression);
-            let value_receiver_type = receiver_shape.as_ref().and_then(|shape| shape.value_type());
+            let value_receiver_type = self
+                .syntax_value_type_for_expression(Some(source), &receiver_expression)
+                .or_else(|| receiver_shape.as_ref().and_then(|shape| shape.value_type()));
             if let Some(method_id) = value_receiver_type
                 .as_ref()
                 .and_then(|receiver_type| self.value_method_id_for_type(receiver_type, &method))

@@ -185,15 +185,11 @@ impl Compiler<'_, '_> {
         let Some(method_id) = self.host_method_id(resolved.type_name.as_deref(), method) else {
             return Ok(None);
         };
-        if arguments
-            .iter()
-            .any(|argument| argument.name_text().is_some())
-        {
-            return Ok(None);
-        }
         let path = resolved.path;
         let root = self.compile_host_path_root(&path.root)?;
-        let Some(args) = self.compile_syntax_call_arguments(source, arguments)? else {
+        let Some(args) = self
+            .compile_syntax_host_method_call_arguments(source, method_id, arguments, call_span)?
+        else {
             return Ok(None);
         };
         let dst = self.alloc_register()?;
