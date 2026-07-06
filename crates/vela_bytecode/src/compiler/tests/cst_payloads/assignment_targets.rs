@@ -62,17 +62,16 @@ fn main() {
             let legacy_statement = statements[2]
                 .expression_payload()
                 .expect("legacy assignment expression");
-            let legacy_target = statements[2]
-                .expression_payload()
-                .and_then(|payload| payload.assignment_target_payload())
-                .expect("legacy assignment target fallback");
+            let ExprKind::Assign { target, .. } = &legacy_statement.fallback().kind else {
+                panic!("expected legacy assignment fallback");
+            };
             let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
                     .expect("CST block syntax")
                     .clone(),
-                legacy_target.fallback(),
+                target,
             );
 
             let error = compiler
@@ -218,13 +217,20 @@ fn main() {
                 .expression_payload()
                 .and_then(|payload| payload.assignment_value_payload())
                 .expect("assignment value expression payload");
+            let ExprKind::Assign {
+                value: fallback_value,
+                ..
+            } = &assignment.fallback().kind
+            else {
+                panic!("expected assignment fallback");
+            };
             let unclassified_value =
                 body_payloads::CompilerExpressionPayload::missing_child_payload_context(
                     value
                         .syntax_expression()
                         .expect("assignment value syntax")
                         .clone(),
-                    value.fallback(),
+                    fallback_value,
                 );
 
             let error = compiler

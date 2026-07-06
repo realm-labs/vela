@@ -7,6 +7,15 @@ use vela_host::target::HostPathPart;
 
 mod root_indexes;
 
+fn assignment_target_fallback<'ast>(
+    assignment: &crate::compiler::body_payloads::CompilerExpressionPayload<'ast>,
+) -> &'ast vela_syntax::ast::Expr {
+    let vela_syntax::ast::ExprKind::Assign { target, .. } = &assignment.fallback().kind else {
+        panic!("expected assignment fallback");
+    };
+    target
+}
+
 fn register_registry_host_type(
     registry: &mut vela_registry::DefinitionRegistry,
     name: &str,
@@ -304,20 +313,17 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         .expression_payload()
         .and_then(|payload| payload.assignment_target_payload())
         .expect("CST assignment target");
-    let legacy_target = statements[1]
-        .expression_payload()
-        .and_then(|payload| payload.assignment_target_payload())
-        .expect("legacy assignment target");
     let legacy_statement = statements[1]
         .expression_payload()
         .expect("legacy assignment expression");
+    let legacy_target = assignment_target_fallback(&legacy_statement);
     let mismatched_target = expression_payload_with_fallback(
         source,
         cst_target
             .syntax_expression()
             .expect("CST target syntax")
             .clone(),
-        legacy_target.fallback(),
+        legacy_target,
     );
     let cst_receiver = mismatched_target
         .field_base_payload()

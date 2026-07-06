@@ -9,6 +9,15 @@ fn field_index_statement_payloads<'ast>(
     paired_statement_payloads_for_body(body.syntax_payload().source, body)
 }
 
+fn assignment_target_fallback<'ast>(
+    assignment: &body_payloads::CompilerExpressionPayload<'ast>,
+) -> &'ast vela_syntax::ast::Expr {
+    let vela_syntax::ast::ExprKind::Assign { target, .. } = &assignment.fallback().kind else {
+        panic!("expected assignment fallback");
+    };
+    target
+}
+
 #[test]
 fn semantic_function_field_and_index_operands_have_cst_payloads() {
     let source = SourceId::new(1);
@@ -525,17 +534,14 @@ fn main() {
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy assignment expression");
-            let legacy_target = statements[3]
-                .expression_payload()
-                .and_then(|payload| payload.assignment_target_payload())
-                .expect("legacy assignment target fallback");
+            let legacy_target = assignment_target_fallback(&legacy_statement);
             let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
                     .expect("CST target expression")
                     .clone(),
-                legacy_target.fallback(),
+                legacy_target,
             );
 
             let error = compiler
@@ -591,17 +597,14 @@ fn main() {
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy indexed assignment expression");
-            let legacy_target = statements[3]
-                .expression_payload()
-                .and_then(|payload| payload.assignment_target_payload())
-                .expect("legacy indexed assignment target");
+            let legacy_target = assignment_target_fallback(&legacy_statement);
             let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
                     .expect("CST target expression")
                     .clone(),
-                legacy_target.fallback(),
+                legacy_target,
             );
 
             let error = compiler
@@ -815,17 +818,14 @@ fn main() {
             let legacy_statement = statements[3]
                 .expression_payload()
                 .expect("legacy numeric assignment expression");
-            let legacy_target = statements[3]
-                .expression_payload()
-                .and_then(|payload| payload.assignment_target_payload())
-                .expect("legacy numeric assignment target fallback");
+            let legacy_target = assignment_target_fallback(&legacy_statement);
             let mismatched_target = expression_payload_with_fallback(
                 SourceId::new(1),
                 cst_target
                     .syntax_expression()
                     .expect("CST target syntax")
                     .clone(),
-                legacy_target.fallback(),
+                legacy_target,
             );
 
             let error = compiler

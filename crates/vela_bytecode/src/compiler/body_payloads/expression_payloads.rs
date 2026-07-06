@@ -9,8 +9,6 @@ use vela_syntax::ast::{
     AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxMapEntry,
 };
 #[cfg(test)]
-use vela_syntax::ast::{Expr, ExprKind};
-#[cfg(test)]
 use vela_syntax::ast::{
     SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
 };
@@ -40,19 +38,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         fallback: &'ast vela_syntax::ast::Expr,
     ) -> Self {
         Self::from_fallback(None, Some(syntax), fallback)
-    }
-
-    #[cfg(test)]
-    fn child_payload_for_test(
-        &self,
-        syntax: Option<SyntaxExpression>,
-        fallback: Option<&'ast Expr>,
-    ) -> CompilerExpressionPayload<'ast> {
-        if let Some(fallback) = fallback {
-            return CompilerExpressionPayload::from_fallback(self.source, syntax, fallback);
-        }
-
-        CompilerExpressionPayload::from_syntax(self.source, syntax)
     }
 
     fn child_payload(&self, syntax: Option<SyntaxExpression>) -> CompilerExpressionPayload<'ast> {
@@ -141,13 +126,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_assign()?.target();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Assign { target, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(target)));
-        }
         Some(self.child_payload(syntax))
     }
 
@@ -157,13 +135,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_assign()?.value();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Assign { value, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(value)));
-        }
         Some(self.child_payload(syntax))
     }
 
@@ -216,16 +187,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     )> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_binary()?;
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Binary { left, right, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some((
-                self.child_payload_for_test(syntax.lhs(), Some(left)),
-                self.child_payload_for_test(syntax.rhs(), Some(right)),
-            ));
-        }
         Some((
             self.child_payload(syntax.lhs()),
             self.child_payload(syntax.rhs()),
@@ -249,26 +210,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         &self,
         op: BinaryOp,
     ) -> Option<Vec<CompilerExpressionPayload<'ast>>> {
-        #[cfg(test)]
-        fn collect_expr<'ast>(
-            expr: &'ast vela_syntax::ast::Expr,
-            op: BinaryOp,
-            operands: &mut Vec<&'ast vela_syntax::ast::Expr>,
-        ) {
-            if let ExprKind::Binary {
-                op: expr_op,
-                left,
-                right,
-            } = &expr.kind
-                && *expr_op == op
-            {
-                collect_expr(left, op, operands);
-                collect_expr(right, op, operands);
-            } else {
-                operands.push(expr);
-            }
-        }
-
         fn collect_syntax(
             syntax: SyntaxExpression,
             op: BinaryOp,
@@ -294,31 +235,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.source?;
         let mut syntax_operands = Vec::new();
         collect_syntax(self.syntax.clone()?, op, &mut syntax_operands)?;
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Binary {
-                op: fallback_op, ..
-            } = &fallback.kind
-            else {
-                return None;
-            };
-            if *fallback_op != op {
-                return None;
-            }
-
-            let mut expr_operands = Vec::new();
-            collect_expr(fallback, op, &mut expr_operands);
-            if syntax_operands.len() != expr_operands.len() {
-                return None;
-            }
-            return Some(
-                expr_operands
-                    .into_iter()
-                    .zip(syntax_operands.into_iter().map(Some))
-                    .map(|(fallback, syntax)| self.child_payload_for_test(syntax, Some(fallback)))
-                    .collect(),
-            );
-        }
         Some(
             syntax_operands
                 .into_iter()

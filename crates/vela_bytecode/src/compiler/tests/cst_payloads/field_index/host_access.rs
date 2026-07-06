@@ -13,6 +13,15 @@ use crate::compiler::{CompileErrorKind, Compiler, CompilerFacts, CompilerOptions
 use vela_common::SourceId;
 use vela_syntax::ast::{ExprKind, SyntaxExpressionKind};
 
+fn assignment_target_fallback<'ast>(
+    assignment: &crate::compiler::body_payloads::CompilerExpressionPayload<'ast>,
+) -> &'ast vela_syntax::ast::Expr {
+    let ExprKind::Assign { target, .. } = &assignment.fallback().kind else {
+        panic!("expected assignment fallback");
+    };
+    target
+}
+
 #[test]
 fn host_field_path_with_non_field_cst_payload_does_not_use_legacy_field_name() {
     let mut registry = vela_registry::DefinitionRegistry::new();
@@ -371,20 +380,17 @@ fn main(readonly: ReadOnlyHost, writable: WritableHost) {
         .expression_payload()
         .and_then(|payload| payload.assignment_target_payload())
         .expect("CST read-only assignment target");
-    let writable_target = statements[1]
-        .expression_payload()
-        .and_then(|payload| payload.assignment_target_payload())
-        .expect("legacy writable assignment target");
     let writable_statement = statements[1]
         .expression_payload()
         .expect("legacy writable assignment expression");
+    let writable_target = assignment_target_fallback(&writable_statement);
     let mismatched_target = expression_payload_with_fallback(
         source,
         readonly_target
             .syntax_expression()
             .expect("CST read-only target syntax")
             .clone(),
-        writable_target.fallback(),
+        writable_target,
     );
     let mut compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
@@ -472,20 +478,17 @@ fn main(readonly: ReadOnlyHost) {
     let cst_block = statements[0]
         .let_initializer_expression_payload()
         .expect("CST block initializer");
-    let legacy_target = statements[1]
-        .expression_payload()
-        .and_then(|payload| payload.assignment_target_payload())
-        .expect("legacy read-only assignment target");
     let legacy_statement = statements[1]
         .expression_payload()
         .expect("legacy read-only assignment expression");
+    let legacy_target = assignment_target_fallback(&legacy_statement);
     let mismatched_target = expression_payload_with_fallback(
         source,
         cst_block
             .syntax_expression()
             .expect("CST block syntax")
             .clone(),
-        legacy_target.fallback(),
+        legacy_target,
     );
     let mut compiler = Compiler::new_with_param_defaults(
         payload.name.clone(),
