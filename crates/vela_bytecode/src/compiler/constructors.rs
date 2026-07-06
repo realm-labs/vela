@@ -5,9 +5,9 @@ use vela_syntax::ast::Argument;
 
 use crate::Register;
 
-use super::body_payloads::{
-    CompilerArgumentPayload, CompilerExpressionPayload, CompilerRecordFieldPayload,
-};
+#[cfg(test)]
+use super::body_payloads::CompilerRecordFieldPayload;
+use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::const_eval::evaluate_syntax_const_expr;
 use super::patterns::tuple_variant_field_name;
 use super::schema_defaults::{
@@ -19,6 +19,7 @@ use super::value_types::{
 };
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
+#[cfg(test)]
 pub(super) fn record_field_names(
     fields: &[vela_syntax::ast::RecordField],
     payloads: &[CompilerRecordFieldPayload],
@@ -123,6 +124,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         Ok(fields)
     }
 
+    #[cfg(test)]
     pub(super) fn compile_record_fields(
         &mut self,
         fields: &[vela_syntax::ast::RecordField],
@@ -195,6 +197,7 @@ impl<'ast, 'registry> Compiler<'ast, 'registry> {
         CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics))
     }
 
+    #[cfg(test)]
     fn compile_record_field(
         &mut self,
         field: &vela_syntax::ast::RecordField,
@@ -360,6 +363,7 @@ fn argument_name(
         .and_then(CompilerArgumentPayload::syntax_name)
 }
 
+#[cfg(test)]
 fn record_field_name(
     fields: &[vela_syntax::ast::RecordField],
     field_payloads: &[CompilerRecordFieldPayload],

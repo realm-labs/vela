@@ -7,10 +7,11 @@ use vela_syntax::ast::MatchExpr;
 use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
+#[cfg(test)]
+use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxRecordExprField, SyntaxStatement,
-    SyntaxStatementKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
 use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
@@ -100,6 +101,7 @@ pub(in crate::compiler) struct CompilerMapEntryPayload {
     syntax: Option<SyntaxMapEntry>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerRecordFieldPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordExprField>,

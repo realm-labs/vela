@@ -305,7 +305,7 @@ fn main() {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST record path")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST record expression payload")
             ));
         },
     );

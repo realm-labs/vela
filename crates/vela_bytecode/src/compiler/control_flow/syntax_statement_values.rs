@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
@@ -17,7 +15,6 @@ use crate::compiler::calls::unresolved_static_method_error;
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
 };
-use crate::compiler::constructors::schema_default_fields;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
     binary_literal_op, compound_assignment_instruction, i64_binary_instruction,
@@ -27,7 +24,6 @@ use crate::compiler::operators::{
 use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::patterns::enum_variant_path;
 use crate::compiler::record_shapes::ValueShape;
-use crate::compiler::schema_defaults::unknown_enum_variant_diagnostic;
 use crate::compiler::script_types::ScriptTypeFact;
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, RuntimeTypeFact, StandardRuntimeType, StaticExprType, TypeContractContext,
@@ -1523,82 +1519,7 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
         if let Some(record) = expression.as_record() {
-            let path = record.path_segments();
-            if path.is_empty() {
-                return Ok(None);
-            }
-            let mut explicit_names = BTreeSet::new();
-            let fields = record
-                .fields()
-                .into_iter()
-                .map(|field| {
-                    let Some(name) = field.label_text() else {
-                        return Ok(None);
-                    };
-                    let value = if let Some(expression) = field.expression() {
-                        let Some(value) = self.compile_syntax_expression(source, &expression)?
-                        else {
-                            return Ok(None);
-                        };
-                        value
-                    } else if field.is_shorthand() {
-                        self.compile_path_expr(
-                            syntax_expression_span(source, expression),
-                            std::slice::from_ref(&name),
-                        )?
-                    } else {
-                        return Ok(None);
-                    };
-                    explicit_names.insert(name.clone());
-                    Ok(Some((name, value)))
-                })
-                .collect::<CompileResult<Option<Vec<_>>>>()?;
-            let Some(mut fields) = fields else {
-                return Ok(None);
-            };
-            let dst = self.alloc_register()?;
-            if let Some((enum_name, variant)) = enum_variant_path(&path) {
-                let span = syntax_expression_span(source, expression);
-                let resolved_enum_name = self.type_symbol_at_span(span);
-                let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
-                if resolved_enum_name.is_some()
-                    && !self.enum_constructor_variant_exists(&enum_name, &variant)
-                {
-                    return Err(self.constructor_diagnostics_error(vec![
-                        unknown_enum_variant_diagnostic(&enum_name, &variant, span),
-                    ]));
-                }
-                let shape = self.enum_constructor_shape(&enum_name, &variant);
-                self.compile_schema_default_fields(
-                    &mut fields,
-                    &explicit_names,
-                    schema_default_fields(shape.as_ref()),
-                    shape.as_ref(),
-                )?;
-                self.emit(UnlinkedInstructionKind::MakeEnum {
-                    dst,
-                    enum_name,
-                    variant,
-                    fields,
-                });
-            } else {
-                let type_name = self
-                    .type_symbol_at_span(syntax_expression_span(source, expression))
-                    .unwrap_or_else(|| path.join("::"));
-                let shape = self.record_constructor_shape(&type_name);
-                self.compile_schema_default_fields(
-                    &mut fields,
-                    &explicit_names,
-                    schema_default_fields(shape.as_ref()),
-                    shape.as_ref(),
-                )?;
-                self.emit(UnlinkedInstructionKind::MakeRecord {
-                    dst,
-                    type_name,
-                    fields,
-                });
-            }
-            return Ok(Some(dst));
+            return self.compile_syntax_record_literal(source, expression, &record);
         }
         Ok(None)
     }

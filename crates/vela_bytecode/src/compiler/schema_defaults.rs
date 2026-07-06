@@ -4,7 +4,9 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_hir::ids::{HirDeclId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::EnumVariantFieldsHint;
-use vela_syntax::ast::{Argument, AstNode, RecordField, SyntaxExpression};
+#[cfg(test)]
+use vela_syntax::ast::RecordField;
+use vela_syntax::ast::{Argument, AstNode, SyntaxExpression};
 
 use crate::Constant;
 
@@ -342,6 +344,7 @@ fn schema_field_default(
     }
 }
 
+#[cfg(test)]
 pub(super) fn record_constructor_diagnostics(
     type_name: &str,
     shape: Option<&ConstructorShape>,
@@ -574,6 +577,7 @@ fn duplicate_record_field_diagnostics(fields: &[ConstructorFieldUse]) -> Vec<Dia
     diagnostics
 }
 
+#[cfg(test)]
 fn record_field_name<'field>(
     field_names: Option<&'field [Option<String>]>,
     index: usize,

@@ -18,6 +18,7 @@ mod syntax_constructors;
 mod syntax_host_indexes;
 mod syntax_if_values;
 mod syntax_match_values;
+mod syntax_record_values;
 mod syntax_statement_values;
 #[cfg(test)]
 mod value_syntax;

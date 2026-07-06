@@ -1,16 +1,13 @@
 use vela_common::{PrimitiveTag, Span};
-use vela_syntax::ast::{
-    BinaryOp, Expr, ExprKind, Literal, RecordField, SyntaxExpressionKind, UnaryOp,
-};
+use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, SyntaxExpressionKind, UnaryOp};
 
 use crate::{BinaryLiteralSide, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
-use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
+use super::body_payloads::CompilerExpressionPayload;
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
-use super::constructors::{record_field_names, schema_default_fields};
 use super::expression_checks::{
     UnsuffixedNumericLiteral, expressions_are_i64, payload_syntax_overlaps_expr,
     reject_missing_binary_operand_payload, reject_missing_expression_payload,
@@ -25,7 +22,6 @@ use super::operators::{
     i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use super::patterns::enum_variant_path;
-use super::schema_defaults::{record_constructor_diagnostics, unknown_enum_variant_diagnostic};
 use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -182,20 +178,22 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Record => {
-                let ExprKind::Record { path: _, fields } = &expr.kind else {
-                    unreachable!("validated CST record expression payload kind");
-                };
-                let path = payload.syntax_record_path_segments().ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST record path",
-                    ))
-                })?;
-                let Some(field_payloads) = payload.record_field_payloads() else {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST record field payload",
+                        "mismatched CST record expression payload",
                     )));
                 };
-                self.compile_record(expr, &path, fields, &field_payloads)
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST record expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST record expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Assign => {
                 let ExprKind::Assign { .. } = &expr.kind else {
@@ -564,70 +562,6 @@ impl Compiler<'_, '_> {
         } else {
             let index = self.compile_expr_with_payload(index, index_payload)?;
             self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
-        }
-        Ok(dst)
-    }
-
-    fn compile_record(
-        &mut self,
-        expr: &Expr,
-        path: &[String],
-        fields: &[RecordField],
-        payloads: &[CompilerRecordFieldPayload],
-    ) -> CompileResult<Register> {
-        if payloads.len() != fields.len() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST record fields",
-            )));
-        }
-        let dst = self.alloc_register()?;
-        if let Some((enum_name, variant)) = enum_variant_path(path) {
-            let resolved_enum_name = self.type_symbol_at_span(expr.span);
-            let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
-            if resolved_enum_name.is_some()
-                && !self.enum_constructor_variant_exists(&enum_name, &variant)
-            {
-                return Err(self.constructor_diagnostics_error(vec![
-                    unknown_enum_variant_diagnostic(&enum_name, &variant, expr.span),
-                ]));
-            }
-            let shape = self.enum_constructor_shape(&enum_name, &variant);
-            let field_names = record_field_names(fields, payloads);
-            self.reject_constructor_diagnostics(record_constructor_diagnostics(
-                &format!("{enum_name}::{variant}"),
-                shape.as_ref(),
-                fields,
-                Some(&field_names),
-                expr.span,
-            ))?;
-            let defaults = schema_default_fields(shape.as_ref());
-            let fields = self.compile_record_fields(fields, defaults, shape.as_ref(), payloads)?;
-            self.emit(UnlinkedInstructionKind::MakeEnum {
-                dst,
-                enum_name,
-                variant,
-                fields,
-            });
-        } else {
-            let type_name = self
-                .type_symbol_at_span(expr.span)
-                .unwrap_or_else(|| path.join("::"));
-            let shape = self.record_constructor_shape(&type_name);
-            let field_names = record_field_names(fields, payloads);
-            self.reject_constructor_diagnostics(record_constructor_diagnostics(
-                &type_name,
-                shape.as_ref(),
-                fields,
-                Some(&field_names),
-                expr.span,
-            ))?;
-            let defaults = schema_default_fields(shape.as_ref());
-            let fields = self.compile_record_fields(fields, defaults, shape.as_ref(), payloads)?;
-            self.emit(UnlinkedInstructionKind::MakeRecord {
-                dst,
-                type_name,
-                fields,
-            });
         }
         Ok(dst)
     }

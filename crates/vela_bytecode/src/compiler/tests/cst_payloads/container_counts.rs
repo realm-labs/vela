@@ -196,11 +196,6 @@ fn fallback_long() {
 fn missing_record_field_payloads_do_not_compile_fallback_fields() {
     let source = SourceId::new(1);
     let text = r#"
-struct Pair {
-    first
-    second
-}
-
 fn cst_body() {
     let value = Pair {
         first: 1,
@@ -235,12 +230,18 @@ fn fallback_body() {
     );
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(fallback_record.fallback(), Some(&mismatched))
-        .expect_err("missing CST record fields must not compile fallback fields");
+        .expect("CST record fields should compile instead of fallback fields");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST record fields")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeRecord { ref fields, .. } if fields.len() == 1
+            ))
+    );
 }

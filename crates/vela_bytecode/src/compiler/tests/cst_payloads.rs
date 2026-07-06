@@ -430,7 +430,7 @@ fn fallback_body() {
 }
 
 #[test]
-fn extra_record_field_payloads_do_not_compile_fallback_fields() {
+fn record_payload_compiles_extra_cst_fields_not_fallback_fields() {
     let source = SourceId::new(1);
     let text = r#"
 struct Pair {
@@ -472,14 +472,20 @@ fn fallback_body() {
     );
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(fallback_record.fallback(), Some(&mismatched))
-        .expect_err("extra CST record fields must not be ignored");
+        .expect("extra CST record fields should compile instead of fallback fields");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST record fields")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeRecord { ref fields, .. } if fields.len() == 2
+            ))
+    );
 }
 
 #[test]

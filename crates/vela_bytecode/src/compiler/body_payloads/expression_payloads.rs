@@ -1,7 +1,9 @@
 use vela_common::{SourceId, Span};
+#[cfg(test)]
+use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
     AssignOp, AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
-    SyntaxMapEntry, SyntaxRecordExprField,
+    SyntaxMapEntry,
 };
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind};
@@ -11,11 +13,12 @@ use vela_syntax::ast::{
 };
 
 #[cfg(test)]
+use super::CompilerRecordFieldPayload;
+#[cfg(test)]
 use super::match_scrutinee_payload_for_expr;
 use super::{
     CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
     CompilerExpressionPayload, CompilerInterpolationPayload, CompilerMapEntryPayload,
-    CompilerRecordFieldPayload,
 };
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
@@ -496,6 +499,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn record_field_payloads(
         &self,
     ) -> Option<Vec<CompilerRecordFieldPayload>> {
@@ -633,6 +637,7 @@ impl CompilerMapEntryPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerRecordFieldPayload {
     pub(in crate::compiler) fn syntax_label_name(&self) -> Option<String> {
         self.source?;
