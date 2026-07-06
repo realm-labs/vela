@@ -59,7 +59,7 @@ fn lambda_values() {
 }
 
 #[test]
-fn mismatched_lambda_payload_does_not_collect_captures_from_cst_body() {
+fn mismatched_lambda_payload_compiles_from_cst_body() {
     let source = SourceId::new(1);
     with_cst_payload_compiler(
         r#"
@@ -94,14 +94,21 @@ fn main() {
                 legacy_lambda.fallback(),
             );
 
-            let error = compiler
+            let register = compiler
                 .compile_expr_with_payload(mismatched_lambda.fallback(), Some(&mismatched_lambda))
-                .expect_err("mismatched CST lambda payload must not compile");
+                .expect("mismatched fallback should not block CST lambda compilation");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST lambda expression payload")
-            ));
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        &instruction.kind,
+                        UnlinkedInstructionKind::MakeClosure { dst, captures, .. }
+                            if *dst == register && captures == &[Register(0)]
+                    ))
+            );
         },
     );
 }

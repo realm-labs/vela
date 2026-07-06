@@ -302,21 +302,34 @@ impl Compiler<'_, '_> {
                 )
             }
             SyntaxExpressionKind::Lambda => {
-                let ExprKind::Lambda { params, body } = &expr.kind else {
-                    unreachable!("validated CST lambda expression payload kind");
-                };
-                if !payload_syntax_overlaps_expr(payload, expr) {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST lambda expression payload",
                     )));
-                }
-                let body_payload = payload.lambda_body_payload();
-                if body_payload.is_none() {
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST lambda expression payload",
+                    )));
+                };
+                let Some(lambda) = expression.as_lambda() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST lambda expression payload",
+                    )));
+                };
+                if lambda.body().is_none() {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST lambda body",
                     )));
                 }
-                self.compile_lambda(expr, params, body, body_payload.as_ref())
+                let Some(register) =
+                    self.compile_syntax_lambda_with_callback_shapes(source, expression, &[])?
+                else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST lambda expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Unary => {
                 let Some(source) = payload.source() else {
