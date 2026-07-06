@@ -29,7 +29,7 @@ impl Compiler<'_, '_> {
             .iter()
             .filter(|part| matches!(part, InterpolatedStringPart::Expr(_)))
             .count();
-        if payloads.is_some_and(|payloads| payloads.len() > expression_count) {
+        if payloads.is_some_and(|payloads| payloads.len() != expression_count) {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST interpolation expressions",
             )));

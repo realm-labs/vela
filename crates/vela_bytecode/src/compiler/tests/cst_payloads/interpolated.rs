@@ -167,6 +167,52 @@ fn fallback_body() {
 }
 
 #[test]
+fn missing_interpolated_expression_payloads_do_not_compile_fallback_parts() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn cst_body() {
+    let first = 1;
+    let text = f"{first}";
+}
+
+fn fallback_body() {
+    let first = 1;
+    let second = 2;
+    let text = f"{first} {second}";
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (cst_payload, _, _) = semantic.function("cst_body").expect("cst function");
+    let (fallback_payload, _, _) = semantic
+        .function("fallback_body")
+        .expect("fallback function");
+    let cst_interpolated = interpolated_statement_payloads(&cst_payload.body)[1]
+        .let_initializer_expression_payload()
+        .expect("CST interpolated payload");
+    let fallback_interpolated = interpolated_statement_payloads(&fallback_payload.body)[2]
+        .let_initializer_expression_payload()
+        .expect("fallback interpolated payload");
+    let mismatched = expression_payload_with_fallback(
+        source,
+        cst_interpolated
+            .syntax_expression()
+            .expect("CST interpolated syntax")
+            .clone(),
+        fallback_interpolated.fallback(),
+    );
+    let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
+
+    let error = compiler
+        .compile_expr_with_payload(fallback_interpolated.fallback(), Some(&mismatched))
+        .expect_err("missing CST interpolation expressions must not compile fallback parts");
+
+    assert!(matches!(
+        error.kind,
+        CompileErrorKind::UnsupportedSyntax("mismatched CST interpolation expressions")
+    ));
+}
+
+#[test]
 fn missing_interpolated_expression_payload_does_not_use_legacy_interpolated() {
     let source = SourceId::new(1);
     let text = r#"
