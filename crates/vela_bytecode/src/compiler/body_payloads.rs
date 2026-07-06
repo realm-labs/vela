@@ -174,12 +174,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self::syntax_only(source, body)
     }
 
-    #[cfg(test)]
-    pub(super) fn requires_body_block_lookup(body: &SyntaxBlock) -> bool {
-        let _ = body;
-        false
-    }
-
     pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {
         Some(Self::syntax_only(source, body))
     }

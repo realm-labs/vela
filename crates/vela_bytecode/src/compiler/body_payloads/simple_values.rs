@@ -13,8 +13,6 @@ use vela_syntax::ast::{
 };
 
 #[cfg(test)]
-use crate::compiler::body_payloads::CompilerBodyPayload;
-#[cfg(test)]
 use crate::compiler::const_eval::evaluate_syntax_const_expr;
 
 #[cfg(test)]
@@ -108,9 +106,7 @@ pub(super) fn syntax_statement_requires_body_block_lookup(
                     && !syntax_expression_is_simple_path_numeric_arithmetic(&expression)
             })
         }),
-        SyntaxStatementKind::Block => statement
-            .as_block()
-            .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block)),
+        SyntaxStatementKind::Block => statement.as_block().is_none(),
         SyntaxStatementKind::If => statement
             .as_if()
             .is_none_or(|if_expr| !syntax_if_statement_is_cst_lowerable(&if_expr)),
@@ -269,17 +265,12 @@ fn syntax_if_is_simple_value(if_expr: &SyntaxIfExpr) -> bool {
     {
         return false;
     }
-    if if_expr
-        .then_block()
-        .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
-    {
+    if if_expr.then_block().is_none() {
         return false;
     }
     match if_expr.else_branch() {
         Some(SyntaxElseBranch::If(else_if)) => syntax_if_is_simple_value(&else_if),
-        Some(SyntaxElseBranch::Block(block)) => {
-            !CompilerBodyPayload::requires_body_block_lookup(&block)
-        }
+        Some(SyntaxElseBranch::Block(_)) => true,
         None => true,
     }
 }
@@ -292,17 +283,12 @@ fn syntax_if_statement_is_cst_lowerable(if_expr: &SyntaxIfExpr) -> bool {
     if !syntax_expression_is_simple_if_statement_condition(&condition) {
         return false;
     }
-    if if_expr
-        .then_block()
-        .is_none_or(|block| CompilerBodyPayload::requires_body_block_lookup(&block))
-    {
+    if if_expr.then_block().is_none() {
         return false;
     }
     match if_expr.else_branch() {
         Some(SyntaxElseBranch::If(else_if)) => syntax_if_statement_is_cst_lowerable(&else_if),
-        Some(SyntaxElseBranch::Block(block)) => {
-            !CompilerBodyPayload::requires_body_block_lookup(&block)
-        }
+        Some(SyntaxElseBranch::Block(_)) => true,
         None => true,
     }
 }
@@ -717,9 +703,7 @@ fn syntax_expression_is_simple_block(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_simple_block(&inner);
     }
-    expression
-        .as_block()
-        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
+    expression.as_block().is_some()
 }
 
 #[cfg(test)]
@@ -727,9 +711,7 @@ fn syntax_expression_is_statement_block(expression: &SyntaxExpression) -> bool {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return syntax_expression_is_statement_block(&inner);
     }
-    expression
-        .as_block()
-        .is_some_and(|block| !CompilerBodyPayload::requires_body_block_lookup(&block))
+    expression.as_block().is_some()
 }
 
 #[cfg(test)]
