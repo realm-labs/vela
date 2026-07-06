@@ -386,17 +386,6 @@ impl<'ast> StatementExpressionFallbacks<'ast> {
         }
     }
 
-    fn from_expression(expression: Option<&'ast Expr>) -> Self {
-        let Some(expression) = expression else {
-            return Self::default();
-        };
-        Self {
-            statement_span: Some(expression.span),
-            expression: Some(expression),
-            ..Self::default()
-        }
-    }
-
     fn from_let_initializer(value: &'ast Expr) -> Self {
         Self {
             statement_span: Some(value.span),
@@ -487,17 +476,12 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(super) fn missing_child_payload_context(
-        syntax: SyntaxStatement,
-        expression_fallback: Option<&'ast Expr>,
-    ) -> Self {
+    pub(super) fn missing_child_payload_context(syntax: SyntaxStatement) -> Self {
         Self {
             source: None,
             syntax: Some(syntax),
             _ast: PhantomData,
-            expression_fallbacks: StatementExpressionFallbacks::from_expression(
-                expression_fallback,
-            ),
+            expression_fallbacks: StatementExpressionFallbacks::default(),
         }
     }
 

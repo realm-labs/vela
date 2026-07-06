@@ -320,7 +320,6 @@ fn main() {
                         .syntax_statement()
                         .expect("call statement syntax")
                         .clone(),
-                    statement.expression_fallback_for_test(),
                 );
 
             assert!(
@@ -501,7 +500,6 @@ fn main(target) {
                         .syntax_statement()
                         .expect("assignment syntax")
                         .clone(),
-                    statements[1].expression_fallback_for_test(),
                 );
             let missing_expression =
                 body_payloads::CompilerStatementPayload::missing_child_payload_context(
@@ -509,7 +507,6 @@ fn main(target) {
                         .syntax_statement()
                         .expect("expression syntax")
                         .clone(),
-                    statements[2].expression_fallback_for_test(),
                 );
             let missing_return =
                 body_payloads::CompilerStatementPayload::missing_return_child_payload_context(
@@ -532,29 +529,7 @@ fn main(target) {
                     .and_then(|payload| payload.syntax_kind()),
                 None
             );
-            let missing_assignment_expression = missing_assignment
-                .expression_payload()
-                .expect("missing-source assignment expression payload");
-            assert_eq!(
-                missing_assignment_expression.syntax_assignment_operator(),
-                None
-            );
-            assert!(
-                missing_assignment_expression
-                    .assignment_value_payload()
-                    .and_then(|payload| payload.syntax_kind())
-                    .is_none()
-            );
-            assert!(
-                missing_assignment_expression
-                    .assignment_target_payload()
-                    .is_none()
-            );
-            assert!(
-                missing_assignment_expression
-                    .assignment_value_payload()
-                    .is_none()
-            );
+            assert!(missing_assignment.expression_payload().is_none());
             assert_eq!(
                 missing_expression
                     .expression_payload()
@@ -695,7 +670,6 @@ fn main(value) {
                         .syntax_statement()
                         .expect("match statement syntax")
                         .clone(),
-                    statement.expression_fallback_for_test(),
                 );
 
             assert!(

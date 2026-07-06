@@ -65,7 +65,6 @@ fn main() {
                         .syntax_statement()
                         .expect("block statement syntax")
                         .clone(),
-                    None,
                 );
 
             let error = compiler
@@ -284,7 +283,6 @@ fn main(flag) {
                         .syntax_statement()
                         .expect("if statement syntax")
                         .clone(),
-                    if_statement.expression_fallback_for_test(),
                 );
 
             let error = compiler
@@ -293,7 +291,7 @@ fn main(flag) {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST if statement payload")
+                CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
             ));
         },
     );

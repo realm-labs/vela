@@ -70,10 +70,7 @@ fn main(flag) {
             let tail = statements.last().expect("tail statement");
             let syntax = tail.syntax_statement().expect("tail CST statement").clone();
             let missing_children =
-                body_payloads::CompilerStatementPayload::missing_child_payload_context(
-                    syntax,
-                    tail.expression_fallback_for_test(),
-                );
+                body_payloads::CompilerStatementPayload::missing_child_payload_context(syntax);
             let expr = tail
                 .expression_fallback_for_test()
                 .expect("expected legacy expression tail");
@@ -84,7 +81,7 @@ fn main(flag) {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST block tail if payload")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST block tail expression")
             ));
         },
     );
