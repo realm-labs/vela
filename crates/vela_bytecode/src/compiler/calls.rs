@@ -875,6 +875,13 @@ impl Compiler<'_, '_> {
         registry.method_params(method)
     }
 
+    pub(in crate::compiler) fn value_methods_known_for_type(
+        &self,
+        receiver_type: &RuntimeTypeFact,
+    ) -> bool {
+        self.registry_value_type_id(receiver_type).is_some()
+    }
+
     fn registry_value_type_id(&self, receiver_type: &RuntimeTypeFact) -> Option<TypeId> {
         let registry = self.facts.registry?;
         if let RuntimeTypeFact::Primitive(primitive) = receiver_type

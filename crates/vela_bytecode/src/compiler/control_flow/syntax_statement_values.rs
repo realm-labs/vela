@@ -1023,6 +1023,9 @@ impl Compiler<'_, '_> {
             let value_receiver_type = self
                 .syntax_value_type_for_expression(Some(source), &receiver_expression)
                 .or_else(|| receiver_shape.as_ref().and_then(|shape| shape.value_type()));
+            let value_receiver_methods_known = value_receiver_type
+                .as_ref()
+                .is_some_and(|receiver_type| self.value_methods_known_for_type(receiver_type));
             if let Some(method_id) = receiver_type
                 .as_deref()
                 .and_then(|type_name| self.script_method_id_for_type(type_name, &method))
@@ -1093,7 +1096,7 @@ impl Compiler<'_, '_> {
             if receiver_type.is_some() {
                 return Err(unresolved_static_method_error(&method, call_span));
             }
-            if matches!(value_receiver_type, Some(RuntimeTypeFact::Primitive(_))) {
+            if value_receiver_methods_known {
                 return Err(unresolved_static_method_error(&method, call_span));
             }
             let Some(receiver) = self.compile_syntax_expression(source, &receiver_expression)?

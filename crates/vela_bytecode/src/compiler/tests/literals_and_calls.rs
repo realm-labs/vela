@@ -1145,6 +1145,55 @@ fn main() {
 }
 
 #[test]
+fn compiler_lowers_value_method_ids_for_string_sequence_methods() {
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(
+        SourceId::new(1),
+        r##"
+fn main() {
+    let chars = "a奖励".chars();
+    let bytes = "AZ".bytes();
+    return chars.count() + bytes.count();
+}
+"##,
+        registry.compile_view(),
+    )
+    .expect("string sequence methods should compile");
+    let main = program.function("main").expect("main function");
+    let methods = nested_method_id_names(main);
+
+    assert!(methods.iter().any(|method| method == "chars"));
+    assert!(methods.iter().any(|method| method == "bytes"));
+}
+
+#[test]
+fn compiler_allows_known_std_value_methods_without_registry() {
+    let code = compile_function_source(
+        SourceId::new(1),
+        r##"
+fn main() {
+    let chars = "a奖励".chars();
+    let bytes = "AZ".bytes();
+    return chars.count() + bytes.count();
+}
+"##,
+        "main",
+    )
+    .expect("string sequence methods should compile without registry");
+    let methods = dynamic_method_names(&code);
+
+    assert!(methods.iter().any(|method| method == "chars"));
+    assert!(methods.iter().any(|method| method == "bytes"));
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.as_str() == "count")
+            .count(),
+        2
+    );
+}
+
+#[test]
 fn compiler_lowers_value_method_ids_after_reflection_metadata_collections() {
     let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
     for (name, params) in [
@@ -1301,6 +1350,23 @@ fn collect_nested_method_id_names(code: &UnlinkedCodeObject, methods: &mut Vec<S
     }
     for nested in &code.nested_functions {
         collect_nested_method_id_names(nested, methods);
+    }
+}
+
+fn dynamic_method_names(code: &UnlinkedCodeObject) -> Vec<String> {
+    let mut methods = Vec::new();
+    collect_dynamic_method_names(code, &mut methods);
+    methods
+}
+
+fn collect_dynamic_method_names(code: &UnlinkedCodeObject, methods: &mut Vec<String>) {
+    for instruction in &code.instructions {
+        if let UnlinkedInstructionKind::CallDynamicMethod { method, .. } = &instruction.kind {
+            methods.push(method.clone());
+        }
+    }
+    for nested in &code.nested_functions {
+        collect_dynamic_method_names(nested, methods);
     }
 }
 
