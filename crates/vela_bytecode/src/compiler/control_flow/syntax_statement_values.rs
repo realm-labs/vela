@@ -20,10 +20,7 @@ use crate::compiler::param_defaults::syntax_map_key_name;
 use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileResult, Compiler, frame_slot_kind};
 use crate::function_id_for_script_name;
-use crate::{
-    BinaryLiteralSide, CallArgument, Constant, DynamicCallArgument, FormatStringPart,
-    ScriptCallMode,
-};
+use crate::{BinaryLiteralSide, CallArgument, Constant, FormatStringPart, ScriptCallMode};
 use crate::{Register, UnlinkedInstructionKind};
 
 impl Compiler<'_, '_> {
@@ -538,6 +535,15 @@ impl Compiler<'_, '_> {
             }
             return self.compile_syntax_index_assignment(source, op, &index_target, value);
         }
+        if let Some(assigned) = self.compile_syntax_host_field_assignment(
+            source,
+            expression,
+            &target_expression,
+            op,
+            value,
+        )? {
+            return Ok(Some(assigned));
+        }
         Ok(None)
     }
     fn compile_syntax_local_assignment(
@@ -688,6 +694,15 @@ impl Compiler<'_, '_> {
             )? {
                 return Ok(Some(register));
             }
+            if let Some(register) = self.compile_syntax_host_method_call(
+                source,
+                &receiver_expression,
+                method.as_str(),
+                &arguments,
+                call_span,
+            )? {
+                return Ok(Some(register));
+            }
             let receiver_shape =
                 self.value_shape_for_syntax_expression(Some(source), &receiver_expression);
             let value_receiver_type = receiver_shape.as_ref().and_then(|shape| shape.value_type());
@@ -748,15 +763,14 @@ impl Compiler<'_, '_> {
         if path.is_empty() {
             return Ok(None);
         }
-        if arguments
-            .iter()
-            .any(|argument| argument.name_text().is_some())
-        {
-            return Ok(None);
-        }
-
         let dst = self.alloc_register()?;
         if let Some((_declaration, name)) = self.script_function_call_at_span(callee_span) {
+            if arguments
+                .iter()
+                .any(|argument| argument.name_text().is_some())
+            {
+                return Ok(None);
+            }
             let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
                 return Ok(None);
             };
@@ -774,6 +788,12 @@ impl Compiler<'_, '_> {
         }
 
         if self.local_callee_at_span(callee_span).is_some() {
+            if arguments
+                .iter()
+                .any(|argument| argument.name_text().is_some())
+            {
+                return Ok(None);
+            }
             let Some(callee) = self.compile_syntax_expression(source, &callee)? else {
                 return Ok(None);
             };
@@ -789,7 +809,14 @@ impl Compiler<'_, '_> {
 
         let callee_name = path.join("::");
         let native = self.resolve_native_function_id(&callee_name, callee_span)?;
-        let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+        let Some(args) = self.compile_syntax_native_call_arguments(
+            source,
+            &callee_name,
+            native,
+            &arguments,
+            call_span,
+        )?
+        else {
             return Ok(None);
         };
         self.emit_spanned(
@@ -803,44 +830,6 @@ impl Compiler<'_, '_> {
             call_span,
         );
         Ok(Some(dst))
-    }
-
-    fn compile_syntax_call_arguments(
-        &mut self,
-        source: SourceId,
-        arguments: &[vela_syntax::ast::SyntaxArgument],
-    ) -> CompileResult<Option<Vec<Register>>> {
-        arguments
-            .iter()
-            .map(|argument| {
-                let Some(expression) = argument.expression() else {
-                    return Ok(None);
-                };
-                self.compile_syntax_expression(source, &expression)
-            })
-            .collect::<CompileResult<Option<Vec<_>>>>()
-    }
-
-    fn compile_syntax_dynamic_call_arguments(
-        &mut self,
-        source: SourceId,
-        arguments: &[vela_syntax::ast::SyntaxArgument],
-    ) -> CompileResult<Option<Vec<DynamicCallArgument>>> {
-        arguments
-            .iter()
-            .map(|argument| {
-                let Some(expression) = argument.expression() else {
-                    return Ok(None);
-                };
-                let Some(value) = self.compile_syntax_expression(source, &expression)? else {
-                    return Ok(None);
-                };
-                Ok(Some(DynamicCallArgument {
-                    name: argument.name_text(),
-                    value,
-                }))
-            })
-            .collect::<CompileResult<Option<Vec<_>>>>()
     }
 
     fn compile_syntax_try(

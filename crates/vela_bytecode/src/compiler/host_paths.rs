@@ -882,6 +882,39 @@ impl Compiler<'_, '_> {
         })
     }
 
+    pub(in crate::compiler) fn syntax_host_field_path(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<ResolvedHostPath<'static>> {
+        if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+            return self.syntax_host_field_path(source, &inner);
+        }
+        if let Some(path) = expression_syntax_path_or_self(expression) {
+            let span = syntax_host_expression_span(source, expression);
+            if path.len() == 1 {
+                let name = path.into_iter().next()?;
+                let type_name = self.host_local_type_name(&name, span);
+                return Some(ResolvedHostPath {
+                    path: HostPath {
+                        root: HostPathRoot::OwnedLocalPath { name, span },
+                        segments: Vec::new(),
+                    },
+                    type_name,
+                });
+            }
+            return self.owned_host_field_path_parts(span, &path);
+        }
+        let field = expression.as_field()?;
+        let receiver = field.receiver()?;
+        let name = field.name_text()?;
+        let mut resolved = self.syntax_host_field_path(source, &receiver)?;
+        let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
+        resolved.path.segments.push(field.part);
+        resolved.type_name = field.type_hint;
+        Some(resolved)
+    }
+
     pub(super) fn reject_invalid_host_index_access(
         &self,
         expr: &Expr,
