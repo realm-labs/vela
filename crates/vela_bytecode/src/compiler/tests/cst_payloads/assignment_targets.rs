@@ -296,8 +296,8 @@ fn main() {
 }
 
 #[test]
-fn assignment_match_value_without_child_payloads_does_not_use_legacy_value() {
-    assert_missing_assignment_value_child_payload_is_rejected(
+fn assignment_match_value_without_child_payloads_compiles_from_parent_cst() {
+    assert_assignment_match_value_without_child_payloads_compiles(
         r#"
 fn main() {
     let value = 1;
@@ -307,8 +307,6 @@ fn main() {
     };
 }
 "#,
-        SyntaxExpressionKind::Match,
-        "missing CST assignment value match scrutinee payload",
     );
 }
 
@@ -331,11 +329,9 @@ fn typed_field_assignment_if_value_without_child_payload_does_not_use_legacy_val
 }
 
 #[test]
-fn typed_field_assignment_match_value_without_child_payloads_does_not_use_legacy_value() {
-    assert_missing_typed_field_assignment_value_child_payload_is_rejected(
+fn typed_field_assignment_match_value_without_child_payloads_compiles_from_parent_cst() {
+    assert_typed_field_assignment_match_value_without_child_payloads_compiles(
         "box.value = match value { 1 => 2, _ => 3 };",
-        SyntaxExpressionKind::Match,
-        "missing CST assignment value match scrutinee payload",
     );
 }
 
@@ -440,6 +436,36 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
     });
 }
 
+fn assert_assignment_match_value_without_child_payloads_compiles(text: &str) {
+    with_cst_payload_compiler(text, |compiler, payload| {
+        let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
+        compiler
+            .compile_statement_payload_for_test(&statements[0])
+            .expect("local target should compile");
+        let assignment = statements[1]
+            .expression_payload()
+            .expect("assignment expression payload");
+        let value = assignment
+            .assignment_value_payload()
+            .expect("assignment value expression payload");
+
+        compiler
+            .compile_assignment_with_payloads(
+                assignment.fallback(),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentValueSyntax::new(
+                    Some(SyntaxExpressionKind::Match),
+                    None,
+                    Some(&value),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(
+                        None, None, None, None,
+                    ),
+                ),
+            )
+            .expect("assignment match value should compile from parent CST payload");
+    });
+}
+
 fn assert_missing_typed_field_assignment_value_child_payload_is_rejected(
     assignment: &str,
     kind: SyntaxExpressionKind,
@@ -497,6 +523,52 @@ fn main() {{
             "{:?}",
             error.kind
         );
+    });
+}
+
+fn assert_typed_field_assignment_match_value_without_child_payloads_compiles(assignment: &str) {
+    let text = format!(
+        r#"
+struct Box {{
+    value: i64,
+}}
+
+fn main() {{
+    let value = 1;
+    let box = Box {{ value: 0 }};
+    {assignment}
+}}
+"#
+    );
+    with_cst_payload_compiler(&text, |compiler, payload| {
+        let statements = paired_statement_payloads_for_body(SourceId::new(1), &payload.body);
+        compiler
+            .compile_statement_payload_for_test(&statements[0])
+            .expect("typed value local should compile");
+        compiler
+            .compile_statement_payload_for_test(&statements[1])
+            .expect("typed record local should compile");
+        let assignment = statements[2]
+            .expression_payload()
+            .expect("field assignment expression payload");
+        let value = assignment
+            .assignment_value_payload()
+            .expect("field assignment value expression payload");
+
+        compiler
+            .compile_assignment_with_payloads(
+                assignment.fallback(),
+                crate::compiler::assignments::AssignmentTargetSyntax::new(None),
+                crate::compiler::assignments::AssignmentValueSyntax::new(
+                    Some(SyntaxExpressionKind::Match),
+                    None,
+                    Some(&value),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(
+                        None, None, None, None,
+                    ),
+                ),
+            )
+            .expect("typed field assignment match value should compile from parent CST payload");
     });
 }
 

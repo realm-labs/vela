@@ -1,13 +1,11 @@
 use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::ast::{
-    AstNode, Pattern, SyntaxExpression, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchExpr,
-    SyntaxPattern, SyntaxPatternKind,
+    AstNode, SyntaxExpression, SyntaxMatchArm, SyntaxMatchArmBody, SyntaxMatchExpr, SyntaxPattern,
+    SyntaxPatternKind,
 };
 
-use crate::compiler::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerPatternPayload,
-};
+use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
 use crate::compiler::patterns::PatternBindingFacts;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -202,9 +200,22 @@ impl Compiler<'_, '_> {
         match kind {
             SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding => Ok(Vec::new()),
             SyntaxPatternKind::Literal | SyntaxPatternKind::Path => {
-                let payload =
-                    CompilerPatternPayload::from_syntax(Some(source), Some(pattern.clone()));
-                self.compile_match_pattern(scrutinee, &Pattern::Wildcard, Some(&payload))
+                if kind == SyntaxPatternKind::Literal {
+                    let literal = pattern
+                        .literal()
+                        .ok_or_else(|| syntax_match_error(source, pattern.syntax().text_range()))?;
+                    let pattern = self.compile_literal(None, &literal)?;
+                    let condition = self.alloc_register()?;
+                    self.emit(UnlinkedInstructionKind::Equal {
+                        dst: condition,
+                        lhs: scrutinee,
+                        rhs: pattern,
+                    });
+                    Ok(vec![self.emit_jump_if_false(condition)])
+                } else {
+                    let path = syntax_pattern_path_segments(source, pattern)?;
+                    self.compile_variant_tag_pattern(scrutinee, &path)
+                }
             }
             SyntaxPatternKind::TupleVariant => {
                 let path = syntax_pattern_path_segments(source, pattern)?;

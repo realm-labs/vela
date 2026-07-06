@@ -1,19 +1,25 @@
 use vela_common::{SourceId, Span};
 use vela_syntax::ast::{
     AssignOp, AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordExprField,
-    SyntaxRecordPatternField,
+    SyntaxMapEntry, SyntaxRecordExprField,
 };
 #[cfg(test)]
 use vela_syntax::ast::{Expr, ExprKind, InterpolatedStringPart, MapEntry, RecordField};
+#[cfg(test)]
+use vela_syntax::ast::{
+    SyntaxMatchArm, SyntaxPattern, SyntaxPatternKind, SyntaxRecordPatternField,
+};
 
 #[cfg(test)]
 use super::match_scrutinee_payload_for_expr;
 use super::{
     CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
     CompilerExpressionPayload, CompilerIfPayload, CompilerInterpolationPayload,
-    CompilerMapEntryPayload, CompilerMatchArmPayload, CompilerPatternPayload,
-    CompilerRecordFieldPayload, CompilerRecordPatternFieldPayload, if_payload_for_syntax,
+    CompilerMapEntryPayload, CompilerRecordFieldPayload, if_payload_for_syntax,
+};
+#[cfg(test)]
+use super::{
+    CompilerMatchArmPayload, CompilerPatternPayload, CompilerRecordPatternFieldPayload,
     match_arm_payloads_for_syntax,
 };
 
@@ -55,6 +61,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         if_payload_for_syntax(self.source, self.syntax.as_ref()?.as_if()?)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn match_arm_payloads(&self) -> Option<Vec<CompilerMatchArmPayload>> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::Match) {
             return None;
@@ -62,6 +69,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         match_arm_payloads_for_syntax(self.source, self.syntax.as_ref()?.as_match()?)
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn match_scrutinee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -782,6 +790,7 @@ impl CompilerRecordFieldPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerMatchArmPayload {
     #[cfg(test)]
     pub(in crate::compiler) fn missing_child_payload_context(syntax: SyntaxMatchArm) -> Self {
@@ -872,6 +881,7 @@ impl CompilerMatchArmPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerPatternPayload {
     pub(in crate::compiler) fn from_syntax(
         source: Option<SourceId>,
@@ -961,6 +971,7 @@ impl CompilerPatternPayload {
     }
 }
 
+#[cfg(test)]
 impl CompilerRecordPatternFieldPayload {
     pub(in crate::compiler) fn has_syntax(&self) -> bool {
         self.source.is_some() && self.syntax.is_some()

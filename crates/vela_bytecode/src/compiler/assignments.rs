@@ -86,22 +86,18 @@ struct RecordFieldAssignmentRoot<'field> {
 pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
     block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-    match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
-    match_arms: Option<&'payload [CompilerMatchArmPayload]>,
 }
 
 impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-        match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
-        match_arms: Option<&'payload [CompilerMatchArmPayload]>,
+        _match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
+        _match_arms: Option<&'payload [CompilerMatchArmPayload]>,
     ) -> Self {
         Self {
             block_body,
             if_expr,
-            match_scrutinee,
-            match_arms,
         }
     }
 
@@ -109,8 +105,6 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
         Self {
             block_body: None,
             if_expr: None,
-            match_scrutinee: None,
-            match_arms: None,
         }
     }
 }
@@ -1063,30 +1057,9 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(dst);
                 }
-                let ExprKind::Match(match_expr) = &value.kind else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST assignment value match payload",
-                    )));
-                };
-                let Some(match_scrutinee) =
-                    expression_payload.and_then(CompilerExpressionPayload::match_scrutinee_payload)
-                else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST assignment value match payload",
-                    )));
-                };
-                let Some(match_arms) = syntax_payloads.match_arms else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST assignment value match arm payloads",
-                    )));
-                };
-                self.compile_match_value_with_payloads(
-                    match_expr,
-                    dst,
-                    Some(&match_scrutinee),
-                    match_arms,
-                )?;
-                Ok(dst)
+                Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST assignment value match payload",
+                )))
             }
             _ => self.compile_expr(value),
         }

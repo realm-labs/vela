@@ -112,28 +112,9 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(dst);
                 }
-                let ExprKind::Match(match_expr) = &expr.kind else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST match expression payload",
-                    )));
-                };
-                let Some(scrutinee_payload) = payload.match_scrutinee_payload() else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST match expression payload",
-                    )));
-                };
-                let Some(arm_payloads) = payload.match_arm_payloads() else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST match expression payload",
-                    )));
-                };
-                self.compile_match_value_with_payloads(
-                    match_expr,
-                    dst,
-                    Some(&scrutinee_payload),
-                    &arm_payloads,
-                )?;
-                Ok(dst)
+                Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                    "missing CST match expression payload",
+                )))
             }
             SyntaxExpressionKind::Path => match &expr.kind {
                 ExprKind::Path(_) => {
@@ -204,12 +185,6 @@ impl Compiler<'_, '_> {
                 let value_if = value_payload
                     .as_ref()
                     .and_then(CompilerExpressionPayload::if_payload);
-                let value_match_arms = value_payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::match_arm_payloads);
-                let value_match_scrutinee = value_payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
                 self.compile_assignment_with_payloads(
                     expr,
                     AssignmentTargetSyntax::new(target_payload.as_ref()),
@@ -222,8 +197,8 @@ impl Compiler<'_, '_> {
                         AssignmentValuePayloads::new(
                             value_body.as_ref(),
                             value_if.as_ref(),
-                            value_match_scrutinee.as_ref(),
-                            value_match_arms.as_deref(),
+                            None,
+                            None,
                         ),
                     ),
                 )

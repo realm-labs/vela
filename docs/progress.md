@@ -274,7 +274,10 @@ and compiles arm guards through scoped CST pattern facts. Simple match-value
 contexts for expression, assignment, block tail, typed let, and return lowering
 now route directly through the parent rowan CST payload without requiring
 derived match child payload vectors, including guarded and binding-local arms
-covered by the existing CST match lowering.
+covered by the existing CST match lowering. Production bytecode match value
+lowering no longer compiles through the old owned `MatchExpr` child-payload
+path; that legacy path and owned-pattern binding walker are retained only for
+remaining bytecode fixture tests.
 CST script-function
 call lowering now resolves named arguments, defaulted parameter slots, typed
 argument checks, and checked script-call mode from HIR signatures. The

@@ -5,6 +5,7 @@ mod condition_jumps;
 mod if_values;
 mod literal_statement_values;
 mod loops;
+#[cfg(test)]
 mod matches;
 mod null_values;
 mod path_values;
@@ -206,13 +207,7 @@ impl Compiler<'_, '_> {
                 let value_if = value_expression
                     .as_ref()
                     .and_then(CompilerExpressionPayload::if_payload);
-                let value_match_arms = value_expression
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::match_arm_payloads);
                 let target_expression = expression_payload.assignment_target_payload();
-                let value_match_scrutinee = value_expression
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::match_scrutinee_payload);
                 self.compile_assignment_with_payloads(
                     expr,
                     AssignmentTargetSyntax::new(target_expression.as_ref()),
@@ -225,8 +220,8 @@ impl Compiler<'_, '_> {
                         AssignmentValuePayloads::new(
                             value_body.as_ref(),
                             value_if.as_ref(),
-                            value_match_scrutinee.as_ref(),
-                            value_match_arms.as_deref(),
+                            None,
+                            None,
                         ),
                     ),
                 )?;

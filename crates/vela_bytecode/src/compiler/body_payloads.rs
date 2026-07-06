@@ -11,9 +11,11 @@ use vela_syntax::ast::Stmt;
 use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{
     AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
-    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxRecordExprField, SyntaxStatement,
+    SyntaxStatementKind,
 };
+#[cfg(test)]
+use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 
 mod expression_payloads;
 mod simple_values;
@@ -53,16 +55,20 @@ pub(super) struct CompilerStatementPayload<'ast> {
 }
 
 pub(super) struct CompilerMatchArmPayload {
+    #[cfg(test)]
     source: Option<SourceId>,
+    #[cfg(test)]
     syntax: Option<SyntaxMatchArm>,
 }
 
 #[derive(Clone)]
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerPatternPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxPattern>,
 }
 
+#[cfg(test)]
 pub(in crate::compiler) struct CompilerRecordPatternFieldPayload {
     source: Option<SourceId>,
     syntax: Option<SyntaxRecordPatternField>,
@@ -308,6 +314,7 @@ fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock>
     expression.as_block()
 }
 
+#[cfg(test)]
 fn match_arm_payloads_for_syntax(
     source: Option<SourceId>,
     syntax: SyntaxMatchExpr,

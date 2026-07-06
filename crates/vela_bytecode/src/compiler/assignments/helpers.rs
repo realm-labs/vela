@@ -165,16 +165,6 @@ pub(super) fn reject_missing_assignment_value_child_payloads(
         SyntaxExpressionKind::If if syntax.payloads.if_expr.is_none() => Err(CompileError::new(
             CompileErrorKind::UnsupportedSyntax("missing CST assignment value if payload"),
         )),
-        SyntaxExpressionKind::Match if syntax.payloads.match_scrutinee.is_none() => {
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST assignment value match scrutinee payload",
-            )))
-        }
-        SyntaxExpressionKind::Match if syntax.payloads.match_arms.is_none() => {
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST assignment value match arm payloads",
-            )))
-        }
         _ => Ok(()),
     }
 }

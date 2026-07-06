@@ -285,27 +285,14 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::Match => {
                 let body_payload = payload.body_expression_payload();
-                let ExprKind::Match(match_expr) = &body.kind else {
-                    return Err(missing_cst_match_arm_child_payload(
-                        "missing CST match arm match payloads",
-                    ));
-                };
-                let Some(scrutinee_payload) = body_payload.match_scrutinee_payload() else {
-                    return Err(missing_cst_match_arm_child_payload(
-                        "missing CST match arm match payloads",
-                    ));
-                };
-                let Some(arm_payloads) = body_payload.match_arm_payloads() else {
-                    return Err(missing_cst_match_arm_child_payload(
-                        "missing CST match arm match payloads",
-                    ));
-                };
-                self.compile_match_value_with_payloads(
-                    match_expr,
-                    dst,
-                    Some(&scrutinee_payload),
-                    &arm_payloads,
-                )
+                if let Some(returned) =
+                    self.compile_syntax_match_payload_value_to(&body_payload, dst)?
+                {
+                    return Ok(returned);
+                }
+                Err(missing_cst_match_arm_child_payload(
+                    "missing CST match arm match payloads",
+                ))
             }
             _ => {
                 let body_payload = payload.body_expression_payload();
