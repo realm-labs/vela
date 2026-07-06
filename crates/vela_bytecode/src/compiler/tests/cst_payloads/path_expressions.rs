@@ -609,6 +609,11 @@ fn main() {
                 .expect("legacy path call argument payloads")
                 .remove(0);
             let legacy_expr = call_argument_fallback(&legacy_call, 0);
+            assert_eq!(
+                compiler.static_type_for_expr_with_payload(legacy_expr, None),
+                value_types::StaticExprType::Dynamic,
+                "missing CST path payload must not use the legacy path value type"
+            );
             let cst_block = statements[4]
                 .let_initializer_expression_payload()
                 .expect("CST block initializer");

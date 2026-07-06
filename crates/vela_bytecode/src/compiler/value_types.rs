@@ -432,7 +432,7 @@ fn static_expr_type_with_payload(
             Some(RuntimeTypeFact::Result { ok, .. }) => StaticExprType::Exact(*ok),
             _ => StaticExprType::Dynamic,
         },
-        ExprKind::Path(path) => aligned_payload
+        ExprKind::Path(_) => aligned_payload
             .and_then(|payload| {
                 payload.syntax_path_segments().as_deref().and_then(|path| {
                     path.first().and_then(|name| {
@@ -440,29 +440,9 @@ fn static_expr_type_with_payload(
                     })
                 })
             })
-            .or_else(|| {
-                payload
-                    .is_none()
-                    .then(|| {
-                        local_type_at_span(expr.span).or_else(|| {
-                            path.first().and_then(|name| {
-                                (path.len() == 1).then(|| local_type_named(name)).flatten()
-                            })
-                        })
-                    })
-                    .flatten()
-            })
             .map(StaticExprType::Exact)
             .unwrap_or(StaticExprType::Dynamic),
-        ExprKind::SelfValue => {
-            if payload.is_some() {
-                return StaticExprType::Dynamic;
-            }
-            local_type_at_span(expr.span)
-                .or_else(|| local_type_named("self"))
-                .map(StaticExprType::Exact)
-                .unwrap_or(StaticExprType::Dynamic)
-        }
+        ExprKind::SelfValue => StaticExprType::Dynamic,
         _ => StaticExprType::Dynamic,
     }
 }
