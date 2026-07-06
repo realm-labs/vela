@@ -1105,15 +1105,6 @@ impl super::Compiler<'_, '_> {
         }
     }
 
-    pub(super) fn expected_type_for_expr(
-        &self,
-        expr: &Expr,
-        expected: RuntimeTypeFact,
-        context: TypeContractContext,
-    ) -> super::CompileResult<ExpectedTypeOutcome> {
-        self.expected_type_for_expr_with_payload(expr, expected, context, None)
-    }
-
     pub(in crate::compiler) fn expected_type_for_expr_with_payload(
         &self,
         expr: &Expr,

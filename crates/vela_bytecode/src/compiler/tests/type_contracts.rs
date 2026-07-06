@@ -356,12 +356,13 @@ fn main(value) {
             let expected = RuntimeTypeFact::primitive(vela_common::PrimitiveTag::I64);
             assert_eq!(
                 compiler
-                    .expected_type_for_expr(
+                    .expected_type_for_expr_with_payload(
                         return_call_arg(function, 0),
                         expected.clone(),
                         value_types::TypeContractContext::FunctionParameter {
                             name: "x".to_owned()
                         },
+                        None,
                     )
                     .expect("dynamic value should be accepted with a runtime guard"),
                 value_types::ExpectedTypeOutcome::RequiresRuntimeGuard(expected)

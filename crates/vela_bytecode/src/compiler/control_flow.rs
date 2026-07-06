@@ -675,30 +675,9 @@ impl Compiler<'_, '_> {
         context: TypeContractContext,
     ) -> CompileResult<(Register, bool)> {
         match &value.kind {
-            ExprKind::Block(block) => {
-                if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
-                }
-                let dst = self.alloc_register()?;
-                let returned = self.compile_block_value_to(block, dst)?;
-                Ok((dst, returned))
-            }
-            ExprKind::If(if_expr) => {
-                if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
-                }
-                let dst = self.alloc_register()?;
-                let returned = self.compile_if_value_to(if_expr, dst)?;
-                Ok((dst, returned))
-            }
-            ExprKind::Match(match_expr) => {
-                if let Some(expected) = expected {
-                    self.expected_type_for_expr(value, expected, context)?;
-                }
-                let dst = self.alloc_register()?;
-                let returned = self.compile_match_value_to(match_expr, dst)?;
-                Ok((dst, returned))
-            }
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_) => Err(CompileError::new(
+                CompileErrorKind::UnsupportedSyntax("missing CST let initializer payload"),
+            )),
             _ => match expected {
                 Some(expected) => self
                     .compile_expr_with_expected_type(value, expected, context)
@@ -882,6 +861,14 @@ impl Compiler<'_, '_> {
         expected: Option<super::value_types::RuntimeTypeFact>,
         context: TypeContractContext,
     ) -> CompileResult<(Register, bool)> {
+        if matches!(
+            value.kind,
+            ExprKind::Block(_) | ExprKind::If(_) | ExprKind::Match(_)
+        ) {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST return value payload",
+            )));
+        }
         match expected {
             Some(expected) => self
                 .compile_expr_with_expected_type(value, expected, context)
