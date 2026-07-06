@@ -42,7 +42,7 @@ impl Compiler<'_, '_> {
                 false,
             )
         {
-            return self.compile_expr_with_payload_kind(expr, payload, kind);
+            return self.compile_expr_with_payload_kind(payload, kind);
         }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
             && payload.is_some_and(CompilerExpressionPayload::rejects_missing_payload)
@@ -63,7 +63,6 @@ impl Compiler<'_, '_> {
 
     fn compile_expr_with_payload_kind(
         &mut self,
-        _expr: &Expr,
         payload: &CompilerExpressionPayload<'_>,
         kind: SyntaxExpressionKind,
     ) -> CompileResult<Register> {
@@ -129,16 +128,27 @@ impl Compiler<'_, '_> {
                 Ok(dst)
             }
             SyntaxExpressionKind::Match => {
-                let dst = self.alloc_register()?;
-                if self
-                    .compile_syntax_match_payload_value_to(payload, dst)?
-                    .is_some()
-                {
-                    return Ok(dst);
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST match expression payload",
+                    )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST match expression payload",
+                    )));
+                };
+                if expression.as_match().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST match expression payload",
+                    )));
                 }
-                Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                    "missing CST match expression payload",
-                )))
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST match expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Path => {
                 let Some(source) = payload.source() else {
