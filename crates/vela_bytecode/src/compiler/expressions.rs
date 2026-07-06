@@ -32,7 +32,6 @@ use super::value_types::RuntimeTypeFact;
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
 pub(in crate::compiler) mod interpolated;
-mod logical;
 #[cfg(test)]
 pub(in crate::compiler) use interpolated::interpolated_expression_payload_at;
 
@@ -224,13 +223,24 @@ impl Compiler<'_, '_> {
                     .filter(|_| arithmetic_binary_operator(*op));
                 let op = cst_op.unwrap_or(*op);
                 if matches!(op, BinaryOp::And | BinaryOp::Or) {
-                    let operand_payloads =
-                        payload.logical_chain_operand_payloads(op).ok_or_else(|| {
-                            CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                                "mismatched CST logical chain payload",
-                            ))
-                        })?;
-                    return self.compile_logical_chain(op, expr, &operand_payloads);
+                    let Some(source) = payload.source() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST logical chain payload",
+                        )));
+                    };
+                    let Some(expression) = payload.syntax_expression() else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST logical chain payload",
+                        )));
+                    };
+                    let Some(register) =
+                        self.compile_syntax_logical_chain(source, expression, op)?
+                    else {
+                        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "mismatched CST logical chain payload",
+                        )));
+                    };
+                    return Ok(register);
                 }
                 let operand_payloads = payload.binary_operand_payloads();
                 let (left_payload, right_payload) = operand_payloads

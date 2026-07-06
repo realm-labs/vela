@@ -528,7 +528,7 @@ impl Compiler<'_, '_> {
         Ok(Some(dst))
     }
 
-    fn compile_syntax_logical_chain(
+    pub(in crate::compiler) fn compile_syntax_logical_chain(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,

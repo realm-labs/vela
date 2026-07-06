@@ -240,6 +240,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         binary.operator()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn logical_chain_operand_payloads(
         &self,
         op: BinaryOp,

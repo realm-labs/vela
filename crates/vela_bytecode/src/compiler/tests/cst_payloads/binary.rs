@@ -277,7 +277,7 @@ fn logical_values() {
 }
 
 #[test]
-fn mismatched_logical_chain_payload_does_not_use_legacy_operands() {
+fn mismatched_logical_chain_payload_compiles_from_cst_operands() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn make(value) {
@@ -317,17 +317,9 @@ fn main(left, middle, right) {
                 legacy_binary.fallback(),
             );
 
-            let error = compiler
+            compiler
                 .compile_expr_with_payload(legacy_binary.fallback(), Some(&mismatched_payload))
-                .expect_err("mismatched CST logical payload must not compile legacy operands");
-
-            assert!(
-                matches!(
-                    error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST logical chain payload")
-                ),
-                "expected mismatched CST logical chain payload, got {error:?}"
-            );
+                .expect("mismatched logical fallback should compile from CST operands");
         },
     );
 }
