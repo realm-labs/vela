@@ -375,7 +375,7 @@ fn reject_missing_match_arm_payloads(
     _scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
     arm_payloads: &[CompilerMatchArmPayload],
 ) -> CompileResult<()> {
-    if arm_payloads.len() > match_expr.arms.len() {
+    if arm_payloads.len() != match_expr.arms.len() {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST match arms",
         )));
@@ -394,7 +394,7 @@ fn reject_missing_optional_match_arm_payloads(
             "mismatched CST match arms",
         )));
     }
-    if arm_payloads.is_some_and(|payloads| payloads.len() > match_expr.arms.len()) {
+    if arm_payloads.is_some_and(|payloads| payloads.len() != match_expr.arms.len()) {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST match arms",
         )));

@@ -105,6 +105,110 @@ fn main() {
 }
 
 #[test]
+fn missing_expression_match_arm_payloads_do_not_compile_fallback_arms() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    return match 1 {
+        1 => 10,
+    };
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    return match 1 {
+        1 => 10,
+        _ => 20,
+    };
+}
+"#;
+    let cst_match = cst_match_expression(source, cst_text);
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let legacy_match = paired_statement_payloads_for_body(source, &payload.body)[0]
+        .return_value_expression_payload()
+        .expect("legacy return match payload");
+    let mismatched = expression_payload_with_fallback(source, cst_match, legacy_match.fallback());
+    let ExprKind::Match(match_expr) = &legacy_match.fallback().kind else {
+        panic!("expected legacy match fallback");
+    };
+    let arm_payloads = mismatched.match_arm_payloads();
+    assert_eq!(
+        arm_payloads.as_ref().map(Vec::len),
+        Some(1),
+        "missing CST match arms should remain visible to compile-boundary validation"
+    );
+
+    let error = compiler
+        .compile_match_value_with_payloads(
+            match_expr,
+            Register(0),
+            mismatched.match_scrutinee_payload().as_ref(),
+            arm_payloads
+                .as_deref()
+                .expect("missing CST match arms should be available"),
+        )
+        .expect_err("missing CST expression match arms must not compile fallback match");
+
+    assert!(
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
+        ),
+        "expected mismatched CST match arms, got {error:?}"
+    );
+}
+
+#[test]
+fn missing_statement_match_arm_payloads_do_not_compile_fallback_arms() {
+    let source = SourceId::new(1);
+    let cst_text = r#"
+fn main() {
+    match 1 {
+        1 => 10,
+    };
+}
+"#;
+    let legacy_text = r#"
+fn main() {
+    match 1 {
+        1 => 10,
+        _ => 20,
+    };
+}
+"#;
+    let cst_body = cst_match_body(source, cst_text);
+    let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
+    let (mut compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let mismatched = statement_payload_from_syntax_body_with_fallbacks(
+        source,
+        cst_body,
+        fallback_statements_for_body(source, &payload.body),
+        0,
+    );
+    let arm_payloads = mismatched
+        .expression_payload()
+        .and_then(|payload| payload.match_arm_payloads());
+    assert_eq!(
+        arm_payloads.as_ref().map(Vec::len),
+        Some(1),
+        "missing CST match arms should remain visible to compile-boundary validation"
+    );
+
+    let error = compiler
+        .compile_statement_payload_for_test(&mismatched)
+        .expect_err("missing CST statement match arms must not compile fallback match");
+
+    assert!(
+        matches!(
+            error.kind,
+            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
+        ),
+        "expected mismatched CST match arms, got {error:?}"
+    );
+}
+
+#[test]
 fn equal_count_match_arm_payloads_pair_by_position_not_legacy_pattern() {
     let source = SourceId::new(1);
     let cst_text = r#"

@@ -752,7 +752,7 @@ fn legacy_binding(value) {
 }
 
 #[test]
-fn missing_statement_match_arm_child_payload_does_not_use_legacy_arm() {
+fn missing_statement_match_arm_payload_count_does_not_use_legacy_arm() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
@@ -769,19 +769,19 @@ fn main(value) {
 
     let error = compiler
         .compile_match_with_payloads(match_expr, None, Some(&[]))
-        .expect_err("missing CST statement match arm payload must not compile legacy arm");
+        .expect_err("missing CST statement match arm payloads must not compile legacy arms");
 
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
+            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
         ),
-        "expected missing CST match arm payload, got {error:?}"
+        "expected mismatched CST match arms, got {error:?}"
     );
 }
 
 #[test]
-fn missing_value_match_arm_child_payload_does_not_use_legacy_arm() {
+fn missing_value_match_arm_payload_count_does_not_use_legacy_arm() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
@@ -798,14 +798,14 @@ fn main(value) {
 
     let error = compiler
         .compile_match_value_with_payloads(match_expr, Register(0), None, &[])
-        .expect_err("missing CST value match arm payload must not compile legacy arm");
+        .expect_err("missing CST value match arm payloads must not compile legacy arms");
 
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
+            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
         ),
-        "expected missing CST match arm payload, got {error:?}"
+        "expected mismatched CST match arms, got {error:?}"
     );
 }
 
@@ -831,9 +831,9 @@ fn main(value) {
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
+            CompileErrorKind::UnsupportedSyntax("mismatched CST match arms")
         ),
-        "expected missing CST match arm payload, got {error:?}"
+        "expected mismatched CST match arms, got {error:?}"
     );
 }
 
