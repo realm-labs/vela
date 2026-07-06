@@ -312,7 +312,7 @@ fn main() {
 }
 
 #[test]
-fn missing_array_element_payload_does_not_use_legacy_value() {
+fn empty_array_payload_compiles_cst_elements_not_legacy_value() {
     let source = SourceId::new(1);
     let cst_text = r#"
 fn main() {
@@ -353,14 +353,20 @@ fn main() {
 
     assert_eq!(element_payloads.len(), 0);
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(legacy_array.fallback(), Some(&missing))
-        .expect_err("missing array element payload must not compile legacy value");
+        .expect("empty CST array should compile instead of legacy array value");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST array elements")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeArray { ref elements, .. } if elements.is_empty()
+            ))
+    );
 }
 
 #[test]

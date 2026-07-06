@@ -375,7 +375,7 @@ fn fallback_body() {
 }
 
 #[test]
-fn extra_array_element_payloads_do_not_compile_fallback_items() {
+fn array_payload_compiles_extra_cst_elements_not_fallback_items() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst_body() {
@@ -407,14 +407,20 @@ fn fallback_body() {
     );
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(fallback_array.fallback(), Some(&mismatched))
-        .expect_err("extra CST array elements must not be ignored");
+        .expect("extra CST array elements should compile instead of fallback items");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST array elements")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeArray { ref elements, .. } if elements.len() == 2
+            ))
+    );
 }
 
 #[test]

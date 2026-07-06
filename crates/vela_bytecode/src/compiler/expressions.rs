@@ -6,9 +6,7 @@ use vela_syntax::ast::{
 use crate::{BinaryLiteralSide, Register, UnlinkedInstructionKind};
 
 use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
-use super::body_payloads::{
-    CompilerArrayElementPayload, CompilerExpressionPayload, CompilerRecordFieldPayload,
-};
+use super::body_payloads::{CompilerExpressionPayload, CompilerRecordFieldPayload};
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
@@ -148,15 +146,22 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Array => {
-                let ExprKind::Array(items) = &expr.kind else {
-                    unreachable!("validated CST array expression payload kind");
-                };
-                let Some(element_payloads) = payload.array_element_payloads() else {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST array element payload",
+                        "mismatched CST array expression payload",
                     )));
                 };
-                self.compile_array(items, &element_payloads)
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST array expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST array expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Map => {
                 let ExprKind::Map(entries) = &expr.kind else {
@@ -553,39 +558,6 @@ impl Compiler<'_, '_> {
             let index = self.compile_expr_with_payload(index, index_payload)?;
             self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
         }
-        Ok(dst)
-    }
-
-    fn compile_array(
-        &mut self,
-        items: &[Expr],
-        payloads: &[CompilerArrayElementPayload],
-    ) -> CompileResult<Register> {
-        if payloads.len() != items.len() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST array elements",
-            )));
-        }
-        let elements = items
-            .iter()
-            .enumerate()
-            .map(|(index, item)| {
-                let payload = payloads.get(index).ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST array element payload",
-                    ))
-                })?;
-                let value_payload = payload.value_expression_payload();
-                if value_payload.syntax_expression().is_none() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST array element value",
-                    )));
-                }
-                self.compile_expr_with_payload(item, Some(&value_payload))
-            })
-            .collect::<CompileResult<Vec<_>>>()?;
-        let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::MakeArray { dst, elements });
         Ok(dst)
     }
 
