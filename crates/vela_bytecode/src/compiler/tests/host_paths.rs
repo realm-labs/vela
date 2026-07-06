@@ -334,7 +334,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
     assert_eq!(
         compiler
             .host_path_root_type_name_for_test(crate::compiler::host_paths::HostPathRoot::Expr {
-                expr: cst_receiver.fallback(),
+                expr: mismatched_target.fallback(),
                 payload: Some(cst_receiver),
             })
             .as_deref(),

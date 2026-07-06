@@ -381,13 +381,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_field()?.receiver();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Field { base, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(base)));
-        }
         Some(self.child_payload(syntax))
     }
 
@@ -404,16 +397,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     )> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_index()?;
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Index { base, index } = &fallback.kind else {
-                return None;
-            };
-            return Some((
-                self.child_payload_for_test(syntax.receiver(), Some(base)),
-                self.child_payload_for_test(syntax.index(), Some(index)),
-            ));
-        }
         Some((
             self.child_payload(syntax.receiver()),
             self.child_payload(syntax.index()),

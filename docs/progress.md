@@ -428,6 +428,9 @@ propagation routes from the body payload boundary.
 Lambda body expression payload helpers now also build syntax-only child
 payloads, so block-body fixture checks no longer depend on old lambda body
 fallback propagation.
+Field receiver and index operand payload helpers now build syntax-only child
+payloads, removing another old-`Expr` child propagation path from host-path
+and field/index CST payload fixtures.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

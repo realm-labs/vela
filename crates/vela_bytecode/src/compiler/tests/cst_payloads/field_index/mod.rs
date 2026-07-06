@@ -200,9 +200,13 @@ fn make(value) {
                 mismatched_payload.syntax_field_name().as_deref(),
                 Some("value")
             );
-            assert!(
-                mismatched_payload.field_base_payload().is_none(),
-                "field child payloads still require field-shaped fallback children"
+            let receiver = mismatched_payload
+                .field_base_payload()
+                .expect("CST receiver payload should not require field-shaped fallback");
+            assert_eq!(
+                receiver.syntax_kind(),
+                Some(SyntaxExpressionKind::Call),
+                "field child payloads should come from CST receiver syntax"
             );
         },
     );
