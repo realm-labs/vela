@@ -204,19 +204,17 @@ fn payload_matches_script_fact_expression(
     payload_overlaps_expression_facts(
         payload,
         expr.span,
-        script_fact_expression_kind(expr),
+        expression_syntax_kind(expr).filter(|kind| {
+            matches!(
+                kind,
+                SyntaxExpressionKind::Record
+                    | SyntaxExpressionKind::Call
+                    | SyntaxExpressionKind::Path
+            )
+        }),
         expression_path_is_self(expr),
         true,
     )
-}
-
-fn script_fact_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
-    expression_syntax_kind(expr).filter(|kind| {
-        matches!(
-            kind,
-            SyntaxExpressionKind::Record | SyntaxExpressionKind::Call | SyntaxExpressionKind::Path
-        )
-    })
 }
 
 fn expression_script_fact_from_payload_syntax(
