@@ -808,19 +808,6 @@ impl CompilerArgumentPayload {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn value_expression_payload_for_test<'ast>(
-        &self,
-        fallback: &'ast vela_syntax::ast::Expr,
-    ) -> CompilerExpressionPayload<'ast> {
-        CompilerExpressionPayload::from_fallback(
-            self.source,
-            self.source
-                .and_then(|_| self.syntax.as_ref().and_then(SyntaxArgument::expression)),
-            fallback,
-        )
-    }
-
-    #[cfg(test)]
     pub(super) fn syntax_argument(&self) -> Option<&SyntaxArgument> {
         self.source?;
         self.syntax.as_ref()

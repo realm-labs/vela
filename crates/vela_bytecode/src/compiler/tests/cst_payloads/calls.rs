@@ -148,17 +148,11 @@ fn main() {
             let args = mismatched_payload
                 .call_argument_payloads()
                 .expect("call argument payloads");
-            let vela_syntax::ast::ExprKind::Call {
-                args: legacy_args, ..
-            } = &legacy_call.fallback().kind
-            else {
-                panic!("expected legacy call fallback");
-            };
             assert_eq!(args.len(), 1);
             assert_eq!(args[0].syntax_name().as_deref(), Some("value"));
             assert_eq!(
                 args[0]
-                    .value_expression_payload_for_test(&legacy_args[0].value)
+                    .value_expression_payload()
                     .syntax_expression()
                     .expect("CST argument value")
                     .syntax()

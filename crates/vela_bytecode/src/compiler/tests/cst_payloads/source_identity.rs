@@ -444,16 +444,9 @@ fn main() {
             assert!(args[0].syntax_argument().is_none());
             assert!(!args[0].has_value_syntax());
             assert_eq!(args[0].syntax_name(), None);
-            let vela_syntax::ast::ExprKind::Call {
-                args: fallback_args,
-                ..
-            } = &call.fallback().kind
-            else {
-                panic!("expected fallback call");
-            };
             assert!(
                 args[0]
-                    .value_expression_payload_for_test(&fallback_args[0].value)
+                    .value_expression_payload()
                     .syntax_expression()
                     .is_none()
             );

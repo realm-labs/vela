@@ -369,7 +369,16 @@ impl<'ast> CompilerExpressionPayload<'ast> {
             args.iter()
                 .zip(self.call_argument_payloads()?)
                 .map(|(fallback, payload)| {
-                    payload.value_expression_payload_for_test(&fallback.value)
+                    CompilerExpressionPayload::from_fallback(
+                        payload.source,
+                        payload.source.and_then(|_| {
+                            payload
+                                .syntax
+                                .as_ref()
+                                .and_then(|argument| argument.expression())
+                        }),
+                        &fallback.value,
+                    )
                 })
                 .collect(),
         )
