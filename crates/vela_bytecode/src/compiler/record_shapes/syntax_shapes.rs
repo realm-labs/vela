@@ -513,6 +513,15 @@ impl Compiler<'_, '_> {
                 .map_parts()
                 .map(|(_, value)| ValueShape::Option(Box::new(value.clone()))),
             "get_or" => receiver.map_parts().map(|(_, value)| value.clone()),
+            "find" => match &receiver {
+                ValueShape::Scalar(type_name) if type_name == "String" => Some(ValueShape::Option(
+                    Box::new(ValueShape::Scalar("i64".to_owned())),
+                )),
+                ValueShape::Array(value) | ValueShape::Set(value) | ValueShape::Iterator(value) => {
+                    Some(ValueShape::Option(value.clone()))
+                }
+                _ => None,
+            },
             "index_of" | "last_index_of" => Some(ValueShape::Option(Box::new(ValueShape::Scalar(
                 "i64".to_owned(),
             )))),
@@ -608,7 +617,7 @@ impl Compiler<'_, '_> {
         }
     }
 
-    fn syntax_callback_return_shape(
+    pub(in crate::compiler) fn syntax_callback_return_shape(
         &self,
         receiver: &ValueShape,
         method: &str,

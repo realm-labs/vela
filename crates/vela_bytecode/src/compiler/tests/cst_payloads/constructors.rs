@@ -275,9 +275,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                    CompileErrorKind::UnknownLocal(ref name) if name == "callable"
                 ),
-                "expected mismatched CST call callee payload, got {error:?}"
+                "expected CST closure callee to read `callable`, got {error:?}"
             );
         },
     );

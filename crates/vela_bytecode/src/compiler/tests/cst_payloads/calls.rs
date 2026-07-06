@@ -598,9 +598,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                    CompileErrorKind::UnknownLocal(ref name) if name == "native"
                 ),
-                "expected mismatched CST call callee payload, got {error:?}"
+                "expected CST closure callee to read `native`, got {error:?}"
             );
         },
     );
@@ -649,9 +649,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                    CompileErrorKind::UnknownLocal(ref name) if name == "callable"
                 ),
-                "expected mismatched CST call callee payload, got {error:?}"
+                "expected CST closure callee to read `callable`, got {error:?}"
             );
         },
     );
@@ -691,16 +691,28 @@ fn main() {
                 legacy_call.fallback(),
             );
 
-            let error = compiler
+            let register = compiler
                 .compile_expr_with_payload(mismatched_payload.fallback(), Some(&mismatched_payload))
-                .expect_err("misaligned path CST callee must not select the wrong function");
+                .expect("misaligned path CST callee should compile the CST function");
 
             assert!(
-                matches!(
-                    error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
-                ),
-                "expected mismatched CST call callee payload, got {error:?}"
+                compiler.code.instructions.iter().any(|instruction| {
+                    matches!(
+                        &instruction.kind,
+                        UnlinkedInstructionKind::CallFunction { dst, name, .. }
+                            if *dst == register && name == "first"
+                    )
+                }),
+                "misaligned call payload should select the CST callee `first`"
+            );
+            assert!(
+                compiler.code.instructions.iter().all(|instruction| {
+                    !matches!(
+                        &instruction.kind,
+                        UnlinkedInstructionKind::CallFunction { name, .. } if name == "second"
+                    )
+                }),
+                "misaligned call payload must not select fallback callee `second`"
             );
         },
     );
@@ -743,9 +755,9 @@ fn main() {
             assert!(
                 matches!(
                     error.kind,
-                    CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+                    CompileErrorKind::UnknownLocal(ref name) if name == "callable"
                 ),
-                "expected mismatched CST call callee payload, got {error:?}"
+                "expected CST closure callee to read `callable`, got {error:?}"
             );
         },
     );
@@ -847,9 +859,9 @@ fn main(player: Player) {
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("mismatched CST call callee payload")
+            CompileErrorKind::UnknownLocal(ref name) if name == "callable"
         ),
-        "expected mismatched CST call callee payload, got {error:?}"
+        "expected CST closure callee to read `callable`, got {error:?}"
     );
 }
 

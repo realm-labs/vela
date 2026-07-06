@@ -1,6 +1,6 @@
 mod payload_guards;
 
-use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxExpressionKind};
+use vela_syntax::ast::{Argument, Expr, ExprKind, SyntaxArgument, SyntaxExpressionKind};
 
 use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
@@ -965,6 +965,53 @@ impl Compiler<'_, '_> {
             return Ok(());
         }
         Err(missing_array_ord_error(method, "key", type_name, span))
+    }
+
+    pub(in crate::compiler) fn reject_static_syntax_array_ordering_method_without_ord(
+        &self,
+        source: vela_common::SourceId,
+        method: &str,
+        args: &[SyntaxArgument],
+        receiver_type: Option<&RuntimeTypeFact>,
+        receiver_shape: Option<&ValueShape>,
+        span: Span,
+    ) -> CompileResult<()> {
+        if !matches!(method, "sort" | "sort_by" | "min" | "max") {
+            return Ok(());
+        }
+        if method == "sort_by" {
+            let Some(receiver_shape) = receiver_shape else {
+                return Ok(());
+            };
+            let Some(key_shape) =
+                self.syntax_callback_return_shape(receiver_shape, method, args, Some(source))
+            else {
+                return Ok(());
+            };
+            return self.reject_static_ord_shape(method, &key_shape, span);
+        }
+        if let Some(RuntimeTypeFact::Array(element)) = receiver_type
+            && !runtime_type_satisfies_ord(element)
+        {
+            return Err(missing_array_ord_error(
+                method,
+                "element",
+                &element.source_type_display(),
+                span,
+            ));
+        }
+        let Some(ValueShape::Array(element)) = receiver_shape else {
+            return Ok(());
+        };
+        let Some(type_name) = element.as_record().and_then(|record| record.type_name()) else {
+            return Ok(());
+        };
+        if !self.is_declared_script_type(type_name)
+            || self.type_implements_builtin_trait_method(type_name, "Ord", "cmp")
+        {
+            return Ok(());
+        }
+        Err(missing_array_ord_error(method, "element", type_name, span))
     }
 }
 

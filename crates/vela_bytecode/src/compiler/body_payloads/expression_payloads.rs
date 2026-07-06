@@ -13,12 +13,14 @@ use vela_syntax::ast::{
 };
 
 #[cfg(test)]
+use super::CompilerArgumentPayload;
+#[cfg(test)]
 use super::CompilerRecordFieldPayload;
 #[cfg(test)]
 use super::match_scrutinee_payload_for_expr;
 use super::{
-    CompilerArgumentPayload, CompilerArrayElementPayload, CompilerBodyPayload,
-    CompilerExpressionPayload, CompilerInterpolationPayload, CompilerMapEntryPayload,
+    CompilerArrayElementPayload, CompilerBodyPayload, CompilerExpressionPayload,
+    CompilerInterpolationPayload, CompilerMapEntryPayload,
 };
 #[cfg(test)]
 use super::{CompilerIfPayload, if_payload_for_syntax};
@@ -328,6 +330,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn call_argument_payloads(
         &self,
     ) -> Option<Vec<CompilerArgumentPayload>> {
@@ -360,6 +363,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         )
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn call_callee_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {

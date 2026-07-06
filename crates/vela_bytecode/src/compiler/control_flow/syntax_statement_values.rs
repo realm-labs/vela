@@ -1322,6 +1322,14 @@ impl Compiler<'_, '_> {
             let value_receiver_methods_known = value_receiver_type
                 .as_ref()
                 .is_some_and(|receiver_type| self.value_methods_known_for_type(receiver_type));
+            self.reject_static_syntax_array_ordering_method_without_ord(
+                source,
+                &method,
+                &arguments,
+                value_receiver_type.as_ref(),
+                receiver_shape.as_ref(),
+                call_span,
+            )?;
             if let Some(method_id) = receiver_type
                 .as_deref()
                 .and_then(|type_name| self.script_method_id_for_type(type_name, &method))

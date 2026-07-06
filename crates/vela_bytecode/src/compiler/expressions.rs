@@ -241,22 +241,32 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Call => {
-                let ExprKind::Call { callee, args } = &expr.kind else {
-                    unreachable!("validated CST call expression payload kind");
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST call expression payload",
+                    )));
                 };
-                let callee_payload = payload.call_callee_payload();
-                reject_missing_expression_payload(
-                    callee_payload.as_ref(),
-                    "missing CST call callee",
-                )?;
-                let arg_payloads = payload.call_argument_payloads();
-                self.compile_call_expr_with_arg_payloads(
-                    expr,
-                    callee,
-                    args,
-                    callee_payload.as_ref(),
-                    arg_payloads.as_deref(),
-                )
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST call expression payload",
+                    )));
+                };
+                let Some(call) = expression.as_call() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST call expression payload",
+                    )));
+                };
+                if call.callee().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST call callee",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST call expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Field => {
                 let Some(source) = payload.source() else {
