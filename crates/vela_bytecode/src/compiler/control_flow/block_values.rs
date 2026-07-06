@@ -1,3 +1,5 @@
+use vela_common::SourceId;
+use vela_syntax::ast::SyntaxExpression;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
 #[cfg(test)]
@@ -14,6 +16,31 @@ use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
+    pub(in crate::compiler::control_flow) fn compile_syntax_block_expr_to(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        dst: Register,
+    ) -> CompileResult<Option<bool>> {
+        let Some(block) = expression.as_block() else {
+            return Ok(None);
+        };
+        let body = CompilerBodyPayload::nested_syntax(source, block);
+        self.compile_block_payload_value_to(&body, dst).map(Some)
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_block_expr_statement(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> CompileResult<Option<bool>> {
+        if expression.as_block().is_none() {
+            return Ok(None);
+        }
+        let dst = self.alloc_register()?;
+        self.compile_syntax_block_expr_to(source, expression, dst)
+    }
+
     pub(in crate::compiler) fn compile_block_payload_value_to(
         &mut self,
         body: &CompilerBodyPayload<'_>,
@@ -72,8 +99,11 @@ impl Compiler<'_, '_> {
                 {
                     return Ok(done);
                 }
-                if let Some(body) = tail.expression_statement_block_body_payload() {
-                    return self.compile_block_payload_value_to(&body, dst);
+                if let Some((source, expression)) = tail.expression_statement_syntax_expression()
+                    && let Some(done) =
+                        self.compile_syntax_block_expr_to(source, &expression, dst)?
+                {
+                    return Ok(done);
                 }
                 if let Some((source, if_expr)) = tail.syntax_if()
                     && let Some(done) = self.compile_syntax_if_value_to(source, &if_expr, dst)?

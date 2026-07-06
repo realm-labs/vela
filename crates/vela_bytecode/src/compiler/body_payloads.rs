@@ -282,6 +282,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
+#[cfg(test)]
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_block_syntax(&inner);
@@ -724,6 +725,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         ))
     }
 
+    #[cfg(test)]
     pub(super) fn expression_statement_block_body_payload(
         &self,
     ) -> Option<CompilerBodyPayload<'ast>> {

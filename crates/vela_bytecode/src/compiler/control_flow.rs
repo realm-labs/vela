@@ -184,9 +184,10 @@ impl Compiler<'_, '_> {
         {
             return Ok(done);
         }
-        if let Some(body) = stmt.expression_statement_block_body_payload() {
-            let dst = self.alloc_register()?;
-            return self.compile_block_payload_value_to(&body, dst);
+        if let Some((source, expression)) = stmt.expression_statement_syntax_expression()
+            && let Some(done) = self.compile_syntax_block_expr_statement(source, &expression)?
+        {
+            return Ok(done);
         }
         if stmt.is_syntax_only()
             && let Some((source, expression)) = stmt.expression_statement_syntax_expression()
