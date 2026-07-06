@@ -7,8 +7,6 @@ use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
 #[cfg(test)]
 use crate::compiler::compilation_statement_payloads;
-#[cfg(test)]
-use crate::compiler::expression_checks::payload_aligns_with_expr;
 use crate::compiler::value_flow::{BlockValue, block_value};
 use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register, UnlinkedInstructionKind};
@@ -145,21 +143,14 @@ impl Compiler<'_, '_> {
                     ),
                 ));
             };
-            let Some(expression_payload) = payload.expression_payload() else {
+            if payload.expression_payload().is_none() {
                 return Err(crate::compiler::CompileError::new(
                     crate::compiler::CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST block tail expression",
                     ),
                 ));
             };
-            if payload_aligns_with_expr(&expression_payload, expr) {
-                return self.compile_cst_block_tail_expr_to(expr, payload, kind, dst);
-            }
-            return Err(crate::compiler::CompileError::new(
-                crate::compiler::CompileErrorKind::UnsupportedSyntax(
-                    "mismatched CST block tail expression",
-                ),
-            ));
+            return self.compile_cst_block_tail_expr_to(expr, payload, kind, dst);
         }
         self.compile_block_tail_expr_without_payload_to(expr, dst)
     }
