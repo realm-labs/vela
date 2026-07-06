@@ -40,7 +40,9 @@ fn main() {
             match_expr,
             Register(0),
             mismatched.match_scrutinee_payload().as_ref(),
-            arm_payloads.as_deref(),
+            arm_payloads
+                .as_deref()
+                .expect("extra CST match arms should be available"),
         )
         .expect_err("extra CST expression match arms must not compile fallback match");
 

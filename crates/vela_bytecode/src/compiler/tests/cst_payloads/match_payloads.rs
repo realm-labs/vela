@@ -17,7 +17,7 @@ fn main(value) {
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
-        .compile_match_value_with_payloads(match_expr, Register(0), None, Some(&[missing_arm]))
+        .compile_match_value_with_payloads(match_expr, Register(0), None, &[missing_arm])
         .expect_err("present match arm payload without CST syntax must not use legacy arm");
 
     assert!(

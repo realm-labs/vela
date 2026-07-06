@@ -765,11 +765,10 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_statement_match_expr(body_fallback(source, &payload.body));
-    let arm_payloads: [body_payloads::CompilerMatchArmPayload; 0] = [];
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
-        .compile_match_with_payloads(match_expr, None, Some(&arm_payloads))
+        .compile_match_with_payloads(match_expr, None, Some(&[]))
         .expect_err("missing CST statement match arm payload must not compile legacy arm");
 
     assert!(
@@ -795,11 +794,10 @@ fn main(value) {
     let semantic = parse_semantic_source(source, text).expect("source should parse");
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_return_match_expr(body_fallback(source, &payload.body));
-    let arm_payloads: [body_payloads::CompilerMatchArmPayload; 0] = [];
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
 
     let error = compiler
-        .compile_match_value_with_payloads(match_expr, Register(0), None, Some(&arm_payloads))
+        .compile_match_value_with_payloads(match_expr, Register(0), None, &[])
         .expect_err("missing CST value match arm payload must not compile legacy arm");
 
     assert!(
@@ -812,7 +810,7 @@ fn main(value) {
 }
 
 #[test]
-fn value_match_without_arm_payloads_does_not_compile_legacy_arm_body() {
+fn value_match_without_arm_payloads_does_not_compile_legacy_arms() {
     let source = SourceId::new(1);
     let text = r#"
 fn main(value) {
@@ -826,17 +824,16 @@ fn main(value) {
     let (payload, _, _) = semantic.function("main").expect("main function");
     let match_expr = first_return_match_expr(body_fallback(source, &payload.body));
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
-
     let error = compiler
-        .compile_match_value_with_payloads(match_expr, Register(0), None, None)
+        .compile_match_value_with_payloads(match_expr, Register(0), None, &[])
         .expect_err("missing CST value match arm body must not compile legacy expression");
 
     assert!(
         matches!(
             error.kind,
-            CompileErrorKind::UnsupportedSyntax("missing CST match arm body payload")
+            CompileErrorKind::UnsupportedSyntax("missing CST match arm payload")
         ),
-        "expected missing CST match arm body payload, got {error:?}"
+        "expected missing CST match arm payload, got {error:?}"
     );
 }
 
@@ -856,9 +853,8 @@ fn main(value) {
     let missing_scrutinee =
         body_payloads::CompilerExpressionPayload::missing_syntax(source, &match_expr.scrutinee);
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "main");
-
     let error = compiler
-        .compile_match_value_with_payloads(match_expr, Register(0), Some(&missing_scrutinee), None)
+        .compile_match_value_with_payloads(match_expr, Register(0), Some(&missing_scrutinee), &[])
         .expect_err("missing CST match scrutinee must not compile legacy expression");
 
     assert!(matches!(
@@ -920,12 +916,7 @@ fn value_form(value) {
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
-        .compile_match_value_with_payloads(
-            value_match,
-            Register(0),
-            None,
-            Some(&[missing_value_arm]),
-        )
+        .compile_match_value_with_payloads(value_match, Register(0), None, &[missing_value_arm])
         .expect_err("missing CST match value arm body must not use legacy body");
     assert!(matches!(
         value_error.kind,
@@ -983,12 +974,7 @@ fn value_form(value, flag) {
     let (mut value_compiler, _) = cst_payload_compiler_for_function(&semantic, "value_form");
 
     let value_error = value_compiler
-        .compile_match_value_with_payloads(
-            value_match,
-            Register(0),
-            None,
-            Some(&[missing_value_arm]),
-        )
+        .compile_match_value_with_payloads(value_match, Register(0), None, &[missing_value_arm])
         .expect_err("source-less CST match arm payload must not use legacy pattern or body");
     assert!(matches!(
         value_error.kind,

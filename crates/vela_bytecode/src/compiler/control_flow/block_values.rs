@@ -195,7 +195,7 @@ impl Compiler<'_, '_> {
                     match_expr,
                     dst,
                     Some(&scrutinee_payload),
-                    Some(&arm_payloads),
+                    &arm_payloads,
                 )
             }
             _ => {

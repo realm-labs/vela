@@ -639,7 +639,7 @@ impl Compiler<'_, '_> {
                     match_expr,
                     dst,
                     Some(&scrutinee_payload),
-                    Some(match_arms),
+                    match_arms,
                 )?;
                 Ok((dst, returned))
             }
@@ -825,7 +825,7 @@ impl Compiler<'_, '_> {
                     match_expr,
                     dst,
                     Some(&scrutinee_payload),
-                    Some(match_arms),
+                    match_arms,
                 )?;
                 Ok((dst, returned))
             }

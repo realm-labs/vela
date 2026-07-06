@@ -1078,7 +1078,7 @@ impl Compiler<'_, '_> {
                     match_expr,
                     dst,
                     Some(&match_scrutinee),
-                    Some(match_arms),
+                    match_arms,
                 )?;
                 Ok(dst)
             }

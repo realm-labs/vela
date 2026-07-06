@@ -31,7 +31,7 @@ fn legacy_guard(value, legacy_flag) {
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler
-        .compile_match_value_with_payloads(legacy_match, Register(0), None, Some(&[mismatched_arm]))
+        .compile_match_value_with_payloads(legacy_match, Register(0), None, &[mismatched_arm])
         .expect_err("mismatched guard payload should not use legacy expression");
     assert!(matches!(
         err.kind,
@@ -76,7 +76,7 @@ fn legacy_guard(value, flag) {
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "legacy_guard");
 
     let err = compiler
-        .compile_match_value_with_payloads(legacy_match, Register(0), None, Some(&[missing_guard]))
+        .compile_match_value_with_payloads(legacy_match, Register(0), None, &[missing_guard])
         .expect_err("missing CST match guard must not compile legacy guard");
     assert!(
         matches!(

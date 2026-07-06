@@ -23,7 +23,7 @@ impl Compiler<'_, '_> {
         arm_payloads: Option<&[CompilerMatchArmPayload]>,
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
-        reject_missing_match_arm_payloads(match_expr, scrutinee_payload, arm_payloads)?;
+        reject_missing_optional_match_arm_payloads(match_expr, scrutinee_payload, arm_payloads)?;
         let scrutinee_fact =
             self.script_fact_for_expr_with_payload(&match_expr.scrutinee, scrutinee_payload);
         let scrutinee = self.compile_expr_with_payload(&match_expr.scrutinee, scrutinee_payload)?;
@@ -31,7 +31,7 @@ impl Compiler<'_, '_> {
         let mut all_arms_return = !match_expr.arms.is_empty();
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
-            let arm_payload = match_arm_payload_at(arm_payloads, index)?;
+            let arm_payload = optional_match_arm_payload_at(arm_payloads, index)?;
             let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
             let mut next_arm_jumps =
                 self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
@@ -148,7 +148,7 @@ impl Compiler<'_, '_> {
         match_expr: &MatchExpr,
         dst: Register,
         scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
-        arm_payloads: Option<&[CompilerMatchArmPayload]>,
+        arm_payloads: &[CompilerMatchArmPayload],
     ) -> CompileResult<bool> {
         reject_missing_match_scrutinee_payload(scrutinee_payload)?;
         reject_missing_match_arm_payloads(match_expr, scrutinee_payload, arm_payloads)?;
@@ -161,9 +161,9 @@ impl Compiler<'_, '_> {
 
         for (index, arm) in match_expr.arms.iter().enumerate() {
             let arm_payload = match_arm_payload_at(arm_payloads, index)?;
-            let pattern_payload = arm_payload.map(CompilerMatchArmPayload::pattern_payload);
+            let pattern_payload = arm_payload.pattern_payload();
             let mut next_arm_jumps =
-                self.compile_match_pattern(scrutinee, &arm.pattern, pattern_payload.as_ref())?;
+                self.compile_match_pattern(scrutinee, &arm.pattern, Some(&pattern_payload))?;
             let previous_locals = self.locals.clone();
             let previous_hir_locals = self.hir_locals.clone();
             let previous_script_types = self.script_types.clone();
@@ -172,14 +172,13 @@ impl Compiler<'_, '_> {
             self.bind_pattern_locals(
                 scrutinee,
                 &arm.pattern,
-                pattern_payload.as_ref(),
+                Some(&pattern_payload),
                 arm.body.span,
                 PatternBindingFacts::new(scrutinee_fact.clone()),
                 LocalBindingKind::Pattern,
             )?;
-            let guard_payload = arm_payload.and_then(CompilerMatchArmPayload::guard_payload);
+            let guard_payload = arm_payload.guard_payload();
             if arm.guard.is_some()
-                && arm_payload.is_some_and(CompilerMatchArmPayload::has_syntax)
                 && guard_payload
                     .as_ref()
                     .is_none_or(|payload| payload.syntax_expression().is_none())
@@ -236,15 +235,13 @@ impl Compiler<'_, '_> {
     fn compile_match_arm_value_to(
         &mut self,
         body: &Expr,
-        payload: Option<&CompilerMatchArmPayload>,
+        payload: &CompilerMatchArmPayload,
         dst: Register,
     ) -> CompileResult<bool> {
-        if let Some(payload) = payload
-            && let Some(kind) = payload.syntax_body_expression_kind()
-        {
+        if let Some(kind) = payload.syntax_body_expression_kind() {
             return self.compile_match_arm_value_with_syntax_kind(body, payload, kind, dst);
         }
-        if payload.is_some_and(CompilerMatchArmPayload::has_syntax) {
+        if payload.has_syntax() {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST match arm body",
             )));
@@ -307,7 +304,7 @@ impl Compiler<'_, '_> {
                     match_expr,
                     dst,
                     Some(&scrutinee_payload),
-                    Some(&arm_payloads),
+                    &arm_payloads,
                 )
             }
             _ => {
@@ -321,6 +318,24 @@ impl Compiler<'_, '_> {
 }
 
 fn match_arm_payload_at(
+    payloads: &[CompilerMatchArmPayload],
+    index: usize,
+) -> CompileResult<&CompilerMatchArmPayload> {
+    let payload = payloads.get(index).ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match arm payload",
+        ))
+    })?;
+    if !payload.has_syntax() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "missing CST match arm payload",
+        )));
+    }
+    Ok(payload)
+}
+
+#[cfg(test)]
+fn optional_match_arm_payload_at(
     payloads: Option<&[CompilerMatchArmPayload]>,
     index: usize,
 ) -> CompileResult<Option<&CompilerMatchArmPayload>> {
@@ -356,6 +371,20 @@ fn reject_missing_match_scrutinee_payload(
 }
 
 fn reject_missing_match_arm_payloads(
+    match_expr: &MatchExpr,
+    _scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
+    arm_payloads: &[CompilerMatchArmPayload],
+) -> CompileResult<()> {
+    if arm_payloads.len() > match_expr.arms.len() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "mismatched CST match arms",
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+fn reject_missing_optional_match_arm_payloads(
     match_expr: &MatchExpr,
     scrutinee_payload: Option<&CompilerExpressionPayload<'_>>,
     arm_payloads: Option<&[CompilerMatchArmPayload]>,
