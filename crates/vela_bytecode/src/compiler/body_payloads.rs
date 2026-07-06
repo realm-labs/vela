@@ -3,6 +3,8 @@ use std::marker::PhantomData;
 use vela_common::SourceId;
 use vela_common::Span;
 #[cfg(test)]
+use vela_syntax::ast::ExprKind;
+#[cfg(test)]
 use vela_syntax::ast::IfExpr;
 #[cfg(test)]
 use vela_syntax::ast::MatchExpr;
@@ -11,9 +13,9 @@ use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{
-    AstNode, ExprKind, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind,
-    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
-    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
+    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
+    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
@@ -313,6 +315,7 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
     )
 }
 
+#[cfg(test)]
 fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
     match expr.kind {
         ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
@@ -337,6 +340,7 @@ fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKin
     }
 }
 
+#[cfg(test)]
 fn expr_matches_syntax_kind(
     expr: &vela_syntax::ast::Expr,
     syntax_kind: SyntaxExpressionKind,
@@ -344,6 +348,7 @@ fn expr_matches_syntax_kind(
     syntax_kind == SyntaxExpressionKind::Paren || expr_syntax_kind(expr) == Some(syntax_kind)
 }
 
+#[cfg(test)]
 fn expr_path_self_shape_matches(expr: &vela_syntax::ast::Expr, syntax_is_self: bool) -> bool {
     expr_syntax_kind(expr) == Some(SyntaxExpressionKind::Path)
         && matches!(expr.kind, ExprKind::SelfValue) == syntax_is_self
@@ -958,17 +963,24 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         let Some(kind) = self.stored_syntax_kind() else {
             return true;
         };
-        if !expr_matches_syntax_kind(expr, kind) {
-            return false;
+        #[cfg(not(test))]
+        {
+            let _ = (expr, kind);
+            true
         }
         #[cfg(test)]
-        if let Some(fallback) = self.fallback
-            && kind != SyntaxExpressionKind::Literal
-            && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
         {
-            return false;
+            if !expr_matches_syntax_kind(expr, kind) {
+                return false;
+            }
+            if let Some(fallback) = self.fallback
+                && kind != SyntaxExpressionKind::Literal
+                && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
+            {
+                return false;
+            }
+            self.paired_expr_matches_stored_syntax_shape(expr)
         }
-        self.paired_expr_matches_stored_syntax_shape(expr)
     }
 
     pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
@@ -985,6 +997,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
                 .is_some_and(|syntax_span| spans_overlap(syntax_span, expr.span))
     }
 
+    #[cfg(test)]
     fn paired_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {
         if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
             return true;
