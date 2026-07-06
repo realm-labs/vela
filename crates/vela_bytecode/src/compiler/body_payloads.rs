@@ -174,10 +174,6 @@ impl<'ast> CompilerBodyPayload<'ast> {
         Self::syntax_only(source, body)
     }
 
-    pub(super) fn syntax_with_optional_body(source: SourceId, body: SyntaxBlock) -> Option<Self> {
-        Some(Self::syntax_only(source, body))
-    }
-
     pub(super) fn statement_payloads(&self) -> Vec<CompilerStatementPayload<'ast>> {
         syntax_body_statements(&self.syntax.body)
             .into_iter()

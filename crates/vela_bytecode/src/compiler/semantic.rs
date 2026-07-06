@@ -473,9 +473,8 @@ fn function_body_payload<'ast>(
         .tree()
         .functions()
         .find(|function| function.name_text().as_deref() == Some(name))?;
-    let syntax_body = syntax_function.body()?;
     let body =
-        super::body_payloads::CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
+        super::body_payloads::CompilerBodyPayload::nested_syntax(source, syntax_function.body()?);
     let param_defaults = function_param_defaults(source, syntax_function.param_list(), signature);
     Some(FunctionBodyPayload {
         name: name.to_owned(),

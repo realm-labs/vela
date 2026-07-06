@@ -248,8 +248,7 @@ fn impl_method_payloads<'ast>(
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
-            let syntax_body = syntax_method.body()?;
-            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
+            let body = CompilerBodyPayload::nested_syntax(source, syntax_method.body()?);
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
@@ -282,8 +281,7 @@ fn trait_default_method_payloads<'ast>(
             let syntax_method = syntax_item.methods().find(|syntax_method| {
                 syntax_method.name_text().as_deref() == Some(method_metadata.name.as_str())
             })?;
-            let syntax_body = syntax_method.body()?;
-            let body = CompilerBodyPayload::syntax_with_optional_body(source, syntax_body)?;
+            let body = CompilerBodyPayload::nested_syntax(source, syntax_method.body()?);
             Some((
                 method_metadata.name.clone(),
                 MethodBodyPayload {
