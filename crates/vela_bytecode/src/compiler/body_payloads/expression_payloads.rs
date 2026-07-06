@@ -1,8 +1,10 @@
 use vela_common::{SourceId, Span};
 #[cfg(test)]
+use vela_syntax::ast::AssignOp;
+#[cfg(test)]
 use vela_syntax::ast::SyntaxRecordExprField;
 use vela_syntax::ast::{
-    AssignOp, AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
+    AstNode, BinaryOp, Literal, SyntaxExpression, SyntaxExpressionKind, SyntaxLambdaBody,
     SyntaxMapEntry,
 };
 #[cfg(test)]
@@ -142,6 +144,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         self.syntax.as_ref()?.as_literal()?.literal()
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn assignment_target_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -157,6 +160,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn assignment_value_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -172,6 +176,7 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         Some(self.child_payload(syntax))
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_assignment_operator(&self) -> Option<AssignOp> {
         if !self.matches_syntax_kind(SyntaxExpressionKind::Assign) {
             return None;

@@ -87,6 +87,7 @@ pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
 }
 
 impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
+    #[cfg(test)]
     pub(in crate::compiler) fn new(
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
     ) -> Self {
@@ -107,6 +108,7 @@ pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
 }
 
 impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
+    #[cfg(test)]
     pub(in crate::compiler) fn new(
         kind: Option<SyntaxExpressionKind>,
         op: Option<AssignOp>,
@@ -137,6 +139,7 @@ pub(in crate::compiler) struct AssignmentTargetSyntax<'payload, 'ast> {
 }
 
 impl<'payload, 'ast> AssignmentTargetSyntax<'payload, 'ast> {
+    #[cfg(test)]
     pub(in crate::compiler) fn new(
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
     ) -> Self {

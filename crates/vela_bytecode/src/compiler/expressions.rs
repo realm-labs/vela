@@ -3,15 +3,13 @@ use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, SyntaxExpressionKind, 
 
 use crate::{BinaryLiteralSide, Register, UnlinkedInstructionKind};
 
-use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
 use super::body_payloads::CompilerExpressionPayload;
 use super::const_eval::{
     compile_literal_constant, compile_literal_constant_for_type, compile_negated_literal_constant,
 };
 use super::expression_checks::{
-    UnsuffixedNumericLiteral, expressions_are_i64, payload_syntax_overlaps_expr,
-    reject_missing_binary_operand_payload, reject_missing_expression_payload,
-    unsuffixed_numeric_literal_with_payload,
+    UnsuffixedNumericLiteral, expressions_are_i64, reject_missing_binary_operand_payload,
+    reject_missing_expression_payload, unsuffixed_numeric_literal_with_payload,
 };
 use super::expression_facts::{
     expression_path_is_self, expression_syntax_kind, payload_stored_kind_matches_expression_facts,
@@ -196,31 +194,42 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Assign => {
-                let ExprKind::Assign { .. } = &expr.kind else {
-                    unreachable!("validated CST assignment expression payload kind");
-                };
-                if !payload_syntax_overlaps_expr(payload, expr) {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "mismatched CST assignment expression payload",
                     )));
+                };
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST assignment expression payload",
+                    )));
+                };
+                let Some(assign) = expression.as_assign() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST assignment expression payload",
+                    )));
+                };
+                if assign.target().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment target",
+                    )));
                 }
-                let target_payload = payload.assignment_target_payload();
-                let value_payload = payload.assignment_value_payload();
-                let value_body = value_payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::block_body_payload);
-                self.compile_assignment_with_payloads(
-                    expr,
-                    AssignmentTargetSyntax::new(target_payload.as_ref()),
-                    AssignmentValueSyntax::new(
-                        value_payload
-                            .as_ref()
-                            .and_then(CompilerExpressionPayload::syntax_kind),
-                        payload.syntax_assignment_operator(),
-                        value_payload.as_ref(),
-                        AssignmentValuePayloads::new(value_body.as_ref()),
-                    ),
-                )
+                if assign.value().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value",
+                    )));
+                }
+                if assign.operator().is_none() {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment operator",
+                    )));
+                }
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST assignment expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Binary => {
                 let Some(source) = payload.source() else {
