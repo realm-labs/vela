@@ -8,7 +8,7 @@ use vela_syntax::ast::{
     SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchExpr, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
-use vela_syntax::ast::{Expr, MatchExpr, Stmt, StmtKind};
+use vela_syntax::ast::{Expr, ExprKind, IfExpr, MatchExpr, Pattern, Stmt, StmtKind};
 #[cfg(test)]
 use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 
@@ -349,9 +349,10 @@ fn if_payload_for_syntax<'ast>(
 #[cfg(test)]
 #[derive(Clone, Copy, Default)]
 struct StatementExpressionFallbacks<'ast> {
+    statement_span: Option<Span>,
     for_iterable: Option<&'ast Expr>,
-    for_has_index_pattern: bool,
-    for_has_value_pattern: bool,
+    for_index_pattern: Option<&'ast Pattern>,
+    for_value_pattern: Option<&'ast Pattern>,
     let_initializer: Option<&'ast Expr>,
     return_value: Option<&'ast Expr>,
     expression: Option<&'ast Expr>,
@@ -366,29 +367,37 @@ impl<'ast> StatementExpressionFallbacks<'ast> {
         match &statement.kind {
             StmtKind::For {
                 index_pattern,
+                pattern,
                 iterable,
                 ..
             } => Self {
+                statement_span: Some(statement.span),
                 for_iterable: Some(iterable),
-                for_has_index_pattern: index_pattern.is_some(),
-                for_has_value_pattern: true,
+                for_index_pattern: index_pattern.as_ref(),
+                for_value_pattern: Some(pattern),
                 ..Self::default()
             },
             StmtKind::Let {
                 value: Some(value), ..
             } => Self {
+                statement_span: Some(statement.span),
                 let_initializer: Some(value),
                 ..Self::default()
             },
             StmtKind::Return(Some(value)) => Self {
+                statement_span: Some(statement.span),
                 return_value: Some(value),
                 ..Self::default()
             },
             StmtKind::Expr(expr) => Self {
+                statement_span: Some(statement.span),
                 expression: Some(expr),
                 ..Self::default()
             },
-            _ => Self::default(),
+            _ => Self {
+                statement_span: Some(statement.span),
+                ..Self::default()
+            },
         }
     }
 }
@@ -474,6 +483,39 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
+    pub(in crate::compiler) fn fallback_span(&self) -> Option<Span> {
+        self.expression_fallbacks.statement_span
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn for_fallback_parts(
+        &self,
+    ) -> Option<(Span, Option<&'ast Pattern>, &'ast Pattern, &'ast Expr)> {
+        Some((
+            self.expression_fallbacks.statement_span?,
+            self.expression_fallbacks.for_index_pattern,
+            self.expression_fallbacks.for_value_pattern?,
+            self.expression_fallbacks.for_iterable?,
+        ))
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn if_expression_fallback(&self) -> Option<&'ast IfExpr> {
+        let ExprKind::If(if_expr) = &self.expression_fallbacks.expression?.kind else {
+            return None;
+        };
+        Some(if_expr)
+    }
+
+    #[cfg(test)]
+    pub(in crate::compiler) fn match_expression_fallback(&self) -> Option<&'ast MatchExpr> {
+        let ExprKind::Match(match_expr) = &self.expression_fallbacks.expression?.kind else {
+            return None;
+        };
+        Some(match_expr)
+    }
+
+    #[cfg(test)]
     pub(in crate::compiler) fn for_iterable_expression_payload(
         &self,
     ) -> Option<CompilerExpressionPayload<'ast>> {
@@ -493,9 +535,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         if self.is_syntax_only() {
             return None;
         }
-        if !self.expression_fallbacks.for_has_index_pattern {
-            return None;
-        }
+        self.expression_fallbacks.for_index_pattern?;
         Some(CompilerPatternPayload::from_syntax(
             Some(self.syntax_statement_span()?.source),
             self.syntax_statement()?.as_for()?.index_pattern(),
@@ -507,9 +547,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         if self.is_syntax_only() {
             return None;
         }
-        if !self.expression_fallbacks.for_has_value_pattern {
-            return None;
-        }
+        self.expression_fallbacks.for_value_pattern?;
         Some(CompilerPatternPayload::from_syntax(
             Some(self.syntax_statement_span()?.source),
             self.syntax_statement()?.as_for()?.value_pattern(),

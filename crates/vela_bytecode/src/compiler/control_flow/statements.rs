@@ -1,12 +1,12 @@
-#[cfg(test)]
-use vela_syntax::ast::{ExprKind, StmtKind};
 use vela_syntax::ast::{SyntaxExpressionKind, SyntaxStatementKind};
 
 #[cfg(test)]
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
 #[cfg(test)]
-use crate::compiler::control_flow::loops::reject_missing_for_pattern_payloads;
+use crate::compiler::control_flow::loops::{
+    ForStatementParts, reject_missing_for_pattern_payloads,
+};
 #[cfg(test)]
 use crate::compiler::control_flow::value_syntax::ValueSyntaxPayloads;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
@@ -320,7 +320,12 @@ impl Compiler<'_, '_> {
                 };
                 let span = stmt
                     .syntax_statement_span()
-                    .unwrap_or_else(|| stmt.fallback().span);
+                    .or_else(|| stmt.fallback_span())
+                    .ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        ))
+                    })?;
                 self.compile_let_binding(
                     name,
                     span,
@@ -351,7 +356,12 @@ impl Compiler<'_, '_> {
                 }
                 let span = stmt
                     .syntax_statement_span()
-                    .unwrap_or_else(|| stmt.fallback().span);
+                    .or_else(|| stmt.fallback_span())
+                    .ok_or_else(|| {
+                        CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                            "missing CST statement payload",
+                        ))
+                    })?;
                 let (register, returned) = self.compile_return_value(
                     span,
                     value_expression
@@ -371,7 +381,8 @@ impl Compiler<'_, '_> {
                 Ok(true)
             }
             SyntaxStatementKind::For => {
-                let StmtKind::For { .. } = &stmt.fallback().kind else {
+                let Some((stmt_span, index_pattern, pattern, iterable)) = stmt.for_fallback_parts()
+                else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST for statement payload",
                     )));
@@ -398,21 +409,19 @@ impl Compiler<'_, '_> {
                     index_pattern_payload.as_ref(),
                     value_pattern_payload.as_ref(),
                 )?;
-                self.compile_for_statement(
-                    stmt.fallback(),
+                self.compile_for(ForStatementParts {
+                    stmt_span,
+                    index_pattern,
+                    pattern,
+                    iterable,
                     iterable_payload,
                     body_payload,
                     index_pattern_payload,
-                    value_pattern_payload,
-                )
+                    pattern_payload: value_pattern_payload,
+                })
             }
             SyntaxStatementKind::If => {
-                let StmtKind::Expr(expr) = &stmt.fallback().kind else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST if statement payload",
-                    )));
-                };
-                let ExprKind::If(_) = &expr.kind else {
+                let Some(if_expr) = stmt.if_expression_fallback() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST if statement payload",
                     )));
@@ -425,7 +434,7 @@ impl Compiler<'_, '_> {
                         "missing CST if statement payload",
                     )));
                 }
-                self.compile_if_statement(stmt.fallback(), if_payload.as_ref())
+                self.compile_if(if_expr, if_payload.as_ref())
             }
             SyntaxStatementKind::Match => self.compile_paired_match_statement_payload(stmt),
             SyntaxStatementKind::Block
@@ -447,8 +456,7 @@ impl Compiler<'_, '_> {
                 "mismatched CST match statement payload",
             )));
         };
-        let expr = expression_payload.fallback();
-        let ExprKind::Match(match_expr) = &expr.kind else {
+        let Some(match_expr) = stmt.match_expression_fallback() else {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "mismatched CST match statement payload",
             )));
