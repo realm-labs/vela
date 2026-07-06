@@ -54,10 +54,9 @@ pub(super) struct CompilerStatementPayload<'ast> {
     fallback: Option<&'ast Stmt>,
 }
 
+#[cfg(test)]
 pub(super) struct CompilerMatchArmPayload {
-    #[cfg(test)]
     source: Option<SourceId>,
-    #[cfg(test)]
     syntax: Option<SyntaxMatchArm>,
 }
 

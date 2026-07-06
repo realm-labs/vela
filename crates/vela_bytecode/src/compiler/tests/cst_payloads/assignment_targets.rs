@@ -85,9 +85,7 @@ fn main() {
                         None,
                         None,
                         None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(
-                            None, None, None, None,
-                        ),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                     ),
                 )
                 .expect_err("non-field CST target must not use the legacy field fallback");
@@ -154,9 +152,7 @@ fn main() {
                         None,
                         None,
                         None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(
-                            None, None, None, None,
-                        ),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                     ),
                 )
                 .expect_err("missing CST assignment path must not use legacy target path");
@@ -199,9 +195,7 @@ fn main() {
                         Some(SyntaxExpressionKind::Array),
                         None,
                         Some(&cst_value),
-                        crate::compiler::assignments::AssignmentValuePayloads::new(
-                            None, None, None, None,
-                        ),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                     ),
                 )
                 .expect_err("misaligned CST assignment value must not use legacy value");
@@ -252,9 +246,7 @@ fn main() {
                         None,
                         None,
                         Some(&unclassified_value),
-                        crate::compiler::assignments::AssignmentValuePayloads::new(
-                            None, None, None, None,
-                        ),
+                        crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                     ),
                 )
                 .expect_err("unclassified CST assignment value must not use legacy value");
@@ -420,9 +412,7 @@ fn assert_missing_assignment_value_child_payload_is_rejected(
                     Some(kind),
                     None,
                     Some(&value),
-                    crate::compiler::assignments::AssignmentValuePayloads::new(
-                        None, None, None, None,
-                    ),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                 ),
             )
             .expect_err("missing CST assignment value child payload must not use legacy value");
@@ -457,9 +447,7 @@ fn assert_assignment_match_value_without_child_payloads_compiles(text: &str) {
                     Some(SyntaxExpressionKind::Match),
                     None,
                     Some(&value),
-                    crate::compiler::assignments::AssignmentValuePayloads::new(
-                        None, None, None, None,
-                    ),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                 ),
             )
             .expect("assignment match value should compile from parent CST payload");
@@ -508,9 +496,7 @@ fn main() {{
                     Some(kind),
                     None,
                     Some(&value),
-                    crate::compiler::assignments::AssignmentValuePayloads::new(
-                        None, None, None, None,
-                    ),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                 ),
             )
             .expect_err(
@@ -563,9 +549,7 @@ fn main() {{
                     Some(SyntaxExpressionKind::Match),
                     None,
                     Some(&value),
-                    crate::compiler::assignments::AssignmentValuePayloads::new(
-                        None, None, None, None,
-                    ),
+                    crate::compiler::assignments::AssignmentValuePayloads::new(None, None),
                 ),
             )
             .expect("typed field assignment match value should compile from parent CST payload");

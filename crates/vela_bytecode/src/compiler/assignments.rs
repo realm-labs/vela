@@ -11,9 +11,7 @@ mod helpers;
 use super::assignment_payloads::{
     validate_assignment_target_payload, validate_assignment_value_payload,
 };
-use super::body_payloads::{
-    CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload, CompilerMatchArmPayload,
-};
+use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload, CompilerIfPayload};
 use super::expressions::literal_string_with_payload;
 use super::host_paths::{HostIndexAccessKind, HostPath};
 use super::operators::i64_compound_assignment_instruction;
@@ -92,8 +90,6 @@ impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
     pub(in crate::compiler) fn new(
         block_body: Option<&'payload CompilerBodyPayload<'ast>>,
         if_expr: Option<&'payload CompilerIfPayload<'ast>>,
-        _match_scrutinee: Option<&'payload CompilerExpressionPayload<'ast>>,
-        _match_arms: Option<&'payload [CompilerMatchArmPayload]>,
     ) -> Self {
         Self {
             block_body,

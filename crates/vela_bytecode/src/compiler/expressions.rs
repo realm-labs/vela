@@ -194,12 +194,7 @@ impl Compiler<'_, '_> {
                             .and_then(CompilerExpressionPayload::syntax_kind),
                         payload.syntax_assignment_operator(),
                         value_payload.as_ref(),
-                        AssignmentValuePayloads::new(
-                            value_body.as_ref(),
-                            value_if.as_ref(),
-                            None,
-                            None,
-                        ),
+                        AssignmentValuePayloads::new(value_body.as_ref(), value_if.as_ref()),
                     ),
                 )
             }
