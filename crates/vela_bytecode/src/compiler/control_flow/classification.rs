@@ -97,19 +97,8 @@ pub(super) fn range_iterable_for_payload<'ast>(
 
 pub(super) fn condition_operator_for_payload(
     payload: Option<&CompilerExpressionPayload<'_>>,
-    expr: &Expr,
 ) -> Option<BinaryOp> {
-    if matches!(expr.kind, ExprKind::Binary { .. }) {
-        match (
-            payload.and_then(CompilerExpressionPayload::syntax_binary_operator),
-            payload.is_some(),
-        ) {
-            (Some(op), _) => Some(op),
-            (None, _) => None,
-        }
-    } else {
-        None
-    }
+    payload.and_then(CompilerExpressionPayload::syntax_binary_operator)
 }
 
 pub(super) fn merge_type_hint_and_value_fact(

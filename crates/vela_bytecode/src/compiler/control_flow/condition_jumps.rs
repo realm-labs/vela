@@ -46,8 +46,7 @@ impl Compiler<'_, '_> {
             condition_payload.and_then(|payload| payload.binary_operand_payloads());
         let left_payload = operand_payloads.as_ref().map(|(left, _)| left);
         let right_payload = operand_payloads.as_ref().map(|(_, right)| right);
-        let Some(op) =
-            condition_operator_for_payload(condition_payload, condition).and_then(i64_compare_op)
+        let Some(op) = condition_operator_for_payload(condition_payload).and_then(i64_compare_op)
         else {
             return Ok(None);
         };
