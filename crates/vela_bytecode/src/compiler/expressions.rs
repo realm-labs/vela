@@ -323,18 +323,22 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Try => {
-                let ExprKind::Try(operand) = &expr.kind else {
-                    unreachable!("validated CST try expression payload kind");
+                let Some(source) = payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST try expression payload",
+                    )));
                 };
-                let operand_payload = payload.try_operand_payload();
-                reject_missing_expression_payload(
-                    operand_payload.as_ref(),
-                    "missing CST try operand",
-                )?;
-                let src = self.compile_expr_with_payload(operand, operand_payload.as_ref())?;
-                let dst = self.alloc_register()?;
-                self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
-                Ok(dst)
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST try expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST try expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Literal => {
                 if let ExprKind::InterpolatedString(parts) = &expr.kind {
