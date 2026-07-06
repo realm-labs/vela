@@ -1,5 +1,7 @@
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{Expr, ExprKind, MatchExpr, SyntaxExpressionKind};
+#[cfg(test)]
+use vela_syntax::ast::ExprKind;
+use vela_syntax::ast::{Expr, MatchExpr, SyntaxExpressionKind};
 
 use crate::compiler::body_payloads::{CompilerExpressionPayload, CompilerMatchArmPayload};
 use crate::compiler::patterns::PatternBindingFacts;
@@ -271,17 +273,25 @@ impl Compiler<'_, '_> {
             }
             SyntaxExpressionKind::If => {
                 let body_payload = payload.body_expression_payload();
-                let ExprKind::If(if_expr) = &body.kind else {
+                let Some(source) = body_payload.source() else {
                     return Err(missing_cst_match_arm_child_payload(
                         "missing CST match arm if payload",
                     ));
                 };
-                let Some(if_payload) = body_payload.if_payload() else {
+                let Some(if_expr) = body_payload
+                    .syntax_expression()
+                    .and_then(vela_syntax::ast::SyntaxExpression::as_if)
+                else {
                     return Err(missing_cst_match_arm_child_payload(
                         "missing CST match arm if payload",
                     ));
                 };
-                self.compile_if_value_with_payloads(if_expr, dst, &if_payload)
+                let Some(returned) = self.compile_syntax_if_value_to(source, &if_expr, dst)? else {
+                    return Err(missing_cst_match_arm_child_payload(
+                        "missing CST match arm if payload",
+                    ));
+                };
+                Ok(returned)
             }
             SyntaxExpressionKind::Match => {
                 let body_payload = payload.body_expression_payload();
