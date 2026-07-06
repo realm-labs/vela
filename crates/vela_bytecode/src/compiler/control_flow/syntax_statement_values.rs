@@ -710,18 +710,19 @@ impl Compiler<'_, '_> {
                 .as_ref()
                 .and_then(|receiver_type| self.value_method_id_for_type(receiver_type, &method))
             {
-                if arguments
-                    .iter()
-                    .any(|argument| argument.name_text().is_some())
-                {
-                    return Ok(None);
-                }
                 let Some(receiver) =
                     self.compile_syntax_expression(source, &receiver_expression)?
                 else {
                     return Ok(None);
                 };
-                let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+                let Some(args) = self.compile_syntax_value_method_call_arguments(
+                    source,
+                    value_receiver_type.as_ref(),
+                    &method,
+                    &arguments,
+                    call_span,
+                )?
+                else {
                     return Ok(None);
                 };
                 let dst = self.alloc_register()?;
@@ -731,7 +732,7 @@ impl Compiler<'_, '_> {
                         receiver,
                         method,
                         method_id,
-                        args: args.into_iter().map(CallArgument::Register).collect(),
+                        args,
                     },
                     call_span,
                 );

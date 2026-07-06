@@ -15,7 +15,7 @@ use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, type_guard_plan_for_runtime_type,
 };
 use crate::{
-    DynamicCallArgument, FunctionId, GuardKind, Register, UnlinkedGuardContext,
+    CallArgument, DynamicCallArgument, FunctionId, GuardKind, Register, UnlinkedGuardContext,
     UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
@@ -106,6 +106,80 @@ impl Compiler<'_, '_> {
                 };
                 registers.push(register);
             } else {
+                unreachable!("syntax call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(Some(registers))
+    }
+
+    pub(in crate::compiler::control_flow) fn compile_syntax_value_method_call_arguments(
+        &mut self,
+        source: SourceId,
+        receiver_type: Option<&RuntimeTypeFact>,
+        method: &str,
+        arguments: &[SyntaxArgument],
+        call_span: Span,
+    ) -> CompileResult<Option<Vec<CallArgument>>> {
+        let registry_params = self.registry_value_method_params(receiver_type, method);
+        let Some(params) = registry_params else {
+            if arguments
+                .iter()
+                .any(|argument| argument.name_text().is_some())
+            {
+                return Ok(None);
+            }
+            let Some(args) = self.compile_syntax_call_arguments(source, arguments)? else {
+                return Ok(None);
+            };
+            return Ok(Some(args.into_iter().map(CallArgument::Register).collect()));
+        };
+        let params = registry_param_hints(params, call_span);
+        if arguments
+            .iter()
+            .all(|argument| argument.name_text().is_none())
+        {
+            return arguments
+                .iter()
+                .enumerate()
+                .map(|(index, argument)| {
+                    let Some(expression) = argument.expression() else {
+                        return Ok(None);
+                    };
+                    let register = if let Some(param) = params.get(index) {
+                        self.compile_syntax_argument_for_param(
+                            source,
+                            method,
+                            u16::try_from(index).unwrap_or(u16::MAX),
+                            &expression,
+                            param,
+                        )?
+                    } else {
+                        self.compile_syntax_expression(source, &expression)?
+                    };
+                    Ok(register.map(CallArgument::Register))
+                })
+                .collect::<CompileResult<Option<Vec<_>>>>();
+        }
+
+        let syntax_args = syntax_call_arguments(source, arguments);
+        let slots = resolve_syntax_call_arguments(&params, &syntax_args, call_span).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
+        let mut registers = Vec::new();
+        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
+            if let Some(arg) = slot {
+                let Some(register) = self.compile_syntax_argument_for_param(
+                    source,
+                    method,
+                    u16::try_from(index).unwrap_or(u16::MAX),
+                    &arg.value,
+                    param,
+                )?
+                else {
+                    return Ok(None);
+                };
+                registers.push(CallArgument::Register(register));
+            } else if param.default_value_span.is_none() {
                 unreachable!("syntax call argument resolver rejects missing required arguments");
             }
         }

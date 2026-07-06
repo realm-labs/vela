@@ -7,6 +7,31 @@ fn shape_statement_payloads<'ast>(
 }
 
 #[test]
+fn path_shape_inference_uses_typed_cst_parameter_value_fact() {
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(text: String) {
+    return text;
+}
+"#,
+    )
+    .expect("source should parse");
+    let (compiler, payload) = cst_payload_compiler_for_function(&semantic, "main");
+    let statements = shape_statement_payloads(&payload.body);
+    let (source, expression, _) = statements[0]
+        .return_value_syntax_expression_and_span()
+        .expect("CST return expression");
+
+    assert_eq!(
+        compiler.value_shape_for_syntax_expression(Some(source), &expression),
+        Some(record_shapes::ValueShape::Scalar("String".to_owned())),
+        "typed CST parameter path should derive shape from HIR value facts"
+    );
+}
+
+#[test]
 fn field_shape_inference_with_non_field_cst_payload_does_not_use_legacy_field() {
     with_cst_payload_compiler(
         r#"

@@ -244,6 +244,12 @@ impl Compiler<'_, '_> {
                     .and_then(|span| self.script_types.local_at_span(self.bindings, span))
                     .and_then(|type_name| self.record_shape_for_type(&type_name))
                     .map(ValueShape::Record)
+            })
+            .or_else(|| {
+                source
+                    .map(|source| syntax_expression_span(source, expression))
+                    .and_then(|span| self.value_types.local_at_span(self.bindings, span))
+                    .map(ValueShape::from_runtime_type)
             });
         if path.is_self() {
             return local_shape.or_else(|| self.shape_named("self"));
@@ -819,13 +825,20 @@ impl Compiler<'_, '_> {
     }
 
     fn shape_named(&self, name: &str) -> Option<ValueShape> {
-        self.value_shapes.name(name).or_else(|| {
-            self.script_types
-                .name(name)
-                .or_else(|| self.global_type_named(name))
-                .and_then(|type_name| self.record_shape_for_type(&type_name))
-                .map(ValueShape::Record)
-        })
+        self.value_shapes
+            .name(name)
+            .or_else(|| {
+                self.script_types
+                    .name(name)
+                    .or_else(|| self.global_type_named(name))
+                    .and_then(|type_name| self.record_shape_for_type(&type_name))
+                    .map(ValueShape::Record)
+            })
+            .or_else(|| {
+                self.value_types
+                    .name(name)
+                    .map(ValueShape::from_runtime_type)
+            })
     }
 }
 

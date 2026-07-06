@@ -861,7 +861,7 @@ impl Compiler<'_, '_> {
         None
     }
 
-    fn registry_value_method_params(
+    pub(in crate::compiler) fn registry_value_method_params(
         &self,
         receiver_type: Option<&RuntimeTypeFact>,
         method: &str,
