@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
 use vela_syntax::SyntaxKind;
@@ -11,15 +13,19 @@ use crate::compiler::body_payloads::{
     CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
     expression_syntax_path_or_field, expression_syntax_path_or_self,
 };
+use crate::compiler::calls::unresolved_static_method_error;
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
 };
+use crate::compiler::constructors::schema_default_fields;
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
     binary_literal_op, compound_assignment_instruction, i64_compound_assignment_instruction,
     i64_immediate_instruction, i64_immediate_op_supported, non_logical_binary_instruction,
 };
 use crate::compiler::param_defaults::syntax_map_key_name;
+use crate::compiler::patterns::enum_variant_path;
+use crate::compiler::schema_defaults::unknown_enum_variant_diagnostic;
 use crate::compiler::value_types::{
     ExpectedTypeOutcome, RuntimeTypeFact, StaticExprType, TypeContractContext, check_expected_type,
 };
@@ -988,11 +994,48 @@ impl Compiler<'_, '_> {
             )? {
                 return Ok(Some(register));
             }
+            let receiver_type = self
+                .script_fact_for_syntax_expression(source, &receiver_expression)
+                .map(|fact| fact.type_name);
             let receiver_shape =
                 self.value_shape_for_syntax_expression(Some(source), &receiver_expression);
             let value_receiver_type = self
                 .syntax_value_type_for_expression(Some(source), &receiver_expression)
                 .or_else(|| receiver_shape.as_ref().and_then(|shape| shape.value_type()));
+            if let Some(method_id) = receiver_type
+                .as_deref()
+                .and_then(|type_name| self.script_method_id_for_type(type_name, &method))
+            {
+                let Some(receiver) =
+                    self.compile_syntax_expression(source, &receiver_expression)?
+                else {
+                    return Ok(None);
+                };
+                let Some(args) = self.compile_syntax_script_method_call_arguments(
+                    source,
+                    receiver_type
+                        .as_deref()
+                        .expect("receiver type checked above"),
+                    &method,
+                    &arguments,
+                    call_span,
+                )?
+                else {
+                    return Ok(None);
+                };
+                let dst = self.alloc_register()?;
+                self.emit_spanned(
+                    UnlinkedInstructionKind::CallMethodId {
+                        dst,
+                        receiver,
+                        method,
+                        method_id,
+                        args,
+                    },
+                    call_span,
+                );
+                return Ok(Some(dst));
+            }
             if let Some(method_id) = value_receiver_type
                 .as_ref()
                 .and_then(|receiver_type| self.value_method_id_for_type(receiver_type, &method))
@@ -1025,6 +1068,9 @@ impl Compiler<'_, '_> {
                     call_span,
                 );
                 return Ok(Some(dst));
+            }
+            if receiver_type.is_some() {
+                return Err(unresolved_static_method_error(&method, call_span));
             }
             let Some(receiver) = self.compile_syntax_expression(source, &receiver_expression)?
             else {
@@ -1188,10 +1234,11 @@ impl Compiler<'_, '_> {
             return Ok(Some(dst));
         }
         if let Some(record) = expression.as_record() {
-            let type_name = record.path_segments().join("::");
-            if type_name.is_empty() {
+            let path = record.path_segments();
+            if path.is_empty() {
                 return Ok(None);
             }
+            let mut explicit_names = BTreeSet::new();
             let fields = record
                 .fields()
                 .into_iter()
@@ -1213,18 +1260,55 @@ impl Compiler<'_, '_> {
                     } else {
                         return Ok(None);
                     };
+                    explicit_names.insert(name.clone());
                     Ok(Some((name, value)))
                 })
                 .collect::<CompileResult<Option<Vec<_>>>>()?;
-            let Some(fields) = fields else {
+            let Some(mut fields) = fields else {
                 return Ok(None);
             };
             let dst = self.alloc_register()?;
-            self.emit(UnlinkedInstructionKind::MakeRecord {
-                dst,
-                type_name,
-                fields,
-            });
+            if let Some((enum_name, variant)) = enum_variant_path(&path) {
+                let span = syntax_expression_span(source, expression);
+                let resolved_enum_name = self.type_symbol_at_span(span);
+                let enum_name = resolved_enum_name.clone().unwrap_or(enum_name);
+                if resolved_enum_name.is_some()
+                    && !self.enum_constructor_variant_exists(&enum_name, &variant)
+                {
+                    return Err(self.constructor_diagnostics_error(vec![
+                        unknown_enum_variant_diagnostic(&enum_name, &variant, span),
+                    ]));
+                }
+                let shape = self.enum_constructor_shape(&enum_name, &variant);
+                self.compile_schema_default_fields(
+                    &mut fields,
+                    &explicit_names,
+                    schema_default_fields(shape.as_ref()),
+                    shape.as_ref(),
+                )?;
+                self.emit(UnlinkedInstructionKind::MakeEnum {
+                    dst,
+                    enum_name,
+                    variant,
+                    fields,
+                });
+            } else {
+                let type_name = self
+                    .type_symbol_at_span(syntax_expression_span(source, expression))
+                    .unwrap_or_else(|| path.join("::"));
+                let shape = self.record_constructor_shape(&type_name);
+                self.compile_schema_default_fields(
+                    &mut fields,
+                    &explicit_names,
+                    schema_default_fields(shape.as_ref()),
+                    shape.as_ref(),
+                )?;
+                self.emit(UnlinkedInstructionKind::MakeRecord {
+                    dst,
+                    type_name,
+                    fields,
+                });
+            }
             return Ok(Some(dst));
         }
         Ok(None)

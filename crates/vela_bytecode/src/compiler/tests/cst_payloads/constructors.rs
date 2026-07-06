@@ -195,6 +195,44 @@ fn build() {
 }
 
 #[test]
+fn syntax_only_record_variant_constructor_lowers_to_enum() {
+    let source = SourceId::new(1);
+    let text = r#"
+enum QuestProgress {
+    Active { count }
+}
+
+fn main() {
+    return QuestProgress::Active { count: 1 };
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only record variant constructor should not retain statement fallbacks"
+    );
+
+    let program =
+        compile_program_source(source, text).expect("CST-backed record variant should compile");
+    let main = program.function("main").expect("main bytecode");
+
+    assert!(main.instructions.iter().any(|instruction| matches!(
+        &instruction.kind,
+        UnlinkedInstructionKind::MakeEnum {
+            enum_name,
+            variant,
+            ..
+        } if enum_name == "QuestProgress" && variant == "Active"
+    )));
+    assert!(main.instructions.iter().all(|instruction| !matches!(
+        instruction.kind,
+        UnlinkedInstructionKind::MakeRecord { .. }
+    )));
+}
+
+#[test]
 fn tuple_constructor_with_non_path_cst_callee_does_not_use_legacy_constructor() {
     with_cst_payload_compiler(
         r#"

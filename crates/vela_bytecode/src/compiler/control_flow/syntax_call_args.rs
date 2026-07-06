@@ -196,6 +196,49 @@ impl Compiler<'_, '_> {
         Ok(Some(registers))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_script_method_call_arguments(
+        &mut self,
+        source: SourceId,
+        receiver_type: &str,
+        method: &str,
+        arguments: &[SyntaxArgument],
+        call_span: Span,
+    ) -> CompileResult<Option<Vec<CallArgument>>> {
+        let Some(params) = self.script_method_params(receiver_type, method) else {
+            return self.compile_syntax_value_method_call_arguments(
+                source, None, None, method, arguments, call_span,
+            );
+        };
+        let params = params.into_iter().skip(1).collect::<Vec<_>>();
+        let syntax_args = syntax_call_arguments(source, arguments);
+        let slots = resolve_syntax_call_arguments(&params, &syntax_args, call_span).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
+
+        let mut registers = Vec::new();
+        for (index, (slot, param)) in slots.into_iter().zip(params.iter()).enumerate() {
+            if let Some(arg) = slot {
+                let Some(register) = self.compile_syntax_argument_for_param(
+                    source,
+                    method,
+                    u16::try_from(index).unwrap_or(u16::MAX),
+                    &arg.value,
+                    param,
+                    None,
+                )?
+                else {
+                    return Ok(None);
+                };
+                registers.push(CallArgument::Register(register));
+            } else if param.default_value_span.is_some() {
+                registers.push(CallArgument::Missing);
+            } else {
+                unreachable!("syntax call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(Some(registers))
+    }
+
     pub(in crate::compiler::control_flow) fn compile_syntax_host_method_call_arguments(
         &mut self,
         source: SourceId,

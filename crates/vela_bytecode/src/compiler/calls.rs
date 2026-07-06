@@ -1208,7 +1208,10 @@ fn reject_named_call_args(
     Ok(())
 }
 
-fn unresolved_static_method_error(method: &str, span: Span) -> CompileError {
+pub(in crate::compiler) fn unresolved_static_method_error(
+    method: &str,
+    span: Span,
+) -> CompileError {
     CompileError::new(CompileErrorKind::SemanticDiagnostics(vec![
         Diagnostic::error(format!("unresolved method `{method}`"))
             .with_code("compiler::unresolved_method")
