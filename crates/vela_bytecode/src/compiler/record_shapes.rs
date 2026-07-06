@@ -6,7 +6,6 @@ use vela_hir::ids::HirLocalId;
 use vela_syntax::ast::{BinaryOp, Expr, ExprKind, Literal, RecordField};
 
 use crate::compiler::body_payloads::CompilerExpressionPayload;
-use crate::compiler::expression_checks::payload_aligns_with_expr;
 
 use super::record_reflection_shapes;
 use super::value_types::{RuntimeTypeFact, StandardRuntimeType, expression_value_type};
@@ -1015,8 +1014,8 @@ impl super::Compiler<'_, '_> {
         expr: &Expr,
         payload: Option<&CompilerExpressionPayload<'_>>,
     ) -> Option<ValueShape> {
-        let kind_matched_payload =
-            payload.filter(|payload| payload_aligns_with_expr(payload, expr));
+        let kind_matched_payload = payload
+            .filter(|payload| syntax_shapes::payload_matches_shape_expression(payload, expr));
         if let Some(shape) =
             kind_matched_payload.and_then(|payload| self.value_shape_for_syntax_payload(payload))
         {

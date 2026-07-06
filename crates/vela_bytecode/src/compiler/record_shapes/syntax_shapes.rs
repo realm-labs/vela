@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_syntax::SyntaxKind;
 use vela_syntax::ast::{
-    AstNode, BinaryOp, Literal, SyntaxArgument, SyntaxExpression, SyntaxExpressionKind,
+    AstNode, BinaryOp, Expr, ExprKind, Literal, SyntaxArgument, SyntaxExpression,
+    SyntaxExpressionKind,
 };
 
 use crate::compiler::Compiler;
@@ -23,6 +24,24 @@ pub(super) fn field_payload_parts<'ast>(
         )),
         None => Some((name.to_owned(), None)),
     }
+}
+
+pub(super) fn payload_matches_shape_expression(
+    payload: &CompilerExpressionPayload<'_>,
+    expr: &Expr,
+) -> bool {
+    if payload.source().is_none() {
+        return false;
+    }
+    let Some(payload_kind) = payload.stored_syntax_kind() else {
+        return true;
+    };
+    let Some(expr_kind) = shape_expression_kind(expr) else {
+        return false;
+    };
+    (payload_kind == expr_kind || payload_kind == SyntaxExpressionKind::Paren)
+        && (expr_kind != SyntaxExpressionKind::Path
+            || payload.syntax_is_self() == matches!(expr.kind, ExprKind::SelfValue))
 }
 
 pub(super) fn payload_shape_must_come_from_syntax(
@@ -807,6 +826,30 @@ impl Compiler<'_, '_> {
                 .and_then(|type_name| self.record_shape_for_type(&type_name))
                 .map(ValueShape::Record)
         })
+    }
+}
+
+fn shape_expression_kind(expr: &Expr) -> Option<SyntaxExpressionKind> {
+    match &expr.kind {
+        ExprKind::Literal(_) | ExprKind::InterpolatedString(_) => {
+            Some(SyntaxExpressionKind::Literal)
+        }
+        ExprKind::Path(_) | ExprKind::SelfValue => Some(SyntaxExpressionKind::Path),
+        ExprKind::Unary { .. } => Some(SyntaxExpressionKind::Unary),
+        ExprKind::Binary { .. } => Some(SyntaxExpressionKind::Binary),
+        ExprKind::Assign { .. } => Some(SyntaxExpressionKind::Assign),
+        ExprKind::Field { .. } => Some(SyntaxExpressionKind::Field),
+        ExprKind::Call { .. } => Some(SyntaxExpressionKind::Call),
+        ExprKind::Index { .. } => Some(SyntaxExpressionKind::Index),
+        ExprKind::Try(_) => Some(SyntaxExpressionKind::Try),
+        ExprKind::Array(_) => Some(SyntaxExpressionKind::Array),
+        ExprKind::Map(_) => Some(SyntaxExpressionKind::Map),
+        ExprKind::Record { .. } => Some(SyntaxExpressionKind::Record),
+        ExprKind::Lambda { .. } => Some(SyntaxExpressionKind::Lambda),
+        ExprKind::Block(_) => Some(SyntaxExpressionKind::Block),
+        ExprKind::If(_) => Some(SyntaxExpressionKind::If),
+        ExprKind::Match(_) => Some(SyntaxExpressionKind::Match),
+        ExprKind::Error => None,
     }
 }
 
