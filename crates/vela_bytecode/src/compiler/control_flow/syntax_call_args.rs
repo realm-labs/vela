@@ -1,9 +1,12 @@
 use vela_common::{HostMethodId, SourceId, Span};
+use vela_hir::ids::HirDeclId;
 use vela_hir::type_hint::ParamHint;
 use vela_syntax::ast::{SyntaxArgument, SyntaxExpression};
 
 use crate::compiler::body_payloads::expression_syntax_literal;
-use crate::compiler::call_args::{SyntaxCallArgument, resolve_syntax_call_arguments};
+use crate::compiler::call_args::{
+    ScriptCallArgs, SyntaxCallArgument, resolve_syntax_call_arguments,
+};
 use crate::compiler::calls::registry_param_hints;
 use crate::compiler::const_eval::compile_literal_constant_for_type;
 use crate::compiler::expected_exprs::guard_location_and_name;
@@ -16,8 +19,8 @@ use crate::compiler::{
     CompileError, CompileErrorKind, CompileResult, Compiler, type_guard_plan_for_runtime_type,
 };
 use crate::{
-    CallArgument, DynamicCallArgument, FunctionId, GuardKind, Register, UnlinkedGuardContext,
-    UnlinkedInstructionKind, UnlinkedTypeGuard,
+    CallArgument, DynamicCallArgument, FunctionId, GuardKind, Register, ScriptCallMode,
+    UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
 
 use super::syntax_statement_values::syntax_expression_span;
@@ -196,6 +199,49 @@ impl Compiler<'_, '_> {
         Ok(Some(registers))
     }
 
+    pub(in crate::compiler::control_flow) fn compile_syntax_script_function_call_arguments(
+        &mut self,
+        source: SourceId,
+        declaration: HirDeclId,
+        arguments: &[SyntaxArgument],
+        call_span: Span,
+    ) -> CompileResult<Option<ScriptCallArgs>> {
+        let params = self
+            .facts
+            .script_function_signatures
+            .get(&declaration)
+            .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax("script call")))?
+            .clone();
+        let syntax_args = syntax_call_arguments(source, arguments);
+        let slots = resolve_syntax_call_arguments(&params, &syntax_args, call_span).map_err(
+            |diagnostics| CompileError::new(CompileErrorKind::SemanticDiagnostics(diagnostics)),
+        )?;
+
+        let mut mode = ScriptCallMode::Unchecked;
+        let mut args = Vec::new();
+        for (slot, param) in slots.into_iter().zip(params.iter()) {
+            if let Some(arg) = slot {
+                let Some((register, requires_guard)) =
+                    self.compile_syntax_script_argument_for_param(source, &arg.value, param)?
+                else {
+                    return Ok(None);
+                };
+                if requires_guard {
+                    mode = ScriptCallMode::Checked;
+                }
+                args.push(CallArgument::Register(register));
+            } else if param.default_value_span.is_some() {
+                if param.type_hint.is_some() {
+                    mode = ScriptCallMode::Checked;
+                }
+                args.push(CallArgument::Missing);
+            } else {
+                unreachable!("syntax call argument resolver rejects missing required arguments");
+            }
+        }
+        Ok(Some(ScriptCallArgs { args, mode }))
+    }
+
     pub(in crate::compiler::control_flow) fn compile_syntax_script_method_call_arguments(
         &mut self,
         source: SourceId,
@@ -237,6 +283,67 @@ impl Compiler<'_, '_> {
             }
         }
         Ok(Some(registers))
+    }
+
+    fn compile_syntax_script_argument_for_param(
+        &mut self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+        param: &ParamHint,
+    ) -> CompileResult<Option<(Register, bool)>> {
+        let Some(expected) = param.type_hint.as_ref().and_then(type_hint_value_type) else {
+            return self
+                .compile_syntax_expression(source, expression)
+                .map(|register| register.map(|register| (register, false)));
+        };
+        let span = syntax_expression_span(source, expression);
+        let context = TypeContractContext::FunctionParameter {
+            name: param.name.clone(),
+        };
+        let expected_is_function =
+            expected == RuntimeTypeFact::Standard(StandardRuntimeType::Function);
+        let static_type = self
+            .syntax_value_type_for_expression(Some(source), expression)
+            .map(StaticExprType::Exact)
+            .unwrap_or(StaticExprType::Dynamic);
+        let outcome = check_expected_type(static_type, expected, span, context.clone())?;
+        if let ExpectedTypeOutcome::Contextualized(RuntimeTypeFact::Primitive(tag)) = &outcome
+            && let Some(literal) = expression_syntax_literal(expression)
+            && let Some(constant) = compile_literal_constant_for_type(&literal, *tag)
+                .map_err(|error| error.with_span(span))?
+        {
+            let register = self.emit_constant(constant)?;
+            return Ok(Some((
+                register,
+                matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_)),
+            )));
+        }
+        if expected_is_function
+            && let Some(register) =
+                self.compile_syntax_lambda_with_callback_shapes(source, expression, &[])?
+        {
+            return Ok(Some((register, false)));
+        }
+        let Some(register) = self.compile_syntax_expression(source, expression)? else {
+            return Ok(None);
+        };
+        let requires_guard = matches!(outcome, ExpectedTypeOutcome::RequiresRuntimeGuard(_));
+        if let ExpectedTypeOutcome::RequiresRuntimeGuard(expected) = &outcome
+            && let Some((location, name)) = guard_location_and_name(context)
+            && let Some(plan) = type_guard_plan_for_runtime_type(expected)
+        {
+            self.emit_spanned(
+                UnlinkedInstructionKind::GuardType {
+                    src: register,
+                    guard: UnlinkedTypeGuard::new(
+                        plan,
+                        UnlinkedGuardContext::new(GuardKind::Contract, location, name),
+                    ),
+                },
+                span,
+            );
+        }
+        Ok(Some((register, requires_guard)))
     }
 
     pub(in crate::compiler::control_flow) fn compile_syntax_host_method_call_arguments(

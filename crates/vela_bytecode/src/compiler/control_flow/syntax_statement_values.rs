@@ -34,7 +34,7 @@ use crate::compiler::{
     type_guard_plan_for_runtime_type,
 };
 use crate::function_id_for_script_name;
-use crate::{BinaryLiteralSide, CallArgument, Constant, FormatStringPart, ScriptCallMode};
+use crate::{BinaryLiteralSide, Constant, FormatStringPart};
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
 };
@@ -1142,14 +1142,14 @@ impl Compiler<'_, '_> {
             return Ok(None);
         }
         let dst = self.alloc_register()?;
-        if let Some((_declaration, name)) = self.script_function_call_at_span(callee_span) {
-            if arguments
-                .iter()
-                .any(|argument| argument.name_text().is_some())
-            {
-                return Ok(None);
-            }
-            let Some(args) = self.compile_syntax_call_arguments(source, &arguments)? else {
+        if let Some((declaration, name)) = self.script_function_call_at_span(callee_span) {
+            let Some(call_args) = self.compile_syntax_script_function_call_arguments(
+                source,
+                declaration,
+                &arguments,
+                call_span,
+            )?
+            else {
                 return Ok(None);
             };
             self.emit_spanned(
@@ -1157,8 +1157,8 @@ impl Compiler<'_, '_> {
                     dst,
                     target: function_id_for_script_name(&name),
                     name,
-                    mode: ScriptCallMode::Unchecked,
-                    args: args.into_iter().map(CallArgument::Register).collect(),
+                    mode: call_args.mode,
+                    args: call_args.args,
                 },
                 call_span,
             );
