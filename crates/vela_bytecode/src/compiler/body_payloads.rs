@@ -18,9 +18,6 @@ use vela_syntax::ast::{SyntaxMatchArm, SyntaxPattern, SyntaxRecordPatternField};
 mod expression_payloads;
 mod simple_values;
 
-#[cfg(test)]
-use super::expression_facts::expression_syntax_kind;
-
 // Temporary 1200-line exception: this module owns the transitional CST plus
 // old-body-fallback pairing invariant. Splitting the remaining fallback side
 // before the hard switch would obscure that invariant and create churn in code
@@ -280,11 +277,6 @@ fn syntax_statement_starts_with_infix_continuation(statement: &SyntaxStatement) 
             | ".."
             | "..="
     )
-}
-
-#[cfg(test)]
-fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKind> {
-    expression_syntax_kind(expr)
 }
 
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
@@ -809,12 +801,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     fn matches_syntax_kind(&self, syntax_kind: SyntaxExpressionKind) -> bool {
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            return syntax_kind == SyntaxExpressionKind::Paren
-                || expr_syntax_kind(fallback) == Some(syntax_kind);
-        }
-
         syntax_kind == SyntaxExpressionKind::Paren || self.stored_syntax_kind() == Some(syntax_kind)
     }
 
@@ -859,6 +845,9 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     }
 
     pub(in crate::compiler) fn rejects_missing_payload(&self) -> bool {
+        if self.source.is_some() && self.syntax.is_none() {
+            return true;
+        }
         self.requires_matching_payload()
             || [
                 SyntaxExpressionKind::Assign,

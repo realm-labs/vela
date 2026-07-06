@@ -53,18 +53,18 @@ impl Compiler<'_, '_> {
         {
             return self.compile_expr_with_payload_kind(expr, payload, kind);
         }
-        if payload.is_some_and(|payload| payload.stored_syntax_kind().is_some())
-            && payload.is_some_and(CompilerExpressionPayload::requires_matching_payload)
-        {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST expression payload",
-            )));
-        }
         if payload.is_some_and(|payload| payload.syntax_expression().is_none())
             && payload.is_some_and(CompilerExpressionPayload::rejects_missing_payload)
         {
             return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "missing CST expression payload",
+            )));
+        }
+        if payload.is_some_and(|payload| payload.stored_syntax_kind().is_some())
+            && payload.is_some_and(CompilerExpressionPayload::requires_matching_payload)
+        {
+            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "mismatched CST expression payload",
             )));
         }
         self.compile_expr(expr)

@@ -158,11 +158,11 @@ fn main(input) {
             let legacy_literal = first_call_argument_value_payload(&payload.body, 2);
             let mismatched_payload = expression_payload_with_fallback(
                 SourceId::new(1),
-                cst_literal
+                non_literal
                     .syntax_expression()
-                    .expect("CST literal expression")
+                    .expect("non-literal CST expression")
                     .clone(),
-                non_literal.fallback(),
+                cst_literal.fallback(),
             );
 
             let error = compiler
@@ -171,7 +171,7 @@ fn main(input) {
 
             assert_eq!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST literal expression")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST expression payload")
             );
         },
     );
