@@ -5,6 +5,7 @@ use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_if_value_to(
         &mut self,
         if_expr: &IfExpr,

@@ -388,29 +388,23 @@ impl Compiler<'_, '_> {
                 self.emit(UnlinkedInstructionKind::TryPropagate { dst, src });
                 Ok(dst)
             }
-            ExprKind::Block(block) => {
-                let dst = self.alloc_register()?;
-                self.compile_block_value_to(block, dst)?;
-                Ok(dst)
-            }
+            ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST block expression payload",
+            ))),
             ExprKind::Array(items) => self.compile_array(items, None),
             ExprKind::Map(entries) => self.compile_map(entries, None),
             ExprKind::Record { path, fields } => self.compile_record(expr, path, fields, None),
-            ExprKind::If(if_expr) => {
-                let dst = self.alloc_register()?;
-                self.compile_if_value_to(if_expr, dst)?;
-                Ok(dst)
-            }
+            ExprKind::If(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST if expression payload",
+            ))),
             ExprKind::Assign { .. } => self.compile_assignment(expr),
             ExprKind::SelfValue => self.local_register_at_span(expr.span, "self"),
             ExprKind::Error => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                 "expression",
             ))),
-            ExprKind::Match(match_expr) => {
-                let dst = self.alloc_register()?;
-                self.compile_match_value_to(match_expr, dst)?;
-                Ok(dst)
-            }
+            ExprKind::Match(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST match expression payload",
+            ))),
         }
     }
 

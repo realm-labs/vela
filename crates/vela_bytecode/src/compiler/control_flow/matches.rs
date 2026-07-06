@@ -143,6 +143,7 @@ impl Compiler<'_, '_> {
         }
     }
 
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_match_value_to(
         &mut self,
         match_expr: &MatchExpr,

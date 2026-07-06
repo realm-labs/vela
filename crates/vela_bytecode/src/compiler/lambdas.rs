@@ -156,7 +156,7 @@ impl Compiler<'_, '_> {
     ) -> CompileResult<UnlinkedCodeObject> {
         self.compile_param_defaults()?;
         match &body.kind {
-            ExprKind::Block(block) => {
+            ExprKind::Block(_) => {
                 let dst = self.alloc_register()?;
                 let returned = if let Some(body_payload) = body_payload {
                     let Some(block_payload) = body_payload.block_body_payload() else {
@@ -171,7 +171,9 @@ impl Compiler<'_, '_> {
                     let returned = self.compile_block_payload_value_to(&block_payload, dst)?;
                     returned
                 } else {
-                    self.compile_block_value_to(block, dst)?
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST lambda block body payload",
+                    )));
                 };
                 if !returned {
                     self.emit(UnlinkedInstructionKind::Return { src: dst });
