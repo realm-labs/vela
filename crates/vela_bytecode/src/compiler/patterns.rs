@@ -1,6 +1,9 @@
 use vela_common::Span;
 use vela_hir::binding::{BindingResolution, LocalBindingKind};
-use vela_syntax::ast::{Literal, Pattern, RecordPatternField, SyntaxPatternKind};
+use vela_syntax::ast::{
+    Literal, Pattern, RecordPatternField, SyntaxPattern, SyntaxPatternKind,
+    SyntaxRecordPatternField,
+};
 
 use crate::{Register, UnlinkedInstructionKind};
 
@@ -576,6 +579,99 @@ impl Compiler<'_, '_> {
         }
     }
 
+    pub(in crate::compiler) fn bind_syntax_pattern_locals(
+        &mut self,
+        scrutinee: Register,
+        pattern: &SyntaxPattern,
+        body_span: Span,
+        facts: PatternBindingFacts,
+        kind: LocalBindingKind,
+    ) -> CompileResult<()> {
+        let pattern_kind = pattern.pattern_kind().ok_or_else(|| {
+            CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
+        })?;
+        match pattern_kind {
+            SyntaxPatternKind::Binding => {
+                let binding = pattern.binding_name().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax("binding pattern"))
+                })?;
+                let dst = self.alloc_register()?;
+                self.emit(UnlinkedInstructionKind::Move {
+                    dst,
+                    src: scrutinee,
+                });
+                self.bind_pattern_local(&binding, dst, body_span, facts, kind);
+                Ok(())
+            }
+            SyntaxPatternKind::RecordVariant => {
+                let path = syntax_pattern_path_segments(pattern)?;
+                let record = pattern.record_pattern().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
+                })?;
+                for field in record.fields() {
+                    let field_name = syntax_record_pattern_field_name(&field)?;
+                    let field_pattern = field.pattern();
+                    let field_declares_locals = field_pattern
+                        .as_ref()
+                        .and_then(SyntaxPattern::pattern_kind)
+                        .is_some_and(pattern_kind_declares_locals)
+                        || (field_pattern.is_none() && field.is_shorthand());
+                    if !field_declares_locals {
+                        continue;
+                    }
+                    let dst =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
+                    let field_facts = PatternBindingFacts::value(
+                        self.enum_variant_field_value_type(&path, &field_name),
+                    )
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
+                    if let Some(field_pattern) = field_pattern {
+                        self.bind_syntax_pattern_locals(
+                            dst,
+                            &field_pattern,
+                            body_span,
+                            field_facts,
+                            kind,
+                        )?;
+                    } else {
+                        self.bind_pattern_local(&field_name, dst, body_span, field_facts, kind);
+                    }
+                }
+                Ok(())
+            }
+            SyntaxPatternKind::TupleVariant => {
+                let path = syntax_pattern_path_segments(pattern)?;
+                let tuple = pattern.tuple_pattern().ok_or_else(|| {
+                    CompileError::new(CompileErrorKind::UnsupportedSyntax("match pattern"))
+                })?;
+                for (index, field) in tuple.patterns().enumerate() {
+                    let field_kind = required_syntax_pattern_kind(&field, "tuple pattern field")?;
+                    if !pattern_kind_declares_locals(field_kind) {
+                        continue;
+                    }
+                    let field_name = tuple_variant_field_name(index);
+                    let field_value =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name.clone())?;
+                    let field_facts = PatternBindingFacts::value(
+                        self.enum_variant_field_value_type(&path, &field_name),
+                    )
+                    .with_script(self.enum_variant_field_fact(&path, &field_name));
+                    self.bind_syntax_pattern_locals(
+                        field_value,
+                        &field,
+                        body_span,
+                        field_facts,
+                        kind,
+                    )?;
+                }
+                Ok(())
+            }
+            SyntaxPatternKind::Wildcard | SyntaxPatternKind::Literal | SyntaxPatternKind::Path => {
+                Ok(())
+            }
+        }
+    }
+
     fn bind_pattern_local(
         &mut self,
         binding: &str,
@@ -676,4 +772,29 @@ impl Compiler<'_, '_> {
         };
         self.facts.type_symbols.get(declaration).cloned()
     }
+}
+
+fn syntax_pattern_path_segments(pattern: &SyntaxPattern) -> CompileResult<Vec<String>> {
+    let path = pattern.path_segments();
+    if path.is_empty() {
+        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+            "path pattern",
+        )));
+    }
+    Ok(path)
+}
+
+fn required_syntax_pattern_kind(
+    pattern: &SyntaxPattern,
+    context: &'static str,
+) -> CompileResult<SyntaxPatternKind> {
+    pattern
+        .pattern_kind()
+        .ok_or_else(|| CompileError::new(CompileErrorKind::UnsupportedSyntax(context)))
+}
+
+fn syntax_record_pattern_field_name(field: &SyntaxRecordPatternField) -> CompileResult<String> {
+    field.label_text().ok_or_else(|| {
+        CompileError::new(CompileErrorKind::UnsupportedSyntax("record pattern field"))
+    })
 }

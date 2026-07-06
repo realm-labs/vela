@@ -11,9 +11,9 @@ use vela_syntax::ast::Stmt;
 #[cfg(test)]
 use vela_syntax::ast::StmtKind;
 use vela_syntax::ast::{
-    AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxIfExpr,
-    SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern, SyntaxRecordExprField,
-    SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
+    AstNode, SyntaxArgument, SyntaxBlock, SyntaxExpression, SyntaxExpressionKind, SyntaxForStmt,
+    SyntaxIfExpr, SyntaxMapEntry, SyntaxMatchArm, SyntaxMatchExpr, SyntaxPattern,
+    SyntaxRecordExprField, SyntaxRecordPatternField, SyntaxStatement, SyntaxStatementKind,
 };
 #[cfg(test)]
 use vela_syntax::body_parser_support::parse_owned_body_blocks_for_tests;
@@ -662,6 +662,10 @@ impl<'ast> CompilerStatementPayload<'ast> {
 
     pub(in crate::compiler) fn syntax_if(&self) -> Option<(SourceId, SyntaxIfExpr)> {
         Some((self.source?, self.syntax.as_ref()?.as_if()?))
+    }
+
+    pub(in crate::compiler) fn syntax_for(&self) -> Option<(SourceId, SyntaxForStmt)> {
+        Some((self.source?, self.syntax.as_ref()?.as_for()?))
     }
 
     pub(in crate::compiler) fn return_value_syntax_literal_and_span(

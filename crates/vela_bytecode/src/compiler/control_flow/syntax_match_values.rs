@@ -68,7 +68,7 @@ impl Compiler<'_, '_> {
         Ok(false)
     }
 
-    fn compile_syntax_match_pattern(
+    pub(in crate::compiler::control_flow) fn compile_syntax_match_pattern(
         &mut self,
         source: SourceId,
         scrutinee: Register,
@@ -78,16 +78,68 @@ impl Compiler<'_, '_> {
             return Err(syntax_match_error(source, pattern.syntax().text_range()));
         };
         match kind {
-            SyntaxPatternKind::Wildcard => Ok(Vec::new()),
+            SyntaxPatternKind::Wildcard | SyntaxPatternKind::Binding => Ok(Vec::new()),
             SyntaxPatternKind::Literal | SyntaxPatternKind::Path => {
                 let payload =
                     CompilerPatternPayload::from_syntax(Some(source), Some(pattern.clone()));
                 self.compile_match_pattern(scrutinee, &Pattern::Wildcard, Some(&payload))
             }
-            SyntaxPatternKind::Binding
-            | SyntaxPatternKind::TupleVariant
-            | SyntaxPatternKind::RecordVariant => {
-                Err(syntax_match_error(source, pattern.syntax().text_range()))
+            SyntaxPatternKind::TupleVariant => {
+                let path = syntax_pattern_path_segments(source, pattern)?;
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                let tuple = pattern
+                    .tuple_pattern()
+                    .ok_or_else(|| syntax_match_error(source, pattern.syntax().text_range()))?;
+                for (index, field) in tuple.patterns().enumerate() {
+                    let Some(kind) = field.pattern_kind() else {
+                        return Err(syntax_match_error(source, field.syntax().text_range()));
+                    };
+                    if !syntax_pattern_kind_needs_match_check(kind) {
+                        continue;
+                    }
+                    let field_value = self.emit_enum_pattern_field_read(
+                        scrutinee,
+                        &path,
+                        crate::compiler::patterns::tuple_variant_field_name(index),
+                    )?;
+                    jumps.extend(self.compile_syntax_match_pattern(source, field_value, &field)?);
+                }
+                Ok(jumps)
+            }
+            SyntaxPatternKind::RecordVariant => {
+                let path = syntax_pattern_path_segments(source, pattern)?;
+                let mut jumps = self.compile_variant_tag_pattern(scrutinee, &path)?;
+                let record = pattern
+                    .record_pattern()
+                    .ok_or_else(|| syntax_match_error(source, pattern.syntax().text_range()))?;
+                for field in record.fields() {
+                    let Some(field_pattern) = field.pattern() else {
+                        if field.is_shorthand() {
+                            continue;
+                        }
+                        return Err(syntax_match_error(source, field.syntax().text_range()));
+                    };
+                    let Some(kind) = field_pattern.pattern_kind() else {
+                        return Err(syntax_match_error(
+                            source,
+                            field_pattern.syntax().text_range(),
+                        ));
+                    };
+                    if !syntax_pattern_kind_needs_match_check(kind) {
+                        continue;
+                    }
+                    let field_name = field
+                        .label_text()
+                        .ok_or_else(|| syntax_match_error(source, field.syntax().text_range()))?;
+                    let field_value =
+                        self.emit_enum_pattern_field_read(scrutinee, &path, field_name)?;
+                    jumps.extend(self.compile_syntax_match_pattern(
+                        source,
+                        field_value,
+                        &field_pattern,
+                    )?);
+                }
+                Ok(jumps)
             }
         }
     }
@@ -157,4 +209,25 @@ fn syntax_match_error(source: SourceId, range: vela_syntax::TextRange) -> Compil
         range.start().into(),
         range.end().into(),
     ))
+}
+
+fn syntax_pattern_path_segments(
+    source: SourceId,
+    pattern: &SyntaxPattern,
+) -> CompileResult<Vec<String>> {
+    let path = pattern.path_segments();
+    if path.is_empty() {
+        return Err(syntax_match_error(source, pattern.syntax().text_range()));
+    }
+    Ok(path)
+}
+
+const fn syntax_pattern_kind_needs_match_check(kind: SyntaxPatternKind) -> bool {
+    matches!(
+        kind,
+        SyntaxPatternKind::Literal
+            | SyntaxPatternKind::Path
+            | SyntaxPatternKind::TupleVariant
+            | SyntaxPatternKind::RecordVariant
+    )
 }

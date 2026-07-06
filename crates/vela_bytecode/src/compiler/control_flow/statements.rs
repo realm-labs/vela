@@ -230,6 +230,13 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
+            SyntaxStatementKind::For if stmt.is_syntax_only() && syntax_payload_is_trusted => {
+                if let Some((source, for_stmt)) = stmt.syntax_for()
+                    && let Some(compiled) = self.compile_syntax_for_statement(source, &for_stmt)?
+                {
+                    return Ok(compiled);
+                }
+            }
             _ => {}
         }
 
