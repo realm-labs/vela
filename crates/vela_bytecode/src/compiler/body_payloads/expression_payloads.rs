@@ -366,13 +366,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
     ) -> Option<CompilerExpressionPayload<'ast>> {
         self.source?;
         let syntax = self.syntax.as_ref()?.as_call()?.callee();
-        #[cfg(test)]
-        if let Some(fallback) = self.fallback {
-            let ExprKind::Call { callee, .. } = &fallback.kind else {
-                return None;
-            };
-            return Some(self.child_payload_for_test(syntax, Some(callee)));
-        }
         Some(self.child_payload(syntax))
     }
 

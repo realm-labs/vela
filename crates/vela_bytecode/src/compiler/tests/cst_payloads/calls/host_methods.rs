@@ -313,6 +313,9 @@ fn main(cst: CstPlayer, legacy: LegacyPlayer) {
     let legacy_call = statements[1]
         .let_initializer_expression_payload()
         .expect("legacy remove call fallback");
+    let ExprKind::Call { callee, .. } = &legacy_call.fallback().kind else {
+        panic!("expected legacy remove call fallback");
+    };
     let mismatched_payload = expression_payload_with_fallback(
         source,
         cst_call
@@ -336,7 +339,7 @@ fn main(cst: CstPlayer, legacy: LegacyPlayer) {
 
     assert_eq!(
         compiler.host_collection_method_target_root_name_for_test(
-            callee_payload.fallback(),
+            callee,
             Some(&callee_payload),
             "remove",
         ),

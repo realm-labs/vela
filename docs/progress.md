@@ -431,6 +431,9 @@ fallback propagation.
 Field receiver and index operand payload helpers now build syntax-only child
 payloads, removing another old-`Expr` child propagation path from host-path
 and field/index CST payload fixtures.
+Call callee expression payload helpers now build syntax-only child payloads,
+removing the old callee `Expr` propagation path from call and host-method CST
+payload fixtures.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.
