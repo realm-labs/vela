@@ -6,15 +6,14 @@ use crate::{CallArgument, DynamicCallArgument, UnlinkedInstructionKind};
 
 use super::body_payloads::{CompilerArgumentPayload, CompilerExpressionPayload};
 use super::call_args::{CallArgumentSyntax, resolve_script_call_arguments};
-use super::expression_checks::payload_aligns_with_expr_span;
 use super::methods::host_method_call;
 use super::record_shapes::{ValueShape, callback_param_shapes, callback_return_shape};
 use super::value_types::{RuntimeTypeFact, TypeContractContext, type_hint_value_type};
 use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use payload_guards::{
-    callback_lambda_payload_is_authoritative, reject_mismatched_call_argument_payloads,
-    reject_mismatched_call_callee_payload, reject_missing_call_callee_payload,
-    reject_missing_callback_lambda_body,
+    callback_lambda_payload_is_authoritative, payload_matches_expression_facts,
+    reject_mismatched_call_argument_payloads, reject_mismatched_call_callee_payload,
+    reject_missing_call_callee_payload, reject_missing_callback_lambda_body,
 };
 use vela_common::{Diagnostic, HostMethodId, PrimitiveTag, Span};
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
@@ -373,7 +372,12 @@ impl Compiler<'_, '_> {
                 return None;
             };
             let base_payload = payload.field_base_payload()?;
-            if !payload_aligns_with_expr_span(&base_payload, base) {
+            if !payload_matches_expression_facts(
+                &base_payload,
+                base.span,
+                call_guard_syntax_kind(base),
+                call_guard_path_is_self(base),
+            ) {
                 return None;
             }
             return Some(self.compile_script_method_call(

@@ -43,10 +43,7 @@ pub(super) fn reject_mismatched_call_callee_payload(
     let Some(payload) = callee_payload else {
         return Ok(());
     };
-    if payload_span_overlaps(payload, callee_span)
-        && callee_payload_kind_matches(payload.stored_syntax_kind(), callee_kind)
-        && callee_path_is_self.is_none_or(|is_self| payload.syntax_is_self() == is_self)
-    {
+    if payload_matches_expression_facts(payload, callee_span, callee_kind, callee_path_is_self) {
         Ok(())
     } else {
         Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -84,6 +81,17 @@ pub(super) fn reject_mismatched_call_argument_payloads(
         )));
     }
     Ok(())
+}
+
+pub(super) fn payload_matches_expression_facts(
+    payload: &CompilerExpressionPayload<'_>,
+    span: Span,
+    kind: Option<SyntaxExpressionKind>,
+    path_is_self: Option<bool>,
+) -> bool {
+    payload_span_overlaps(payload, span)
+        && callee_payload_kind_matches(payload.stored_syntax_kind(), kind)
+        && path_is_self.is_none_or(|is_self| payload.syntax_is_self() == is_self)
 }
 
 fn callee_payload_kind_matches(
