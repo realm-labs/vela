@@ -333,7 +333,9 @@ impl Compiler<'_, '_> {
         dst: Register,
     ) -> CompileResult<bool> {
         match &body.kind {
-            ExprKind::Block(block) => self.compile_block_value_to(block, dst),
+            ExprKind::Block(_) => Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST match arm block body payload",
+            ))),
             _ => {
                 let body_payload = payload.map(CompilerMatchArmPayload::body_expression_payload);
                 let value = self.compile_expr_with_payload(body, body_payload.as_ref())?;

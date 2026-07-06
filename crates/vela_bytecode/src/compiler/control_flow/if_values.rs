@@ -83,7 +83,11 @@ impl Compiler<'_, '_> {
         if let Some(payload) = payload {
             self.compile_block_payload_value_to(payload, dst)
         } else {
-            self.compile_block_value_to(block, dst)
+            let _ = block;
+            let _ = dst;
+            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                "missing CST if block body payload",
+            )))
         }
     }
 }

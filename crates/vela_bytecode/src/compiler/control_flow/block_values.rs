@@ -1,3 +1,4 @@
+#[cfg(test)]
 use vela_syntax::ast::Block;
 #[cfg(test)]
 use vela_syntax::ast::SyntaxExpressionKind;
@@ -11,10 +12,13 @@ use crate::compiler::body_payloads::CompilerStatementPayload;
 use crate::compiler::body_payloads::{CompilerBlockValue, CompilerBodyPayload};
 #[cfg(test)]
 use crate::compiler::compilation_statement_payloads;
-use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
+#[cfg(test)]
+use crate::compiler::{CompileError, CompileErrorKind};
+use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
+    #[cfg(test)]
     pub(in crate::compiler) fn compile_block_value_to(
         &mut self,
         block: &Block,
