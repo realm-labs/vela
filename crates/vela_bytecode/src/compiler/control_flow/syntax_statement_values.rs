@@ -11,7 +11,9 @@ use crate::compiler::body_payloads::{
     CompilerBodyPayload, expression_syntax_literal, expression_syntax_path_field,
     expression_syntax_path_or_field, expression_syntax_path_or_self,
 };
-use crate::compiler::const_eval::compile_literal_constant_for_type;
+use crate::compiler::const_eval::{
+    compile_literal_constant_for_type, compile_negated_literal_constant,
+};
 use crate::compiler::expected_exprs::guard_location_and_name;
 use crate::compiler::operators::{
     binary_literal_op, compound_assignment_instruction, i64_compound_assignment_instruction,
@@ -238,7 +240,7 @@ impl Compiler<'_, '_> {
         if let Some(register) = self.compile_syntax_field_read(source, expression)? {
             return Ok(Some(register));
         }
-        if let Some(register) = self.compile_syntax_path_unary(source, expression)? {
+        if let Some(register) = self.compile_syntax_unary(source, expression)? {
             return Ok(Some(register));
         }
         if let Some(block) = expression.as_block() {
@@ -551,7 +553,7 @@ impl Compiler<'_, '_> {
         )
     }
 
-    fn compile_syntax_path_unary(
+    fn compile_syntax_unary(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
@@ -565,11 +567,18 @@ impl Compiler<'_, '_> {
         let Some(operand_expression) = unary.expression() else {
             return Ok(None);
         };
-        let Some(path) = expression_syntax_path_or_field(&operand_expression) else {
+        if op == UnaryOp::Negate
+            && let Some(literal) = operand_expression
+                .as_literal()
+                .and_then(|literal| literal.literal())
+            && let Some(constant) = compile_negated_literal_constant(&literal)
+                .map_err(|error| error.with_span(syntax_expression_span(source, expression)))?
+        {
+            return self.emit_constant(constant).map(Some);
+        }
+        let Some(src) = self.compile_syntax_expression(source, &operand_expression)? else {
             return Ok(None);
         };
-        let src =
-            self.compile_path_expr(syntax_expression_span(source, &operand_expression), &path)?;
         let dst = self.alloc_register()?;
         let instruction = match op {
             UnaryOp::Not => UnlinkedInstructionKind::Not { dst, src },

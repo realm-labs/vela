@@ -116,6 +116,44 @@ fn call_values() {
 }
 
 #[test]
+fn syntax_only_value_method_call_negated_literal_argument_compiles() {
+    let source = SourceId::new(1);
+    let text = r#"
+fn main() {
+    let values = [1, 2];
+    return values.index_of(2).unwrap_or(-1);
+}
+"#;
+    let semantic = parse_semantic_source(source, text).expect("source should parse");
+    let (payload, _, _) = semantic.function("main").expect("main function");
+
+    assert!(
+        body_has_no_statement_fallbacks(&payload.body),
+        "syntax-only method call with negated literal argument should not retain statement fallbacks"
+    );
+
+    let registry = vela_stdlib::standard_registry().expect("standard registry should build");
+    let program = compile_program_source_with_registry(source, text, registry.compile_view())
+        .expect("CST-backed negated literal method argument should compile");
+    let main = program.function("main").expect("main bytecode");
+    let methods = main
+        .instructions
+        .iter()
+        .filter_map(|instruction| match &instruction.kind {
+            UnlinkedInstructionKind::CallMethodId { method, .. } => Some(method.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    assert!(methods.contains(&"index_of"));
+    assert!(methods.contains(&"unwrap_or"));
+    assert!(
+        main.constants.contains(&Constant::i64(-1)),
+        "CST negated literal call argument should emit a constant"
+    );
+}
+
+#[test]
 fn equal_count_call_payloads_pair_arguments_by_position_not_legacy_span() {
     with_cst_payload_compiler(
         r#"
