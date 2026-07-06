@@ -14,8 +14,6 @@ use crate::compiler::control_flow::syntax_statement_values::syntax_expression_sp
 #[cfg(test)]
 use crate::compiler::expression_facts::{expression_path_is_self, expression_syntax_kind};
 use crate::compiler::patterns::PatternBindingFacts;
-#[cfg(test)]
-use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::compiler) struct LoopContext {
@@ -64,27 +62,6 @@ pub(super) fn for_iterable_payload_matches_expr(
         && (kind != SyntaxExpressionKind::Path
             || expression_path_is_self(iterable)
                 .is_some_and(|is_self| is_self == payload.syntax_is_self()))
-}
-
-#[cfg(test)]
-pub(super) fn reject_missing_for_pattern_payloads(
-    index_pattern_payload: Option<&CompilerPatternPayload>,
-    value_pattern_payload: Option<&CompilerPatternPayload>,
-) -> CompileResult<()> {
-    if index_pattern_payload.is_some_and(|payload| payload.syntax_pattern_kind().is_none()) {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST for index pattern payload",
-        )));
-    }
-    if value_pattern_payload
-        .and_then(CompilerPatternPayload::syntax_pattern_kind)
-        .is_none()
-    {
-        return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-            "missing CST for value pattern payload",
-        )));
-    }
-    Ok(())
 }
 
 impl LoopContext {

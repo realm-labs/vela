@@ -490,18 +490,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     }
 
     #[cfg(test)]
-    pub(in crate::compiler) fn for_fallback_parts(
-        &self,
-    ) -> Option<(Span, Option<&'ast Pattern>, &'ast Pattern, &'ast Expr)> {
-        Some((
-            self.expression_fallbacks.statement_span?,
-            self.expression_fallbacks.for_index_pattern,
-            self.expression_fallbacks.for_value_pattern?,
-            self.expression_fallbacks.for_iterable?,
-        ))
-    }
-
-    #[cfg(test)]
     pub(in crate::compiler) fn if_expression_fallback(&self) -> Option<&'ast IfExpr> {
         let ExprKind::If(if_expr) = &self.expression_fallbacks.expression?.kind else {
             return None;

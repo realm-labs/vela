@@ -4,10 +4,6 @@ use vela_syntax::ast::{SyntaxExpressionKind, SyntaxStatementKind};
 use crate::compiler::body_payloads::CompilerExpressionPayload;
 use crate::compiler::body_payloads::{CompilerBodyPayload, CompilerStatementPayload};
 #[cfg(test)]
-use crate::compiler::control_flow::loops::{
-    ForStatementParts, reject_missing_for_pattern_payloads,
-};
-#[cfg(test)]
 use crate::compiler::control_flow::value_syntax::ValueSyntaxPayloads;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult, Compiler};
 
@@ -223,7 +219,7 @@ impl Compiler<'_, '_> {
                     return Ok(compiled);
                 }
             }
-            SyntaxStatementKind::For if stmt.is_syntax_only() => {
+            SyntaxStatementKind::For => {
                 if let Some((source, for_stmt)) = stmt.syntax_for()
                     && let Some(compiled) = self.compile_syntax_for_statement(source, &for_stmt)?
                 {
@@ -380,46 +376,6 @@ impl Compiler<'_, '_> {
                 }
                 Ok(true)
             }
-            SyntaxStatementKind::For => {
-                let Some((stmt_span, index_pattern, pattern, iterable)) = stmt.for_fallback_parts()
-                else {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST for statement payload",
-                    )));
-                };
-                let body_payload = for_body_payload(stmt);
-                if body_payload.is_none() {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST for statement body payload",
-                    )));
-                }
-                let iterable_payload = stmt.for_iterable_expression_payload();
-                if iterable_payload
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::syntax_kind)
-                    .is_none()
-                {
-                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST for iterable payload",
-                    )));
-                }
-                let index_pattern_payload = stmt.for_index_pattern_payload();
-                let value_pattern_payload = stmt.for_value_pattern_payload();
-                reject_missing_for_pattern_payloads(
-                    index_pattern_payload.as_ref(),
-                    value_pattern_payload.as_ref(),
-                )?;
-                self.compile_for(ForStatementParts {
-                    stmt_span,
-                    index_pattern,
-                    pattern,
-                    iterable,
-                    iterable_payload,
-                    body_payload,
-                    index_pattern_payload,
-                    pattern_payload: value_pattern_payload,
-                })
-            }
             SyntaxStatementKind::If => {
                 let Some(if_expr) = stmt.if_expression_fallback() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
@@ -440,6 +396,7 @@ impl Compiler<'_, '_> {
             SyntaxStatementKind::Block
             | SyntaxStatementKind::Break
             | SyntaxStatementKind::Continue
+            | SyntaxStatementKind::For
             | SyntaxStatementKind::Expr => Err(CompileError::new(
                 CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload"),
             )),
@@ -473,14 +430,4 @@ impl Compiler<'_, '_> {
             arm_payloads.as_deref(),
         )
     }
-}
-
-#[cfg(test)]
-fn for_body_payload<'ast>(
-    stmt: &CompilerStatementPayload<'ast>,
-) -> Option<CompilerBodyPayload<'ast>> {
-    Some(CompilerBodyPayload::nested_syntax(
-        stmt.syntax_statement_span()?.source,
-        stmt.syntax_statement()?.as_for()?.body()?,
-    ))
 }

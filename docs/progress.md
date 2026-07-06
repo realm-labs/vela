@@ -452,6 +452,9 @@ syntax-only statement payloads without accepting initializer or return fallback
 Source-less `for` missing-child payload helpers now also build syntax-only
 statement payloads without accepting fallback pattern or iterable owned-AST
 nodes, deleting the old fixture-only for-part fallback constructor.
+Paired `for` statement payload dispatch now also uses the rowan CST `for`
+lowering path instead of compiling through decomposed old-AST for parts, and
+the old paired for-part accessor has been removed.
 Host collection method targets built from CST payloads no longer store the old
 receiver `Expr`; terminal host-index validation resolves the checked fallback
 only when that validation is needed.

@@ -1,14 +1,5 @@
 use super::*;
 
-fn for_body_payload<'ast>(
-    statement: &body_payloads::CompilerStatementPayload<'ast>,
-) -> Option<body_payloads::CompilerBodyPayload<'ast>> {
-    Some(body_payloads::CompilerBodyPayload::nested_syntax(
-        statement.syntax_statement_span()?.source,
-        statement.syntax_statement()?.as_for()?.body()?,
-    ))
-}
-
 fn for_statement_payloads<'ast>(
     body: &body_payloads::CompilerBodyPayload<'ast>,
 ) -> Vec<body_payloads::CompilerStatementPayload<'ast>> {
@@ -170,14 +161,32 @@ fn main() {
                 fallback_statements_for_body(source, &payload.body),
             );
 
-            let error = compiler
+            compiler
                 .compile_statement_payloads(&statements)
-                .expect_err("mismatched CST iterable must not compile the legacy range");
+                .expect("mismatched CST iterable should compile from CST");
 
-            assert!(matches!(
-                error.kind,
-                CompileErrorKind::UnsupportedSyntax("mismatched CST for iterable payload")
-            ));
+            assert!(
+                !compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::I64RangeNext { .. }
+                    )),
+                "mismatched CST iterable must not compile the legacy range"
+            );
+            assert!(
+                compiler
+                    .code
+                    .instructions
+                    .iter()
+                    .any(|instruction| matches!(
+                        instruction.kind,
+                        UnlinkedInstructionKind::IterInit { .. }
+                    )),
+                "CST iterable should compile as generic iteration"
+            );
         },
     );
 }
@@ -224,15 +233,13 @@ fn main() {
             .and_then(|payload| payload.syntax_kind()),
         None
     );
-    assert!(for_body_payload(&missing).is_some());
-
     let error = compiler
         .compile_statement_payload_for_test(&missing)
         .expect_err("missing CST for iterable must not compile legacy iterable");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST for iterable payload")
+        CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
     ));
 }
 
@@ -279,14 +286,11 @@ fn main() {
             .is_some_and(|payload| payload.syntax_pattern_kind().is_none())
     );
 
-    let error = compiler
-        .compile_statement_payload_for_test(&missing)
-        .expect_err("missing CST for index pattern must not compile legacy index");
-
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST for index pattern payload")
-    ));
+    assert!(
+        !compiler
+            .compile_statement_payload_for_test(&missing)
+            .expect("CST for without index pattern should compile")
+    );
 }
 
 #[test]
@@ -337,7 +341,7 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST for value pattern payload")
+        CompileErrorKind::UnsupportedSyntax("unsupported CST statement payload")
     ));
 }
 
