@@ -5,8 +5,6 @@ use vela_common::Span;
 #[cfg(test)]
 use vela_syntax::ast::ExprKind;
 #[cfg(test)]
-use vela_syntax::ast::IfExpr;
-#[cfg(test)]
 use vela_syntax::ast::MatchExpr;
 #[cfg(test)]
 use vela_syntax::ast::Stmt;
@@ -483,25 +481,6 @@ impl<'ast> CompilerStatementPayload<'ast> {
     pub(super) fn fallback(&self) -> &'ast Stmt {
         self.fallback
             .expect("statement payload has no owned statement fallback")
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_if_expr_for_test(&self) -> Option<&'ast IfExpr> {
-        let expr = self.fallback_expr_for_test()?;
-        let ExprKind::If(if_expr) = &expr.kind else {
-            return None;
-        };
-        Some(if_expr)
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn fallback_expr_for_test(
-        &self,
-    ) -> Option<&'ast vela_syntax::ast::Expr> {
-        let StmtKind::Expr(expr) = &self.fallback().kind else {
-            return None;
-        };
-        Some(expr)
     }
 
     #[cfg(test)]

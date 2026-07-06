@@ -368,9 +368,12 @@ fn main(flag) {
                 })
                 .expect("if statement payload");
             let truncated_if_payload = body_payloads::CompilerIfPayload::truncated_for_test();
-            let if_expr = if_statement
-                .fallback_if_expr_for_test()
-                .expect("expected legacy if expression statement");
+            let vela_syntax::ast::StmtKind::Expr(expr) = &if_statement.fallback().kind else {
+                panic!("expected legacy if expression statement");
+            };
+            let vela_syntax::ast::ExprKind::If(if_expr) = &expr.kind else {
+                panic!("expected legacy if expression statement");
+            };
 
             let error = compiler
                 .compile_if_value_with_payloads(if_expr, Register(0), Some(&truncated_if_payload))
