@@ -851,41 +851,66 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<HostPath<'static>> {
+        self.syntax_host_index_path(source, expression)
+            .map(|resolved| resolved.path)
+    }
+
+    fn syntax_host_index_path(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<ResolvedHostPath<'static>> {
         let index = expression.as_index()?;
         let receiver = index.receiver()?;
         let index_expression = index.index()?;
-        let path = expression_syntax_path_or_self(&receiver)?;
-        let [name] = path.as_slice() else {
+        let mut resolved = self.syntax_host_path(source, &receiver)?;
+        if resolved.path.segments.is_empty()
+            && resolved.type_name.as_deref().is_none_or(|type_name| {
+                self.facts
+                    .options
+                    .host_index_capability(type_name)
+                    .is_none()
+            })
+        {
             return None;
-        };
-        let span = syntax_host_expression_span(source, &receiver);
-        let type_name = self.host_local_type_name(name, span)?;
-        let dynamic_kind = self
-            .facts
-            .options
-            .host_index_capability(&type_name)
+        }
+        let receiver_type = resolved.type_name.clone();
+        let dynamic_kind = self.syntax_host_index_dynamic_kind(receiver_type.as_deref());
+        resolved.path.segments.push(HostPathPart::SyntaxValue {
+            source,
+            expression: index_expression,
+            dynamic_kind,
+        });
+        resolved.type_name = self.syntax_host_index_value_type(receiver_type.as_deref());
+        Some(resolved)
+    }
+
+    fn syntax_host_index_dynamic_kind(&self, receiver_type: Option<&str>) -> DynamicHostPathPart {
+        receiver_type
+            .and_then(|type_name| self.facts.options.host_index_capability(type_name))
             .and_then(|capability| capability.key_type.as_deref())
-            .map_or(DynamicHostPathPart::Key, dynamic_host_path_part);
-        Some(HostPath {
-            root: HostPathRoot::OwnedLocalPath {
-                name: name.clone(),
-                span,
-            },
-            segments: vec![HostPathPart::SyntaxValue {
-                source,
-                expression: index_expression,
-                dynamic_kind,
-            }],
+            .map_or(DynamicHostPathPart::Key, dynamic_host_path_part)
+    }
+
+    fn syntax_host_index_value_type(&self, receiver_type: Option<&str>) -> Option<String> {
+        receiver_type.and_then(|type_name| {
+            self.facts
+                .options
+                .host_index_capability(type_name)
+                .and_then(|capability| capability.value_type.clone())
         })
     }
 
-    pub(in crate::compiler) fn syntax_host_field_path(
+    fn syntax_host_path(
         &self,
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> Option<ResolvedHostPath<'static>> {
         if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
-            return self.syntax_host_field_path(source, &inner);
+            return self.syntax_host_path(source, &inner);
+        }
+        if expression.as_index().is_some() {
+            return self.syntax_host_index_path(source, expression);
         }
         if let Some(path) = expression_syntax_path_or_self(expression) {
             let span = syntax_host_expression_span(source, expression);
@@ -905,11 +930,19 @@ impl Compiler<'_, '_> {
         let field = expression.as_field()?;
         let receiver = field.receiver()?;
         let name = field.name_text()?;
-        let mut resolved = self.syntax_host_field_path(source, &receiver)?;
+        let mut resolved = self.syntax_host_path(source, &receiver)?;
         let field = self.host_path_field_part(resolved.type_name.as_deref(), &name)?;
         resolved.path.segments.push(field.part);
         resolved.type_name = field.type_hint;
         Some(resolved)
+    }
+
+    pub(in crate::compiler) fn syntax_host_field_path(
+        &self,
+        source: SourceId,
+        expression: &SyntaxExpression,
+    ) -> Option<ResolvedHostPath<'static>> {
+        self.syntax_host_path(source, expression)
     }
 
     pub(super) fn reject_invalid_host_index_access(

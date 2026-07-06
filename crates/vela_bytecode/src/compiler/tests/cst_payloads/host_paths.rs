@@ -1,4 +1,7 @@
 use super::*;
+use crate::compiler::host_paths::{
+    DynamicHostPathPart, HostPathPart as CompilerHostPathPart, HostPathRoot,
+};
 
 #[test]
 fn host_path_with_non_path_cst_payload_does_not_use_legacy_path() {
@@ -81,6 +84,88 @@ fn make(value) {
             .is_none(),
         "non-path CST payload must not resolve the legacy host path"
     );
+}
+
+#[test]
+fn syntax_host_index_path_lowers_untyped_field_key_from_cst() {
+    let mut registry = vela_registry::DefinitionRegistry::new();
+    let player = registry
+        .register_type(
+            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
+                .host_runtime_id(77),
+        )
+        .expect("Player host type should register");
+    let inventory = FieldId::new(3);
+    registry
+        .register_field(
+            vela_registry::FieldDef::new(
+                DefPath::field("host", std::iter::empty::<&str>(), "Player", "inventory"),
+                player,
+            )
+            .host_runtime_id(inventory.get())
+            .writable(true),
+        )
+        .expect("Player inventory field should register");
+
+    let source = SourceId::new(1);
+    let semantic = parse_semantic_source(
+        source,
+        r#"
+fn main(player: Player, amount) {
+    player.inventory["gold"] += amount;
+}
+"#,
+    )
+    .expect("semantic source should parse");
+    let facts = cst_payload_compiler_facts_with_options(
+        &semantic,
+        CompilerOptions::default(),
+        Some(registry.compile_view()),
+    );
+    let (payload, signature, bindings) = semantic.function("main").expect("main function");
+    let statement = cst_statement_payloads(&payload.body)
+        .into_iter()
+        .next()
+        .expect("assignment statement");
+    let expression = statement
+        .expression_payload()
+        .and_then(|payload| payload.syntax_expression().cloned())
+        .expect("CST assignment expression");
+    let target = expression
+        .as_assign()
+        .and_then(|assign| assign.target())
+        .expect("CST assignment target");
+    let compiler = Compiler::new_with_param_defaults(
+        payload.name.clone(),
+        payload.body.clone(),
+        payload.param_defaults.clone(),
+        signature,
+        bindings,
+        facts,
+    )
+    .expect("compiler should initialize");
+
+    let path = compiler
+        .syntax_root_host_index_path(source, &target)
+        .expect("CST host index path should resolve");
+    let HostPathRoot::OwnedLocalPath { name, .. } = path.root else {
+        panic!("expected local host root");
+    };
+    assert_eq!(name, "player");
+    let [
+        CompilerHostPathPart::Field(field),
+        CompilerHostPathPart::SyntaxValue {
+            expression,
+            dynamic_kind,
+            ..
+        },
+    ] = path.segments.as_slice()
+    else {
+        panic!("expected field plus syntax key segment");
+    };
+    assert_eq!(*field, inventory);
+    assert!(matches!(dynamic_kind, DynamicHostPathPart::Key));
+    assert_eq!(expression.syntax().text().to_string(), "\"gold\"");
 }
 
 #[test]

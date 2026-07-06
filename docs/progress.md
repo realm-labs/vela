@@ -263,8 +263,11 @@ CST production expression lowering now handles lambda expressions directly,
 including callback parameter shapes for standard collection/Option/Result
 methods. CST method-call lowering now preserves constant-let value
 shape/type facts for local standard method receivers and orders named host
-method arguments from registry metadata, so the engine CST hard-switch failure
-set is down to 9 known `cargo test -p vela_engine` failures.
+method arguments from registry metadata. CST host path lowering now resolves
+nested indexed host paths, including field-backed dynamic keys and indexed
+receiver method/remove calls, so the engine CST hard-switch failure set is
+down to 6 known `cargo test -p vela_engine` failures in linked script-method
+dispatch and host-ref script impl dispatch.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload
