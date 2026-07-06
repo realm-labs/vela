@@ -1,5 +1,6 @@
-use vela_common::Span;
+use vela_common::{SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
+use vela_syntax::ast::SyntaxExpression;
 
 use crate::{
     GuardKind, Register, UnlinkedGuardContext, UnlinkedInstructionKind, UnlinkedTypeGuard,
@@ -17,12 +18,20 @@ use crate::compiler::{
 };
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_let_block_value(
+    pub(in crate::compiler::control_flow) fn compile_let_syntax_block_value(
         &mut self,
         name: String,
         span: Span,
-        body: &CompilerBodyPayload<'_>,
+        source: SourceId,
+        expression: &SyntaxExpression,
     ) -> CompileResult<bool> {
+        let Some(block) = expression.as_block() else {
+            return Err(crate::compiler::CompileError::new(
+                crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                    "missing CST let initializer block body payload",
+                ),
+            ));
+        };
         let local_binding = self
             .bindings
             .local_named_at(&name, LocalBindingKind::Let, span)
@@ -38,7 +47,8 @@ impl Compiler<'_, '_> {
         });
         let hinted_value_type = hir_type_hint.and_then(type_hint_value_type);
         let register = self.alloc_register()?;
-        let returned = self.compile_block_payload_value_to(body, register)?;
+        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let returned = self.compile_block_payload_value_to(&body, register)?;
         if let Some(expected) = hinted_value_type.as_ref() {
             self.emit_dynamic_contract_guard(
                 register,
@@ -89,13 +99,22 @@ impl Compiler<'_, '_> {
         Ok(returned)
     }
 
-    pub(in crate::compiler::control_flow) fn compile_return_block_value(
+    pub(in crate::compiler::control_flow) fn compile_return_syntax_block_value(
         &mut self,
         span: Span,
-        body: &CompilerBodyPayload<'_>,
+        source: SourceId,
+        expression: &SyntaxExpression,
     ) -> CompileResult<bool> {
+        let Some(block) = expression.as_block() else {
+            return Err(crate::compiler::CompileError::new(
+                crate::compiler::CompileErrorKind::UnsupportedSyntax(
+                    "missing CST return block body payload",
+                ),
+            ));
+        };
         let register = self.alloc_register()?;
-        let returned = self.compile_block_payload_value_to(body, register)?;
+        let body = CompilerBodyPayload::nested_syntax(source, block);
+        let returned = self.compile_block_payload_value_to(&body, register)?;
         if let Some(expected) = self.return_type.clone().as_ref() {
             self.emit_dynamic_contract_guard(
                 register,

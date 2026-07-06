@@ -137,12 +137,14 @@ impl Compiler<'_, '_> {
                             "missing CST statement payload",
                         )));
                     };
-                    let Some(body) = stmt.let_initializer_block_body_payload() else {
+                    let Some((source, expression, _)) =
+                        stmt.let_initializer_syntax_expression_and_span()
+                    else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing CST let initializer block body payload",
                         )));
                     };
-                    return self.compile_let_block_value(name, span, &body);
+                    return self.compile_let_syntax_block_value(name, span, source, &expression);
                 }
                 if stmt.is_syntax_only()
                     && let Some((source, expression, _)) =
@@ -195,12 +197,14 @@ impl Compiler<'_, '_> {
                             "missing CST statement payload",
                         )));
                     };
-                    let Some(body) = stmt.return_value_block_body_payload() else {
+                    let Some((source, expression, _)) =
+                        stmt.return_value_syntax_expression_and_span()
+                    else {
                         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                             "missing CST return block body payload",
                         )));
                     };
-                    return self.compile_return_block_value(span, &body);
+                    return self.compile_return_syntax_block_value(span, source, &expression);
                 }
                 if stmt.is_syntax_only()
                     && let Some((source, expression, _)) =

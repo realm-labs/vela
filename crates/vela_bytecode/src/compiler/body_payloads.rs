@@ -571,6 +571,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
         Some((source, expression, span))
     }
 
+    #[cfg(test)]
     pub(super) fn let_initializer_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self.syntax.as_ref()?.as_let()?.initializer()?.as_block()?;
         Some(CompilerBodyPayload::nested_syntax(self.source?, body))
@@ -671,6 +672,7 @@ impl<'ast> CompilerStatementPayload<'ast> {
                 .is_some_and(|statement| statement.expression().is_none())
     }
 
+    #[cfg(test)]
     pub(super) fn return_value_block_body_payload(&self) -> Option<CompilerBodyPayload<'ast>> {
         let body = self
             .syntax
