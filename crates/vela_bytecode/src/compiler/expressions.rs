@@ -164,15 +164,22 @@ impl Compiler<'_, '_> {
                 Ok(register)
             }
             SyntaxExpressionKind::Map => {
-                let ExprKind::Map(entries) = &expr.kind else {
-                    unreachable!("validated CST map expression payload kind");
-                };
-                let Some(entry_payloads) = payload.map_entry_payloads() else {
+                let Some(source) = payload.source() else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST map entry payload",
+                        "mismatched CST map expression payload",
                     )));
                 };
-                self.compile_map(entries, &entry_payloads)
+                let Some(expression) = payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST map expression payload",
+                    )));
+                };
+                let Some(register) = self.compile_syntax_expression(source, expression)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "mismatched CST map expression payload",
+                    )));
+                };
+                Ok(register)
             }
             SyntaxExpressionKind::Record => {
                 let ExprKind::Record { path: _, fields } = &expr.kind else {
@@ -558,33 +565,6 @@ impl Compiler<'_, '_> {
             let index = self.compile_expr_with_payload(index, index_payload)?;
             self.emit(UnlinkedInstructionKind::GetIndex { dst, base, index });
         }
-        Ok(dst)
-    }
-
-    fn compile_map(
-        &mut self,
-        entries: &[vela_syntax::ast::MapEntry],
-        payloads: &[super::body_payloads::CompilerMapEntryPayload],
-    ) -> CompileResult<Register> {
-        if payloads.len() != entries.len() {
-            return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "mismatched CST map entries",
-            )));
-        }
-        let entries = entries
-            .iter()
-            .enumerate()
-            .map(|(index, entry)| {
-                let payload = payloads.get(index).ok_or_else(|| {
-                    CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                        "missing CST map entry payload",
-                    ))
-                })?;
-                self.compile_map_entry(entry, payload)
-            })
-            .collect::<CompileResult<Vec<_>>>()?;
-        let dst = self.alloc_register()?;
-        self.emit(UnlinkedInstructionKind::MakeMap { dst, entries });
         Ok(dst)
     }
 

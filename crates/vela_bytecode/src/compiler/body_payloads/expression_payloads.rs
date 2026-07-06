@@ -597,6 +597,7 @@ impl CompilerInterpolationPayload {
 }
 
 impl CompilerMapEntryPayload {
+    #[cfg(test)]
     pub(in crate::compiler) fn syntax_key_name(&self) -> Option<String> {
         self.source?;
         let key = self.syntax.as_ref()?.key()?;
@@ -612,14 +613,7 @@ impl CompilerMapEntryPayload {
         key.as_path().and_then(|path| path.path_text())
     }
 
-    pub(in crate::compiler) fn has_key_syntax(&self) -> bool {
-        self.source.is_some()
-            && self
-                .syntax
-                .as_ref()
-                .is_some_and(|entry| entry.key().is_some())
-    }
-
+    #[cfg(test)]
     pub(in crate::compiler) fn has_value_syntax(&self) -> bool {
         self.source.is_some()
             && self

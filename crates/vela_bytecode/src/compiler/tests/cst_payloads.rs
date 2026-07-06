@@ -330,7 +330,7 @@ fn make(value) {
 }
 
 #[test]
-fn extra_map_entry_payloads_do_not_compile_fallback_entries() {
+fn map_payload_compiles_extra_cst_entries_not_fallback_items() {
     let source = SourceId::new(1);
     let text = r#"
 fn cst_body() {
@@ -364,14 +364,20 @@ fn fallback_body() {
     );
     let (mut compiler, _) = cst_payload_compiler_for_function(&semantic, "fallback_body");
 
-    let error = compiler
+    compiler
         .compile_expr_with_payload(fallback_map.fallback(), Some(&mismatched))
-        .expect_err("extra CST map entries must not be ignored");
+        .expect("extra CST map entries should compile instead of fallback items");
 
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST map entries")
-    ));
+    assert!(
+        compiler
+            .code
+            .instructions
+            .iter()
+            .any(|instruction| matches!(
+                instruction.kind,
+                UnlinkedInstructionKind::MakeMap { ref entries, .. } if entries.len() == 2
+            ))
+    );
 }
 
 #[test]

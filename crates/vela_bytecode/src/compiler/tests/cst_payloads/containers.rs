@@ -669,25 +669,31 @@ fn main() {
 }
 "#;
     let missing = first_map_entry_payload_from_cst(source, cst_text);
+    let missing_map = payload_extractors::first_let_initializer_payload_from_cst(source, cst_text);
     let semantic = parse_semantic_source(source, legacy_text).expect("legacy source should parse");
     let (mut compiler, legacy_payload) = cst_payload_compiler_for_function(&semantic, "main");
     let legacy_map = container_statement_payloads(&legacy_payload.body)[0]
         .let_initializer_expression_payload()
         .expect("legacy map payload");
-    let ExprKind::Map(legacy_entries) = &legacy_map.fallback().kind else {
-        panic!("expected legacy map fallback");
-    };
+    let mismatched = expression_payload_with_fallback(
+        source,
+        missing_map
+            .syntax_expression()
+            .expect("missing value map syntax")
+            .clone(),
+        legacy_map.fallback(),
+    );
 
     assert_eq!(missing.syntax_key_name().as_deref(), Some("key"));
     assert!(!missing.has_value_syntax());
 
     let error = compiler
-        .compile_map_entry(&legacy_entries[0], &missing)
+        .compile_expr_with_payload(legacy_map.fallback(), Some(&mismatched))
         .expect_err("missing map entry value payload must not compile legacy value");
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST map entry value")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST map expression payload")
     ));
 }
 

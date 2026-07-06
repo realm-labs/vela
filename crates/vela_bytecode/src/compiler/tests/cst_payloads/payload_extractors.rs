@@ -29,7 +29,7 @@ pub(super) fn first_call_argument_payload_from_cst(
         .expect("CST call argument")
 }
 
-fn first_let_initializer_payload_from_cst(
+pub(super) fn first_let_initializer_payload_from_cst(
     source: SourceId,
     text: &str,
 ) -> body_payloads::CompilerExpressionPayload<'static> {
