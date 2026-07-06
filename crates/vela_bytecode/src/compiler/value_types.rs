@@ -349,7 +349,7 @@ fn static_expr_type_with_payload(
                     let value_payload = payloads
                         .as_ref()
                         .and_then(|payloads| payloads.get(index))
-                        .map(|payload| payload.value_expression_payload(&entry.value));
+                        .map(|payload| payload.value_expression_payload());
                     expression_value_type_with_payload(
                         &entry.value,
                         value_payload.as_ref(),

@@ -24,7 +24,7 @@ impl Compiler<'_, '_> {
                 "missing CST map entry value",
             )));
         }
-        let value_payload = payload.value_expression_payload(&entry.value);
+        let value_payload = payload.value_expression_payload();
         let value = self.compile_expr_with_payload(&entry.value, Some(&value_payload))?;
         Ok((key, value))
     }
