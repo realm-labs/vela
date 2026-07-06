@@ -274,9 +274,11 @@ CST path-call lowering now also emits the heap-aware `set::from_array`
 constructor bytecode. The source-backed schema rename LSP fixture race is fixed;
 set combination and callback-map chains now preserve CST value shapes through
 set views, iterator collection, and array callback methods, clearing the set
-method failures. Full workspace validation now reaches the remaining `vela_vm`
+method failures. CST statement-level constant fast paths now leave block/if/match
+expressions to control-flow lowering so `return` inside block initializers is
+preserved. Full workspace validation now reaches the remaining `vela_vm`
 CST/runtime failure set after LSP validation passes; `cargo test -p vela_vm --lib`
-currently has 26 remaining failures.
+currently has 25 remaining failures.
 Bytecode script function lookup and parameter default flags now read HIR function
 declarations/signatures, and function parameter default-expression payloads are
 discovered from rowan CST parameter lists. Top-level function body payload

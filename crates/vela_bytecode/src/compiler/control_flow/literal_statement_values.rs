@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use vela_common::{PrimitiveTag, SourceId, Span};
 use vela_hir::binding::LocalBindingKind;
-use vela_syntax::ast::{Literal, SyntaxExpression};
+use vela_syntax::ast::{Literal, SyntaxExpression, SyntaxExpressionKind};
 
 use crate::compiler::const_eval::{
     compile_literal_constant_for_type, compile_negated_literal_constant,
@@ -108,6 +108,9 @@ impl Compiler<'_, '_> {
         span: Span,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
+        if !syntax_constant_fast_path_allowed(expression) {
+            return Ok(None);
+        }
         let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
@@ -340,6 +343,9 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         span: Span,
     ) -> CompileResult<Option<bool>> {
+        if !syntax_constant_fast_path_allowed(expression) {
+            return Ok(None);
+        }
         let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
@@ -375,6 +381,9 @@ impl Compiler<'_, '_> {
         source: SourceId,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
+        if !syntax_constant_fast_path_allowed(expression) {
+            return Ok(None);
+        }
         let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
@@ -389,6 +398,9 @@ impl Compiler<'_, '_> {
         expression: &SyntaxExpression,
         dst: crate::Register,
     ) -> CompileResult<Option<bool>> {
+        if !syntax_constant_fast_path_allowed(expression) {
+            return Ok(None);
+        }
         let Some(constant) = evaluate_syntax_const_expr(source, expression, &BTreeMap::new())?
         else {
             return Ok(None);
@@ -425,6 +437,16 @@ fn runtime_type_for_constant(value: &Constant) -> Option<RuntimeTypeFact> {
 
 fn static_type_for_constant(value: &Constant) -> StaticExprType {
     runtime_type_for_constant(value).map_or(StaticExprType::Dynamic, StaticExprType::Exact)
+}
+
+fn syntax_constant_fast_path_allowed(expression: &SyntaxExpression) -> bool {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_constant_fast_path_allowed(&inner);
+    }
+    !matches!(
+        expression.expression_kind(),
+        SyntaxExpressionKind::Block | SyntaxExpressionKind::If | SyntaxExpressionKind::Match
+    )
 }
 
 fn check_negated_literal_expected_type(

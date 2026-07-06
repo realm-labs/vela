@@ -47,6 +47,13 @@ impl Compiler<'_, '_> {
         span: Span,
         expression: &SyntaxExpression,
     ) -> CompileResult<Option<bool>> {
+        if let Some(block) = syntax_block_expression(expression) {
+            let register = self.alloc_register()?;
+            let body = CompilerBodyPayload::nested_syntax(source, block);
+            let returned = self.compile_block_payload_value_to(&body, register)?;
+            self.record_syntax_let_binding(name, span, register, None, None);
+            return Ok(Some(returned));
+        }
         let Some(register) = self.compile_syntax_expression(source, expression)? else {
             return Ok(None);
         };
@@ -54,6 +61,18 @@ impl Compiler<'_, '_> {
         let value_type = self
             .syntax_value_type_for_expression(Some(source), expression)
             .or_else(|| value_shape.as_ref().and_then(|shape| shape.value_type()));
+        self.record_syntax_let_binding(name, span, register, value_type, value_shape);
+        Ok(Some(false))
+    }
+
+    fn record_syntax_let_binding(
+        &mut self,
+        name: String,
+        span: Span,
+        register: Register,
+        value_type: Option<RuntimeTypeFact>,
+        value_shape: Option<crate::compiler::record_shapes::ValueShape>,
+    ) {
         self.locals.insert(name.clone(), register);
         let local_binding = self
             .bindings
@@ -76,7 +95,6 @@ impl Compiler<'_, '_> {
             local_binding,
             Some(span),
         );
-        Ok(Some(false))
     }
 
     pub(in crate::compiler::control_flow) fn compile_return_syntax_expression(
@@ -1541,6 +1559,13 @@ pub(in crate::compiler::control_flow) fn syntax_expression_span(
 ) -> Span {
     let range = expression.syntax().text_range();
     Span::new(source, range.start().into(), range.end().into())
+}
+
+fn syntax_block_expression(expression: &SyntaxExpression) -> Option<vela_syntax::ast::SyntaxBlock> {
+    if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
+        return syntax_block_expression(&inner);
+    }
+    expression.as_block()
 }
 
 fn interpolated_string_parts(literal: &SyntaxLiteral) -> Option<Vec<InterpolatedStringTokenPart>> {
