@@ -353,12 +353,7 @@ fn main(cst: CstHost, legacy: LegacyHost) {
         .compile_assignment_with_payloads(
             legacy_statement.fallback(),
             crate::compiler::assignments::AssignmentTargetSyntax::new(Some(&mismatched_target)),
-            crate::compiler::assignments::AssignmentValueSyntax::new(
-                None,
-                None,
-                None,
-                crate::compiler::assignments::AssignmentValuePayloads::new(None),
-            ),
+            crate::compiler::assignments::AssignmentValueSyntax::new(None, None, None),
         )
         .expect_err("mismatched CST host write payload must not compile");
     assert!(matches!(

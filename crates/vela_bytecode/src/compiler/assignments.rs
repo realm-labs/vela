@@ -11,7 +11,7 @@ mod helpers;
 use super::assignment_payloads::{
     validate_assignment_target_payload, validate_assignment_value_payload,
 };
-use super::body_payloads::{CompilerBodyPayload, CompilerExpressionPayload};
+use super::body_payloads::CompilerExpressionPayload;
 use super::expression_checks::payload_syntax_overlaps_expr;
 use super::expression_facts::{expression_path_is_self, expression_syntax_kind};
 use super::expressions::literal_string_with_payload;
@@ -24,7 +24,7 @@ use super::{CompileError, CompileErrorKind, CompileResult, Compiler};
 use helpers::{
     compound_assignment_instruction_or_error, expressions_are_i64,
     indexed_record_field_parts_with_payload, record_field_expr_parts_with_payload,
-    record_path_parts, reject_missing_assignment_value_child_payloads,
+    record_path_parts,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -82,29 +82,10 @@ struct RecordFieldAssignmentRoot<'field> {
 }
 
 #[derive(Clone, Copy)]
-pub(in crate::compiler) struct AssignmentValuePayloads<'payload, 'ast> {
-    block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-}
-
-impl<'payload, 'ast> AssignmentValuePayloads<'payload, 'ast> {
-    #[cfg(test)]
-    pub(in crate::compiler) fn new(
-        block_body: Option<&'payload CompilerBodyPayload<'ast>>,
-    ) -> Self {
-        Self { block_body }
-    }
-
-    fn none() -> Self {
-        Self { block_body: None }
-    }
-}
-
-#[derive(Clone, Copy)]
 pub(in crate::compiler) struct AssignmentValueSyntax<'payload, 'ast> {
     kind: Option<SyntaxExpressionKind>,
     op: Option<AssignOp>,
     expression: Option<&'payload CompilerExpressionPayload<'ast>>,
-    payloads: AssignmentValuePayloads<'payload, 'ast>,
 }
 
 impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
@@ -113,13 +94,11 @@ impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
         kind: Option<SyntaxExpressionKind>,
         op: Option<AssignOp>,
         expression: Option<&'payload CompilerExpressionPayload<'ast>>,
-        payloads: AssignmentValuePayloads<'payload, 'ast>,
     ) -> Self {
         Self {
             kind,
             op,
             expression,
-            payloads,
         }
     }
 
@@ -128,7 +107,6 @@ impl<'payload, 'ast> AssignmentValueSyntax<'payload, 'ast> {
             kind: None,
             op: None,
             expression: None,
-            payloads: AssignmentValuePayloads::none(),
         }
     }
 }
@@ -966,16 +944,6 @@ impl Compiler<'_, '_> {
                 "mismatched CST assignment value",
             )));
         }
-        if let Some(kind) = syntax.kind
-            && matches!(
-                kind,
-                SyntaxExpressionKind::Block
-                    | SyntaxExpressionKind::If
-                    | SyntaxExpressionKind::Match
-            )
-        {
-            reject_missing_assignment_value_child_payloads(kind, syntax)?;
-        }
         if let Some((expected, context)) = expected {
             return self.compile_expr_with_expected_type_and_payload(
                 value,
@@ -1000,7 +968,6 @@ impl Compiler<'_, '_> {
                     value,
                     kind,
                     syntax.expression,
-                    syntax.payloads,
                 );
             }
             return self.compile_expr_with_payload(value, syntax.expression);
@@ -1013,17 +980,30 @@ impl Compiler<'_, '_> {
         value: &Expr,
         kind: SyntaxExpressionKind,
         expression_payload: Option<&CompilerExpressionPayload<'_>>,
-        syntax_payloads: AssignmentValuePayloads<'_, '_>,
     ) -> CompileResult<Register> {
         match kind {
             SyntaxExpressionKind::Block => {
                 let dst = self.alloc_register()?;
-                let Some(body_payload) = syntax_payloads.block_body else {
+                let Some(expression_payload) = expression_payload else {
                     return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
                         "missing CST assignment value block body payload",
                     )));
                 };
-                self.compile_block_payload_value_to(body_payload, dst)?;
+                let Some(source) = expression_payload.source() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value block body payload",
+                    )));
+                };
+                let Some(expression) = expression_payload.syntax_expression() else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value block body payload",
+                    )));
+                };
+                let Some(_) = self.compile_syntax_block_expr_to(source, expression, dst)? else {
+                    return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
+                        "missing CST assignment value block body payload",
+                    )));
+                };
                 Ok(dst)
             }
             SyntaxExpressionKind::If => {

@@ -540,12 +540,7 @@ fn main() {
                     crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
                         &mismatched_target,
                     )),
-                    crate::compiler::assignments::AssignmentValueSyntax::new(
-                        None,
-                        None,
-                        None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
-                    ),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(None, None, None),
                 )
                 .expect_err("mismatched CST assignment target must not compile");
             assert!(matches!(
@@ -611,12 +606,7 @@ fn main() {
                     crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
                         &mismatched_target,
                     )),
-                    crate::compiler::assignments::AssignmentValueSyntax::new(
-                        None,
-                        None,
-                        None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
-                    ),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(None, None, None),
                 )
                 .expect_err("mismatched CST indexed assignment target must not compile");
             assert!(matches!(
@@ -840,12 +830,7 @@ fn main() {
                     crate::compiler::assignments::AssignmentTargetSyntax::new(Some(
                         &mismatched_target,
                     )),
-                    crate::compiler::assignments::AssignmentValueSyntax::new(
-                        None,
-                        None,
-                        None,
-                        crate::compiler::assignments::AssignmentValuePayloads::new(None),
-                    ),
+                    crate::compiler::assignments::AssignmentValueSyntax::new(None, None, None),
                 )
                 .expect_err("mismatched CST index assignment target must not compile");
             assert!(matches!(

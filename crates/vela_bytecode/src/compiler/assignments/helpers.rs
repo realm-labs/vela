@@ -6,7 +6,7 @@ use crate::compiler::value_types::RuntimeTypeFact;
 use crate::compiler::{CompileError, CompileErrorKind, CompileResult};
 use crate::{Register, UnlinkedInstructionKind};
 
-use super::{AssignmentValueSyntax, RecordFieldExprParts};
+use super::RecordFieldExprParts;
 
 pub(super) fn expressions_are_i64(
     left: Option<RuntimeTypeFact>,
@@ -138,23 +138,6 @@ fn field_payload_parts<'expr>(
             payload.syntax_field_name()?,
         )),
         None => Some((None, default_name.to_owned())),
-    }
-}
-
-pub(super) fn reject_missing_assignment_value_child_payloads(
-    kind: SyntaxExpressionKind,
-    syntax: AssignmentValueSyntax<'_, '_>,
-) -> CompileResult<()> {
-    if syntax.expression.is_none() {
-        return Ok(());
-    }
-    match kind {
-        SyntaxExpressionKind::Block if syntax.payloads.block_body.is_none() => {
-            Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
-                "missing CST assignment value block body payload",
-            )))
-        }
-        _ => Ok(()),
     }
 }
 

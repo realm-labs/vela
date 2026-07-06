@@ -43,7 +43,7 @@ use crate::Register;
 use crate::{Constant, UnlinkedInstructionKind};
 
 #[cfg(test)]
-use super::assignments::{AssignmentTargetSyntax, AssignmentValuePayloads, AssignmentValueSyntax};
+use super::assignments::{AssignmentTargetSyntax, AssignmentValueSyntax};
 #[cfg(test)]
 use super::body_payloads::CompilerExpressionPayload;
 use super::body_payloads::CompilerStatementPayload;
@@ -205,9 +205,6 @@ impl Compiler<'_, '_> {
             let expr = expression_payload.fallback();
             return if kind == SyntaxExpressionKind::Assign {
                 let value_expression = expression_payload.assignment_value_payload();
-                let value_body = value_expression
-                    .as_ref()
-                    .and_then(CompilerExpressionPayload::block_body_payload);
                 let target_expression = expression_payload.assignment_target_payload();
                 self.compile_assignment_with_payloads(
                     expr,
@@ -218,7 +215,6 @@ impl Compiler<'_, '_> {
                             .and_then(CompilerExpressionPayload::syntax_kind),
                         expression_payload.syntax_assignment_operator(),
                         value_expression.as_ref(),
-                        AssignmentValuePayloads::new(value_body.as_ref()),
                     ),
                 )?;
                 Ok(false)

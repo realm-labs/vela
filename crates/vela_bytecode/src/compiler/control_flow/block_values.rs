@@ -16,7 +16,7 @@ use crate::compiler::{CompileResult, Compiler};
 use crate::{Constant, Register};
 
 impl Compiler<'_, '_> {
-    pub(in crate::compiler::control_flow) fn compile_syntax_block_expr_to(
+    pub(in crate::compiler) fn compile_syntax_block_expr_to(
         &mut self,
         source: SourceId,
         expression: &SyntaxExpression,
