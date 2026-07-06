@@ -35,7 +35,7 @@ fn legacy_guard(value, legacy_flag) {
         .expect_err("mismatched guard payload should not use legacy expression");
     assert!(matches!(
         err.kind,
-        CompileErrorKind::UnsupportedSyntax("mismatched CST match guard")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST expression payload")
     ));
 }
 

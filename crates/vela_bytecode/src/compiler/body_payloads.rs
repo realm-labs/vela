@@ -301,20 +301,6 @@ fn expr_syntax_kind(expr: &vela_syntax::ast::Expr) -> Option<SyntaxExpressionKin
     }
 }
 
-#[cfg(test)]
-fn expr_matches_syntax_kind(
-    expr: &vela_syntax::ast::Expr,
-    syntax_kind: SyntaxExpressionKind,
-) -> bool {
-    syntax_kind == SyntaxExpressionKind::Paren || expr_syntax_kind(expr) == Some(syntax_kind)
-}
-
-#[cfg(test)]
-fn expr_path_self_shape_matches(expr: &vela_syntax::ast::Expr, syntax_is_self: bool) -> bool {
-    expr_syntax_kind(expr) == Some(SyntaxExpressionKind::Path)
-        && matches!(expr.kind, ExprKind::SelfValue) == syntax_is_self
-}
-
 fn expression_block_syntax(expression: &SyntaxExpression) -> Option<SyntaxBlock> {
     if let Some(inner) = expression.as_paren().and_then(|paren| paren.expression()) {
         return expression_block_syntax(&inner);
@@ -843,36 +829,6 @@ impl<'ast> CompilerExpressionPayload<'ast> {
         }
 
         syntax_kind == SyntaxExpressionKind::Paren || self.stored_syntax_kind() == Some(syntax_kind)
-    }
-
-    #[cfg(test)]
-    fn paired_expr_matches_stored_syntax_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
-        let Some(kind) = self.stored_syntax_kind() else {
-            return true;
-        };
-        if !expr_matches_syntax_kind(expr, kind) {
-            return false;
-        }
-        if let Some(fallback) = self.fallback
-            && kind != SyntaxExpressionKind::Literal
-            && expr_syntax_kind(fallback) != expr_syntax_kind(expr)
-        {
-            return false;
-        }
-        self.paired_expr_matches_stored_syntax_shape(expr)
-    }
-
-    #[cfg(test)]
-    pub(in crate::compiler) fn matches_paired_expr(&self, expr: &vela_syntax::ast::Expr) -> bool {
-        self.paired_expr_matches_stored_syntax_expr(expr)
-    }
-
-    #[cfg(test)]
-    fn paired_expr_matches_stored_syntax_shape(&self, expr: &vela_syntax::ast::Expr) -> bool {
-        if self.stored_syntax_kind() != Some(SyntaxExpressionKind::Path) {
-            return true;
-        }
-        expr_path_self_shape_matches(expr, self.syntax_is_self())
     }
 
     #[cfg(test)]
