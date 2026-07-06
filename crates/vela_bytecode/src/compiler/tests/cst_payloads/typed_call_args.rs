@@ -40,7 +40,7 @@ fn main() {
 
             assert!(matches!(
                 error.kind,
-                CompileErrorKind::UnsupportedSyntax("missing CST call argument value")
+                CompileErrorKind::UnsupportedSyntax("mismatched CST call arguments")
             ));
         },
     );
@@ -106,6 +106,6 @@ fn main() {
 
     assert!(matches!(
         error.kind,
-        CompileErrorKind::UnsupportedSyntax("missing CST call argument value")
+        CompileErrorKind::UnsupportedSyntax("mismatched CST call arguments")
     ));
 }

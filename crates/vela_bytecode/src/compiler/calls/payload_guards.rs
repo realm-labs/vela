@@ -74,7 +74,7 @@ pub(super) fn reject_mismatched_call_argument_payloads(
         )));
     }
     if let Some(arg_payloads) = arg_payloads
-        && arg_payloads.len() > arg_count
+        && arg_payloads.len() != arg_count
     {
         return Err(CompileError::new(CompileErrorKind::UnsupportedSyntax(
             "mismatched CST call arguments",
